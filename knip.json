@@ -4,13 +4,13 @@
   "ignoreBinaries": ["uvx"],
   "entry": [
     "scripts/*.ts",
-    "tests/unit/**/*.{ts,tsx}",
-    "tests/behavior/**/*.ts"
+    "test/unit/**/*.{ts,tsx}",
+    "test/steps/**/*.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx,css}",
     "scripts/**/*.ts",
-    "tests/**/*.{ts,tsx}",
+    "test/**/*.{ts,tsx}",
     "*.{ts,mjs,cjs}"
   ]
 }

@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   architectureSchema,
   starterArchitecture,
-} from "../../src/domain/architecture";
-import { layoutArchitecture } from "../../src/lib/layout";
+} from "../../../src/domain/architecture";
+import { layoutArchitecture } from "../../../src/lib/layout";
 
 describe("architecture model", () => {
   test("rejects duplicate node identifiers", () => {

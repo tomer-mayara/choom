@@ -17,9 +17,9 @@ needs a view of the whole system. Use 0 to 4 subagents at one time.
 
 ## Repository guidance
 
-Choom uses Bun workspaces, Vite, React, TypeScript, and Tauri. The frontend is
-in `src/`, the Rust backend is in `src-tauri/src/`, and Bun packages are in
-`packages/`. Read [README.md](README.md) for setup and commands,
+Choom uses Bun, Vite, React, TypeScript, and Tauri. The frontend is in `src/`
+and the Rust shell is in `src-tauri/src/`. Add workspaces under `packages/`
+when the application needs them. Read [README.md](README.md) for setup and commands,
 [coding principles](docs/coding-principles.md) for design and testing, and
 [coding standards](docs/coding-standards.md) for TypeScript and React practices.
 Apply these guides during implementation and review.
@@ -31,17 +31,14 @@ For new or changed production behavior in `src/`, `src-tauri/src/`, or
 [coding principles](docs/coding-principles.md#start-with-behavior-and-invariants).
 Apply its DRY3 rule and test definitions during implementation and review.
 
-Run `bun run test` for the complete Bun behavior suite. It runs `test:native`
-for `packages/llm/test/`, `packages/desktop-host/test/`, and
-`packages/arch-model/test/` and the root repository-client interface suite,
-then `test:dom` for root repository UI suites with
-`test/preload.ts` in a separate process, then `test:render` for native renderer
-model checks and real Chromium tests. Run `bunx playwright install chromium`
-before the first renderer test run. Keep DOM globals
-out of native tests. See the [LLM package checks](packages/llm/README.md#tests-and-local-checks)
-for live Codex prerequisites. `bun run test:offline` runs offline LLM, host,
-architecture model, DOM, and renderer suites. Use `bun run test:rust` for Rust behavior
-and packaged acceptance for the assembled desktop route. Put root or workspace TypeScript suites in `test/unit/`,
+Run `bun run test` for the complete Bun unit suite. It runs `test:native`
+for TypeScript suites under `test/unit/`, then `test:dom` for React suites with
+`test/preload.ts` in a separate process. Keep DOM globals out of native tests.
+Run `bun run test:behavior` for Cucumber constraints and `bun run test:e2e`
+for browser acceptance under `test/acceptance/`. Install Chromium with
+`bunx --no-install playwright install chromium` before the first browser run.
+Use `bun run test:rust` for Rust behavior. Verify the assembled desktop route
+through packaged acceptance separately. Put root or workspace TypeScript suites in `test/unit/`,
 `test/integration/`, `test/interface/`, or `test/acceptance/`, using the test definitions in coding
 principles. Within each category, group suites by the corresponding `src/`
 component path. Keep mixed suites at their shared component group or main
@@ -56,7 +53,7 @@ build, type, lint, and manual checks.
 Select checks from the complete change, including shared callers and consumers.
 Run each new or changed test locally before committing. For production changes,
 run the affected behavior tests, `bun run check`, `bun run check-types`, and the
-relevant build. Use `bun run build` for the frontend and Bun packages. For
+relevant build. Use `bun run build` for the frontend. For
 Rust changes, also run Cargo tests, formatting, and Clippy; use
 `bun run desktop:build` when native packaging or the assembled desktop route
 changes. See [README.md](README.md) for commands and platform prerequisites.

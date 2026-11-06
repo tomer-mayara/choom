@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "types": ["bun", "node", "vite/client"] },
-  "include": ["scripts", "tests", "vite.config.ts", "playwright.config.ts"]
+  "include": ["scripts", "test", "vite.config.ts", "playwright.config.ts"]
 }

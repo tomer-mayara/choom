@@ -1,5 +1,5 @@
 export default {
   paths: ["cookbook/behavior/**/*.feature"],
-  import: ["tests/behavior/**/*.ts"],
+  import: ["test/steps/**/*.ts"],
   format: ["progress"],
 };

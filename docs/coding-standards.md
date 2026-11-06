@@ -1,8 +1,8 @@
 # Coding standards
 
 Choom uses TypeScript, React 19, Vite, Tailwind CSS v4, and Tauri v2 with a Rust
-backend. Bun manages the workspaces and compiles the desktop LLM host with its
-runtime for packaging. The host uses the backend LLM library. ESLint
+shell. Bun manages dependencies and unit tests; Node runs development tooling.
+Tauri packages the frontend and Rust shell. ESLint
 checks TypeScript and TSX through `.habit-hooks/eslint.config.mjs`; run
 `bun run check` to find issues. There is no `fix` script. Review any manual or
 automated edits in the resulting diff.
@@ -33,7 +33,7 @@ Follow [AGENTS.md](../AGENTS.md) for workflow and verification.
 - Use stable item IDs as list keys when available.
 - Pass children as nested JSX. With React 19, prefer a ref prop to `forwardRef`.
 - Keep app-owned UI primitives in `src/components/ui/` and theme styles in
-  `src/index.css`. Introduce a shared UI package when real consumers justify it.
+  `src/styles.css`. Introduce a shared UI package when real consumers justify it.
   Import existing packages through their declared exports.
 - Use semantic HTML, useful image alt text, a clear heading order, and labels
   for inputs. Ensure interactive controls work with a keyboard.
@@ -61,8 +61,7 @@ Group source files by cohesive component in root `src/`, `src-tauri/src/`,
 and each package's `src/` directory. Keep a component's helpers beside it; create
 a separate folder when the code has a distinct responsibility. Keep framework entrypoints and generated
 files at their configured locations. See the [project structure](../README.md#project-structure)
-and [LLM package API](../packages/llm/README.md#public-api) for current owners and
-boundaries. Update package exports and callers when moving files.
+for current owners and boundaries. Update package exports and callers when moving files.
 
 Keep imports specific where practical. Avoid re-export files that expose an
 entire package without a clear public contract. Check the cost of work inside
@@ -76,5 +75,5 @@ Automated checks cover mechanical rules. Review behavior, accessibility, error
 paths, dependency boundaries, and user experience as well.
 
 For Rust changes, use the Cargo formatting and Clippy commands in the
-[README](../README.md#configuration-notes), plus behavior tests and the relevant
+[README](../README.md#development-commands), plus behavior tests and the relevant
 desktop build. TypeScript lint and type checks do not check Rust.

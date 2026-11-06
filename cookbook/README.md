@@ -4,7 +4,7 @@ Keep behavioral constraints, dependency rules, contracts, and observability defi
 
 | Concern | Location | Check |
 | --- | --- | --- |
-| Behavior | `behavior/*.feature`, steps in `tests/behavior` | `bun run test:behavior` |
+| Behavior | `behavior/*.feature`, steps in `test/steps` | `bun run test:behavior` |
 | Dependencies | `../.dependency-cruiser.cjs` | `bun run check:dependencies` |
 | HTTP interfaces | `interfaces/openapi.json` — OpenAPI 3.2.1 | `bun run check:cookbook` |
 | Events | `interfaces/asyncapi.json` — AsyncAPI 3.1.0 | `bun run check:cookbook` |

@@ -26,7 +26,7 @@ module.exports = {
       name: "no-test-code-in-app",
       severity: "error",
       from: { path: "^src/" },
-      to: { path: "^tests/" },
+      to: { path: "^test/" },
     },
   ],
   options: {

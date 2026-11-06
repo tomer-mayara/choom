@@ -32,7 +32,9 @@ The directory picker returns a path; it does not read files or import a project.
 | `bun run build` | TypeScript 7 checks and production frontend build |
 | `bun run preview` | Serve the production frontend |
 | `bun run check` | Type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
-| `bun test` / `bun run test:watch` | Bun unit and React component tests in Happy DOM |
+| `bun run test` | Native Bun and Happy DOM unit tests in separate processes |
+| `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
+| `bun run check-types` | Alias for the native TypeScript compiler check |
 | `bun run test:behavior` | Cucumber scenarios from `cookbook/behavior` |
 | `bun run test:e2e` | Playwright browser test against a freshly built production app |
 | `bun run analyze` | Source inventory using ts-morph |
@@ -51,7 +53,7 @@ bunx --no-install playwright install chromium
 bun run test:e2e
 ```
 
-`bun test` only discovers `tests/unit`; Playwright and Cucumber run separately. `bun run check` stays browser-free. GitHub Actions additionally runs the production browser test and builds the desktop executable on Linux, macOS, and Windows.
+`bun run test:native` scans `test/unit` for native TypeScript suites; `bun run test:dom` runs the React suite with `test/preload.ts` in a separate process. Add new DOM suites to that command. `bun test` defaults to `test/unit/domain`. Playwright runs `test/acceptance`, and Cucumber loads `test/steps`. `bun run check` stays browser-free. GitHub Actions additionally runs the production browser test and builds the desktop executable on Linux, macOS, and Windows.
 
 ## Habit-hooks scans
 
@@ -75,8 +77,7 @@ schemas, and coverage are excluded. Knip examines the project dependency graph
 even when scanning a single file.
 
 The copied policy permits 60 code lines per TypeScript function, 120 for TSX,
-and 200 for tests and scripts. The test override covers this project's `tests/`
-directory as well as `test/`. File length is limited to 500 code lines,
+and 200 for tests and scripts. The test override covers `test/`. File length is limited to 500 code lines,
 complexity to 25, parameters to 5, and nesting depth to 4. Duplicate blocks need
 at least 10 lines and 100 tokens, with comment-only matches ignored. ESLint owns
 the length limits; the separate line-count and comment-presence sensors are
@@ -89,7 +90,7 @@ findings with exit 0. Correct findings or document why they remain, and keep
 `.habit-hooks/snooze.json` empty (`[]`). Custom length-review guides live under
 `.habit-hooks/generic/guides/`.
 
-## Layout
+## Project structure
 
 ```text
 src/
@@ -100,7 +101,7 @@ src/
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, HTTP/event contracts, observability definitions
 scripts/               Spectral contract policies and ts-morph analysis
-tests/                 Bun, Playwright, and Cucumber test implementations
+test/                  Unit and acceptance suites, shared Cucumber steps
 ```
 
 `.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. The example loads React Flow and ELK on demand.

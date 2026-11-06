@@ -49,7 +49,7 @@ export default [
 		},
 	},
 	{
-		files: ["**/test/**", "**/tests/**", "**/scripts/**"],
+		files: ["**/test/**", "**/scripts/**"],
 		rules: {
 			"max-lines-per-function": functionLines(200),
 		},

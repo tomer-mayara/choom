@@ -64,9 +64,8 @@ use the corresponding source component path, such as
 main workflow owner or shared component group. Do not split a coherent suite
 only to mirror every source file. Create folders when they have suites; empty
 placeholder directories are not required. See the
-[project structure](../README.md#project-structure) and
-[LLM package checks](../packages/llm/README.md#tests-and-local-checks) for the
-current components and suites. Keep Rust unit tests with their modules and Rust
+[project structure](../README.md#project-structure) for the current components
+and suites. Keep Rust unit tests with their modules and Rust
 integration tests under `src-tauri/tests/` when needed.
 Keep shared fixture data, drivers, and test doubles outside the category folders
 and separate from production code.
@@ -82,13 +81,12 @@ support acceptance when it goes through the real production boundary.
 Keep an existing mixed suite in the category that covers its real collaboration
 or acceptance journey. Do not add doubles or weaken assertions just to put it in
 unit. Document focused commands in the owning app or workspace. The current
-Bun native runner searches `packages/llm/test/`, `packages/desktop-host/test/`,
-and `packages/arch-model/test/` recursively, plus the root repository-client
-interface suite. The separate DOM runner selects repository UI `*.test.tsx`
-files with `test/preload.ts`. `test:render` runs renderer model checks in native
-Bun and repository/renderer browser suites through Playwright in a separate
-process. Include new suite locations in the appropriate runner and the complete
-test command. Keep native Bun and DOM tests in separate processes. Rust behavior
+Bun native runner scans `test/unit/` for TypeScript suites and excludes
+`*.test.tsx`. The separate DOM runner selects React suites with `test/preload.ts`.
+`test:e2e` runs browser acceptance through Playwright, and `test:behavior`
+executes Cucumber feature files with shared steps in `test/steps/`. Include new
+suite locations in the appropriate runner and the complete test command.
+Keep native Bun and DOM tests in separate processes. Rust behavior
 uses `bun run test:rust`; desktop
 acceptance must exercise the assembled app route.
 
