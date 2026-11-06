@@ -5,8 +5,12 @@ They apply to functions, objects, data, and systems that combine them. Choose
 structure from the behavior and constraints of the problem. A class count,
 function length, or design pattern does not establish good design.
 
-For work rules, follow [AGENTS.md](../AGENTS.md). For TypeScript and React
-practices, read [coding standards](coding-standards.md).
+Follow the [new feature cookbook](new-feature-cookbook.md) for feature constraints,
+artifact links, human approval, and CI enforcement. It takes priority if these
+three guides conflict. This document covers design and testing within those
+constraints. For implementation practices, read
+[coding standards](coding-standards.md). For work rules and verification commands,
+follow [AGENTS.md](../AGENTS.md).
 
 ## Start with behavior and invariants
 
@@ -25,13 +29,17 @@ Production code is in root `src/`, `src-tauri/src/`, and `packages/*/src/`.
 Apply the BDD, TDD, and test guidance below to frontend, Rust, and Bun package
 behavior. Use the appropriate native or browser test environment. For
 scripts, documents, configuration, and tooling, use relevant build, type, lint,
-and manual checks instead of adding tests.
+and manual checks instead of adding implementation tests. Feature constraint
+artifacts and review still follow the cookbook, regardless of which files
+implement the change.
 
-For new source behavior, write a failing BDD acceptance specification first.
-Use Given-When-Then or an equivalent executable form through public interfaces.
-Then use TDD for the behavior and contracts that the specification needs: write
-a focused failing test, make it pass, and refactor with tests green. Continue
-until the acceptance specification passes.
+For new or changed production behavior, first write failing BDD acceptance
+scenarios in Gherkin, stored in Cucumber `.feature` files. Use Given-When-Then to
+describe observable outcomes through public interfaces. Then use TDD for the
+behavior and contracts that the scenarios need: write a focused failing test,
+make it pass, and refactor with tests green. Continue until the Cucumber scenarios
+and affected acceptance checks pass. Other tests supplement the Cucumber feature
+files required by the cookbook.
 
 For a source refactor that must preserve behavior, establish passing
 characterization coverage before changing structure. Record important existing
@@ -39,6 +47,8 @@ outcomes, including failure behavior. Do not break an unchanged acceptance case
 to create a false red step. If an existing defect must change, specify that
 change separately. Test observable results and meaningful contracts; do not
 freeze private call sequences unless their order affects required behavior.
+Follow the cookbook for changes to observability, dependency rules, or interface
+contracts even when user-visible behavior stays the same.
 
 ## Test types
 
@@ -55,6 +65,11 @@ freeze private call sequences unless their order affects required behavior.
 - **Acceptance tests:** Specify user-required behavior through public interfaces
   in an environment similar to production. Check observable outcomes against
   the acceptance criteria. These tests can span workspaces.
+
+Cucumber feature files define behavioral constraints. Test categories describe
+what their step implementations and other suites exercise; the runner alone does
+not determine a category. Keep feature files at the artifact paths linked from
+the owning `component.yaml`. The test directories below organize test code.
 
 Place TypeScript tests with the root app or workspace whose behavior they verify,
 in `test/unit/`, `test/integration/`, `test/interface/`, or `test/acceptance/`.
@@ -209,9 +224,10 @@ when they matter; average speed alone can hide an unsafe cost.
 Run changed tests and required checks on the complete candidate. Use focused tests
 for local rules, contract tests for boundaries, and tests with real collaborators
 for behavior that doubles cannot establish. Acceptance coverage must show that
-the user requirement is met. Use the test definitions above and the verification rules in
-[AGENTS.md](../AGENTS.md). Passing tests support a claim within their scope; they do not
-prove every property of the system.
+the user requirement is met. Use the test definitions above and the verification
+rules in [AGENTS.md](../AGENTS.md). For feature changes, also complete the
+[cookbook PR checklist](new-feature-cookbook.md#pr-checklist). Passing tests support
+a claim within their scope; they do not prove every property of the system.
 
 ## Further reading
 

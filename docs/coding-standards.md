@@ -7,8 +7,11 @@ checks TypeScript and TSX through `.habit-hooks/eslint.config.mjs`; run
 `bun run check` to find issues. There is no `fix` script. Review any manual or
 automated edits in the resulting diff.
 
-Read [coding principles](coding-principles.md) for design and testing guidance.
-Follow [AGENTS.md](../AGENTS.md) for workflow and verification.
+Follow the [new feature cookbook](new-feature-cookbook.md) for feature constraints,
+artifact links, human approval, and CI enforcement. It takes priority if these
+three guides conflict. Apply these implementation standards within its
+constraints. Read [coding principles](coding-principles.md) for design and testing
+guidance. Follow [AGENTS.md](../AGENTS.md) for work rules and verification.
 
 ## TypeScript and JavaScript
 
@@ -62,17 +65,24 @@ and each package's `src/` directory. Keep a component's helpers beside it; creat
 a separate folder when the code has a distinct responsibility. Keep framework entrypoints and generated
 files at their configured locations. See the [project structure](../README.md#project-structure)
 for current owners and boundaries. Update package exports and callers when moving files.
+Keep affected `component.yaml` artifact and child references current, following
+the [cookbook linking rules](new-feature-cookbook.md#linking-file).
 
 Keep imports specific where practical. Avoid re-export files that expose an
 entire package without a clear public contract. Check the cost of work inside
 loops; avoid repeatedly copying a growing accumulator.
 
-In tests, put assertions in `it()` or `test()` blocks, use async/await for async
-work, and keep suites easy to navigate. Do not add `.only`, `.skip`, or `.todo`
-markers to committed tests.
+In Bun and Playwright suites, put assertions in `it()` or `test()` blocks.
+Use the runner's assertion syntax for Cucumber steps and Rust tests.
+Use the runner's async support, await asynchronous work, and keep
+suites easy to navigate. Do not commit focused, skipped, or pending tests, such
+as `.only`, `.skip`, or `.todo` markers.
 
-Automated checks cover mechanical rules. Review behavior, accessibility, error
-paths, dependency boundaries, and user experience as well.
+Automated checks cover the properties they exercise. Review behavior,
+accessibility, error paths, dependency boundaries, and user experience as well.
+Complete the [cookbook PR checklist](new-feature-cookbook.md#pr-checklist) for
+feature changes; human approval of changed constraint artifacts remains required
+before merge.
 
 For Rust changes, use the Cargo formatting and Clippy commands in the
 [README](../README.md#development-commands), plus behavior tests and the relevant
