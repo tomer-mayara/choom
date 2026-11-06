@@ -1,0 +1,10 @@
+{
+  "asyncapi": "3.1.0",
+  "info": {
+    "title": "Choom event contract",
+    "version": "0.1.0",
+    "description": "Contract template. No event transport is implemented by the starter."
+  },
+  "channels": {},
+  "operations": {}
+}

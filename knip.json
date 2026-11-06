@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreDependencies": ["@typescript/old"],
+  "ignoreBinaries": ["uvx"],
+  "entry": [
+    "scripts/*.ts",
+    "tests/unit/**/*.{ts,tsx}",
+    "tests/behavior/**/*.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,css}",
+    "scripts/**/*.ts",
+    "tests/**/*.{ts,tsx}",
+    "*.{ts,mjs,cjs}"
+  ]
+}

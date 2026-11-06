@@ -147,3 +147,13 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Desktop build output and generated Tauri schemas
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Test and analysis output
+playwright-report/
+test-results/
+reports/
+.DS_Store

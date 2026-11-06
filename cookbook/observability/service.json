@@ -1,0 +1,11 @@
+{
+  "apiVersion": "openslo/v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "choom",
+    "displayName": "Choom"
+  },
+  "spec": {
+    "description": "Architecture workspace. Define SLOs when measurable service indicators exist."
+  }
+}

@@ -1,0 +1,22 @@
+plugins = ["typescript", "generic"]
+files = [
+  "**/*.ts",
+  "**/*.tsx",
+  "!**/node_modules/**",
+  "!**/dist/**",
+  "!**/build/**",
+  "!**/target/**",
+  "!src-tauri/gen/**",
+  "!**/coverage/**",
+]
+
+[sensors.eslint]
+args = ["--config", ".habit-hooks/eslint.config.mjs"]
+
+# ESLint owns file length limits.
+[sensors.line-count]
+disabled = true
+
+# Comment presence does not establish whether its rationale is useful.
+[sensors.comment]
+disabled = true

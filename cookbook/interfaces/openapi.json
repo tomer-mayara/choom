@@ -1,0 +1,9 @@
+{
+  "openapi": "3.2.1",
+  "info": {
+    "title": "Choom HTTP contract",
+    "version": "0.1.0",
+    "description": "Contract template. No HTTP endpoints are implemented by the starter."
+  },
+  "paths": {}
+}

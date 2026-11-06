@@ -1,1 +1,127 @@
-# choom
+# Choom
+
+A Bun / TypeScript / React workspace with a Tauri desktop shell. The starter includes a small architecture canvas to exercise React Flow, ELK layout, Zod validation, Markdown rendering, and the UI primitives.
+
+## Set up
+
+Use **Bun 1.4.4**, **Node.js 26.13.0**, and **Rust 1.99.1**. Versions are pinned in `.bun-version`, `.node-version`, `.nvmrc`, `package.json`, and `rust-toolchain.toml`. Bun manages packages and unit tests; Node runs development CLIs. Rustup installs the pinned Rust toolchain when a Cargo command runs.
+
+```sh
+nvm install
+nvm use
+# If Bun is not already at the pinned version:
+curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.4"
+export PATH="$HOME/.bun/bin:$PATH"
+bun install --frozen-lockfile
+bun run dev
+```
+
+Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/), then run:
+
+```sh
+bun run desktop
+```
+
+The directory picker returns a path; it does not read files or import a project. Its capability is restricted to the main window. The browser hides desktop-only actions.
+
+## Development commands
+
+| Command | Purpose |
+| --- | --- |
+| `bun run dev` | Vite development server on port 1420 |
+| `bun run build` | TypeScript 7 checks and production frontend build |
+| `bun run preview` | Serve the production frontend |
+| `bun run check` | Type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
+| `bun test` / `bun run test:watch` | Bun unit and React component tests in Happy DOM |
+| `bun run test:behavior` | Cucumber scenarios from `cookbook/behavior` |
+| `bun run test:e2e` | Playwright browser test against a freshly built production app |
+| `bun run analyze` | Source inventory using ts-morph |
+| `bun run habit-hooks --all` | Manual TypeScript and generic code-hygiene scan |
+| `bun run desktop:check` | Check the Rust shell with its lockfile |
+| `bun run desktop:lint` | Rust formatting and Clippy |
+| `bun run desktop:test` | Rust test harness |
+| `bun run desktop:build` | Build the platform's desktop bundles |
+| `bun run ui:add <component>` | Run the pinned shadcn generator |
+| `bun run codex --help` | Run the pinned Codex CLI |
+
+Install Chromium once before browser tests:
+
+```sh
+bunx --no-install playwright install chromium
+bun run test:e2e
+```
+
+`bun test` only discovers `tests/unit`; Playwright and Cucumber run separately. `bun run check` stays browser-free. GitHub Actions additionally runs the production browser test and builds the desktop executable on Linux, macOS, and Windows.
+
+## Habit-hooks scans
+
+This project uses the Habit Hooks configuration from `choom-ai`, pinned to
+`habit-hooks[typescript]==1.5.0`. After installing the Bun dependencies, install
+[uv](https://docs.astral.sh/uv/getting-started/installation/) so `uvx` is on
+`PATH`. Habit Hooks requires Python 3.11 or later; the TypeScript detectors use
+the project's Node.js runtime and installed development tools.
+Knip recognizes `uvx` as an external prerequisite rather than an npm binary.
+
+```sh
+bun run habit-hooks --all
+bun run habit-hooks --file src/App.tsx
+bun run habit-hooks --branch main
+```
+
+These are manual scans. The configuration installs no automatic Git or agent
+hook. It covers all repository TypeScript and TSX, including the UI components,
+tests, and scripts. Dependencies, build output, Rust targets, generated Tauri
+schemas, and coverage are excluded. Knip examines the project dependency graph
+even when scanning a single file.
+
+The copied policy permits 60 code lines per TypeScript function, 120 for TSX,
+and 200 for tests and scripts. The test override covers this project's `tests/`
+directory as well as `test/`. File length is limited to 500 code lines,
+complexity to 25, parameters to 5, and nesting depth to 4. Duplicate blocks need
+at least 10 lines and 100 tokens, with comment-only matches ignored. ESLint owns
+the length limits; the separate line-count and comment-presence sensors are
+disabled. The remaining hygiene and unused-code sensors stay enabled.
+
+`bun run lint` also applies these ESLint rules alongside the existing typed
+lint rules. The full scan is separate from `bun run check`, as in the reference
+setup. Review its findings as well as its exit status: some sensors report
+findings with exit 0. Correct findings or document why they remain, and keep
+`.habit-hooks/snooze.json` empty (`[]`). Custom length-review guides live under
+`.habit-hooks/generic/guides/`.
+
+## Layout
+
+```text
+src/
+  components/          React components and shadcn-compatible UI
+  domain/              Platform-independent architecture model
+  lib/                 Class merging and ELK layout
+  platform/            Tauri API and dialog adapter
+src-tauri/             Rust desktop shell and window capabilities
+cookbook/              Behavior, HTTP/event contracts, observability definitions
+scripts/               Spectral contract policies and ts-morph analysis
+tests/                 Bun, Playwright, and Cucumber test implementations
+```
+
+`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. The example loads React Flow and ELK on demand.
+
+ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; the example loads it on request.
+
+## Dependency policy
+
+All requested direct npm and Cargo dependencies use exact versions; commit `bun.lock` and `src-tauri/Cargo.lock` after intentional updates. The JavaScript dialog companion `@tauri-apps/plugin-dialog@2.8.4` is included alongside the Rust plugin. Cucumber 13.3.0 supplies `@cucumber/gherkin@42.0.1` transitively; it is not separately installed.
+
+The [TypeScript side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) is deliberate:
+
+- `@typescript/native` aliases `typescript@7.0.2` and supplies the `tsc` command.
+- `typescript` aliases `@typescript/typescript6@6.0.2` and supplies the API for tools such as ESLint, plus `tsc6`.
+
+The compatibility wrapper depends on `@typescript/old` through a `^6` range. A direct `@typescript/old` alias pins that underlying API implementation to TypeScript 6.0.2 as well; Knip exempts this pin because it is consumed by the wrapper. The typecheck script invokes the native compiler by its package path to avoid competing `tsc` executable names.
+
+Use `bun run typecheck` to check with the native compiler. Do not replace the compatibility alias with TypeScript 7: it does not provide the legacy compiler API.
+
+`cn` supplies the `cn` utility; no separate `clsx` or `tailwind-merge` dependency is needed. The shadcn generator may add dependencies or rewrite the utility when generating components; review those changes before accepting them. Knip checks application, test, tooling, and CSS dependencies.
+
+The Codex CLI is a development tool. Authenticate it separately when needed; no credentials, AI backend, or Codex subprocess are embedded in the app. Rust serialization and Unix OS-binding crates are pinned for future native implementation.
+
+See [the cookbook](cookbook/README.md) for the scope of the contract templates and validation policies.
