@@ -1,0 +1,13 @@
+name: desktop-adapter
+description: Detect the Tauri host and request one project directory.
+
+artifacts:
+  behavior:
+    - path: ../../cookbook/behavior/desktop.feature
+  observability:
+    - path: ../../cookbook/observability/service.yaml
+  architecture:
+    - path: ../../.dependency-cruiser.cjs
+  contracts:
+    - path: desktop.ts
+    - path: ../../cookbook/interfaces/desktop.md

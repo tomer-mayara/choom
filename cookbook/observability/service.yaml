@@ -1,0 +1,13 @@
+apiVersion: openslo/v1
+kind: Service
+metadata:
+  name: choom
+  displayName: Choom
+  annotations:
+    choom.dev/status: unmeasured
+    choom.dev/evidence: cookbook/TODO.md
+spec:
+  description: >-
+    Architecture workspace shared by the UI, model, desktop adapter, and native
+    shell. Local checks do not measure production reliability. See cookbook/TODO.md
+    for evidence and prerequisites; no SLI, SLO, or alert policy is defined.

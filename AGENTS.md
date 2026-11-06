@@ -35,7 +35,7 @@ Run `bun run test` for the complete Bun unit suite. It runs `test:native`
 for TypeScript suites under `test/unit/`, then `test:dom` for React suites with
 `test/preload.ts` in a separate process. Keep DOM globals out of native tests.
 Run `bun run test:behavior` for Cucumber constraints and `bun run test:e2e`
-for browser acceptance under `test/acceptance/`. Install Chromium with
+for browser Cucumber acceptance through `test/steps/`. Install Chromium with
 `bunx --no-install playwright install chromium` before the first browser run.
 Use `bun run test:rust` for Rust behavior. Verify the assembled desktop route
 through packaged acceptance separately. Put root or workspace TypeScript suites in `test/unit/`,

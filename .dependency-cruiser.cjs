@@ -12,9 +12,27 @@ module.exports = {
       severity: "error",
       from: { path: "^src/domain/" },
       to: {
-        path: "^(src/(components|lib|platform)/|node_modules/(react|react-dom|@tauri-apps|@xyflow)/)",
-        dependencyTypesNot: ["type-only"],
+        path: "^(src/|node_modules/(react|react-dom|react-markdown|radix-ui|lucide-react|@tauri-apps|@xyflow)/)",
+        pathNot: "^src/domain/",
       },
+    },
+    {
+      name: "libraries-do-not-depend-on-ui-or-platform",
+      severity: "error",
+      from: { path: "^src/lib/" },
+      to: { path: "^src/(App\\.|main\\.|components/|platform/)" },
+    },
+    {
+      name: "platform-does-not-depend-on-workspace",
+      severity: "error",
+      from: { path: "^src/platform/" },
+      to: { path: "^src/", pathNot: "^src/platform/" },
+    },
+    {
+      name: "components-do-not-import-app-entrypoints",
+      severity: "error",
+      from: { path: "^src/components/" },
+      to: { path: "^src/(App\\.|main\\.)" },
     },
     {
       name: "desktop-access-through-adapter",

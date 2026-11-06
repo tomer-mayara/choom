@@ -1,0 +1,19 @@
+name: workspace
+description: React workspace, starter diagram preview, and graph layout.
+
+artifacts:
+  behavior:
+    - path: ../cookbook/behavior/workspace.feature
+  observability:
+    - path: ../cookbook/observability/service.yaml
+  architecture:
+    - path: ../.dependency-cruiser.cjs
+  contracts:
+    - path: ../cookbook/interfaces/workspace.md
+    - path: App.tsx
+
+children:
+  - name: architecture-model
+    path: ./domain
+  - name: desktop-adapter
+    path: ./platform
