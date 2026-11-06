@@ -1,0 +1,18 @@
+name: native-shell
+description: Host the frontend in Tauri and provide the dialog plugin to the main window.
+
+artifacts:
+  behavior:
+    # Adapter characterization only; packaged native acceptance remains a documented gap.
+    - path: ../cookbook/behavior/desktop.feature
+  observability:
+    - path: ../cookbook/observability/service.yaml
+  architecture:
+    - path: Cargo.toml
+    - path: capabilities/main.json
+    - path: tauri.conf.json
+  contracts:
+    - path: src/lib.rs
+    - path: capabilities/main.json
+    - path: tauri.conf.json
+    - path: ../cookbook/interfaces/desktop.md

@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { Resolver } from "@stoplight/json-ref-resolver";
 import { Spectral } from "@stoplight/spectral-core";
 import { enumeration, truthy } from "@stoplight/spectral-functions";
+import { validateComponents } from "./validate-components";
 
 // Local references only: validating a contract must not perform arbitrary network requests.
 const resolver = new Resolver({ resolvers: {} });
@@ -17,12 +19,6 @@ const contracts = [
     versionField: "asyncapi",
     version: "3.1.0",
     required: ["info.title", "info.version", "channels"],
-  },
-  {
-    path: "cookbook/observability/service.json",
-    versionField: "apiVersion",
-    version: "openslo/v1",
-    required: ["kind", "metadata.name", "spec.description"],
   },
 ];
 
@@ -66,6 +62,13 @@ for (const contract of contracts) {
   } else {
     console.log(`Valid cookbook policy: ${contract.path}`);
   }
+}
+
+try {
+  await validateComponents(fileURLToPath(new URL("..", import.meta.url)));
+} catch (error) {
+  console.error(error);
+  failed = true;
 }
 
 if (failed) process.exitCode = 1;

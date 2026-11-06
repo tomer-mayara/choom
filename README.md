@@ -31,12 +31,15 @@ The directory picker returns a path; it does not read files or import a project.
 | `bun run dev` | Vite development server on port 1420 |
 | `bun run build` | TypeScript 7 checks and production frontend build |
 | `bun run preview` | Serve the production frontend |
+| `./scripts/run_all_constraints.sh` | Run all four automated constraint validations with a pass/fail summary and diagnostic logs |
 | `bun run check` | Type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
 | `bun run test` | Native Bun and Happy DOM unit tests in separate processes |
 | `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
 | `bun run check-types` | Alias for the native TypeScript compiler check |
-| `bun run test:behavior` | Cucumber scenarios from `cookbook/behavior` |
-| `bun run test:e2e` | Playwright browser test against a freshly built production app |
+| `bun run test:behavior` | Model and desktop-adapter Cucumber scenarios (no browser) |
+| `bun run test:behavior:browser` | Browser Cucumber scenarios against a fresh production build |
+| `bun run test:e2e` | Browser Cucumber acceptance against one fresh production build |
+| `bun run check:cookbook` | Component path integrity, small OpenSLO Service shape, and contract template policies |
 | `bun run analyze` | Source inventory using ts-morph |
 | `bun run habit-hooks --all` | Manual TypeScript and generic code-hygiene scan |
 | `bun run desktop:check` | Check the Rust shell with its lockfile |
@@ -53,7 +56,55 @@ bunx --no-install playwright install chromium
 bun run test:e2e
 ```
 
-`bun run test:native` scans `test/unit` for native TypeScript suites; `bun run test:dom` runs the React suite with `test/preload.ts` in a separate process. Add new DOM suites to that command. `bun test` defaults to `test/unit/domain`. Playwright runs `test/acceptance`, and Cucumber loads `test/steps`. `bun run check` stays browser-free. GitHub Actions additionally runs the production browser test and builds the desktop executable on Linux, macOS, and Windows.
+`bun run test:native` scans `test/unit` for native TypeScript suites;
+`bun run test:dom` runs the React suite with `test/preload.ts` in a separate
+process. Add new DOM suites to that command. `bun test` defaults to
+`test/unit/domain`. Cucumber loads `test/steps`; its default profile excludes
+`@browser`. `test:e2e` runs the browser profile using Playwright through
+`test:behavior:browser`, with one build and preview. Failed browser scenarios
+retain screenshots and traces under `test-results/`. `bun run check` stays
+browser-free. GitHub Actions runs the constraint script and separate code-hygiene
+checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
+
+## Validate the four constraints
+
+Use the pinned Bun and Node versions from setup, then install dependencies and
+Chromium once:
+
+```sh
+bun install --frozen-lockfile
+bunx --no-install playwright install chromium
+./scripts/run_all_constraints.sh
+```
+
+The script uses Bash and ordinary local tools; it makes no LLM calls and does
+not install dependencies. It resolves the repository from its own path, so it
+also works when invoked by absolute path from another directory. It runs all
+checks even if one fails, prints each result and its purpose, and reports the
+four constraint results together. Failure output explains which command failed;
+full command logs are retained under `reports/constraints/`.
+
+Exit codes are `0` for a passing run, `1` for failed checks, `2` for setup or
+usage errors, and `130`/`143` for SIGINT/SIGTERM cancellation. Cancellation stops
+the active command group and keeps partial logs. Use `--help` for a quick guide;
+set `NO_COLOR=1` for plain terminal output.
+
+| Constraint | Checks |
+| --- | --- |
+| Behavioral | Bun unit tests, model/adapter Cucumber scenarios, and browser Cucumber against one fresh production build |
+| Observability | Component links, the OpenSLO Service shape, and shared contract-template policies |
+| Architectural | TypeScript dependency boundaries, cycles, and unresolved imports |
+| Interface | TypeScript source contracts and consumers; runtime schema/adapter cases also run in the behavioral group |
+
+A passing summary means these implemented checks passed. The OpenSLO Service
+has no measured production SLI or SLO, and browser IPC doubles do not prove native
+dialog or capability behavior. Native compilation/configuration checks remain
+in the separate desktop CI job. See the [cookbook](cookbook/README.md) for exact
+commands and the [evidence and remaining work](cookbook/TODO.md) for coverage gaps.
+
+The script replaces the overlapping constraint steps in web CI. Lint, unused-code,
+and duplication checks still run separately; `bun run check` remains available
+for the existing browser-free development check.
 
 ## Habit-hooks scans
 
@@ -101,10 +152,15 @@ src/
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, HTTP/event contracts, observability definitions
 scripts/               Spectral contract policies and ts-morph analysis
-test/                  Unit and acceptance suites, shared Cucumber steps
+test/                  Unit suites and shared Cucumber steps
 ```
 
-`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. The example loads React Flow and ELK on demand.
+The root [component manifest](component.yaml) links the four constraints and the
+workspace and native-shell children. The workspace owns `components/` and `lib/`,
+with child boundaries for the architecture model and desktop adapter. These four
+implementation components keep UI primitives and layout internal to the workspace.
+
+`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. The example loads React Flow and ELK on demand.
 
 ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; the example loads it on request.
 
@@ -125,4 +181,7 @@ Use `bun run typecheck` to check with the native compiler. Do not replace the co
 
 The Codex CLI is a development tool. Authenticate it separately when needed; no credentials, AI backend, or Codex subprocess are embedded in the app. Rust serialization and Unix OS-binding crates are pinned for future native implementation.
 
-See [the cookbook](cookbook/README.md) for the scope of the contract templates and validation policies.
+See [the cookbook](cookbook/README.md) for component artifacts, focused checks,
+and validation limits. The [evidence table and remaining work](cookbook/TODO.md)
+separate local checks from production prerequisites. All manifests share one
+unmeasured OpenSLO Service; there is no active production SLI or SLO.
