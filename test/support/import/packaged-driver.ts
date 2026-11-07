@@ -148,7 +148,7 @@ export class PackagedImportDriver implements ImportDriver {
     return xdo(["search", "--onlyvisible", "--pid", this.processId], true);
   }
 
-  private async choosePath(action: string, path: string | null): Promise<void> {
+  private async choosePath(action: string, path: string | null, directory = false): Promise<void> {
     const previous = new Set(await this.applicationWindows());
     await this.activate(action);
     let dialog = "";
@@ -162,9 +162,19 @@ export class PackagedImportDriver implements ImportDriver {
     if (path === null) {
       await xdo(["key", "--clearmodifiers", "Escape"]);
     } else {
-      await xdo(["key", "--clearmodifiers", "ctrl+l"]);
+      if (directory) {
+        // GTK starts in Recent when there is no saved location. Open Home so the dialog can accept a folder.
+        await xdo(["key", "--clearmodifiers", "--delay", "200", "alt+Home", "ctrl+l"]);
+      } else {
+        await xdo(["key", "--clearmodifiers", "ctrl+l"]);
+      }
       await xdo(["type", "--clearmodifiers", "--delay", "1", path]);
-      await xdo(["key", "--clearmodifiers", "Return"]);
+      if (directory) {
+        // End accepts the inline slash completion so Return submits the location.
+        await xdo(["key", "--clearmodifiers", "--delay", "200", "End", "Return"]);
+      } else {
+        await xdo(["key", "--clearmodifiers", "Return"]);
+      }
     }
     await waitFor(async () => !(await this.applicationWindows()).includes(dialog),
       `The native GTK picker did not close after ${path === null ? "cancellation" : "path selection"}`);
@@ -172,12 +182,12 @@ export class PackagedImportDriver implements ImportDriver {
 
   async selectRepository(path: string | null): Promise<void> {
     await this.open();
-    await this.choosePath("Choose repository", path);
+    await this.choosePath("Choose repository", path, true);
   }
 
   async loadRepository(path: string): Promise<void> {
     await this.open();
-    await this.choosePath("Load Repo", path);
+    await this.choosePath("Load Repo", path, true);
   }
 
   async openDocument(path: string): Promise<void> {

@@ -22,7 +22,7 @@ Install dependencies before the run; the harness never installs tools:
 bun install --frozen-lockfile
 bunx --no-install playwright install chromium
 cargo install tauri-driver --version 2.1.0 --locked
-sudo apt-get install webkit2gtk-driver xvfb xdotool
+sudo apt-get install dbus webkit2gtk-driver xvfb xdotool
 ```
 
 The ordinary Tauri Linux build dependencies are also required; see the
@@ -44,7 +44,7 @@ Set these variables for the actual installed artifact, then run smoke first:
 ```sh
 export CHOOM_PACKAGED_APP=/usr/bin/choom-desktop
 export CHOOM_PACKAGED_BUILD_ID=release-version-and-source-commit
-xvfb-run -a bun run test:behavior:packaged --tags @packaged-smoke
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-smoke
 ```
 
 Prepare a separate dependency tree outside the Choom checkout for the real
@@ -54,8 +54,8 @@ and the TypeScript parser installed as
 
 ```sh
 export CHOOM_PACKAGED_FIXTURE_MODULES=/absolute/prepared-fixture/node_modules
-xvfb-run -a bun run test:behavior:packaged --tags @packaged-native-analysis
-xvfb-run -a bun run test:behavior:packaged --tags @cr-001-t08
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-native-analysis
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @cr-001-t08
 ```
 
 Run the T05 native operations after smoke, then T08 after T05 passes. The harness
@@ -90,10 +90,13 @@ are placed inside the runner's temporary directory so forced Cucumber terminatio
 does not leave fixture repositories behind. The product uses real IPC.
 The native picker helper locates the installed executable's X11 process,
 focuses its newly opened dialog, and uses `xdotool` to select the supplied path
-or press Escape. It requires the picker to close. The smoke scenario also checks
-the displayed path and preservation after cancellation.
+or press Escape. For a folder selection, it opens Home to leave GTK's Recent
+view and accepts the location entry's inline completion before submitting the
+path. It requires the picker to close. The smoke scenario also checks the
+displayed path and preservation after cancellation.
 
-This route sets `GTK_USE_PORTAL=0` and requires X11 so the locked GTK3 dialog
+The headless commands start a separate D-Bus session inside each X11 display
+so services started on that bus can connect to the display. This route sets `GTK_USE_PORTAL=0` so the locked GTK3 dialog
 backend remains in the application process. It does not claim Wayland or desktop
 portal coverage. Tests do not confirm overwrite prompts automatically; use new
 export destinations. The native driver rejects any existing destination and

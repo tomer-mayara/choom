@@ -71,7 +71,7 @@ jobs:
       - name: Install Linux packaged acceptance drivers
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get install -y webkit2gtk-driver xvfb xdotool
+          sudo apt-get install -y webkit2gtk-driver xvfb xdotool dbus
           cargo install tauri-driver --version 2.1.0 --locked
           bunx --no-install playwright install --with-deps chromium
       - name: Build and install the Linux release package
@@ -92,7 +92,7 @@ jobs:
           G_MESSAGES_DEBUG: all
         run: |
           mkdir -p test-results/startup-probe
-          xvfb-run -a bash <<'SH'
+          xvfb-run -a dbus-run-session -- bash <<'SH'
           set -eu
           TAURI_WEBVIEW_AUTOMATION=true setsid WebKitWebDriver --host=127.0.0.1 --port=9515 > test-results/startup-probe/webkit.log 2>&1 &
           probe_pid=$!
@@ -111,21 +111,21 @@ jobs:
           CHOOM_PACKAGED_APP: /usr/bin/choom-desktop
           CHOOM_PACKAGED_BUILD_ID: ${{ github.sha }}
           CHOOM_PACKAGED_FIXTURE_MODULES: ${{ runner.temp }}/choom-fixture-deps/node_modules
-        run: xvfb-run -a bun run test:behavior:packaged --tags @packaged-smoke
+        run: xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-smoke
       - name: Check analyzer operations in the installed release
         if: runner.os == 'Linux'
         env:
           CHOOM_PACKAGED_APP: /usr/bin/choom-desktop
           CHOOM_PACKAGED_BUILD_ID: ${{ github.sha }}
           CHOOM_PACKAGED_FIXTURE_MODULES: ${{ runner.temp }}/choom-fixture-deps/node_modules
-        run: xvfb-run -a bun run test:behavior:packaged --tags @packaged-native-analysis
+        run: xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-native-analysis
       - name: Check installed architecture import
         if: runner.os == 'Linux'
         env:
           CHOOM_PACKAGED_APP: /usr/bin/choom-desktop
           CHOOM_PACKAGED_BUILD_ID: ${{ github.sha }}
           CHOOM_PACKAGED_FIXTURE_MODULES: ${{ runner.temp }}/choom-fixture-deps/node_modules
-        run: xvfb-run -a bun run test:behavior:packaged --tags @cr-001-t08
+        run: xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @cr-001-t08
       - name: Retain installed acceptance evidence
         if: ${{ always() && runner.os == 'Linux' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
