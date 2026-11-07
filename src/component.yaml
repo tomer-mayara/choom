@@ -4,6 +4,14 @@ description: React workspace, starter diagram preview, and graph layout.
 artifacts:
   behavior:
     - path: ../cookbook/behavior/workspace.feature
+    - path: ../cookbook/behavior/architecture-import/t01-explore.feature
+    - path: ../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
+    - path: ../cookbook/behavior/architecture-import/t03-discovery.feature
+    - path: ../cookbook/behavior/architecture-import/t04-observations.feature
+    - path: ../cookbook/behavior/architecture-import/t05-execution.feature
+    - path: ../cookbook/behavior/architecture-import/t06-documents.feature
+    - path: ../cookbook/behavior/architecture-import/t07-workflows.feature
+    - path: ../cookbook/behavior/architecture-import/t08-installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml
   architecture:

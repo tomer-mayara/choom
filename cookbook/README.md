@@ -10,11 +10,19 @@ configuration retain their own artifacts.
 | Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [`workspace.feature`](behavior/workspace.feature) | Consumed [architecture](interfaces/architecture.tsp) and [desktop](interfaces/desktop.tsp) contracts; [UI outcomes](interfaces/workspace.md) |
 | Architecture model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [`architecture.feature`](behavior/architecture.feature) | [TypeSpec model](interfaces/architecture.tsp), implemented by the validator in [`architecture.ts`](../src/domain/architecture.ts) |
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | [`desktop.feature`](behavior/desktop.feature) | [TypeSpec operations](interfaces/desktop.tsp), implemented by [`desktop.ts`](../src/platform/desktop.ts); [boundary notes](interfaces/desktop.md) |
-| Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; no packaged acceptance | Choom's [desktop boundary](interfaces/desktop.tsp); vendor Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
+| Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; new [installed picker](behavior/architecture-import/t01-installed-picker-smoke.feature) and [import acceptance](behavior/architecture-import/t08-installed.feature) | Choom's [desktop boundary](interfaces/desktop.tsp); vendor Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
 
 The workspace owns `components/` and `lib/`, including internal layout. The model
 and desktop adapter have separate import boundaries. Cargo dependencies and
 Tauri capabilities define the native boundary.
+
+The linked [CR-001 features](behavior/architecture-import/) specify the next
+architecture-import workflow. T01 registers them before production changes, so
+their missing-capability failures are expected during the ordered draft. All
+required scenarios must pass before merge. The
+[T01 evidence map](../docs/change-requests/CR-001-T01-evidence.md) records owners,
+future TypeSpec bindings, retained characterization, and actual verification
+limits. Browser simulations do not count as installed-app acceptance.
 
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)

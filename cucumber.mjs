@@ -4,5 +4,7 @@ const shared = {
   format: ["progress"],
 };
 
-export default { ...shared, tags: "not @browser" };
-export const browser = { ...shared, tags: "@browser" };
+export const native = { ...shared, tags: "not @browser and not @packaged" };
+export default native;
+export const browser = { ...shared, tags: "@browser and not @packaged" };
+export const packaged = { ...shared, tags: "@packaged" };

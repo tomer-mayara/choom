@@ -10,7 +10,7 @@ reliability. All components share the unmeasured
 | Workspace UI and layout | Browser Cucumber checks the landing screen, diagram labels and two directed edges, close/reopen, and page errors against a production build. With a Tauri IPC double, it checks the App's displayed path, pending button, cancellation, failure alert, and retry. | Run the browser journey against released web builds; retain reports by version. Add scheduled probes and a result store before using them as production evidence. |
 | Architecture model | TypeSpec compilation and output checks keep generated declarations/schemas current. TypeScript checks connect the model to the Zod output type; interface cases compare structural acceptance with the real parser. Cucumber and Bun tests cover graph rules, normalization, and starter layout positions. | The app parses only its built-in starter graph. Invalid-input tests remain release constraints until a real input boundary exists; measure outcomes there if one is added. |
 | Desktop adapter | TypeScript conformance checks cover generated operation names, parameters, and awaited results. Cucumber calls the real adapter and dialog package through Tauri's IPC mock for browser absence, options, selection, cancellation, and rejection. Browser checks exercise the App's caller through an IPC double. | Exercise the released packaged app with an operating system dialog driver on each supported platform. Mocked IPC does not establish native plugin execution or permissions. |
-| Native shell | Cargo and Tauri checks cover compilation and configuration. No packaged behavior is exercised. | Add packaged acceptance for startup, directory selection/cancellation, capability denial, and dialog failure on each supported platform. Retain results by platform and version. |
+| Native shell | Cargo and Tauri checks cover compilation and configuration. Manual macOS installed checks pass for startup, the example, and native directory selection/cancellation. The Linux automated driver remains unverified locally. | Complete installed import, runtime-discovery, permission, cancellation, and file-failure evidence on each supported platform. Retain results by platform and version. |
 
 ## Local characterization still to add
 
@@ -33,7 +33,11 @@ Choom defines its own IPC commands; the current shell only hosts the dialog plug
 
 ## Native and production work
 
-- [ ] Add the packaged desktop driver and native fault harness described above.
+- [ ] Verify the [Linux installed-app driver](../docs/change-requests/CR-001-native-acceptance.md)
+  added by T01 and complete native fault bindings and platform evidence.
+  Linux execution is unverified on the local Mac. Manual macOS startup, example,
+  and native picker selection/cancellation pass; new import actions are absent.
+  See the [T01 evidence record](../docs/change-requests/CR-001-T01-evidence.md).
   Check that cancellation retains the displayed selection and pending work
   disables another request through the assembled application.
 - [ ] Establish a released build, collection route, and measurement baseline for

@@ -37,7 +37,9 @@ The directory picker returns a path; it does not read files or import a project.
 | `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
 | `bun run check-types` | Alias for the native TypeScript compiler check |
 | `bun run test:behavior` | Model and desktop-adapter Cucumber scenarios (no browser) |
+| `bun run test:behavior:native` | Explicit browser-free Cucumber profile |
 | `bun run test:behavior:browser` | Browser Cucumber scenarios against a fresh production build |
+| `bun run test:behavior:packaged` | Installed Linux application acceptance; requires native drivers and a fresh frontend build |
 | `bun run test:e2e` | Browser Cucumber acceptance against one fresh production build |
 | `bun run check:cookbook` | Component path integrity, contract ownership, and small OpenSLO Service shape |
 | `bun run check:contracts` | TypeSpec format/compilation, generated-output consistency, TypeScript conformance, and runtime interface tests |
@@ -61,12 +63,38 @@ bun run test:e2e
 `bun run test:native` scans `test/unit` for native TypeScript suites;
 `bun run test:dom` runs the React suite with `test/preload.ts` in a separate
 process. Add new DOM suites to that command. `bun test` defaults to
-`test/unit/domain`. Cucumber loads `test/steps`; its default profile excludes
-`@browser`. `test:e2e` runs the browser profile using Playwright through
+`test/unit/domain`. Cucumber loads `test/steps`; its default/native profile excludes
+`@browser` and `@packaged`. `test:e2e` runs the browser profile using Playwright through
 `test:behavior:browser`, with one build and preview. Failed browser scenarios
 retain screenshots and traces under `test-results/`. `bun run check` stays
 browser-free. GitHub Actions runs the constraint script and separate code-hygiene
 checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
+Linux also installs the release package and runs the native picker
+characterization before the architecture-import scenarios. CI retains browser,
+constraint, and installed-app reports.
+
+[CR-001-T01](docs/change-requests/CR-001-T01-evidence.md) adds the architecture
+import specification before its production implementation. New behavior is
+expected to fail until later tickets implement it; existing characterization
+must remain green. The complete CI route includes the new scenarios. Focused
+commands help distinguish missing behavior from regressions:
+
+```sh
+bun run test:behavior:native
+bun run test:e2e --tags 'not @cr-001'
+bun run test:e2e --tags '@cr-001'
+```
+
+The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
+Desktop simulations double the vendor open/save dialog boundary. Analyzer,
+delay, and storage-fault inputs are staged for the TypeSpec bindings delivered
+by later tickets. Scenarios cannot pass until their required inputs and controls
+have runtime observations; staging facts alone supplies no evidence. These
+simulations do not prove native execution or failure handling. See the
+[installed acceptance guide](docs/change-requests/CR-001-native-acceptance.md)
+for Linux prerequisites, explicit application/dependency paths, and manual
+macOS/Windows checks. Build the frontend once with `bun run build` before using
+`bun run test:behavior:packaged`.
 
 TypeSpec sources in [`cookbook/interfaces/`](cookbook/interfaces/main.tsp) define
 Choom-owned component data and operations for internal and external callers.

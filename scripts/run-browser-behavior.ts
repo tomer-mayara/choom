@@ -40,7 +40,7 @@ try {
   const baseUrl = server.resolvedUrls?.local[0];
   if (!baseUrl) throw new Error("The production preview has no local URL");
   cucumber = Bun.spawn(
-    ["node", "node_modules/@cucumber/cucumber/bin/cucumber.js", "--config", "cucumber.mjs", "--profile", "browser"],
+    ["node", "node_modules/@cucumber/cucumber/bin/cucumber.js", "--config", "cucumber.mjs", "--profile", "browser", ...process.argv.slice(2)],
     {
       env: { ...process.env, CHOOM_BASE_URL: baseUrl },
       stdin: "inherit",

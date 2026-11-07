@@ -1,0 +1,26 @@
+schemaVersion: 1
+name: Atlas
+analysis:
+  enforcer: dependency-cruiser
+  version: 18.7.2
+  config: .dependency-cruiser.cjs
+  inputs: [src]
+  generatedAt: '2026-11-06T12:00:00Z'
+  scopeNotes: []
+components:
+  - {id: '.', name: Atlas, reportedFiles: 0}
+  - {id: src, name: src, parent: '.', reportedFiles: 3}
+  - {id: packages/core, name: packages/core, parent: '.', reportedFiles: 1}
+relationships:
+  - id: imports:src:packages%2Fcore
+    source: src
+    target: packages/core
+    kind: imports
+    evidence:
+      - sourceFile: src/components/panel.ts
+        targetFile: packages/core/model/entity.ts
+        variants: [{typeOnly: false}]
+      - sourceFile: src/lib/format.ts
+        targetFile: packages/core/model/entity.ts
+        variants: [{typeOnly: false}]
+diagnostics: []

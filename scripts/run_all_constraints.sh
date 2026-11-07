@@ -13,7 +13,8 @@ install Chromium with bunx --no-install playwright install chromium first.
 
 Logs are kept in reports/constraints/. Exit codes: 0 passed, 1 checks failed,
 2 setup/usage error, 130 interrupted, 143 terminated.
-Production SLO measurement and packaged native acceptance remain unimplemented.
+Production SLO measurement remains unimplemented. Installed acceptance runs
+separately through test:behavior:packaged; see its native acceptance guide.
 HELP
 }
 
@@ -124,7 +125,7 @@ for ((group = 0; group < 4; group++)); do
   [ "${results[$group]}" = PASS ] || color="$red"
   printf '  %-15s %s%s%s\n' "${names[$group]}" "$color" "${results[$group]}" "$reset"
 done
-printf '\nRemaining gaps: production SLIs/SLOs are unmeasured; packaged native\nacceptance is not covered. Native compilation/configuration runs in separate\ndesktop CI. See cookbook/TODO.md. No LLM is invoked by this runner.\n'
+printf '\nRemaining gaps: production SLIs/SLOs are unmeasured; this runner does not\ncover installed acceptance. Desktop CI checks native compilation/configuration\nand the Linux packaged route. See cookbook/TODO.md for platform evidence limits.\nNo LLM is invoked by this runner.\n'
 printf '\nLogs: %s\n' "$log_dir"
 if [ "$failures" -gt 0 ]; then
   printf '%sFAIL%s — %s check(s) failed; see the diagnostics above.\n' "$red" "$reset" "$failures"
