@@ -1,5 +1,12 @@
 // Generated from TypeSpec by bun run contracts:generate. Do not edit.
 
+export type CancelDepCruiserOutcome = StoppedDepCruiserJob | DepCruiserNativeFailure;
+
+export interface CancelledDepCruiserExecution {
+  status: "cancelled";
+  durationMs: number;
+}
+
 export type CloseRepositoryOutcome = CloseRepositorySuccess | RepositoryFailure;
 
 export interface CloseRepositoryRequest {
@@ -13,6 +20,46 @@ export interface CloseRepositorySuccess {
 
 export interface ClosedRepository {
   closed: true;
+}
+
+export interface CompletedDepCruiserExecution {
+  status: "completed";
+  reportJson: string;
+  version: "18.7.2";
+  workingDirectory: ".";
+  completedAtMs: number;
+  durationMs: number;
+}
+
+export type DepCruiserExecutionOutcome = CompletedDepCruiserExecution | CancelledDepCruiserExecution | DepCruiserNativeFailure;
+
+export interface DepCruiserJob {
+  jobId: string;
+}
+
+export interface DepCruiserNativeFailure {
+  status: "failure";
+  stage: DepCruiserNativeStage;
+  code: DepCruiserNativeFailureCode;
+  message: string;
+  durationMs: number;
+}
+
+export type DepCruiserNativeFailureCode = "invalid-request" | "invalid-session" | "invalid-job" | "busy" | "node-not-found" | "unsupported-node" | "analyzer-not-found" | "unsupported-analyzer" | "unsupported-config-path" | "source-changed" | "execution-failed" | "timed-out" | "output-limit" | "report-missing" | "report-invalid" | "cleanup-failed" | "unavailable" | "invalid-response";
+
+export interface DepCruiserNativeProgress {
+  jobId: string;
+  stage: DepCruiserNativeStage;
+  elapsedMs: number;
+}
+
+export type DepCruiserNativeStage = "setup" | "analysis" | "cleanup";
+
+export interface DepCruiserOperations {
+  prepareDepCruiser(request: PrepareDepCruiserRequest): PrepareDepCruiserOutcome;
+  runDepCruiser(request: DepCruiserJob): DepCruiserExecutionOutcome;
+  cancelDepCruiser(request: DepCruiserJob): CancelDepCruiserOutcome;
+  releaseDepCruiser(request: DepCruiserJob): ReleaseDepCruiserOutcome;
 }
 
 export type DesktopAvailability = boolean;
@@ -46,6 +93,20 @@ export interface OpenRepositorySuccess {
   value: RepositorySession;
 }
 
+export type PrepareDepCruiserOutcome = PreparedDepCruiser | DepCruiserNativeFailure;
+
+export interface PrepareDepCruiserRequest {
+  repositorySession: string;
+  config: string;
+  inputs: Array<string>;
+  nodeExecutable?: string;
+}
+
+export interface PreparedDepCruiser {
+  status: "success";
+  value: DepCruiserJob;
+}
+
 export type ReadRepositoryTextOutcome = ReadRepositoryTextSuccess | RepositoryFailure;
 
 export interface ReadRepositoryTextRequest {
@@ -56,6 +117,13 @@ export interface ReadRepositoryTextRequest {
 export interface ReadRepositoryTextSuccess {
   status: "success";
   value: RepositoryText;
+}
+
+export type ReleaseDepCruiserOutcome = ReleasedDepCruiserJob | DepCruiserNativeFailure;
+
+export interface ReleasedDepCruiserJob {
+  status: "success";
+  released: true;
 }
 
 export interface RepositoryFailure {
@@ -100,3 +168,8 @@ export interface ResolveRepositoryPathsSuccess {
 }
 
 export type ResolvedRepositoryPath = InternalRepositoryPath | ExternalRepositoryPath;
+
+export interface StoppedDepCruiserJob {
+  status: "success";
+  stopped: true;
+}

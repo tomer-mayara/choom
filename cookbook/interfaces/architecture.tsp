@@ -267,6 +267,7 @@ union AnalysisStage {
   "analysis",
   "conversion",
   "validation",
+  "cleanup",
 }
 
 union AnalysisFailureCode {
@@ -283,6 +284,9 @@ union AnalysisFailureCode {
 @extension("additionalProperties", false)
 model AnalysisProgress {
   stage: AnalysisStage;
+
+  @minValue(0)
+  elapsedMs?: float64;
 }
 
 @extension("additionalProperties", false)

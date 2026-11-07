@@ -5,6 +5,10 @@ fn main() {
             "repository_read_text",
             "repository_resolve_paths",
             "repository_close",
+            "depcruiser_prepare",
+            "depcruiser_run",
+            "depcruiser_cancel",
+            "depcruiser_release",
         ]),
     ))
     .expect("failed to build Choom's command permissions");

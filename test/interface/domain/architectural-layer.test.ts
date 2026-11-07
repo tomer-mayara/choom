@@ -77,4 +77,7 @@ test("failure and cancellation have distinct generated outcomes", () => {
   expect(validateOutcome({ status: "cancelled", document: {} })).toBe(false);
   expect(validateRequest({ repositorySession: "test-session", components: [], analysis: {} })).toBe(false);
   expect(validateProgress({ stage: "stderr" })).toBe(false);
+  expect(validateProgress({ stage: "cleanup", elapsedMs: 12.5 })).toBe(true);
+  expect(validateProgress({ stage: "analysis", elapsedMs: -1 })).toBe(false);
+  expect(validateProgress({ stage: "analysis", elapsedMs: "slow" })).toBe(false);
 });

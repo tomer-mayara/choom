@@ -4,7 +4,7 @@
 context and conversion operation. [`DepCruiserReportConverter`](../../src/architecture/dependency-cruiser/converter.ts)
 implements [`ReportConversion`](../../src/architecture/dependency-cruiser/report-conversion.ts),
 the asynchronous TypeScript binding of that operation. Its request and result
-types come from the generated TypeSpec contract. T05 can inject this interface
+types come from the generated TypeSpec contract. T05 injects this interface
 into the dependency-cruiser strategy. The analyzer-neutral replacement boundary
 remains `ArchitecturalLayer`; this converter accepts dependency-cruiser reports.
 Its injected dependency is the native
@@ -16,7 +16,8 @@ the analyzer descriptor, and the component declarations from discovery. It
 does not execute a configuration or analyzer. The version in the context must
 match the report's environment version. `workingDirectory: "."` is the
 producer's guarantee that analysis ran at the selected session root; the
-converter cannot establish process history. T05's runner must enforce it.
+converter cannot establish process history. The [native runner](desktop-analyzer.md)
+enforces it.
 The producer also supplies `generatedAt`; conversion does not invent a new
 analysis time.
 
@@ -117,5 +118,6 @@ violation-type union.
 Run `bun run test:behavior:native --tags @cr-001-t04-api`,
 `bun test ./test/unit/architecture/dependency-cruiser`, and
 `bun test ./test/interface/architecture/dependency-cruiser` for focused evidence.
-Recorded reports test conversion; they do not establish the future runner's
-execution, cancellation, or installed application behavior.
+Recorded reports test conversion; they do not establish execution, cancellation,
+or installed application behavior. See [T05 evidence](../../docs/change-requests/CR-001-T05-evidence.md)
+for those checks and their platform limits.

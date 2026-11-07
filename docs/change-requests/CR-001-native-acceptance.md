@@ -6,8 +6,9 @@ The current automated route supports Linux with X11 and GTK3 dialogs. macOS and
 Windows use the manual route below. An unavailable route is a recorded limit,
 not a passing or skipped test.
 
-T01 establishes the driver and preserves directory-picker behavior. Load Repo,
-Open Diagram, export, and analyzer execution belong to later tickets. A missing
+T01 establishes the driver and preserves directory-picker behavior. T05 adds
+installed native analyzer operations before the Load Repo UI. Load Repo,
+Open Diagram, and export belong to later tickets. A missing
 public action is the expected T01 feature failure only after startup and picker
 characterization pass. No driver supplies an analyzer report or replaces IPC.
 
@@ -52,11 +53,14 @@ and the TypeScript parser installed as
 
 ```sh
 export CHOOM_PACKAGED_FIXTURE_MODULES=/absolute/prepared-fixture/node_modules
+xvfb-run -a bun run test:behavior:packaged --tags @packaged-native-analysis
 xvfb-run -a bun run test:behavior:packaged --tags @cr-001-t08
 ```
 
-Run T08 only after smoke passes. The harness validates the supplied dependency
-versions and links repository fixtures to that prepared tree; it does not install
+Run the T05 native operations after smoke, then T08 after T05 passes. The harness
+validates the supplied dependency versions and copies the prepared tree into
+each repository fixture. Relative links within that tree are preserved; external
+links are refused. It does not install
 dependencies or fall back to Choom's development `node_modules`. Smoke needs no
 analyzer tree. The unfiltered command runs all
 `@packaged` scenarios. `--tags <expression>` and `--name <expression>` select
@@ -94,6 +98,14 @@ portal coverage. Tests do not confirm overwrite prompts automatically; use new
 export destinations. The native driver rejects any existing destination and
 waits for the application to write stable, readable version 1 YAML after the
 save picker closes. A timeout or an unexpected native dialog fails the run.
+
+T05's three `@packaged-native-analysis` cases call the production repository and
+analyzer commands from the installed webview. They verify fresh reports after a
+source edit, error findings in a completed report, refusal of partial output
+after process failure, private report removal, disabled persistent cache,
+cancellation after a real descendant starts, and retry in the same repository
+session. These exercise native operations without changing the installed UI or
+mocking IPC. They do not prove the later Load Repo controller or renderer.
 
 Each run writes `test-results/packaged/run-*/` with:
 

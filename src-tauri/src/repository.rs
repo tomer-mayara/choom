@@ -5,7 +5,10 @@ use std::{
     fs::{self, File, Metadata, OpenOptions},
     io::{self, Read},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{
+        Arc, Mutex, MutexGuard,
+        atomic::{AtomicBool, Ordering},
+    },
     time::SystemTime,
 };
 
@@ -142,6 +145,8 @@ struct Registry {
 
 struct Session {
     root: PathBuf,
+    identity: Arc<same_file::Handle>,
+    open: Arc<AtomicBool>,
     outside_references: HashMap<PathBuf, String>,
 }
 
@@ -152,7 +157,37 @@ pub struct RepositoryService {
     registry: Arc<Mutex<Registry>>,
 }
 
+/// A native operation can borrow the root without extending the open session.
+#[derive(Clone)]
+pub(crate) struct RepositoryLease {
+    pub(crate) root: PathBuf,
+    identity: Arc<same_file::Handle>,
+    open: Arc<AtomicBool>,
+}
+
+impl RepositoryLease {
+    pub(crate) fn is_open(&self) -> bool {
+        self.open.load(Ordering::Acquire)
+    }
+
+    pub(crate) fn is_current(&self) -> bool {
+        fs::canonicalize(&self.root).is_ok_and(|path| path == self.root)
+            && root_identity(&self.root).is_ok_and(|identity| identity == *self.identity)
+    }
+}
+
 impl RepositoryService {
+    pub(crate) fn lease(&self, session: &str) -> Option<RepositoryLease> {
+        validate_session(session).ok()?;
+        let registry = self.registry.lock().ok()?;
+        let session = registry.sessions.get(session)?;
+        Some(RepositoryLease {
+            root: session.root.clone(),
+            identity: session.identity.clone(),
+            open: session.open.clone(),
+        })
+    }
+
     pub fn open(&self, request: Value) -> RepositoryOutcome<RepositorySession> {
         self.open_checked(request).into()
     }
@@ -185,6 +220,7 @@ impl RepositoryService {
         }
         let root = canonicalize(Path::new(&request.root_path))?;
         require_directory(&root)?;
+        let identity = Arc::new(root_identity(&root).map_err(io_error)?);
         let mut registry = self.registry()?;
         if registry.sessions.len() == MAX_SESSIONS {
             return Err(limit("Too many repository sessions are open."));
@@ -198,6 +234,8 @@ impl RepositoryService {
             repository_session.clone(),
             Session {
                 root,
+                identity,
+                open: Arc::new(AtomicBool::new(true)),
                 outside_references: HashMap::new(),
             },
         );
@@ -296,9 +334,13 @@ impl RepositoryService {
     fn close_checked(&self, request: Value) -> Result<ClosedRepository, RepositoryError> {
         let request: CloseRepositoryRequest = decode(request)?;
         validate_session(&request.repository_session)?;
-        self.registry()?
+        if let Some(session) = self
+            .registry()?
             .sessions
-            .remove(&request.repository_session);
+            .remove(&request.repository_session)
+        {
+            session.open.store(false, Ordering::Release);
+        }
         Ok(ClosedRepository { closed: true })
     }
 }
@@ -371,6 +413,26 @@ fn is_canonical_relative(path: &str) -> bool {
 
 fn canonicalize(path: &Path) -> Result<PathBuf, RepositoryError> {
     fs::canonicalize(path).map_err(io_error)
+}
+
+fn root_identity(path: &Path) -> io::Result<same_file::Handle> {
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.custom_flags(0x00200000 | 0x02000000);
+    }
+    let file = options.open(path)?;
+    if !file.metadata()?.is_dir() {
+        return Err(io::Error::other("repository root is not a directory"));
+    }
+    same_file::Handle::from_file(file)
 }
 
 fn require_directory(path: &Path) -> Result<(), RepositoryError> {

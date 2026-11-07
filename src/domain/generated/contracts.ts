@@ -23,6 +23,7 @@ export type AnalysisOutcome = AnalysisSuccess | AnalysisFailure | AnalysisCancel
 
 export interface AnalysisProgress {
   stage: AnalysisStage;
+  elapsedMs?: number;
 }
 
 export interface AnalysisProvenance {
@@ -40,7 +41,7 @@ export interface AnalysisRequest {
   analysis: AnalysisDescriptor;
 }
 
-export type AnalysisStage = "discovery" | "setup" | "analysis" | "conversion" | "validation";
+export type AnalysisStage = "discovery" | "setup" | "analysis" | "conversion" | "validation" | "cleanup";
 
 export interface AnalysisSuccess {
   status: "success";

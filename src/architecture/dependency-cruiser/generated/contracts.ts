@@ -19,3 +19,21 @@ export interface DepCruiserConversionRequest {
   request: ChoomDomain.AnalysisRequest;
   completed: CompletedDepCruiserReport;
 }
+
+export interface DepCruiserExecutionCompleted {
+  status: "completed";
+  report: CompletedDepCruiserReport;
+  durationMs: number;
+}
+
+export interface DepCruiserExecutionOperations {
+  run(request: DepCruiserExecutionRequest): DepCruiserRunOutcome;
+}
+
+export interface DepCruiserExecutionRequest {
+  repositorySession: string;
+  config: string;
+  inputs: Array<string>;
+}
+
+export type DepCruiserRunOutcome = DepCruiserExecutionCompleted | ChoomDomain.AnalysisFailure | ChoomDomain.AnalysisCancelled;

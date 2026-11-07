@@ -1,5 +1,5 @@
 name: desktop-adapter
-description: Detect the Tauri host, select a project, and access a bounded repository session.
+description: Detect the Tauri host, select a project, and bind repository access and analyzer jobs.
 
 artifacts:
   behavior:
@@ -7,6 +7,8 @@ artifacts:
     - path: ../../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
     - path: ../../cookbook/behavior/architecture-import/t03-discovery.feature
     - path: ../../cookbook/behavior/architecture-import/t05-execution.feature
+    - path: ../../cookbook/behavior/architecture-import/t05-api.feature
+    - path: ../../cookbook/behavior/architecture-import/t05-installed.feature
     - path: ../../cookbook/behavior/architecture-import/t06-documents.feature
     - path: ../../cookbook/behavior/architecture-import/t08-installed.feature
   observability:
@@ -15,4 +17,6 @@ artifacts:
     - path: ../../.dependency-cruiser.cjs
   contracts:
     - path: ../../cookbook/interfaces/desktop.tsp
+    - path: ../../cookbook/interfaces/desktop-analyzer.tsp
+    - path: ../../cookbook/interfaces/desktop-analyzer.md
     - path: ../../cookbook/interfaces/desktop.md
