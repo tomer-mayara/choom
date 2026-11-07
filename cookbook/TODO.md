@@ -16,6 +16,13 @@ reliability. All components share the unmeasured
 | Native shell | Cargo and Tauri checks cover compilation and configuration. Earlier T01 macOS checks passed startup, the example, and directory selection/cancellation. T07's final macOS package passes native Load Repo, export, picker cancellation, and source-free reopening after restart. Linux installed picker and T05 analyzer operations pass locally and on hosted Ubuntu; T07 also passes the complete installed UI journey. See the [T07 evidence record](../docs/change-requests/CR-001-T07-evidence.md) for candidate-specific results. | Complete the remaining runtime-discovery, permission, cancellation, and file-failure cases on each supported platform, including Windows execution. Retain results by platform and version. |
 | Portable documents | Codec, workspace, platform, and native tests cover semantic round trips, malformed YAML limits, export capture, candidate cleanup, atomic replacement, cache ownership, and TypeSpec wire conformance. See [T06 evidence](../docs/change-requests/CR-001-T06-evidence.md) for exact checks and installed-operation results. | T07 supplies browser file selection/download, native dialogs, and displayed-document replacement. Retain installed evidence for those UI journeys on each release platform. Cross-compilation does not establish Windows filesystem behavior. |
 
+The [T08 review](../docs/change-requests/CR-001-T08-evidence.md) records the current
+candidate separately from these earlier results. It adds installed missing-Node,
+analyzer cancellation/cleanup, Retry, invalid-file, and runtime-isolated viewer
+checks. It also records two Windows document failures found by T07 CI and the
+correction's platform-specific verification. Consult that record before making
+release claims; earlier packages do not establish the final candidate's result.
+
 ## Local characterization still to add
 
 These checks can be developed locally; they are not blocked on production
@@ -40,15 +47,14 @@ strict platform validation, and codec conformance cases.
 
 ## Native and production work
 
-- [ ] Complete native fault bindings and platform evidence through the
+- [ ] Complete platform evidence through the
   [installed-app route](../docs/change-requests/CR-001-native-acceptance.md).
-  Linux picker, analyzer, document, and complete UI journeys pass on the
-  ordinary installed T07 package. See the
-  [T07 evidence record](../docs/change-requests/CR-001-T07-evidence.md) for exact
-  cards, multiple-subdirectory evidence, export/reopen, denied access, and the
-  remaining macOS, Windows, and launcher limits.
-  Check that cancellation retains the displayed selection and pending work
-  disables another request through the assembled application.
+  Keep each result tied to its OS and ordinary build. T08 extends Linux bindings
+  to running analyzer cancellation, child/report cleanup, disabled concurrent
+  loads, Retry, missing runtime, and malformed files. Retain the remaining macOS,
+  Windows, launcher, native save-failure, and ordinary-release layout-failure
+  gaps from the [T08 evidence record](../docs/change-requests/CR-001-T08-evidence.md).
+  Controlled browser layout faults do not close the installed layout gap.
 - [ ] Establish a released build, collection route, and measurement baseline for
   each production claim. There is no configured probe scheduler, telemetry sink,
   or agreed objective. Define any SLI, SLO, window, or alert only after those

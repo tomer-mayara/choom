@@ -119,8 +119,8 @@ async function prerequisites() {
   return { app, node, tauri, webkit, xdotool, runtimePath, modules };
 }
 
-async function ports(): Promise<[number, number, number]> {
-  const servers = [createServer(), createServer(), createServer()];
+async function ports(): Promise<[number, number, number, number, number]> {
+  const servers = Array.from({ length: 5 }, () => createServer());
   try {
     const values = await Promise.all(servers.map((listener) => new Promise<number>((resolvePort, reject) => {
       listener.once("error", reject);
@@ -130,9 +130,11 @@ async function ports(): Promise<[number, number, number]> {
         else reject(new Error("Could not reserve a local WebDriver port"));
       });
     })));
-    const [driverPort, nativePort, previewPort] = values;
-    if (!driverPort || !nativePort || !previewPort) throw new Error("WebDriver and preview ports are required");
-    return [driverPort, nativePort, previewPort];
+    const [driverPort, nativePort, previewPort, noRuntimeDriverPort, noRuntimeNativePort] = values;
+    if (!driverPort || !nativePort || !previewPort || !noRuntimeDriverPort || !noRuntimeNativePort) {
+      throw new Error("WebDriver and preview ports are required");
+    }
+    return [driverPort, nativePort, previewPort, noRuntimeDriverPort, noRuntimeNativePort];
   } finally {
     await Promise.all(servers.map((listener) => new Promise<void>((done) => listener.close(() => done()))));
   }
@@ -264,14 +266,25 @@ try {
     const selected = cucumberArguments();
     workDirectory = await mkdtemp(join(tmpdir(), "choom-packaged-"));
     const setup = await prerequisites();
-    const [driverPort, nativePort, previewPort] = await ports();
+    const [driverPort, nativePort, previewPort, noRuntimeDriverPort, noRuntimeNativePort] = await ports();
+    const noRuntimePath = join(workDirectory, "no-analyzer-runtime");
+    await mkdir(noRuntimePath, { mode: 0o700 });
+    metadata.noRuntimeProductEnvironment = {
+      path: noRuntimePath, display: process.env.DISPLAY, workingDirectory: workDirectory, gtkUsePortal: "0",
+    };
     const log = await open(join(evidence, "tauri-driver.log"), "w", 0o600);
+    const noRuntimeLog = await open(join(evidence, "no-runtime-tauri-driver.log"), "w", 0o600);
     const previewLog = await open(join(evidence, "preview.log"), "w", 0o600);
     try {
-      const driver = launch(setup.tauri, ["--port", String(driverPort), "--native-port", String(nativePort), "--native-host", "127.0.0.1", "--native-driver", setup.webkit], {
-        cwd: workDirectory, env: { ...process.env, PATH: setup.runtimePath, GTK_USE_PORTAL: "0" }, stdio: ["ignore", log.fd, log.fd],
-      });
-      await ready(driver, `http://127.0.0.1:${driverPort}/status`, "tauri-driver");
+      for (const product of [
+        { port: driverPort, nativePort, path: setup.runtimePath, log, name: "tauri-driver" },
+        { port: noRuntimeDriverPort, nativePort: noRuntimeNativePort, path: noRuntimePath, log: noRuntimeLog, name: "no-runtime-tauri-driver" },
+      ]) {
+        const driver = launch(setup.tauri, ["--port", String(product.port), "--native-port", String(product.nativePort), "--native-host", "127.0.0.1", "--native-driver", setup.webkit], {
+          cwd: workDirectory, env: { ...process.env, PATH: product.path, GTK_USE_PORTAL: "0" }, stdio: ["ignore", product.log.fd, product.log.fd],
+        });
+        await ready(driver, `http://127.0.0.1:${product.port}/status`, product.name);
+      }
       const baseUrl = `http://127.0.0.1:${previewPort}`;
       const previewProcess = launch(setup.node, ["node_modules/vite/bin/vite.js", "preview", "--host", "127.0.0.1", "--port", String(previewPort), "--strictPort"], {
         cwd: checkout, stdio: ["ignore", previewLog.fd, previewLog.fd], env: { ...process.env, CI: "true" },
@@ -289,6 +302,7 @@ try {
           ...process.env, CHOOM_BASE_URL: baseUrl, CHOOM_PACKAGED_APP: setup.app,
           TMPDIR: workDirectory, TMP: workDirectory, TEMP: workDirectory,
           CHOOM_PACKAGED_DRIVER_PORT: String(driverPort), CHOOM_XDOTOOL: setup.xdotool,
+          CHOOM_PACKAGED_NO_RUNTIME_DRIVER_PORT: String(noRuntimeDriverPort), CHOOM_PACKAGED_NO_RUNTIME_PATH: noRuntimePath,
           CHOOM_PACKAGED_EVIDENCE_DIR: evidence,
           CHOOM_PACKAGED_FIXTURE_MODULES: setup.modules,
           CHOOM_PACKAGED_BROWSER_ENDPOINT: browserServer.wsEndpoint(),
@@ -307,7 +321,7 @@ try {
       process.exitCode = cancelledExitCode ?? (setupFailure ? 2 : result);
       metadata.outcome = setupFailure ? "setup-failed" : result === 0 ? "passed" : "scenario-failed";
       if (setupFailure) metadata.setupFailure = JSON.parse(setupFailure);
-    } finally { await log.close(); await previewLog.close(); }
+    } finally { await log.close(); await noRuntimeLog.close(); await previewLog.close(); }
   }
 } catch (error) {
   process.exitCode = cancelledExitCode ?? 2;

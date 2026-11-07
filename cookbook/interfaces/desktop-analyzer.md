@@ -44,10 +44,12 @@ until it succeeds. Each cleanup attempt has a five-second deadline.
 
 ## Runtime and package selection
 
-A configured `nodeExecutable` must be an absolute executable path. Otherwise
-native code searches absolute entries in the packaged application's `PATH` for
-Node. It invokes no shell, package script, package manager, or installer. Missing
-GUI runtime discovery returns guidance to configure an absolute Node executable.
+API callers can supply `nodeExecutable` as an absolute executable path.
+Otherwise native code searches absolute entries in the packaged application's
+`PATH` for Node. The Load Repo UI uses this PATH discovery and has no Node-path
+setting. A missing runtime returns a setup error; UI users must make Node
+available to the desktop process, while API callers may supply an explicit
+path. It invokes no shell, package script, package manager, or installer.
 
 The supported analyzer is dependency-cruiser 18.7.2 at the selected root's
 `node_modules/dependency-cruiser`. Native checks its manifest, version, engine

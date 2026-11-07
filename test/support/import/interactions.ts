@@ -7,7 +7,7 @@ import { parse } from "yaml";
 import { object, objects, type Data } from "./fixtures.ts";
 import { driver, fixture, type ImportWorld } from "./world.ts";
 
-export async function loadRepository(world: ImportWorld): Promise<void> {
+export async function loadRepository(world: ImportWorld, action: "load" | "retry" = "load"): Promise<void> {
   const input = fixture(world);
   await input.materialize();
   if (world.installedDriver && input.facts.permissionDenied) await input.denyManifestRead();
@@ -18,7 +18,8 @@ export async function loadRepository(world: ImportWorld): Promise<void> {
   }
   world.actualDocument = undefined;
   world.exportedPath = undefined;
-  await driver(world).loadRepository(fixture(world).root);
+  if (action === "retry") await driver(world).retryRepository();
+  else await driver(world).loadRepository(fixture(world).root);
 }
 
 export function startExport(world: ImportWorld): void {

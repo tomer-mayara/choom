@@ -16,6 +16,7 @@ export interface ImportDriver {
   open(): Promise<void>;
   selectRepository(path: string | null): Promise<void>;
   loadRepository(path: string): Promise<void>;
+  retryRepository(): Promise<void>;
   openDocument(path: string): Promise<void>;
   cancel(): Promise<void>;
   exportDocument(path: string): Promise<string>;

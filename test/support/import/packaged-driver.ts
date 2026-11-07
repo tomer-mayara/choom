@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { lstat, readFile, readlink, realpath, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { lstat, readdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { remote, type Browser } from "webdriverio";
@@ -69,8 +69,12 @@ export class PackagedImportDriver implements ImportDriver {
   private browser?: Browser;
   private processId?: string;
   private readonly world: ImportWorld;
+  private readonly runtime: "available" | "unavailable";
 
-  constructor(world: ImportWorld) { this.world = world; }
+  constructor(world: ImportWorld, runtime: "available" | "unavailable" = "available") {
+    this.world = world;
+    this.runtime = runtime;
+  }
 
   private session(): Browser {
     assert.ok(this.browser, "The installed application must be open");
@@ -85,7 +89,7 @@ export class PackagedImportDriver implements ImportDriver {
       } = { "tauri:options": { application: environment("CHOOM_PACKAGED_APP") } };
       this.browser = await remote({
         hostname: "127.0.0.1",
-        port: Number(environment("CHOOM_PACKAGED_DRIVER_PORT")),
+        port: Number(environment(this.runtime === "unavailable" ? "CHOOM_PACKAGED_NO_RUNTIME_DRIVER_PORT" : "CHOOM_PACKAGED_DRIVER_PORT")),
         path: "/",
         logLevel: "error",
         connectionRetryCount: 0,
@@ -95,12 +99,24 @@ export class PackagedImportDriver implements ImportDriver {
       await waitFor(async () => (await this.session().$("body").getText()).trim().length > 0,
         "The installed application did not display its document", 20_000);
       await this.findApplicationProcess();
+      if (this.runtime === "unavailable") await this.verifyUnavailableRuntime();
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       await writeFile(join(environment("CHOOM_PACKAGED_EVIDENCE_DIR"), "setup-failure.json"),
         JSON.stringify({ phase: "installed-session", reason }, null, 2));
       throw new Error(`Packaged setup failed before a usable installed session: ${reason}`, { cause: error });
     }
+  }
+
+  private async verifyUnavailableRuntime(): Promise<void> {
+    assert.ok(this.processId);
+    const path = environment("CHOOM_PACKAGED_NO_RUNTIME_PATH");
+    assert.ok(isAbsolute(path), "The no-runtime product PATH must name an absolute owned directory");
+    assert.deepEqual(await readdir(path), [], "The no-runtime product PATH directory must be empty");
+    const entries = (await readFile(`/proc/${this.processId}/environ`, "utf8")).split("\0");
+    assert.equal(entries.find((entry) => entry.startsWith("PATH=")), `PATH=${path}`,
+      "The installed process must inherit only the empty no-runtime PATH");
+    await this.world.attach(JSON.stringify({ installedPid: this.processId, runtimePath: path, runtimeAvailable: false }), "application/json");
   }
 
   private async findApplicationProcess(): Promise<void> {
@@ -186,6 +202,11 @@ export class PackagedImportDriver implements ImportDriver {
   async loadRepository(path: string): Promise<void> {
     await this.open();
     await this.choosePath("Load Repo", path, true);
+  }
+
+  async retryRepository(): Promise<void> {
+    await this.open();
+    await this.activate("Retry");
   }
 
   async openDocument(path: string): Promise<void> {

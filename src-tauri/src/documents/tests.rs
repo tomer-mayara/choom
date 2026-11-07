@@ -1,6 +1,9 @@
 use super::*;
 use serde_json::{Value, json};
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 struct Fixture {
     directory: PathBuf,
@@ -73,10 +76,8 @@ fn export_requires_atomic_replacement_consent_and_reopens_exact_text() {
         "destination-exists"
     );
     assert_eq!(fs::read_to_string(&path).unwrap(), "Previous");
-    assert_eq!(
-        value(storage.export(json!({"path":path,"text":"Current","overwrite":true})))["exported"],
-        true
-    );
+    let exported = value(storage.export(json!({"path":path,"text":"Current","overwrite":true})));
+    assert_eq!(exported["exported"], true, "{exported}");
     assert_eq!(
         value(storage.read_file(json!({"path":path})))["text"],
         "Current"
@@ -315,7 +316,24 @@ fn shutdown_waits_for_owned_directory_restoration_and_then_removes_cache_files()
         .path
         .clone();
     let moved = fixture.directory.join("moved-session");
-    fs::rename(&directory, &moved).unwrap();
+    let held_files = fixture.directory.join("held-files");
+    fs::create_dir(&held_files).unwrap();
+    let relocate = |from: &Path, to: &Path| {
+        let names: Vec<_> = fs::read_dir(from)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        // Windows cannot rename a directory with open files inside it.
+        // Moving the files first keeps their ownership handles and identities intact.
+        for name in &names {
+            fs::rename(from.join(name), held_files.join(name)).unwrap();
+        }
+        fs::rename(from, to).unwrap();
+        for name in &names {
+            fs::rename(held_files.join(name), to.join(name)).unwrap();
+        }
+    };
+    relocate(&directory, &moved);
     fs::create_dir(&directory).unwrap();
     let unknown = directory.join("user.txt");
     fs::write(&unknown, "preserved").unwrap();
@@ -323,7 +341,7 @@ fn shutdown_waits_for_owned_directory_restoration_and_then_removes_cache_files()
     assert_eq!(fs::read_to_string(&unknown).unwrap(), "preserved");
     fs::remove_file(unknown).unwrap();
     fs::remove_dir(&directory).unwrap();
-    fs::rename(moved, &directory).unwrap();
+    relocate(&moved, &directory);
     storage.shutdown().unwrap();
     assert!(!directory.exists());
 }

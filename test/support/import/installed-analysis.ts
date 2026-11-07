@@ -3,7 +3,7 @@ import { lstat, readFile, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import type { CancelDepCruiserOutcome, DepCruiserExecutionOutcome } from "../../../src/platform/generated/contracts.ts";
-import { object, objects, type ImportFixture } from "./fixtures.ts";
+import { object, objects, type Data, type ImportFixture } from "./fixtures.ts";
 import { installFixtureDependencies } from "./installed-fixture.ts";
 import { PackagedImportDriver } from "./packaged-driver.ts";
 import { fixture, type ImportWorld } from "./world.ts";
@@ -72,15 +72,18 @@ interface InstalledSession {
   repositorySession: string;
 }
 
-export interface AnalysisObservation {
-  outcome: DepCruiserExecutionOutcome;
-  cancellation?: CancelDepCruiserOutcome;
-  ready?: boolean;
+interface AnalysisResources {
   privateReportRemoved: boolean;
   wroteReport: boolean;
   cacheExists: boolean;
   childStopped: boolean;
   analyzerStopped: boolean;
+}
+
+export interface AnalysisObservation extends AnalysisResources {
+  outcome: DepCruiserExecutionOutcome;
+  cancellation?: CancelDepCruiserOutcome;
+  ready?: boolean;
 }
 
 export async function withInstalledRepository<T>(
@@ -126,6 +129,42 @@ async function stopped(pid: unknown): Promise<boolean> {
   return false;
 }
 
+export async function waitForInstalledChild(project: ImportFixture): Promise<Data> {
+  const deadline = Date.now() + 10_000;
+  do {
+    try {
+      const marker = object(JSON.parse(await readFile(join(project.root, markerFile), "utf8")));
+      if (typeof marker.childPid === "number" && typeof marker.analyzerPid === "number") {
+        for (const pid of [marker.analyzerPid, marker.childPid]) {
+          assert.ok(Number.isSafeInteger(pid) && pid > 0);
+          const state = await readFile(`/proc/${pid}/stat`, "utf8");
+          assert.ok(!state.slice(state.lastIndexOf(")") + 2).startsWith("Z "), "The analyzer and child must be running before cancellation");
+        }
+        return marker;
+      }
+    } catch (error) {
+      if (!(error instanceof SyntaxError) && !(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    }
+    await delay(50);
+  } while (Date.now() < deadline);
+  throw new Error("The actual analyzer did not start its child process");
+}
+
+export async function installedAnalysisResources(project: ImportFixture): Promise<AnalysisResources> {
+  const marker = object(JSON.parse(await readFile(join(project.root, markerFile), "utf8")));
+  const reportPath = marker.reportPath;
+  assert.ok(typeof reportPath === "string" && isAbsolute(reportPath), "The analyzer must receive an absolute report filename");
+  assert.ok(relative(project.root, reportPath).startsWith("../"), "The analyzer report must be outside the selected repository");
+  const [reportExists, cacheExists, childStopped, analyzerStopped] = await Promise.all([
+    exists(reportPath), exists(join(project.root, cacheDirectory)), stopped(marker.childPid), stopped(marker.analyzerPid),
+  ]);
+  return {
+    cacheExists, childStopped, analyzerStopped,
+    privateReportRemoved: marker.privateReport === true && !reportExists,
+    wroteReport: marker.wroteReport === true,
+  };
+}
+
 export async function runInstalledAnalysis(session: InstalledSession, cancel = false): Promise<AnalysisObservation> {
   const { driver, project, repositorySession } = session;
   const markerPath = join(project.root, markerFile);
@@ -139,24 +178,7 @@ export async function runInstalledAnalysis(session: InstalledSession, cancel = f
       : { outcome: await driver.invokeNative("depcruiser_run", job) };
     const outcome = observed.outcome;
     assert.ok(outcome, "The native analysis operation must return a terminal result");
-    const text = await readFile(markerPath, "utf8").catch(() => {
-      throw new Error("The actual analyzer did not write its fixture observation.");
-    });
-    const marker = object(JSON.parse(text));
-    const reportPath = marker.reportPath;
-    assert.ok(typeof reportPath === "string" && isAbsolute(reportPath), "The analyzer must receive an absolute report filename");
-    assert.ok(relative(project.root, reportPath).startsWith("../"), "The analyzer report must be outside the selected repository");
-    const [reportExists, cacheExists, childStopped, analyzerStopped] = await Promise.all([
-      exists(reportPath),
-      exists(join(project.root, cacheDirectory)),
-      stopped(marker.childPid),
-      stopped(marker.analyzerPid),
-    ]);
-    return {
-      ...observed, outcome, cacheExists, childStopped, analyzerStopped,
-      privateReportRemoved: marker.privateReport === true && !reportExists,
-      wroteReport: marker.wroteReport === true,
-    };
+    return { ...observed, outcome, ...await installedAnalysisResources(project) };
   } finally {
     const released = await driver.invokeNative("depcruiser_release", job);
     assert.equal(released.status, "success", "The installed application must release the native analysis job");
@@ -168,6 +190,7 @@ export async function updateInstalledSource(project: ImportFixture): Promise<voi
 }
 
 export async function restoreInstalledConfig(project: ImportFixture): Promise<void> {
+  project.files.set(config, standardConfig);
   await writeFile(join(project.root, config), standardConfig);
 }
 
