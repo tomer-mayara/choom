@@ -39,6 +39,8 @@ const MAX_TRACKED_PROCESSES: usize = 1024;
 pub(crate) struct WindowsJob {
     handle: OwnedHandle,
     processes: BTreeMap<u32, TrackedProcess>,
+    #[cfg(test)]
+    parent_id: u32,
 }
 
 struct TrackedProcess {
@@ -68,6 +70,8 @@ impl WindowsJob {
         let mut job = Self {
             handle: owned(unsafe { CreateJobObjectW(None, None) }.map_err(io::Error::other)?),
             processes: BTreeMap::new(),
+            #[cfg(test)]
+            parent_id: child.id(),
         };
         job.processes.insert(
             child.id(),
@@ -95,6 +99,18 @@ impl WindowsJob {
             .get_mut(&child.id())
             .expect("the direct child is retained")
             .verified = true;
+        #[cfg(test)]
+        {
+            TEST_JOBS
+                .lock()
+                .unwrap()
+                .insert(child.id(), job.raw().0 as usize);
+            eprintln!(
+                "windows job assigned parent={} job={:?}",
+                child.id(),
+                job.raw()
+            );
+        }
         Ok(job)
     }
 
@@ -145,10 +161,21 @@ impl WindowsJob {
 
     /// Hold process identities before requesting termination, then wait on those identities.
     pub fn stop(&mut self, deadline: Instant) -> io::Result<()> {
+        #[cfg(test)]
+        let mut trace = 0;
         loop {
             before_deadline(deadline)?;
             self.verify_members(deadline)?;
             let pids = self.member_pids(deadline)?;
+            #[cfg(test)]
+            if trace < 16 {
+                eprintln!(
+                    "windows job parent={} snapshot={pids:?} retained={:?} counts={:?}",
+                    self.parent_id,
+                    self.processes.keys().collect::<Vec<_>>(),
+                    self.test_counts()
+                );
+            }
             self.capture(&pids, deadline)?;
             self.verify_members(deadline)?;
             for process in self.processes.values_mut() {
@@ -165,17 +192,38 @@ impl WindowsJob {
                 }
             }
             let mut all_stopped = true;
-            for process in self.processes.values() {
+            for (pid, process) in &self.processes {
                 before_deadline(deadline)?;
-                all_stopped &= signaled(HANDLE(process.handle.as_raw_handle()))?;
+                let stopped = signaled(HANDLE(process.handle.as_raw_handle()))?;
+                #[cfg(test)]
+                if trace < 16 {
+                    eprintln!(
+                        "windows job parent={} pid={pid} verified={} termination_requested={} signaled={stopped}",
+                        self.parent_id, process.verified, process.termination_requested
+                    );
+                }
+                #[cfg(not(test))]
+                let _ = pid;
+                all_stopped &= stopped;
             }
             // Query again after all retained objects signal, catching later inherited children.
             if all_stopped && self.member_pids(deadline)?.is_empty() {
+                #[cfg(test)]
+                eprintln!(
+                    "windows job parent={} completed retained={:?} counts={:?}",
+                    self.parent_id,
+                    self.processes.keys().collect::<Vec<_>>(),
+                    self.test_counts()
+                );
                 before_deadline(deadline)?;
                 self.terminate()?;
                 return before_deadline(deadline);
             }
             before_deadline(deadline)?;
+            #[cfg(test)]
+            {
+                trace += 1;
+            }
             thread::sleep(
                 Duration::from_millis(5).min(deadline.saturating_duration_since(Instant::now())),
             );
@@ -254,7 +302,7 @@ impl WindowsJob {
         };
         let mut written = 0;
         // repr(C) matches the native header and supplies a fixed, aligned PID buffer.
-        unsafe {
+        let queried = unsafe {
             QueryInformationJobObject(
                 Some(self.raw()),
                 JobObjectBasicProcessIdList,
@@ -262,8 +310,15 @@ impl WindowsJob {
                 size_of::<ProcessIds>() as u32,
                 Some(&mut written),
             )
+        };
+        #[cfg(test)]
+        if queried.is_err() {
+            eprintln!(
+                "windows job parent={} snapshot error={queried:?} assigned={} listed={} bytes={written}",
+                self.parent_id, information.assigned, information.listed
+            );
         }
-        .map_err(io::Error::other)?;
+        queried.map_err(io::Error::other)?;
         before_deadline(deadline)?;
         let count = information.listed as usize;
         if count > MAX_TRACKED_PROCESSES
@@ -271,6 +326,11 @@ impl WindowsJob {
             || (written as usize) < offset_of!(ProcessIds, ids) + count * size_of::<usize>()
             || written as usize > size_of::<ProcessIds>()
         {
+            #[cfg(test)]
+            eprintln!(
+                "windows job parent={} incomplete snapshot assigned={} listed={} bytes={written}",
+                self.parent_id, information.assigned, information.listed
+            );
             return Err(io::Error::other("job process snapshot is incomplete"));
         }
         let mut pids = Vec::with_capacity(count);
@@ -284,6 +344,50 @@ impl WindowsJob {
             pids.push(pid);
         }
         Ok(pids)
+    }
+
+    #[cfg(test)]
+    fn test_counts(&self) -> io::Result<(u32, u32, u32)> {
+        use windows::Win32::System::JobObjects::{
+            JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, JobObjectBasicAccountingInformation,
+        };
+        let mut information = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
+        unsafe {
+            QueryInformationJobObject(
+                Some(self.raw()),
+                JobObjectBasicAccountingInformation,
+                &mut information as *mut _ as _,
+                size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32,
+                None,
+            )
+        }
+        .map_err(io::Error::other)?;
+        Ok((
+            information.TotalProcesses,
+            information.ActiveProcesses,
+            information.TotalTerminatedProcesses,
+        ))
+    }
+}
+
+#[cfg(test)]
+static TEST_JOBS: std::sync::Mutex<BTreeMap<u32, usize>> = std::sync::Mutex::new(BTreeMap::new());
+
+#[cfg(test)]
+pub(super) fn test_job(parent_id: u32) -> io::Result<OwnedHandle> {
+    use std::os::windows::io::BorrowedHandle;
+    let jobs = TEST_JOBS.lock().unwrap();
+    let raw = jobs
+        .get(&parent_id)
+        .ok_or_else(|| io::Error::other("job not registered"))?;
+    // The job cannot drop while this registry lock is held.
+    unsafe { BorrowedHandle::borrow_raw(*raw as _) }.try_clone_to_owned()
+}
+
+#[cfg(test)]
+impl Drop for WindowsJob {
+    fn drop(&mut self) {
+        TEST_JOBS.lock().unwrap().remove(&self.parent_id);
     }
 }
 
