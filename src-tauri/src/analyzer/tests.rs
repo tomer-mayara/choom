@@ -814,15 +814,23 @@ fn report_reservation_survives_file_creation_and_cleanup_failure() {
 
 #[test]
 fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
+    #[cfg(windows)]
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    #[cfg(windows)]
+    use windows::Win32::{
+        Foundation::{HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT},
+        System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject},
+    };
+
     for mode in ["completed", "cancelled", "shutdown"] {
-        let child = "require('node:fs').writeFileSync('child-ready',String(process.pid));setInterval(()=>{},1000);";
+        let child = "const fs=require('node:fs');fs.writeFileSync('child-pid',String(process.pid));fs.writeFileSync('child-ready','yes');setInterval(()=>{},1000);";
         let finish = if mode == "completed" {
             "fs.writeFileSync(process.argv[process.argv.indexOf('--output-to')+1], '{}');process.exit(0);"
         } else {
             "fs.writeFileSync('started','yes');"
         };
         let script = format!(
-            "import fs from 'node:fs';import {{spawn}} from 'node:child_process';spawn(process.execPath,['-e',{}],{{stdio:'ignore'}}).unref();setInterval(()=>{{if(fs.existsSync('child-ready')){{{finish}}}}},10);",
+            "import fs from 'node:fs';import {{spawn}} from 'node:child_process';spawn(process.execPath,['-e',{}],{{stdio:'ignore'}}).unref();setInterval(()=>{{if(fs.existsSync('observation-ready')){{{finish}}}}},10);",
             serde_json::to_string(child).unwrap()
         );
         let fixture = Fixture::new(&script);
@@ -832,6 +840,20 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
         let running =
             thread::spawn(move || value(worker.run(json!({"jobId":"analysis-1"}), |_| Ok(()))));
         wait_for(&fixture.root.join("child-ready"));
+        let pid: i32 = fs::read_to_string(fixture.root.join("child-pid"))
+            .unwrap()
+            .parse()
+            .unwrap();
+        #[cfg(windows)]
+        let descendant = {
+            let handle = unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid as u32) }
+                .expect("the descendant must be live before analysis can finish");
+            // Keep this process object alive so its PID cannot identify another process.
+            let owned = unsafe { OwnedHandle::from_raw_handle(handle.0) };
+            assert_eq!(unsafe { WaitForSingleObject(handle, 0) }, WAIT_TIMEOUT);
+            owned
+        };
+        fs::write(fixture.root.join("observation-ready"), "yes").unwrap();
         if mode != "completed" {
             wait_for(&fixture.root.join("started"));
             if mode == "shutdown" {
@@ -853,10 +875,6 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
             },
             "{outcome}"
         );
-        let pid: i32 = fs::read_to_string(fixture.root.join("child-ready"))
-            .unwrap()
-            .parse()
-            .unwrap();
         #[cfg(target_os = "linux")]
         let alive = std::fs::read_to_string(format!("/proc/{pid}/stat")).is_ok_and(|stat| {
             stat.rsplit_once(')').is_some_and(|(_, fields)| {
@@ -866,26 +884,8 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
         #[cfg(all(unix, not(target_os = "linux")))]
         let alive = unsafe { libc::kill(pid, 0) } == 0;
         #[cfg(windows)]
-        let alive = {
-            use windows::Win32::{
-                Foundation::{CloseHandle, ERROR_INVALID_PARAMETER, WAIT_OBJECT_0},
-                System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject},
-            };
-            match unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid as u32) } {
-                Ok(handle) => {
-                    let waited = unsafe { WaitForSingleObject(handle, 0) };
-                    unsafe { CloseHandle(handle) }.unwrap();
-                    waited != WAIT_OBJECT_0
-                }
-                Err(error)
-                    if error.code()
-                        == windows::core::HRESULT::from_win32(ERROR_INVALID_PARAMETER.0) =>
-                {
-                    false
-                }
-                Err(error) => panic!("Cannot observe analyzer descendant: {error}"),
-            }
-        };
+        let alive =
+            unsafe { WaitForSingleObject(HANDLE(descendant.as_raw_handle()), 0) } != WAIT_OBJECT_0;
         assert!(!alive, "descendant is still live after {mode}");
         assert_eq!(
             fs::read_dir(fixture.directory.join("cache"))

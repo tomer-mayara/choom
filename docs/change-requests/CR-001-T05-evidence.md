@@ -160,6 +160,10 @@ contracts; no test or permission check was disabled.
   IPC fixtures now use Windows' `http://tauri.localhost` embedded origin. The
   moved-directory fixture parks the open report before moving its directory,
   as required by Windows, while preserving every cleanup and retry assertion.
+  The descendant check now retains the original Windows process handle while
+  the child is live, then permits analysis to finish. It checks that same
+  handle after cleanup. Looking up a PID only after cleanup could observe a
+  different process after Windows reused the ID.
 - macOS cleanup continues bounded reaping and observation when Darwin reports
   `EPERM` for a zombie-only process group. Success still requires the group to
   disappear. Two real-process regressions retain an unreaped child with
