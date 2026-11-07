@@ -46,6 +46,7 @@ function operationFailure(stage: DocumentNativeFailure["stage"], started: number
 export class DocumentFiles {
   private readonly access: DocumentAccess;
   private readonly pendingReleases = new Set<string>();
+  private readonly activeReleases = new Map<string, Promise<ReleaseDocumentSnapshotOutcome>>();
 
   constructor(access: DocumentAccess) {
     this.access = access;
@@ -53,27 +54,27 @@ export class DocumentFiles {
 
   async prepareCandidate(document: unknown, signal?: AbortSignal): Promise<PreparationOutcome> {
     const started = performance.now();
-    const blocked = this.failureWhileReleasing(started);
-    if (blocked) return blocked;
-    if (signal?.aborted) return cancelled("storage", started);
-    const encoded = encodeArchitectureYaml(document);
-    if (encoded.status === "failure") return timed(encoded, started);
-    let snapshotId: string | undefined;
-    try {
-      const created = await this.access.createDocumentSnapshot({ text: encoded.text });
-      if (created.status === "failure") return timed(created, started);
-      snapshotId = created.snapshotId;
-      if (signal?.aborted) return this.discard(snapshotId, cancelled("storage", started), started);
-      const stored = await this.access.readDocumentSnapshot({ snapshotId });
-      if (stored.status === "failure") return this.discard(snapshotId, stored, started);
-      if (signal?.aborted) return this.discard(snapshotId, cancelled("storage", started), started);
-      const decoded = decodeArchitectureYaml(stored.text);
-      if (decoded.status === "failure") return this.discard(snapshotId, decoded, started);
-      return timed<PreparedDocumentCandidate>({ status: "success", snapshotId, document: decoded.document, durationMs: 0 }, started);
-    } catch {
-      const failure = operationFailure("storage", started);
-      return snapshotId === undefined ? failure : this.discard(snapshotId, failure, started);
-    }
+    const encoded = signal?.aborted ? undefined : encodeArchitectureYaml(document);
+    return this.afterReleases(started, async () => {
+      if (!encoded || signal?.aborted) return cancelled("storage", started);
+      if (encoded.status === "failure") return timed(encoded, started);
+      let snapshotId: string | undefined;
+      try {
+        const created = await this.access.createDocumentSnapshot({ text: encoded.text });
+        if (created.status === "failure") return timed(created, started);
+        snapshotId = created.snapshotId;
+        if (signal?.aborted) return this.discard(snapshotId, cancelled("storage", started), started);
+        const stored = await this.access.readDocumentSnapshot({ snapshotId });
+        if (stored.status === "failure") return this.discard(snapshotId, stored, started);
+        if (signal?.aborted) return this.discard(snapshotId, cancelled("storage", started), started);
+        const decoded = decodeArchitectureYaml(stored.text);
+        if (decoded.status === "failure") return this.discard(snapshotId, decoded, started);
+        return timed<PreparedDocumentCandidate>({ status: "success", snapshotId, document: decoded.document, durationMs: 0 }, started);
+      } catch {
+        const failure = operationFailure("storage", started);
+        return snapshotId === undefined ? failure : this.discard(snapshotId, failure, started);
+      }
+    });
   }
 
   async openSavedFile(path: string): Promise<DecodeArchitectureOutcome | DocumentNativeFailure> {
@@ -90,29 +91,38 @@ export class DocumentFiles {
     document: unknown, selectDestination: DestinationSelector, confirmReplacement?: () => Promise<boolean>,
   ): Promise<ExportOutcome> {
     const started = performance.now();
-    const blocked = this.failureWhileReleasing(started);
-    if (blocked) return blocked;
     const encoded = encodeArchitectureYaml(document);
-    if (encoded.status === "failure") return timed(encoded, started);
-    try {
-      const destination = await selectDestination();
-      const cleanupFailure = this.failureWhileReleasing(started);
-      if (cleanupFailure) return cleanupFailure;
-      if (destination === null) return cancelled("export", started);
-      const result = await this.access.exportDocument({ ...destination, text: encoded.text });
-      if (result.status !== "failure" || result.code !== "destination-exists" || !confirmReplacement || destination.overwrite) {
-        return timed(result, started);
+    return this.afterReleases(started, async () => {
+      if (encoded.status === "failure") return timed(encoded, started);
+      try {
+        const destination = await selectDestination();
+        return await this.afterReleases(started, async () => {
+          if (destination === null) return cancelled("export", started);
+          const result = await this.access.exportDocument({ ...destination, text: encoded.text });
+          if (result.status !== "failure" || result.code !== "destination-exists" || !confirmReplacement || destination.overwrite) {
+            return timed(result, started);
+          }
+          if (!await confirmReplacement()) return cancelled("export", started);
+          return this.afterReleases(started, async () => timed(
+            await this.access.exportDocument({ ...destination, overwrite: true, text: encoded.text }), started,
+          ));
+        });
+      } catch {
+        return operationFailure("export", started);
       }
-      if (!await confirmReplacement()) return cancelled("export", started);
-      const pendingCleanup = this.failureWhileReleasing(started);
-      if (pendingCleanup) return pendingCleanup;
-      return timed(await this.access.exportDocument({ ...destination, overwrite: true, text: encoded.text }), started);
-    } catch {
-      return operationFailure("export", started);
-    }
+    });
   }
 
-  async releaseSnapshot(snapshotId: string): Promise<ReleaseDocumentSnapshotOutcome> {
+  releaseSnapshot(snapshotId: string): Promise<ReleaseDocumentSnapshotOutcome> {
+    const active = this.activeReleases.get(snapshotId);
+    if (active) return active;
+    const releasing = Promise.resolve().then(() => this.releaseOwnedSnapshot(snapshotId))
+      .finally(() => { this.activeReleases.delete(snapshotId); });
+    this.activeReleases.set(snapshotId, releasing);
+    return releasing;
+  }
+
+  private async releaseOwnedSnapshot(snapshotId: string): Promise<ReleaseDocumentSnapshotOutcome> {
     const started = performance.now();
     this.pendingReleases.add(snapshotId);
     try {
@@ -129,20 +139,25 @@ export class DocumentFiles {
   async retryCleanup(): Promise<RetryDocumentCleanupOutcome> {
     const started = performance.now();
     try {
+      while (this.activeReleases.size > 0) await Promise.all(this.activeReleases.values());
       for (const snapshotId of this.pendingReleases) {
         const released = await this.releaseSnapshot(snapshotId);
         if (released.status === "failure") return timed(released, started);
       }
-      const cleaned = await this.access.retryDocumentCleanup({});
-      const pending = this.failureWhileReleasing(started);
-      return timed(cleaned.status === "success" && pending ? pending : cleaned, started);
+      return await this.afterReleases(started, async () => {
+        const cleaned = await this.access.retryDocumentCleanup({});
+        return this.afterReleases(started, async () => timed(cleaned, started));
+      });
     } catch {
       return operationFailure("cleanup", started);
     }
   }
 
-  private failureWhileReleasing(started: number): DocumentNativeFailure | undefined {
-    return this.pendingReleases.size > 0 ? operationFailure("cleanup", started) : undefined;
+  private async afterReleases<Outcome>(started: number, action: () => Promise<Outcome>): Promise<Outcome | DocumentNativeFailure> {
+    while (this.activeReleases.size > 0) await Promise.all(this.activeReleases.values());
+    if (this.pendingReleases.size > 0) return operationFailure("cleanup", started);
+    // Dispatch in the same turn as the final check so a new release cannot fall between them.
+    return action();
   }
 
   private async discard(

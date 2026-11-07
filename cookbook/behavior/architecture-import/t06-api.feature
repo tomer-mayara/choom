@@ -67,6 +67,12 @@ Feature: Preserve architecture meaning through document operations
     When the export destination is chosen
     Then the exported YAML still describes "Atlas"
 
+  Scenario: Export remains available while the previous document is being removed
+    Given "Beacon" is current while the previous document is being removed
+    When the current architecture is exported as removal finishes
+    Then the exported YAML still describes "Beacon"
+    And the previous document is removed and the current document remains available
+
   Scenario: Declining an export destination writes nothing
     Given the architecture document "Atlas" is ready to save
     When its export destination is declined

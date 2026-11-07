@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { realpath, rm } from "node:fs/promises";
+import { access, realpath, rm } from "node:fs/promises";
 import { isAbsolute, relative, sep } from "node:path";
 import { Given, When } from "@cucumber/cucumber";
 import { chromium } from "@playwright/test";
@@ -37,6 +37,10 @@ Given("their import evidence is {string} and {string} to {string}", function (th
   fixture(this).import(second, target);
 });
 
+Given("the source repository and analyzer tools are unavailable to the viewer", function (this: ImportWorld) {
+  fixture(this).controls.require("source-free-viewer");
+});
+
 When(/^I open that export in (the browser|installed desktop Choom)$/, { timeout: 60_000 }, async function (this: ImportWorld, viewer: string) {
   assert.ok(this.installedDriver);
   this.importDriver = this.installedDriver;
@@ -50,6 +54,7 @@ When(/^I open that export in (the browser|installed desktop Choom)$/, { timeout:
   const exportLocation = relative(sourceRoot, await realpath(exported));
   assert.ok(exportLocation === ".." || exportLocation.startsWith(`..${sep}`) || isAbsolute(exportLocation), "The completed export must be outside the source repository");
   await rm(sourceRoot, { recursive: true });
+  await assert.rejects(access(sourceRoot), { code: "ENOENT" });
   assert.ok(this.installedDriver instanceof PackagedImportDriver);
   await this.installedDriver.close();
   this.installedDriver = undefined;
@@ -61,10 +66,18 @@ When(/^I open that export in (the browser|installed desktop Choom)$/, { timeout:
     this.desktopImport = false;
     this.importDriver = new BrowserImportDriver(this);
   } else {
-    this.installedDriver = new PackagedImportDriver(this);
+    this.installedDriver = new PackagedImportDriver(this, "unavailable");
     this.importDriver = this.installedDriver;
   }
   await driver(this).openDocument(exported);
+  if (viewer === "the browser") {
+    assert.ok(this.page);
+    assert.equal(await this.page.evaluate(() => "__TAURI_INTERNALS__" in window), false,
+      "The production browser viewer must have no native analyzer boundary");
+  }
+  fixture(this).controls.observe("source-free-viewer", viewer === "the browser"
+    ? "The production browser viewer opened the export after the source repository and its local analyzer were removed; the page has no native analyzer access"
+    : "A fresh installed process opened the export after the source repository and local analyzer were removed, with its PATH verified as an empty owned directory");
   this.actualDocument = undefined;
   this.exportedPath = undefined;
 });

@@ -79,6 +79,13 @@ jobs:
         run: |
           bun run tauri build --bundles deb -- --locked
           sudo apt-get install -y ./src-tauri/target/release/bundle/deb/*.deb
+      - name: Record the installed release identity
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p test-results/packaged/release
+          cp ./src-tauri/target/release/bundle/deb/*.deb test-results/packaged/release/
+          sha256sum test-results/packaged/release/*.deb /usr/bin/choom-desktop > test-results/packaged/release/artifacts.sha256
+          git rev-parse HEAD > test-results/packaged/release/source-commit.txt
       - name: Prepare independent analyzer fixture dependencies
         if: runner.os == 'Linux'
         run: |

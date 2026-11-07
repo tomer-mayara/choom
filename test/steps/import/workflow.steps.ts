@@ -19,9 +19,11 @@ Given("{string} is my selected repository", async function (this: ImportWorld, n
 
 When("I cancel choosing another repository", async function (this: ImportWorld) { await driver(this).selectRepository(null); });
 
-for (const pattern of ["I load the repository", "I load the selected directory", "I load the repository again", "I retry the repository load", "I load that repository", "I load that repository in installed Choom"]) {
+for (const pattern of ["I load the repository", "I load the selected directory", "I load the repository again", "I load that repository", "I load that repository in installed Choom"]) {
   When(pattern, { timeout: 30_000 }, async function (this: ImportWorld) { await loadRepository(this); });
 }
+
+When("I retry the repository load", { timeout: 30_000 }, async function (this: ImportWorld) { await loadRepository(this, "retry"); });
 
 for (const pattern of ["I open the document", "I open that document", "I open the document in the browser", "I open the file"]) {
   When(pattern, { timeout: 30_000 }, async function (this: ImportWorld) { await openSaved(this); });

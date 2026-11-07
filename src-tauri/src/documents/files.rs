@@ -307,9 +307,13 @@ fn atomic_rename(source: &Path, destination: &Path, overwrite: bool) -> io::Resu
 fn atomic_rename(source: &Path, destination: &Path, overwrite: bool) -> io::Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows::{
-        Win32::Storage::FileSystem::{MOVE_FILE_FLAGS, MOVEFILE_REPLACE_EXISTING, MoveFileExW},
+        Win32::Storage::FileSystem::{MOVE_FILE_FLAGS, MoveFileExW},
         core::PCWSTR,
     };
+    if overwrite {
+        // Rust's Windows fallback can replace a file while its identity handles remain open.
+        return fs::rename(source, destination);
+    }
     let from: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
     let to: Vec<u16> = destination
         .as_os_str()
@@ -320,11 +324,7 @@ fn atomic_rename(source: &Path, destination: &Path, overwrite: bool) -> io::Resu
         MoveFileExW(
             PCWSTR(from.as_ptr()),
             PCWSTR(to.as_ptr()),
-            if overwrite {
-                MOVEFILE_REPLACE_EXISTING
-            } else {
-                MOVE_FILE_FLAGS(0)
-            },
+            MOVE_FILE_FLAGS(0),
         )
     }
     .map_err(|error| io::Error::from_raw_os_error((error.code().0 as u32 & 0xffff) as i32))

@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01–T06 merged; T07 implemented and verified locally; T08 pending
+**Status:** T01–T07 merged; T08 implementation and automated verification complete, with native evidence gaps
 
 **Date:** 2026-11-06
 
@@ -292,8 +292,9 @@ Exact coordinates are not a stability promise.
 ## Analyzer execution and supported configuration
 
 Use product-specific native commands, never arbitrary executable/argument IPC.
-Use a configured absolute Node executable path when supplied; otherwise resolve
-it through the packaged process's `PATH`. Missing GUI runtime discovery produces
+API callers may supply an absolute Node executable path; otherwise resolve it
+through the packaged process's `PATH`. The Load Repo UI uses PATH discovery and
+has no Node-path setting. Missing GUI runtime discovery produces
 an actionable setup error. Resolve the selected repository's analyzer entrypoint,
 initially require
 dependency-cruiser 18.7.2, and check Node against that package's engine range.
@@ -1046,7 +1047,7 @@ presentation schema is introduced.
 
 **Dependencies:** T05, T06. **Owners:** workspace controller, UI, layout.
 
-**Implementation status:** Implemented on `codex/cr-001-t07`. Browser, contract,
+**Implementation status:** Merged in [PR #10](https://github.com/tomer-mayara/choom/pull/10). Browser, contract,
 unit, and Linux installed acceptance checks pass. The final macOS package also
 passes native repository loading, export, cancellation, and reopening after
 restart without its source repository. Windows execution and the remaining
@@ -1172,6 +1173,14 @@ analyzer interface with a second lifecycle protocol.
 
 **Dependencies:** T07. **Owners:** all affected components, CI, documentation.
 
+**Implementation status:** Implemented on `codex/cr-001-t08`. All four CI jobs
+and corrected Linux installed acceptance pass. The final macOS UI retry waits
+for an unlocked desktop; Windows installed UI and the remaining manual failure
+cases are unverified. See the
+[T08 evidence record](CR-001-T08-evidence.md) for checks, artifact identities,
+constraint review, and platform limits. This record does not imply release or
+merge approval.
+
 #### Behavioral (Gherkin)
 
 ```gherkin
@@ -1188,7 +1197,7 @@ Feature: Use installed Choom to inspect and share architecture
   Scenario Outline: Open an installed application's export elsewhere
     Given installed Choom exported only components ".", "src", and "packages/core"
     And their import evidence is "src/components/panel.ts" and "src/lib/format.ts" to "packages/core/model/entity.ts"
-    And the viewing machine has neither the repository nor analyzer tools
+    And the source repository and analyzer tools are unavailable to the viewer
     When I open that export in <viewer>
     Then the diagram contains only those three cards and one import from "src" to "packages/core"
     And the import retains both deep file pairs as evidence
@@ -1205,6 +1214,74 @@ Feature: Use installed Choom to inspect and share architecture
     When I load that repository
     Then "Previous" remains displayed
     And the failure identifies denied repository access
+
+  Scenario: Missing Node preserves the installed application's view
+    Given installed Choom has no Node runtime available
+    And installed Choom displays "Previous"
+    And a repository has supported local tools and only declared components ".", "src", and "packages/core"
+    When I load that repository in installed Choom
+    Then "Previous" remains displayed
+    And the failure identifies analyzer setup
+    And the failure explains how to make Node available to Choom
+
+  Scenario: Cancelling installed analysis stops its work and preserves the diagram
+    Given installed Choom displays "Previous"
+    And an installed repository analysis is running with a child process
+    When I cancel the installed repository load
+    Then "Previous" remains displayed
+    And the load ends as cancelled
+    And the analyzer and its child have stopped and their private report is removed
+    And repository and saved diagram loads are available
+
+  Scenario: Load a repository after cancelling its installed analysis
+    Given an installed repository load was cancelled after its analyzer started
+    And the repository analyzer configuration has been corrected
+    When I load the repository again
+    Then the diagram contains only component cards ".", "src", and "packages/core"
+    And the diagram shows the import from "src" to "packages/core"
+    And that import has two evidence file pairs
+
+  Scenario: A failed installed analyzer preserves the diagram
+    Given installed Choom displays "Previous"
+    And the repository analyzer stops after writing an incomplete report
+    When I load that repository in installed Choom
+    Then "Previous" remains displayed
+    And the failure identifies repository analysis
+    And the failed analyzer has stopped and its incomplete report is removed
+
+  Scenario: Retry the same repository after correcting its analyzer
+    Given an installed repository load failed because its analyzer stopped
+    And the repository analyzer configuration has been corrected
+    When I retry the repository load
+    Then the diagram contains only component cards ".", "src", and "packages/core"
+    And the diagram shows the import from "src" to "packages/core"
+    And that import has two evidence file pairs
+
+  Scenario Outline: An invalid saved file preserves the installed application's view
+    Given installed Choom displays "Previous"
+    And a saved diagram has <problem>
+    When I open the invalid saved diagram
+    Then "Previous" remains displayed
+    And the failure identifies <stage>
+
+    Examples:
+      | problem                       | stage               |
+      | invalid UTF-8 bytes           | document reading    |
+      | an unsupported schema version | document validation |
+```
+
+The document boundary also covers the export timing regression found during
+release verification. This scenario runs through the public document operations
+in [the document API feature](../../cookbook/behavior/architecture-import/t06-api.feature).
+The installed and browser suites retain their separate evidence scopes.
+
+```gherkin
+Feature: Keep export available during document replacement
+  Scenario: Export remains available while the previous document is being removed
+    Given "Beacon" is current while the previous document is being removed
+    When the current architecture is exported as removal finishes
+    Then the exported YAML still describes "Beacon"
+    And the previous document is removed and the current document remains available
 ```
 
 #### Observability (OpenSLO)

@@ -7,7 +7,7 @@ import { parse } from "yaml";
 import { object, objects, type Data } from "./fixtures.ts";
 import { driver, fixture, type ImportWorld } from "./world.ts";
 
-export async function loadRepository(world: ImportWorld): Promise<void> {
+export async function loadRepository(world: ImportWorld, action: "load" | "retry" = "load"): Promise<void> {
   const input = fixture(world);
   await input.materialize();
   if (world.installedDriver && input.facts.permissionDenied) await input.denyManifestRead();
@@ -18,7 +18,8 @@ export async function loadRepository(world: ImportWorld): Promise<void> {
   }
   world.actualDocument = undefined;
   world.exportedPath = undefined;
-  await driver(world).loadRepository(fixture(world).root);
+  if (action === "retry") await driver(world).retryRepository();
+  else await driver(world).loadRepository(fixture(world).root);
 }
 
 export function startExport(world: ImportWorld): void {
@@ -37,6 +38,9 @@ export async function openSaved(world: ImportWorld, name?: string): Promise<void
 }
 
 export async function exportCurrent(world: ImportWorld): Promise<string> {
+  // Result assertions must wait for the requested load and its cleanup, since the previous diagram can still be exported during loading.
+  await expect.poll(async () => (await driver(world).view()).statuses).toContain("Diagram ready.");
+  await expect.poll(() => driver(world).actionEnabled("Open Diagram")).toBe(true);
   const destination = join(fixture(world).directory, `export-${randomUUID()}.choom.yaml`);
   world.exportedPath = await driver(world).exportDocument(destination);
   return world.exportedPath;

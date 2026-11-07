@@ -25,8 +25,12 @@ bun run desktop
 ```
 
 Use **Load Repo** in desktop Choom to select a repository root with a
-`component.yaml`, explicit analyzer metadata, supported Node, and a local
-dependency-cruiser installation. Loading runs the repository's JavaScript
+`component.yaml`, explicit analyzer metadata, and dependency-cruiser **18.7.2**
+installed at that root's `node_modules/dependency-cruiser`. Stable Node **22, 24,
+or 26 and later** must be available on the desktop application's `PATH` (the
+analyzer's range is `^22||^24||>=26`; prereleases, 23, and 25 are excluded).
+The UI has no Node-path setting. A terminal's runtime environment does not prove
+that Finder or a desktop shortcut can find the same runtime. Loading runs the repository's JavaScript
 configuration; only load repositories you trust. One declared component may own
 several subdirectories. Choom does not infer extra components from folders.
 
@@ -89,8 +93,8 @@ browser-free. GitHub Actions runs the constraint script and separate code-hygien
 checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
 Linux also installs the release package and runs the native picker
 characterization, native analyzer and document operations, and then the architecture-import
-scenarios. CI retains browser,
-constraint, and installed-app reports.
+scenarios. CI retains browser, constraint, and installed-app reports, plus the
+Linux installer, installed-executable hash, and source commit.
 
 [CR-001-T01](docs/change-requests/CR-001-T01-evidence.md) adds the architecture
 import specification before its production implementation. New behavior is
@@ -194,6 +198,13 @@ bun test ./test/unit/architecture
 bun run test:dom
 bun run test:e2e --tags @cr-001-t07
 ```
+
+[CR-001-T08](docs/change-requests/CR-001-T08-evidence.md) reviews the complete
+constraint and platform evidence. The installed Linux cases also cover missing
+Node, real analyzer cancellation and cleanup, Retry after analyzer failure, and
+invalid saved files. A fresh native viewer opens an export with the source
+repository removed and `PATH` pointing only to an empty directory. See the evidence record for
+results and the remaining platform limits.
 
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double native dialogs and validate repository, analyzer,

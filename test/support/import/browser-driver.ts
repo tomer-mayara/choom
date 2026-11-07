@@ -74,7 +74,7 @@ export class BrowserImportDriver implements ImportDriver {
     this.opened = true;
   }
 
-  private async activate(action: "Load Repo" | "Open Diagram" | "Export Diagram" | "Cancel"): Promise<void> {
+  private async activate(action: "Load Repo" | "Open Diagram" | "Export Diagram" | "Cancel" | "Retry"): Promise<void> {
     const name = action === "Export Diagram" ? /^Export(?: Diagram)?$/ : action;
     const button = this.page().getByRole("button", { name, exact: true });
     await expect(button).toBeVisible({ timeout: capabilityTimeout });
@@ -104,6 +104,12 @@ export class BrowserImportDriver implements ImportDriver {
     await this.open();
     this.pickerResults.push(path);
     await this.activate("Load Repo");
+  }
+
+  async retryRepository(): Promise<void> {
+    await this.open();
+    assert.equal(this.pickerResults.length, 0, "Retry must use the previous selection without another picker result");
+    await this.activate("Retry");
   }
 
   async openDocument(path: string): Promise<void> {

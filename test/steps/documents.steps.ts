@@ -29,6 +29,8 @@ interface DocumentsWorld extends World {
   retainedBefore: string[];
   restoreRelease: MemoryDocumentAccess["releaseDocumentSnapshot"];
   cleanup: Awaited<ReturnType<DocumentFiles["retryCleanup"]>>;
+  releaseGate: ReturnType<typeof pendingDocumentOperation<void>>;
+  releaseOperation: ReturnType<DocumentFiles["releaseSnapshot"]>;
 }
 
 function useDocument(world: DocumentsWorld, name = "Atlas"): void {
@@ -237,6 +239,34 @@ Given("an export of architecture {string} is awaiting a destination", function (
 
 Given("the caller's architecture changes to {string}", function (this: DocumentsWorld, name: string) {
   this.document.name = name;
+});
+
+Given("{string} is current while the previous document is being removed", async function (this: DocumentsWorld, name: string) {
+  useDocument(this, name);
+  const previous = await this.files.prepareCandidate(architectureDocumentFixture("Previous"));
+  const current = await this.files.prepareCandidate(this.document);
+  assert.ok(previous.status === "success" && current.status === "success");
+  this.currentSnapshotId = current.snapshotId;
+  this.releaseGate = pendingDocumentOperation<void>();
+  this.access.releaseGate = this.releaseGate.promise;
+  this.releaseOperation = this.files.releaseSnapshot(previous.snapshotId);
+  await this.access.releaseStarted.promise;
+});
+
+When("the current architecture is exported as removal finishes", async function (this: DocumentsWorld) {
+  this.exportOperation = this.files.exportDocument(this.document, async () => ({ path: "/exported.choom.yaml", overwrite: false }));
+  this.releaseGate.resolve();
+  assert.equal((await this.releaseOperation).status, "success");
+  this.exported = await this.exportOperation;
+});
+
+Then("the previous document is removed and the current document remains available", async function (this: DocumentsWorld) {
+  assert.deepEqual([...this.access.snapshots.keys()], [this.currentSnapshotId]);
+  const current = await this.access.readDocumentSnapshot({ snapshotId: this.currentSnapshotId });
+  assert.ok(current.status === "success");
+  const decoded = decodeArchitectureYaml(current.text);
+  assert.ok(decoded.status === "success");
+  assert.deepEqual(decoded.document, this.document);
 });
 
 When("the export destination is chosen", async function (this: DocumentsWorld) {
