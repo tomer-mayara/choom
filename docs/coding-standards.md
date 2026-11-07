@@ -49,6 +49,11 @@ guidance. Follow [AGENTS.md](../AGENTS.md) for work rules and verification.
 - Validate untrusted input at Tauri commands, process calls, and other external
   boundaries. Keep input and output contracts clear; TypeScript alone does not
   validate data.
+- Author Choom-owned component contracts in TypeSpec. Regenerate their checked
+  TypeScript/schema outputs after changing the source; do not edit generated
+  files by hand. Preserve runtime validation and test implementation conformance,
+  including errors and cancellation. Vendor Tauri configuration keeps its own
+  schema.
 - Read configuration at its owning boundary and pass explicit settings to
   collaborators. Keep secrets out of frontend code, `VITE_*` variables, logs,
   and committed files.

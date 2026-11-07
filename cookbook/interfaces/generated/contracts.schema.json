@@ -1,0 +1,95 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "contracts.schema.json",
+    "$defs": {
+        "ArchitectureNode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ArchitectureNode.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "label": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "id",
+                "label"
+            ]
+        },
+        "ArchitectureEdge": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ArchitectureEdge.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "source": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "target": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "id",
+                "source",
+                "target"
+            ]
+        },
+        "Architecture": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "Architecture.json",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ArchitectureNode.json"
+                    },
+                    "minItems": 1
+                },
+                "edges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ArchitectureEdge.json"
+                    }
+                }
+            },
+            "required": [
+                "name",
+                "nodes",
+                "edges"
+            ]
+        },
+        "DirectorySelection": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DirectorySelection.json",
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "DesktopAvailability": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DesktopAvailability.json",
+            "type": "boolean"
+        }
+    }
+}

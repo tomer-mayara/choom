@@ -13,8 +13,7 @@ artifacts:
     - path: src-tauri/Cargo.toml
     - path: src-tauri/capabilities/main.json
   contracts:
-    - path: src/domain/architecture.ts
-    - path: src/platform/desktop.ts
+    - path: cookbook/interfaces/main.tsp
     - path: cookbook/interfaces/workspace.md
     - path: cookbook/interfaces/desktop.md
 

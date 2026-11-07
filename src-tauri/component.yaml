@@ -12,7 +12,7 @@ artifacts:
     - path: capabilities/main.json
     - path: tauri.conf.json
   contracts:
-    - path: src/lib.rs
+    - path: ../cookbook/interfaces/desktop.tsp
     - path: capabilities/main.json
     - path: tauri.conf.json
     - path: ../cookbook/interfaces/desktop.md

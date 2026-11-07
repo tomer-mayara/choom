@@ -164,6 +164,13 @@ optional values, and limits in data contracts. Translate external formats into
 internal values when that keeps domain code independent of transport details.
 Return useful results without exposing mutable internal state by accident.
 
+Author Choom-owned component data and operation contracts in TypeSpec, following
+the cookbook. Use generated types and schemas without maintaining a second
+independent definition. Check that runtime validators and public implementations
+conform to those contracts. TypeSpec compilation does not prove runtime behavior:
+keep graph relationships, resource lifetime, cancellation, and other semantic
+rules in the owner that enforces them and in its behavior tests.
+
 Make failure behavior deliberate. Distinguish invalid input, expected absence,
 temporary external failure, and violated invariants when callers need different
 responses. Preserve causes and context. Avoid swallowing errors or returning a

@@ -1,12 +1,18 @@
 # Desktop boundary
 
-The public TypeScript definitions live in
-[`src/platform/desktop.ts`](../../src/platform/desktop.ts):
+The Choom-owned operations are defined in [TypeSpec](desktop.tsp). The
+[TypeScript adapter](../../src/platform/desktop.ts) implements them:
 
 ```ts
 isDesktop(): boolean
 selectProjectDirectory(): Promise<string | null>
 ```
+
+The generated declarations describe the operation parameters and results.
+Conformance checks connect them to the adapter. Promise scheduling, cancellation,
+and rejection behavior remain implementation requirements, described below and
+checked through the public boundary. The TypeSpec source does not redefine the
+third-party dialog protocol.
 
 `isDesktop` returns Tauri's host detection result. In a browser,
 `selectProjectDirectory` resolves to `null` without calling the dialog plugin.

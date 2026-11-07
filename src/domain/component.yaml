@@ -9,6 +9,5 @@ artifacts:
   architecture:
     - path: ../../.dependency-cruiser.cjs
   contracts:
-    # The exported Zod schema is the runtime contract; Architecture is its output type.
-    # The schema also checks unique IDs and references, which JSON Schema cannot express.
-    - path: ./architecture.ts
+    # TypeSpec owns the structure; the runtime schema also checks IDs and references.
+    - path: ../../cookbook/interfaces/architecture.tsp

@@ -5,6 +5,11 @@ transport. The source owners are [App](../../src/App.tsx) and
 [ArchitecturePreview](../../src/components/architecture-preview.tsx).
 The exported App signature stays in source; the feature characterizes UI outcomes.
 
+The workspace consumes the [architecture model](architecture.tsp) and
+[desktop operations](desktop.tsp) defined in TypeSpec. Those sources own the
+component data and operation contracts. React component types, rendering details,
+and the outcomes below remain in TypeScript, Gherkin, and these boundary notes.
+
 ## Browser interface
 
 - The initial view shows `Architecture starts here.`, a `Browser` badge, and an
@@ -23,7 +28,8 @@ The exported App signature stays in source; the feature characterizes UI outcome
 
 [`layoutArchitecture`](../../src/lib/layout.ts) belongs to the workspace; it is
 not a separate component or public interface. It accepts the
-[`Architecture` type](../../src/domain/architecture.ts) and returns a promise
+[`Architecture` type](../../src/domain/architecture.ts), aligned with the
+[TypeSpec model](architecture.tsp), and returns a promise
 of nodes with IDs, labels, and positions. It preserves input order and uses
 ELK's rightward layered layout. Missing coordinates fall back to zero. It does
 not validate the model, and ELK rejection rejects the promise. Exact coordinates

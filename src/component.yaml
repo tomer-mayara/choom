@@ -9,8 +9,9 @@ artifacts:
   architecture:
     - path: ../.dependency-cruiser.cjs
   contracts:
+    - path: ../cookbook/interfaces/architecture.tsp
+    - path: ../cookbook/interfaces/desktop.tsp
     - path: ../cookbook/interfaces/workspace.md
-    - path: App.tsx
 
 children:
   - name: architecture-model
