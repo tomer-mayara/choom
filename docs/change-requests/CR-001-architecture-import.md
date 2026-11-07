@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01–T07 merged; T08 verification and constraint review in progress
+**Status:** T01–T07 merged; T08 implementation and automated verification complete, with native evidence gaps
 
 **Date:** 2026-11-06
 
@@ -1173,7 +1173,10 @@ analyzer interface with a second lifecycle protocol.
 
 **Dependencies:** T07. **Owners:** all affected components, CI, documentation.
 
-**Implementation status:** In progress on `codex/cr-001-t08`. See the
+**Implementation status:** Implemented on `codex/cr-001-t08`. All four CI jobs
+and corrected Linux installed acceptance pass. The final macOS UI retry waits
+for an unlocked desktop; Windows installed UI and the remaining manual failure
+cases are unverified. See the
 [T08 evidence record](CR-001-T08-evidence.md) for checks, artifact identities,
 constraint review, and platform limits. This record does not imply release or
 merge approval.

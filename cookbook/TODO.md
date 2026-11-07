@@ -19,9 +19,12 @@ reliability. All components share the unmeasured
 The [T08 review](../docs/change-requests/CR-001-T08-evidence.md) records the current
 candidate separately from these earlier results. It adds installed missing-Node,
 analyzer cancellation/cleanup, Retry, invalid-file, and runtime-isolated viewer
-checks. It also records two Windows document failures found by T07 CI and the
-correction's platform-specific verification. Consult that record before making
-release claims; earlier packages do not establish the final candidate's result.
+checks. The corrected Linux package passes all 19 installed scenarios. It also
+records the Windows document correction and the export-during-release regression,
+with deterministic tests that preserve real cleanup-failure handling. Consult
+that record for each platform and build before making release claims. The final
+macOS UI retry is waiting for an unlocked desktop; Windows installed UI and
+native layout/save-failure coverage remain open.
 
 ## Local characterization still to add
 

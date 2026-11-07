@@ -2,8 +2,10 @@
 
 Date: 2026-11-07. Base: `d37fea59fdc4db4179dd4593ef312c2337871ffc`, the merged
 [T07 PR](https://github.com/tomer-mayara/choom/pull/10). Candidate branch:
-`codex/cr-001-t08`. The first verification candidate is `54ab22c`. Verification
-is in progress; this is not release approval.
+`codex/cr-001-t08`. The first verification candidate is `54ab22c`; the corrected
+candidate is `f6ba26c`. Implementation and automated verification are complete.
+The final macOS UI retry and the platform gaps below remain open; this is not
+release approval.
 
 ## Changes and behavioral evidence
 
@@ -30,13 +32,12 @@ unchanged. The restoration test moves held files aside during directory
 relocation, then restores them; it retains the identity mismatch, preservation,
 retry, and cleanup assertions on every platform.
 
-The [pinned Rust implementation](https://github.com/rust-lang/rust/blob/1.99.1/library/std/src/sys/fs/windows.rs#L1248-L1311)
+The [pinned Rust implementation](https://github.com/rust-lang/rust/blob/1.99.1/library/std/src/sys/fs/windows.rs)
 provides the open-destination replacement fallback. Microsoft's
 [rename restrictions](https://learn.microsoft.com/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information#remarks)
-explain the original directory-test setup failure. Source inspection and
-macOS test results do not establish that the correction works on Windows;
-the correction needs Windows execution. Candidate `54ab22c` passed both affected
-tests in [Windows CI](https://github.com/tomer-mayara/choom/actions/runs/42402373166):
+explain the original directory-test setup failure. Actual Windows execution
+verified the correction: candidate `54ab22c` passed both affected tests in
+[Windows CI](https://github.com/tomer-mayara/choom/actions/runs/42402373166):
 44 unit and 14 integration tests, formatting, Clippy, and the desktop build.
 
 That candidate's web CI found a separate export timing problem. A normal
@@ -88,12 +89,12 @@ driver changes the application or replaces native IPC.
 | Rust behavior on macOS | Passed: 49 unit and 16 integration tests after the correction. |
 | Rust formatting and Clippy | Passed, including all targets with warnings denied. |
 | Complete `bun run check` | Passed after the export correction: 335 native unit tests, 16 DOM tests, 157 Cucumber scenarios / 722 steps, and 84 interface tests; lint, TypeSpec, cookbook links, dependency boundaries, unused code, and duplicates also pass. |
-| Complete browser Cucumber | Passed against a fresh production build and the separate controlled layout entry. |
+| Complete browser Cucumber | Passed after the export correction: 104 scenarios / 856 steps using the freshly built production frontend and separate controlled layout entry. Log: `/tmp/choom-t08-export-browser-full-green.log`. |
 | Habit Hooks | Passed; the snooze file remains empty. |
 | Candidate `54ab22c` Linux installed | Passed: 19 scenarios / 143 steps across picker, analyzer, document, and T08 UI suites. |
 | Candidate `54ab22c` macOS installed | Passed: real analysis/export, denied access, malformed files, analyzer failure/Retry, running child cancellation/cleanup, another load, missing Node, and source-free reopening. |
 | Candidate `54ab22c` hosted CI | Linux, macOS, and Windows desktop jobs passed. Web failed the repeated-export timing case described above. |
-| Corrected export candidate | In progress; requires fresh frontend and ordinary native packages. |
+| Corrected export candidate | Full local checks and browser suite pass; ordinary Linux/macOS packages rebuilt. Linux installed acceptance passes 19 scenarios / 143 steps. Final macOS UI retry waits for an unlocked desktop. |
 
 The local macOS host uses Bun 1.4.3, Node 24.20.0, and Rust 1.99.1. Bun and Node
 differ from the repository pins. Linux verification and hosted CI use pinned
@@ -126,22 +127,62 @@ were observed through the computer-use transcript.
 
 The macOS package is ad hoc linker-signed, with no Team ID or notarization. The
 Linux package is an unsigned test artifact. These are candidate-specific test
-results; the export correction requires new artifact identities.
+results; the corrected artifacts are recorded next.
+
+## Corrected candidate artifact identity
+
+The corrected source is `f6ba26c15cf82b0b656b568d14fd59facd67f7c7`. Its production
+manifest is `ca258da7ca3226aa376f2c918b6c92002c0fd9315f1521198b8686264f793d97`.
+Both ordinary packages were rebuilt with the corrected embedded frontend.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Linux arm64 `.deb` | `1a2aba062b38b4b9282b311e077b644177546756f89edf5862d88d19b3757c40` |
+| Installed Linux executable | `15f734b01178734d2e9cd26115e95f12229fce4f99f65c57f5a5518729d50c39` |
+| macOS arm64 DMG | `eae2701df800e6b9737c9478cc7e9728a00a650c37b35c6ef7f88abf32cb5b98` |
+| Installed macOS executable | `4879b7d855a7f11ff54ee6970fe9f3e009074edc21f0cab149482ae070713c3e` |
+
+The installed executables match their freshly built packages. macOS artifacts
+and the source manifest are at `/tmp/choom-t08-macos-final`; build output is in
+`/tmp/choom-t08-macos-build-final.log`. Its final native UI check is waiting for
+the Mac to be unlocked. Signing and distribution limits remain as stated above.
+
+Corrected Linux evidence is at `/tmp/choom-t08-linux-evidence/final`. The installed
+executable matches the package, and source/acceptance manifests match the host
+and container before and after the runs. The build began from the working tree
+above `54ab22c`; its unchanged manifest maps to committed candidate `f6ba26c`.
+
+| Corrected installed suite | Result | Run |
+| --- | --- | --- |
+| Picker smoke | 1 scenario / 6 steps passed | `run-85Q9T3` |
+| Native analyzer operations | 3 scenarios / 24 steps passed | `run-ENWdnh` |
+| Native document operations | 4 scenarios / 23 steps passed | `run-yOedL3` |
+| T08 installed UI | 11 scenarios / 90 steps passed | `run-MIBVFQ` |
+
+[The corrected CI run](https://github.com/tomer-mayara/choom/actions/runs/42404144407)
+passes all four jobs: web, Linux, macOS, and Windows. Hosted Linux also built and
+installed its ordinary package and passed picker, analyzer, document, and T08
+acceptance. Hosted Windows/macOS results cover native tests and builds, not
+installed UI. The local Linux evidence archive contains 97 checksum-verified
+files; its task container was stopped and removed after verification.
 
 ## Platform scope and outstanding evidence
 
 | Route | What the evidence establishes | Remaining work |
 | --- | --- | --- |
 | Browser and simulated desktop | Controller, real conversion/codec/layout/renderer, saved files, and validated transport doubles; controlled layout failures use a separate test entry. | Does not establish native execution or installed layout failure. |
-| Linux installed operations | Real native repository, analyzer, and document commands through the installed webview and capability boundary. | Export-correction candidate rerun pending. |
-| Linux installed UI | Ordinary release package, native dialogs, declared ownership across subdirectories, source-free viewers, and added failure/recovery cases. | Export-correction candidate rerun pending; controlled X11 launch does not prove desktop-entry PATH, Wayland, or portals. |
+| Linux installed operations | Corrected candidate passes real native repository, analyzer, and document commands through the installed webview and capability boundary. | Retain results for each released build. |
+| Linux installed UI | Corrected candidate passes ordinary release package, native dialogs, declared ownership across subdirectories, source-free viewers, and added failure/recovery cases. | Controlled X11 launch does not prove desktop-entry PATH, Wayland, or portals. |
 | macOS installed UI | Candidate `54ab22c` passes the actual actions listed above, including analyzer child cleanup and a fresh viewer with no discoverable Node. | Export-correction package rerun pending; controlled runtime launch does not prove Finder PATH discovery. |
-| Windows | Candidate `54ab22c` passes native behavior, including both corrected document tests, and the desktop build. | Ordinary installed UI and file-dialog evidence remains unavailable on this Mac host. |
+| Windows | Corrected candidate `f6ba26c` passes native behavior, including both corrected document tests, formatting, Clippy, and the desktop build in hosted CI. | Ordinary installed UI and file-dialog evidence remains unavailable on this Mac host. |
 
 Installed save-dialog write failures and ordinary-release layout faults remain
-unverified unless an explicit result below closes them. Native command tests
+unverified. Native command tests
 and injected browser faults are separate evidence. Signing, notarization, and
 distribution approval are also separate from these test packages.
 
-Manager review and human constraint approval are required before any authorized
-merge. The review must use the complete candidate and the current check results.
+Manager review covered the complete candidate. Independent reviews found no
+remaining code blocker in the runner, Windows correction, or document release
+coordination. Documentation links and the plan's installed Gherkin match the
+registered feature. Human constraint approval remains required before any
+authorized merge; passing checks do not close the platform gaps above.
