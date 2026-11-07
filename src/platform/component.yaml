@@ -1,5 +1,7 @@
 name: desktop-adapter
-description: Detect the Tauri host, select projects and diagram files, and bind repository, analyzer, and document operations.
+description: >-
+  Detect the host, handle desktop dialogs, and bind repository, analyzer, and
+  document IPC. Select, read, and download diagram files in the browser.
 
 artifacts:
   behavior:

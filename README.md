@@ -307,11 +307,12 @@ findings with exit 0. Correct findings or document why they remain, and keep
 
 ```text
 src/
-  architecture/        Discovery, analyzer strategy, report conversion, and contracts
+  architecture/        Load workflow, composition, discovery, and analyzer integration
   components/          React components and shadcn-compatible UI
+  documents/           Candidate preparation, snapshot release, and desktop export
   domain/              Platform-independent architecture model
-  lib/                 Class merging and ELK layout
-  platform/            Tauri dialog, repository, and analyzer adapters
+  lib/                 Portable YAML codec, ELK layout, and class merging
+  platform/            Host detection, desktop dialogs and IPC, and browser document access
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, TypeSpec contracts, generated schemas, observability
 scripts/               Contract generation/checks and ts-morph analysis
@@ -319,9 +320,13 @@ test/                  Unit/interface suites and shared Cucumber steps
 ```
 
 The root [component manifest](component.yaml) links the four constraints and the
-workspace and native-shell children. The workspace owns `architecture/`, `components/`, and `lib/`,
-with child boundaries for the architecture model and desktop adapter. These four
-implementation components keep UI primitives and layout internal to the workspace.
+`workspace` and `native-shell` children. The [workspace](src/component.yaml) owns
+the app entrypoints and `architecture/`, `components/`, `documents/`, and `lib/`.
+Its child declarations are `architecture-model` in `domain/` and
+`desktop-adapter` in `platform/`. One component can own several ordinary
+subdirectories. Only linked declarations add components. See the
+[behavior and ownership baseline](docs/architecture-reviews/R01-behavior-ownership-baseline.md)
+for resource transfers and import boundaries.
 
 `.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. Concrete analyzer imports are limited to their collaborators and the named `src/architecture/create-architectural-layer.ts` composition entrypoint. The load controller uses injected neutral collaborators; the diagram consumes prepared data. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. ELK loads on demand before a diagram commits.
 
