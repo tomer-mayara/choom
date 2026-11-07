@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { semanticMessages } from "./semantic-validation-messages.ts";
 
 export function isCanonicalRepositoryPath(value: string, allowRoot = false): boolean {
   if (value === ".") return allowRoot;
@@ -21,9 +22,9 @@ export function importRelationshipId(source: string, target: string): string {
 }
 
 export const filePathSchema = z.string().min(1).refine((value) => isCanonicalRepositoryPath(value), {
-  message: "Expected a canonical repository-relative file path",
+  message: semanticMessages.noncanonicalFilePath,
 });
 
 export const directoryPathSchema = z.string().min(1).refine((value) => isCanonicalRepositoryPath(value, true), {
-  message: "Expected a canonical repository-relative directory path",
+  message: semanticMessages.noncanonicalDirectoryPath,
 });

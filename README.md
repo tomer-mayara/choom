@@ -209,6 +209,8 @@ results and the remaining platform limits.
 [R02 publication evidence](docs/architecture-reviews/R02-publication-evidence.md)
 records the workspace's immutable view contract, focused regression commands,
 and the measured copy cost for large saved documents.
+[R03 diagnostics evidence](docs/architecture-reviews/R03-diagnostics-evidence.md)
+records the shared safe-message catalog and its compatibility checks.
 
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double native dialogs and validate repository, analyzer,

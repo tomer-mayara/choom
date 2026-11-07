@@ -89,15 +89,43 @@ test("semantic failures explain the violated rule without exposing input data", 
     ["Reported-file counts cannot be negative.", { ...document, components: [root, { ...core, reportedFiles: -1 }, workspace] }],
     ["Reported-file counts must be integers.", { ...document, components: [root, { ...core, reportedFiles: 0.5 }, workspace] }],
     ["Reported-file counts exceed the supported integer limit.", { ...document, components: [root, { ...core, reportedFiles: Number.MAX_SAFE_INTEGER + 1 }, workspace] }],
+    ["Component names must be unique", {
+      ...document,
+      analysis: { ...document.analysis, config: "/private/<script>/config" },
+      components: [root, { ...core, name: root.name }, workspace],
+      relationships: [{ ...relationship, evidence: [{ ...evidence, sourceFile: evidence.targetFile }] }],
+    }],
     ["The architecture document contains a field that is not part of the schema.", { ...document, ["/private/<script>alert('unknown')</script>"]: true }],
+    ["The architecture document does not match the schema.", { ...document, name: ["/private/<script>/invalid-name"] }],
   ];
   for (const [message, candidate] of cases) {
-    for (const outcome of [encodeArchitectureYaml(candidate), decodeArchitectureYaml(stringify(candidate, { aliasDuplicateObjects: false }))]) {
-      expect(outcome).toMatchObject({ status: "failure", code: "invalid-document", message });
+    const outcomes = [
+      ["encoding", encodeArchitectureYaml(candidate)],
+      ["decoding", decodeArchitectureYaml(stringify(candidate, { aliasDuplicateObjects: false }))],
+    ] as const;
+    for (const [stage, outcome] of outcomes) {
+      expect(outcome).toMatchObject({ status: "failure", stage, code: "invalid-document", message });
       expect(JSON.stringify(outcome)).not.toContain("/private/");
       expect(JSON.stringify(outcome)).not.toContain("<script>");
     }
   }
+});
+
+test("malformed YAML does not reveal parser details", () => {
+  const text = 'name: ["/private/<script>/raw-data"\n';
+  expect(decodeArchitectureYaml(text)).toMatchObject({
+    status: "failure", stage: "decoding", code: "invalid-encoding", message: "The file must contain valid YAML.",
+  });
+});
+
+test("unexpected encoding failures do not reveal the exception message", () => {
+  const input = new Proxy({}, {
+    ownKeys() { throw new Error("/private/<script>/raw-data"); },
+  });
+  expect(encodeArchitectureYaml(input)).toMatchObject({
+    status: "failure", stage: "encoding", code: "invalid-encoding",
+    message: "The architecture document could not be processed as YAML.",
+  });
 });
 
 test("tag and anchor failures identify the actual unsupported YAML property", () => {

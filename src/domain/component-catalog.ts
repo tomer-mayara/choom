@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { directoryPathSchema, isExternalFile } from "./architecture-paths.ts";
+import { semanticMessages } from "./semantic-validation-messages.ts";
 import type { ComponentDeclaration } from "./generated/contracts";
 
 export class ComponentCatalog {
@@ -39,17 +40,17 @@ export class ComponentCatalog {
     const names = new Set<string>();
     const ids = new Set<string>();
     if (this.#declarations.filter(({ id }) => id === ".").length !== 1) {
-      context.addIssue({ code: "custom", message: "Components must have exactly one root with ID '.'" });
+      context.addIssue({ code: "custom", message: semanticMessages.rootComponentRequired });
     }
     this.#declarations.forEach((component, index) => {
-      if (ids.has(component.id)) context.addIssue({ code: "custom", path: [index, "id"], message: "Component IDs must be unique" });
-      if (names.has(component.name)) context.addIssue({ code: "custom", path: [index, "name"], message: "Component names must be unique" });
+      if (ids.has(component.id)) context.addIssue({ code: "custom", path: [index, "id"], message: semanticMessages.duplicateComponentId });
+      if (names.has(component.name)) context.addIssue({ code: "custom", path: [index, "name"], message: semanticMessages.duplicateComponentName });
       ids.add(component.id);
       names.add(component.name);
       if (component.id === "." && component.parent !== undefined) {
-        context.addIssue({ code: "custom", path: [index, "parent"], message: "The root component must not have a parent" });
+        context.addIssue({ code: "custom", path: [index, "parent"], message: semanticMessages.rootHasParent });
       } else if (component.id !== "." && (component.parent === undefined || !this.#byId.has(component.parent))) {
-        context.addIssue({ code: "custom", path: [index, "parent"], message: "Nonroot components must reference a declared parent" });
+        context.addIssue({ code: "custom", path: [index, "parent"], message: semanticMessages.parentRequired });
       }
     });
     this.validateParentCycles(context);
@@ -62,7 +63,7 @@ export class ComponentCatalog {
       let current: ComponentDeclaration | undefined = component;
       while (current && !checked.has(current.id)) {
         if (chain.has(current.id)) {
-          context.addIssue({ code: "custom", path: [index, "parent"], message: "Component parents must form an acyclic tree rooted at '.'" });
+          context.addIssue({ code: "custom", path: [index, "parent"], message: semanticMessages.componentParentCycle });
           break;
         }
         chain.add(current.id);

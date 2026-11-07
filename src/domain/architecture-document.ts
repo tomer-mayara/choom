@@ -6,6 +6,7 @@ import {
 import { canonicalArchitectureDocument, filePairKey, importVariantKey } from "./architecture-order.ts";
 import { filePathSchema, importRelationshipId, isCanonicalRepositoryPath } from "./architecture-paths.ts";
 import { ComponentCatalog } from "./component-catalog.ts";
+import { semanticMessages } from "./semantic-validation-messages.ts";
 import type { ArchitectureDocument, ComponentRelationship, ImportEvidence } from "./generated/contracts";
 
 const importEvidenceSchema = z.strictObject({
@@ -30,14 +31,14 @@ function validateEvidence(
   relationship.evidence.forEach((evidence, evidenceIndex) => {
     const path = ["relationships", index, "evidence", evidenceIndex];
     const pair = filePairKey(evidence.sourceFile, evidence.targetFile);
-    if (pairs.has(pair)) context.addIssue({ code: "custom", path, message: "Import evidence file pairs must be unique" });
+    if (pairs.has(pair)) context.addIssue({ code: "custom", path, message: semanticMessages.duplicateEvidencePair });
     pairs.add(pair);
     if (catalog.ownerOf(evidence.sourceFile) !== relationship.source || catalog.ownerOf(evidence.targetFile) !== relationship.target) {
-      context.addIssue({ code: "custom", path, message: "Evidence file ownership must match its relationship endpoints" });
+      context.addIssue({ code: "custom", path, message: semanticMessages.mismatchedEvidenceOwner });
     }
     const variants = new Set(evidence.variants.map(importVariantKey));
     if (variants.size !== evidence.variants.length) {
-      context.addIssue({ code: "custom", path: [...path, "variants"], message: "Import flag variants must be unique" });
+      context.addIssue({ code: "custom", path: [...path, "variants"], message: semanticMessages.duplicateImportVariant });
     }
   });
 }
@@ -49,19 +50,19 @@ function validateRelationships(document: ArchitectureDocument, context: z.Refine
   document.relationships.forEach((relationship, index) => {
     const path = ["relationships", index];
     const pair = filePairKey(relationship.source, relationship.target);
-    if (ids.has(relationship.id)) context.addIssue({ code: "custom", path, message: "Relationship IDs must be unique" });
-    if (pairs.has(pair)) context.addIssue({ code: "custom", path, message: "Only one import relationship is allowed per ordered component pair" });
+    if (ids.has(relationship.id)) context.addIssue({ code: "custom", path, message: semanticMessages.duplicateRelationshipId });
+    if (pairs.has(pair)) context.addIssue({ code: "custom", path, message: semanticMessages.duplicateRelationshipPair });
     ids.add(relationship.id);
     pairs.add(pair);
     if (!catalog.has(relationship.source) || !catalog.has(relationship.target)) {
-      context.addIssue({ code: "custom", path, message: "Relationships must reference declared components" });
+      context.addIssue({ code: "custom", path, message: semanticMessages.unknownRelationshipEndpoint });
     }
     if (relationship.source === relationship.target) {
-      context.addIssue({ code: "custom", path, message: "Import relationships must connect distinct components" });
+      context.addIssue({ code: "custom", path, message: semanticMessages.sameRelationshipEndpoints });
     }
     const canonicalEndpoints = isCanonicalRepositoryPath(relationship.source, true) && isCanonicalRepositoryPath(relationship.target, true);
     if (canonicalEndpoints && relationship.id !== importRelationshipId(relationship.source, relationship.target)) {
-      context.addIssue({ code: "custom", path: [...path, "id"], message: "Relationship ID must encode 'imports' and both escaped endpoints" });
+      context.addIssue({ code: "custom", path: [...path, "id"], message: semanticMessages.noncanonicalRelationshipId });
     }
     validateEvidence(relationship, catalog, index, context);
   });
