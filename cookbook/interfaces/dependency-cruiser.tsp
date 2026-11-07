@@ -42,3 +42,37 @@ union DepCruiserConversionOutcome {
 interface DepCruiserConversionOperations {
   convert(input: DepCruiserConversionRequest): DepCruiserConversionOutcome;
 }
+
+@extension("additionalProperties", false)
+model DepCruiserExecutionRequest {
+  @minLength(1)
+  repositorySession: string;
+
+  @minLength(1)
+  @maxLength(4096)
+  config: string;
+
+  @minItems(1)
+  @maxItems(128)
+  inputs: string[];
+}
+
+@extension("additionalProperties", false)
+model DepCruiserExecutionCompleted {
+  status: "completed";
+  report: CompletedDepCruiserReport;
+
+  @minValue(0)
+  durationMs: float64;
+}
+
+union DepCruiserRunOutcome {
+  DepCruiserExecutionCompleted,
+  Choom.Domain.AnalysisFailure,
+  Choom.Domain.AnalysisCancelled,
+}
+
+// AbortSignal and progress callbacks are live controls bound in TypeScript.
+interface DepCruiserExecutionOperations {
+  run(request: DepCruiserExecutionRequest): DepCruiserRunOutcome;
+}

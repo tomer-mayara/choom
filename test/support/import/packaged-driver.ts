@@ -7,10 +7,27 @@ import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { remote, type Browser } from "webdriverio";
 import { parseDocument } from "yaml";
+import type {
+  CancelDepCruiserOutcome, CloseRepositoryOutcome, CloseRepositoryRequest,
+  DepCruiserExecutionOutcome, DepCruiserJob, OpenRepositoryOutcome, OpenRepositoryRequest,
+  PrepareDepCruiserOutcome, PrepareDepCruiserRequest, ReadRepositoryTextOutcome,
+  ReadRepositoryTextRequest, ReleaseDepCruiserOutcome,
+} from "../../../src/platform/generated/contracts.ts";
 import type { ImportDriver, ImportView, ImportWorld } from "./world.ts";
 
 const run = promisify(execFile);
 const capabilityTimeout = 1_500;
+
+type InstalledRequests = {
+  repository_open: [OpenRepositoryRequest, OpenRepositoryOutcome];
+  repository_close: [CloseRepositoryRequest, CloseRepositoryOutcome];
+  depcruiser_prepare: [PrepareDepCruiserRequest, PrepareDepCruiserOutcome];
+  depcruiser_run: [DepCruiserJob, DepCruiserExecutionOutcome];
+  depcruiser_release: [DepCruiserJob, ReleaseDepCruiserOutcome];
+};
+
+type InstalledInvoke = <Result>(command: string, args: { request: object }) => Promise<Result>;
+type InstalledIpc = { invoke: InstalledInvoke };
 
 async function waitFor(check: () => Promise<boolean>, message: string, timeout = 10_000): Promise<void> {
   const deadline = Date.now() + timeout;
@@ -131,7 +148,7 @@ export class PackagedImportDriver implements ImportDriver {
     return xdo(["search", "--onlyvisible", "--pid", this.processId], true);
   }
 
-  private async choosePath(action: string, path: string | null): Promise<void> {
+  private async choosePath(action: string, path: string | null, directory = false): Promise<void> {
     const previous = new Set(await this.applicationWindows());
     await this.activate(action);
     let dialog = "";
@@ -145,9 +162,19 @@ export class PackagedImportDriver implements ImportDriver {
     if (path === null) {
       await xdo(["key", "--clearmodifiers", "Escape"]);
     } else {
-      await xdo(["key", "--clearmodifiers", "ctrl+l"]);
+      if (directory) {
+        // GTK starts in Recent when there is no saved location. Open Home so the dialog can accept a folder.
+        await xdo(["key", "--clearmodifiers", "--delay", "200", "alt+Home", "ctrl+l"]);
+      } else {
+        await xdo(["key", "--clearmodifiers", "ctrl+l"]);
+      }
       await xdo(["type", "--clearmodifiers", "--delay", "1", path]);
-      await xdo(["key", "--clearmodifiers", "Return"]);
+      if (directory) {
+        // End accepts the inline slash completion so Return submits the location.
+        await xdo(["key", "--clearmodifiers", "--delay", "200", "End", "Return"]);
+      } else {
+        await xdo(["key", "--clearmodifiers", "Return"]);
+      }
     }
     await waitFor(async () => !(await this.applicationWindows()).includes(dialog),
       `The native GTK picker did not close after ${path === null ? "cancellation" : "path selection"}`);
@@ -155,12 +182,12 @@ export class PackagedImportDriver implements ImportDriver {
 
   async selectRepository(path: string | null): Promise<void> {
     await this.open();
-    await this.choosePath("Choose repository", path);
+    await this.choosePath("Choose repository", path, true);
   }
 
   async loadRepository(path: string): Promise<void> {
     await this.open();
-    await this.choosePath("Load Repo", path);
+    await this.choosePath("Load Repo", path, true);
   }
 
   async openDocument(path: string): Promise<void> {
@@ -171,6 +198,41 @@ export class PackagedImportDriver implements ImportDriver {
   async cancel(): Promise<void> {
     await this.open();
     await this.activate("Cancel");
+  }
+
+  async invokeNative<Name extends keyof InstalledRequests>(
+    command: Name, request: InstalledRequests[Name][0],
+  ): Promise<InstalledRequests[Name][1]> {
+    await this.open();
+    const name: string = command;
+    const payload: object = request;
+    return this.session().execute(async (name, payload) => {
+      const tauri = Reflect.get(window, "__TAURI_INTERNALS__") as InstalledIpc;
+      return tauri.invoke<InstalledRequests[Name][1]>(name, { request: payload });
+    }, name, payload);
+  }
+
+  async cancelNativeAnalysis(job: DepCruiserJob, marker: ReadRepositoryTextRequest) {
+    return this.session().execute(async (request, readiness) => {
+      const tauri = Reflect.get(window, "__TAURI_INTERNALS__") as InstalledIpc;
+      let settled = false;
+      const pending = tauri.invoke<DepCruiserExecutionOutcome>("depcruiser_run", { request }).then(
+        (outcome) => { settled = true; return outcome; },
+        () => { settled = true; return undefined; },
+      );
+      const deadline = Date.now() + 10_000;
+      let ready = false;
+      while (!settled && Date.now() < deadline) {
+        const result = await tauri.invoke<ReadRepositoryTextOutcome>("repository_read_text", { request: readiness });
+        if (result.status === "success" && result.value.text.endsWith("}")) {
+          ready = true;
+          break;
+        }
+        await new Promise((done) => setTimeout(done, 50));
+      }
+      const cancellation = await tauri.invoke<CancelDepCruiserOutcome>("depcruiser_cancel", { request });
+      return { ready, cancellation, outcome: await pending };
+    }, job, marker);
   }
 
   async exportDocument(path: string): Promise<string> {

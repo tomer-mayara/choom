@@ -43,8 +43,15 @@ T04 adds the [completed-report converter](interfaces/dependency-cruiser.md).
 Its [public API scenarios](behavior/architecture-import/t04-converter.feature)
 and recorded vendor reports cover canonical evidence, declared component
 ownership across subdirectories, diagnostics, and supported scope. The converter
-calls the common builder through an injected repository path boundary. It has
-no process or UI caller yet. See the [T04 evidence record](../docs/change-requests/CR-001-T04-evidence.md).
+calls the common builder through an injected repository path boundary. T05 adds
+its concrete strategy caller; T07 adds the UI. See the [T04 evidence record](../docs/change-requests/CR-001-T04-evidence.md).
+
+T05 adds the concrete layer, its injected runner, and
+[desktop analysis jobs](interfaces/desktop-analyzer.md). Its
+[API scenarios](behavior/architecture-import/t05-api.feature) specify lifecycle
+and cancellation; [installed native-operation scenarios](behavior/architecture-import/t05-installed.feature)
+exercise real process execution independently of the later Load Repo UI.
+See the [T05 evidence record](../docs/change-requests/CR-001-T05-evidence.md).
 
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)

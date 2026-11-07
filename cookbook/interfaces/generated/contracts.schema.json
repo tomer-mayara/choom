@@ -628,6 +628,10 @@
             "properties": {
                 "stage": {
                     "$ref": "AnalysisStage.json"
+                },
+                "elapsedMs": {
+                    "type": "number",
+                    "minimum": 0
                 }
             },
             "required": [
@@ -658,6 +662,10 @@
                 {
                     "type": "string",
                     "const": "validation"
+                },
+                {
+                    "type": "string",
+                    "const": "cleanup"
                 }
             ]
         },
@@ -1152,6 +1160,331 @@
             ],
             "additionalProperties": false
         },
+        "PrepareDepCruiserRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "PrepareDepCruiserRequest.json",
+            "type": "object",
+            "properties": {
+                "repositorySession": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "config": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                },
+                "inputs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 128
+                },
+                "nodeExecutable": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                }
+            },
+            "required": [
+                "repositorySession",
+                "config",
+                "inputs"
+            ],
+            "additionalProperties": false
+        },
+        "DepCruiserJob": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserJob.json",
+            "type": "object",
+            "properties": {
+                "jobId": {
+                    "type": "string",
+                    "pattern": "^analysis-[1-9][0-9]{0,19}$"
+                }
+            },
+            "required": [
+                "jobId"
+            ],
+            "additionalProperties": false
+        },
+        "DepCruiserNativeFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserNativeFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "$ref": "DepCruiserNativeStage.json"
+                },
+                "code": {
+                    "$ref": "DepCruiserNativeFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DepCruiserNativeStage": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserNativeStage.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "setup"
+                },
+                {
+                    "type": "string",
+                    "const": "analysis"
+                },
+                {
+                    "type": "string",
+                    "const": "cleanup"
+                }
+            ]
+        },
+        "DepCruiserNativeFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserNativeFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "invalid-request"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-session"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-job"
+                },
+                {
+                    "type": "string",
+                    "const": "busy"
+                },
+                {
+                    "type": "string",
+                    "const": "node-not-found"
+                },
+                {
+                    "type": "string",
+                    "const": "unsupported-node"
+                },
+                {
+                    "type": "string",
+                    "const": "analyzer-not-found"
+                },
+                {
+                    "type": "string",
+                    "const": "unsupported-analyzer"
+                },
+                {
+                    "type": "string",
+                    "const": "unsupported-config-path"
+                },
+                {
+                    "type": "string",
+                    "const": "source-changed"
+                },
+                {
+                    "type": "string",
+                    "const": "execution-failed"
+                },
+                {
+                    "type": "string",
+                    "const": "timed-out"
+                },
+                {
+                    "type": "string",
+                    "const": "output-limit"
+                },
+                {
+                    "type": "string",
+                    "const": "report-missing"
+                },
+                {
+                    "type": "string",
+                    "const": "report-invalid"
+                },
+                {
+                    "type": "string",
+                    "const": "cleanup-failed"
+                },
+                {
+                    "type": "string",
+                    "const": "unavailable"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-response"
+                }
+            ]
+        },
+        "PreparedDepCruiser": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "PreparedDepCruiser.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "value": {
+                    "$ref": "DepCruiserJob.json"
+                }
+            },
+            "required": [
+                "status",
+                "value"
+            ],
+            "additionalProperties": false
+        },
+        "CompletedDepCruiserExecution": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CompletedDepCruiserExecution.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "completed"
+                },
+                "reportJson": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16777216
+                },
+                "version": {
+                    "type": "string",
+                    "const": "18.7.2"
+                },
+                "workingDirectory": {
+                    "type": "string",
+                    "const": "."
+                },
+                "completedAtMs": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 253402300799999
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "reportJson",
+                "version",
+                "workingDirectory",
+                "completedAtMs",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "CancelledDepCruiserExecution": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CancelledDepCruiserExecution.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "cancelled"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "StoppedDepCruiserJob": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "StoppedDepCruiserJob.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "stopped": {
+                    "type": "boolean",
+                    "const": true
+                }
+            },
+            "required": [
+                "status",
+                "stopped"
+            ],
+            "additionalProperties": false
+        },
+        "ReleasedDepCruiserJob": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReleasedDepCruiserJob.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "released": {
+                    "type": "boolean",
+                    "const": true
+                }
+            },
+            "required": [
+                "status",
+                "released"
+            ],
+            "additionalProperties": false
+        },
+        "DepCruiserNativeProgress": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserNativeProgress.json",
+            "type": "object",
+            "properties": {
+                "jobId": {
+                    "type": "string",
+                    "pattern": "^analysis-[1-9][0-9]{0,19}$"
+                },
+                "stage": {
+                    "$ref": "DepCruiserNativeStage.json"
+                },
+                "elapsedMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "jobId",
+                "stage",
+                "elapsedMs"
+            ],
+            "additionalProperties": false
+        },
         "DirectorySelection": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DirectorySelection.json",
@@ -1209,6 +1542,57 @@
                 },
                 {
                     "$ref": "RepositoryFailure.json"
+                }
+            ]
+        },
+        "PrepareDepCruiserOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "PrepareDepCruiserOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "PreparedDepCruiser.json"
+                },
+                {
+                    "$ref": "DepCruiserNativeFailure.json"
+                }
+            ]
+        },
+        "DepCruiserExecutionOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserExecutionOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "CompletedDepCruiserExecution.json"
+                },
+                {
+                    "$ref": "CancelledDepCruiserExecution.json"
+                },
+                {
+                    "$ref": "DepCruiserNativeFailure.json"
+                }
+            ]
+        },
+        "CancelDepCruiserOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CancelDepCruiserOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "StoppedDepCruiserJob.json"
+                },
+                {
+                    "$ref": "DepCruiserNativeFailure.json"
+                }
+            ]
+        },
+        "ReleaseDepCruiserOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReleaseDepCruiserOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "ReleasedDepCruiserJob.json"
+                },
+                {
+                    "$ref": "DepCruiserNativeFailure.json"
                 }
             ]
         },
@@ -1566,6 +1950,60 @@
             ],
             "additionalProperties": false
         },
+        "DepCruiserExecutionRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserExecutionRequest.json",
+            "type": "object",
+            "properties": {
+                "repositorySession": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "config": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                },
+                "inputs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 128
+                }
+            },
+            "required": [
+                "repositorySession",
+                "config",
+                "inputs"
+            ],
+            "additionalProperties": false
+        },
+        "DepCruiserExecutionCompleted": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserExecutionCompleted.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "completed"
+                },
+                "report": {
+                    "$ref": "CompletedDepCruiserReport.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "report",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
         "DepCruiserConversionOutcome": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DepCruiserConversionOutcome.json",
@@ -1575,6 +2013,21 @@
                 },
                 {
                     "$ref": "AnalysisFailure.json"
+                }
+            ]
+        },
+        "DepCruiserRunOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DepCruiserRunOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "DepCruiserExecutionCompleted.json"
+                },
+                {
+                    "$ref": "AnalysisFailure.json"
+                },
+                {
+                    "$ref": "AnalysisCancelled.json"
                 }
             ]
         }

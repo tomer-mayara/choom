@@ -70,7 +70,8 @@ retain screenshots and traces under `test-results/`. `bun run check` stays
 browser-free. GitHub Actions runs the constraint script and separate code-hygiene
 checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
 Linux also installs the release package and runs the native picker
-characterization before the architecture-import scenarios. CI retains browser,
+characterization, native analyzer operations, and then the architecture-import
+scenarios. CI retains browser,
 constraint, and installed-app reports.
 
 [CR-001-T01](docs/change-requests/CR-001-T01-evidence.md) adds the architecture
@@ -115,13 +116,32 @@ bun run test:rust
 completed dependency-cruiser 18.7.2 JSON reports into the neutral architecture
 document. Conversion preserves declared ownership, canonical file evidence,
 findings, and analysis scope. See the [converter contract](cookbook/interfaces/dependency-cruiser.md)
-for supported semantics and limits. The runner and import UI remain later work.
+for supported semantics and limits. T05 supplies the runner; T07 supplies the
+import UI.
 
 ```sh
 bun run test:behavior:native --tags @cr-001-t04-api
 bun test ./test/unit/architecture/dependency-cruiser
 bun test ./test/interface/architecture/dependency-cruiser
 ```
+
+[CR-001-T05](docs/change-requests/CR-001-T05-evidence.md) adds the concrete
+architectural layer and desktop analyzer jobs. The runner handles cancellation
+and cleanup before conversion; Rust selects the local runtime and analyzer and
+owns bounded process execution. See the [native execution contract](cookbook/interfaces/desktop-analyzer.md)
+for package layouts, path restrictions, and resource limits. Focused checks:
+
+```sh
+bun run test:behavior:native --tags @cr-001-t05-api
+bun test ./test/unit/architecture/dependency-cruiser ./test/unit/platform
+bun test ./test/interface/architecture/dependency-cruiser ./test/interface/platform
+bun run test:rust
+```
+
+The Linux installed route also runs
+`bun run test:behavior:packaged --tags @packaged-native-analysis` after picker
+smoke. Follow the [installed acceptance guide](docs/change-requests/CR-001-native-acceptance.md)
+for its release artifact, runtime, and independent dependency prerequisites.
 
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double the vendor open/save dialog boundary. Analyzer,
@@ -223,11 +243,11 @@ findings with exit 0. Correct findings or document why they remain, and keep
 
 ```text
 src/
-  architecture/        Repository discovery, report conversion, and contracts
+  architecture/        Discovery, analyzer strategy, report conversion, and contracts
   components/          React components and shadcn-compatible UI
   domain/              Platform-independent architecture model
   lib/                 Class merging and ELK layout
-  platform/            Tauri dialog and repository access adapters
+  platform/            Tauri dialog, repository, and analyzer adapters
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, TypeSpec contracts, generated schemas, observability
 scripts/               Contract generation/checks and ts-morph analysis
@@ -239,7 +259,7 @@ workspace and native-shell children. The workspace owns `architecture/`, `compon
 with child boundaries for the architecture model and desktop adapter. These four
 implementation components keep UI primitives and layout internal to the workspace.
 
-`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. Concrete analyzer imports are limited to their collaborators and the named `src/architecture/create-architectural-layer.ts` composition entrypoint planned for T05. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. The example loads React Flow and ELK on demand.
+`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. Concrete analyzer imports are limited to their collaborators and the named `src/architecture/create-architectural-layer.ts` composition entrypoint. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. The example loads React Flow and ELK on demand.
 
 ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; the example loads it on request.
 
@@ -258,7 +278,7 @@ Use `bun run typecheck` to check with the native compiler. Do not replace the co
 
 `cn` supplies the `cn` utility; no separate `clsx` or `tailwind-merge` dependency is needed. The shadcn generator may add dependencies or rewrite the utility when generating components; review those changes before accepting them. Knip checks application, test, tooling, and CSS dependencies.
 
-The Codex CLI is a development tool. Authenticate it separately when needed; no credentials, AI backend, or Codex subprocess are embedded in the app. Rust serialization and Unix OS-binding crates are pinned for future native implementation.
+The Codex CLI is a development tool. Authenticate it separately when needed; no credentials, AI backend, or Codex subprocess are embedded in the app. Rust serialization, process, and OS-binding crates support the bounded native operations.
 
 See [the cookbook](cookbook/README.md) for component artifacts, focused checks,
 and validation limits. The [evidence table and remaining work](cookbook/TODO.md)

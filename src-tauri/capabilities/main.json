@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Core window operations, a directory picker, and bounded repository reads.",
+  "description": "Core window operations, a directory picker, bounded repository reads, and owned dependency-cruiser jobs.",
   "local": true,
   "windows": ["main"],
   "permissions": [
@@ -10,6 +10,10 @@
     "allow-repository-open",
     "allow-repository-read-text",
     "allow-repository-resolve-paths",
-    "allow-repository-close"
+    "allow-repository-close",
+    "allow-depcruiser-prepare",
+    "allow-depcruiser-run",
+    "allow-depcruiser-cancel",
+    "allow-depcruiser-release"
   ]
 }

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-depcruiser-release"
+description = "Enables the depcruiser_release command without any pre-configured scope."
+commands.allow = ["depcruiser_release"]
+
+[[permission]]
+identifier = "deny-depcruiser-release"
+description = "Denies the depcruiser_release command without any pre-configured scope."
+commands.deny = ["depcruiser_release"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-depcruiser-cancel"
+description = "Enables the depcruiser_cancel command without any pre-configured scope."
+commands.allow = ["depcruiser_cancel"]
+
+[[permission]]
+identifier = "deny-depcruiser-cancel"
+description = "Denies the depcruiser_cancel command without any pre-configured scope."
+commands.deny = ["depcruiser_cancel"]

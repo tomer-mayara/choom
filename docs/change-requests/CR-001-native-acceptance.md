@@ -6,8 +6,9 @@ The current automated route supports Linux with X11 and GTK3 dialogs. macOS and
 Windows use the manual route below. An unavailable route is a recorded limit,
 not a passing or skipped test.
 
-T01 establishes the driver and preserves directory-picker behavior. Load Repo,
-Open Diagram, export, and analyzer execution belong to later tickets. A missing
+T01 establishes the driver and preserves directory-picker behavior. T05 adds
+installed native analyzer operations before the Load Repo UI. Load Repo,
+Open Diagram, and export belong to later tickets. A missing
 public action is the expected T01 feature failure only after startup and picker
 characterization pass. No driver supplies an analyzer report or replaces IPC.
 
@@ -21,7 +22,7 @@ Install dependencies before the run; the harness never installs tools:
 bun install --frozen-lockfile
 bunx --no-install playwright install chromium
 cargo install tauri-driver --version 2.1.0 --locked
-sudo apt-get install webkit2gtk-driver xvfb xdotool
+sudo apt-get install dbus webkit2gtk-driver xvfb xdotool
 ```
 
 The ordinary Tauri Linux build dependencies are also required; see the
@@ -29,7 +30,8 @@ The ordinary Tauri Linux build dependencies are also required; see the
 ordinary release `.deb`, install it outside the checkout, and retain its build
 identifier and hash. Do not use `target/debug`, `--no-bundle`, an application
 with a WebDriver plugin, or a symlink back into this checkout as installed
-release evidence. A typical installed executable is `/usr/bin/choom`.
+release evidence. Choom installs as `/usr/bin/choom-desktop` to avoid a
+conflict with the `choom` executable from `util-linux`.
 
 Prepare the production frontend once for the source-free browser consumer:
 
@@ -40,9 +42,9 @@ bun run build
 Set these variables for the actual installed artifact, then run smoke first:
 
 ```sh
-export CHOOM_PACKAGED_APP=/usr/bin/choom
+export CHOOM_PACKAGED_APP=/usr/bin/choom-desktop
 export CHOOM_PACKAGED_BUILD_ID=release-version-and-source-commit
-xvfb-run -a bun run test:behavior:packaged --tags @packaged-smoke
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-smoke
 ```
 
 Prepare a separate dependency tree outside the Choom checkout for the real
@@ -52,11 +54,14 @@ and the TypeScript parser installed as
 
 ```sh
 export CHOOM_PACKAGED_FIXTURE_MODULES=/absolute/prepared-fixture/node_modules
-xvfb-run -a bun run test:behavior:packaged --tags @cr-001-t08
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-native-analysis
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @cr-001-t08
 ```
 
-Run T08 only after smoke passes. The harness validates the supplied dependency
-versions and links repository fixtures to that prepared tree; it does not install
+Run the T05 native operations after smoke, then T08 after T05 passes. The harness
+validates the supplied dependency versions and copies the prepared tree into
+each repository fixture. Relative links within that tree are preserved; external
+links are refused. It does not install
 dependencies or fall back to Choom's development `node_modules`. Smoke needs no
 analyzer tree. The unfiltered command runs all
 `@packaged` scenarios. `--tags <expression>` and `--name <expression>` select
@@ -85,15 +90,26 @@ are placed inside the runner's temporary directory so forced Cucumber terminatio
 does not leave fixture repositories behind. The product uses real IPC.
 The native picker helper locates the installed executable's X11 process,
 focuses its newly opened dialog, and uses `xdotool` to select the supplied path
-or press Escape. It requires the picker to close. The smoke scenario also checks
-the displayed path and preservation after cancellation.
+or press Escape. For a folder selection, it opens Home to leave GTK's Recent
+view and accepts the location entry's inline completion before submitting the
+path. It requires the picker to close. The smoke scenario also checks the
+displayed path and preservation after cancellation.
 
-This route sets `GTK_USE_PORTAL=0` and requires X11 so the locked GTK3 dialog
+The headless commands start a separate D-Bus session inside each X11 display
+so services started on that bus can connect to the display. This route sets `GTK_USE_PORTAL=0` so the locked GTK3 dialog
 backend remains in the application process. It does not claim Wayland or desktop
 portal coverage. Tests do not confirm overwrite prompts automatically; use new
 export destinations. The native driver rejects any existing destination and
 waits for the application to write stable, readable version 1 YAML after the
 save picker closes. A timeout or an unexpected native dialog fails the run.
+
+T05's three `@packaged-native-analysis` cases call the production repository and
+analyzer commands from the installed webview. They verify fresh reports after a
+source edit, error findings in a completed report, refusal of partial output
+after process failure, private report removal, disabled persistent cache,
+cancellation after a real descendant starts, and retry in the same repository
+session. These exercise native operations without changing the installed UI or
+mocking IPC. They do not prove the later Load Repo controller or renderer.
 
 Each run writes `test-results/packaged/run-*/` with:
 

@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01–T03 merged; T04 implemented for review
+**Status:** In progress — T01–T04 merged; T05 implemented, review pending
 
 **Date:** 2026-11-06
 
@@ -296,6 +296,9 @@ it through the packaged process's `PATH`. Missing GUI runtime discovery produces
 an actionable setup error. Resolve the selected repository's analyzer entrypoint,
 initially require
 dependency-cruiser 18.7.2, and check Node against that package's engine range.
+That pinned range is `^22||^24||>=26`, excluding prereleases. The canonical
+package must be inside the selected root; direct npm/Bun installs and in-root
+Bun/pnpm stores are supported. Do not fall back to global or ancestor installs.
 Verify supported package layouts with fixtures. Use argument arrays, repository
 working directory, no shell, no package scripts, and no installation.
 
@@ -698,7 +701,7 @@ converter in `src/architecture/dependency-cruiser/`.
 **Implementation:** [T04 evidence and limits](CR-001-T04-evidence.md) and
 [converter contract](../../cookbook/interfaces/dependency-cruiser.md). The
 browser-free API scenarios exercise completed-report conversion separately from
-the Load Repo workflow below, which still needs the runner and UI tickets.
+the Load Repo workflow below. T05 supplies execution; T07 supplies its UI.
 
 #### Behavioral (Gherkin)
 
@@ -850,6 +853,11 @@ reports establish source-to-model behavior.
 ### CR-001-T05 — Run and cancel the concrete strategy
 
 **Dependencies:** T03, T04. **Owners:** strategy/runner, platform, native shell.
+
+**Implementation:** [T05 evidence and limits](CR-001-T05-evidence.md) and
+[native execution contract](../../cookbook/interfaces/desktop-analyzer.md).
+Native jobs use prepare/run/cancel/release operations. Public API and installed
+native-operation scenarios exercise execution before the later Load Repo UI.
 
 #### Behavioral (Gherkin)
 
