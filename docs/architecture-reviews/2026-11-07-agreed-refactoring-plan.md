@@ -14,8 +14,21 @@ initial sequencing where the discussion changed a recommendation.
 
 Status: approved by both principle-based reviewers after discussion and manager
 review. Each independent document records its reviewer's explicit approval.
-This is agreement on the plan, not implementation or merge approval. These
-tickets describe future work; this change contains review documents only.
+This is agreement on the plan, not merge approval. The review and baseline
+findings below describe the source at the commit above. Implementation results
+are tracked separately so that later fixes do not erase the original evidence.
+
+## Implementation records
+
+The approved work is split into four draft PRs in dependency order, based on the
+T08 candidate. Human constraint review and merge remain separate steps.
+
+| Ticket | Implementation and evidence |
+| --- | --- |
+| R01 | [Behavior and ownership baseline](R01-behavior-ownership-baseline.md), corrected project map and component description. |
+| R02 | [Owned publication and narrow view role](R02-publication-evidence.md), mutation regressions, frozen-data rendering, and measured copy cost. |
+| R03 | [Shared safe diagnostic catalog](R03-diagnostics-evidence.md), exact-message compatibility and priority/fallback characterization. |
+| R04 | [Import boundary enforcement](R04-boundaries-evidence.md), executable allowed/forbidden edge probes and precise type-import metadata. |
 
 ## Conclusion
 
@@ -329,7 +342,7 @@ product behavior decision. Keep explicit composition, the current single-workspa
 lifetime, and distinct IPC adapters. Do not merge their different error, progress,
 timing, cardinality, or cleanup rules merely because the syntax repeats.
 
-## Verification and completion
+## Verification requirements and original review results
 
 For production tickets, establish the relevant passing characterization first;
 for the R02 behavior correction, add Gherkin and a focused red test before the

@@ -63,6 +63,7 @@ actions.
 | `bun run test:e2e` | Browser Cucumber acceptance against one fresh production build |
 | `bun run check:cookbook` | Component path integrity, contract ownership, and small OpenSLO Service shape |
 | `bun run check:contracts` | TypeSpec format/compilation, generated-output consistency, TypeScript conformance, and runtime interface tests |
+| `bun run check:dependencies` | Import boundary probes, cycles, unresolved imports, and the full frontend dependency graph |
 | `bun run contracts:generate` | Regenerate committed TypeScript contracts and JSON schemas from TypeSpec |
 | `bun run analyze` | Source inventory using ts-morph |
 | `bun run habit-hooks --all` | Manual TypeScript and generic code-hygiene scan |
@@ -334,7 +335,32 @@ subdirectories. Only linked declarations add components. See the
 [behavior and ownership baseline](docs/architecture-reviews/R01-behavior-ownership-baseline.md)
 for resource transfers and import boundaries.
 
-`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. Concrete analyzer imports are limited to their collaborators and the named `src/architecture/create-architectural-layer.ts` composition entrypoint. The load controller uses injected neutral collaborators; the diagram consumes prepared data. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. ELK loads on demand before a diagram commits.
+The [dependency rules](.dependency-cruiser.cjs) check direct imports, including
+type imports. Discovery, workflow, and document lifecycle modules depend on
+injected collaborators and stay separate from UI and composition. Their direct
+package imports are limited to YAML and Zod. The rules reject direct Node
+built-in imports. Their platform imports are erased types from the generated
+contracts or the named access module for discovery or document files. The
+platform owns Tauri access.
+
+The semantic domain uses its own modules and Zod. The YAML codec uses its own
+helpers, the generated format contracts, the semantic domain, and YAML. The
+concrete analyzer stays within its vendor folder and the named
+[analyzer factory](src/architecture/create-architectural-layer.ts).
+
+React components use the [workspace view](src/architecture/workspace-view.ts)
+and generated workflow data. The view imports only named data bindings erased
+during compilation. The diagram and details render prepared data. App binds the
+workspace composition and the retained directory picker. ELK loads on demand
+before a diagram commits.
+
+`bun run check:dependencies` runs [import probes](scripts/check-dependency-boundaries.ts)
+in temporary projects and checks the full frontend dependency graph. The probes
+cover permitted and rejected edges and distinguish erased type imports from
+inline type imports that retain a module side effect. When Choom analyzes its
+own repository, dependency-cruiser reports explicit `preCompilationOnly` values
+for these edges and Choom preserves them in import evidence. Cargo dependencies
+and Tauri capabilities govern the Rust boundary.
 
 ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; an example or document load requests it.
 
