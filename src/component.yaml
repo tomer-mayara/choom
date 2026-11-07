@@ -7,6 +7,7 @@ artifacts:
     - path: ../cookbook/behavior/architecture-import/t01-explore.feature
     - path: ../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
     - path: ../cookbook/behavior/architecture-import/t03-discovery.feature
+    - path: ../cookbook/behavior/architecture-import/t03-api.feature
     - path: ../cookbook/behavior/architecture-import/t04-observations.feature
     - path: ../cookbook/behavior/architecture-import/t05-execution.feature
     - path: ../cookbook/behavior/architecture-import/t06-documents.feature
@@ -19,6 +20,8 @@ artifacts:
   contracts:
     - path: ../cookbook/interfaces/architecture.tsp
     - path: ../cookbook/interfaces/desktop.tsp
+    - path: ../cookbook/interfaces/discovery.tsp
+    - path: ../cookbook/interfaces/discovery.md
     - path: ../cookbook/interfaces/workspace.md
 
 children:

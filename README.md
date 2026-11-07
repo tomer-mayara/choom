@@ -97,6 +97,20 @@ bun test ./test/unit/domain
 bun test ./test/interface/domain/architecture-document.test.ts ./test/interface/domain/architectural-layer.test.ts
 ```
 
+[CR-001-T03](docs/change-requests/CR-001-T03-evidence.md) adds manifest discovery
+and bounded native repository access. The workspace follows linked declarations
+and explicit root analyzer metadata; one component can own multiple source
+directories. Discovery does not run an analyzer and is not wired to the UI yet.
+See the [discovery contract](cookbook/interfaces/discovery.md) for path rules,
+session ownership, and resource limits. Focused checks:
+
+```sh
+bun run test:behavior:native --tags @cr-001-t03-api
+bun test ./test/unit/architecture ./test/unit/platform
+bun test ./test/interface/architecture ./test/interface/platform
+bun run test:rust
+```
+
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double the vendor open/save dialog boundary. Analyzer,
 delay, and storage-fault inputs are staged for the TypeSpec bindings delivered
@@ -197,10 +211,11 @@ findings with exit 0. Correct findings or document why they remain, and keep
 
 ```text
 src/
+  architecture/        Repository discovery and its generated contracts
   components/          React components and shadcn-compatible UI
   domain/              Platform-independent architecture model
   lib/                 Class merging and ELK layout
-  platform/            Tauri API and dialog adapter
+  platform/            Tauri dialog and repository access adapters
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, TypeSpec contracts, generated schemas, observability
 scripts/               Contract generation/checks and ts-morph analysis
@@ -208,7 +223,7 @@ test/                  Unit/interface suites and shared Cucumber steps
 ```
 
 The root [component manifest](component.yaml) links the four constraints and the
-workspace and native-shell children. The workspace owns `components/` and `lib/`,
+workspace and native-shell children. The workspace owns `architecture/`, `components/`, and `lib/`,
 with child boundaries for the architecture model and desktop adapter. These four
 implementation components keep UI primitives and layout internal to the workspace.
 

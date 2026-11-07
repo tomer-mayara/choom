@@ -12,7 +12,8 @@ configuration retain their own artifacts.
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | [`desktop.feature`](behavior/desktop.feature) | [TypeSpec operations](interfaces/desktop.tsp), implemented by [`desktop.ts`](../src/platform/desktop.ts); [boundary notes](interfaces/desktop.md) |
 | Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; new [installed picker](behavior/architecture-import/t01-installed-picker-smoke.feature) and [import acceptance](behavior/architecture-import/t08-installed.feature) | Choom's [desktop boundary](interfaces/desktop.tsp); vendor Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
 
-The workspace owns `components/` and `lib/`, including internal layout. The model
+The workspace owns `architecture/`, `components/`, and `lib/`, including discovery
+and internal layout. The model
 and desktop adapter have separate import boundaries. Cargo dependencies and
 Tauri capabilities define the native boundary.
 
@@ -31,9 +32,17 @@ analyzer, parse YAML syntax, or render the imported document. The original brows
 scenarios remain registered for the later workflow implementation. See the
 [T02 evidence record](../docs/change-requests/CR-001-T02-evidence.md).
 
+T03 adds [repository discovery](interfaces/discovery.md), with
+[public API scenarios](behavior/architecture-import/t03-api.feature) and bounded
+native text/path commands. The root manifest explicitly declares the analyzer
+and its literal inputs. Child links alone declare components; one component can
+own multiple source directories. See the [T03 evidence record](../docs/change-requests/CR-001-T03-evidence.md)
+for runtime, native, and installed-acceptance limits.
+
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)
-and [platform](../src/platform/generated/contracts.ts) owners. The generated
+[platform](../src/platform/generated/contracts.ts) owners, and with the workspace's
+[discovery code](../src/architecture/generated/contracts.ts). The generated
 [structural schemas](interfaces/generated/contracts.schema.json) share one JSON
 Schema document. [Configuration](interfaces/tspconfig.yaml) selects the emitter.
 Edit the `.tsp` source, run
@@ -64,6 +73,9 @@ structural JSON schemas.
 `check:cookbook` checks artifact paths, child names, duplicate/cyclic links,
 orphan manifests, Cucumber and local TypeSpec source ownership, and a small
 `openslo/v1` Service shape. Linking a feature does not execute it.
+It also checks annotated root analyzer metadata and contained literal inputs.
+Path-only root manifests remain valid for cookbook CI; repository discovery
+requires one explicit analyzer. CI retains its Choom-specific artifact rules.
 `check:contracts` also requires every owned TypeSpec source to be imported by
 `main.tsp`, then checks compilation and implementation conformance. The OpenSLO
 check validates only the stated Service

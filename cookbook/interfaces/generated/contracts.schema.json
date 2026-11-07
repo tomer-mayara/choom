@@ -768,6 +768,382 @@
                 }
             ]
         },
+        "OpenRepositoryRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "OpenRepositoryRequest.json",
+            "type": "object",
+            "properties": {
+                "rootPath": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                }
+            },
+            "required": [
+                "rootPath"
+            ],
+            "additionalProperties": false
+        },
+        "ReadRepositoryTextRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReadRepositoryTextRequest.json",
+            "type": "object",
+            "properties": {
+                "repositorySession": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                }
+            },
+            "required": [
+                "repositorySession",
+                "path"
+            ],
+            "additionalProperties": false
+        },
+        "ResolveRepositoryPathsRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ResolveRepositoryPathsRequest.json",
+            "type": "object",
+            "properties": {
+                "repositorySession": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "base": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                },
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 128
+                }
+            },
+            "required": [
+                "repositorySession",
+                "base",
+                "paths"
+            ],
+            "additionalProperties": false
+        },
+        "CloseRepositoryRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CloseRepositoryRequest.json",
+            "type": "object",
+            "properties": {
+                "repositorySession": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "repositorySession"
+            ],
+            "additionalProperties": false
+        },
+        "RepositorySession": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RepositorySession.json",
+            "type": "object",
+            "properties": {
+                "repositorySession": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "repositorySession"
+            ],
+            "additionalProperties": false
+        },
+        "RepositoryText": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RepositoryText.json",
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                },
+                "text": {
+                    "type": "string",
+                    "maxLength": 262144
+                }
+            },
+            "required": [
+                "path",
+                "text"
+            ],
+            "additionalProperties": false
+        },
+        "InternalRepositoryPath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "InternalRepositoryPath.json",
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "const": "inside"
+                },
+                "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                },
+                "kind": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "file"
+                        },
+                        {
+                            "type": "string",
+                            "const": "directory"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "location",
+                "path",
+                "kind"
+            ],
+            "additionalProperties": false
+        },
+        "ExternalRepositoryPath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ExternalRepositoryPath.json",
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "const": "outside"
+                },
+                "reference": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "location",
+                "reference"
+            ],
+            "additionalProperties": false
+        },
+        "RepositoryPaths": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RepositoryPaths.json",
+            "type": "object",
+            "properties": {
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ResolvedRepositoryPath.json"
+                    },
+                    "minItems": 1,
+                    "maxItems": 128
+                }
+            },
+            "required": [
+                "paths"
+            ],
+            "additionalProperties": false
+        },
+        "ResolvedRepositoryPath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ResolvedRepositoryPath.json",
+            "anyOf": [
+                {
+                    "$ref": "InternalRepositoryPath.json"
+                },
+                {
+                    "$ref": "ExternalRepositoryPath.json"
+                }
+            ]
+        },
+        "ClosedRepository": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ClosedRepository.json",
+            "type": "object",
+            "properties": {
+                "closed": {
+                    "type": "boolean",
+                    "const": true
+                }
+            },
+            "required": [
+                "closed"
+            ],
+            "additionalProperties": false
+        },
+        "RepositoryFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RepositoryFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "code": {
+                    "$ref": "RepositoryFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "status",
+                "code",
+                "message"
+            ],
+            "additionalProperties": false
+        },
+        "RepositoryFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RepositoryFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "invalid-request"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-session"
+                },
+                {
+                    "type": "string",
+                    "const": "not-found"
+                },
+                {
+                    "type": "string",
+                    "const": "not-directory"
+                },
+                {
+                    "type": "string",
+                    "const": "not-file"
+                },
+                {
+                    "type": "string",
+                    "const": "outside-root"
+                },
+                {
+                    "type": "string",
+                    "const": "limit-exceeded"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-utf8"
+                },
+                {
+                    "type": "string",
+                    "const": "access-denied"
+                },
+                {
+                    "type": "string",
+                    "const": "io-error"
+                },
+                {
+                    "type": "string",
+                    "const": "source-changed"
+                },
+                {
+                    "type": "string",
+                    "const": "unavailable"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-response"
+                }
+            ]
+        },
+        "OpenRepositorySuccess": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "OpenRepositorySuccess.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "value": {
+                    "$ref": "RepositorySession.json"
+                }
+            },
+            "required": [
+                "status",
+                "value"
+            ],
+            "additionalProperties": false
+        },
+        "ReadRepositoryTextSuccess": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReadRepositoryTextSuccess.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "value": {
+                    "$ref": "RepositoryText.json"
+                }
+            },
+            "required": [
+                "status",
+                "value"
+            ],
+            "additionalProperties": false
+        },
+        "ResolveRepositoryPathsSuccess": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ResolveRepositoryPathsSuccess.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "value": {
+                    "$ref": "RepositoryPaths.json"
+                }
+            },
+            "required": [
+                "status",
+                "value"
+            ],
+            "additionalProperties": false
+        },
+        "CloseRepositorySuccess": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CloseRepositorySuccess.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "value": {
+                    "$ref": "ClosedRepository.json"
+                }
+            },
+            "required": [
+                "status",
+                "value"
+            ],
+            "additionalProperties": false
+        },
         "DirectorySelection": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DirectorySelection.json",
@@ -780,10 +1156,357 @@
                 }
             ]
         },
+        "OpenRepositoryOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "OpenRepositoryOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "OpenRepositorySuccess.json"
+                },
+                {
+                    "$ref": "RepositoryFailure.json"
+                }
+            ]
+        },
+        "ReadRepositoryTextOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReadRepositoryTextOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "ReadRepositoryTextSuccess.json"
+                },
+                {
+                    "$ref": "RepositoryFailure.json"
+                }
+            ]
+        },
+        "ResolveRepositoryPathsOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ResolveRepositoryPathsOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "ResolveRepositoryPathsSuccess.json"
+                },
+                {
+                    "$ref": "RepositoryFailure.json"
+                }
+            ]
+        },
+        "CloseRepositoryOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CloseRepositoryOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "CloseRepositorySuccess.json"
+                },
+                {
+                    "$ref": "RepositoryFailure.json"
+                }
+            ]
+        },
         "DesktopAvailability": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DesktopAvailability.json",
             "type": "boolean"
+        },
+        "ManifestArtifact": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ManifestArtifact.json",
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "path"
+            ],
+            "additionalProperties": false
+        },
+        "ManifestArchitectureArtifact": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ManifestArchitectureArtifact.json",
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "enforcer": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "inputs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "maxItems": 128
+                }
+            },
+            "required": [
+                "path"
+            ],
+            "additionalProperties": false
+        },
+        "ManifestArtifacts": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ManifestArtifacts.json",
+            "type": "object",
+            "properties": {
+                "behavior": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ManifestArtifact.json"
+                    },
+                    "maxItems": 128
+                },
+                "observability": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ManifestArtifact.json"
+                    },
+                    "maxItems": 128
+                },
+                "architecture": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ManifestArchitectureArtifact.json"
+                    },
+                    "maxItems": 128
+                },
+                "contracts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ManifestArtifact.json"
+                    },
+                    "maxItems": 128
+                }
+            },
+            "additionalProperties": false
+        },
+        "ManifestChild": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ManifestChild.json",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "path": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": [
+                "name",
+                "path"
+            ],
+            "additionalProperties": false
+        },
+        "ComponentManifest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ComponentManifest.json",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "artifacts": {
+                    "$ref": "ManifestArtifacts.json"
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ManifestChild.json"
+                    },
+                    "maxItems": 128
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoveryRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryRequest.json",
+            "type": "object",
+            "properties": {
+                "rootPath": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                }
+            },
+            "required": [
+                "rootPath"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoveredRepository": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveredRepository.json",
+            "type": "object",
+            "properties": {
+                "repositorySession": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ComponentDeclaration.json"
+                    },
+                    "minItems": 1,
+                    "maxItems": 256
+                },
+                "analysis": {
+                    "$ref": "AnalysisDescriptor.json"
+                }
+            },
+            "required": [
+                "repositorySession",
+                "name",
+                "components",
+                "analysis"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoverySuccess": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoverySuccess.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "repository": {
+                    "$ref": "DiscoveredRepository.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "repository",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoveryFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "type": "string",
+                    "const": "discovery"
+                },
+                "code": {
+                    "$ref": "DiscoveryFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoveryFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "invalid-root"
+                },
+                {
+                    "type": "string",
+                    "const": "manifest-unreadable"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-manifest"
+                },
+                {
+                    "type": "string",
+                    "const": "missing-analyzer"
+                },
+                {
+                    "type": "string",
+                    "const": "multiple-analyzers"
+                },
+                {
+                    "type": "string",
+                    "const": "unsupported-enforcer"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-input"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-reference"
+                },
+                {
+                    "type": "string",
+                    "const": "duplicate-component"
+                },
+                {
+                    "type": "string",
+                    "const": "name-mismatch"
+                },
+                {
+                    "type": "string",
+                    "const": "limit-exceeded"
+                },
+                {
+                    "type": "string",
+                    "const": "access-failed"
+                }
+            ]
+        },
+        "DiscoveryOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "DiscoverySuccess.json"
+                },
+                {
+                    "$ref": "DiscoveryFailure.json"
+                }
+            ]
         }
     }
 }

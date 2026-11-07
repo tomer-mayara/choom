@@ -1,21 +1,28 @@
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { z } from "zod";
+import type { ComponentManifest, ManifestArchitectureArtifact } from "../src/architecture/generated/contracts";
 
 const text = z.string().trim().min(1);
-const artifact = z.strictObject({ path: text });
-const artifactList = z.array(artifact).min(1);
+const manifestText = z.string().min(1).refine((value) => value.trim().length > 0);
+const artifact = z.strictObject({ path: manifestText });
+const artifactList = z.array(artifact).min(1).max(128);
+const architectureArtifact = z.strictObject({
+  path: manifestText,
+  enforcer: manifestText.optional(),
+  inputs: z.array(manifestText).max(128).optional(),
+});
 const componentSchema = z.strictObject({
-  name: text,
-  description: text,
+  name: manifestText,
+  description: manifestText,
   artifacts: z.strictObject({
     behavior: artifactList,
     observability: artifactList,
-    architecture: artifactList,
+    architecture: z.array(architectureArtifact).min(1).max(128),
     contracts: artifactList,
   }),
-  children: z.array(z.strictObject({ name: text, path: text })).optional(),
-});
+  children: z.array(z.strictObject({ name: manifestText, path: manifestText })).max(128).optional(),
+}) satisfies z.ZodType<ComponentManifest>;
 
 // This bootstrap accepts Service inventory only. Add schema-aware checks with real SLIs.
 const serviceSchema = z.strictObject({
@@ -52,16 +59,60 @@ function requireInside(root: string, path: string): void {
   }
 }
 
-async function localFile(root: string, directory: string, reference: string): Promise<string> {
-  if (isAbsolute(reference) || reference.includes(":") || reference.includes("\\")) {
-    throw new Error(`Component paths must be local relative paths: ${reference}`);
+function isLiteralReference(reference: string): boolean {
+  return !isAbsolute(reference) && !reference.startsWith("-") &&
+    !/[:\\*?\[\]{};|&`$<>\u0000-\u001f\u007f]/.test(reference);
+}
+
+async function localPath(root: string, directory: string, reference: string): Promise<string> {
+  if (!isLiteralReference(reference)) {
+    throw new Error(`Component paths must be literal local relative paths: ${reference}`);
   }
-  const path = resolve(directory, reference);
+  // Bun realpath normalizes '..' before following symlinks. Walk each segment
+  // first so parent references use the actual target directory, as native I/O does.
+  let path = directory;
+  for (const segment of reference.split("/")) {
+    if (!(await stat(path)).isDirectory()) throw new Error(`Expected a directory: ${path}`);
+    if (segment === "..") path = dirname(path);
+    else if (segment !== "" && segment !== ".") path = await realpath(resolve(path, segment));
+  }
   requireInside(root, path);
-  const actualPath = await realpath(path);
-  requireInside(root, actualPath);
-  if (!(await stat(actualPath)).isFile()) throw new Error(`Expected a file: ${path}`);
-  return actualPath;
+  return path;
+}
+
+function requireLiteralAnalyzerPath(root: string, path: string): void {
+  const reference = relative(root, path).split(sep).join("/") || ".";
+  if (!isLiteralReference(reference)) {
+    throw new Error(`Analyzer paths must stay literal after canonicalization: ${reference}`);
+  }
+}
+
+async function localFile(root: string, directory: string, reference: string): Promise<string> {
+  const path = await localPath(root, directory, reference);
+  if (!(await stat(path)).isFile()) throw new Error(`Expected a file: ${path}`);
+  return path;
+}
+
+async function validateRootAnalyzer(
+  root: string,
+  directory: string,
+  entries: ManifestArchitectureArtifact[],
+): Promise<void> {
+  const annotated = entries.filter((entry) => entry.enforcer !== undefined || entry.inputs !== undefined);
+  // Path-only manifests remain valid for cookbook checks. Import discovery has
+  // the additional requirement that a root analyzer must be declared.
+  if (annotated.length === 0) return;
+  if (annotated.length !== 1) throw new Error("Only one root analyzer may be declared");
+  const [analyzer] = annotated;
+  if (analyzer?.enforcer !== "dependency-cruiser") throw new Error("Root enforcer must be dependency-cruiser");
+  if (!analyzer.inputs?.length) throw new Error("Root analyzer requires explicit source inputs");
+  requireLiteralAnalyzerPath(root, await localFile(root, directory, analyzer.path));
+  for (const input of analyzer.inputs) {
+    const path = await localPath(root, directory, input);
+    requireLiteralAnalyzerPath(root, path);
+    const entry = await stat(path);
+    if (!entry.isFile() && !entry.isDirectory()) throw new Error(`Expected a source file or directory: ${path}`);
+  }
 }
 
 async function readYaml(path: string): Promise<unknown> {
@@ -91,6 +142,7 @@ export async function validateComponents(repositoryRoot: string): Promise<Set<st
     }
     if (names.has(component.name)) throw new Error(`Duplicate component name: ${component.name}`);
     names.add(component.name);
+    if (expectedName === undefined) await validateRootAnalyzer(root, dirname(path), component.artifacts.architecture);
 
     for (const [kind, entries] of Object.entries(component.artifacts)) {
       for (const entry of entries) {

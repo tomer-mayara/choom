@@ -14,7 +14,9 @@ import { emitTypeScript } from "./typescript";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sourceDirectory = resolve(root, "cookbook/interfaces");
 const schemaDirectory = "cookbook/interfaces/generated";
-const generatedDirectories = [schemaDirectory, "src/domain/generated", "src/platform/generated"];
+const generatedDirectories = [
+  schemaDirectory, "src/domain/generated", "src/platform/generated", "src/architecture/generated",
+];
 
 function requireNoDiagnostics(diagnostics: readonly Diagnostic[]): void {
   if (diagnostics.length > 0) throw new Error(diagnostics.map((diagnostic) => formatDiagnostic(diagnostic)).join("\n"));

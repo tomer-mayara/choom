@@ -1,7 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Core window operations and a user-initiated directory picker.",
+  "description": "Core window operations, a directory picker, and bounded repository reads.",
+  "local": true,
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-open"]
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "allow-repository-open",
+    "allow-repository-read-text",
+    "allow-repository-resolve-paths",
+    "allow-repository-close"
+  ]
 }
