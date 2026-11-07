@@ -1,10 +1,11 @@
 name: architecture-model
-description: Validates architecture graphs and supplies the starter graph.
+description: Builds and validates semantic component diagrams and supplies the starter graph.
 
 artifacts:
   behavior:
     - path: ../../cookbook/behavior/architecture.feature
     - path: ../../cookbook/behavior/architecture-import/t02-model.feature
+    - path: ../../cookbook/behavior/architecture-import/t02-domain.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
