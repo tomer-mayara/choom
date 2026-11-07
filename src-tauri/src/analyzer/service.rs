@@ -374,7 +374,12 @@ impl AnalyzerService {
             {
                 return Err(output_limit().into());
             }
-            if let Some(status) = process.poll()? {
+            let polled = process.poll(start + self.inner.limits.timeout);
+            self.check(job, start, stage)?;
+            if let Some(status) = polled.map_err(|mut problem| {
+                problem.stage = stage;
+                problem
+            })? {
                 return Ok(status);
             }
             thread::sleep(Duration::from_millis(10));

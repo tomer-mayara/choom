@@ -101,7 +101,19 @@ impl Process {
         Ok(())
     }
 
-    pub fn poll(&mut self) -> Result<Option<ExitStatus>, Problem> {
+    pub fn poll(&mut self, deadline: Instant) -> Result<Option<ExitStatus>, Problem> {
+        #[cfg(windows)]
+        if let Some(job) = &mut self.job {
+            job.observe(deadline).map_err(|_| {
+                Problem::new(
+                    Stage::Analysis,
+                    Code::ExecutionFailed,
+                    "The analyzer process could not be observed.",
+                )
+            })?;
+        }
+        #[cfg(not(windows))]
+        let _ = deadline;
         if let Some(status) = self.status {
             return Ok(Some(status));
         }
@@ -160,7 +172,7 @@ impl Process {
                     return Err(Problem::cleanup());
                 }
             }
-            while self.poll()?.is_none() {
+            while self.poll(deadline)?.is_none() {
                 if Instant::now() >= deadline {
                     return Err(Problem::cleanup());
                 }
@@ -282,7 +294,13 @@ mod tests {
     fn completed_unreaped_process_group_cleans_up() {
         let mut process = exited_process();
         process.cleanup(&Limits::default()).unwrap();
-        assert!(process.poll().unwrap().unwrap().success());
+        assert!(
+            process
+                .poll(Instant::now() + Duration::from_secs(5))
+                .unwrap()
+                .unwrap()
+                .success()
+        );
         assert!(process.child.is_none());
     }
 
@@ -291,7 +309,10 @@ mod tests {
         let mut process = exited_process();
         let deadline = Instant::now() + Duration::from_secs(5);
         let observed = super::super::unix_group::stopped(process.group, deadline);
-        let status = process.poll().unwrap().unwrap();
+        let status = process
+            .poll(Instant::now() + Duration::from_secs(5))
+            .unwrap()
+            .unwrap();
         assert!(status.success());
         assert!(!observed.unwrap());
         assert!(super::super::unix_group::stopped(process.group, deadline).unwrap());
