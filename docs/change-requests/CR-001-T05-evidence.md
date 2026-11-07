@@ -163,7 +163,15 @@ contracts; no test or permission check was disabled.
   The descendant check now retains the original Windows process handle while
   the child is live, then permits analysis to finish. It checks that same
   handle after cleanup. Looking up a PID only after cleanup could observe a
-  different process after Windows reused the ID.
+  different process after Windows reused the ID. The check repeats completion,
+  cancellation, and shutdown ten times each on Windows.
+- Windows cleanup captures and verifies member handles before requesting
+  individual process termination. It waits on those same handles and requires
+  a fresh empty member list. This removes reliance on job accounting as a
+  completion barrier. The 30-case held-handle characterization passed before
+  this refactor; the same assertions remain afterward. Failed cleanup retains
+  the handles for retry within the existing five-second deadline. The native
+  contract records the enumeration and resource limits.
 - macOS cleanup continues bounded reaping and observation when Darwin reports
   `EPERM` for a zombie-only process group. Success still requires the group to
   disappear. Two real-process regressions retain an unreaped child with
@@ -190,6 +198,11 @@ review found no remaining actionable issue in the repairs.
 passed on the repaired native code: Windows ran 39 Rust tests and built the app;
 macOS ran 49 Rust tests and built the app. Final hosted validation is linked in
 [PR #8](https://github.com/tomer-mayara/choom/pull/8).
+
+[Hosted Ubuntu verification](https://github.com/tomer-mayara/choom/actions/runs/42353452875/job/128346327996)
+passed package installation, picker smoke, and all three installed T05 analyzer
+scenarios. Its four later T08 cases failed at the absent Load Repo/Open Diagram
+actions, which remain outside T05.
 
 Independent Linux verification used installed release packages outside the
 checkout and the pinned Bun, Node, Rust, and analyzer versions. Debian arm64

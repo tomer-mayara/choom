@@ -90,11 +90,20 @@ Unix execution owns a process group. Linux checks for live group members; macOS
 waits for the group to disappear. Darwin can return `EPERM` while a group contains
 only exited processes that have not been reaped. Cleanup continues reaping and
 observing within its deadline; that error alone never means cleanup succeeded.
-Windows execution uses an owned Job Object
-assigned before child execution and waits for its active process count to reach
-zero. Normal completion, cancellation, timeout, and errors stop remaining owned
-descendants and reap the direct child. Raw streams,
-host paths, and source contents are not error or progress fields.
+Windows execution uses an owned Job Object assigned before child execution.
+Cleanup captures identity-checked handles for its current members before
+terminating them individually. It repeats discovery and waits until the held
+processes have signaled and a fresh complete member list is empty. Handles
+remain owned after a failed cleanup so a retry can observe the same processes.
+An empty job accounting count alone is not a completion barrier: Windows
+[process termination is asynchronous](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess).
+This covers ordinary inherited job members. The Windows enumeration APIs do not
+provide a complete history of transient processes; no such history or coverage
+of processes created outside the job is promised.
+
+Normal completion, cancellation, timeout, and errors stop remaining owned
+descendants and reap the direct child. Raw streams, host paths, and source
+contents are not error or progress fields.
 
 Native progress carries the job, a coarse `setup`, `analysis`, or `cleanup`
 stage, and elapsed milliseconds. Terminal native results include duration.
@@ -104,7 +113,8 @@ not production telemetry or a timing objective.
 
 Initial limits are 120 seconds for setup and execution, 1 MiB each for stdout
 and stderr, 16 MiB for report text, 128 input paths, and 4096 UTF-8 bytes per
-path. Fixture checks establish resource bounds, not a measured large-repository
+path. Windows cleanup retains at most 1,024 process handles for a job and refuses
+an incomplete member snapshot. Fixture checks establish resource bounds, not a measured large-repository
 performance guarantee. Repository and converter bounds also apply.
 
 JavaScript configuration executes trusted repository code. Process and path

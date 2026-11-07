@@ -1,32 +1,57 @@
 use process_wrap::std::ChildWrapper;
 use std::{
+    collections::BTreeMap,
     io,
-    mem::size_of,
+    mem::{offset_of, size_of},
     os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle},
+    thread,
+    time::{Duration, Instant},
 };
 use windows::{
     Win32::{
-        Foundation::{ERROR_NO_MORE_FILES, HANDLE},
+        Foundation::{
+            ERROR_INVALID_PARAMETER, ERROR_NO_MORE_FILES, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+        },
         System::{
             Diagnostics::ToolHelp::{
                 CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First,
                 Thread32Next,
             },
             JobObjects::{
-                AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-                JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-                JobObjectBasicAccountingInformation, JobObjectExtendedLimitInformation,
+                AssignProcessToJobObject, CreateJobObjectW, IsProcessInJob,
+                JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+                JobObjectBasicProcessIdList, JobObjectExtendedLimitInformation,
                 QueryInformationJobObject, SetInformationJobObject, TerminateJobObject,
             },
-            Threading::{OpenThread, ResumeThread, THREAD_SUSPEND_RESUME},
+            Threading::{
+                OpenProcess, OpenThread, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+                PROCESS_TERMINATE, ResumeThread, THREAD_SUSPEND_RESUME, TerminateProcess,
+                WaitForSingleObject,
+            },
         },
     },
-    core::HRESULT,
+    core::{BOOL, HRESULT},
 };
+
+const MAX_TRACKED_PROCESSES: usize = 1024;
 
 /// Owns a kill-on-close job whose membership can be observed after its leader exits.
 pub(crate) struct WindowsJob {
     handle: OwnedHandle,
+    processes: BTreeMap<u32, TrackedProcess>,
+}
+
+struct TrackedProcess {
+    handle: OwnedHandle,
+    verified: bool,
+    termination_requested: bool,
+}
+
+#[repr(C)]
+struct ProcessIds {
+    assigned: u32,
+    listed: u32,
+    ids: [usize; MAX_TRACKED_PROCESSES],
 }
 
 fn owned(handle: HANDLE) -> OwnedHandle {
@@ -40,9 +65,18 @@ impl WindowsJob {
             .process_handle()
             .ok_or_else(|| io::Error::other("missing process handle"))?;
         // The child is still suspended, so it cannot start descendants before assignment.
-        let job = Self {
+        let mut job = Self {
             handle: owned(unsafe { CreateJobObjectW(None, None) }.map_err(io::Error::other)?),
+            processes: BTreeMap::new(),
         };
+        job.processes.insert(
+            child.id(),
+            TrackedProcess {
+                handle: process.try_clone_to_owned()?,
+                verified: false,
+                termination_requested: false,
+            },
+        );
         let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
         // The information pointer addresses a correctly sized, live structure.
@@ -57,6 +91,10 @@ impl WindowsJob {
         .map_err(io::Error::other)?;
         unsafe { AssignProcessToJobObject(job.raw(), HANDLE(process.as_raw_handle())) }
             .map_err(io::Error::other)?;
+        job.processes
+            .get_mut(&child.id())
+            .expect("the direct child is retained")
+            .verified = true;
         Ok(job)
     }
 
@@ -105,19 +143,165 @@ impl WindowsJob {
         unsafe { TerminateJobObject(self.raw(), 1) }.map_err(io::Error::other)
     }
 
-    pub fn stopped(&self) -> io::Result<bool> {
-        let mut information = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
-        // The query writes only into the supplied fixed-size accounting structure.
+    /// Hold process identities before requesting termination, then wait on those identities.
+    pub fn stop(&mut self, deadline: Instant) -> io::Result<()> {
+        loop {
+            before_deadline(deadline)?;
+            self.verify_members(deadline)?;
+            let pids = self.member_pids(deadline)?;
+            self.capture(&pids, deadline)?;
+            self.verify_members(deadline)?;
+            for process in self.processes.values_mut() {
+                before_deadline(deadline)?;
+                let handle = HANDLE(process.handle.as_raw_handle());
+                // A successful asynchronous request is not repeated during teardown or retry.
+                if !process.termination_requested && !signaled(handle)? {
+                    match unsafe { TerminateProcess(handle, 1) } {
+                        Ok(()) => process.termination_requested = true,
+                        // Exit may race a failed request. Check this same process object.
+                        Err(error) if !signaled(handle)? => return Err(io::Error::other(error)),
+                        Err(_) => {}
+                    }
+                }
+            }
+            let mut all_stopped = true;
+            for process in self.processes.values() {
+                before_deadline(deadline)?;
+                all_stopped &= signaled(HANDLE(process.handle.as_raw_handle()))?;
+            }
+            // Query again after all retained objects signal, catching later inherited children.
+            if all_stopped && self.member_pids(deadline)?.is_empty() {
+                before_deadline(deadline)?;
+                self.terminate()?;
+                return before_deadline(deadline);
+            }
+            before_deadline(deadline)?;
+            thread::sleep(
+                Duration::from_millis(5).min(deadline.saturating_duration_since(Instant::now())),
+            );
+        }
+    }
+
+    fn capture(&mut self, pids: &[u32], deadline: Instant) -> io::Result<()> {
+        for pid in pids {
+            before_deadline(deadline)?;
+            if self.processes.contains_key(pid) {
+                continue;
+            }
+            if self.processes.len() >= MAX_TRACKED_PROCESSES {
+                return Err(io::Error::other("job process tracking limit exceeded"));
+            }
+            let handle = match unsafe {
+                OpenProcess(
+                    PROCESS_SYNCHRONIZE | PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
+                    false,
+                    *pid,
+                )
+            } {
+                Ok(handle) => owned(handle),
+                Err(error) if error.code() == HRESULT::from_win32(ERROR_INVALID_PARAMETER.0) => {
+                    continue;
+                }
+                Err(error) => return Err(io::Error::other(error)),
+            };
+            // Retain ownership before the membership query or any other fallible work.
+            self.processes.insert(
+                *pid,
+                TrackedProcess {
+                    handle,
+                    verified: false,
+                    termination_requested: false,
+                },
+            );
+        }
+        Ok(())
+    }
+
+    fn verify_members(&mut self, deadline: Instant) -> io::Result<()> {
+        let job = self.raw();
+        let mut foreign = Vec::new();
+        for (pid, process) in &mut self.processes {
+            before_deadline(deadline)?;
+            if !process.verified {
+                let mut member = BOOL::default();
+                unsafe {
+                    IsProcessInJob(
+                        HANDLE(process.handle.as_raw_handle()),
+                        Some(job),
+                        &mut member,
+                    )
+                }
+                .map_err(io::Error::other)?;
+                if member.as_bool() {
+                    process.verified = true;
+                } else {
+                    foreign.push(*pid);
+                }
+            }
+        }
+        for pid in foreign {
+            self.processes.remove(&pid);
+        }
+        Ok(())
+    }
+
+    fn member_pids(&self, deadline: Instant) -> io::Result<Vec<u32>> {
+        before_deadline(deadline)?;
+        let mut information = ProcessIds {
+            assigned: 0,
+            listed: 0,
+            ids: [0; MAX_TRACKED_PROCESSES],
+        };
+        let mut written = 0;
+        // repr(C) matches the native header and supplies a fixed, aligned PID buffer.
         unsafe {
             QueryInformationJobObject(
                 Some(self.raw()),
-                JobObjectBasicAccountingInformation,
+                JobObjectBasicProcessIdList,
                 &mut information as *mut _ as _,
-                size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32,
-                None,
+                size_of::<ProcessIds>() as u32,
+                Some(&mut written),
             )
         }
         .map_err(io::Error::other)?;
-        Ok(information.ActiveProcesses == 0)
+        before_deadline(deadline)?;
+        let count = information.listed as usize;
+        if count > MAX_TRACKED_PROCESSES
+            || information.assigned != information.listed
+            || (written as usize) < offset_of!(ProcessIds, ids) + count * size_of::<usize>()
+            || written as usize > size_of::<ProcessIds>()
+        {
+            return Err(io::Error::other("job process snapshot is incomplete"));
+        }
+        let mut pids = Vec::with_capacity(count);
+        for pid in &information.ids[..count] {
+            before_deadline(deadline)?;
+            let pid =
+                u32::try_from(*pid).map_err(|_| io::Error::other("invalid job process ID"))?;
+            if pid == 0 {
+                return Err(io::Error::other("invalid job process ID"));
+            }
+            pids.push(pid);
+        }
+        Ok(pids)
+    }
+}
+
+fn signaled(handle: HANDLE) -> io::Result<bool> {
+    match unsafe { WaitForSingleObject(handle, 0) } {
+        WAIT_OBJECT_0 => Ok(true),
+        WAIT_TIMEOUT => Ok(false),
+        _ => Err(io::Error::last_os_error()),
+    }
+}
+
+fn before_deadline(deadline: Instant) -> io::Result<()> {
+    if Instant::now() >= deadline {
+        Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "job cleanup expired",
+        ))
+    } else {
+        Ok(())
     }
 }

@@ -143,8 +143,8 @@ impl Process {
             #[cfg(windows)]
             let killed = self
                 .job
-                .as_ref()
-                .map_or_else(|| child.start_kill(), |job| job.terminate());
+                .as_mut()
+                .map_or_else(|| child.start_kill(), |job| job.stop(deadline));
             if let Err(error) = killed {
                 #[cfg(unix)]
                 // Darwin also returns EPERM when only unreaped zombies remain.
@@ -166,11 +166,9 @@ impl Process {
                 }
                 thread::sleep(Duration::from_millis(5));
             }
+            #[cfg(unix)]
             loop {
-                #[cfg(unix)]
                 let stopped = super::unix_group::stopped(self.group, deadline);
-                #[cfg(windows)]
-                let stopped = self.job.as_ref().map_or(Ok(true), |job| job.stopped());
                 if stopped.map_err(|_| Problem::cleanup())? {
                     break;
                 }
