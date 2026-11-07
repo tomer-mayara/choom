@@ -4,7 +4,8 @@ import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { ArchitectureDiagram } from "@/components/architecture-diagram";
 import { WorkspaceControls } from "@/components/workspace-controls";
-import { workspace as defaultWorkspace, type WorkspaceBinding } from "@/architecture/workspace";
+import { workspace as defaultWorkspace } from "@/architecture/workspace";
+import type { WorkspaceBinding } from "@/architecture/workspace-view";
 import { isDesktop, selectProjectDirectory } from "@/platform/desktop";
 
 const ArchitecturePreview = lazy(

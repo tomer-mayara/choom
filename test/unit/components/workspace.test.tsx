@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../../../src/App.tsx";
 import { LoadWorkflow } from "../../../src/architecture/load-workflow.ts";
-import type { WorkspaceBinding, WorkspaceExportOutcome } from "../../../src/architecture/workspace.ts";
+import type { LoadWorkflowSnapshot, WorkflowView, WorkspaceBinding, WorkspaceExportOutcome } from "../../../src/architecture/workspace-view.ts";
 import { architectureDocumentFixture } from "../../support/document-fixtures.ts";
 import { documentStorageFailure } from "../../support/document-storage-fixtures.ts";
 import {
@@ -14,9 +14,32 @@ afterEach(() => {
   Reflect.deleteProperty(globalThis, "isTauri");
 });
 
-function binding(workflow: LoadWorkflow): WorkspaceBinding {
+function binding(workflow: WorkflowView): WorkspaceBinding {
   return { workflow, exportDocument: async () => ({ status: "success", exported: true, durationMs: 0 }) };
 }
+
+test("workspace controls accept a structural view role without lifecycle operations", async () => {
+  const snapshot: LoadWorkflowSnapshot = {
+    state: { phase: "idle", operation: null, stage: null, lastOutcome: null, cleanupRecovery: "none" },
+    current: null,
+  };
+  const opened: string[] = [];
+  const cancelled = async () => ({ status: "cancelled" as const, durationMs: 0 });
+  const view: WorkflowView = {
+    getSnapshot: () => snapshot,
+    subscribe: () => () => {},
+    loadRepository: cancelled,
+    openDocument: async () => { opened.push("document"); return cancelled(); },
+    cancel: cancelled,
+    retry: cancelled,
+    retryCleanup: cancelled,
+  };
+  render(<App workspace={binding(view)} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Open Diagram" }));
+  await waitFor(() => expect(opened).toEqual(["document"]));
+  expect(screen.getByRole("heading", { name: "Architecture starts here." })).toBeTruthy();
+});
 
 test("browser opening commits the prepared diagram before export becomes available", async () => {
   const dependencies = workflowDependencies();
@@ -24,7 +47,8 @@ test("browser opening commits the prepared diagram before export becomes availab
   const layout = pendingDocumentOperation<void>();
   const prepare = dependencies.layout;
   dependencies.layout = async (document) => { await layout.promise; return prepare(document); };
-  render(<App workspace={binding(new LoadWorkflow(dependencies))} />);
+  const workflow = new LoadWorkflow(dependencies);
+  const { container } = render(<App workspace={binding(workflow)} />);
 
   expect(screen.queryByRole("button", { name: "Load Repo" })).toBeNull();
   expect(screen.getByRole("button", { name: "Export Diagram" }).hasAttribute("disabled")).toBe(true);
@@ -35,6 +59,12 @@ test("browser opening commits the prepared diagram before export becomes availab
   await act(async () => { layout.resolve(); });
   expect(screen.getByRole("heading", { name: "Atlas" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Export Diagram" }).hasAttribute("disabled")).toBe(false);
+  const current = workflow.getSnapshot().current;
+  expect(Object.isFrozen(current?.document.components)).toBe(true);
+  expect(Object.isFrozen(current?.layout.nodes[2]?.position)).toBe(true);
+  const cards = [...container.querySelectorAll(".react-flow__node[data-id]")];
+  expect(cards.map((node) => node.getAttribute("data-id"))).toEqual([".", "packages/core", "src"]);
+  expect(cards[2]?.getAttribute("style")).toContain("translate(500px,0px)");
 });
 
 test("desktop cancellation keeps loads disabled until selection has settled", async () => {

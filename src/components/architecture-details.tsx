@@ -1,13 +1,14 @@
 import type {
   ArchitectureDiagnostic, ArchitectureDocument, DiagnosticReference, ImportVariant,
 } from "../domain/generated/contracts.ts";
+import type { ReadonlyData } from "../domain/readonly-data.ts";
 
 function importFlags(variant: ImportVariant): string {
   const flag = (value: boolean | undefined) => value === undefined ? "Unknown" : value ? "Yes" : "No";
   return `Type only: ${flag(variant.typeOnly)} · Dynamic: ${flag(variant.dynamic)} · Pre-compilation only: ${flag(variant.preCompilationOnly)}`;
 }
 
-function OrderedReferences({ name, references }: { name: string; references: DiagnosticReference[] }) {
+function OrderedReferences({ name, references }: { name: string; references: ReadonlyData<DiagnosticReference[]> }) {
   return (
     <div>
       <p className="font-medium">{name}</p>
@@ -18,7 +19,7 @@ function OrderedReferences({ name, references }: { name: string; references: Dia
   );
 }
 
-function FindingDetails({ finding }: { finding: ArchitectureDiagnostic }) {
+function FindingDetails({ finding }: { finding: ReadonlyData<ArchitectureDiagnostic> }) {
   return (
     <details className="rounded-lg border border-border bg-card p-4">
       <summary className="cursor-pointer break-words font-medium">
@@ -46,7 +47,7 @@ function FindingDetails({ finding }: { finding: ArchitectureDiagnostic }) {
 }
 
 /** Text remains available independently of the canvas, including findings without arrows. */
-export function ArchitectureDetails({ document }: { document: ArchitectureDocument }) {
+export function ArchitectureDetails({ document }: { document: ReadonlyData<ArchitectureDocument> }) {
   return (
     <div className="space-y-8">
       <section aria-labelledby="recorded-analysis-heading" className="space-y-3">

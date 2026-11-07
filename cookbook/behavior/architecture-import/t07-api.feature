@@ -61,6 +61,13 @@ Feature: Keep one current document through a load
     When workspace cleanup is retried after removal becomes available
     Then "Current" stays current and another load can start
 
+  @r02
+  Scenario: An observer cannot clear an outstanding cleanup failure
+    Given a superseded snapshot could not be removed after "Current" loaded
+    And an observer has received the current workspace view
+    When the observer tries to clear the cleanup failure through that view
+    Then "Current" is displayed and another load is blocked until cleanup succeeds
+
   Scenario: Unknown analyzer cleanup cannot be cleared by document cleanup
     Given analyzer cleanup failed without returning an owned cleanup handle
     When cleanup retry is requested

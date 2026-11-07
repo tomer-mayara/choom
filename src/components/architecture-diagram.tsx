@@ -4,11 +4,12 @@ import {
   type Edge, type Node, type NodeProps,
 } from "@xyflow/react";
 import type { ArchitectureComponent, ArchitectureDocument } from "../domain/generated/contracts.ts";
+import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { ArchitectureDetails } from "./architecture-details.tsx";
 import "@xyflow/react/dist/style.css";
 
-type ComponentNode = Node<{ component: ArchitectureComponent }, "component">;
+type ComponentNode = Node<{ component: ReadonlyData<ArchitectureComponent> }, "component">;
 
 function ComponentCard({ data: { component } }: NodeProps<ComponentNode>) {
   return (
@@ -24,7 +25,7 @@ function ComponentCard({ data: { component } }: NodeProps<ComponentNode>) {
 
 const nodeTypes = { component: ComponentCard };
 
-function FitPreparedDiagram({ layout }: { layout: ArchitectureLayout }) {
+function FitPreparedDiagram({ layout }: { layout: ReadonlyData<ArchitectureLayout> }) {
   const { fitView } = useReactFlow();
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
@@ -35,14 +36,16 @@ function FitPreparedDiagram({ layout }: { layout: ArchitectureLayout }) {
 }
 
 /** Render only the committed document and its already prepared positions. */
-export function ArchitectureDiagram({ document, layout }: { document: ArchitectureDocument; layout: ArchitectureLayout }) {
+export function ArchitectureDiagram({ document, layout }: {
+  document: ReadonlyData<ArchitectureDocument>; layout: ReadonlyData<ArchitectureLayout>;
+}) {
   const nodes = useMemo<ComponentNode[]>(() => {
     const positions = new Map(layout.nodes.map(({ id, position }) => [id, position]));
     return document.components.map((component) => {
       const position = positions.get(component.id);
       if (!position) throw new Error("The prepared diagram is missing a component.");
       return {
-        id: component.id, type: "component", data: { component }, position,
+        id: component.id, type: "component", data: { component }, position: { ...position },
         width: 240, height: 120,
         ariaLabel: `${component.name}, ${component.id}`,
       };

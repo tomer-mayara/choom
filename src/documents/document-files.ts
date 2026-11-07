@@ -19,7 +19,7 @@ interface PreparedDocumentCandidate {
   durationMs: number;
 }
 type PreparationOutcome = PreparedDocumentCandidate | DocumentFailure | CancelledDocumentOperation;
-type ExportOutcome = ExportDocumentOutcome | DocumentCodecFailure | CancelledDocumentOperation;
+export type DocumentExportOutcome = ExportDocumentOutcome | DocumentCodecFailure | CancelledDocumentOperation;
 type DestinationSelector = () => Promise<{ path: string; overwrite: boolean } | null>;
 
 function timed<Outcome extends { durationMs: number }>(outcome: Outcome, started: number): Outcome {
@@ -89,7 +89,7 @@ export class DocumentFiles {
 
   async exportDocument(
     document: unknown, selectDestination: DestinationSelector, confirmReplacement?: () => Promise<boolean>,
-  ): Promise<ExportOutcome> {
+  ): Promise<DocumentExportOutcome> {
     const started = performance.now();
     const encoded = encodeArchitectureYaml(document);
     return this.afterReleases(started, async () => {

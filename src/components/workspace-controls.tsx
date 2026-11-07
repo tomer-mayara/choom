@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Download, FileUp, FolderOpen } from "lucide-react";
-import type { WorkspaceBinding } from "../architecture/workspace.ts";
+import type { WorkspaceBinding } from "../architecture/workspace-view.ts";
 import type { WorkflowStage } from "../architecture/generated/workflow.ts";
 import { Button } from "./ui/button.tsx";
 

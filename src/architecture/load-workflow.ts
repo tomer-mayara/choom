@@ -9,6 +9,8 @@ import type { DiscoveryOperations } from "./generated/contracts.ts";
 import type {
   WorkflowFailure, WorkflowOperation, WorkflowOperations, WorkflowOutcome, WorkflowStage, WorkflowState,
 } from "./generated/workflow.ts";
+import { ownCurrentView, ownOutcome, publishedSnapshot } from "./load-publication.ts";
+import type { LoadWorkflowSnapshot } from "./workspace-view.ts";
 
 export type SelectedDocument =
   | { kind: "desktop"; path: string }
@@ -22,11 +24,6 @@ export interface LoadWorkflowDependencies {
   closeRepository(request: Parameters<RepositoryOperations["closeRepository"]>[0]): Promise<ReturnType<RepositoryOperations["closeRepository"]>>;
   documents: Pick<DocumentFiles, "prepareCandidate" | "openSavedFile" | "releaseSnapshot" | "retryCleanup">;
   layout(document: ArchitectureDocument): Promise<ArchitectureLayout>;
-}
-
-export interface LoadWorkflowSnapshot {
-  state: WorkflowState;
-  current: { document: ArchitectureDocument; layout: ArchitectureLayout } | null;
 }
 
 type WorkflowBindings = {
@@ -88,10 +85,7 @@ export class LoadWorkflow implements WorkflowBindings {
   private readonly dependencies: LoadWorkflowDependencies;
   private readonly listeners = new Set<() => void>();
   private readonly repositories = new Map<string, "safe" | "unsafe">();
-  private snapshot: LoadWorkflowSnapshot = {
-    state: { phase: "idle", operation: null, stage: null, lastOutcome: null, cleanupRecovery: "none" },
-    current: null,
-  };
+  private snapshot = publishedSnapshot({ phase: "idle", operation: null, stage: null, lastOutcome: null, cleanupRecovery: "none" });
   private active?: LoadOperation;
   private currentSnapshot?: string;
   private previousSelection?: LoadSelection;
@@ -198,13 +192,14 @@ export class LoadWorkflow implements WorkflowBindings {
       this.stage(operation, "layout");
       const layout = await cancellable(this.dependencies.layout(document), operation);
       this.check(operation);
+      const current = ownCurrentView(document, layout);
       const superseded = this.currentSnapshot;
       this.currentSnapshot = operation.candidateSnapshot;
       operation.candidateSnapshot = undefined;
       operation.committed = true;
-      outcome = { status: "success", durationMs: elapsed(operation.started) };
+      outcome = ownOutcome({ status: "success", durationMs: elapsed(operation.started) });
       operation.outcome = outcome;
-      this.publish({ ...this.snapshot.state, phase: "cleanup", stage: "cleanup", lastOutcome: outcome }, { document, layout });
+      this.publish({ ...this.snapshot.state, phase: "cleanup", stage: "cleanup", lastOutcome: outcome }, current);
       if (superseded) await this.releaseSnapshot(superseded, operation);
     } catch (error) {
       outcome = error instanceof LoadStopped ? error.outcome
@@ -386,7 +381,7 @@ export class LoadWorkflow implements WorkflowBindings {
       this.publish({ ...this.snapshot.state, phase: blocked ? "cleanup" : "idle", operation: null,
         stage: blocked ? "cleanup" : null, lastOutcome: replaceOutcome ? outcome : this.snapshot.state.lastOutcome });
     }
-    operation.complete(outcome);
+    operation.complete(ownOutcome(outcome));
   }
 
   private async releaseWorkspace(): Promise<void> {
@@ -409,7 +404,7 @@ export class LoadWorkflow implements WorkflowBindings {
   }
 
   private publish(state: WorkflowState, current = this.snapshot.current): void {
-    this.snapshot = { state, current };
+    this.snapshot = publishedSnapshot(state, current);
     for (const listener of this.listeners) {
       try { listener(); } catch {
         // A view observer cannot take ownership away from resource cleanup.

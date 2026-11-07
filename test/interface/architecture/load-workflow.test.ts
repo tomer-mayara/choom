@@ -4,6 +4,8 @@ import addFormats from "ajv-formats";
 import contracts from "../../../cookbook/interfaces/generated/contracts.schema.json";
 import type { WorkflowOperations } from "../../../src/architecture/generated/workflow.ts";
 import { LoadWorkflow } from "../../../src/architecture/load-workflow.ts";
+import type { LoadWorkflowSnapshot, WorkflowView } from "../../../src/architecture/workspace-view.ts";
+import type { ArchitectureComponent, ImportVariant } from "../../../src/domain/generated/contracts.ts";
 import { documentStorageFailure } from "../../support/document-storage-fixtures.ts";
 import { browserWorkflowDocument, pendingDocumentOperation, repositoryWorkflowDependencies } from "../../support/load-workflow-fixtures.ts";
 
@@ -16,6 +18,18 @@ type AsyncOperations = {
 
 test("public load operations bind TypeSpec outcomes through asynchronous controls", () => {
   expectTypeOf<LoadWorkflow>().toExtend<AsyncOperations>();
+});
+
+test("the view role exposes only UI commands and read-only observations", () => {
+  expectTypeOf<LoadWorkflow>().toExtend<WorkflowView>();
+  expectTypeOf<keyof WorkflowView>().toEqualTypeOf<
+    "loadRepository" | "openDocument" | "cancel" | "retry" | "retryCleanup" | "getSnapshot" | "subscribe"
+  >();
+  type Current = NonNullable<LoadWorkflowSnapshot["current"]>;
+  expectTypeOf<Current["document"]["components"]>().toEqualTypeOf<readonly Readonly<ArchitectureComponent>[]>();
+  expectTypeOf<Current["document"]["relationships"][number]["evidence"][number]["variants"]>()
+    .toEqualTypeOf<readonly Readonly<ImportVariant>[]>();
+  expectTypeOf<Current["layout"]["nodes"][number]["position"]>().toEqualTypeOf<{ readonly x: number; readonly y: number }>();
 });
 
 test("emitted states and success, busy, cancellation, and failure conform to generated schemas", async () => {

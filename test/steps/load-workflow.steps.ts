@@ -28,6 +28,7 @@ interface WorkflowWorld extends World {
   cleanup?: ReturnType<typeof pendingDocumentOperation<void>>;
   originalCleanup?: ReturnType<typeof repositoryWorkflowDependencies>["documents"]["retryCleanup"];
   release?: ReturnType<typeof pendingDocumentOperation<void>>;
+  observed?: ReturnType<LoadWorkflow["getSnapshot"]>;
 }
 
 Before({ tags: "@cr-001-t07-api" }, function (this: WorkflowWorld) {
@@ -259,6 +260,15 @@ Given("a superseded snapshot could not be removed after {string} loaded", async 
   this.dependencies.access.releaseFailure = documentStorageFailure("cleanup-failed", "cleanup");
   await showRepository(this, name);
   assert.equal(this.workflow.getSnapshot().state.cleanupRecovery, "retry");
+});
+
+Given("an observer has received the current workspace view", function (this: WorkflowWorld) {
+  this.observed = this.workflow.getSnapshot();
+});
+
+When("the observer tries to clear the cleanup failure through that view", function (this: WorkflowWorld) {
+  assert.ok(this.observed);
+  Reflect.set(this.observed.state, "cleanupRecovery", "none");
 });
 
 When("workspace cleanup is retried after removal becomes available", async function (this: WorkflowWorld) {
