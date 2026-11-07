@@ -475,12 +475,8 @@ fn cancellation_and_session_close_stop_running_work_before_acknowledgement() {
         let service = fixture.service();
         service.prepare(fixture.request());
         let worker = service.clone();
-        let running = thread::spawn(move || {
-            let outcome = value(worker.run(json!({"jobId":"analysis-1"}), |_| Ok(())));
-            #[cfg(windows)]
-            eprintln!("cancellation fixture close={close} outcome={outcome}");
-            outcome
-        });
+        let running =
+            thread::spawn(move || value(worker.run(json!({"jobId":"analysis-1"}), |_| Ok(()))));
         wait_for(&fixture.root.join("started"));
         if close {
             fixture
@@ -823,13 +819,7 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
     #[cfg(windows)]
     use windows::Win32::{
         Foundation::{HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT},
-        System::{
-            JobObjects::IsProcessInJob,
-            Threading::{
-                OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
-                WaitForSingleObject,
-            },
-        },
+        System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject},
     };
 
     let rounds = if cfg!(windows) { 10 } else { 1 };
@@ -845,7 +835,7 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
             "fs.writeFileSync('started','yes');"
         };
         let script = format!(
-            "import fs from 'node:fs';import {{spawn}} from 'node:child_process';fs.writeFileSync('parent-pid',String(process.pid));spawn(process.execPath,['-e',{}],{{stdio:'ignore'}}).unref();setInterval(()=>{{if(fs.existsSync('observation-ready')){{{finish}}}}},10);",
+            "import fs from 'node:fs';import {{spawn}} from 'node:child_process';spawn(process.execPath,['-e',{}],{{stdio:'ignore'}}).unref();setInterval(()=>{{if(fs.existsSync('observation-ready')){{{finish}}}}},10);",
             serde_json::to_string(child).unwrap()
         );
         let fixture = Fixture::new(&script);
@@ -861,44 +851,12 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
             .unwrap();
         #[cfg(windows)]
         let descendant = {
-            let handle = unsafe {
-                OpenProcess(
-                    PROCESS_SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
-                    false,
-                    pid as u32,
-                )
-            }
-            .expect("the descendant must be live before analysis can finish");
+            let handle = unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid as u32) }
+                .expect("the descendant must be live before analysis can finish");
             // Keep this process object alive so its PID cannot identify another process.
             let owned = unsafe { OwnedHandle::from_raw_handle(handle.0) };
             assert_eq!(unsafe { WaitForSingleObject(handle, 0) }, WAIT_TIMEOUT);
             owned
-        };
-        #[cfg(windows)]
-        let diagnostic_job = {
-            let parent_id: u32 = fs::read_to_string(fixture.root.join("parent-pid"))
-                .unwrap()
-                .parse()
-                .unwrap();
-            let job = windows_job::test_job(parent_id).unwrap();
-            let mut member = windows::core::BOOL::default();
-            unsafe {
-                IsProcessInJob(
-                    HANDLE(descendant.as_raw_handle()),
-                    Some(HANDLE(job.as_raw_handle())),
-                    &mut member,
-                )
-            }
-            .unwrap();
-            eprintln!(
-                "descendant observed mode={mode} parent={parent_id} child={pid} job_member={}",
-                member.as_bool()
-            );
-            assert!(
-                member.as_bool(),
-                "the descendant must inherit the analyzer job"
-            );
-            job
         };
         fs::write(fixture.root.join("observation-ready"), "yes").unwrap();
         if mode != "completed" {
@@ -931,22 +889,8 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
         #[cfg(all(unix, not(target_os = "linux")))]
         let alive = unsafe { libc::kill(pid, 0) } == 0;
         #[cfg(windows)]
-        let alive = {
-            let waited = unsafe { WaitForSingleObject(HANDLE(descendant.as_raw_handle()), 0) };
-            let mut member = windows::core::BOOL::default();
-            let membership = unsafe {
-                IsProcessInJob(
-                    HANDLE(descendant.as_raw_handle()),
-                    Some(HANDLE(diagnostic_job.as_raw_handle())),
-                    &mut member,
-                )
-            };
-            eprintln!(
-                "descendant finished mode={mode} child={pid} wait={waited:?} membership={membership:?} job_member={} outcome={outcome}",
-                member.as_bool()
-            );
-            waited != WAIT_OBJECT_0
-        };
+        let alive =
+            unsafe { WaitForSingleObject(HANDLE(descendant.as_raw_handle()), 0) } != WAIT_OBJECT_0;
         assert!(!alive, "descendant is still live after {mode}");
         assert_eq!(
             fs::read_dir(fixture.directory.join("cache"))

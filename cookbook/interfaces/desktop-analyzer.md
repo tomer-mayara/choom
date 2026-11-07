@@ -91,15 +91,22 @@ waits for the group to disappear. Darwin can return `EPERM` while a group contai
 only exited processes that have not been reaped. Cleanup continues reaping and
 observing within its deadline; that error alone never means cleanup succeeded.
 Windows execution uses an owned Job Object assigned before child execution.
-Cleanup captures identity-checked handles for its current members before
-terminating them individually. It repeats discovery and waits until the held
-processes have signaled and a fresh complete member list is empty. Handles
-remain owned after a failed cleanup so a retry can observe the same processes.
+Process notifications retain identity-checked member handles during execution.
+Cleanup also captures current members before terminating them individually. It
+waits until every retained process has signaled, a fresh complete member list is
+empty, the notification queue is drained, and retained identities cover the
+job's lifetime process count. An access-denied termination request can race
+another termination request; cleanup continues stopping other members and
+observing the same handle within its deadline. The error itself is not success.
+Handles remain owned after a failed cleanup so a retry can observe the same
+processes. Each notification read releases its thread association, so cleanup
+can move between native worker threads.
 An empty job accounting count alone is not a completion barrier: Windows
 [process termination is asynchronous](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess).
-This covers ordinary inherited job members. The Windows enumeration APIs do not
-provide a complete history of transient processes; no such history or coverage
-of processes created outside the job is promised.
+Windows process notifications are best effort. If a transient process cannot be
+retained and the lifetime count cannot be reconciled, cleanup fails rather than
+claiming that an empty current member list proves completion. Processes created
+outside the job remain outside this ownership boundary.
 
 Normal completion, cancellation, timeout, and errors stop remaining owned
 descendants and reap the direct child. Raw streams, host paths, and source

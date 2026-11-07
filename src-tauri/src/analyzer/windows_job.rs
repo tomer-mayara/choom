@@ -10,8 +10,8 @@ use std::{
 use windows::{
     Win32::{
         Foundation::{
-            ERROR_INVALID_PARAMETER, ERROR_NO_MORE_FILES, HANDLE, INVALID_HANDLE_VALUE,
-            WAIT_OBJECT_0, WAIT_TIMEOUT,
+            ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER, ERROR_NO_MORE_FILES, HANDLE,
+            INVALID_HANDLE_VALUE, WAIT_OBJECT_0, WAIT_TIMEOUT,
         },
         System::{
             Diagnostics::ToolHelp::{
@@ -46,14 +46,66 @@ pub(crate) struct WindowsJob {
     handle: OwnedHandle,
     completion_port: OwnedHandle,
     processes: BTreeMap<u32, TrackedProcess>,
-    #[cfg(test)]
-    parent_id: u32,
 }
 
 struct TrackedProcess {
     handle: OwnedHandle,
     verified: bool,
-    termination_requested: bool,
+    termination_attempted: bool,
+}
+
+/// Returning to a thread pool must also release the job port's thread association.
+struct CompletionPortDetachment {
+    port: OwnedHandle,
+    detached: bool,
+}
+
+impl CompletionPortDetachment {
+    fn new() -> io::Result<Self> {
+        Ok(Self {
+            port: owned(
+                unsafe { CreateIoCompletionPort(INVALID_HANDLE_VALUE, None, 0, 1) }
+                    .map_err(io::Error::other)?,
+            ),
+            detached: false,
+        })
+    }
+
+    fn detach(&mut self) -> io::Result<()> {
+        if self.detached {
+            return Ok(());
+        }
+        let mut message = 0;
+        let mut key = 0;
+        let mut value = std::ptr::null_mut();
+        // Switching to this private, empty port releases the former association.
+        // Closing it when this guard drops then leaves the thread unassociated.
+        match unsafe {
+            GetQueuedCompletionStatus(
+                HANDLE(self.port.as_raw_handle()),
+                &mut message,
+                &mut key,
+                &mut value,
+                0,
+            )
+        } {
+            Err(error)
+                if error.code() == HRESULT::from_win32(WAIT_TIMEOUT.0) && value.is_null() =>
+            {
+                self.detached = true;
+                Ok(())
+            }
+            Err(error) => Err(io::Error::other(error)),
+            Ok(()) => Err(io::Error::other("unexpected observer detachment packet")),
+        }
+    }
+}
+
+impl Drop for CompletionPortDetachment {
+    fn drop(&mut self) {
+        // The explicit call reports errors; unwinding makes a final detachment attempt.
+        let _ = self.detach();
+    }
 }
 
 #[repr(C)]
@@ -81,15 +133,13 @@ impl WindowsJob {
                     .map_err(io::Error::other)?,
             ),
             processes: BTreeMap::new(),
-            #[cfg(test)]
-            parent_id: child.id(),
         };
         job.processes.insert(
             child.id(),
             TrackedProcess {
                 handle: process.try_clone_to_owned()?,
                 verified: false,
-                termination_requested: false,
+                termination_attempted: false,
             },
         );
         let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
@@ -124,19 +174,6 @@ impl WindowsJob {
             .get_mut(&child.id())
             .expect("the direct child is retained")
             .verified = true;
-        #[cfg(test)]
-        {
-            TEST_JOBS
-                .lock()
-                .unwrap()
-                .insert(child.id(), job.raw().0 as usize);
-            eprintln!(
-                "windows job assigned parent={} job={:?}",
-                child.id(),
-                job.raw()
-            );
-            trace_process(child.id(), HANDLE(process.as_raw_handle()));
-        }
         Ok(job)
     }
 
@@ -188,6 +225,14 @@ impl WindowsJob {
     /// Retain reported process identities before observing whether the parent exited.
     /// A full batch yields to the caller; cleanup must also observe an empty queue.
     pub fn observe(&mut self, deadline: Instant) -> io::Result<bool> {
+        // Allocate before the first real dequeue so allocation failure cannot strand a thread.
+        let mut detachment = CompletionPortDetachment::new()?;
+        let observed = self.observe_batch(deadline);
+        detachment.detach()?;
+        observed
+    }
+
+    fn observe_batch(&mut self, deadline: Instant) -> io::Result<bool> {
         self.verify_members(deadline)?;
         for _ in 0..NOTIFICATIONS_PER_POLL {
             before_deadline(deadline)?;
@@ -232,41 +277,26 @@ impl WindowsJob {
 
     /// Hold process identities before requesting termination, then wait on those identities.
     pub fn stop(&mut self, deadline: Instant) -> io::Result<()> {
-        #[cfg(test)]
-        let mut trace = 0;
         loop {
             before_deadline(deadline)?;
             let queue_empty = self.observe(deadline)?;
             let pids = self.member_pids(deadline)?;
-            #[cfg(test)]
-            if trace < 16 {
-                eprintln!(
-                    "windows job parent={} snapshot={pids:?} retained={:?} counts={:?}",
-                    self.parent_id,
-                    self.processes.keys().collect::<Vec<_>>(),
-                    self.test_counts()
-                );
-            }
             self.capture(&pids, deadline)?;
             self.verify_members(deadline)?;
-            for (pid, process) in &mut self.processes {
+            for process in self.processes.values_mut() {
                 before_deadline(deadline)?;
-                #[cfg(not(test))]
-                let _ = pid;
                 let handle = HANDLE(process.handle.as_raw_handle());
-                // A successful asynchronous request is not repeated during teardown or retry.
-                if !process.termination_requested && !signaled(handle)? {
+                // After an accepted or denied request, only the held handle can establish exit.
+                if !process.termination_attempted && !signaled(handle)? {
                     match unsafe { TerminateProcess(handle, 1) } {
-                        Ok(()) => process.termination_requested = true,
+                        Ok(()) => process.termination_attempted = true,
                         // Exit may race a failed request. Check this same process object.
                         Err(error) => {
                             let stopped = signaled(handle)?;
-                            #[cfg(test)]
-                            eprintln!(
-                                "windows job parent={} terminate pid={pid} error={error:?} signaled={stopped}",
-                                self.parent_id
-                            );
-                            if !stopped {
+                            if error.code() == HRESULT::from_win32(ERROR_ACCESS_DENIED.0) {
+                                // Teardown can deny a stop before signaling. Keep stopping others.
+                                process.termination_attempted = true;
+                            } else if !stopped {
                                 return Err(io::Error::other(error));
                             }
                         }
@@ -274,19 +304,9 @@ impl WindowsJob {
                 }
             }
             let mut all_stopped = true;
-            for (pid, process) in &self.processes {
+            for process in self.processes.values() {
                 before_deadline(deadline)?;
-                let stopped = signaled(HANDLE(process.handle.as_raw_handle()))?;
-                #[cfg(test)]
-                if trace < 16 {
-                    eprintln!(
-                        "windows job parent={} pid={pid} verified={} termination_requested={} signaled={stopped}",
-                        self.parent_id, process.verified, process.termination_requested
-                    );
-                }
-                #[cfg(not(test))]
-                let _ = pid;
-                all_stopped &= stopped;
+                all_stopped &= signaled(HANDLE(process.handle.as_raw_handle()))?;
             }
             // Query again after all retained objects signal, catching later inherited children.
             if all_stopped
@@ -294,22 +314,11 @@ impl WindowsJob {
                 && self.member_pids(deadline)?.is_empty()
                 && self.coverage_complete(deadline)?
             {
-                #[cfg(test)]
-                eprintln!(
-                    "windows job parent={} completed retained={:?} counts={:?}",
-                    self.parent_id,
-                    self.processes.keys().collect::<Vec<_>>(),
-                    self.test_counts()
-                );
                 before_deadline(deadline)?;
                 self.terminate()?;
                 return before_deadline(deadline);
             }
             before_deadline(deadline)?;
-            #[cfg(test)]
-            {
-                trace += 1;
-            }
             thread::sleep(
                 Duration::from_millis(5).min(deadline.saturating_duration_since(Instant::now())),
             );
@@ -334,21 +343,9 @@ impl WindowsJob {
             } {
                 Ok(handle) => owned(handle),
                 Err(error) if error.code() == HRESULT::from_win32(ERROR_INVALID_PARAMETER.0) => {
-                    #[cfg(test)]
-                    eprintln!(
-                        "windows job parent={} open pid={pid} disappeared error={error:?}",
-                        self.parent_id
-                    );
                     continue;
                 }
-                Err(error) => {
-                    #[cfg(test)]
-                    eprintln!(
-                        "windows job parent={} open pid={pid} error={error:?}",
-                        self.parent_id
-                    );
-                    return Err(io::Error::other(error));
-                }
+                Err(error) => return Err(io::Error::other(error)),
             };
             // Retain ownership before the membership query or any other fallible work.
             self.processes.insert(
@@ -356,11 +353,9 @@ impl WindowsJob {
                 TrackedProcess {
                     handle,
                     verified: false,
-                    termination_requested: false,
+                    termination_attempted: false,
                 },
             );
-            #[cfg(test)]
-            trace_process(*pid, HANDLE(self.processes[pid].handle.as_raw_handle()));
         }
         Ok(())
     }
@@ -379,14 +374,7 @@ impl WindowsJob {
                         &mut member,
                     )
                 }
-                .map_err(|error| {
-                    #[cfg(test)]
-                    eprintln!(
-                        "windows job parent={} membership pid={pid} error={error:?}",
-                        self.parent_id
-                    );
-                    io::Error::other(error)
-                })?;
+                .map_err(io::Error::other)?;
                 if member.as_bool() {
                     process.verified = true;
                 } else {
@@ -409,7 +397,7 @@ impl WindowsJob {
         };
         let mut written = 0;
         // repr(C) matches the native header and supplies a fixed, aligned PID buffer.
-        let queried = unsafe {
+        unsafe {
             QueryInformationJobObject(
                 Some(self.raw()),
                 JobObjectBasicProcessIdList,
@@ -417,15 +405,8 @@ impl WindowsJob {
                 size_of::<ProcessIds>() as u32,
                 Some(&mut written),
             )
-        };
-        #[cfg(test)]
-        if queried.is_err() {
-            eprintln!(
-                "windows job parent={} snapshot error={queried:?} assigned={} listed={} bytes={written}",
-                self.parent_id, information.assigned, information.listed
-            );
         }
-        queried.map_err(io::Error::other)?;
+        .map_err(io::Error::other)?;
         before_deadline(deadline)?;
         let count = information.listed as usize;
         if count > MAX_TRACKED_PROCESSES
@@ -433,11 +414,6 @@ impl WindowsJob {
             || (written as usize) < offset_of!(ProcessIds, ids) + count * size_of::<usize>()
             || written as usize > size_of::<ProcessIds>()
         {
-            #[cfg(test)]
-            eprintln!(
-                "windows job parent={} incomplete snapshot assigned={} listed={} bytes={written}",
-                self.parent_id, information.assigned, information.listed
-            );
             return Err(io::Error::other("job process snapshot is incomplete"));
         }
         let mut pids = Vec::with_capacity(count);
@@ -483,71 +459,6 @@ impl WindowsJob {
         .map_err(io::Error::other)?;
         Ok(information)
     }
-
-    #[cfg(test)]
-    fn test_counts(&self) -> io::Result<(u32, u32, u32)> {
-        let information = self.accounting()?;
-        Ok((
-            information.TotalProcesses,
-            information.ActiveProcesses,
-            information.TotalTerminatedProcesses,
-        ))
-    }
-}
-
-#[cfg(test)]
-fn trace_process(pid: u32, handle: HANDLE) {
-    use windows::Win32::{
-        Foundation::FILETIME,
-        System::Threading::{GetProcessTimes, PROCESS_NAME_FORMAT, QueryFullProcessImageNameW},
-    };
-    let mut buffer = [0u16; 1024];
-    let mut length = buffer.len() as u32;
-    let image = unsafe {
-        QueryFullProcessImageNameW(
-            handle,
-            PROCESS_NAME_FORMAT(0),
-            windows::core::PWSTR(buffer.as_mut_ptr()),
-            &mut length,
-        )
-    }
-    .map(|_| {
-        String::from_utf16_lossy(&buffer[..length as usize])
-            .rsplit(['\\', '/'])
-            .next()
-            .unwrap_or("?")
-            .to_owned()
-    });
-    let mut creation = FILETIME::default();
-    let mut exit = FILETIME::default();
-    let mut kernel = FILETIME::default();
-    let mut user = FILETIME::default();
-    let created =
-        unsafe { GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user) }.map(
-            |_| (u64::from(creation.dwHighDateTime) << 32) | u64::from(creation.dwLowDateTime),
-        );
-    eprintln!("windows retained pid={pid} image={image:?} created={created:?}");
-}
-
-#[cfg(test)]
-static TEST_JOBS: std::sync::Mutex<BTreeMap<u32, usize>> = std::sync::Mutex::new(BTreeMap::new());
-
-#[cfg(test)]
-pub(super) fn test_job(parent_id: u32) -> io::Result<OwnedHandle> {
-    use std::os::windows::io::BorrowedHandle;
-    let jobs = TEST_JOBS.lock().unwrap();
-    let raw = jobs
-        .get(&parent_id)
-        .ok_or_else(|| io::Error::other("job not registered"))?;
-    // The job cannot drop while this registry lock is held.
-    unsafe { BorrowedHandle::borrow_raw(*raw as _) }.try_clone_to_owned()
-}
-
-#[cfg(test)]
-impl Drop for WindowsJob {
-    fn drop(&mut self) {
-        TEST_JOBS.lock().unwrap().remove(&self.parent_id);
-    }
 }
 
 fn signaled(handle: HANDLE) -> io::Result<bool> {
@@ -573,8 +484,13 @@ fn before_deadline(deadline: Instant) -> io::Result<()> {
 mod tests {
     use super::*;
     use std::{
+        os::windows::io::AsHandle,
         os::windows::process::CommandExt,
         process::{Child, Command, Stdio},
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
     };
     use windows::Win32::System::Threading::{CREATE_SUSPENDED, DETACHED_PROCESS};
 
@@ -645,6 +561,159 @@ mod tests {
                 retained
             );
             assert!(signaled(HANDLE(retained)).unwrap());
+        }
+    }
+
+    #[test]
+    fn a_runnable_previous_observer_does_not_block_the_next_thread() {
+        let mut parent = SuspendedChild::new();
+        let mut job = WindowsJob::assign(&parent.0).unwrap();
+        let active = Arc::new(AtomicBool::new(false));
+        let running = Arc::new(AtomicBool::new(true));
+        let worker_active = active.clone();
+        let worker_running = running.clone();
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+        let observer = thread::spawn(move || {
+            let observed = job.observe(Instant::now() + Duration::from_secs(5));
+            sender.send((job, observed)).unwrap();
+            worker_active.store(true, Ordering::Release);
+            // Waiting on a channel or mutex would hide the retained IOCP association.
+            let deadline = Instant::now() + Duration::from_secs(10);
+            while worker_running.load(Ordering::Acquire) && Instant::now() < deadline {
+                std::hint::spin_loop();
+            }
+        });
+        let (mut job, first) = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+        let start_deadline = Instant::now() + Duration::from_secs(5);
+        while !active.load(Ordering::Acquire) && Instant::now() < start_deadline {
+            thread::yield_now();
+        }
+        let was_active = active.load(Ordering::Acquire);
+        let mut next = SuspendedChild::new();
+        unsafe { AssignProcessToJobObject(job.raw(), HANDLE(next.0.as_raw_handle())) }.unwrap();
+        let deadline = Instant::now() + Duration::from_secs(1);
+        let mut observed = Ok(true);
+        while !job.processes.contains_key(&next.0.id()) && Instant::now() < deadline {
+            observed = job.observe(deadline);
+            if observed.is_err() {
+                break;
+            }
+            thread::yield_now();
+        }
+        let captured = job
+            .processes
+            .get(&next.0.id())
+            .is_some_and(|process| process.verified);
+        let remained_running = !observer.is_finished();
+        running.store(false, Ordering::Release);
+        observer.join().unwrap();
+        parent.stop();
+        next.stop();
+        assert!(was_active);
+        assert!(
+            remained_running,
+            "the prior observer must stay runnable throughout handoff"
+        );
+        first.unwrap();
+        observed.unwrap();
+        assert!(
+            captured,
+            "the former observer withheld the next process notification"
+        );
+        job.stop(Instant::now() + Duration::from_secs(5)).unwrap();
+    }
+
+    #[test]
+    fn denied_termination_waits_for_that_identity_and_keeps_stopping_other_members() {
+        for external_completion in [true, false] {
+            let mut parent = SuspendedChild::new();
+            let mut job = WindowsJob::assign(&parent.0).unwrap();
+            let mut child = SuspendedChild::new();
+            unsafe { AssignProcessToJobObject(job.raw(), HANDLE(child.0.as_raw_handle())) }
+                .unwrap();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            job.capture(&[child.0.id()], deadline).unwrap();
+            job.verify_members(deadline).unwrap();
+            // The first member denies termination, so stopping it must not block the next member.
+            let (denied, other) = if parent.0.id() < child.0.id() {
+                (&mut parent, &mut child)
+            } else {
+                (&mut child, &mut parent)
+            };
+            let readonly = owned(
+                unsafe {
+                    OpenProcess(
+                        PROCESS_SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
+                        false,
+                        denied.0.id(),
+                    )
+                }
+                .unwrap(),
+            );
+            let retained = readonly.as_raw_handle();
+            job.processes.get_mut(&denied.0.id()).unwrap().handle = readonly;
+            let external = if external_completion {
+                let full = denied.0.as_handle().try_clone_to_owned().unwrap();
+                let other_handle = other.0.as_handle().try_clone_to_owned().unwrap();
+                Some(thread::spawn(move || {
+                    let waited =
+                        unsafe { WaitForSingleObject(HANDLE(other_handle.as_raw_handle()), 1000) };
+                    if waited != WAIT_OBJECT_0 {
+                        return Err(io::Error::other("cleanup did not stop the other member"));
+                    }
+                    unsafe { TerminateProcess(HANDLE(full.as_raw_handle()), 1) }
+                        .map_err(io::Error::other)
+                }))
+            } else {
+                None
+            };
+            let timeout = if external_completion {
+                Duration::from_secs(2)
+            } else {
+                Duration::from_millis(20)
+            };
+            let outcome = job.stop(Instant::now() + timeout);
+            let retry = if external_completion {
+                None
+            } else {
+                Some(job.stop(Instant::now() + Duration::from_millis(20)))
+            };
+            let denied_stopped = signaled(HANDLE(retained)).unwrap();
+            let other_stopped = unsafe {
+                WaitForSingleObject(
+                    HANDLE(other.0.as_raw_handle()),
+                    if external_completion { 0 } else { 1000 },
+                )
+            } == WAIT_OBJECT_0;
+            let still_owned = job.processes[&denied.0.id()].handle.as_raw_handle() == retained;
+            let externally_stopped = external.map(|thread| thread.join().unwrap());
+            // Stop fixtures before assertions, including the deliberately denied timeout case.
+            if !signaled(HANDLE(denied.0.as_raw_handle())).unwrap() {
+                denied.stop();
+            }
+            if !signaled(HANDLE(other.0.as_raw_handle())).unwrap() {
+                other.stop();
+            }
+            denied.0.wait().unwrap();
+            other.0.wait().unwrap();
+            assert!(still_owned);
+            assert!(
+                other_stopped,
+                "denied termination prevented another member from stopping"
+            );
+            if external_completion {
+                externally_stopped.unwrap().unwrap();
+                outcome.unwrap();
+                assert!(denied_stopped);
+            } else {
+                assert_eq!(outcome.unwrap_err().kind(), io::ErrorKind::TimedOut);
+                assert_eq!(retry.unwrap().unwrap_err().kind(), io::ErrorKind::TimedOut);
+                assert!(
+                    !denied_stopped,
+                    "the denied request must not be treated as completion"
+                );
+                job.stop(Instant::now() + Duration::from_secs(5)).unwrap();
+            }
         }
     }
 }

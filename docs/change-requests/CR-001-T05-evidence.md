@@ -165,13 +165,23 @@ contracts; no test or permission check was disabled.
   handle after cleanup. Looking up a PID only after cleanup could observe a
   different process after Windows reused the ID. The check repeats completion,
   cancellation, and shutdown ten times each on Windows.
-- Windows cleanup captures and verifies member handles before requesting
-  individual process termination. It waits on those same handles and requires
-  a fresh empty member list. This removes reliance on job accounting as a
-  completion barrier. The 30-case held-handle characterization passed before
-  this refactor; the same assertions remain afterward. Failed cleanup retains
-  the handles for retry within the existing five-second deadline. The native
-  contract records the enumeration and resource limits.
+- Windows cleanup retains and verifies process handles during execution, then
+  requests individual termination and waits on those same handles. A fresh
+  empty member list, drained notification queue, and complete lifetime-count
+  coverage are also required. The held-handle test reproduced a real race:
+  processes could leave the job's current list before their handles signaled.
+  A later trace identified both `conhost.exe` and a Node descendant rejecting
+  termination with access denied while their existing termination was still
+  incomplete. Cleanup continues observing these handles within the existing
+  five-second deadline. It also releases the notification port's thread
+  association before returning to the worker pool. Failed cleanup retains its
+  handles; incomplete process history cannot produce a successful result.
+  The native contract records these rules and the resource limits.
+  Three Windows-only regressions use real native objects to check missing
+  notifications, observer-thread handoff, and denied termination. The last
+  case covers both eventual exit and repeated failure while the process stays
+  alive. Temporary traces and cloned diagnostic job handles were removed before
+  final verification.
 - macOS cleanup continues bounded reaping and observation when Darwin reports
   `EPERM` for a zombie-only process group. Success still requires the group to
   disappear. Two real-process regressions retain an unreaped child with
