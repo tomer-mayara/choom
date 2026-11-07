@@ -56,7 +56,9 @@ measured large-repository performance target. Native operations share the
 A success returns canonical sorted declarations, canonical unique sorted
 inputs, and the selected analyzer descriptor. It transfers an open repository
 session to the caller. The caller must close it after the later import work.
-A failure closes the session; cleanup failure is itself reported. Discovery
+A failure closes the session; `cleanup-failed` reports an unconfirmed close
+without transferring a usable owner. The load controller requires a restart
+instead of treating that result as an ordinary retryable discovery failure. Discovery
 state belongs to one call, so retries and concurrent calls do not share a graph.
 The filesystem is not a transactional snapshot; changed files can fail a read.
 
@@ -68,5 +70,5 @@ production timing baseline, so OpenSLO remains unchanged.
 Run the [public API scenarios](../behavior/architecture-import/t03-api.feature)
 with `bun run test:behavior:native --tags @cr-001-t03-api`, focused workspace
 tests with `bun test ./test/unit/architecture`, and conformance checks with
-`bun test ./test/interface/architecture`. The original import UI scenarios
-remain separate and need the later workflow tickets.
+`bun test ./test/interface/architecture`. T07's browser scenarios exercise the
+same discovery through the Load Repo controller and a validated native boundary double.

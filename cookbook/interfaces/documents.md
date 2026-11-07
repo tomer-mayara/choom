@@ -75,9 +75,9 @@ the caller can retry it. Selected-file reads remain available.
 
 Native writes use a temporary file and atomic promotion in the same directory.
 There is no persistent current-document pointer, restart recovery, or native
-view-commit operation. T07 owns layout and the final synchronous replacement of
-the displayed diagram. It must release the failed candidate or superseded
-snapshot through the file boundary.
+view-commit operation. The load controller owns layout and the final synchronous
+replacement of the displayed diagram. It releases failed candidates and
+superseded snapshots through the file boundary.
 
 ## Opening and exporting files
 
@@ -102,6 +102,18 @@ is no persistent export journal or search through user directories. These
 operations do not promise power-loss durability or coordination with other
 programs that change the destination.
 
+Desktop composition first sends `overwrite: false`. If the destination exists,
+it asks for explicit replacement consent through the
+[diagram dialog operations](document-dialogs.tsp) and retries with the same
+captured bytes. A save picker may also show the operating system's replacement
+prompt; its returned path cannot prove consent for a file created afterward.
+Declining the explicit prompt leaves the existing file unchanged. Failed cleanup
+while that prompt is open prevents the replacement attempt.
+
+Browser selection reads at most 16 MiB and requires valid UTF-8 before calling
+the common decoder. Browser export downloads the same encoded semantic document
+as `architecture.choom.yaml`; it does not need native storage or source files.
+
 ## Native boundary and observations
 
 | Logical operation | Native command |
@@ -116,8 +128,8 @@ programs that change the destination.
 Commands are restricted to the local main window. Native storage preserves
 bounded text; architecture validation belongs to the workspace codec. The
 platform validates both sides of the TypeSpec boundary. Browser callers can use
-the codec, but native file operations report unavailable. T07 supplies browser
-file selection/download and desktop dialog wiring.
+the codec, but native file operations report unavailable. Workspace composition
+binds browser file selection/download and desktop dialogs separately.
 
 Results include a coarse stage where relevant, outcome, and duration in
 milliseconds. Error codes have fixed messages. Host paths and raw I/O/parser

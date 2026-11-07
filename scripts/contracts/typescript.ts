@@ -20,6 +20,7 @@ const targets = [
   { namespace: "Choom.Discovery", path: "src/architecture/generated/contracts.ts" },
   { namespace: "Choom.DepCruiser", path: "src/architecture/dependency-cruiser/generated/contracts.ts" },
   { namespace: "Choom.Documents", path: "src/lib/generated/contracts.ts" },
+  { namespace: "Choom.Workspace", path: "src/architecture/generated/workflow.ts" },
 ];
 
 function identifier(name: string): string {
@@ -34,7 +35,7 @@ function primitiveReference(type: Type): string | undefined {
     if (value === null || !Number.isFinite(value)) throw new Error(`Unsupported numeric literal: ${type.valueAsString}`);
     return JSON.stringify(value);
   }
-  if (type.kind === "Intrinsic" && type.name === "null") return "null";
+  if (type.kind === "Intrinsic" && (type.name === "null" || type.name === "void")) return type.name;
   if (type.kind === "Scalar" && type.namespace?.name === "TypeSpec") {
     if (type.name === "string" || type.name === "boolean") return type.name;
     if (type.name === "integer" || type.name === "float64") return "number";

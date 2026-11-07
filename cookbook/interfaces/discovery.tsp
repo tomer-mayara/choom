@@ -102,6 +102,9 @@ union DiscoveryFailureCode {
   "name-mismatch",
   "limit-exceeded",
   "access-failed",
+
+  // Failure cleanup did not release the repository session. No owner is transferred.
+  "cleanup-failed",
 }
 
 @extension("additionalProperties", false)

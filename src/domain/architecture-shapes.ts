@@ -8,7 +8,10 @@ import type {
 
 const text = z.string().min(1);
 export const architectureComponentsSchema = z.array(ComponentCatalog.declarationSchema.extend({
-  reportedFiles: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  reportedFiles: z.number({ error: "Reported-file counts must be finite numbers." })
+    .int({ error: "Reported-file counts must be integers." })
+    .nonnegative({ error: "Reported-file counts cannot be negative." })
+    .max(Number.MAX_SAFE_INTEGER, { error: "Reported-file counts exceed the supported integer limit." }),
 }) satisfies z.ZodType<ArchitectureComponent>).min(1)
   .superRefine((components, context) => new ComponentCatalog(components).validate(context));
 

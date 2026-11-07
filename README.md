@@ -1,6 +1,8 @@
 # Choom
 
-A Bun / TypeScript / React workspace with a Tauri desktop shell. The starter includes a small architecture canvas to exercise React Flow, ELK layout, Zod validation, Markdown rendering, and the UI primitives.
+A Bun / TypeScript / React workspace with a Tauri desktop shell. Choom analyzes
+declared repository components and displays their imports with React Flow and
+ELK. Portable YAML keeps the semantic architecture independent of rendering.
 
 ## Set up
 
@@ -22,7 +24,21 @@ Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri sy
 bun run desktop
 ```
 
-The directory picker returns a path; it does not read files or import a project. Its capability is restricted to the main window. The browser hides desktop-only actions.
+Use **Load Repo** in desktop Choom to select a repository root with a
+`component.yaml`, explicit analyzer metadata, supported Node, and a local
+dependency-cruiser installation. Loading runs the repository's JavaScript
+configuration; only load repositories you trust. One declared component may own
+several subdirectories. Choom does not infer extra components from folders.
+
+Use **Open Diagram** in desktop or browser to view a saved `.choom.yaml` without
+the repository or analyzer. **Export Diagram** saves the current semantic
+document. A failed or cancelled load preserves the current diagram; **Retry**
+reuses the last selection. Cleanup failures keep new loads blocked until cleanup
+succeeds. Unconfirmed analyzer or discovery cleanup requires restarting the app.
+
+The retained **Choose directory** action only displays a path. Desktop
+capabilities are restricted to the main window; the browser hides desktop-only
+actions.
 
 ## Development commands
 
@@ -65,7 +81,9 @@ bun run test:e2e
 process. Add new DOM suites to that command. `bun test` defaults to
 `test/unit/domain`. Cucumber loads `test/steps`; its default/native profile excludes
 `@browser` and `@packaged`. `test:e2e` runs the browser profile using Playwright through
-`test:behavior:browser`, with one build and preview. Failed browser scenarios
+`test:behavior:browser`, with a production build and preview. Layout fault cases
+use a separate test entry that injects a controlled layout into the real App and
+workflow; it never enters the production bundle. Failed browser scenarios
 retain screenshots and traces under `test-results/`. `bun run check` stays
 browser-free. GitHub Actions runs the constraint script and separate code-hygiene
 checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
@@ -89,8 +107,8 @@ bun run test:e2e --tags '@cr-001'
 [CR-001-T02](docs/change-requests/CR-001-T02-evidence.md) adds the analyzer-neutral
 domain contract, document builder, and strict version-1 validator. A declared
 component owns its subdirectories until a more-specific declaration takes over.
-These public APIs are covered without a browser; the import UI still needs the
-remaining tickets. Run the focused checks with:
+These public APIs are covered without a browser and consumed by the T07 load
+workflow. Run the focused checks with:
 
 ```sh
 bun run test:behavior:native --tags @cr-001-t02-domain
@@ -101,7 +119,8 @@ bun test ./test/interface/domain/architecture-document.test.ts ./test/interface/
 [CR-001-T03](docs/change-requests/CR-001-T03-evidence.md) adds manifest discovery
 and bounded native repository access. The workspace follows linked declarations
 and explicit root analyzer metadata; one component can own multiple source
-directories. Discovery does not run an analyzer and is not wired to the UI yet.
+directories. Discovery does not run an analyzer; the load workflow composes it
+with the neutral architectural layer.
 See the [discovery contract](cookbook/interfaces/discovery.md) for path rules,
 session ownership, and resource limits. Focused checks:
 
@@ -163,11 +182,25 @@ The installed Linux route runs
 operations. It checks source-to-document export/reopen through real native IPC,
 replacement consent, and bounded candidate storage.
 
+[CR-001-T07](docs/change-requests/CR-001-T07-evidence.md) connects selection, discovery, analysis, candidate validation, layout,
+and one final view commit. It renders declared components, import evidence,
+findings, and provenance. The [workspace contract](cookbook/interfaces/workspace.md)
+describes cancellation, retry, cleanup ownership, and export independence.
+Focused checks:
+
+```sh
+bun run test:behavior:native --tags '@cr-001-t07-api or @cr-001-t07-dialogs'
+bun test ./test/unit/architecture
+bun run test:dom
+bun run test:e2e --tags @cr-001-t07
+```
+
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
-Desktop simulations double the vendor open/save dialog boundary. Analyzer,
-delay, and storage-fault inputs are staged for the TypeSpec bindings delivered
-by later tickets. Scenarios cannot pass until their required inputs and controls
-have runtime observations; staging facts alone supplies no evidence. These
+Desktop simulations double native dialogs and validate repository, analyzer,
+and document commands against their TypeSpec contracts. They use real fixture
+files and recorded analyzer reports, then run the real conversion and document
+workflow. Scenarios cannot pass until their required inputs and controls have
+runtime observations; staging facts alone supplies no evidence. These
 simulations do not prove native execution or failure handling. See the
 [installed acceptance guide](docs/change-requests/CR-001-native-acceptance.md)
 for Linux prerequisites, explicit application/dependency paths, and manual
@@ -279,9 +312,9 @@ workspace and native-shell children. The workspace owns `architecture/`, `compon
 with child boundaries for the architecture model and desktop adapter. These four
 implementation components keep UI primitives and layout internal to the workspace.
 
-`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. Concrete analyzer imports are limited to their collaborators and the named `src/architecture/create-architectural-layer.ts` composition entrypoint. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. The example loads React Flow and ELK on demand.
+`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. Concrete analyzer imports are limited to their collaborators and the named `src/architecture/create-architectural-layer.ts` composition entrypoint. The load controller uses injected neutral collaborators; the diagram consumes prepared data. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. ELK loads on demand before a diagram commits.
 
-ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; the example loads it on request.
+ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; an example or document load requests it.
 
 ## Dependency policy
 

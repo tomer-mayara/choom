@@ -1,5 +1,5 @@
 name: desktop-adapter
-description: Detect the Tauri host, select a project, and bind repository, analyzer, and document operations.
+description: Detect the Tauri host, select projects and diagram files, and bind repository, analyzer, and document operations.
 
 artifacts:
   behavior:
@@ -12,6 +12,7 @@ artifacts:
     - path: ../../cookbook/behavior/architecture-import/t06-documents.feature
     - path: ../../cookbook/behavior/architecture-import/t06-api.feature
     - path: ../../cookbook/behavior/architecture-import/t06-installed.feature
+    - path: ../../cookbook/behavior/architecture-import/t07-dialogs.feature
     - path: ../../cookbook/behavior/architecture-import/t08-installed.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
@@ -21,6 +22,7 @@ artifacts:
     - path: ../../cookbook/interfaces/desktop.tsp
     - path: ../../cookbook/interfaces/desktop-analyzer.tsp
     - path: ../../cookbook/interfaces/desktop-documents.tsp
+    - path: ../../cookbook/interfaces/document-dialogs.tsp
     - path: ../../cookbook/interfaces/documents.md
     - path: ../../cookbook/interfaces/desktop-analyzer.md
     - path: ../../cookbook/interfaces/desktop.md

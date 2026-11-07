@@ -7,7 +7,7 @@ import { BrowserImportDriver } from "../../support/import/browser-driver.ts";
 import { PackagedImportDriver } from "../../support/import/packaged-driver.ts";
 import { quoted } from "../../support/import/fixtures.ts";
 import { installFixtureDependencies } from "../../support/import/installed-fixture.ts";
-import { exportCurrent, loadRepository, showNamed } from "../../support/import/interactions.ts";
+import { expectComponents, exportCurrent, loadRepository, showNamed } from "../../support/import/interactions.ts";
 import { driver, fixture, type ImportWorld } from "../../support/import/world.ts";
 
 Given("Choom is installed independently of its development checkout", { timeout: 60_000 }, async function (this: ImportWorld) {
@@ -41,6 +41,7 @@ When(/^I open that export in (the browser|installed desktop Choom)$/, { timeout:
   assert.ok(this.installedDriver);
   this.importDriver = this.installedDriver;
   await loadRepository(this);
+  await expectComponents(this, fixture(this).declarations);
   const exported = await exportCurrent(this);
   const sourceRoot = await realpath(fixture(this).root);
   const ownedDirectory = await realpath(fixture(this).directory);

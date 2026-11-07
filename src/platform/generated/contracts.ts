@@ -87,6 +87,18 @@ export interface DesktopOperations {
   selectProjectDirectory(): DirectorySelection;
 }
 
+export interface DiagramDestinationRequest {
+  fileName: string;
+}
+
+export interface DiagramDialogOperations {
+  selectDiagramFile(): DiagramFileSelection;
+  selectDiagramDestination(request: DiagramDestinationRequest): DiagramFileSelection;
+  confirmDiagramReplacement(): boolean;
+}
+
+export type DiagramFileSelection = string | null;
+
 export type DirectorySelection = string | null;
 
 export interface DocumentFileOperations {

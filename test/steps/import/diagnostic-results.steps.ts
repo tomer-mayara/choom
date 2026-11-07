@@ -43,7 +43,13 @@ Then("its metrics are source.instability {float} and target.instability {float}"
 
 Then(/^loading is refused with an unsupported-configuration explanation for (.+)$/, async function (this: ImportWorld, condition: string) {
   await expectFailure(this, "unsupported");
-  const identifyingTerm = condition.split(" ")[0];
+  const terms: Record<string, string> = {
+    "collapse enabled": "collapse", "focus enabled": "focus", "reaches enabled": "reaches",
+    "consolidated module records": "consolidated module records",
+    "a base directory other than the selected root": "base directory",
+    "effective output other than JSON": "output format", "persistent caching enabled": "persistent caching",
+  };
+  const identifyingTerm = terms[condition];
   assert.ok(identifyingTerm);
   await expectFailure(this, identifyingTerm);
 });

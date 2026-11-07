@@ -19,7 +19,7 @@
     "habit-hooks": "uvx --from 'habit-hooks[typescript]==1.5.0' habit-hooks",
     "test": "bun run test:native && bun run test:dom",
     "test:native": "bun test --path-ignore-patterns '**/*.test.tsx' ./test/unit",
-    "test:dom": "bun test --preload ./test/preload.ts ./test/unit/app.test.tsx",
+    "test:dom": "bun test --preload ./test/preload.ts ./test/unit/app.test.tsx ./test/unit/components ./test/unit/platform/browser-documents.test.tsx",
     "test:rust": "bun run desktop:test",
     "test:watch": "bun test --watch",
     "test:e2e": "bun run test:behavior:browser",

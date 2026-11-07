@@ -4,9 +4,8 @@ import { checkYamlTokenLimits } from "./lex.ts";
 import { invalidEncoding, MAX_YAML_DEPTH, MAX_YAML_NODES, structureLimit, utf8Bytes } from "./limits.ts";
 
 function rejectProperties(tokens: readonly CST.SourceToken[]): void {
-  if (tokens.some(({ type }) => type === "anchor" || type === "tag")) {
-    invalidEncoding("YAML anchors and explicit tags are unsupported.");
-  }
+  if (tokens.some(({ type }) => type === "anchor")) invalidEncoding("YAML anchors are unsupported.");
+  if (tokens.some(({ type }) => type === "tag")) invalidEncoding("Explicit YAML tags are unsupported.");
 }
 
 function checkFlowItems(collection: CST.FlowCollection): void {

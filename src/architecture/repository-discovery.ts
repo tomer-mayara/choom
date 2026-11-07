@@ -70,7 +70,7 @@ export class RepositoryDiscovery {
     } catch {
       // Cleanup failure must remain visible when a transport rejects its promise.
     }
-    return new DiscoveryProblem("access-failed", `${problem.message} The repository session could not be closed.`);
+    return new DiscoveryProblem("cleanup-failed", `${problem.message} The repository session could not be closed.`);
   }
 }
 
@@ -101,7 +101,12 @@ class DiscoveryRun {
   private async readManifest(id: string): Promise<ManifestLocation> {
     const path = id === "." ? "component.yaml" : `${id}/component.yaml`;
     const read = await this.access.readRepositoryText({ repositorySession: this.session, path });
-    if (read.status === "failure") throw accessProblem(read, "manifest-unreadable", `The manifest at '${path}' could not be read.`);
+    if (read.status === "failure") {
+      const reason = id === "."
+        ? "The selected repository needs a readable root component.yaml manifest."
+        : "Each declared child needs a readable component.yaml manifest.";
+      throw accessProblem(read, "manifest-unreadable", reason);
+    }
     this.#textBytes += new TextEncoder().encode(read.value.text).byteLength;
     if (this.#textBytes > MAX_TOTAL_TEXT_BYTES) throw new DiscoveryProblem("limit-exceeded", "The declared manifests exceed the total text limit.");
     const manifest = readComponentManifest(read.value.text);
@@ -112,16 +117,16 @@ class DiscoveryRun {
   }
 
   private addComponent(location: ManifestLocation, parent?: string): void {
-    if (this.#directories.has(location.id) || this.#names.has(location.manifest.name)) {
-      throw new DiscoveryProblem("duplicate-component", "Each declared component needs a unique directory and name.");
-    }
+    if (this.#directories.has(location.id)) throw new DiscoveryProblem("duplicate-component", "Component directories must be unique.");
+    if (this.#names.has(location.manifest.name)) throw new DiscoveryProblem("duplicate-component", "Component names must be unique.");
     if (this.#components.length >= MAX_MANIFESTS) throw new DiscoveryProblem("limit-exceeded", "The repository declares too many components.");
     this.#directories.add(location.id);
     this.#names.add(location.manifest.name);
     this.#components.push({ id: location.id, name: location.manifest.name, ...(parent === undefined ? {} : { parent }) });
   }
 
-  private async visit(location: ManifestLocation): Promise<void> {
+  private async visit(location: ManifestLocation, ancestors: readonly string[] = []): Promise<void> {
+    const lineage = [...ancestors, location.id];
     const artifacts = location.manifest.artifacts;
     for (const entries of [artifacts?.behavior, artifacts?.observability, artifacts?.architecture, artifacts?.contracts]) {
       if (!entries?.length) continue;
@@ -131,21 +136,22 @@ class DiscoveryRun {
     for (const child of location.manifest.children ?? []) {
       const [resolved] = await this.resolve(location.base, [child.path], "invalid-reference");
       if (resolved?.kind !== "directory") throw new DiscoveryProblem("invalid-reference", "A child component must name a directory.");
-      if (this.#directories.has(resolved.path)) throw new DiscoveryProblem("duplicate-component", "A component directory is linked more than once.");
+      if (lineage.includes(resolved.path)) throw new DiscoveryProblem("duplicate-component", "Child links must not form cycles.");
+      if (this.#directories.has(resolved.path)) throw new DiscoveryProblem("duplicate-component", "Component directories must be unique.");
       if (this.#components.length >= MAX_MANIFESTS) throw new DiscoveryProblem("limit-exceeded", "The repository declares too many components.");
       const linked = await this.readManifest(resolved.path);
       if (linked.manifest.name !== child.name) throw new DiscoveryProblem("name-mismatch", "A child name does not match its component manifest.");
       this.addComponent(linked, location.id);
-      await this.visit(linked);
+      await this.visit(linked, lineage);
     }
   }
 
   private async selectAnalyzer(root: ManifestLocation): Promise<AnalysisDescriptor> {
     const annotated = (root.manifest.artifacts?.architecture ?? []).filter((entry) => entry.enforcer !== undefined || entry.inputs !== undefined);
-    if (annotated.length === 0) throw new DiscoveryProblem("missing-analyzer", "The root manifest must declare an analyzer.");
-    if (annotated.length !== 1) throw new DiscoveryProblem("multiple-analyzers", "The root manifest must declare exactly one analyzer.");
+    if (annotated.length === 0) throw new DiscoveryProblem("missing-analyzer", "An enforcer declaration is required in the root manifest.");
+    if (annotated.length !== 1) throw new DiscoveryProblem("multiple-analyzers", "Exactly one root analyzer is supported.");
     const entry = annotated[0];
-    if (entry?.enforcer !== "dependency-cruiser") throw new DiscoveryProblem("unsupported-enforcer", "The declared root enforcer is not supported.");
+    if (entry?.enforcer !== "dependency-cruiser") throw new DiscoveryProblem("unsupported-enforcer", "The declared enforcer is unsupported.");
     const inputs = await this.analyzerInputs(root.base, entry);
     const [config] = await this.resolve(root.base, [entry.path], "invalid-reference");
     if (config?.kind !== "file") throw new DiscoveryProblem("invalid-reference", "The analyzer configuration must be a file.");
@@ -154,7 +160,8 @@ class DiscoveryRun {
   }
 
   private async analyzerInputs(base: string, entry: ManifestArchitectureArtifact): Promise<string[]> {
-    if (!entry.inputs?.length) throw new DiscoveryProblem("invalid-input", "The root analyzer needs explicit source inputs.");
+    if (entry.inputs === undefined) throw new DiscoveryProblem("invalid-input", "Explicit source inputs are required for the root analyzer.");
+    if (entry.inputs.length === 0) throw new DiscoveryProblem("invalid-input", "At least one source input is required for the root analyzer.");
     const paths = await this.resolve(base, entry.inputs, "invalid-input");
     if (paths.some((item) => !isManifestReference(item.path))) {
       throw new DiscoveryProblem("invalid-input", "Resolved analyzer inputs must be literal relative paths.");
@@ -164,10 +171,17 @@ class DiscoveryRun {
 
   private async resolve(base: string, paths: string[], code: "invalid-reference" | "invalid-input"): Promise<InternalRepositoryPath[]> {
     if (paths.some((path) => !isManifestReference(path))) {
-      throw new DiscoveryProblem(code, "Manifest references must be literal relative paths.");
+      throw new DiscoveryProblem(code, code === "invalid-input"
+        ? "Source inputs must be literal files or folders."
+        : "Manifest references must be literal relative paths.");
     }
     const resolved = await this.access.resolveRepositoryPaths({ repositorySession: this.session, base, paths });
-    if (resolved.status === "failure") throw accessProblem(resolved, code, "A declared path could not be resolved.");
+    if (resolved.status === "failure") {
+      const reason = code === "invalid-input" && resolved.code === "not-found"
+        ? "Source inputs must exist inside the selected repository."
+        : "A declared path could not be resolved.";
+      throw accessProblem(resolved, code, reason);
+    }
     const internal: InternalRepositoryPath[] = [];
     for (const item of resolved.value.paths) {
       if (item.location === "outside") throw new DiscoveryProblem(code, "Manifest references must stay inside the repository.");
@@ -178,6 +192,9 @@ class DiscoveryRun {
 }
 
 function accessProblem(failure: RepositoryFailure, fallback: DiscoveryFailureCode, message: string): DiscoveryProblem {
+  if (failure.code === "access-denied") {
+    return new DiscoveryProblem("access-failed", "The operating system denied repository access. Check the selected repository's permissions.");
+  }
   if (failure.code === "limit-exceeded") return new DiscoveryProblem("limit-exceeded", "Repository access exceeded a resource limit.");
   if (failure.code === "outside-root") return new DiscoveryProblem("invalid-reference", "Manifest references must stay inside the repository.");
   if (["invalid-session", "unavailable", "invalid-response", "source-changed", "io-error"].includes(failure.code)) {

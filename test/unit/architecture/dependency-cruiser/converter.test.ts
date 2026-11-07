@@ -46,7 +46,32 @@ test.each(["collapse", "focus", "reaches"])("effective %s changes graph semantic
   const fixture = converterFixture();
   fixture.report.summary.optionsUsed[option] = "src";
   syncReport(fixture);
-  expect(await new DepCruiserReportConverter(fixture.repository).convert(fixture.input)).toMatchObject({ status: "failure", code: "unsupported" });
+  expect(await new DepCruiserReportConverter(fixture.repository).convert(fixture.input)).toMatchObject({
+    status: "failure", code: "unsupported", message: `The ${option} option is unsupported for complete file observations.`,
+  });
+});
+
+test.each([
+  ["outputType", "dot", "Unsupported output format: dependency-cruiser must produce JSON."],
+  ["cache", true, "Persistent caching is unsupported; run the analyzer without a cache."],
+  ["baseDir", "src", "An unsupported base directory was reported; use the selected repository root."],
+] as const)("unsupported %s explains only the failing setting", async (option, value, message) => {
+  const fixture = converterFixture();
+  fixture.report.summary.optionsUsed[option] = value;
+  syncReport(fixture);
+  expect(await new DepCruiserReportConverter(fixture.repository).convert(fixture.input)).toMatchObject({ status: "failure", code: "unsupported", message });
+});
+
+test("consolidated module records identify the lost file identity", async () => {
+  const fixture = converterFixture();
+  const module = fixture.report.modules[0];
+  if (!module) throw new Error("The fixture must have a module.");
+  module.consolidated = true;
+  syncReport(fixture);
+  expect(await new DepCruiserReportConverter(fixture.repository).convert(fixture.input)).toMatchObject({
+    status: "failure", code: "unsupported",
+    message: "Consolidated module records are unsupported because each file must retain its identity.",
+  });
 });
 
 test("required transpiler absence fails even when JSON exists", async () => {
@@ -59,7 +84,10 @@ test("required transpiler absence fails even when JSON exists", async () => {
 test("native missing paths do not create partial success", async () => {
   const fixture = converterFixture();
   fixture.repository.files.delete("src/components/panel.ts");
-  expect(await new DepCruiserReportConverter(fixture.repository).convert(fixture.input)).toMatchObject({ status: "failure", code: "source-changed", message: expect.stringContaining("src/components/panel.ts") });
+  expect(await new DepCruiserReportConverter(fixture.repository).convert(fixture.input)).toMatchObject({
+    status: "failure", code: "source-changed",
+    message: "The reported source path 'src/components/panel.ts' is no longer available; run the analysis again.",
+  });
 });
 
 test("ambiguous finding scopes and contradictory import flags fail deliberately", async () => {

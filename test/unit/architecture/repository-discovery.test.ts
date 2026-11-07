@@ -11,6 +11,21 @@ function rootManifest(children: ComponentManifest["children"] = []): ComponentMa
   };
 }
 
+test.each(["openRepository", "readRepositoryText", "resolveRepositoryPaths"] as const)(
+  "%s permission refusal identifies denied access and releases any session",
+  async (operation) => {
+    const repository = declaredRepository();
+    repository[operation] = async () => ({ status: "failure", code: "access-denied", message: "Access denied at /private/source." });
+    const result = await new RepositoryDiscovery(repository).discover({ rootPath: repository.rootPath });
+    expect(result).toMatchObject({
+      status: "failure", stage: "discovery", code: "access-failed",
+      message: "The operating system denied repository access. Check the selected repository's permissions.",
+    });
+    expect(JSON.stringify(result)).not.toContain("/private");
+    expect(repository.activeSessions.size).toBe(0);
+  },
+);
+
 test("discovery follows declarations and transfers a live session", async () => {
   const repository = declaredRepository();
   repository.setManifest("unused", { name: "unlinked" });
@@ -57,6 +72,57 @@ test("an empty root input is an analyzer input error", async () => {
   const result = await new RepositoryDiscovery(repository).discover({ rootPath: repository.rootPath });
 
   expect(result).toMatchObject({ status: "failure", code: "invalid-input" });
+});
+
+test("analyzer declaration failures explain the specific rule", async () => {
+  const analyzer = { path: ".dependency-cruiser.cjs", enforcer: "dependency-cruiser", inputs: ["src"] };
+  const cases: [ComponentManifest["artifacts"], string, string][] = [
+    [undefined, "missing-analyzer", "An enforcer declaration is required in the root manifest."],
+    [{ architecture: [analyzer, analyzer] }, "multiple-analyzers", "Exactly one root analyzer is supported."],
+    [{ architecture: [{ ...analyzer, enforcer: "private-tool" }] }, "unsupported-enforcer", "The declared enforcer is unsupported."],
+    [{ architecture: [{ path: analyzer.path, enforcer: analyzer.enforcer }] }, "invalid-input", "Explicit source inputs are required for the root analyzer."],
+    [{ architecture: [{ ...analyzer, inputs: [] }] }, "invalid-input", "At least one source input is required for the root analyzer."],
+    [{ architecture: [{ ...analyzer, inputs: ["missing-source"] }] }, "invalid-input", "Source inputs must exist inside the selected repository."],
+    [{ architecture: [{ ...analyzer, inputs: ["src/**/*.ts"] }] }, "invalid-input", "Source inputs must be literal files or folders."],
+    [{ architecture: [{ ...analyzer, inputs: ["$(private-command)"] }] }, "invalid-input", "Source inputs must be literal files or folders."],
+  ];
+  for (const [artifacts, code, message] of cases) {
+    const repository = declaredRepository();
+    repository.setManifest(".", { name: "Atlas", ...(artifacts === undefined ? {} : { artifacts }) });
+    const result = await new RepositoryDiscovery(repository).discover({ rootPath: repository.rootPath });
+    expect(result).toMatchObject({ status: "failure", code, message });
+    expect(repository.activeSessions.size).toBe(0);
+    expect(JSON.stringify(result)).not.toContain("private-");
+  }
+});
+
+test("repeated directories and ancestor cycles have distinct safe explanations", async () => {
+  const repeated = declaredRepository();
+  repeated.setManifest(".", rootManifest([{ name: "workspace", path: "src" }, { name: "workspace", path: "src" }]));
+  expect(await new RepositoryDiscovery(repeated).discover({ rootPath: repeated.rootPath })).toMatchObject({
+    status: "failure", code: "duplicate-component", message: "Component directories must be unique.",
+  });
+  const cycle = declaredRepository();
+  cycle.setManifest("src", { name: "workspace", children: [{ name: "Atlas", path: ".." }] });
+  expect(await new RepositoryDiscovery(cycle).discover({ rootPath: cycle.rootPath })).toMatchObject({
+    status: "failure", code: "duplicate-component", message: "Child links must not form cycles.",
+  });
+});
+
+test("missing manifest messages identify its role without quoting a host or declared path", async () => {
+  const missingRoot = declaredRepository();
+  missingRoot.files.delete("component.yaml");
+  expect(await new RepositoryDiscovery(missingRoot).discover({ rootPath: missingRoot.rootPath })).toMatchObject({
+    status: "failure", code: "manifest-unreadable", message: "The selected repository needs a readable root component.yaml manifest.",
+  });
+  const missingChild = declaredRepository();
+  missingChild.setManifest(".", rootManifest([{ name: "secret", path: "private-child" }]));
+  missingChild.addDirectory("private-child");
+  const result = await new RepositoryDiscovery(missingChild).discover({ rootPath: missingChild.rootPath });
+  expect(result).toMatchObject({
+    status: "failure", code: "manifest-unreadable", message: "Each declared child needs a readable component.yaml manifest.",
+  });
+  expect(JSON.stringify(result)).not.toContain("private-child");
 });
 
 test("invalid discovery requests do not acquire a repository session", async () => {
@@ -245,10 +311,22 @@ test("close failures stay visible alongside the original discovery problem", asy
 
   const result = await new RepositoryDiscovery(repository).discover({ rootPath: repository.rootPath });
 
-  expect(result).toMatchObject({ status: "failure", code: "access-failed" });
+  expect(result).toMatchObject({ status: "failure", code: "cleanup-failed" });
   if (result.status !== "failure") throw new Error("Expected failed discovery.");
   expect(result.message).toContain("component.yaml");
   expect(result.message).toContain("could not be closed");
+});
+
+test("a rejected session release is an explicit cleanup failure without raw transport output", async () => {
+  const repository = declaredRepository();
+  repository.files.delete("component.yaml");
+  repository.closeRepository = async () => { throw new Error("Cannot close /private/repository"); };
+
+  const result = await new RepositoryDiscovery(repository).discover({ rootPath: repository.rootPath });
+
+  expect(result).toMatchObject({ status: "failure", stage: "discovery", code: "cleanup-failed" });
+  expect(JSON.stringify(result)).not.toContain("/private/");
+  expect(repository.activeSessions.size).toBe(1);
 });
 
 test("transport rejections are bounded failures and release an opened session", async () => {

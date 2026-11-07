@@ -64,7 +64,24 @@ export async function expectEdge(world: ImportWorld, source: string, target: str
 }
 
 export async function expectFailure(world: ImportWorld, reason: string): Promise<void> {
-  await expect.poll(async () => (await driver(world).view()).alerts.join(" ").toLowerCase()).toContain(reason.toLowerCase());
+  const meanings: Record<string, string> = {
+    "the root component is required": "Components must have exactly one root with ID '.'",
+    "parents must reference components": "Nonroot components must reference a declared parent",
+    "parent references must form a tree": "Component parents must form an acyclic tree rooted at '.'",
+    "imports must reference components": "Relationships must reference declared components",
+    "component imports must have distinct ends": "Import relationships must connect distinct components",
+    "component imports must be aggregated": "Only one import relationship is allowed per ordered component pair",
+    "evidence must match its component import": "Evidence file ownership must match its relationship endpoints",
+    "that schema version is unsupported": "schema version is unsupported",
+    "custom tags are unsupported": "Explicit YAML tags are unsupported",
+    "a file must contain one document": "The file must contain one YAML document",
+    "that field is not part of the schema": "contains a field that is not part of the schema",
+    "source inputs must be files or folders": "Source inputs must be literal files or folders",
+    "manifest references must stay inside it": "Manifest references must stay inside the repository",
+    "child names must match their manifests": "A child name does not match its component manifest",
+    "each declared child needs a manifest": "Each declared child needs a readable component.yaml manifest",
+  };
+  await expect.poll(async () => (await driver(world).view()).alerts.join(" ").toLowerCase()).toContain((meanings[reason] ?? reason).toLowerCase());
 }
 
 export async function relationship(world: ImportWorld, source?: string, target?: string): Promise<Data> {

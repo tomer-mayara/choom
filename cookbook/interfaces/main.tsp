@@ -4,4 +4,6 @@ import "./desktop-analyzer.tsp";
 import "./discovery.tsp";
 import "./dependency-cruiser.tsp";
 import "./documents.tsp";
+import "./workflow.tsp";
+import "./document-dialogs.tsp";
 import "./desktop-documents.tsp";

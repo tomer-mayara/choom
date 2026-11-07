@@ -16,12 +16,14 @@ Given(/^analysis reports (an orphan finding for "[^"]+"|a folder finding for "[^
   if (finding.startsWith("an unresolved")) {
     const module = value.file("src/example.ts");
     module.dependencies = [{ module: path, resolved: path, couldNotResolve: true, dependencyTypes: ["unknown"], moduleSystem: "es6", dynamic: false }];
+    value.report.modules = [...objects(value.report.modules), { source: path, dependencies: [], couldNotResolve: true, dependencyTypes: ["unknown"] }];
   } else if (finding.startsWith("a folder")) {
     value.directories.add(path);
-    violation(this, { type: "folder", from: path, rule: { name: "folder-rule", severity: "warn" } });
+    value.report.folders = [{ name: path, moduleCount: 0 }];
+    violation(this, { type: "folder", from: path, to: path, rule: { name: "folder-rule", severity: "warn" } });
   } else {
     value.file(path);
-    violation(this, { type: "module", from: path, rule: { name: "no-orphans", severity: "warn" } });
+    violation(this, { type: "module", from: path, to: path, rule: { name: "no-orphans", severity: "warn" } });
   }
   value.facts.findingSubject = path;
 });
@@ -39,11 +41,13 @@ Given(/^a reported (cycle|via) contains (".+") in that order$/, function (this: 
 
 Given("a folder finding reports source {string} with instability {float}", function (this: ImportWorld, source: string, instability: number) {
   fixture(this).directories.add(source);
+  fixture(this).report.folders = [{ name: source, moduleCount: 0 }];
   violation(this, { type: "folder", from: source, rule: { name: "stable-dependencies", severity: "warn" }, metrics: { from: { instability } } });
 });
 
 Given("its target is {string} with instability {float}", function (this: ImportWorld, target: string, instability: number) {
   fixture(this).directories.add(target);
+  fixture(this).report.folders = [...objects(fixture(this).report.folders), { name: target, moduleCount: 0 }];
   const finding = object(fixture(this).facts.finding);
   finding.to = target;
   object(finding.metrics).to = { instability };
@@ -76,5 +80,6 @@ Given("the repository is located at {string}", function (this: ImportWorld, root
 
 Given("a reported finding refers outside it to {string}", function (this: ImportWorld, path: string) {
   fixture(this).file("src/components/panel.ts").dependencies = [{ module: path, resolved: path, dependencyTypes: ["local"], couldNotResolve: false }];
+  fixture(this).report.modules = [...objects(fixture(this).report.modules), { source: path, dependencies: [] }];
   violation(this, { type: "dependency", from: "src/components/panel.ts", to: path, rule: { name: "outside-repository", severity: "warn" } });
 });

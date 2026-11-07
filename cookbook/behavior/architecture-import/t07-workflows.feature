@@ -68,3 +68,11 @@ Feature: Keep one current diagram throughout loading
     And it describes an import from "src/ui" to "src/core"
     When I open that document
     Then the diagram shows the import from "src/ui" to "src/core"
+
+  @desktop-ui
+  Scenario: Retry failed export cleanup before starting another load
+    Given "Current" is displayed
+    And an export cleanup failure has blocked new loads
+    When I retry document cleanup
+    Then "Current" remains displayed
+    And repository and saved diagram loads are available

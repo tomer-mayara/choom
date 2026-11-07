@@ -24,7 +24,7 @@ export interface DiscoveryFailure {
   durationMs: number;
 }
 
-export type DiscoveryFailureCode = "invalid-root" | "manifest-unreadable" | "invalid-manifest" | "missing-analyzer" | "multiple-analyzers" | "unsupported-enforcer" | "invalid-input" | "invalid-reference" | "duplicate-component" | "name-mismatch" | "limit-exceeded" | "access-failed";
+export type DiscoveryFailureCode = "invalid-root" | "manifest-unreadable" | "invalid-manifest" | "missing-analyzer" | "multiple-analyzers" | "unsupported-enforcer" | "invalid-input" | "invalid-reference" | "duplicate-component" | "name-mismatch" | "limit-exceeded" | "access-failed" | "cleanup-failed";
 
 export interface DiscoveryOperations {
   discover(request: DiscoveryRequest): DiscoveryOutcome;

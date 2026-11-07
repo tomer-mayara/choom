@@ -148,7 +148,7 @@ export class ImportFixture {
 
   async writeDocument(name?: string): Promise<string> {
     if (name) this.document.name = name;
-    const bytes = this.savedText ?? stringify(this.document);
+    const bytes = this.savedText ?? stringify(this.document, { aliasDuplicateObjects: false });
     await writeFile(this.savedPath, bytes);
     this.originalSavedBytes = bytes;
     return this.savedPath;

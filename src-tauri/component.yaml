@@ -13,6 +13,7 @@ artifacts:
     - path: ../cookbook/behavior/architecture-import/t06-documents.feature
     - path: ../cookbook/behavior/architecture-import/t06-api.feature
     - path: ../cookbook/behavior/architecture-import/t06-installed.feature
+    - path: ../cookbook/behavior/architecture-import/t07-dialogs.feature
     - path: ../cookbook/behavior/architecture-import/t08-installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml
@@ -41,6 +42,7 @@ artifacts:
     - path: ../cookbook/interfaces/desktop.tsp
     - path: ../cookbook/interfaces/desktop-analyzer.tsp
     - path: ../cookbook/interfaces/desktop-documents.tsp
+    - path: ../cookbook/interfaces/document-dialogs.tsp
     - path: ../cookbook/interfaces/desktop-analyzer.md
     - path: ../cookbook/interfaces/documents.md
     - path: capabilities/main.json

@@ -86,7 +86,9 @@ export class DocumentFiles {
     }
   }
 
-  async exportDocument(document: unknown, selectDestination: DestinationSelector): Promise<ExportOutcome> {
+  async exportDocument(
+    document: unknown, selectDestination: DestinationSelector, confirmReplacement?: () => Promise<boolean>,
+  ): Promise<ExportOutcome> {
     const started = performance.now();
     const blocked = this.failureWhileReleasing(started);
     if (blocked) return blocked;
@@ -97,7 +99,14 @@ export class DocumentFiles {
       const cleanupFailure = this.failureWhileReleasing(started);
       if (cleanupFailure) return cleanupFailure;
       if (destination === null) return cancelled("export", started);
-      return timed(await this.access.exportDocument({ ...destination, text: encoded.text }), started);
+      const result = await this.access.exportDocument({ ...destination, text: encoded.text });
+      if (result.status !== "failure" || result.code !== "destination-exists" || !confirmReplacement || destination.overwrite) {
+        return timed(result, started);
+      }
+      if (!await confirmReplacement()) return cancelled("export", started);
+      const pendingCleanup = this.failureWhileReleasing(started);
+      if (pendingCleanup) return pendingCleanup;
+      return timed(await this.access.exportDocument({ ...destination, overwrite: true, text: encoded.text }), started);
     } catch {
       return operationFailure("export", started);
     }

@@ -31,6 +31,7 @@ export interface ImportWorld extends World {
   viewerBrowser?: Browser;
   desktopImport?: boolean;
   keyboardImport?: boolean;
+  controlledImport?: boolean;
   exportedPath?: string;
   actualDocument?: Data;
   previousDocument?: Data;
