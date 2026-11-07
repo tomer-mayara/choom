@@ -4,7 +4,8 @@ import { ComponentCatalog } from "../../domain/component-catalog.ts";
 import { directoryPathSchema, filePathSchema } from "../../domain/architecture-paths.ts";
 import type { ArchitectureDiagnostic, ArchitectureObservations, DiagnosticReference, ImportVariant } from "../../domain/generated/contracts.ts";
 import type { RepositoryAccess } from "../../platform/repository.ts";
-import type { DepCruiserConversionOperations, DepCruiserConversionRequest } from "./generated/contracts.ts";
+import type { DepCruiserConversionRequest } from "./generated/contracts.ts";
+import type { ReportConversion } from "./report-conversion.ts";
 import { ReportPaths } from "./report-paths.ts";
 import { boundedText, ConversionProblem, type CruiserDependency, type CruiserReport, type CruiserViolation, describeScope, MAX_FINDINGS, readReport, safeDescription } from "./report.ts";
 
@@ -38,19 +39,15 @@ const requiredTranspilers = new Map([
   ["missing-babel-transpiler", "Babel"],
 ]);
 
-type ConversionOperation = (
-  ...args: Parameters<DepCruiserConversionOperations["convert"]>
-) => Promise<ReturnType<DepCruiserConversionOperations["convert"]>>;
-
 /** Converts a completed vendor report; process execution belongs to the desktop runner. */
-export class DepCruiserReportConverter {
+export class DepCruiserReportConverter implements ReportConversion {
   private readonly pathAccess: Pick<RepositoryAccess, "resolveRepositoryPaths">;
 
   constructor(pathAccess: Pick<RepositoryAccess, "resolveRepositoryPaths">) {
     this.pathAccess = pathAccess;
   }
 
-  readonly convert: ConversionOperation = async (input) => {
+  readonly convert: ReportConversion["convert"] = async (input) => {
     try {
       const parsed = requestSchema.safeParse(input);
       if (!parsed.success) throw new ConversionProblem("invalid-request", "The completed report needs a valid repository session, declared components, and analysis context.");

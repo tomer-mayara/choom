@@ -2,7 +2,12 @@
 
 [dependency-cruiser.tsp](dependency-cruiser.tsp) owns the completed-report
 context and conversion operation. [`DepCruiserReportConverter`](../../src/architecture/dependency-cruiser/converter.ts)
-binds `convert` asynchronously. Its injected dependency is the native
+implements [`ReportConversion`](../../src/architecture/dependency-cruiser/report-conversion.ts),
+the asynchronous TypeScript binding of that operation. Its request and result
+types come from the generated TypeSpec contract. T05 can inject this interface
+into the dependency-cruiser strategy. The analyzer-neutral replacement boundary
+remains `ArchitecturalLayer`; this converter accepts dependency-cruiser reports.
+Its injected dependency is the native
 [repository path operation](desktop.md#repository-access). The caller retains
 the open repository session and must close it after the import workflow.
 

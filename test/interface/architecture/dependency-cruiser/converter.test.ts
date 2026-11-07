@@ -4,6 +4,7 @@ import addFormats from "ajv-formats";
 import contracts from "../../../../cookbook/interfaces/generated/contracts.schema.json";
 import { DepCruiserReportConverter } from "../../../../src/architecture/dependency-cruiser/converter.ts";
 import type { DepCruiserConversionOperations, DepCruiserConversionOutcome } from "../../../../src/architecture/dependency-cruiser/generated/contracts.ts";
+import type { ReportConversion } from "../../../../src/architecture/dependency-cruiser/report-conversion.ts";
 import { converterFixture, syncReport } from "../../../support/converter-fixtures.ts";
 
 const ajv = addFormats(new Ajv2020({ schemas: [contracts] }));
@@ -11,11 +12,13 @@ const validateRequest = ajv.compile({ $ref: "DepCruiserConversionRequest.json" }
 const validateOutcome = ajv.compile({ $ref: "DepCruiserConversionOutcome.json" });
 
 test("the asynchronous converter binds the generated operation and validates both result forms", async () => {
-  expectTypeOf<Parameters<DepCruiserReportConverter["convert"]>>().toEqualTypeOf<Parameters<DepCruiserConversionOperations["convert"]>>();
-  expectTypeOf<Awaited<ReturnType<DepCruiserReportConverter["convert"]>>>().toEqualTypeOf<DepCruiserConversionOutcome>();
+  expectTypeOf<Parameters<ReportConversion["convert"]>>()
+    .toEqualTypeOf<Parameters<DepCruiserConversionOperations["convert"]>>();
+  expectTypeOf<ReturnType<ReportConversion["convert"]>>()
+    .toEqualTypeOf<Promise<DepCruiserConversionOutcome>>();
   const fixture = converterFixture();
   expect(validateRequest(fixture.input)).toBe(true);
-  const converter = new DepCruiserReportConverter(fixture.repository);
+  const converter: ReportConversion = new DepCruiserReportConverter(fixture.repository);
   const success = await converter.convert(fixture.input);
   expect(success.status).toBe("success");
   expect(validateOutcome(success)).toBe(true);
@@ -23,6 +26,19 @@ test("the asynchronous converter binds the generated operation and validates bot
   const failure = await converter.convert(fixture.input);
   expect(failure).toMatchObject({ status: "failure", code: "invalid-observations", stage: "conversion" });
   expect(validateOutcome(failure)).toBe(true);
+});
+
+test("a substitute converter can return a contract outcome", async () => {
+  const { input } = converterFixture();
+  const converter: ReportConversion = {
+    convert: ({ completed }) => Promise.resolve({
+      status: "failure",
+      stage: "conversion",
+      code: "unsupported",
+      message: `The substitute cannot convert version ${completed.version}.`,
+    }),
+  };
+  expect(validateOutcome(await converter.convert(input))).toBe(true);
 });
 
 test("unknown public context fields are rejected before path access", async () => {

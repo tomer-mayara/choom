@@ -12,6 +12,11 @@ observations and calls the domain builder. It uses the injected repository path
 operation from T03. It borrows the caller's session; each conversion owns its
 path cache and classification state.
 
+The class implements [`ReportConversion`](../../src/architecture/dependency-cruiser/report-conversion.ts),
+an asynchronous TypeScript binding derived from the existing TypeSpec operation.
+This gives T05 an explicit converter interface to inject. The neutral
+`ArchitecturalLayer` remains the boundary for replacing the analyzer.
+
 Only declared components become diagram components. Imports from several
 subdirectories share their declared owner. Canonical module inventory records
 provide unique reported-file counts, including reference-only targets. Internal
@@ -59,6 +64,16 @@ and the relative file in source-change errors. Folder and rule caps, indexed
 classification, and bounded path diagnosis keep report processing bounded.
 The final independent review found no remaining actionable findings.
 
+The later interface refactor preserves conversion behavior. Existing converter
+tests and API scenarios were run before the refactor to establish passing
+characterization. Interface conformance now checks `ReportConversion` against
+the generated operation and exercises the real converter through that type.
+TypeSpec data, generated outputs, Gherkin, observability, and dependency rules
+are unchanged by this refactor.
+Focused converter tests, API scenarios, full checks, type checks, frontend
+build, and Habit Hooks pass after the refactor. Independent review found no
+actionable findings in the interface change.
+
 ## Recorded upstream evidence
 
 The [18.7.2 fixtures](../../test/fixtures/dependency-cruiser/18.7.2/README.md)
@@ -82,8 +97,8 @@ needs to confirm the results.
 | Check | Result |
 | --- | --- |
 | T04 public API Cucumber | 28 scenarios and 98 steps pass. |
-| Focused converter unit/interface cases | 39 tests and 120 assertions pass, including recorded reports, concurrent/reordered calls, native failures, and exact 10000-module / 50000-dependency boundaries. |
-| Complete frontend candidate | `bun run check` passes: lint, 186 native unit tests, 1 DOM test, 84 native Cucumber scenarios, cookbook checks, generated-output consistency, type checks, 64 interface tests, dependency rules, unused-code checks, and duplication checks. |
+| Focused converter unit/interface cases | 40 tests pass, including real and substitute `ReportConversion` implementations, recorded reports, concurrent/reordered calls, native failures, and exact 10000-module / 50000-dependency boundaries. |
+| Complete frontend candidate | `bun run check` passes: lint, 186 native unit tests, 1 DOM test, 84 native Cucumber scenarios, cookbook checks, generated-output consistency, type checks, 65 interface tests, dependency rules, unused-code checks, and duplication checks. |
 | Frontend build | `bun run build` passes, including type checks. Vite retains the existing large example-chunk warning. |
 | Habit Hooks | `bun run habit-hooks --all` passes. The snooze file is empty; the required independent review is complete. |
 | Retained browser acceptance | 4 scenarios and 51 steps pass against the production build. |
@@ -91,6 +106,10 @@ needs to confirm the results.
 | Architecture rule operation | Manual temporary repositories verify seven forbidden caller paths are rejected and the exact composition entrypoint and concrete collaborator are allowed. |
 | Actual repository smoke | The pinned CLI analyzed Choom's source, and the real converter accepted its report through a temporary read-only filesystem adapter: 5 declarations, 28 reported local files, 2 relationships, and no diagnostics. This was a manual adapter, not the production runner. |
 | Document hygiene | Local links, generated source/output consistency, and `git diff --check` pass. |
+
+The browser and manual CLI evidence above comes from the initial T04 candidate.
+Those checks were not repeated for the interface-only refactor; the conversion
+body and UI behavior are unchanged.
 
 Native tests and desktop packaging were not rerun in T04: native source,
 commands, capabilities, and the assembled UI route are unchanged.
