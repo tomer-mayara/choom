@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "../../../src/App.tsx";
 import { LoadWorkflow } from "../../../src/architecture/load-workflow.ts";
 import type { LoadWorkflowSnapshot, WorkflowView, WorkspaceBinding, WorkspaceExportOutcome } from "../../../src/architecture/workspace-view.ts";
@@ -58,7 +58,12 @@ test("browser opening commits the prepared diagram before export becomes availab
   expect(screen.getByRole("button", { name: "Open Diagram" }).hasAttribute("disabled")).toBe(true);
   await act(async () => { layout.resolve(); });
   expect(screen.getByRole("heading", { name: "Atlas" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Export Diagram" }).hasAttribute("disabled")).toBe(false);
+  expect(screen.queryAllByRole("heading", { name: "Architecture starts here." }).length).toBe(0);
+  expect(screen.queryAllByRole("button", { name: "Explore example" }).length).toBe(0);
+  const actions = within(screen.getByRole("navigation", { name: "Workspace actions" }));
+  expect(actions.getByRole("button", { name: "Open Diagram" }).hasAttribute("disabled")).toBe(false);
+  expect(actions.getByRole("button", { name: "Export Diagram" }).hasAttribute("disabled")).toBe(false);
+  expect(screen.getByRole("status").textContent).toBe("Diagram ready.");
   const current = workflow.getSnapshot().current;
   expect(Object.isFrozen(current?.document.components)).toBe(true);
   expect(Object.isFrozen(current?.layout.nodes[2]?.position)).toBe(true);

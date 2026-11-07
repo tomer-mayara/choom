@@ -44,6 +44,13 @@ The retained **Choose directory** action only displays a path. Desktop
 capabilities are restricted to the main window; the browser hides desktop-only
 actions.
 
+Workspace actions sit in a compact bar above the diagram. The canvas fills the
+remaining window and grows when the window is resized. Use **?** for recorded
+analysis and **Findings** for diagnostics. Double-click a component to inspect
+its declaration and incoming or outgoing imports. With a keyboard, focus a
+component and press **Enter** or **Space**. Close the panel with **Escape** or
+its close button to return to the diagram.
+
 ## Development commands
 
 | Command | Purpose |
@@ -80,6 +87,10 @@ Install Chromium once before browser tests:
 bunx --no-install playwright install chromium
 bun run test:e2e
 ```
+
+Run `bun run test:e2e --tags @diagram-workspace` for canvas sizing, analysis,
+component details, findings, and keyboard access. The focused React suites are
+included in `bun run test:dom`.
 
 `bun run test:native` scans `test/unit` for native TypeScript suites;
 `bun run test:dom` runs the React suite with `test/preload.ts` in a separate
