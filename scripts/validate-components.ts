@@ -1,5 +1,5 @@
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 
 const text = z.string().trim().min(1);
@@ -35,12 +35,12 @@ const ignoredDirectories = new Set([
   "playwright-report", "test-results",
 ]);
 
-async function* manifestsIn(directory: string): AsyncGenerator<string> {
+async function* constraintFilesIn(directory: string): AsyncGenerator<string> {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = resolve(directory, entry.name);
-    if (entry.isFile() && entry.name === "component.yaml") yield path;
+    if (entry.isFile() && (entry.name === "component.yaml" || entry.name.endsWith(".tsp"))) yield path;
     if (entry.isDirectory() && !ignoredDirectories.has(entry.name)) {
-      yield* manifestsIn(path);
+      yield* constraintFilesIn(path);
     }
   }
 }
@@ -72,12 +72,13 @@ async function readYaml(path: string): Promise<unknown> {
   }
 }
 
-export async function validateComponents(repositoryRoot: string): Promise<void> {
+export async function validateComponents(repositoryRoot: string): Promise<Set<string>> {
   const root = await realpath(repositoryRoot);
   const visited = new Set<string>();
   const names = new Set<string>();
   const behaviors = new Set<string>();
   const observability = new Set<string>();
+  const contracts = new Set<string>();
 
   async function visit(path: string, expectedName?: string): Promise<void> {
     if (visited.has(path)) throw new Error(`Component linked more than once: ${path}`);
@@ -103,6 +104,7 @@ export async function validateComponents(repositoryRoot: string): Promise<void> 
           behaviors.add(artifactPath);
         }
         if (kind === "observability") observability.add(artifactPath);
+        if (kind === "contracts" && artifactPath.endsWith(".tsp")) contracts.add(artifactPath);
       }
     }
     for (const child of component.children ?? []) {
@@ -113,9 +115,17 @@ export async function validateComponents(repositoryRoot: string): Promise<void> 
   }
 
   await visit(await localFile(root, root, "component.yaml"));
-  for await (const path of manifestsIn(root)) {
-    if (!visited.has(await realpath(path))) throw new Error(`Unlinked component manifest: ${path}`);
+  const contractDirectory = resolve(root, "cookbook/interfaces");
+  for await (const path of constraintFilesIn(root)) {
+    const actual = await realpath(path);
+    if (basename(path) === "component.yaml") {
+      if (!visited.has(actual)) throw new Error(`Unlinked component manifest: ${path}`);
+    } else {
+      requireInside(contractDirectory, actual);
+      if (!contracts.has(actual)) throw new Error(`TypeSpec contract has no component owner: ${path}`);
+    }
   }
+  for (const path of contracts) requireInside(contractDirectory, path);
   for await (const path of new Bun.Glob("cookbook/behavior/**/*.feature").scan(root)) {
     if (!behaviors.has(await realpath(resolve(root, path)))) {
       throw new Error(`Cucumber feature has no component owner: ${path}`);
@@ -126,4 +136,5 @@ export async function validateComponents(repositoryRoot: string): Promise<void> 
     if (!parsed.success) throw new Error(`Invalid OpenSLO Service ${path}: ${parsed.error.message}`);
     console.log(`Valid OpenSLO Service policy: ${relative(root, path)}`);
   }
+  return contracts;
 }

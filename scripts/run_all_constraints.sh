@@ -112,11 +112,11 @@ check 0 test 'Native Bun and DOM unit behavior'
 check 0 test:behavior 'Model and adapter Cucumber scenarios'
 check 0 test:e2e 'Browser Cucumber scenarios and production build'
 heading 1
-check 1 check:cookbook 'Component links, OpenSLO Service shape, and template policies'
+check 1 check:cookbook 'Component links and OpenSLO Service shape'
 heading 2
 check 2 check:dependencies 'TypeScript dependency boundaries'
 heading 3
-check 3 check-types 'TypeScript contracts (runtime cases run under Behavioral)'
+check 3 check:contracts 'TypeSpec contracts, generated outputs, and runtime conformance'
 
 printf '\n%sSummary%s\n' "$bold" "$reset"
 for ((group = 0; group < 4; group++)); do

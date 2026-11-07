@@ -15,10 +15,29 @@ practices. Apply both within the constraints defined here.
 | **Behavioral** — what the system must do | Cucumber feature file(s) | the feature file(s) |
 | **Observability** — how we prove it in production | OpenSLO YAML file(s) | the OpenSLO file(s) |
 | **Architectural** — who may depend on whom | dependency-cruiser config | the config (or its diff) |
-| **Interface** — public contract of a boundary | OpenAPI (or AsyncAPI / JSON Schema / types) | the contract definition(s) |
+| **Interface** — public contract of a boundary | TypeSpec source files and implementation conformance checks | the contract definition(s) and generated changes |
 
 Assess all four constraints for each affected component. Introduce or update only
 the constraints that actually change. Leave unchanged artifacts alone.
+
+Follow [Writing Good Gherkin](gherkin-guide.md) when writing or reviewing
+behavioral scenarios.
+
+TypeSpec is the source of truth for Choom-owned data and operation contracts
+between components, whether the caller is internal or external. Define the
+contract without adding an HTTP transport to an in-process or native boundary.
+Generated TypeScript declarations and JSON Schema are outputs, not separately
+authored definitions. Keep runtime validation, graph invariants, asynchronous
+execution, and failure behavior in the implementation and its tests. UI outcomes
+remain in Gherkin and boundary notes; third-party configuration and protocols
+retain their vendor formats.
+
+Follow the [TypeSpec style guide](https://typespec.io/docs/handbook/style-guide/)
+when writing or reviewing TypeSpec contracts. TypeSpec sources must compile
+successfully. After changing a contract, run `bun run contracts:generate`, then
+`bun run check:contracts`. The check compiles the TypeSpec sources, checks the
+generated outputs, and verifies implementation conformance. It must pass locally
+and in CI.
 
 ## Linking File
 
@@ -38,7 +57,7 @@ artifacts:
   architecture:
     - path: dep-cruiser.config.js
   contracts:
-    - path: openapi/auth.yaml
+    - path: typespec/auth.tsp
 
 children:                # optional
   - name: token-service
@@ -50,6 +69,11 @@ to that component; recursion does not require creating unaffected artifacts.
 Update the manifest when artifact or child references change, and preserve
 references to unchanged artifacts.
 
+Link the relevant `.tsp` sources in `contracts`, alongside any behavioral or
+native boundary notes. Register those sources with the TypeSpec entrypoint and
+the contract checks. A file-existence check does not compile a contract or prove
+that an implementation follows it.
+
 ## PR Checklist
 
 Mark a constraint item not applicable when that constraint is unchanged.
@@ -59,7 +83,9 @@ Human approval applies to all proposed constraint artifacts.
 - [ ] Changed Cucumber feature file(s) present and reviewed
 - [ ] Changed OpenSLO file(s) present and reviewed
 - [ ] Changed dependency-cruiser config (new file or diff) present and reviewed
-- [ ] Changed contract definition(s) present and reviewed
+- [ ] Changed TypeSpec contracts and generated outputs present and reviewed
+- [ ] TypeSpec sources compile successfully through `bun run check:contracts`
+- [ ] Generated-output consistency and affected implementation conformance checks pass
 - [ ] `component.yaml` references the affected artifacts and children
 - [ ] Human has approved the constraint artifacts
 - [ ] CI includes and passes checks for the changed constraints

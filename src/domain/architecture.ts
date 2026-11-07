@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Architecture as ArchitectureContract } from "./generated/contracts";
 
 const identifier = z.string().min(1);
 
@@ -41,9 +42,9 @@ export const architectureSchema = z
     });
   });
 
-export type Architecture = z.infer<typeof architectureSchema>;
+export type Architecture = ArchitectureContract;
 
-export const starterArchitecture = architectureSchema.parse({
+export const starterArchitecture: Architecture = architectureSchema.parse({
   name: "Choom starter",
   nodes: [
     { id: "ui", label: "React interface" },

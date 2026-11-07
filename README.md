@@ -32,14 +32,16 @@ The directory picker returns a path; it does not read files or import a project.
 | `bun run build` | TypeScript 7 checks and production frontend build |
 | `bun run preview` | Serve the production frontend |
 | `./scripts/run_all_constraints.sh` | Run all four automated constraint validations with a pass/fail summary and diagnostic logs |
-| `bun run check` | Type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
+| `bun run check` | TypeSpec and implementation conformance, type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
 | `bun run test` | Native Bun and Happy DOM unit tests in separate processes |
 | `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
 | `bun run check-types` | Alias for the native TypeScript compiler check |
 | `bun run test:behavior` | Model and desktop-adapter Cucumber scenarios (no browser) |
 | `bun run test:behavior:browser` | Browser Cucumber scenarios against a fresh production build |
 | `bun run test:e2e` | Browser Cucumber acceptance against one fresh production build |
-| `bun run check:cookbook` | Component path integrity, small OpenSLO Service shape, and contract template policies |
+| `bun run check:cookbook` | Component path integrity, contract ownership, and small OpenSLO Service shape |
+| `bun run check:contracts` | TypeSpec format/compilation, generated-output consistency, TypeScript conformance, and runtime interface tests |
+| `bun run contracts:generate` | Regenerate committed TypeScript contracts and JSON schemas from TypeSpec |
 | `bun run analyze` | Source inventory using ts-morph |
 | `bun run habit-hooks --all` | Manual TypeScript and generic code-hygiene scan |
 | `bun run desktop:check` | Check the Rust shell with its lockfile |
@@ -65,6 +67,16 @@ process. Add new DOM suites to that command. `bun test` defaults to
 retain screenshots and traces under `test-results/`. `bun run check` stays
 browser-free. GitHub Actions runs the constraint script and separate code-hygiene
 checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
+
+TypeSpec sources in [`cookbook/interfaces/`](cookbook/interfaces/main.tsp) define
+Choom-owned component data and operations for internal and external callers.
+After a contract edit, run `bun run contracts:generate`, review the source and
+generated diff, then run `bun run check:contracts`. Generated TypeScript lives
+under each source owner's `generated/` directory; structural JSON schemas live
+under `cookbook/interfaces/generated/`. Commit these outputs with their sources.
+Checks report missing or stale output instead of rewriting it. Existing runtime
+validation and behavior tests still enforce graph invariants and operation
+semantics. See the [cookbook](cookbook/README.md) for the exact scope.
 
 ## Validate the four constraints
 
@@ -92,9 +104,9 @@ set `NO_COLOR=1` for plain terminal output.
 | Constraint | Checks |
 | --- | --- |
 | Behavioral | Bun unit tests, model/adapter Cucumber scenarios, and browser Cucumber against one fresh production build |
-| Observability | Component links, the OpenSLO Service shape, and shared contract-template policies |
+| Observability | Component links, contract ownership, and the OpenSLO Service shape |
 | Architectural | TypeScript dependency boundaries, cycles, and unresolved imports |
-| Interface | TypeScript source contracts and consumers; runtime schema/adapter cases also run in the behavioral group |
+| Interface | TypeSpec compilation and generated-output consistency, TypeScript implementation conformance, and runtime interface cases; broader schema/adapter behavior also runs in Behavioral |
 
 A passing summary means these implemented checks passed. The OpenSLO Service
 has no measured production SLI or SLO, and browser IPC doubles do not prove native
@@ -150,9 +162,9 @@ src/
   lib/                 Class merging and ELK layout
   platform/            Tauri API and dialog adapter
 src-tauri/             Rust desktop shell and window capabilities
-cookbook/              Behavior, HTTP/event contracts, observability definitions
-scripts/               Spectral contract policies and ts-morph analysis
-test/                  Unit suites and shared Cucumber steps
+cookbook/              Behavior, TypeSpec contracts, generated schemas, observability
+scripts/               Contract generation/checks and ts-morph analysis
+test/                  Unit/interface suites and shared Cucumber steps
 ```
 
 The root [component manifest](component.yaml) links the four constraints and the

@@ -1,0 +1,9 @@
+emit:
+  - "@typespec/json-schema"
+output-dir: "{project-root}/generated"
+warn-as-error: true
+options:
+  "@typespec/json-schema":
+    emitter-output-dir: "{output-dir}"
+    file-type: json
+    bundleId: contracts.schema.json

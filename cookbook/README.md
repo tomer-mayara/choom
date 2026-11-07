@@ -2,18 +2,37 @@
 
 Start at the [root component manifest](../component.yaml). Paths are relative to
 each manifest. The four implementation components share the constraint artifacts
-here. This bootstrap changes no production code.
+here. TypeSpec owns their data and operation contracts; behavior and native
+configuration retain their own artifacts.
 
 | Component | Owner | Behavior | Interface |
 | --- | --- | --- | --- |
-| Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [`workspace.feature`](behavior/workspace.feature) | Exported [App signature](../src/App.tsx), [UI outcomes](interfaces/workspace.md) |
-| Architecture model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [`architecture.feature`](behavior/architecture.feature) | Exported Zod schema and `Architecture` in [`architecture.ts`](../src/domain/architecture.ts) |
-| Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | [`desktop.feature`](behavior/desktop.feature) | Exported types in [`desktop.ts`](../src/platform/desktop.ts), [boundary notes](interfaces/desktop.md) |
-| Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; no packaged acceptance | Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
+| Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [`workspace.feature`](behavior/workspace.feature) | Consumed [architecture](interfaces/architecture.tsp) and [desktop](interfaces/desktop.tsp) contracts; [UI outcomes](interfaces/workspace.md) |
+| Architecture model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [`architecture.feature`](behavior/architecture.feature) | [TypeSpec model](interfaces/architecture.tsp), implemented by the validator in [`architecture.ts`](../src/domain/architecture.ts) |
+| Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | [`desktop.feature`](behavior/desktop.feature) | [TypeSpec operations](interfaces/desktop.tsp), implemented by [`desktop.ts`](../src/platform/desktop.ts); [boundary notes](interfaces/desktop.md) |
+| Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; no packaged acceptance | Choom's [desktop boundary](interfaces/desktop.tsp); vendor Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
 
 The workspace owns `components/` and `lib/`, including internal layout. The model
 and desktop adapter have separate import boundaries. Cargo dependencies and
 Tauri capabilities define the native boundary.
+
+The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
+Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)
+and [platform](../src/platform/generated/contracts.ts) owners. The generated
+[structural schemas](interfaces/generated/contracts.schema.json) share one JSON
+Schema document. [Configuration](interfaces/tspconfig.yaml) selects the emitter.
+Edit the `.tsp` source, run
+`bun run contracts:generate`, and commit the reviewed source and output changes.
+Do not hand-edit generated files. TypeSpec operations describe logical parameters
+and results; the implementation binding and behavior tests establish synchronous
+or asynchronous execution, cancellation, and rejection behavior.
+
+The local [TypeScript binding](../scripts/contracts/typescript.ts) maps the
+non-HTTP model, scalar, union, and interface forms used by these contracts. It
+fails on unsupported constructs or declarations without a configured output
+owner. When adding types or components, extend that mapping and its conformance
+checks deliberately. The official `@typespec/json-schema` emitter produces the
+structural JSON schemas.
 
 ## What the checks establish
 
@@ -24,21 +43,26 @@ Tauri capabilities define the native boundary.
 | `bun run test:e2e` | Browser Cucumber scenarios against a fresh production build |
 | `bun run check:dependencies` | TypeScript import boundaries in `.dependency-cruiser.cjs` |
 | Cargo checks and Tauri build | Native compilation and configuration |
-| `bun run check:cookbook` | Manifest path integrity and small artifact policies |
+| `bun run check:cookbook` | Manifest path integrity, contract ownership, and small OpenSLO Service policy |
+| `bun run check:contracts` | TypeSpec format/compilation, generated-output consistency, TypeScript conformance, and runtime interface cases |
 
 `check:cookbook` checks artifact paths, child names, duplicate/cyclic links,
-orphan manifests, Cucumber ownership, and a small `openslo/v1` Service shape.
-Linking a feature does not execute it. Spectral checks required fields and pinned
-versions in the empty [OpenAPI](interfaces/openapi.json) and
-[AsyncAPI](interfaces/asyncapi.json) templates; its resolver permits no external
-requests. These policies do not validate the full OpenAPI, AsyncAPI, or OpenSLO
-specifications, TypeScript contracts, or source architecture. Existing type,
-behavior, dependency, Cargo, and Tauri commands check their respective contracts.
+orphan manifests, Cucumber and local TypeSpec source ownership, and a small
+`openslo/v1` Service shape. Linking a feature does not execute it.
+`check:contracts` also requires every owned TypeSpec source to be imported by
+`main.tsp`, then checks compilation and implementation conformance. The OpenSLO
+check validates only the stated Service
+shape, not the full specification or production reliability. Dependency, Cargo,
+and Tauri commands check their respective boundaries.
 
-The app has no HTTP API or event transport. Its actual contracts are the exported
-Zod schema and TypeScript definitions, UI outcomes, and native declarations. The
-Zod schema includes unique IDs and valid references that an approximate JSON
-Schema would omit.
+`check:contracts` compiles TypeSpec into a temporary directory and compares the
+results with committed outputs. Missing or stale generated files fail the check.
+TypeScript checks connect generated model and operation declarations to their
+implementations. Runtime interface cases compare generated structural schemas
+with the real parser. The Zod parser still owns unique IDs, valid references, and
+input normalization; a structural schema does not establish those graph rules.
+The app has no HTTP API or event transport. UI outcomes and native capabilities
+remain covered by their behavior and configuration checks.
 
 All five manifests share one unmeasured [OpenSLO Service](observability/service.yaml).
 There is no production SLI, SLO, or alert policy. The
@@ -64,9 +88,9 @@ if needed, and preserves partial logs instead of reporting a passing summary.
 | Group | Commands | Scope of a pass |
 | --- | --- | --- |
 | Behavioral | `bun run test`, `bun run test:behavior`, `bun run test:e2e` | Current unit and Cucumber outcomes, including the built browser and mocked desktop caller |
-| Observability | `bun run check:cookbook` | Existing component links, Service shape, and HTTP/event template policies; no production measurement |
+| Observability | `bun run check:cookbook` | Existing component links, contract ownership, and Service shape; no production measurement |
 | Architectural | `bun run check:dependencies` | Enforced TypeScript import rules |
-| Interface | `bun run check-types` | Source signatures and consumers compile; runtime schema/adapter checks are in Behavioral and template policies are in Observability |
+| Interface | `bun run check:contracts` | TypeSpec format/compilation, current generated outputs, TypeScript implementation conformance, and runtime interface cases; broader model/adapter behavior is in Behavioral |
 
 Native Cargo/Tauri checks stay in the separate desktop CI job. No script can
 claim the native acceptance or production evidence that is still missing in the
@@ -81,6 +105,9 @@ bun run test:behavior --tags @desktop-adapter # Only the directory adapter
 bunx --no-install playwright install chromium
 bun run test:e2e                              # Build, private preview, browser Cucumber
 bun run check:cookbook
+bun run check:contracts                       # TypeSpec, output consistency, and conformance
+bun test ./test/interface/domain              # Architecture schema/parser cases
+bun test ./test/interface/platform            # Desktop result schemas
 bun run check:dependencies
 ```
 

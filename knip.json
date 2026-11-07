@@ -3,8 +3,11 @@
   "ignoreDependencies": ["@typescript/old"],
   "ignoreBinaries": ["uvx"],
   "entry": [
-    "scripts/*.ts",
+    "src/domain/generated/contracts.ts",
+    "src/platform/generated/contracts.ts",
+    "scripts/**/*.ts",
     "test/unit/**/*.{ts,tsx}",
+    "test/interface/**/*.ts",
     "test/steps/**/*.ts"
   ],
   "project": [
