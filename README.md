@@ -206,6 +206,10 @@ invalid saved files. A fresh native viewer opens an export with the source
 repository removed and `PATH` pointing only to an empty directory. See the evidence record for
 results and the remaining platform limits.
 
+[R02 publication evidence](docs/architecture-reviews/R02-publication-evidence.md)
+records the workspace's immutable view contract, focused regression commands,
+and the measured copy cost for large saved documents.
+
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double native dialogs and validate repository, analyzer,
 and document commands against their TypeSpec contracts. They use real fixture

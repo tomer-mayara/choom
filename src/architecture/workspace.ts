@@ -1,5 +1,4 @@
 import { DocumentFiles } from "../documents/document-files.ts";
-import type { ArchitectureDocument } from "../domain/generated/contracts.ts";
 import type { layoutArchitectureDocument } from "../lib/architecture-layout.ts";
 import { encodeArchitectureYaml } from "../lib/architecture-yaml.ts";
 import { downloadDiagram, readBrowserDiagram, selectBrowserDiagram } from "../platform/browser-documents.ts";
@@ -10,13 +9,7 @@ import { DesktopRepositoryAccess } from "../platform/repository.ts";
 import { createArchitecturalLayer } from "./create-architectural-layer.ts";
 import { LoadWorkflow } from "./load-workflow.ts";
 import { RepositoryDiscovery } from "./repository-discovery.ts";
-
-export type WorkspaceExportOutcome = Awaited<ReturnType<DocumentFiles["exportDocument"]>>;
-
-export interface WorkspaceBinding {
-  workflow: LoadWorkflow;
-  exportDocument(document: ArchitectureDocument): Promise<WorkspaceExportOutcome>;
-}
+import type { WorkspaceBinding } from "./workspace-view.ts";
 
 /** Composition has no startup effects. Only a repository load creates an analyzer. */
 export function createWorkspace(options: { layout?: typeof layoutArchitectureDocument } = {}): WorkspaceBinding {

@@ -13,6 +13,22 @@ Construction performs no I/O. Only a live repository load constructs an
 `ArchitecturalLayer`. Browser viewing and saved desktop viewing do not need a
 repository, Node, or analyzer installation.
 
+[workspace-view.ts](../../src/architecture/workspace-view.ts) defines the role
+used by React. It exposes load, cancel, retry, cleanup retry, subscription, and
+snapshot queries. Composition retains lifecycle disposal and export-cleanup
+notifications. A view can use this role without depending on the concrete
+workflow class. Its asynchronous command results retain the TypeSpec shapes.
+
+The workflow publishes read-only snapshots. Each document and prepared layout
+is copied and frozen before its view commit, including nested collections,
+findings, and positions. References held by a collaborator remain mutable and
+cannot change the committed copy. State and outcomes are copied and frozen
+when published; an observer cannot change a cleanup gate or retained outcome.
+Repeated snapshot reads return the same object until a notification. Progress
+updates reuse the committed document and layout, so they do not traverse or
+copy the graph again. These ownership rules belong to the live TypeScript
+binding and do not change the saved YAML or generated TypeSpec data shapes.
+
 ## Loading and cancellation
 
 Desktop offers **Load Repo**. Desktop and browser offer **Open Diagram**.
@@ -64,6 +80,8 @@ requires finite coordinates for every component. Its positions are transient.
 [ArchitectureDiagram](../../src/components/architecture-diagram.tsx) renders
 only the committed document and prepared positions; it does not run discovery,
 analysis, storage, or layout.
+It gives React Flow its own node position records while keeping semantic data
+read-only.
 
 Each declaration produces one card, including isolated declarations and those
 with zero reported files. A component may own files in several subdirectories.
