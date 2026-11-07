@@ -86,28 +86,9 @@ jobs:
           printf '%s\n' '{"private":true,"dependencies":{"dependency-cruiser":"18.7.2","typescript":"npm:@typescript/typescript6@6.0.2"}}' > "$RUNNER_TEMP/choom-fixture-deps/package.json"
           bun install --cwd "$RUNNER_TEMP/choom-fixture-deps" --ignore-scripts
           printf 'CHOOM_PACKAGED_RUNTIME_PATH=%s:/usr/local/bin:/usr/bin:/bin\n' "$(dirname "$(command -v node)")" >> "$GITHUB_ENV"
-      - name: Diagnose native WebKit startup
-        if: runner.os == 'Linux'
-        env:
-          G_MESSAGES_DEBUG: all
-        run: |
-          mkdir -p test-results/startup-probe
-          xvfb-run -a dbus-run-session -- bash <<'SH'
-          set -eu
-          TAURI_WEBVIEW_AUTOMATION=true setsid WebKitWebDriver --host=127.0.0.1 --port=9515 > test-results/startup-probe/webkit.log 2>&1 &
-          probe_pid=$!
-          trap 'kill -- -"$probe_pid" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 50); do
-            if curl --silent --fail http://127.0.0.1:9515/status > /dev/null; then break; fi
-            sleep 0.1
-          done
-          curl --silent --show-error --max-time 25 -H 'Content-Type: application/json' -d '{"capabilities":{"alwaysMatch":{"webkitgtk:browserOptions":{"binary":"/usr/bin/choom-desktop"}}}}' http://127.0.0.1:9515/session > test-results/startup-probe/session.json || true
-          cat test-results/startup-probe/session.json
-          SH
       - name: Characterize the installed picker before feature checks
         if: runner.os == 'Linux'
         env:
-          G_MESSAGES_DEBUG: all
           CHOOM_PACKAGED_APP: /usr/bin/choom-desktop
           CHOOM_PACKAGED_BUILD_ID: ${{ github.sha }}
           CHOOM_PACKAGED_FIXTURE_MODULES: ${{ runner.temp }}/choom-fixture-deps/node_modules
