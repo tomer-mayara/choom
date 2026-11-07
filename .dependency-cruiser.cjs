@@ -29,6 +29,15 @@ module.exports = {
       to: { path: "^src/", pathNot: "^src/platform/" },
     },
     {
+      name: "document-codec-is-independent-of-storage-and-analyzers",
+      severity: "error",
+      from: { path: "^src/lib/(architecture-yaml(?:/|\\.ts$)|generated/)" },
+      to: {
+        path: "^(src/|node_modules/(react|react-dom|@tauri-apps|@xyflow|dependency-cruiser)/)",
+        pathNot: "^src/(domain/|lib/)",
+      },
+    },
+    {
       name: "components-do-not-import-app-entrypoints",
       severity: "error",
       from: { path: "^src/components/" },

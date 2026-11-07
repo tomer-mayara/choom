@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01–T04 merged; T05 implemented, review pending
+**Status:** In progress — T01–T05 merged; T06 implemented and verified locally
 
 **Date:** 2026-11-06
 
@@ -943,6 +943,11 @@ that trusted repository configuration executes local code.
 
 **Dependencies:** T02, T03. **Owners:** codec, workspace storage, platform, native
 shell; T05 supplies real-import integration evidence.
+
+**Implementation:** [T06 evidence and limits](CR-001-T06-evidence.md) and
+[portable document contract](../../cookbook/interfaces/documents.md).
+The API and installed-operation scenarios cover document behavior independently
+of the UI. T07 supplies the controls, layout, and final view replacement.
 
 #### Behavioral (Gherkin)
 

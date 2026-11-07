@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Core window operations, a directory picker, bounded repository reads, and owned dependency-cruiser jobs.",
+  "description": "Core window operations, file and directory selection, bounded repository reads, owned analyzer jobs, and document storage.",
   "local": true,
   "windows": ["main"],
   "permissions": [
@@ -14,6 +14,12 @@
     "allow-depcruiser-prepare",
     "allow-depcruiser-run",
     "allow-depcruiser-cancel",
-    "allow-depcruiser-release"
+    "allow-depcruiser-release",
+    "allow-document-snapshot-create",
+    "allow-document-snapshot-read",
+    "allow-document-snapshot-release",
+    "allow-document-file-read",
+    "allow-document-export",
+    "allow-document-cleanup"
   ]
 }

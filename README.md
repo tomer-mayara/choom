@@ -70,7 +70,7 @@ retain screenshots and traces under `test-results/`. `bun run check` stays
 browser-free. GitHub Actions runs the constraint script and separate code-hygiene
 checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
 Linux also installs the release package and runs the native picker
-characterization, native analyzer operations, and then the architecture-import
+characterization, native analyzer and document operations, and then the architecture-import
 scenarios. CI retains browser,
 constraint, and installed-app reports.
 
@@ -142,6 +142,26 @@ The Linux installed route also runs
 `bun run test:behavior:packaged --tags @packaged-native-analysis` after picker
 smoke. Follow the [installed acceptance guide](docs/change-requests/CR-001-native-acceptance.md)
 for its release artifact, runtime, and independent dependency prerequisites.
+
+[CR-001-T06](docs/change-requests/CR-001-T06-evidence.md) adds portable YAML,
+validated candidate snapshots, selected-file reads, and atomic export. The codec
+preserves declared components and their full file evidence without the source
+repository. Native storage keeps at most a current snapshot and a candidate;
+failed cleanup blocks further writes until retry succeeds. See the
+[document contract](cookbook/interfaces/documents.md) for format limits and file
+ownership. T07 supplies the selection, export, and viewing UI. Focused checks:
+
+```sh
+bun run test:behavior:native --tags @cr-001-t06-api
+bun test ./test/unit/lib ./test/unit/documents ./test/unit/platform/documents.test.ts
+bun test ./test/interface/lib ./test/interface/platform/documents.test.ts
+bun run test:rust
+```
+
+The installed Linux route runs
+`bun run test:behavior:packaged --tags @packaged-native-documents` after analyzer
+operations. It checks source-to-document export/reopen through real native IPC,
+replacement consent, and bounded candidate storage.
 
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double the vendor open/save dialog boundary. Analyzer,

@@ -11,6 +11,12 @@ fn main() {
             "depcruiser_run",
             "depcruiser_cancel",
             "depcruiser_release",
+            "document_snapshot_create",
+            "document_snapshot_read",
+            "document_snapshot_release",
+            "document_file_read",
+            "document_export",
+            "document_cleanup",
         ]));
     if windows_msvc {
         // The resource compiler links Tauri's default manifest only into app binaries.

@@ -7,8 +7,8 @@ Windows use the manual route below. An unavailable route is a recorded limit,
 not a passing or skipped test.
 
 T01 establishes the driver and preserves directory-picker behavior. T05 adds
-installed native analyzer operations before the Load Repo UI. Load Repo,
-Open Diagram, and export belong to later tickets. A missing
+installed native analyzer operations; T06 adds portable document operations.
+Load Repo, Open Diagram, and the export UI belong to T07. A missing
 public action is the expected T01 feature failure only after startup and picker
 characterization pass. No driver supplies an analyzer report or replaces IPC.
 
@@ -55,10 +55,11 @@ and the TypeScript parser installed as
 ```sh
 export CHOOM_PACKAGED_FIXTURE_MODULES=/absolute/prepared-fixture/node_modules
 xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-native-analysis
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-native-documents
 xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @cr-001-t08
 ```
 
-Run the T05 native operations after smoke, then T08 after T05 passes. The harness
+Run T05 and T06 native operations after smoke, then T08. The harness
 validates the supplied dependency versions and copies the prepared tree into
 each repository fixture. Relative links within that tree are preserved; external
 links are refused. It does not install
@@ -110,6 +111,17 @@ after process failure, private report removal, disabled persistent cache,
 cancellation after a real descendant starts, and retry in the same repository
 session. These exercise native operations without changing the installed UI or
 mocking IPC. They do not prove the later Load Repo controller or renderer.
+
+T06's four `@packaged-native-documents` cases compose the real discovery,
+analyzer, converter, codec, and document workflow with the installed native
+commands. One declared component owns files in two source directories. The
+route exports the analyzed document, removes its source repository, reopens the
+export, and compares components and full file-pair evidence. Separate cases
+check replacement consent, the two-snapshot limit, and candidate release without
+removing the current snapshot. The TypeScript composition runs in the acceptance
+process; every native operation crosses the installed webview's real IPC and
+capability boundary. This proves assembled file operations, not the future
+Open Diagram/export UI or native save-dialog behavior.
 
 Each run writes `test-results/packaged/run-*/` with:
 

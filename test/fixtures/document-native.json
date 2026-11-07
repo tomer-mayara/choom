@@ -1,0 +1,62 @@
+[
+  {
+    "operation": "createDocumentSnapshot",
+    "request": { "text": "title: Atlas\n" },
+    "outcome": { "status": "success", "snapshotId": "document-00000000-0000-4000-8000-000000000000-1", "durationMs": 0 }
+  },
+  {
+    "operation": "readDocumentSnapshot",
+    "request": { "snapshotId": "document-00000000-0000-4000-8000-000000000000-1" },
+    "outcome": { "status": "success", "text": "title: Atlas\n", "durationMs": 0 }
+  },
+  {
+    "operation": "createDocumentSnapshot",
+    "request": { "text": "invalid", "unexpected": true },
+    "outcome": { "status": "failure", "stage": "storage", "code": "invalid-request", "message": "The document request is invalid.", "durationMs": 0 }
+  },
+  {
+    "operation": "exportDocument",
+    "request": { "path": "/choom-fixture/export.choom.yaml", "text": "title: Atlas\n", "overwrite": false },
+    "outcome": { "status": "success", "exported": true, "durationMs": 0 }
+  },
+  {
+    "operation": "readDocumentFile",
+    "request": { "path": "/choom-fixture/export.choom.yaml" },
+    "outcome": { "status": "success", "text": "title: Atlas\n", "durationMs": 0 }
+  },
+  {
+    "operation": "exportDocument",
+    "request": { "path": "/choom-fixture/export.choom.yaml", "text": "replacement", "overwrite": false },
+    "outcome": { "status": "failure", "stage": "export", "code": "destination-exists", "message": "The destination already exists. Approve replacement before exporting.", "durationMs": 0 }
+  },
+  {
+    "operation": "releaseDocumentSnapshot",
+    "request": { "snapshotId": "document-00000000-0000-4000-8000-000000000000-1" },
+    "outcome": { "status": "success", "released": true, "durationMs": 0 }
+  },
+  {
+    "operation": "releaseDocumentSnapshot",
+    "request": { "snapshotId": "document-00000000-0000-4000-8000-000000000000-1" },
+    "outcome": { "status": "success", "released": true, "durationMs": 0 }
+  },
+  {
+    "operation": "readDocumentSnapshot",
+    "request": { "snapshotId": "document-00000000-0000-4000-8000-000000000000-1" },
+    "outcome": { "status": "failure", "stage": "storage", "code": "invalid-snapshot", "message": "The document snapshot is not available.", "durationMs": 0 }
+  },
+  {
+    "operation": "releaseDocumentSnapshot",
+    "request": { "snapshotId": "document-11111111-1111-4111-8111-111111111111-1" },
+    "outcome": { "status": "failure", "stage": "cleanup", "code": "invalid-snapshot", "message": "The document snapshot is not available.", "durationMs": 0 }
+  },
+  {
+    "operation": "retryDocumentCleanup",
+    "request": {},
+    "outcome": { "status": "success", "cleaned": true, "durationMs": 0 }
+  },
+  {
+    "operation": "retryDocumentCleanup",
+    "request": { "unexpected": true },
+    "outcome": { "status": "failure", "stage": "cleanup", "code": "invalid-request", "message": "The document request is invalid.", "durationMs": 0 }
+  }
+]
