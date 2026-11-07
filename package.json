@@ -27,7 +27,7 @@
     "test:behavior:native": "cucumber-js --config cucumber.mjs --profile native",
     "test:behavior:browser": "bun run build && bun scripts/run-browser-behavior.ts",
     "test:behavior:packaged": "bun scripts/run-packaged-behavior.ts",
-    "check:dependencies": "depcruise src --config .dependency-cruiser.cjs",
+    "check:dependencies": "bun scripts/check-dependency-boundaries.ts && depcruise src --config .dependency-cruiser.cjs",
     "check:unused": "knip",
     "check:duplicates": "jscpd --config .jscpd.json",
     "check:cookbook": "bun scripts/validate-cookbook.ts",
