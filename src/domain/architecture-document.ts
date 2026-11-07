@@ -1,10 +1,11 @@
 import { z } from "zod";
 import {
   analysisProvenanceSchema, architectureComponentsSchema, architectureDiagnosticSchema,
-  filePathSchema, importVariantSchema,
+  importVariantSchema,
 } from "./architecture-shapes.ts";
 import { canonicalArchitectureDocument, filePairKey, importVariantKey } from "./architecture-order.ts";
-import { componentOwner, importRelationshipId, isCanonicalRepositoryPath } from "./component-ownership.ts";
+import { filePathSchema, importRelationshipId, isCanonicalRepositoryPath } from "./architecture-paths.ts";
+import { ComponentCatalog } from "./component-catalog.ts";
 import type { ArchitectureDocument, ComponentRelationship, ImportEvidence } from "./generated/contracts";
 
 const importEvidenceSchema = z.strictObject({
@@ -22,7 +23,7 @@ const componentRelationshipSchema = z.strictObject({
 }) satisfies z.ZodType<ComponentRelationship>;
 
 function validateEvidence(
-  relationship: ComponentRelationship, components: ArchitectureDocument["components"],
+  relationship: ComponentRelationship, catalog: ComponentCatalog,
   index: number, context: z.RefinementCtx,
 ): void {
   const pairs = new Set<string>();
@@ -31,7 +32,7 @@ function validateEvidence(
     const pair = filePairKey(evidence.sourceFile, evidence.targetFile);
     if (pairs.has(pair)) context.addIssue({ code: "custom", path, message: "Import evidence file pairs must be unique" });
     pairs.add(pair);
-    if (componentOwner(evidence.sourceFile, components) !== relationship.source || componentOwner(evidence.targetFile, components) !== relationship.target) {
+    if (catalog.ownerOf(evidence.sourceFile) !== relationship.source || catalog.ownerOf(evidence.targetFile) !== relationship.target) {
       context.addIssue({ code: "custom", path, message: "Evidence file ownership must match its relationship endpoints" });
     }
     const variants = new Set(evidence.variants.map(importVariantKey));
@@ -42,7 +43,7 @@ function validateEvidence(
 }
 
 function validateRelationships(document: ArchitectureDocument, context: z.RefinementCtx): void {
-  const components = new Set(document.components.map(({ id }) => id));
+  const catalog = new ComponentCatalog(document.components);
   const ids = new Set<string>();
   const pairs = new Set<string>();
   document.relationships.forEach((relationship, index) => {
@@ -52,7 +53,7 @@ function validateRelationships(document: ArchitectureDocument, context: z.Refine
     if (pairs.has(pair)) context.addIssue({ code: "custom", path, message: "Only one import relationship is allowed per ordered component pair" });
     ids.add(relationship.id);
     pairs.add(pair);
-    if (!components.has(relationship.source) || !components.has(relationship.target)) {
+    if (!catalog.has(relationship.source) || !catalog.has(relationship.target)) {
       context.addIssue({ code: "custom", path, message: "Relationships must reference declared components" });
     }
     if (relationship.source === relationship.target) {
@@ -62,7 +63,7 @@ function validateRelationships(document: ArchitectureDocument, context: z.Refine
     if (canonicalEndpoints && relationship.id !== importRelationshipId(relationship.source, relationship.target)) {
       context.addIssue({ code: "custom", path: [...path, "id"], message: "Relationship ID must encode 'imports' and both escaped endpoints" });
     }
-    validateEvidence(relationship, document.components, index, context);
+    validateEvidence(relationship, catalog, index, context);
   });
 }
 

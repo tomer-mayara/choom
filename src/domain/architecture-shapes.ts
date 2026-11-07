@@ -1,28 +1,16 @@
 import { z } from "zod";
-import { isCanonicalRepositoryPath, validateComponentTree } from "./component-ownership.ts";
+import { directoryPathSchema, filePathSchema, isCanonicalRepositoryPath } from "./architecture-paths.ts";
+import { ComponentCatalog } from "./component-catalog.ts";
 import type {
-  AnalysisProvenance, ArchitectureComponent, ArchitectureDiagnostic, ComponentDeclaration,
+  AnalysisProvenance, ArchitectureComponent, ArchitectureDiagnostic,
   DiagnosticReference, ImportVariant,
 } from "./generated/contracts";
 
 const text = z.string().min(1);
-export const filePathSchema = text.refine((value) => isCanonicalRepositoryPath(value), {
-  message: "Expected a canonical repository-relative file path",
-});
-const directoryPathSchema = text.refine((value) => isCanonicalRepositoryPath(value, true), {
-  message: "Expected a canonical repository-relative directory path",
-});
-
-const componentDeclarationSchema = z.strictObject({
-  id: directoryPathSchema,
-  name: text,
-  parent: directoryPathSchema.optional(),
-}) satisfies z.ZodType<ComponentDeclaration>;
-
-export const componentDeclarationsSchema = z.array(componentDeclarationSchema).min(1).superRefine(validateComponentTree);
-export const architectureComponentsSchema = z.array(componentDeclarationSchema.extend({
+export const architectureComponentsSchema = z.array(ComponentCatalog.declarationSchema.extend({
   reportedFiles: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
-}) satisfies z.ZodType<ArchitectureComponent>).min(1).superRefine(validateComponentTree);
+}) satisfies z.ZodType<ArchitectureComponent>).min(1)
+  .superRefine((components, context) => new ComponentCatalog(components).validate(context));
 
 export const analysisProvenanceSchema = z.strictObject({
   enforcer: text,

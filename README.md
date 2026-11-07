@@ -93,7 +93,7 @@ remaining tickets. Run the focused checks with:
 
 ```sh
 bun run test:behavior:native --tags @cr-001-t02-domain
-bun test ./test/unit/domain/architecture-document.test.ts ./test/unit/domain/build-architecture-document.test.ts
+bun test ./test/unit/domain
 bun test ./test/interface/domain/architecture-document.test.ts ./test/interface/domain/architectural-layer.test.ts
 ```
 

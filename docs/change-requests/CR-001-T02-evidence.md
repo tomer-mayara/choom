@@ -13,6 +13,11 @@ Only declarations create components. A component owns files throughout its
 subdirectories except where a more-specific declared component owns them.
 Manifest parents describe the declaration tree and do not determine ownership.
 
+The [ComponentCatalog](../../src/domain/component-catalog.ts) owns declaration
+validation and file ownership. It keeps a private declaration snapshot and
+answers membership and ownership queries for the builder and saved-document
+validator. The refactor preserves the document format and analyzer interface.
+
 The builder counts unique local file records, excludes `node_modules`, and
 aggregates imports between distinct components. Evidence preserves each file
 pair and each combination of unknown, false, or true import flags. The inventory
@@ -64,7 +69,7 @@ Focused commands:
 
 ```sh
 bun run test:behavior:native --tags @cr-001-t02-domain
-bun test ./test/unit/domain/architecture-document.test.ts ./test/unit/domain/build-architecture-document.test.ts
+bun test ./test/unit/domain
 bun test ./test/interface/domain/architecture-document.test.ts ./test/interface/domain/architectural-layer.test.ts
 ```
 
@@ -72,18 +77,43 @@ bun test ./test/interface/domain/architecture-document.test.ts ./test/interface/
 | --- | --- |
 | T02 native Cucumber | 13 scenarios and 43 steps passed. |
 | Complete native Cucumber | 34 scenarios and 137 steps passed, including retained characterization. |
-| Focused domain unit tests | 71 tests passed. |
+| Domain unit tests | 83 tests passed, including 5 catalog tests and 3 declaration-error characterizations. |
 | New interface tests | 22 tests passed; generated structure, real runtime acceptance, and substitute-layer data conform. |
-| `bun run check` | Passed: lint, 75 native unit tests, 1 DOM unit test, 34 native Cucumber scenarios, cookbook validation, TypeSpec compilation/output checks, type checks, 45 interface cases, dependency boundaries, unused-code checks, and duplication checks. |
+| `bun run check` | Passed: lint, 83 native unit tests, 1 DOM unit test, 34 native Cucumber scenarios, cookbook validation, TypeSpec compilation/output checks, type checks, 45 interface cases, dependency boundaries, unused-code checks, and duplication checks. |
 | `bun run check-types` | Passed. Also runs inside the complete check and build. |
 | `bun run test:e2e --tags 'not @cr-001'` | Passed: a fresh production build and all 4 retained browser scenarios, with 51 steps. Vite still reports the existing large preview chunk warning. |
-| Original T02 browser cases | Ran `bun scripts/run-browser-behavior.ts --tags @cr-001-t02` against that build. All 18 fail at missing import actions: 6 require Load Repo and 12 require Open Diagram. No undefined or ambiguous steps. These workflows need later tickets. |
+| Original T02 browser cases | At commit `3ca2803`, ran `bun scripts/run-browser-behavior.ts --tags @cr-001-t02`. All 18 failed at missing import actions: 6 require Load Repo and 12 require Open Diagram. No undefined or ambiguous steps. These workflows need later tickets and were not rerun for the catalog-only refactor. |
 | `bun run habit-hooks --all` | Passed on the complete candidate; snooze file remains empty. |
 | Review and document inspection | Complete candidate reviewed; local Markdown links and `git diff --check` pass. |
 
 The local Mac used Bun 1.4.3 and Node 24.20.0, below the repository's pinned Bun
 1.4.4 and Node 26.13.0. The passing local results do not establish results on the
 pinned CI runtimes. No dependency versions were changed to work around this limit.
+
+## ComponentCatalog refactor
+
+Before changing production code, 93 existing domain/interface cases and all 13
+T02 native scenarios passed. Three additional passing characterizations recorded
+declaration error paths and safe validation failures. Five focused catalog tests
+then established declaration checks, membership, deepest ownership, and isolation
+from later caller mutations, including duplicate candidates in invalid documents.
+All existing tests and Gherkin remained unchanged.
+
+The catalog owns a copied declaration snapshot and shares its declaration and tree
+validators with the input schemas. The builder reuses one catalog for file counts
+and import aggregation; saved-document validation creates one for reference and
+evidence checks. Path rules remain ordinary functions in
+[architecture-paths.ts](../../src/domain/architecture-paths.ts).
+
+The behavioral outcomes, TypeSpec/generated contracts, OpenSLO, and dependency
+rules are unchanged. The catalog can inspect candidate declarations while the
+boundary schemas collect validation issues. Invalid documents still report both
+component and relationship errors through `safeParse`, with the same messages
+and paths in the characterization cases. No invalid document leaves the parser.
+An additional comparison with the actual pre-refactor implementation at
+`3ca2803` matched 15,550 ownership queries and 1,555 declaration-validation
+results, including issue messages and paths for malformed inputs. Temporary
+comparison files were removed after the check.
 
 ## Limits and remaining tickets
 

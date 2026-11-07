@@ -90,8 +90,10 @@ CLI arguments. The
 strategy handles process failure and cancellation before calling the converter.
 The converter accepts a **completed report plus context**, validates its shape
 and supported semantics, translates neutral facts, and calls the domain builder.
-It does not manage process lifetime. The builder alone owns attribution,
-aggregation, IDs, and graph validation.
+It does not manage process lifetime. The domain's `ComponentCatalog` owns
+declaration validation and file ownership. The builder uses the catalog for
+attribution and owns aggregation and IDs. The shared document validator uses
+the same catalog to check evidence ownership.
 
 Construct the matching layer only for live analysis, outside React rendering;
 saved viewing does not construct it. Use ordinary functions or callable
