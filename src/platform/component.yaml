@@ -1,5 +1,5 @@
 name: desktop-adapter
-description: Detect the Tauri host and request one project directory.
+description: Detect the Tauri host, select a project, and access a bounded repository session.
 
 artifacts:
   behavior:

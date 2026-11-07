@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01 merged; T02 implemented for review
+**Status:** In progress — T01 and T02 merged; T03 implemented for review
 
 **Date:** 2026-11-06
 
@@ -602,6 +602,12 @@ above. Keep starter characterization separate from strict version-1 validation.
 
 **Dependencies:** T01, T02. **Owners:** workspace discovery, platform, native shell,
 manifest tooling.
+
+**Implementation:** [T03 evidence and limits](CR-001-T03-evidence.md). The
+workspace discovery operation, manifest contract, and native text/path commands
+are implemented. The original UI scenarios stay registered for T07; the
+[public API scenarios](../../cookbook/behavior/architecture-import/t03-api.feature)
+exercise discovery independently of that future UI workflow.
 
 #### Behavioral (Gherkin)
 

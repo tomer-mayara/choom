@@ -11,6 +11,7 @@ artifacts:
     - path: cookbook/behavior/architecture-import/t02-model.feature
     - path: cookbook/behavior/architecture-import/t02-domain.feature
     - path: cookbook/behavior/architecture-import/t03-discovery.feature
+    - path: cookbook/behavior/architecture-import/t03-api.feature
     - path: cookbook/behavior/architecture-import/t04-observations.feature
     - path: cookbook/behavior/architecture-import/t05-execution.feature
     - path: cookbook/behavior/architecture-import/t06-documents.feature
@@ -20,6 +21,9 @@ artifacts:
     - path: cookbook/observability/service.yaml
   architecture:
     - path: .dependency-cruiser.cjs
+      enforcer: dependency-cruiser
+      inputs:
+        - src
     - path: src-tauri/Cargo.toml
     - path: src-tauri/capabilities/main.json
   contracts:

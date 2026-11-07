@@ -6,9 +6,13 @@ transport. The source owners are [App](../../src/App.tsx) and
 The exported App signature stays in source; the feature characterizes UI outcomes.
 
 The workspace consumes the [architecture model](architecture.tsp) and
-[desktop operations](desktop.tsp) defined in TypeSpec. Those sources own the
+[desktop operations](desktop.tsp), and owns the [discovery contract](discovery.tsp)
+defined in TypeSpec. Those sources own the
 component data and operation contracts. React component types, rendering details,
 and the outcomes below remain in TypeScript, Gherkin, and these boundary notes.
+
+[Repository discovery](discovery.md) is available as a workspace operation.
+The UI does not call it yet; the Load Repo workflow belongs to CR-001-T07.
 
 ## Browser interface
 
