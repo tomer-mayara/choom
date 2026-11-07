@@ -39,10 +39,18 @@ and its literal inputs. Child links alone declare components; one component can
 own multiple source directories. See the [T03 evidence record](../docs/change-requests/CR-001-T03-evidence.md)
 for runtime, native, and installed-acceptance limits.
 
+T04 adds the [completed-report converter](interfaces/dependency-cruiser.md).
+Its [public API scenarios](behavior/architecture-import/t04-converter.feature)
+and recorded vendor reports cover canonical evidence, declared component
+ownership across subdirectories, diagnostics, and supported scope. The converter
+calls the common builder through an injected repository path boundary. It has
+no process or UI caller yet. See the [T04 evidence record](../docs/change-requests/CR-001-T04-evidence.md).
+
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)
 [platform](../src/platform/generated/contracts.ts) owners, and with the workspace's
-[discovery code](../src/architecture/generated/contracts.ts). The generated
+[discovery code](../src/architecture/generated/contracts.ts) and
+[concrete converter](../src/architecture/dependency-cruiser/generated/contracts.ts). The generated
 [structural schemas](interfaces/generated/contracts.schema.json) share one JSON
 Schema document. [Configuration](interfaces/tspconfig.yaml) selects the emitter.
 Edit the `.tsp` source, run

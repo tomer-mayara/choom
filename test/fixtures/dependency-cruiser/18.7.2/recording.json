@@ -1,0 +1,38 @@
+{
+  "dependencyCruiserVersion": "18.7.2",
+  "nodeVersion": "v24.20.0",
+  "workingDirectory": ".",
+  "reports": [
+    {
+      "file": "complete.json",
+      "arguments": [
+        "src",
+        "--config",
+        ".dependency-cruiser.cjs",
+        "--output-type",
+        "json",
+        "--output-to",
+        "-",
+        "--no-cache"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "file": "missing-swc.json",
+      "arguments": [
+        "src/core",
+        "--config",
+        ".missing-swc.cjs",
+        "--output-type",
+        "json",
+        "--output-to",
+        "-",
+        "--no-cache"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    }
+  ],
+  "normalization": "Only summary.optionsUsed.baseDir was replaced with the portable repository root marker. All other report fields are recorded output."
+}

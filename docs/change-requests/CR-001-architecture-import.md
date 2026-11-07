@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01 and T02 merged; T03 implemented for review
+**Status:** In progress — T01–T03 merged; T04 implemented for review
 
 **Date:** 2026-11-06
 
@@ -84,7 +84,9 @@ the nonserialized control object and promise/callback binding; behavior tests
 establish cancellation, progress, and lifecycle guarantees.
 
 `DepCruiserArchitecturalLayer` implements the neutral contract with its injected
-runner and converter. The runner receives repository session, config, and inputs,
+runner and `ReportConversion` collaborator. `DepCruiserReportConverter` implements
+this asynchronous interface using the generated TypeSpec operation's request
+and result types. The runner receives repository session, config, and inputs,
 and returns bounded execution facts and report bytes. Native code alone builds
 CLI arguments. The
 strategy handles process failure and cancellation before calling the converter.
@@ -98,7 +100,7 @@ the same catalog to check evidence ownership.
 Construct the matching layer only for live analysis, outside React rendering;
 saved viewing does not construct it. Use ordinary functions or callable
 dependencies where sufficient; no DI container, runner
-base classes, extra helper interfaces, or new Bun workspace is needed. Enforce
+base classes, or new Bun workspace is needed. Enforce
 the composition exception explicitly: UI/common code cannot import concrete
 report collaborators, and platform code cannot import workspace/domain types.
 Add a child manifest only where an actual component boundary warrants one.
@@ -693,6 +695,11 @@ directory. Run discovery/interface and Rust path cases; verify tooling with
 **Dependencies:** T02 and T03's path-normalization contract. **Owner:** concrete
 converter in `src/architecture/dependency-cruiser/`.
 
+**Implementation:** [T04 evidence and limits](CR-001-T04-evidence.md) and
+[converter contract](../../cookbook/interfaces/dependency-cruiser.md). The
+browser-free API scenarios exercise completed-report conversion separately from
+the Load Repo workflow below, which still needs the runner and UI tickets.
+
 #### Behavioral (Gherkin)
 
 ```gherkin
@@ -913,7 +920,7 @@ and process lifetime. Add product-specific native commands, never arbitrary exec
 
 Define runner/native request, result, progress, and cancellation DTOs in TypeSpec.
 Check TypeScript and Rust serialization against their generated schemas and
-verify runtime boundary validation. Inject the runner and converter into the
+verify runtime boundary validation. Inject the runner and a `ReportConversion` into the
 concrete layer; handle terminal process failures before conversion. Implement controlled
 arguments, bounded private output, timeout, and process cleanup. Test injected
 collaborators separately from real IPC and Rust cleanup; cancellation must stop

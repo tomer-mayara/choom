@@ -41,6 +41,15 @@ module.exports = {
       to: { path: "node_modules/@tauri-apps/" },
     },
     {
+      name: "concrete-analyzer-access-through-composition",
+      severity: "error",
+      from: {
+        path: "^src/",
+        pathNot: "^(src/architecture/dependency-cruiser/|src/architecture/create-architectural-layer\\.ts$)",
+      },
+      to: { path: "^(src/architecture/dependency-cruiser/|node_modules/dependency-cruiser/)" },
+    },
+    {
       name: "no-test-code-in-app",
       severity: "error",
       from: { path: "^src/" },
