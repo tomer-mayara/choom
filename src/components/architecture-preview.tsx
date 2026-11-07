@@ -43,7 +43,7 @@ export default function ArchitecturePreview() {
 
   return (
     <div
-      className="h-80 overflow-hidden rounded-xl border border-border bg-card"
+      className="h-full overflow-hidden bg-card"
       aria-label="Example architecture diagram"
     >
       <ReactFlow

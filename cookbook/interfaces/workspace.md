@@ -83,13 +83,25 @@ analysis, storage, or layout.
 It gives React Flow its own node position records while keeping semantic data
 read-only.
 
+Workspace actions occupy a compact bar. The committed diagram fills the
+remaining window width and height and fits its nodes again when the canvas
+resizes. The welcome content appears only before a diagram is shown.
+
 Each declaration produces one card, including isolated declarations and those
 with zero reported files. A component may own files in several subdirectories.
 Evidence paths, folders, and parent relationships do not produce extra cards or
 import arrows. Cards show names, IDs, and reported-file counts. Zero is labelled
-**No files reported**. A text table and keyboard-operated disclosures expose
-the same components, complete import file pairs and variants, findings with
-source and target roles, ordered cycle/via paths, metrics, and provenance.
+**No files reported**. Double-clicking a card, or pressing **Enter** or **Space**
+while it has keyboard focus, opens its declaration and incoming and outgoing
+imports in a side panel. Focusing a card outside the canvas view brings it into
+view without changing the zoom. Complete file pairs and their variants remain available
+through keyboard-operated disclosures. The panel is closed initially; closing
+it returns focus to its opener. A new committed document clears the old panel.
+
+The **?** button opens recorded analysis, including source inputs and scope
+notes. **Findings** opens all diagnostics, including findings without arrows,
+source and target roles, ordered cycle/via paths, and metrics. These panels
+scroll independently of the diagram and close with **Escape** or a close button.
 
 **Export Diagram** captures encoded bytes before waiting for a destination.
 Another load may complete while export waits without changing those bytes.
@@ -112,6 +124,7 @@ a load is pending. Picker failure shows a safe error and allows retry. Browser
 hides this action. See the [desktop contract](desktop.md).
 
 [T07 workflow scenarios](../behavior/architecture-import/t07-workflows.feature)
+and [diagram workspace scenarios](../behavior/diagram-workspace.feature)
 exercise rendered behavior. [API scenarios](../behavior/architecture-import/t07-api.feature)
 and interface tests cover lifecycle and generated state/outcome conformance.
 Browser desktop simulations use validated transport doubles; they do not prove

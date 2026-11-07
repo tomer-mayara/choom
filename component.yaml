@@ -4,6 +4,7 @@ description: Local architecture workspace delivered in a browser or Tauri deskto
 artifacts:
   behavior:
     - path: cookbook/behavior/workspace.feature
+    - path: cookbook/behavior/diagram-workspace.feature
     - path: cookbook/behavior/architecture.feature
     - path: cookbook/behavior/desktop.feature
     - path: cookbook/behavior/architecture-import/t01-explore.feature
