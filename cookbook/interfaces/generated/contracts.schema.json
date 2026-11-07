@@ -1485,6 +1485,329 @@
             ],
             "additionalProperties": false
         },
+        "CreateDocumentSnapshotRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CreateDocumentSnapshotRequest.json",
+            "type": "object",
+            "properties": {
+                "text": {
+                    "$ref": "documentFileText.json"
+                }
+            },
+            "required": [
+                "text"
+            ],
+            "additionalProperties": false
+        },
+        "documentFileText": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "documentFileText.json",
+            "type": "string",
+            "maxLength": 16777216
+        },
+        "DocumentSnapshotRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentSnapshotRequest.json",
+            "type": "object",
+            "properties": {
+                "snapshotId": {
+                    "$ref": "documentSnapshotId.json"
+                }
+            },
+            "required": [
+                "snapshotId"
+            ],
+            "additionalProperties": false
+        },
+        "documentSnapshotId": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "documentSnapshotId.json",
+            "type": "string",
+            "pattern": "^document-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-[1-9][0-9]{0,19}$"
+        },
+        "ReadDocumentFileRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReadDocumentFileRequest.json",
+            "type": "object",
+            "properties": {
+                "path": {
+                    "$ref": "documentFilePath.json"
+                }
+            },
+            "required": [
+                "path"
+            ],
+            "additionalProperties": false
+        },
+        "documentFilePath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "documentFilePath.json",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+        },
+        "ExportDocumentRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ExportDocumentRequest.json",
+            "type": "object",
+            "properties": {
+                "path": {
+                    "$ref": "documentFilePath.json"
+                },
+                "text": {
+                    "$ref": "documentFileText.json"
+                },
+                "overwrite": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "path",
+                "text",
+                "overwrite"
+            ],
+            "additionalProperties": false
+        },
+        "RetryDocumentCleanupRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RetryDocumentCleanupRequest.json",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+        },
+        "DocumentNativeFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentNativeFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "$ref": "DocumentNativeStage.json"
+                },
+                "code": {
+                    "$ref": "DocumentNativeFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DocumentNativeStage": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentNativeStage.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "storage"
+                },
+                {
+                    "type": "string",
+                    "const": "export"
+                },
+                {
+                    "type": "string",
+                    "const": "cleanup"
+                }
+            ]
+        },
+        "DocumentNativeFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentNativeFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "invalid-request"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-snapshot"
+                },
+                {
+                    "type": "string",
+                    "const": "snapshot-limit"
+                },
+                {
+                    "type": "string",
+                    "const": "not-found"
+                },
+                {
+                    "type": "string",
+                    "const": "not-file"
+                },
+                {
+                    "type": "string",
+                    "const": "limit-exceeded"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-utf8"
+                },
+                {
+                    "type": "string",
+                    "const": "destination-exists"
+                },
+                {
+                    "type": "string",
+                    "const": "source-changed"
+                },
+                {
+                    "type": "string",
+                    "const": "cleanup-failed"
+                },
+                {
+                    "type": "string",
+                    "const": "io-error"
+                },
+                {
+                    "type": "string",
+                    "const": "unavailable"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-response"
+                }
+            ]
+        },
+        "CreatedDocumentSnapshot": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CreatedDocumentSnapshot.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "snapshotId": {
+                    "$ref": "documentSnapshotId.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "snapshotId",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "ReadDocumentText": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReadDocumentText.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "text": {
+                    "$ref": "documentFileText.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "text",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "ReleasedDocumentSnapshot": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReleasedDocumentSnapshot.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "released": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "released",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "ExportedDocument": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ExportedDocument.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "exported": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "exported",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "CleanedDocumentFiles": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CleanedDocumentFiles.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "cleaned": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "cleaned",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
         "DirectorySelection": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DirectorySelection.json",
@@ -1593,6 +1916,66 @@
                 },
                 {
                     "$ref": "DepCruiserNativeFailure.json"
+                }
+            ]
+        },
+        "CreateDocumentSnapshotOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CreateDocumentSnapshotOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "CreatedDocumentSnapshot.json"
+                },
+                {
+                    "$ref": "DocumentNativeFailure.json"
+                }
+            ]
+        },
+        "ReadDocumentTextOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReadDocumentTextOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "ReadDocumentText.json"
+                },
+                {
+                    "$ref": "DocumentNativeFailure.json"
+                }
+            ]
+        },
+        "ReleaseDocumentSnapshotOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReleaseDocumentSnapshotOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "ReleasedDocumentSnapshot.json"
+                },
+                {
+                    "$ref": "DocumentNativeFailure.json"
+                }
+            ]
+        },
+        "ExportDocumentOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ExportDocumentOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "ExportedDocument.json"
+                },
+                {
+                    "$ref": "DocumentNativeFailure.json"
+                }
+            ]
+        },
+        "RetryDocumentCleanupOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RetryDocumentCleanupOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "CleanedDocumentFiles.json"
+                },
+                {
+                    "$ref": "DocumentNativeFailure.json"
                 }
             ]
         },
@@ -2028,6 +2411,149 @@
                 },
                 {
                     "$ref": "AnalysisCancelled.json"
+                }
+            ]
+        },
+        "DocumentCodecFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentCodecFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "encoding"
+                        },
+                        {
+                            "type": "string",
+                            "const": "decoding"
+                        }
+                    ]
+                },
+                "code": {
+                    "$ref": "DocumentCodecFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DocumentCodecFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentCodecFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "unsupported-version"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-encoding"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-document"
+                },
+                {
+                    "type": "string",
+                    "const": "limit-exceeded"
+                }
+            ]
+        },
+        "EncodedArchitectureDocument": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "EncodedArchitectureDocument.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "text": {
+                    "$ref": "architectureYaml.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "text",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "architectureYaml": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "architectureYaml.json",
+            "type": "string",
+            "maxLength": 16777216
+        },
+        "DecodedArchitectureDocument": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodedArchitectureDocument.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "document": {
+                    "$ref": "ArchitectureDocument.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "document",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "EncodeArchitectureOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "EncodeArchitectureOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "EncodedArchitectureDocument.json"
+                },
+                {
+                    "$ref": "DocumentCodecFailure.json"
+                }
+            ]
+        },
+        "DecodeArchitectureOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodeArchitectureOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "DecodedArchitectureDocument.json"
+                },
+                {
+                    "$ref": "DocumentCodecFailure.json"
                 }
             ]
         }

@@ -12,12 +12,14 @@ import {
   type Type,
 } from "@typespec/compiler";
 import { SyntaxKind, type Node } from "@typespec/compiler/ast";
+import { getExtensions } from "@typespec/json-schema";
 
 const targets = [
   { namespace: "Choom.Domain", path: "src/domain/generated/contracts.ts" },
   { namespace: "Choom.Desktop", path: "src/platform/generated/contracts.ts" },
   { namespace: "Choom.Discovery", path: "src/architecture/generated/contracts.ts" },
   { namespace: "Choom.DepCruiser", path: "src/architecture/dependency-cruiser/generated/contracts.ts" },
+  { namespace: "Choom.Documents", path: "src/lib/generated/contracts.ts" },
 ];
 
 function identifier(name: string): string {
@@ -75,11 +77,15 @@ function parameter(property: ModelProperty, owner: Namespace, imports: Map<strin
   return `${identifier(property.name)}${property.optional ? "?" : ""}: ${reference(property.type, owner, imports)}`;
 }
 
-function modelDeclaration(model: Model, owner: Namespace, imports: Map<string, string>): string {
+function modelDeclaration(program: Program, model: Model, owner: Namespace, imports: Map<string, string>): string {
   if (model.baseModel || model.indexer || model.sourceModels.length > 0) {
     throw new Error(`Unsupported model inheritance, spread, or indexer: ${model.name}`);
   }
   const properties = [...model.properties.values()].map((property) => `  ${parameter(property, owner, imports)};`);
+  if (properties.length === 0 && getExtensions(program, model)
+    .some(({ key, value }) => key === "additionalProperties" && value === false)) {
+    return `export type ${identifier(model.name)} = Record<string, never>;`;
+  }
   return `export interface ${identifier(model.name)} {\n${properties.join("\n")}\n}`;
 }
 
@@ -96,7 +102,7 @@ function interfaceDeclaration(contract: Interface, owner: Namespace, imports: Ma
   return `export interface ${identifier(contract.name)} {\n${operations.join("\n")}\n}`;
 }
 
-function namespaceDeclarations(owner: Namespace, emitted: Set<Node>): string[] {
+function namespaceDeclarations(program: Program, owner: Namespace, emitted: Set<Node>): string[] {
   if (owner.operations.size || owner.enums.size || owner.decoratorDeclarations.size || owner.functionDeclarations.size) {
     throw new Error(`Unsupported declaration in ${getNamespaceFullName(owner)}`);
   }
@@ -110,7 +116,7 @@ function namespaceDeclarations(owner: Namespace, emitted: Set<Node>): string[] {
       throw new Error(`Unsupported generated or template declaration: ${type.name}`);
     }
     emitted.add(type.node);
-    if (type.kind === "Model") return modelDeclaration(type, owner, imports);
+    if (type.kind === "Model") return modelDeclaration(program, type, owner, imports);
     if (type.kind === "Interface") return interfaceDeclaration(type, owner, imports);
     if (type.kind === "Scalar") {
       if (!type.baseScalar || type.constructors.size) throw new Error(`Unsupported scalar: ${type.name}`);
@@ -147,7 +153,7 @@ export function emitTypeScript(program: Program, sources: Set<string>): Map<stri
   for (const target of targets) {
     const [owner] = program.resolveTypeReference(target.namespace);
     if (owner?.kind !== "Namespace") throw new Error(`Missing contract namespace: ${target.namespace}`);
-    const declarations = namespaceDeclarations(owner, emitted);
+    const declarations = namespaceDeclarations(program, owner, emitted);
     output.set(target.path, [
       "// Generated from TypeSpec by bun run contracts:generate. Do not edit.",
       "", ...declarations.map((declaration) => `${declaration}\n`),

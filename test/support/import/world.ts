@@ -38,6 +38,7 @@ export interface ImportWorld extends World {
   requestedAction?: "Load Repo" | "Open Diagram";
   exportOperation?: Promise<PromiseSettledResult<string>>;
   exportSettled?: boolean;
+  releaseDocumentSnapshots?: () => Promise<void>;
   stepKind?: string;
 }
 

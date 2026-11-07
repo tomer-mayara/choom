@@ -100,6 +100,13 @@ jobs:
           CHOOM_PACKAGED_BUILD_ID: ${{ github.sha }}
           CHOOM_PACKAGED_FIXTURE_MODULES: ${{ runner.temp }}/choom-fixture-deps/node_modules
         run: xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-native-analysis
+      - name: Check portable documents in the installed release
+        if: runner.os == 'Linux'
+        env:
+          CHOOM_PACKAGED_APP: /usr/bin/choom-desktop
+          CHOOM_PACKAGED_BUILD_ID: ${{ github.sha }}
+          CHOOM_PACKAGED_FIXTURE_MODULES: ${{ runner.temp }}/choom-fixture-deps/node_modules
+        run: xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @packaged-native-documents
       - name: Check installed architecture import
         if: runner.os == 'Linux'
         env:

@@ -12,8 +12,8 @@ configuration retain their own artifacts.
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | [`desktop.feature`](behavior/desktop.feature) | [TypeSpec operations](interfaces/desktop.tsp), implemented by [`desktop.ts`](../src/platform/desktop.ts); [boundary notes](interfaces/desktop.md) |
 | Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; new [installed picker](behavior/architecture-import/t01-installed-picker-smoke.feature) and [import acceptance](behavior/architecture-import/t08-installed.feature) | Choom's [desktop boundary](interfaces/desktop.tsp); vendor Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
 
-The workspace owns `architecture/`, `components/`, and `lib/`, including discovery
-and internal layout. The model
+The workspace owns `architecture/`, `components/`, `documents/`, and `lib/`, including discovery,
+document workflows, and internal layout. The model
 and desktop adapter have separate import boundaries. Cargo dependencies and
 Tauri capabilities define the native boundary.
 
@@ -53,11 +53,20 @@ and cancellation; [installed native-operation scenarios](behavior/architecture-i
 exercise real process execution independently of the later Load Repo UI.
 See the [T05 evidence record](../docs/change-requests/CR-001-T05-evidence.md).
 
+T06 adds the [portable document codec and file boundary](interfaces/documents.md).
+Its [API scenarios](behavior/architecture-import/t06-api.feature) cover round trips,
+candidate validation, cleanup, and export capture. The
+[installed scenarios](behavior/architecture-import/t06-installed.feature) use
+real analysis and file operations through native IPC. File evidence may span
+several subdirectories owned by one declared component. T07 supplies the UI.
+See the [T06 evidence record](../docs/change-requests/CR-001-T06-evidence.md).
+
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)
 [platform](../src/platform/generated/contracts.ts) owners, and with the workspace's
 [discovery code](../src/architecture/generated/contracts.ts) and
-[concrete converter](../src/architecture/dependency-cruiser/generated/contracts.ts). The generated
+[concrete converter](../src/architecture/dependency-cruiser/generated/contracts.ts) and
+[document codec](../src/lib/generated/contracts.ts). The generated
 [structural schemas](interfaces/generated/contracts.schema.json) share one JSON
 Schema document. [Configuration](interfaces/tspconfig.yaml) selects the emitter.
 Edit the `.tsp` source, run
@@ -72,6 +81,9 @@ fails on unsupported constructs or declarations without a configured output
 owner. When adding types or components, extend that mapping and its conformance
 checks deliberately. The official `@typespec/json-schema` emitter produces the
 structural JSON schemas.
+
+Closed empty TypeSpec models map to `Record<string, never>` so an empty request
+does not become TypeScript's unrestricted non-nullish `{}` type.
 
 ## What the checks establish
 

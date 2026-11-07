@@ -25,10 +25,14 @@ After({ tags: "@cr-001", timeout: 60_000 }, async function (this: ImportWorld, {
     if (result?.status === Status.PASSED) this.importFixture?.controls.assertObserved();
   } finally {
     try {
-      await this.viewerBrowser?.close();
-      if (this.installedDriver instanceof PackagedImportDriver) await this.installedDriver.close();
+      await this.releaseDocumentSnapshots?.();
     } finally {
-      await this.importFixture?.close();
+      try {
+        await this.viewerBrowser?.close();
+        if (this.installedDriver instanceof PackagedImportDriver) await this.installedDriver.close();
+      } finally {
+        await this.importFixture?.close();
+      }
     }
   }
 });
