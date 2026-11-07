@@ -64,7 +64,7 @@ A local Choom-source probe produced a 66886-byte report with 43 modules in
 677 ms. Two-module reports were about 5.3 KiB. These are small-fixture
 observations, not a production workload baseline or service objective.
 
-## Verification
+## Initial verification
 
 | Check | Result |
 | --- | --- |
@@ -145,12 +145,67 @@ Local artifact identities, observed UI notes, the probe source/configuration,
 and cleanup observations are in `test-results/t05-macos/`. The normal release
 build output is restored after the probe.
 
+## Native CI repairs
+
+The initial CI run exposed three platform failures and a previously blocked
+Linux acceptance path. The fixes preserve the existing behavior and TypeSpec
+contracts; no test or permission check was disabled.
+
+- Linux installs `/usr/bin/choom-desktop`, because `util-linux` already owns
+  `/usr/bin/choom`. A Linux-only Tauri configuration keeps the display name Choom.
+- Windows embeds the Common Controls v6 manifest through the MSVC linker for
+  application and test executables. The default resource path only covered app
+  binaries, so test startup could not resolve `TaskDialogIndirect`. This follows
+  [Tauri's own test workaround](https://github.com/tauri-apps/tauri/blob/dev/examples/api/src-tauri/build.rs).
+  IPC fixtures now use Windows' `http://tauri.localhost` embedded origin. The
+  moved-directory fixture parks the open report before moving its directory,
+  as required by Windows, while preserving every cleanup and retry assertion.
+- macOS cleanup continues bounded reaping and observation when Darwin reports
+  `EPERM` for a zombie-only process group. Success still requires the group to
+  disappear. Two real-process regressions retain an unreaped child with
+  `waitid(WNOWAIT)`; both failed before the fix and pass afterward. The original
+  descendant test failed on repetition 11 before the fix, then passed 50
+  consecutive runs covering completion, cancellation, and shutdown.
+- Linux acceptance starts a fresh D-Bus session inside Xvfb. The inherited
+  hosted bus left GTK waiting for desktop-portal activation before WebKit's
+  inspector could start. A controlled Ubuntu 24.04 reproduction observed the
+  25-second portal timeout and inspector connection after the test deadline.
+  The fresh bus received the X11 display, activated the GTK portal backend, and
+  opened the installed application normally. Temporary startup diagnostics and
+  the ineffective compositor override were removed.
+- Folder selection leaves GTK's empty Recent view and accepts the location
+  entry's inline completion before submission. The native dialog, displayed
+  selection, cancellation, and closure assertions remain in place.
+
+Local checks after the repairs passed: `bun run check`, type checks, frontend
+build, Habit Hooks with an empty snooze file, 49 Rust tests, formatting, Clippy,
+the ordinary macOS app/DMG build, and four retained browser scenarios. Source
+review found no remaining actionable issue in the repairs.
+
+[Hosted Windows and macOS](https://github.com/tomer-mayara/choom/actions/runs/42351696542)
+passed on the repaired native code: Windows ran 39 Rust tests and built the app;
+macOS ran 49 Rust tests and built the app. Final hosted validation is linked in
+[PR #8](https://github.com/tomer-mayara/choom/pull/8).
+
+Independent Linux verification used installed release packages outside the
+checkout and the pinned Bun, Node, Rust, and analyzer versions. Debian arm64
+passed picker smoke (1 scenario / 6 steps), three fresh-profile repetitions,
+and all T05 native operations (3 scenarios / 24 steps). Matching Ubuntu 24.04
+WebKitGTK 2.52.6 and portal packages verified the startup diagnosis and fresh-bus
+invocation without disabling the browser sandbox. The four T08 scenarios reached
+installed sessions and failed at the expected absent Load Repo/Open Diagram UI.
+
+The tested Linux package SHA-256 is
+`585af249c6e5692299eec22fc22c1091023fc7e87e21e00b6b1d0f7d0e7d5460`.
+Local evidence is under `/tmp/choom-pr8-linux-evidence`. The earlier macOS hashes
+above identify the initial implementation artifacts, not the repair build.
+
 ## Remaining scope
 
 T06 owns saved YAML and T07 owns Load Repo and its trust notice. The ordinary
 installed macOS UI cannot invoke the new analysis path before T07. Linux
 packaged tests exercise production native commands directly through the
-installed webview without adding a product test hook. Their actual Linux run,
-Windows runtime checks, and released signing/notarization remain unverified
-locally. The macOS instrumented bundle cannot replace ordinary release UI
+installed webview without adding a product test hook. Native Windows tests and
+Linux installed operations now have the evidence above; released
+signing/notarization remains unverified. The macOS instrumented bundle cannot replace ordinary release UI
 acceptance. Platform-specific evidence must not be inferred from another OS.
