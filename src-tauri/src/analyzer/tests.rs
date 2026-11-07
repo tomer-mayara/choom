@@ -822,7 +822,12 @@ fn normal_completion_cancel_and_shutdown_stop_descendants_with_ignored_pipes() {
         System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject},
     };
 
-    for mode in ["completed", "cancelled", "shutdown"] {
+    let rounds = if cfg!(windows) { 10 } else { 1 };
+    for mode in ["completed", "cancelled", "shutdown"]
+        .into_iter()
+        .cycle()
+        .take(rounds * 3)
+    {
         let child = "const fs=require('node:fs');fs.writeFileSync('child-pid',String(process.pid));fs.writeFileSync('child-ready','yes');setInterval(()=>{},1000);";
         let finish = if mode == "completed" {
             "fs.writeFileSync(process.argv[process.argv.indexOf('--output-to')+1], '{}');process.exit(0);"
