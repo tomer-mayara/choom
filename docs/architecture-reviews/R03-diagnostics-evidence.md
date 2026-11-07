@@ -68,3 +68,31 @@ do not prove installed behavior.
 | Focused browser command above | Passed: frontend build and 45 scenarios / 366 steps. Existing chunk-size and browser-fixture import warnings remain. |
 | Independent review | Exact message/order comparison and validator substitution comparison passed; 30 codec unit/interface tests with 146 assertions passed. No actionable finding. |
 | `bun run habit-hooks --all` | Passed; snooze file remains empty. |
+
+## Installed observation correction
+
+The first Linux CI attempt and one identical-head rerun timed out in the existing
+Retry scenario while waiting for the analyzer-failure alert. Both retained
+screenshots and HTML show the expected alert, the previous diagram, and Retry.
+The first poll never returned a view; the rerun returned an empty alert list
+before its deadline. R04, with the same production source, passed the full
+installed route. These facts do not show a semantic-message regression.
+
+The packaged driver assembled each view through many asynchronous WebDriver
+element reads. A workflow transition can remove a status element while the
+driver still holds its handle, or mix alert and status observations from different
+states. The exact blocked command was not traced. The driver now reads displayed
+state with one synchronous, read-only DOM operation, like the browser driver.
+It retains the same card, edge, alert, status, and body fields. Dialog actions,
+native commands, failure and cleanup assertions, and timeouts are unchanged.
+
+This is acceptance tooling, so no product behavior tests were added for it.
+A local protocol check sent the real driver's serialized WebDriver operation to
+Chromium. Both failed captures and a successful capture matched the browser
+driver's projection, with exactly one execute request per view. Directly hidden,
+ancestor-hidden, and `visibility:hidden` notices returned empty text; visible
+cards, edges, alerts, and statuses remained. Removing a status returned an empty
+status list without an element wait. This is not a general replacement for all
+WebDriver text semantics, nor proof of installed WebKit behavior. Current
+installed CI status appears in the draft PR. The two failed attempts remain available in
+[CI run 42408741834](https://github.com/tomer-mayara/choom/actions/runs/42408741834).

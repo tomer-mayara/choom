@@ -286,24 +286,23 @@ export class PackagedImportDriver implements ImportDriver {
 
   async view(): Promise<ImportView> {
     await this.open();
-    const browser = this.session();
-    const cards = await browser.$$(".react-flow__node[data-id]");
-    const componentCards: { id: string; text: string }[] = [];
-    for (const card of cards) {
-      componentCards.push({ id: await card.getAttribute("data-id") ?? "", text: await card.getText() });
-    }
-    const componentIds = componentCards.map((card) => card.id);
-    const edges: ImportView["edges"] = [];
-    for (const edge of await browser.$$(".react-flow__edge[aria-label]")) {
-      const label = await edge.getAttribute("aria-label");
-      const endpoints = /^Edge from (.+) to (.+)$/.exec(label ?? "");
-      edges.push({ source: endpoints?.[1] ?? "", target: endpoints?.[2] ?? "" });
-    }
-    const alerts: string[] = [];
-    for (const alert of await browser.$$('[role="alert"]')) alerts.push(await alert.getText());
-    const statuses: string[] = [];
-    for (const status of await browser.$$('[role="status"]')) statuses.push(await status.getText());
-    return { componentIds, componentCards, edges, text: await browser.$("body").getText(), alerts, statuses };
+    // Read one DOM state without waiting on elements removed by workflow transitions.
+    return this.session().execute(() => {
+      const visibleText = (node: HTMLElement) => node.getClientRects().length > 0 && getComputedStyle(node).visibility === "visible"
+        ? node.innerText : "";
+      const componentCards = Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]"),
+        (node) => ({ id: node.getAttribute("data-id") ?? "", text: visibleText(node) }));
+      const edges = Array.from(document.querySelectorAll(".react-flow__edge[aria-label]"), (edge) => {
+        const endpoints = /^Edge from (.+) to (.+)$/.exec(edge.getAttribute("aria-label") ?? "");
+        return { source: endpoints?.[1] ?? "", target: endpoints?.[2] ?? "" };
+      });
+      return {
+        componentIds: componentCards.map((card) => card.id), componentCards, edges,
+        text: visibleText(document.body),
+        alerts: Array.from(document.querySelectorAll<HTMLElement>('[role="alert"]'), visibleText),
+        statuses: Array.from(document.querySelectorAll<HTMLElement>('[role="status"]'), visibleText),
+      };
+    });
   }
 
   async close(): Promise<void> {
