@@ -30,7 +30,8 @@ The ordinary Tauri Linux build dependencies are also required; see the
 ordinary release `.deb`, install it outside the checkout, and retain its build
 identifier and hash. Do not use `target/debug`, `--no-bundle`, an application
 with a WebDriver plugin, or a symlink back into this checkout as installed
-release evidence. A typical installed executable is `/usr/bin/choom`.
+release evidence. Choom installs as `/usr/bin/choom-desktop` to avoid a
+conflict with the `choom` executable from `util-linux`.
 
 Prepare the production frontend once for the source-free browser consumer:
 
@@ -41,7 +42,7 @@ bun run build
 Set these variables for the actual installed artifact, then run smoke first:
 
 ```sh
-export CHOOM_PACKAGED_APP=/usr/bin/choom
+export CHOOM_PACKAGED_APP=/usr/bin/choom-desktop
 export CHOOM_PACKAGED_BUILD_ID=release-version-and-source-commit
 xvfb-run -a bun run test:behavior:packaged --tags @packaged-smoke
 ```
