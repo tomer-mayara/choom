@@ -8,7 +8,7 @@ configuration retain their own artifacts.
 | Component | Owner | Behavior | Interface |
 | --- | --- | --- | --- |
 | Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [`workspace.feature`](behavior/workspace.feature) | Consumed [architecture](interfaces/architecture.tsp) and [desktop](interfaces/desktop.tsp) contracts; [UI outcomes](interfaces/workspace.md) |
-| Architecture model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [`architecture.feature`](behavior/architecture.feature) | [TypeSpec model](interfaces/architecture.tsp), implemented by the validator in [`architecture.ts`](../src/domain/architecture.ts) |
+| Architecture model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [`architecture.feature`](behavior/architecture.feature); [semantic documents](behavior/architecture-import/t02-domain.feature) | [TypeSpec contracts](interfaces/architecture.tsp); [starter validator](../src/domain/architecture.ts), [document validator](../src/domain/architecture-document.ts), [builder](../src/domain/build-architecture-document.ts), and [layer binding](../src/domain/architectural-layer.ts) |
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | [`desktop.feature`](behavior/desktop.feature) | [TypeSpec operations](interfaces/desktop.tsp), implemented by [`desktop.ts`](../src/platform/desktop.ts); [boundary notes](interfaces/desktop.md) |
 | Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; new [installed picker](behavior/architecture-import/t01-installed-picker-smoke.feature) and [import acceptance](behavior/architecture-import/t08-installed.feature) | Choom's [desktop boundary](interfaces/desktop.tsp); vendor Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
 
@@ -23,6 +23,13 @@ required scenarios must pass before merge. The
 [T01 evidence map](../docs/change-requests/CR-001-T01-evidence.md) records owners,
 future TypeSpec bindings, retained characterization, and actual verification
 limits. Browser simulations do not count as installed-app acceptance.
+
+T02 implements the neutral semantic model behind those workflows. Its
+[native scenarios](behavior/architecture-import/t02-domain.feature) exercise the
+real builder and document validator. They do not select directories, execute an
+analyzer, parse YAML syntax, or render the imported document. The original browser
+scenarios remain registered for the later workflow implementation. See the
+[T02 evidence record](../docs/change-requests/CR-001-T02-evidence.md).
 
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)
@@ -69,6 +76,10 @@ TypeScript checks connect generated model and operation declarations to their
 implementations. Runtime interface cases compare generated structural schemas
 with the real parser. The Zod parser still owns unique IDs, valid references, and
 input normalization; a structural schema does not establish those graph rules.
+The version-1 validator rejects unknown fields, validates declared ownership,
+and normalizes collection order. The starter parser retains its previous behavior.
+Document interface cases use AJV's date-time format validator as well as the
+generated schema; compilation alone does not validate timestamp values.
 The app has no HTTP API or event transport. UI outcomes and native capabilities
 remain covered by their behavior and configuration checks.
 

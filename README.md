@@ -85,6 +85,18 @@ bun run test:e2e --tags 'not @cr-001'
 bun run test:e2e --tags '@cr-001'
 ```
 
+[CR-001-T02](docs/change-requests/CR-001-T02-evidence.md) adds the analyzer-neutral
+domain contract, document builder, and strict version-1 validator. A declared
+component owns its subdirectories until a more-specific declaration takes over.
+These public APIs are covered without a browser; the import UI still needs the
+remaining tickets. Run the focused checks with:
+
+```sh
+bun run test:behavior:native --tags @cr-001-t02-domain
+bun test ./test/unit/domain/architecture-document.test.ts ./test/unit/domain/build-architecture-document.test.ts
+bun test ./test/interface/domain/architecture-document.test.ts ./test/interface/domain/architectural-layer.test.ts
+```
+
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double the vendor open/save dialog boundary. Analyzer,
 delay, and storage-fault inputs are staged for the TypeSpec bindings delivered

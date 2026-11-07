@@ -1,6 +1,7 @@
 import {
   getNamespaceFullName,
   isArrayModelType,
+  isRecordModelType,
   type Interface,
   type Model,
   type ModelProperty,
@@ -21,15 +22,30 @@ function identifier(name: string): string {
   return name;
 }
 
+function primitiveReference(type: Type): string | undefined {
+  if (type.kind === "String" || type.kind === "Boolean") return JSON.stringify(type.value);
+  if (type.kind === "Number") {
+    const value = type.numericValue.asNumber();
+    if (value === null || !Number.isFinite(value)) throw new Error(`Unsupported numeric literal: ${type.valueAsString}`);
+    return JSON.stringify(value);
+  }
+  if (type.kind === "Intrinsic" && type.name === "null") return "null";
+  if (type.kind === "Scalar" && type.namespace?.name === "TypeSpec") {
+    if (type.name === "string" || type.name === "boolean") return type.name;
+    if (type.name === "integer" || type.name === "float64") return "number";
+  }
+  return undefined;
+}
+
 function reference(type: Type, owner: Namespace): string {
   if (type.kind === "Model" && isArrayModelType(type)) {
     return `Array<${reference(type.indexer.value, owner)}>`;
   }
-  if (type.kind === "String" || type.kind === "Boolean") return JSON.stringify(type.value);
-  if (type.kind === "Intrinsic" && type.name === "null") return "null";
-  if (type.kind === "Scalar" && type.namespace?.name === "TypeSpec") {
-    if (type.name === "string" || type.name === "boolean") return type.name;
+  if (type.kind === "Model" && type.name === "Record" && type.namespace?.name === "TypeSpec" && isRecordModelType(type)) {
+    return `Record<string, ${reference(type.indexer.value, owner)}>`;
   }
+  const primitive = primitiveReference(type);
+  if (primitive !== undefined) return primitive;
   if (type.kind === "Union" && !type.name) {
     return [...type.variants.values()].map((variant) => reference(variant.type, owner)).join(" | ");
   }

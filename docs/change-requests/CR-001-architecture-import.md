@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** Proposed — planning only
+**Status:** In progress — T01 merged; T02 implemented for review
 
 **Date:** 2026-11-06
 
@@ -25,7 +25,7 @@ This release uses one repository-local dependency-cruiser installation and a
 supported local Node runtime. It does not install dependencies, bundle a runtime
 or JavaScript API bridge, run package scripts, analyze Rust or IPC, watch files,
 combine analyzers, discover plugins, or analyze repositories in the browser.
-These contracts remain proposals; they do not approve future constraint
+Constraints for the remaining tickets are proposals; they do not approve future constraint
 artifacts or authorize a merge.
 
 ## Foundation and responsibilities
@@ -70,8 +70,8 @@ Author Choom-owned component models and operations in TypeSpec, extending the
 sources from `component.yaml`. Generated TypeScript declarations and JSON Schema
 must stay consistent with those sources; runtime validators and public
 implementations need conformance checks. Keep third-party report formats and
-Tauri configuration under their vendor contracts. The TypeSpec additions below
-are proposed work, not implemented artifacts.
+Tauri configuration under their vendor contracts. T02 defines the neutral domain
+contracts; later tickets add their concrete execution, storage, and UI bindings.
 
 `ArchitecturalLayer.analyze(request, control)` returns a promise of a neutral
 success, failure, or cancelled outcome. Success contains a validated document;
@@ -201,6 +201,9 @@ component relationship. Imports between workspace files do not add relationships
 `scopeNotes` conservatively summarize verified filters, traversal, parser/type
 settings, and observable suppression or
 baseline use. They do not reproduce the entire configuration.
+`generatedAt` uses uppercase `T` and `Z`, seconds 00–59, optional fractional
+seconds, and either `Z` or a colon-separated numeric offset. The TypeSpec pattern
+and date-time format define this timestamp form; leap seconds are not stored.
 
 Only linked component declarations establish component boundaries. Directories
 do not map one-to-one to components: a declared component owns its directory and
@@ -227,7 +230,11 @@ copy analyzer folder totals or include files assigned to a deeper declared
 component in its containing component's count. Saved documents retain these
 counts; relationship evidence is not a complete file inventory. Those records
 may include reference-only files; this is not an analyzed-file
-count. Zero means **No files reported**, not no dependencies or unsupported
+count. Neutral observations must include both endpoints of each internal import
+in that inventory. The builder rejects missing endpoints instead of inventing
+records or changing counts from evidence. The converter must supply any
+reference-only records needed to satisfy this precondition.
+Zero means **No files reported**, not no dependencies or unsupported
 analysis. Keep every declared component, including the native shell.
 
 Aggregate imports between distinct components into one directed relationship
@@ -482,6 +489,11 @@ steps. Establish the packaged driver here and exercise real execution in T05.
 ### CR-001-T02 — Define the neutral layer and semantic model
 
 **Dependencies:** T01. **Owner:** `src/domain/`.
+
+**Implementation:** [T02 evidence and limits](CR-001-T02-evidence.md). The
+[native domain scenarios](../../cookbook/behavior/architecture-import/t02-domain.feature)
+exercise this ticket's public APIs. The workflow scenarios below remain the
+acceptance requirements for their later UI consumers.
 
 #### Behavioral (Gherkin)
 

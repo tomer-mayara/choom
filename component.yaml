@@ -9,6 +9,7 @@ artifacts:
     - path: cookbook/behavior/architecture-import/t01-explore.feature
     - path: cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
     - path: cookbook/behavior/architecture-import/t02-model.feature
+    - path: cookbook/behavior/architecture-import/t02-domain.feature
     - path: cookbook/behavior/architecture-import/t03-discovery.feature
     - path: cookbook/behavior/architecture-import/t04-observations.feature
     - path: cookbook/behavior/architecture-import/t05-execution.feature
