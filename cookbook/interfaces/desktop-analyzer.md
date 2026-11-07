@@ -87,7 +87,10 @@ causes cleanup failure and retains the job; it is not treated as removed. After
 successful cleanup, another release cannot delete a new directory at that path.
 
 Unix execution owns a process group. Linux checks for live group members; macOS
-waits for the group to disappear. Windows execution uses an owned Job Object
+waits for the group to disappear. Darwin can return `EPERM` while a group contains
+only exited processes that have not been reaped. Cleanup continues reaping and
+observing within its deadline; that error alone never means cleanup succeeded.
+Windows execution uses an owned Job Object
 assigned before child execution and waits for its active process count to reach
 zero. Normal completion, cancellation, timeout, and errors stop remaining owned
 descendants and reap the direct child. Raw streams,

@@ -7,6 +7,12 @@ pub(crate) fn stopped(group: u32, deadline: Instant) -> io::Result<bool> {
         if error.raw_os_error() == Some(libc::ESRCH) {
             return Ok(true);
         }
+        #[cfg(target_os = "macos")]
+        if error.raw_os_error() == Some(libc::EPERM) {
+            // A zombie-only Darwin group exists until its owner reaps it.
+            // Keep waiting within the cleanup deadline, including real denial.
+            return Ok(false);
+        }
         return Err(error);
     }
     #[cfg(target_os = "linux")]

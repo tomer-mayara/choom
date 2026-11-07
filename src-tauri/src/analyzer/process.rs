@@ -147,13 +147,16 @@ impl Process {
                 .map_or_else(|| child.start_kill(), |job| job.terminate());
             if let Err(error) = killed {
                 #[cfg(unix)]
-                let gone = error.raw_os_error() == Some(libc::ESRCH);
+                // Darwin also returns EPERM when only unreaped zombies remain.
+                // Continue to reap and observe the group; this is not success.
+                let may_have_exited = error.raw_os_error() == Some(libc::ESRCH)
+                    || (cfg!(target_os = "macos") && error.raw_os_error() == Some(libc::EPERM));
                 #[cfg(not(unix))]
-                let gone = {
+                let may_have_exited = {
                     let _ = error;
                     false
                 };
-                if !gone {
+                if !may_have_exited {
                     return Err(Problem::cleanup());
                 }
             }
@@ -249,4 +252,51 @@ fn drain(
             }
         })
         .map_err(|_| Problem::unavailable())
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    fn exited_process() -> Process {
+        let mut process = Process::spawn(
+            Path::new("/bin/sh"),
+            &[OsString::from("-c"), OsString::from("exit 0")],
+            &std::env::temp_dir(),
+        )
+        .unwrap();
+        process.initialize(1024, false).unwrap();
+        let mut information = std::mem::MaybeUninit::<libc::siginfo_t>::zeroed();
+        // Leave a real exited child unreaped, so Darwin retains its process group.
+        let waited = unsafe {
+            libc::waitid(
+                libc::P_PID,
+                process.group,
+                information.as_mut_ptr(),
+                libc::WEXITED | libc::WNOWAIT,
+            )
+        };
+        assert_eq!(waited, 0, "{}", io::Error::last_os_error());
+        process
+    }
+
+    #[test]
+    fn completed_unreaped_process_group_cleans_up() {
+        let mut process = exited_process();
+        process.cleanup(&Limits::default()).unwrap();
+        assert!(process.poll().unwrap().unwrap().success());
+        assert!(process.child.is_none());
+    }
+
+    #[test]
+    fn zombie_group_waits_for_reaping_before_cleanup_is_complete() {
+        let mut process = exited_process();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let observed = super::super::unix_group::stopped(process.group, deadline);
+        let status = process.poll().unwrap().unwrap();
+        assert!(status.success());
+        assert!(!observed.unwrap());
+        assert!(super::super::unix_group::stopped(process.group, deadline).unwrap());
+        process.cleanup(&Limits::default()).unwrap();
+    }
 }
