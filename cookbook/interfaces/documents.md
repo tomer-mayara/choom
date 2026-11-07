@@ -56,7 +56,10 @@ until cleanup succeeds. A cleanup retry does not remove live snapshots.
 Use the same `DocumentFiles` instance for a workspace's preparation, release, and
 cleanup operations. It retains IDs when release is unconfirmed, including a
 request that never reached native storage. New candidate writes and exports
-remain blocked until those releases are resolved. `retryCleanup` retries these
+wait for releases still in progress. A normal release in progress is not a
+cleanup failure. If a release fails or remains unconfirmed, writes stay blocked
+until cleanup succeeds. Concurrent release requests for one ID share the same
+operation. `retryCleanup` waits for active releases, then retries retained
 IDs before asking native storage to remove its pending files. An `invalid-request`
 or `invalid-snapshot` rejection remains a failure result, but does not retain an
 ID that native storage cannot own. Transport errors, invalid responses, and
@@ -87,7 +90,11 @@ rejects control characters and unpaired UTF-16 surrogates in selected paths.
 File reads are bounded to 16 MiB. Non-regular files and final symlinks are refused. Opening an invalid
 document never writes to the selected file.
 
-`exportDocument` captures encoded bytes before awaiting the destination chooser.
+Preparation and `exportDocument` capture encoded bytes before waiting for active
+snapshot releases. An already cancelled preparation does not encode its input.
+Export checks releases again after destination selection and replacement consent,
+before writing. The final release check and write dispatch occur in the same turn.
+`exportDocument` also captures these bytes before awaiting the destination chooser.
 Later changes to the caller's document cannot change that export. Declining a
 destination writes nothing. The native request requires an explicit `overwrite`
 boolean: false uses an atomic operation that cannot replace an existing file;

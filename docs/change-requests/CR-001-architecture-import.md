@@ -1267,6 +1267,20 @@ Feature: Use installed Choom to inspect and share architecture
       | an unsupported schema version | document validation |
 ```
 
+The document boundary also covers the export timing regression found during
+release verification. This scenario runs through the public document operations
+in [the document API feature](../../cookbook/behavior/architecture-import/t06-api.feature).
+The installed and browser suites retain their separate evidence scopes.
+
+```gherkin
+Feature: Keep export available during document replacement
+  Scenario: Export remains available while the previous document is being removed
+    Given "Beacon" is current while the previous document is being removed
+    When the current architecture is exported as removal finishes
+    Then the exported YAML still describes "Beacon"
+    And the previous document is removed and the current document remains available
+```
+
 #### Observability (OpenSLO)
 
 Review local signals and update [evidence gaps](../../cookbook/TODO.md). Keep the

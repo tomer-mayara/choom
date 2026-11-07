@@ -38,6 +38,9 @@ export async function openSaved(world: ImportWorld, name?: string): Promise<void
 }
 
 export async function exportCurrent(world: ImportWorld): Promise<string> {
+  // Result assertions must wait for the requested load and its cleanup, since the previous diagram can still be exported during loading.
+  await expect.poll(async () => (await driver(world).view()).statuses).toContain("Diagram ready.");
+  await expect.poll(() => driver(world).actionEnabled("Open Diagram")).toBe(true);
   const destination = join(fixture(world).directory, `export-${randomUUID()}.choom.yaml`);
   world.exportedPath = await driver(world).exportDocument(destination);
   return world.exportedPath;
