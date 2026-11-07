@@ -657,14 +657,19 @@ fn progress_reports_stages_and_elapsed_time_and_failed_delivery_still_cleans_up(
 
 #[test]
 fn a_moved_report_directory_retains_cleanup_ownership_until_restored() {
+    // Windows cannot rename a directory while it contains an open report file.
+    // Move that file aside first, keeping both native identity handles alive.
     let fixture = Fixture::new(
-        "import fs from 'node:fs';import path from 'node:path';const directory=path.dirname(process.argv[process.argv.indexOf('--output-to')+1]);fs.renameSync(directory,directory+'-moved');",
+        "import fs from 'node:fs';import path from 'node:path';const report=process.argv[process.argv.indexOf('--output-to')+1];const directory=path.dirname(report);const parked=directory+'-report.json';fs.renameSync(report,parked);fs.renameSync(directory,directory+'-moved');fs.renameSync(parked,path.join(directory+'-moved','report.json'));",
     );
     let service = fixture.service();
     service.prepare(fixture.request());
     let outcome = value(service.run(json!({"jobId":"analysis-1"}), |_| Ok(())));
     let retry = value(service.prepare(fixture.request()));
     let release = value(service.release(json!({"jobId":"analysis-1"})));
+    assert_eq!(outcome["code"], "cleanup-failed", "{outcome}");
+    assert_eq!(retry["code"], "busy");
+    assert_eq!(release["code"], "cleanup-failed");
     let moved = fs::read_dir(fixture.directory.join("cache"))
         .unwrap()
         .next()
@@ -672,10 +677,10 @@ fn a_moved_report_directory_retains_cleanup_ownership_until_restored() {
         .unwrap()
         .path();
     let restored = PathBuf::from(moved.to_str().unwrap().strip_suffix("-moved").unwrap());
-    fs::rename(&moved, restored).unwrap();
-    assert_eq!(outcome["code"], "cleanup-failed");
-    assert_eq!(retry["code"], "busy");
-    assert_eq!(release["code"], "cleanup-failed");
+    let parked = moved.with_extension("report.json");
+    fs::rename(moved.join("report.json"), &parked).unwrap();
+    fs::rename(&moved, &restored).unwrap();
+    fs::rename(&parked, restored.join("report.json")).unwrap();
     assert_eq!(
         value(service.release(json!({"jobId":"analysis-1"})))["released"],
         true

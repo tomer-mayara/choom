@@ -7,6 +7,13 @@ use tauri::{
     webview::InvokeRequest,
 };
 
+// Tauri serves embedded assets through an HTTP origin on Windows.
+const LOCAL_ORIGIN: &str = if cfg!(windows) {
+    "http://tauri.localhost"
+} else {
+    "tauri://localhost"
+};
+
 fn invoke(
     webview: &WebviewWindow<MockRuntime>,
     command: &str,
@@ -57,7 +64,7 @@ fn native_command_outputs_match_the_shared_typescript_wire_fixture() {
             "closeRepository" => "repository_close",
             operation => panic!("Unknown repository operation: {operation}"),
         };
-        let response = invoke(&main, command, request, "tauri://localhost").unwrap();
+        let response = invoke(&main, command, request, LOCAL_ORIGIN).unwrap();
         assert_eq!(response, case["outcome"], "{command}");
     }
     fs::remove_dir_all(directory).unwrap();
@@ -81,10 +88,10 @@ fn repository_commands_reject_other_windows_and_remote_origins() {
         "repository_resolve_paths",
         "repository_close",
     ] {
-        assert!(invoke(&other, command, json!({}), "tauri://localhost").is_err());
+        assert!(invoke(&other, command, json!({}), LOCAL_ORIGIN).is_err());
         assert!(invoke(&main, command, json!({}), "https://example.com").is_err());
         assert_eq!(
-            invoke(&main, command, json!({}), "tauri://localhost").unwrap()["code"],
+            invoke(&main, command, json!({}), LOCAL_ORIGIN).unwrap()["code"],
             "invalid-request"
         );
     }

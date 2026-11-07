@@ -7,6 +7,13 @@ use tauri::{
     webview::InvokeRequest,
 };
 
+// Tauri serves embedded assets through an HTTP origin on Windows.
+const LOCAL_ORIGIN: &str = if cfg!(windows) {
+    "http://tauri.localhost"
+} else {
+    "tauri://localhost"
+};
+
 #[allow(deprecated)]
 fn application() -> tauri::App<MockRuntime> {
     let mut app = super::builder(mock_builder())
@@ -58,7 +65,7 @@ fn analyzer_commands_match_the_shared_typescript_wire_fixture() {
             &main,
             "repository_open",
             json!({"rootPath":directory}),
-            "tauri://localhost"
+            LOCAL_ORIGIN
         )
         .unwrap()["status"],
         "success"
@@ -73,8 +80,7 @@ fn analyzer_commands_match_the_shared_typescript_wire_fixture() {
             "releaseDepCruiser" => "depcruiser_release",
             operation => panic!("Unknown operation: {operation}"),
         };
-        let mut response =
-            invoke(&main, command, case["request"].clone(), "tauri://localhost").unwrap();
+        let mut response = invoke(&main, command, case["request"].clone(), LOCAL_ORIGIN).unwrap();
         if response.get("durationMs").is_some() {
             assert!(response["durationMs"].is_u64());
             response["durationMs"] = json!(0);
@@ -101,10 +107,10 @@ fn analyzer_commands_allow_only_the_local_main_window() {
         "depcruiser_cancel",
         "depcruiser_release",
     ] {
-        assert!(invoke(&other, command, json!({}), "tauri://localhost").is_err());
+        assert!(invoke(&other, command, json!({}), LOCAL_ORIGIN).is_err());
         assert!(invoke(&main, command, json!({}), "https://example.com").is_err());
         assert_eq!(
-            invoke(&main, command, json!({}), "tauri://localhost").unwrap()["code"],
+            invoke(&main, command, json!({}), LOCAL_ORIGIN).unwrap()["code"],
             "invalid-request"
         );
     }
