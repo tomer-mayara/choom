@@ -54,7 +54,7 @@ export class ReportPaths {
     await this.resolve([base]);
     const resolvedBase = this.#resolved.get(base);
     if (resolvedBase?.location !== "inside" || resolvedBase.kind !== "directory" || resolvedBase.path !== ".") {
-      throw new ConversionProblem("unsupported", "The report base directory must be the selected repository root.");
+      throw new ConversionProblem("unsupported", "An unsupported base directory was reported; use the selected repository root.");
     }
     const classifications = this.classifications(report);
     const filesystem = [...classifications].filter(([, kind]) => kind === "filesystem").map(([name]) => name);
@@ -151,7 +151,7 @@ export class ReportPaths {
         if (result.code === "limit-exceeded") throw new ConversionProblem("limit-exceeded", "Repository path resolution exceeded its resource limit.");
         if (["not-found", "not-file", "not-directory", "source-changed"].includes(result.code)) {
           const missing = await this.unavailablePath(batch);
-          const subject = missing === undefined ? "A reported source path" : `The reported path '${safeDescription(missing, 512)}'`;
+          const subject = missing === undefined ? "A reported source path" : `The reported source path '${safeDescription(missing, 512)}'`;
           throw new ConversionProblem("source-changed", `${subject} is no longer available; run the analysis again.`);
         }
         throw new ConversionProblem("unavailable", "Repository paths could not be resolved; reopen the repository and try again.");

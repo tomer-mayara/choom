@@ -59,6 +59,20 @@ module.exports = {
       to: { path: "^(src/architecture/dependency-cruiser/|node_modules/dependency-cruiser/)" },
     },
     {
+      name: "load-workflow-uses-neutral-collaborators",
+      severity: "error",
+      from: { path: "^src/architecture/load-" },
+      to: {
+        path: "^src/(App\\.|main\\.|components/|architecture/(workspace|create-architectural-layer)\\.ts$|platform/(?!generated/))",
+      },
+    },
+    {
+      name: "diagram-renders-prepared-data",
+      severity: "error",
+      from: { path: "^src/components/architecture-(diagram|details)\\.tsx$" },
+      to: { path: "^src/(architecture/|documents/|platform/)" },
+    },
+    {
       name: "no-test-code-in-app",
       severity: "error",
       from: { path: "^src/" },

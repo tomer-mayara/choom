@@ -21,6 +21,8 @@ artifacts:
     - path: cookbook/behavior/architecture-import/t06-api.feature
     - path: cookbook/behavior/architecture-import/t06-installed.feature
     - path: cookbook/behavior/architecture-import/t07-workflows.feature
+    - path: cookbook/behavior/architecture-import/t07-api.feature
+    - path: cookbook/behavior/architecture-import/t07-dialogs.feature
     - path: cookbook/behavior/architecture-import/t08-installed.feature
   observability:
     - path: cookbook/observability/service.yaml

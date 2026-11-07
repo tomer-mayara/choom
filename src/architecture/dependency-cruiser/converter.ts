@@ -82,12 +82,20 @@ function validateSupportedReport(context: DepCruiserConversionRequest, report: C
     throw new ConversionProblem("unsupported", "Conversion requires a completed dependency-cruiser 18.7.2 report with matching version information.");
   }
   const options = report.summary.optionsUsed;
-  if (options.outputType !== "json" || (options.cache !== undefined && options.cache !== false)) {
-    throw new ConversionProblem("unsupported", "Conversion requires JSON output without persistent caching.");
+  if (options.outputType !== "json") {
+    throw new ConversionProblem("unsupported", "Unsupported output format: dependency-cruiser must produce JSON.");
   }
-  if ([options.collapse, options.focus, options.reaches].some((value) => value !== undefined && value !== false && value !== "" && value !== null)
-    || report.modules.some(({ consolidated }) => consolidated === true)) {
-    throw new ConversionProblem("unsupported", "Collapsed, focused, or reach-filtered reports cannot be converted as complete file observations.");
+  if (options.cache !== undefined && options.cache !== false) {
+    throw new ConversionProblem("unsupported", "Persistent caching is unsupported; run the analyzer without a cache.");
+  }
+  for (const option of ["collapse", "focus", "reaches"] as const) {
+    const value = options[option];
+    if (value !== undefined && value !== false && value !== "" && value !== null) {
+      throw new ConversionProblem("unsupported", `The ${option} option is unsupported for complete file observations.`);
+    }
+  }
+  if (report.modules.some(({ consolidated }) => consolidated === true)) {
+    throw new ConversionProblem("unsupported", "Consolidated module records are unsupported because each file must retain its identity.");
   }
   for (const issue of report.summary.environment.issues ?? []) {
     const transpiler = requiredTranspilers.get(issue.name);

@@ -70,6 +70,45 @@ test("classifies versions and strict semantic errors without returning the input
   }
 });
 
+test("semantic failures explain the violated rule without exposing input data", () => {
+  const document = architectureDocumentFixture();
+  const [root, core, workspace] = document.components;
+  const relationship = document.relationships[0];
+  const evidence = relationship?.evidence[0];
+  if (!root || !core || !workspace || !relationship || !evidence) throw new Error("The fixture is incomplete.");
+  const cases: [string, unknown][] = [
+    ["Component IDs must be unique", { ...document, components: [root, { ...core, id: "." }, workspace] }],
+    ["Component names must be unique", { ...document, components: [root, { ...core, name: root.name }, workspace] }],
+    ["Components must have exactly one root with ID '.'", { ...document, components: [core, workspace] }],
+    ["Nonroot components must reference a declared parent", { ...document, components: [root, { ...core, parent: "missing" }, workspace] }],
+    ["Component parents must form an acyclic tree rooted at '.'", { ...document, components: [root, { ...core, parent: core.id }, workspace] }],
+    ["Relationships must reference declared components", { ...document, relationships: [{ ...relationship, target: "missing" }] }],
+    ["Import relationships must connect distinct components", { ...document, relationships: [{ ...relationship, target: relationship.source }] }],
+    ["Only one import relationship is allowed per ordered component pair", { ...document, relationships: [relationship, { ...relationship, id: "duplicate-pair" }] }],
+    ["Evidence file ownership must match its relationship endpoints", { ...document, relationships: [{ ...relationship, evidence: [{ ...evidence, sourceFile: evidence.targetFile }] }] }],
+    ["Reported-file counts cannot be negative.", { ...document, components: [root, { ...core, reportedFiles: -1 }, workspace] }],
+    ["Reported-file counts must be integers.", { ...document, components: [root, { ...core, reportedFiles: 0.5 }, workspace] }],
+    ["Reported-file counts exceed the supported integer limit.", { ...document, components: [root, { ...core, reportedFiles: Number.MAX_SAFE_INTEGER + 1 }, workspace] }],
+    ["The architecture document contains a field that is not part of the schema.", { ...document, ["/private/<script>alert('unknown')</script>"]: true }],
+  ];
+  for (const [message, candidate] of cases) {
+    for (const outcome of [encodeArchitectureYaml(candidate), decodeArchitectureYaml(stringify(candidate, { aliasDuplicateObjects: false }))]) {
+      expect(outcome).toMatchObject({ status: "failure", code: "invalid-document", message });
+      expect(JSON.stringify(outcome)).not.toContain("/private/");
+      expect(JSON.stringify(outcome)).not.toContain("<script>");
+    }
+  }
+});
+
+test("tag and anchor failures identify the actual unsupported YAML property", () => {
+  expect(decodeArchitectureYaml("name: !private-tag Atlas\n")).toMatchObject({
+    status: "failure", code: "invalid-encoding", message: "Explicit YAML tags are unsupported.",
+  });
+  expect(decodeArchitectureYaml("name: &private-anchor Atlas\n")).toMatchObject({
+    status: "failure", code: "invalid-encoding", message: "YAML anchors are unsupported.",
+  });
+});
+
 test("checks text bytes, structure nodes, and depth before decoding", () => {
   const text = "é".repeat(8_388_609);
   const manyNodes = `[${"0,".repeat(250_000)}0]`;

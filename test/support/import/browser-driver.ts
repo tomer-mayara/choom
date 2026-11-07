@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { expect, type Page } from "@playwright/test";
+import { BrowserImportTransport } from "./browser-transport.ts";
 import { fixture, type ImportDriver, type ImportView, type ImportWorld } from "./world.ts";
 
 const capabilityTimeout = 1_500;
@@ -12,8 +13,9 @@ export class BrowserImportDriver implements ImportDriver {
   private holdExport = false;
   private heldSave?: { path: string; resolve: (path: string) => void };
   private readonly world: ImportWorld;
+  private readonly native: BrowserImportTransport;
 
-  constructor(world: ImportWorld) { this.world = world; }
+  constructor(world: ImportWorld) { this.world = world; this.native = new BrowserImportTransport(fixture(world)); }
 
   private page(): Page {
     assert.ok(this.world.page, "The browser route must supply a Playwright page");
@@ -21,11 +23,16 @@ export class BrowserImportDriver implements ImportDriver {
   }
 
   private dialog(command: string): string | null | Promise<string> {
+    if (command === "plugin:dialog|message") {
+      const approved = fixture(this.world).facts.replaceApproved === true;
+      this.native.controls.observe(approved ? "save-replacement-approved" : "save-replacement-declined", "The actual native replacement confirmation received the scenario's decision");
+      return approved ? "Replace" : "Cancel";
+    }
     if (command === "plugin:dialog|open") {
       assert.ok(this.pickerResults.length, "The open dialog must consume a selected path or cancellation");
       return this.pickerResults.shift() ?? null;
     }
-    assert.equal(command, "plugin:dialog|save", "T01 doubles only the vendor open/save dialog commands; generated Choom transport is not bound yet");
+    assert.equal(command, "plugin:dialog|save", "The UI must call a supported vendor dialog command");
     assert.ok(this.saveResults.length, "The save dialog must consume a selected path or cancellation");
     const path = this.saveResults.shift() ?? null;
     const controls = fixture(this.world).controls;
@@ -33,7 +40,6 @@ export class BrowserImportDriver implements ImportDriver {
       controls.observe("save-dialog-cancelled", "The actual Tauri save invocation returned null");
       return null;
     }
-    if (controls.isRequired("save-replacement-approved")) controls.observe("save-replacement-approved", "The actual Tauri save invocation returned the approved destination");
     if (!this.holdExport) return path;
     return new Promise((resolve) => {
       this.heldSave = { path, resolve };
@@ -45,16 +51,26 @@ export class BrowserImportDriver implements ImportDriver {
     if (this.opened) return;
     const page = this.page();
     if (this.world.desktopImport) {
-      await page.exposeFunction("__choomImportDialog", (command: string) => this.dialog(command));
+      await page.exposeFunction("__choomImportInvoke", (command: string, args: unknown) => command.startsWith("plugin:dialog|")
+        ? this.dialog(command) : this.native.invoke(command, args));
       await page.addInitScript(() => {
-        const host = globalThis as typeof globalThis & { __choomImportDialog: (command: string) => Promise<string | null> };
+        const host = globalThis as typeof globalThis & { __choomImportInvoke: (command: string, args: unknown) => Promise<unknown> };
+        let callbackId = 0;
         Object.defineProperty(host, "isTauri", { value: true });
         Object.defineProperty(host, "__TAURI_INTERNALS__", {
-          value: { invoke: (command: string) => host.__choomImportDialog(command) },
+          value: {
+            invoke: (command: string, args: unknown) => host.__choomImportInvoke(command, args),
+            transformCallback: () => ++callbackId,
+            unregisterCallback: () => {},
+          },
         });
       });
     }
-    await page.goto(process.env.CHOOM_BASE_URL ?? "http://127.0.0.1:1420");
+    if (this.world.controlledImport) {
+      await page.exposeFunction("__choomLayoutControl", (phase: "before" | "completed", name: string) => this.native.controls.layout(phase, name));
+      assert.ok(process.env.CHOOM_CONTROLLED_URL, "Controlled layout scenarios need the separate test composition preview");
+    }
+    await page.goto(this.world.controlledImport ? process.env.CHOOM_CONTROLLED_URL ?? "" : process.env.CHOOM_BASE_URL ?? "http://127.0.0.1:1420");
     this.opened = true;
   }
 
@@ -105,21 +121,50 @@ export class BrowserImportDriver implements ImportDriver {
 
   async cancel(): Promise<void> {
     await this.open();
+    const operation = fixture(this.world).facts.holdOperation;
+    const gate = operation === "layout" || operation === "Abandoned" ? "layout"
+      : operation === "a repository analysis" || operation === "cancellation of a load" ? "analysis" : undefined;
+    if (gate) await expect.poll(() => this.native.controls.isHeld(gate)).toBe(true);
     await this.activate("Cancel");
+    if (fixture(this.world).controls.isRequired("cancellation-cleanup-completed")) {
+      await expect.poll(async () => (await this.view()).statuses.join(" ").toLowerCase()).toContain("cancelled");
+      await expect.poll(() => this.native.isIdle()).toBe(true);
+      await expect(this.page().getByRole("button", { name: "Load Repo", exact: true })).toBeEnabled();
+      this.native.controls.observe("cancellation-cleanup-completed", "Cancellation ended and the native boundary has no pending operation before loading is enabled");
+    }
   }
+
+  async releaseLateResult(): Promise<void> {
+    await this.native.controls.releaseLateLayout();
+    await this.page().evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  }
+
+  async retryCleanup(): Promise<void> {
+    await this.page().getByRole("button", { name: "Retry cleanup", exact: true }).click();
+    await expect.poll(() => fixture(this.world).controls.wasObserved("export-cleanup-recovered")).toBe(true);
+  }
+
+  async close(): Promise<void> {
+    if (this.heldSave) this.heldSave.resolve(this.heldSave.path);
+    await this.native.close();
+  }
+
+  assertValidCalls(): void { this.native.assertValidCalls(); }
 
   async exportDocument(path: string): Promise<string> {
     await this.open();
     await expect(this.page().getByRole("button", { name: /^Export(?: Diagram)?$/ })).toBeVisible({ timeout: capabilityTimeout });
     if (this.world.desktopImport) {
       const previous = await this.exportBytes(path);
+      const failures = this.native.exportFailureCount();
       this.saveResults.push(path);
       await this.activate("Export Diagram");
       await expect.poll(() => this.saveResults.length).toBe(0);
       await expect.poll(async () => {
         const bytes = await this.exportBytes(path);
-        return bytes !== undefined && bytes.length > 0 && bytes !== previous;
+        return (bytes !== undefined && bytes.length > 0 && bytes !== previous) || this.native.exportFailureCount() > failures;
       }, { timeout: 25_000, message: "Export must finish writing new bytes to the chosen destination" }).toBe(true);
+      if (this.native.exportFailureCount() > failures) throw new Error("The native export returned a failure.");
       const controls = fixture(this.world).controls;
       if (controls.isRequired("export-written")) controls.observe("export-written", "New nonempty bytes were read from the selected export destination");
       return path;
@@ -141,11 +186,12 @@ export class BrowserImportDriver implements ImportDriver {
   async cancelExport(): Promise<void> {
     await this.open();
     assert.ok(this.world.desktopImport, "Save-dialog cancellation uses the desktop dialog route");
-    const controls = fixture(this.world).controls;
-    controls.require("save-dialog-cancelled");
-    this.saveResults.push(null);
+    const input = fixture(this.world);
+    const controls = input.controls;
+    controls.require("save-replacement-declined");
+    this.saveResults.push(input.destination);
     await this.activate("Export Diagram");
-    await expect.poll(() => controls.wasObserved("save-dialog-cancelled")).toBe(true);
+    await expect.poll(() => controls.wasObserved("save-replacement-declined")).toBe(true);
   }
 
   holdNextExport(): void {

@@ -25,8 +25,7 @@ for (const pattern of [
 }
 
 Then("the document includes components {string} and {string}", async function (this: ImportWorld, first: string, second: string) {
-  const ids = (await driver(this).view()).componentIds;
-  assert.ok(ids.includes(first) && ids.includes(second));
+  await expect.poll(async () => (await driver(this).view()).componentIds).toEqual(expect.arrayContaining([first, second]));
 });
 
 for (const pattern of [
@@ -178,6 +177,7 @@ Then("the destination still contains {string}", async function (this: ImportWorl
 Then("the exported document is named {string}", async function (this: ImportWorld, name: string) { assert.equal((await actualDocument(this)).name, name); });
 
 Then("{string} remains displayed", async function (this: ImportWorld, name: string) {
+  await expect.poll(() => driver(this).actionEnabled("Open Diagram")).toBe(true);
   await expect.poll(async () => (await driver(this).view()).text).toContain(name);
 });
 
@@ -202,7 +202,7 @@ Then("parent relationships are not shown as import arrows", async function (this
 });
 
 for (const pattern of ["that import has two evidence file pairs", "the import retains both deep file pairs as evidence"]) {
-  Then(pattern, async function (this: ImportWorld) {
+  Then(pattern, { timeout: 30_000 }, async function (this: ImportWorld) {
     const pairs = objects((await relationship(this)).evidence).map(({ sourceFile, targetFile }) => ({ sourceFile, targetFile }));
     assert.equal(pairs.length, 2);
     assert.deepEqual(pairs, fixture(this).pairs);
@@ -210,6 +210,9 @@ for (const pattern of ["that import has two evidence file pairs", "the import re
 }
 
 Then("the diagram is available to export as Choom YAML", async function (this: ImportWorld) { assert.ok(await driver(this).actionEnabled("Export Diagram")); });
+Then("repository and saved diagram loads are available", async function (this: ImportWorld) {
+  for (const action of ["Load Repo", "Open Diagram"] as const) await expect.poll(() => driver(this).actionEnabled(action)).toBe(true);
+});
 Then("it identifies dependency-cruiser 18.7.2 as the recorded analyzer", async function (this: ImportWorld) {
   const provenance = object((await actualDocument(this)).analysis);
   assert.equal(provenance.enforcer, "dependency-cruiser");

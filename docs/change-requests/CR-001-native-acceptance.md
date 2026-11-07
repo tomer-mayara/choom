@@ -8,8 +8,8 @@ not a passing or skipped test.
 
 T01 establishes the driver and preserves directory-picker behavior. T05 adds
 installed native analyzer operations; T06 adds portable document operations.
-Load Repo, Open Diagram, and the export UI belong to T07. A missing
-public action is the expected T01 feature failure only after startup and picker
+T07 implements Load Repo, Open Diagram, and export. Missing actions were T01
+feature-red evidence; they are now regressions after startup and picker
 characterization pass. No driver supplies an analyzer report or replaces IPC.
 
 ## Linux automated route
@@ -95,6 +95,9 @@ or press Escape. For a folder selection, it opens Home to leave GTK's Recent
 view and accepts the location entry's inline completion before submitting the
 path. It requires the picker to close. The smoke scenario also checks the
 displayed path and preservation after cancellation.
+File selection accepts GTK's inline completion as well. Save replaces the
+entire filename, including the extension that GTK leaves outside its initial
+selection. The driver requires the exact selected export path to become readable.
 
 The headless commands start a separate D-Bus session inside each X11 display
 so services started on that bus can connect to the display. This route sets `GTK_USE_PORTAL=0` so the locked GTK3 dialog
@@ -120,8 +123,9 @@ export, and compares components and full file-pair evidence. Separate cases
 check replacement consent, the two-snapshot limit, and candidate release without
 removing the current snapshot. The TypeScript composition runs in the acceptance
 process; every native operation crosses the installed webview's real IPC and
-capability boundary. This proves assembled file operations, not the future
-Open Diagram/export UI or native save-dialog behavior.
+capability boundary. This proves assembled file operations, not the
+Open Diagram/export UI or native save-dialog behavior. T08 scenarios exercise
+those public controls on the ordinary installed T07 build.
 
 Each run writes `test-results/packaged/run-*/` with:
 
@@ -166,12 +170,11 @@ Keep screenshots and the exact artifact identity with the evidence record.
 6. Click **Choose directory** again. Navigate toward `Other`, then cancel the
    native picker. Confirm the displayed selection remains `Atlas` and the
    starter remains usable. Record picker selection and cancellation separately.
-7. Inspect the workspace for **Load Repo**. At T01 it is absent. Record this as
-   the new capability's feature-red observation only after steps 3–6 passed.
-   Do not claim analysis ran. If the native desktop is locked or inaccessible,
-   record the blocked actions and stop the evidence record at the last actual
-   observation.
-8. After later tickets add the controls, click **Load Repo** and select a small
+7. Confirm **Load Repo**, **Open Diagram**, and **Export Diagram** are present.
+   Export is disabled until a diagram is loaded. If the native desktop is locked
+   or inaccessible, record the blocked actions and stop the evidence record at
+   the last actual observation.
+8. Click **Load Repo** and select a small
    real repository with the supported local analyzer. Confirm the declared
    component cards and file-pair evidence. Export through the real native save
    picker into a new path. Close Choom and reopen that file through **Open

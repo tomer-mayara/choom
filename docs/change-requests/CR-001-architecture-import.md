@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01–T05 merged; T06 implemented and verified locally
+**Status:** In progress — T01–T06 merged; T07 implemented and verified locally; T08 pending
 
 **Date:** 2026-11-06
 
@@ -34,8 +34,8 @@ Reuse the existing [domain validation approach](../../src/domain/architecture.ts
 [ELK layout](../../src/lib/layout.ts), [preview](../../src/components/architecture-preview.tsx),
 and [desktop adapter](../../src/platform/desktop.ts). Preserve their retained
 behavior through characterization. The [Rust host](../../src-tauri/src/lib.rs)
-currently registers only the dialog plugin; repository I/O, execution, and
-storage are new work. The current analyzer
+registers the dialog plugin and bounded repository, analyzer, and document
+operations delivered by T03–T06. The current analyzer
 [configuration](../../.dependency-cruiser.cjs) includes TypeScript pre-compilation
 dependencies and does not follow `node_modules`.
 
@@ -58,6 +58,7 @@ Open Diagram ----------------------------------------> common decoder -> ELK
 | --- | --- |
 | `src/domain/` | Neutral layer contracts, document schema, ownership, aggregation, and graph invariants. |
 | `src/architecture/load-workflow.ts` | One controller for both load actions, from selection through layout and view commit. |
+| `src/architecture/workspace.ts` | Compose the controller, platform selectors, document files, neutral layer factory, and deferred ELK layout. |
 | `src/architecture/create-architectural-layer.ts` | Explicit composition entrypoint; constructs the matching strategy, runner, and converter. |
 | `src/architecture/dependency-cruiser/` | Concrete strategy and its execution/report collaborators. |
 | `src/platform/` | Narrow Tauri operations and validated transport DTOs; no workspace or domain imports. |
@@ -1045,6 +1046,13 @@ presentation schema is introduced.
 
 **Dependencies:** T05, T06. **Owners:** workspace controller, UI, layout.
 
+**Implementation status:** Implemented on `codex/cr-001-t07`. Browser, contract,
+unit, and Linux installed acceptance checks pass. The final macOS package also
+passes native repository loading, export, cancellation, and reopening after
+restart without its source repository. Windows execution and the remaining
+release review stay in T08. See the
+[T07 evidence record](CR-001-T07-evidence.md) for exact results and limits.
+
 #### Behavioral (Gherkin)
 
 ```gherkin
@@ -1112,6 +1120,13 @@ Feature: Keep one current diagram throughout loading
     And it describes an import from "src/ui" to "src/core"
     When I open that document
     Then the diagram shows the import from "src/ui" to "src/core"
+
+  Scenario: Retry failed export cleanup before starting another load
+    Given "Current" is displayed
+    And an export cleanup failure has blocked new loads
+    When I retry document cleanup
+    Then "Current" remains displayed
+    And repository and saved diagram loads are available
 ```
 
 #### Observability (OpenSLO)
@@ -1122,7 +1137,9 @@ unchanged; distinguish browser/simulated-desktop evidence from packaged results.
 #### Architecture (dependency-cruiser configuration)
 
 Verify the named workflow/composition boundaries and concrete import bans. Use
-existing transport operations; no new native grants are planned.
+the existing repository, analyzer, and document transport operations. Add the
+narrow `dialog:allow-save` and `dialog:allow-message` grants for export selection
+and explicit replacement consent. Keep them restricted to the main window.
 
 #### Interface / contract (TypeSpec)
 
@@ -1137,6 +1154,19 @@ deriving cards from evidence paths, diagnostic folders, or directory ancestors.
 Exercise the workflow with a substitute neutral layer, separate DOM suites, and
 real browser rendering/common decoding;
 browser saved viewing must work without source files or analyzer tools.
+
+The [workflow operations](../../cookbook/interfaces/workflow.tsp) own serialized
+state and outcomes. Subscription callbacks, abort signals, and prepared layout
+stay in the TypeScript binding. The [diagram dialog operations](../../cookbook/interfaces/document-dialogs.tsp)
+describe file selection and replacement consent. A save-picker path alone is
+not overwrite consent: try without replacement, then request explicit consent
+if the destination exists, retaining the originally encoded bytes.
+
+A committed diagram remains current if later cleanup fails. Keep a failed known
+snapshot or repository owner for cleanup retry. If analyzer or discovery cleanup
+fails without returning a usable owner, require an application restart; document
+cleanup must not clear that gate. This ticket does not extend the neutral
+analyzer interface with a second lifecycle protocol.
 
 ### CR-001-T08 — Verify the complete release and review constraints
 

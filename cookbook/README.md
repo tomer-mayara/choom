@@ -7,7 +7,7 @@ configuration retain their own artifacts.
 
 | Component | Owner | Behavior | Interface |
 | --- | --- | --- | --- |
-| Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [`workspace.feature`](behavior/workspace.feature) | Consumed [architecture](interfaces/architecture.tsp) and [desktop](interfaces/desktop.tsp) contracts; [UI outcomes](interfaces/workspace.md) |
+| Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [`workspace.feature`](behavior/workspace.feature); [load workflows](behavior/architecture-import/t07-workflows.feature) and [API](behavior/architecture-import/t07-api.feature) | [Workflow](interfaces/workflow.tsp), [architecture](interfaces/architecture.tsp), and [diagram dialogs](interfaces/document-dialogs.tsp); [UI outcomes](interfaces/workspace.md) |
 | Architecture model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [`architecture.feature`](behavior/architecture.feature); [semantic documents](behavior/architecture-import/t02-domain.feature) | [TypeSpec contracts](interfaces/architecture.tsp); [starter validator](../src/domain/architecture.ts), [document validator](../src/domain/architecture-document.ts), [builder](../src/domain/build-architecture-document.ts), and [layer binding](../src/domain/architectural-layer.ts) |
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | [`desktop.feature`](behavior/desktop.feature) | [TypeSpec operations](interfaces/desktop.tsp), implemented by [`desktop.ts`](../src/platform/desktop.ts); [boundary notes](interfaces/desktop.md) |
 | Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | Shared adapter feature; new [installed picker](behavior/architecture-import/t01-installed-picker-smoke.feature) and [import acceptance](behavior/architecture-import/t08-installed.feature) | Choom's [desktop boundary](interfaces/desktop.tsp); vendor Tauri [capability](../src-tauri/capabilities/main.json) and [configuration](../src-tauri/tauri.conf.json) |
@@ -60,6 +60,14 @@ candidate validation, cleanup, and export capture. The
 real analysis and file operations through native IPC. File evidence may span
 several subdirectories owned by one declared component. T07 supplies the UI.
 See the [T06 evidence record](../docs/change-requests/CR-001-T06-evidence.md).
+
+T07 connects the desktop repository load and source-free saved-document view.
+One controller owns selection through layout and commit, cancellation, retry,
+and cleanup gates. Export captures its own bytes independently. Rendering uses
+the declared component set, including components that own several directories
+or have no reported files. Native dialog grants add only save and message to
+support export and replacement consent. The [workspace contract](interfaces/workspace.md)
+and [workflow TypeSpec](interfaces/workflow.tsp) describe the boundary.
 
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)

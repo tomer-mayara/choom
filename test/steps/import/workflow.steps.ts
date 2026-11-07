@@ -145,6 +145,7 @@ When(/^I request (another repository load|a repository load|a saved diagram load
 Given("analysis for {string} has completed but its diagram is not yet ready", { timeout: 30_000 }, async function (this: ImportWorld, name: string) {
   fixture(this).facts.holdOperation = "layout";
   fixture(this).facts.nextName = name;
+  fixture(this).rootManifest().name = name;
   fixture(this).controls.require("analysis-completed-before-layout");
   fixture(this).controls.require("layout-held");
   await loadRepository(this);
@@ -152,6 +153,7 @@ Given("analysis for {string} has completed but its diagram is not yet ready", { 
 
 Given("the load of {string} was cancelled", { timeout: 30_000 }, async function (this: ImportWorld, name: string) {
   fixture(this).facts.holdOperation = name;
+  fixture(this).rootManifest().name = name;
   fixture(this).controls.require("cancelled-operation-held");
   fixture(this).controls.require("cancellation-cleanup-completed");
   await loadRepository(this);
@@ -163,7 +165,9 @@ Given("{string} has since finished loading", { timeout: 30_000 }, async function
 When("a result from {string} becomes available", async function (this: ImportWorld, name: string) {
   fixture(this).facts.releasedOperation = name;
   fixture(this).controls.require("late-result-delivered");
-  await fixture(this).materialize();
+  const browser = driver(this);
+  assert.ok(browser instanceof BrowserImportDriver);
+  await browser.releaseLateResult();
 });
 
 Given(/^the new load cannot (save its repository analysis|read its saved document|decode its saved document|arrange its component cards)$/, function (this: ImportWorld, operation: string) {
@@ -194,4 +198,20 @@ Given("the root manifest now declares only components {string}, {string}, and {s
 Given("access to the selected repository is denied", async function (this: ImportWorld) {
   fixture(this).facts.permissionDenied = true;
   fixture(this).controls.require("repository-read-denied");
+});
+
+Given("an export cleanup failure has blocked new loads", { timeout: 30_000 }, async function (this: ImportWorld) {
+  fixture(this).facts.storageFailure = "export-cleanup";
+  fixture(this).controls.require("export-cleanup-failed");
+  startExport(this);
+  await expectFailure(this, "cleanup");
+  assert.equal(await driver(this).actionEnabled("Load Repo"), false);
+  assert.equal(await driver(this).actionEnabled("Open Diagram"), false);
+});
+
+When("I retry document cleanup", async function (this: ImportWorld) {
+  fixture(this).controls.require("export-cleanup-recovered");
+  const browser = driver(this);
+  assert.ok(browser instanceof BrowserImportDriver);
+  await browser.retryCleanup();
 });

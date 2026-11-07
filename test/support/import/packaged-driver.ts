@@ -168,13 +168,11 @@ export class PackagedImportDriver implements ImportDriver {
       } else {
         await xdo(["key", "--clearmodifiers", "ctrl+l"]);
       }
+      // GTK Save selects only the filename stem. Replace its extension as well.
+      await xdo(["key", "--clearmodifiers", "ctrl+a"]);
       await xdo(["type", "--clearmodifiers", "--delay", "1", path]);
-      if (directory) {
-        // End accepts the inline slash completion so Return submits the location.
-        await xdo(["key", "--clearmodifiers", "--delay", "200", "End", "Return"]);
-      } else {
-        await xdo(["key", "--clearmodifiers", "Return"]);
-      }
+      // Accept GTK's inline completion before submitting either a folder or file location.
+      await xdo(["key", "--clearmodifiers", "--delay", "200", "End", "Return"]);
     }
     await waitFor(async () => !(await this.applicationWindows()).includes(dialog),
       `The native GTK picker did not close after ${path === null ? "cancellation" : "path selection"}`);

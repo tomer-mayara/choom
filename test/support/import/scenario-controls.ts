@@ -27,6 +27,6 @@ export class ScenarioControls {
 
   assertObserved(): void {
     const missing = this.report().filter(({ required, evidence }) => evidence.length < required);
-    assert.deepEqual(missing, [], "The scenario did not exercise its required inputs or controls. Recorded reports and Choom fault controls need generated TypeSpec transport bindings; staged fixture facts are not runtime evidence.");
+    assert.deepEqual(missing, [], "The scenario did not exercise its required public-boundary inputs or controls; staged fixture facts are not runtime evidence.");
   }
 }

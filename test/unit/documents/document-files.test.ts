@@ -268,3 +268,52 @@ test("opening saved architecture uses only its stored text and the shared decode
   expect(access.snapshots.size).toBe(0);
   expect(access.exports).toEqual([]);
 });
+
+test("replacement consent applies to the same captured export bytes", async () => {
+  const access = new MemoryDocumentAccess();
+  access.files.set("/existing.choom.yaml", "previous bytes");
+  const document = architectureDocumentFixture("Atlas");
+  const confirmation = pendingDocumentOperation<boolean>();
+  const asked = pendingDocumentOperation<void>();
+  const pending = new DocumentFiles(access).exportDocument(document,
+    async () => ({ path: "/existing.choom.yaml", overwrite: false }),
+    () => { asked.resolve(); return confirmation.promise; },
+  );
+  await asked.promise;
+  expect(access.files.get("/existing.choom.yaml")).toBe("previous bytes");
+  document.name = "Beacon";
+  confirmation.resolve(true);
+  expect(await pending).toMatchObject({ status: "success", exported: true });
+  expect(access.exports.map(({ overwrite }) => overwrite)).toEqual([false, true]);
+  expect(decodeArchitectureYaml(access.files.get("/existing.choom.yaml") ?? "")).toMatchObject({ status: "success", document: { name: "Atlas" } });
+});
+
+test("declining replacement keeps the destination bytes", async () => {
+  const access = new MemoryDocumentAccess();
+  access.files.set("/existing.choom.yaml", "previous bytes");
+  const result = await new DocumentFiles(access).exportDocument(architectureDocumentFixture(),
+    async () => ({ path: "/existing.choom.yaml", overwrite: false }), async () => false,
+  );
+  expect(result).toMatchObject({ status: "cancelled", stage: "export" });
+  expect(access.files.get("/existing.choom.yaml")).toBe("previous bytes");
+  expect(access.exports).toHaveLength(1);
+});
+
+test("failed cleanup while replacement consent is pending prevents the write", async () => {
+  const access = new MemoryDocumentAccess();
+  const files = new DocumentFiles(access);
+  access.files.set("/existing.choom.yaml", "previous bytes");
+  const confirmation = pendingDocumentOperation<boolean>();
+  const asked = pendingDocumentOperation<void>();
+  const pending = files.exportDocument(architectureDocumentFixture(),
+    async () => ({ path: "/existing.choom.yaml", overwrite: false }),
+    () => { asked.resolve(); return confirmation.promise; },
+  );
+  await asked.promise;
+  access.releaseFailure = documentStorageFailure("cleanup-failed", "cleanup");
+  await files.releaseSnapshot("owned-snapshot");
+  confirmation.resolve(true);
+  expect(await pending).toMatchObject({ status: "failure", stage: "cleanup" });
+  expect(access.files.get("/existing.choom.yaml")).toBe("previous bytes");
+  expect(access.exports).toHaveLength(1);
+});

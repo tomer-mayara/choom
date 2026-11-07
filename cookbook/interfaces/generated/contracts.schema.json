@@ -1485,6 +1485,22 @@
             ],
             "additionalProperties": false
         },
+        "DiagramDestinationRequest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiagramDestinationRequest.json",
+            "type": "object",
+            "properties": {
+                "fileName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                }
+            },
+            "required": [
+                "fileName"
+            ],
+            "additionalProperties": false
+        },
         "CreateDocumentSnapshotRequest": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "CreateDocumentSnapshotRequest.json",
@@ -1919,6 +1935,18 @@
                 }
             ]
         },
+        "DiagramFileSelection": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiagramFileSelection.json",
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
         "CreateDocumentSnapshotOutcome": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "CreateDocumentSnapshotOutcome.json",
@@ -2268,6 +2296,10 @@
                 {
                     "type": "string",
                     "const": "access-failed"
+                },
+                {
+                    "type": "string",
+                    "const": "cleanup-failed"
                 }
             ]
         },
@@ -2554,6 +2586,264 @@
                 },
                 {
                     "$ref": "DocumentCodecFailure.json"
+                }
+            ]
+        },
+        "WorkflowSuccess": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowSuccess.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "WorkflowCancelled": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowCancelled.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "cancelled"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "WorkflowBusy": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowBusy.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "busy"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "WorkflowFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "$ref": "WorkflowStage.json"
+                },
+                "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "WorkflowStage": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowStage.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "selection"
+                },
+                {
+                    "type": "string",
+                    "const": "discovery"
+                },
+                {
+                    "type": "string",
+                    "const": "setup"
+                },
+                {
+                    "type": "string",
+                    "const": "analysis"
+                },
+                {
+                    "type": "string",
+                    "const": "conversion"
+                },
+                {
+                    "type": "string",
+                    "const": "storage"
+                },
+                {
+                    "type": "string",
+                    "const": "reading"
+                },
+                {
+                    "type": "string",
+                    "const": "validation"
+                },
+                {
+                    "type": "string",
+                    "const": "layout"
+                },
+                {
+                    "type": "string",
+                    "const": "cleanup"
+                }
+            ]
+        },
+        "WorkflowState": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowState.json",
+            "type": "object",
+            "properties": {
+                "phase": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "idle"
+                        },
+                        {
+                            "type": "string",
+                            "const": "loading"
+                        },
+                        {
+                            "type": "string",
+                            "const": "cancelling"
+                        },
+                        {
+                            "type": "string",
+                            "const": "cleanup"
+                        }
+                    ]
+                },
+                "operation": {
+                    "anyOf": [
+                        {
+                            "$ref": "WorkflowOperation.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "stage": {
+                    "anyOf": [
+                        {
+                            "$ref": "WorkflowStage.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "lastOutcome": {
+                    "anyOf": [
+                        {
+                            "$ref": "WorkflowOutcome.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "cleanupRecovery": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "none"
+                        },
+                        {
+                            "type": "string",
+                            "const": "retry"
+                        },
+                        {
+                            "type": "string",
+                            "const": "restart"
+                        }
+                    ]
+                },
+                "cleanupFailure": {
+                    "$ref": "WorkflowFailure.json"
+                }
+            },
+            "required": [
+                "phase",
+                "operation",
+                "stage",
+                "lastOutcome",
+                "cleanupRecovery"
+            ],
+            "additionalProperties": false
+        },
+        "WorkflowOperation": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowOperation.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "repository"
+                },
+                {
+                    "type": "string",
+                    "const": "document"
+                }
+            ]
+        },
+        "WorkflowOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "WorkflowOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "WorkflowSuccess.json"
+                },
+                {
+                    "$ref": "WorkflowCancelled.json"
+                },
+                {
+                    "$ref": "WorkflowBusy.json"
+                },
+                {
+                    "$ref": "WorkflowFailure.json"
                 }
             ]
         }

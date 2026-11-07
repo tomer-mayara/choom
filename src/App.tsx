@@ -1,7 +1,10 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, useSyncExternalStore } from "react";
 import { Boxes, FolderOpen, Workflow } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
+import { ArchitectureDiagram } from "@/components/architecture-diagram";
+import { WorkspaceControls } from "@/components/workspace-controls";
+import { workspace as defaultWorkspace, type WorkspaceBinding } from "@/architecture/workspace";
 import { isDesktop, selectProjectDirectory } from "@/platform/desktop";
 
 const ArchitecturePreview = lazy(
@@ -10,7 +13,9 @@ const ArchitecturePreview = lazy(
 const introduction =
   "A place to explore **systems, connections, and decisions**. Open the example to try the architecture canvas.";
 
-export default function App() {
+export default function App({ workspace = defaultWorkspace }: { workspace?: WorkspaceBinding } = {}) {
+  const snapshot = useSyncExternalStore(workspace.workflow.subscribe, workspace.workflow.getSnapshot, workspace.workflow.getSnapshot);
+  const desktop = isDesktop();
   const [showExample, setShowExample] = useState(false);
   const [directory, setDirectory] = useState<string | null>(null);
   const [dialogPending, setDialogPending] = useState(false);
@@ -35,7 +40,7 @@ export default function App() {
         <Boxes aria-hidden="true" className="size-7 text-primary" />
         <span className="text-xl font-semibold tracking-tight">Choom</span>
         <span className="ml-auto rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
-          {isDesktop() ? "Desktop" : "Browser"}
+          {desktop ? "Desktop" : "Browser"}
         </span>
       </header>
       <section aria-labelledby="welcome-heading" className="space-y-6">
@@ -49,21 +54,23 @@ export default function App() {
           Architecture starts here.
         </h1>
         <div className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-          <ReactMarkdown>{introduction}</ReactMarkdown>
+          <ReactMarkdown>{snapshot.current ? "Explore the recorded **components, imports, and findings**." : introduction}</ReactMarkdown>
         </div>
+        <WorkspaceControls workspace={workspace} snapshot={snapshot} desktop={desktop} />
         <div className="flex flex-wrap gap-3">
-          <Button
+          {!snapshot.current ? <Button
+            variant="outline"
             aria-expanded={showExample}
             aria-controls="example"
             onClick={() => setShowExample((shown) => !shown)}
           >
             <Workflow aria-hidden="true" className="size-4" />
             {showExample ? "Close example" : "Explore example"}
-          </Button>
-          {isDesktop() ? (
+          </Button> : null}
+          {desktop ? (
             <Button
               variant="outline"
-              disabled={dialogPending}
+              disabled={dialogPending || snapshot.state.phase !== "idle"}
               onClick={() => {
                 void chooseDirectory();
               }}
@@ -88,14 +95,15 @@ export default function App() {
         id="example"
         aria-label="Example architecture"
         className="mt-12"
-        hidden={!showExample}
+        hidden={!showExample || Boolean(snapshot.current)}
       >
-        {showExample ? (
+        {showExample && !snapshot.current ? (
           <Suspense fallback={<p role="status">Loading example…</p>}>
             <ArchitecturePreview />
           </Suspense>
         ) : null}
       </section>
+      {snapshot.current ? <ArchitectureDiagram document={snapshot.current.document} layout={snapshot.current.layout} /> : null}
     </main>
   );
 }
