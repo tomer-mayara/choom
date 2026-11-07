@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { directoryPathSchema, filePathSchema, isCanonicalRepositoryPath } from "./architecture-paths.ts";
 import { ComponentCatalog } from "./component-catalog.ts";
+import { semanticMessages } from "./semantic-validation-messages.ts";
 import type {
   AnalysisProvenance, ArchitectureComponent, ArchitectureDiagnostic,
   DiagnosticReference, ImportVariant,
@@ -8,10 +9,10 @@ import type {
 
 const text = z.string().min(1);
 export const architectureComponentsSchema = z.array(ComponentCatalog.declarationSchema.extend({
-  reportedFiles: z.number({ error: "Reported-file counts must be finite numbers." })
-    .int({ error: "Reported-file counts must be integers." })
-    .nonnegative({ error: "Reported-file counts cannot be negative." })
-    .max(Number.MAX_SAFE_INTEGER, { error: "Reported-file counts exceed the supported integer limit." }),
+  reportedFiles: z.number({ error: semanticMessages.nonfiniteFileCount })
+    .int({ error: semanticMessages.fractionalFileCount })
+    .nonnegative({ error: semanticMessages.negativeFileCount })
+    .max(Number.MAX_SAFE_INTEGER, { error: semanticMessages.excessiveFileCount }),
 }) satisfies z.ZodType<ArchitectureComponent>).min(1)
   .superRefine((components, context) => new ComponentCatalog(components).validate(context));
 
@@ -38,10 +39,10 @@ const diagnosticReferenceFields = {
 function validateDiagnosticReference(reference: DiagnosticReference, context: z.RefinementCtx): void {
   const local = reference.kind === "file" || reference.kind === "folder";
   if (local && !isCanonicalRepositoryPath(reference.value, reference.kind === "folder")) {
-    context.addIssue({ code: "custom", path: ["value"], message: "Diagnostic file and folder references must use canonical repository-relative paths" });
+    context.addIssue({ code: "custom", path: ["value"], message: semanticMessages.noncanonicalDiagnosticPath });
   }
   if (reference.kind === "outside-root" && /^(?:[A-Za-z]:|[/\\])/.test(reference.value)) {
-    context.addIssue({ code: "custom", path: ["value"], message: "Outside-root references must use opaque identifiers, never absolute local paths" });
+    context.addIssue({ code: "custom", path: ["value"], message: semanticMessages.absoluteOutsideRootReference });
   }
 }
 
@@ -60,7 +61,7 @@ function isFiniteMetricRecord(value: unknown): value is Record<string, number> {
 
 // The record contract permits keys such as '__proto__'; keep them as own data properties.
 const diagnosticMetricsSchema = z.custom<Record<string, number>>(isFiniteMetricRecord, {
-  message: "Diagnostic metrics must be a record of finite numbers",
+  message: semanticMessages.invalidDiagnosticMetrics,
 }).transform((metrics) => Object.fromEntries(Object.entries(metrics)));
 
 export const architectureDiagnosticSchema = z.strictObject({
