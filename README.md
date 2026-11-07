@@ -111,6 +111,18 @@ bun test ./test/interface/architecture ./test/interface/platform
 bun run test:rust
 ```
 
+[CR-001-T04](docs/change-requests/CR-001-T04-evidence.md) adds conversion of
+completed dependency-cruiser 18.7.2 JSON reports into the neutral architecture
+document. Conversion preserves declared ownership, canonical file evidence,
+findings, and analysis scope. See the [converter contract](cookbook/interfaces/dependency-cruiser.md)
+for supported semantics and limits. The runner and import UI remain later work.
+
+```sh
+bun run test:behavior:native --tags @cr-001-t04-api
+bun test ./test/unit/architecture/dependency-cruiser
+bun test ./test/interface/architecture/dependency-cruiser
+```
+
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Desktop simulations double the vendor open/save dialog boundary. Analyzer,
 delay, and storage-fault inputs are staged for the TypeSpec bindings delivered
@@ -211,7 +223,7 @@ findings with exit 0. Correct findings or document why they remain, and keep
 
 ```text
 src/
-  architecture/        Repository discovery and its generated contracts
+  architecture/        Repository discovery, report conversion, and contracts
   components/          React components and shadcn-compatible UI
   domain/              Platform-independent architecture model
   lib/                 Class merging and ELK layout
@@ -227,7 +239,7 @@ workspace and native-shell children. The workspace owns `architecture/`, `compon
 with child boundaries for the architecture model and desktop adapter. These four
 implementation components keep UI primitives and layout internal to the workspace.
 
-`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. The example loads React Flow and ELK on demand.
+`.dependency-cruiser.cjs` enforces import boundaries, rejects cycles and unresolved imports, and keeps Tauri access in `src/platform`. Domain imports stay independent of the UI and platform, libraries do not import UI or platform modules, and the platform adapter does not import the workspace. Concrete analyzer imports are limited to their collaborators and the named `src/architecture/create-architectural-layer.ts` composition entrypoint planned for T05. These rules include type imports. Cargo dependencies and Tauri capabilities define the native boundary; dependency-cruiser does not analyze Rust. The example loads React Flow and ELK on demand.
 
 ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; the example loads it on request.
 

@@ -1,6 +1,6 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
-**Status:** In progress — T01 and T02 merged; T03 implemented for review
+**Status:** In progress — T01–T03 merged; T04 implemented for review
 
 **Date:** 2026-11-06
 
@@ -692,6 +692,11 @@ directory. Run discovery/interface and Rust path cases; verify tooling with
 
 **Dependencies:** T02 and T03's path-normalization contract. **Owner:** concrete
 converter in `src/architecture/dependency-cruiser/`.
+
+**Implementation:** [T04 evidence and limits](CR-001-T04-evidence.md) and
+[converter contract](../../cookbook/interfaces/dependency-cruiser.md). The
+browser-free API scenarios exercise completed-report conversion separately from
+the Load Repo workflow below, which still needs the runner and UI tickets.
 
 #### Behavioral (Gherkin)
 

@@ -276,6 +276,8 @@ union AnalysisFailureCode {
   "execution-failed",
   "invalid-observations",
   "invalid-document",
+  "source-changed",
+  "limit-exceeded",
 }
 
 @extension("additionalProperties", false)

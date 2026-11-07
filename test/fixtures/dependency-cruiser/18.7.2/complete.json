@@ -1,0 +1,1467 @@
+{
+  "modules": [
+    {
+      "source": "src/components/panel.ts",
+      "dependencies": [
+        {
+          "dynamic": false,
+          "module": "../../packages/core-link/model/entity",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "packages/core-link/model/entity.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0,
+          "valid": true
+        },
+        {
+          "dynamic": false,
+          "module": "../core/a",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "src/core/a.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0.3333333333333333,
+          "valid": true
+        },
+        {
+          "dynamic": false,
+          "module": "../data.json",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "src/data.json",
+          "coreModule": false,
+          "followable": false,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0,
+          "valid": true
+        },
+        {
+          "dynamic": true,
+          "module": "@core/model/entity",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "aliased",
+            "aliased-tsconfig",
+            "aliased-tsconfig-paths",
+            "local",
+            "dynamic-import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "packages/core/model/entity.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0,
+          "valid": true
+        },
+        {
+          "dynamic": false,
+          "module": "@core/model/entity",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "aliased",
+            "aliased-tsconfig",
+            "aliased-tsconfig-paths",
+            "local",
+            "type-only",
+            "import",
+            "pre-compilation-only"
+          ],
+          "preCompilationOnly": true,
+          "resolved": "packages/core/model/entity.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0,
+          "valid": true
+        },
+        {
+          "dynamic": false,
+          "module": "fs",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "core",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "protocol": "node:",
+          "resolved": "fs",
+          "coreModule": true,
+          "followable": false,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0,
+          "valid": true
+        },
+        {
+          "dynamic": false,
+          "module": "missing-package",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "unknown"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "missing-package",
+          "coreModule": false,
+          "followable": false,
+          "couldNotResolve": true,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "error",
+              "name": "no-unresolved"
+            }
+          ]
+        },
+        {
+          "dynamic": false,
+          "module": "vendor",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "npm",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "node_modules/vendor/index.js",
+          "coreModule": false,
+          "followable": false,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": true,
+          "circular": false,
+          "instability": 0,
+          "valid": true
+        }
+      ],
+      "dependents": [],
+      "orphan": false,
+      "reaches": [
+        {
+          "asDefinedInRule": "no-reach",
+          "modules": [
+            {
+              "source": "src/core/c.ts",
+              "via": [
+                {
+                  "name": "src/core/a.ts",
+                  "dependencyTypes": [
+                    "local",
+                    "import"
+                  ]
+                },
+                {
+                  "name": "src/core/b.ts",
+                  "dependencyTypes": [
+                    "local",
+                    "import"
+                  ]
+                },
+                {
+                  "name": "src/core/c.ts",
+                  "dependencyTypes": [
+                    "local",
+                    "import"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "instability": 1,
+      "valid": false,
+      "rules": [
+        {
+          "severity": "warn",
+          "name": "no-reach"
+        }
+      ],
+      "matchesHighlight": true
+    },
+    {
+      "source": "src/data.json",
+      "followable": false,
+      "coreModule": false,
+      "couldNotResolve": false,
+      "matchesDoNotFollow": false,
+      "dependencyTypes": [
+        "local",
+        "import"
+      ],
+      "dependencies": [],
+      "dependents": [
+        "src/components/panel.ts"
+      ],
+      "orphan": false,
+      "instability": 0,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "fs",
+      "followable": false,
+      "coreModule": true,
+      "couldNotResolve": false,
+      "matchesDoNotFollow": false,
+      "dependencyTypes": [
+        "core",
+        "import"
+      ],
+      "dependencies": [],
+      "dependents": [
+        "src/components/panel.ts"
+      ],
+      "orphan": false,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "missing-package",
+      "followable": false,
+      "coreModule": false,
+      "couldNotResolve": true,
+      "matchesDoNotFollow": false,
+      "dependencyTypes": [
+        "unknown"
+      ],
+      "dependencies": [],
+      "dependents": [
+        "src/components/panel.ts"
+      ],
+      "orphan": false,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "node_modules/vendor/index.js",
+      "followable": false,
+      "coreModule": false,
+      "couldNotResolve": false,
+      "matchesDoNotFollow": true,
+      "dependencyTypes": [
+        "npm",
+        "import"
+      ],
+      "dependencies": [],
+      "dependents": [
+        "src/components/panel.ts"
+      ],
+      "orphan": false,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "packages/core-link/model/entity.ts",
+      "dependencies": [],
+      "dependents": [
+        "src/components/panel.ts"
+      ],
+      "orphan": false,
+      "instability": 0,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "src/core/a.ts",
+      "dependencies": [
+        {
+          "dynamic": false,
+          "module": "./b",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "src/core/b.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": true,
+          "cycle": [
+            {
+              "name": "src/core/b.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            },
+            {
+              "name": "src/core/c.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            },
+            {
+              "name": "src/core/a.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            }
+          ],
+          "instability": 0.5,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "error",
+              "name": "no-cycles"
+            }
+          ]
+        }
+      ],
+      "dependents": [
+        "src/components/panel.ts",
+        "src/core/c.ts"
+      ],
+      "orphan": false,
+      "instability": 0.3333333333333333,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "src/core/b.ts",
+      "dependencies": [
+        {
+          "dynamic": false,
+          "module": "./c",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "src/core/c.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": true,
+          "cycle": [
+            {
+              "name": "src/core/c.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            },
+            {
+              "name": "src/core/a.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            },
+            {
+              "name": "src/core/b.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            }
+          ],
+          "instability": 0.5,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "error",
+              "name": "no-cycles"
+            }
+          ]
+        }
+      ],
+      "dependents": [
+        "src/core/a.ts"
+      ],
+      "orphan": false,
+      "instability": 0.5,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "src/core/c.ts",
+      "dependencies": [
+        {
+          "dynamic": false,
+          "module": "./a",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "src/core/a.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": true,
+          "cycle": [
+            {
+              "name": "src/core/a.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            },
+            {
+              "name": "src/core/b.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            },
+            {
+              "name": "src/core/c.ts",
+              "dependencyTypes": [
+                "local",
+                "import"
+              ]
+            }
+          ],
+          "instability": 0.3333333333333333,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "error",
+              "name": "no-cycles"
+            }
+          ]
+        }
+      ],
+      "dependents": [
+        "src/core/b.ts"
+      ],
+      "orphan": false,
+      "instability": 0.5,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "packages/core/model/entity.ts",
+      "dependencies": [],
+      "dependents": [
+        "src/components/panel.ts",
+        "src/lib/format.ts"
+      ],
+      "orphan": false,
+      "instability": 0,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "src/lib/format.ts",
+      "dependencies": [
+        {
+          "dynamic": false,
+          "module": "../../packages/core/model/entity",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "preCompilationOnly": false,
+          "resolved": "packages/core/model/entity.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "instability": 0,
+          "valid": true
+        }
+      ],
+      "dependents": [],
+      "orphan": false,
+      "instability": 1,
+      "valid": true,
+      "matchesHighlight": false
+    },
+    {
+      "source": "src/orphan.ts",
+      "dependencies": [],
+      "dependents": [],
+      "orphan": true,
+      "instability": 0,
+      "valid": false,
+      "rules": [
+        {
+          "severity": "warn",
+          "name": "no-orphans"
+        }
+      ],
+      "matchesHighlight": false
+    }
+  ],
+  "folders": [
+    {
+      "name": "src",
+      "dependencies": [
+        {
+          "name": "packages/core-link/model",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "packages/core/model",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "fs",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "missing-package",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "node_modules/vendor",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        }
+      ],
+      "dependents": [],
+      "moduleCount": 7,
+      "afferentCouplings": 0,
+      "efferentCouplings": 7,
+      "instability": 1
+    },
+    {
+      "name": "src/components",
+      "dependencies": [
+        {
+          "name": "packages/core-link/model",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "warn",
+              "name": "no-cross-folder"
+            },
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "src/core",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "src",
+          "instability": 1,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "packages/core/model",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "warn",
+              "name": "no-cross-folder"
+            },
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "fs",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "missing-package",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        },
+        {
+          "name": "node_modules/vendor",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        }
+      ],
+      "dependents": [],
+      "moduleCount": 1,
+      "afferentCouplings": 0,
+      "efferentCouplings": 8,
+      "instability": 1
+    },
+    {
+      "name": "packages",
+      "dependencies": [],
+      "dependents": [
+        {
+          "name": "src/components"
+        },
+        {
+          "name": "src/lib"
+        }
+      ],
+      "moduleCount": 2,
+      "afferentCouplings": 3,
+      "efferentCouplings": 0,
+      "instability": 0
+    },
+    {
+      "name": "packages/core-link",
+      "dependencies": [],
+      "dependents": [
+        {
+          "name": "src/components"
+        }
+      ],
+      "moduleCount": 1,
+      "afferentCouplings": 1,
+      "efferentCouplings": 0,
+      "instability": 0
+    },
+    {
+      "name": "packages/core-link/model",
+      "dependencies": [],
+      "dependents": [
+        {
+          "name": "src/components"
+        }
+      ],
+      "moduleCount": 1,
+      "afferentCouplings": 1,
+      "efferentCouplings": 0,
+      "instability": 0
+    },
+    {
+      "name": "src/core",
+      "dependencies": [],
+      "dependents": [
+        {
+          "name": "src/components"
+        }
+      ],
+      "moduleCount": 3,
+      "afferentCouplings": 1,
+      "efferentCouplings": 0,
+      "instability": 0
+    },
+    {
+      "name": "packages/core",
+      "dependencies": [],
+      "dependents": [
+        {
+          "name": "src/components"
+        },
+        {
+          "name": "src/lib"
+        }
+      ],
+      "moduleCount": 1,
+      "afferentCouplings": 2,
+      "efferentCouplings": 0,
+      "instability": 0
+    },
+    {
+      "name": "packages/core/model",
+      "dependencies": [],
+      "dependents": [
+        {
+          "name": "src/components"
+        },
+        {
+          "name": "src/lib"
+        }
+      ],
+      "moduleCount": 1,
+      "afferentCouplings": 2,
+      "efferentCouplings": 0,
+      "instability": 0
+    },
+    {
+      "name": "src/lib",
+      "dependencies": [
+        {
+          "name": "packages/core/model",
+          "instability": 0,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "warn",
+              "name": "no-cross-folder"
+            },
+            {
+              "severity": "info",
+              "name": "folder-instability"
+            }
+          ]
+        }
+      ],
+      "dependents": [],
+      "moduleCount": 1,
+      "afferentCouplings": 0,
+      "efferentCouplings": 1,
+      "instability": 1
+    },
+    {
+      "name": "fs",
+      "moduleCount": -1,
+      "dependencies": [],
+      "dependents": []
+    },
+    {
+      "name": "missing-package",
+      "moduleCount": -1,
+      "dependencies": [],
+      "dependents": []
+    },
+    {
+      "name": "node_modules/vendor",
+      "moduleCount": -1,
+      "dependencies": [],
+      "dependents": []
+    }
+  ],
+  "summary": {
+    "violations": [
+      {
+        "type": "cycle",
+        "from": "src/core/a.ts",
+        "to": "src/core/b.ts",
+        "unresolvedTo": "./b",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ],
+        "rule": {
+          "severity": "error",
+          "name": "no-cycles"
+        },
+        "cycle": [
+          {
+            "name": "src/core/b.ts",
+            "dependencyTypes": [
+              "local",
+              "import"
+            ]
+          },
+          {
+            "name": "src/core/c.ts",
+            "dependencyTypes": [
+              "local",
+              "import"
+            ]
+          },
+          {
+            "name": "src/core/a.ts",
+            "dependencyTypes": [
+              "local",
+              "import"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "dependency",
+        "from": "src/components/panel.ts",
+        "to": "missing-package",
+        "unresolvedTo": "missing-package",
+        "dependencyTypes": [
+          "unknown"
+        ],
+        "rule": {
+          "severity": "error",
+          "name": "no-unresolved"
+        }
+      },
+      {
+        "type": "folder",
+        "from": "src/components",
+        "to": "packages/core-link/model",
+        "rule": {
+          "severity": "warn",
+          "name": "no-cross-folder"
+        }
+      },
+      {
+        "type": "folder",
+        "from": "src/components",
+        "to": "packages/core/model",
+        "rule": {
+          "severity": "warn",
+          "name": "no-cross-folder"
+        }
+      },
+      {
+        "type": "folder",
+        "from": "src/lib",
+        "to": "packages/core/model",
+        "rule": {
+          "severity": "warn",
+          "name": "no-cross-folder"
+        }
+      },
+      {
+        "type": "module",
+        "from": "src/orphan.ts",
+        "to": "src/orphan.ts",
+        "rule": {
+          "severity": "warn",
+          "name": "no-orphans"
+        }
+      },
+      {
+        "type": "reachability",
+        "from": "src/components/panel.ts",
+        "to": "src/core/c.ts",
+        "rule": {
+          "severity": "warn",
+          "name": "no-reach"
+        },
+        "via": [
+          {
+            "name": "src/core/a.ts",
+            "dependencyTypes": [
+              "local",
+              "import"
+            ]
+          },
+          {
+            "name": "src/core/b.ts",
+            "dependencyTypes": [
+              "local",
+              "import"
+            ]
+          },
+          {
+            "name": "src/core/c.ts",
+            "dependencyTypes": [
+              "local",
+              "import"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "instability",
+        "from": "src",
+        "to": "fs",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src",
+        "to": "missing-package",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src",
+        "to": "node_modules/vendor",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src",
+        "to": "packages/core-link/model",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src",
+        "to": "packages/core/model",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/components",
+        "to": "fs",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/components",
+        "to": "missing-package",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/components",
+        "to": "node_modules/vendor",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/components",
+        "to": "packages/core-link/model",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/components",
+        "to": "packages/core/model",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/components",
+        "to": "src",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 1
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/components",
+        "to": "src/core",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      },
+      {
+        "type": "instability",
+        "from": "src/lib",
+        "to": "packages/core/model",
+        "rule": {
+          "severity": "info",
+          "name": "folder-instability"
+        },
+        "metrics": {
+          "from": {
+            "instability": 1
+          },
+          "to": {
+            "instability": 0
+          }
+        }
+      }
+    ],
+    "error": 2,
+    "warn": 5,
+    "info": 13,
+    "ignore": 0,
+    "advisedExitCode": 2,
+    "totalCruised": 12,
+    "totalDependenciesCruised": 12,
+    "optionsUsed": {
+      "baseDir": ".",
+      "cache": false,
+      "combinedDependencies": false,
+      "detectImportsInAmbientModules": false,
+      "detectJSDocImports": false,
+      "detectProcessBuiltinModuleCalls": false,
+      "doNotFollow": {
+        "path": "node_modules"
+      },
+      "enhancedResolveOptions": {
+        "extensions": [
+          ".ts",
+          ".js",
+          ".json"
+        ],
+        "conditionNames": [
+          "import",
+          "default"
+        ]
+      },
+      "exclude": {
+        "path": "src/legacy"
+      },
+      "exoticRequireStrings": [],
+      "externalModuleResolutionStrategy": "node_modules",
+      "metrics": true,
+      "moduleSystems": [
+        "es6",
+        "cjs",
+        "tsd",
+        "amd"
+      ],
+      "outputTo": "-",
+      "outputType": "json",
+      "preserveSymlinks": true,
+      "reporterOptions": {
+        "dot": {
+          "collapsePattern": "node_modules/[^/]+"
+        },
+        "archi": {
+          "collapsePattern": "^src"
+        },
+        "ddot": {
+          "collapsePattern": "^src"
+        }
+      },
+      "rulesFile": ".dependency-cruiser.cjs",
+      "skipAnalysisNotInRules": false,
+      "tsConfig": {
+        "fileName": "tsconfig.json"
+      },
+      "tsPreCompilationDeps": "specify",
+      "args": "src"
+    },
+    "ruleSetUsed": {
+      "forbidden": [
+        {
+          "name": "no-orphans",
+          "severity": "warn",
+          "from": {
+            "orphan": true
+          },
+          "to": {},
+          "scope": "module"
+        },
+        {
+          "name": "no-unresolved",
+          "severity": "error",
+          "from": {},
+          "to": {
+            "couldNotResolve": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "no-reach",
+          "severity": "warn",
+          "from": {
+            "path": "^src/components/panel.ts$"
+          },
+          "to": {
+            "path": "^src/core/c.ts$",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "no-cycles",
+          "severity": "error",
+          "from": {},
+          "to": {
+            "circular": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "no-cross-folder",
+          "severity": "warn",
+          "scope": "folder",
+          "from": {
+            "path": "^src/"
+          },
+          "to": {
+            "path": "^packages/"
+          }
+        },
+        {
+          "name": "folder-cycle",
+          "severity": "info",
+          "scope": "folder",
+          "from": {},
+          "to": {
+            "circular": true
+          }
+        },
+        {
+          "name": "folder-instability",
+          "severity": "info",
+          "scope": "folder",
+          "from": {},
+          "to": {
+            "moreUnstable": false
+          }
+        }
+      ]
+    },
+    "environment": {
+      "version": "18.7.2",
+      "nodeVersionSupported": "^22||^24||>=26",
+      "nodeVersionFound": "v24.20.0",
+      "osVersionFound": "arm64 darwin@27.0.0",
+      "transpilersFound": [
+        {
+          "name": "javascript",
+          "version": "*",
+          "available": true,
+          "currentVersion": "acorn@8.19.0"
+        },
+        {
+          "name": "babel",
+          "version": ">=7.0.0 <8.0.0",
+          "available": true,
+          "currentVersion": "@babel/core@7.29.13"
+        },
+        {
+          "name": "coffee-script",
+          "version": ">=1.0.0 <2.0.0",
+          "available": false,
+          "currentVersion": "-"
+        },
+        {
+          "name": "coffeescript",
+          "version": ">=1.0.0 <3.0.0",
+          "available": false,
+          "currentVersion": "-"
+        },
+        {
+          "name": "livescript",
+          "version": ">=1.0.0 <2.0.0",
+          "available": false,
+          "currentVersion": "-"
+        },
+        {
+          "name": "svelte",
+          "version": ">=3.0.0 <6.0.0",
+          "available": false,
+          "currentVersion": "-"
+        },
+        {
+          "name": "swc",
+          "version": ">=1.0.0 <2.0.0",
+          "available": false,
+          "currentVersion": "-"
+        },
+        {
+          "name": "typescript",
+          "version": ">=2.0.0 <7.0.0",
+          "available": true,
+          "currentVersion": "typescript@6.0.2"
+        },
+        {
+          "name": "vue-template-compiler",
+          "version": ">=2.0.0 <3.0.0",
+          "available": false,
+          "currentVersion": "-"
+        },
+        {
+          "name": "@vue/compiler-sfc",
+          "version": ">=3.0.0 <4.0.0",
+          "available": false,
+          "currentVersion": "-"
+        }
+      ],
+      "extensionsFound": [
+        {
+          "extension": ".js",
+          "available": true
+        },
+        {
+          "extension": ".cjs",
+          "available": true
+        },
+        {
+          "extension": ".mjs",
+          "available": true
+        },
+        {
+          "extension": ".jsx",
+          "available": true
+        },
+        {
+          "extension": ".ts",
+          "available": true
+        },
+        {
+          "extension": ".tsx",
+          "available": true
+        },
+        {
+          "extension": ".d.ts",
+          "available": true
+        },
+        {
+          "extension": ".cts",
+          "available": true
+        },
+        {
+          "extension": ".d.cts",
+          "available": true
+        },
+        {
+          "extension": ".mts",
+          "available": true
+        },
+        {
+          "extension": ".d.mts",
+          "available": true
+        },
+        {
+          "extension": ".vue",
+          "available": false
+        },
+        {
+          "extension": ".svelte",
+          "available": false
+        },
+        {
+          "extension": ".ls",
+          "available": false
+        },
+        {
+          "extension": ".coffee",
+          "available": false
+        },
+        {
+          "extension": ".litcoffee",
+          "available": false
+        },
+        {
+          "extension": ".coffee.md",
+          "available": false
+        },
+        {
+          "extension": ".csx",
+          "available": false
+        },
+        {
+          "extension": ".cjsx",
+          "available": false
+        }
+      ]
+    }
+  }
+}

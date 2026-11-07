@@ -6,6 +6,7 @@
     "src/domain/generated/contracts.ts",
     "src/platform/generated/contracts.ts",
     "src/architecture/generated/contracts.ts",
+    "src/architecture/dependency-cruiser/generated/contracts.ts",
     "scripts/**/*.ts",
     "test/unit/**/*.{ts,tsx}",
     "test/interface/**/*.ts",

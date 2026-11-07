@@ -1,5 +1,5 @@
 name: workspace
-description: React workspace, starter diagram preview, and graph layout.
+description: React workspace, repository discovery, report conversion, and graph layout.
 
 artifacts:
   behavior:
@@ -9,6 +9,7 @@ artifacts:
     - path: ../cookbook/behavior/architecture-import/t03-discovery.feature
     - path: ../cookbook/behavior/architecture-import/t03-api.feature
     - path: ../cookbook/behavior/architecture-import/t04-observations.feature
+    - path: ../cookbook/behavior/architecture-import/t04-converter.feature
     - path: ../cookbook/behavior/architecture-import/t05-execution.feature
     - path: ../cookbook/behavior/architecture-import/t06-documents.feature
     - path: ../cookbook/behavior/architecture-import/t07-workflows.feature
@@ -21,6 +22,8 @@ artifacts:
     - path: ../cookbook/interfaces/architecture.tsp
     - path: ../cookbook/interfaces/desktop.tsp
     - path: ../cookbook/interfaces/discovery.tsp
+    - path: ../cookbook/interfaces/dependency-cruiser.tsp
+    - path: ../cookbook/interfaces/dependency-cruiser.md
     - path: ../cookbook/interfaces/discovery.md
     - path: ../cookbook/interfaces/workspace.md
 

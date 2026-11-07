@@ -17,7 +17,7 @@ export interface AnalysisFailure {
   message: string;
 }
 
-export type AnalysisFailureCode = "invalid-request" | "unavailable" | "unsupported" | "execution-failed" | "invalid-observations" | "invalid-document";
+export type AnalysisFailureCode = "invalid-request" | "unavailable" | "unsupported" | "execution-failed" | "invalid-observations" | "invalid-document" | "source-changed" | "limit-exceeded";
 
 export type AnalysisOutcome = AnalysisSuccess | AnalysisFailure | AnalysisCancelled;
 
