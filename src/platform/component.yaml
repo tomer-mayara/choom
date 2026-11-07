@@ -4,6 +4,11 @@ description: Detect the Tauri host and request one project directory.
 artifacts:
   behavior:
     - path: ../../cookbook/behavior/desktop.feature
+    - path: ../../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
+    - path: ../../cookbook/behavior/architecture-import/t03-discovery.feature
+    - path: ../../cookbook/behavior/architecture-import/t05-execution.feature
+    - path: ../../cookbook/behavior/architecture-import/t06-documents.feature
+    - path: ../../cookbook/behavior/architecture-import/t08-installed.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:

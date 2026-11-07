@@ -1,0 +1,177 @@
+# CR-001 native acceptance
+
+This procedure separates installed application evidence from browser tests,
+mocked IPC, and compilation. Follow it with the exact candidate release build.
+The current automated route supports Linux with X11 and GTK3 dialogs. macOS and
+Windows use the manual route below. An unavailable route is a recorded limit,
+not a passing or skipped test.
+
+T01 establishes the driver and preserves directory-picker behavior. Load Repo,
+Open Diagram, export, and analyzer execution belong to later tickets. A missing
+public action is the expected T01 feature failure only after startup and picker
+characterization pass. No driver supplies an analyzer report or replaces IPC.
+
+## Linux automated route
+
+Use the repository's pinned Bun, Node, and Rust versions. The standalone client
+is `webdriverio` 10.2.0; the pinned Node 26.13.0 satisfies its engine range.
+Install dependencies before the run; the harness never installs tools:
+
+```sh
+bun install --frozen-lockfile
+bunx --no-install playwright install chromium
+cargo install tauri-driver --version 2.1.0 --locked
+sudo apt-get install webkit2gtk-driver xvfb xdotool
+```
+
+The ordinary Tauri Linux build dependencies are also required; see the
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). Build the
+ordinary release `.deb`, install it outside the checkout, and retain its build
+identifier and hash. Do not use `target/debug`, `--no-bundle`, an application
+with a WebDriver plugin, or a symlink back into this checkout as installed
+release evidence. A typical installed executable is `/usr/bin/choom`.
+
+Prepare the production frontend once for the source-free browser consumer:
+
+```sh
+bun run build
+```
+
+Set these variables for the actual installed artifact, then run smoke first:
+
+```sh
+export CHOOM_PACKAGED_APP=/usr/bin/choom
+export CHOOM_PACKAGED_BUILD_ID=release-version-and-source-commit
+xvfb-run -a bun run test:behavior:packaged --tags @packaged-smoke
+```
+
+Prepare a separate dependency tree outside the Choom checkout for the real
+analysis fixtures. Its `node_modules` must contain `dependency-cruiser` 18.7.2
+and the TypeScript parser installed as
+`typescript@npm:@typescript/typescript6@6.0.2`. Set its absolute path explicitly:
+
+```sh
+export CHOOM_PACKAGED_FIXTURE_MODULES=/absolute/prepared-fixture/node_modules
+xvfb-run -a bun run test:behavior:packaged --tags @cr-001-t08
+```
+
+Run T08 only after smoke passes. The harness validates the supplied dependency
+versions and links repository fixtures to that prepared tree; it does not install
+dependencies or fall back to Choom's development `node_modules`. Smoke needs no
+analyzer tree. The unfiltered command runs all
+`@packaged` scenarios. `--tags <expression>` and `--name <expression>` select
+cases; a tag selection always retains the `@packaged` constraint. The runner
+requires a readable `dist/index.html` and does not rebuild it between runs.
+A selection that matches no scenarios fails setup instead of reporting a pass.
+
+`CHOOM_PACKAGED_APP` must be an absolute executable path. The runner resolves
+symlinks and rejects paths inside the checkout. `CHOOM_PACKAGED_BUILD_ID` is an
+operator-supplied release identifier; the runner separately hashes the actual
+executable. Record the installer hash and signing state with the release record.
+
+Optional executable overrides are `CHOOM_TAURI_DRIVER`, `CHOOM_WEBKIT_DRIVER`,
+and `CHOOM_XDOTOOL`. Otherwise the runner resolves those tools on its own PATH.
+It launches the product from a fresh directory outside the checkout with
+`CHOOM_PACKAGED_RUNTIME_PATH`, defaulting to `/usr/local/bin:/usr/bin:/bin`.
+Set this explicitly when the intended installed Node runtime is elsewhere.
+This is a controlled launch environment; separately verify the desktop launcher's
+runtime discovery before claiming Finder, Start-menu, or desktop-entry behavior.
+
+The runner starts external `tauri-driver`, its native WebKit driver, a local
+production preview, and a Playwright Chromium server for the browser consumer.
+It owns their cleanup and stops them on completion, failure, or interruption.
+The consumer connects to the runner's browser server. Scenario temporary files
+are placed inside the runner's temporary directory so forced Cucumber termination
+does not leave fixture repositories behind. The product uses real IPC.
+The native picker helper locates the installed executable's X11 process,
+focuses its newly opened dialog, and uses `xdotool` to select the supplied path
+or press Escape. It requires the picker to close. The smoke scenario also checks
+the displayed path and preservation after cancellation.
+
+This route sets `GTK_USE_PORTAL=0` and requires X11 so the locked GTK3 dialog
+backend remains in the application process. It does not claim Wayland or desktop
+portal coverage. Tests do not confirm overwrite prompts automatically; use new
+export destinations. The native driver rejects any existing destination and
+waits for the application to write stable, readable version 1 YAML after the
+save picker closes. A timeout or an unexpected native dialog fails the run.
+
+Each run writes `test-results/packaged/run-*/` with:
+
+- `run.json`: OS, architecture, runtimes, product environment, executable hashes,
+  declared build ID, outcome, and exit code.
+- Driver and browser-preview logs, Cucumber results, and per-session screenshots
+  and document source when a session could be opened.
+- `setup-failure.json` when an installed WebDriver session cannot be established.
+
+Exit `0` means the selected scenarios passed; `1` means scenario failure; `2`
+means setup or cleanup failure. Interruptions use `130` or `143`. At T01, a
+successful smoke followed by a missing Load Repo/Open Diagram assertion is
+feature-red evidence. Missing executables, Node mismatch, unavailable X11,
+session startup failure, and absent build output are setup failures. None count
+as feature-red evidence. Preserve the reports from both runs together.
+
+## Manual installed route on macOS and Windows
+
+Use an unlocked desktop and the ordinary release bundle built from the candidate.
+No WebDriver plugin, IPC replacement, developer server, or debugger is required.
+Record each action and observed result, including cancellation and failures.
+Keep screenshots and the exact artifact identity with the evidence record.
+
+1. Build the ordinary platform release bundle with `bun run desktop:build`.
+   Record the source commit, product version, OS version, architecture, bundle or
+   installer SHA-256, and signing/notarization status. A successful build alone
+   supplies no UI evidence.
+2. Install it outside the checkout. On macOS, copy the newly built `Choom.app`
+   into a distinct test installation directory and verify its Info.plist bundle
+   identifier is `com.tomermayara.choom`. Keep any existing installation intact.
+   On Windows, run the candidate installer and record the installed executable
+   path. Confirm the installed artifact matches the candidate.
+3. Create two ordinary directories outside the development checkout, named
+   `Atlas` and `Other`. Launch the installed application from Finder on macOS or
+   the installed shortcut/Start menu on Windows. Record any OS launch or
+   permission failure; do not replace it with a development launch.
+4. Confirm the window says **Choom**, displays **Desktop**, and shows the starter
+   heading **Architecture starts here.** Open **Explore example**, confirm the
+   example appears, then use **Close example**. Capture the visible result.
+5. Click **Choose directory**. Confirm a real native directory picker opens.
+   Select `Atlas`; confirm the application shows its full selected path.
+6. Click **Choose directory** again. Navigate toward `Other`, then cancel the
+   native picker. Confirm the displayed selection remains `Atlas` and the
+   starter remains usable. Record picker selection and cancellation separately.
+7. Inspect the workspace for **Load Repo**. At T01 it is absent. Record this as
+   the new capability's feature-red observation only after steps 3–6 passed.
+   Do not claim analysis ran. If the native desktop is locked or inaccessible,
+   record the blocked actions and stop the evidence record at the last actual
+   observation.
+8. After later tickets add the controls, click **Load Repo** and select a small
+   real repository with the supported local analyzer. Confirm the declared
+   component cards and file-pair evidence. Export through the real native save
+   picker into a new path. Close Choom and reopen that file through **Open
+   Diagram**. Open the same bytes in the browser with the source repository and
+   analyzer unavailable. Verify cards, evidence, and recorded analyzer version.
+   Record actual output files and hashes; do not replace exports with fixture
+   YAML or analyzer output generated by the harness.
+9. Complete the remaining CR-001 native cases on each claimed release platform:
+   missing runtime discovery, denied repository access, cancellation, process
+   cleanup, failed file operations, and visible results. Keep these unverified
+   until observed on that platform and build.
+
+No automated Windows or macOS adapter is included in T01. Record unavailable
+checks in [cookbook/TODO.md](../../cookbook/TODO.md).
+
+## Driver references and scope
+
+[Tauri's direct WebDriver setup](https://v2.tauri.app/develop/tests/webdriver/manual-setup/)
+supports Linux and Windows; macOS has no direct WKWebView driver. The selected
+Linux route requires no application plugin. Current
+[Tauri guidance](https://v2.tauri.app/develop/tests/webdriver/) also describes an
+embedded cross-platform route, but that changes the test build and does not
+replace installed release evidence.
+
+[WebDriver cannot operate a native file picker](https://www.selenium.dev/documentation/webdriver/elements/file_upload/).
+The Linux helper therefore uses real
+[xdotool X11 interaction](https://github.com/jordansissel/xdotool) instead of a
+file-input shortcut or an IPC mock. GTK3's
+[file chooser implementation](https://github.com/GNOME/gtk/blob/gtk-3-24/gtk/gtkfilechooserwidget.c)
+accepts an existing directory from the location entry in select-folder mode;
+the smoke scenario must verify that behavior on the target system.

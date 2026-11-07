@@ -4,6 +4,7 @@ description: Validates architecture graphs and supplies the starter graph.
 artifacts:
   behavior:
     - path: ../../cookbook/behavior/architecture.feature
+    - path: ../../cookbook/behavior/architecture-import/t02-model.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
