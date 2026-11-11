@@ -100,6 +100,10 @@ async function openRecord(world: BaselineDetailsWorld, kind: string, key = "Ente
     await openRules(world);
     world.detailOpener = browserPage.getByRole("dialog").locator("summary").filter({ hasText: "Only approved consumers" });
   } else {
+    if (kind === "interface" || kind === "resource") {
+      await tabTo(browserPage, browserPage.getByRole("button", { name: "Baseline details", exact: true }));
+      await browserPage.keyboard.press("Enter");
+    }
     const names: Record<string, string> = {
       "parent component": "Order system, order-system", "leaf component": "Order service, order-service",
       interface: "Order API, order-api", resource: "Order ledger, order-ledger", baseline: "Baseline details",
@@ -111,6 +115,9 @@ async function openRecord(world: BaselineDetailsWorld, kind: string, key = "Ente
   await tabTo(browserPage, world.detailOpener);
   await browserPage.keyboard.press(key === "Space" ? " " : key);
   await expect(browserPage.getByRole("dialog")).toBeVisible();
+  if (kind === "interface" || kind === "resource") {
+    world.detailOpener = browserPage.getByRole("button", { name: "Baseline details", exact: true });
+  }
   if (kind === "parent component" || kind === "leaf component") {
     await browserPage.getByRole("dialog").getByText("Recorded details", { exact: true }).click();
   }
@@ -280,7 +287,7 @@ When("the user closes the current record with Escape", async function (this: Bas
   await page(this).keyboard.press("Escape");
 });
 
-Then(/^focus returns to the (.+) inspection control$/, async function (this: BaselineDetailsWorld, kind: string) {
+Then(/^focus returns to the start of the (.+) inspection path$/, async function (this: BaselineDetailsWorld, kind: string) {
   assert.ok(this.detailOpener);
   assert.equal(kind, this.detailKind);
   await expect(this.detailOpener).toBeFocused();

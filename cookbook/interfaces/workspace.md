@@ -42,34 +42,26 @@ It does not freeze references held by collaborators. Repeated snapshot reads
 are stable; later progress reuses the current baseline and layout.
 Subscription changes during notification do not repeat the same notification.
 
-[layoutBaseline](../../src/lib/architecture-layout.ts) prepares a flat node list
-for React Flow from nested component groups and root-level interfaces and resources. Each node has its saved ID,
+[layoutBaseline](../../src/lib/architecture-layout.ts) prepares a flat component
+node list for React Flow, with all recorded groups expanded. Each node has its saved ID,
 width, height, position, and optional parent ID. Child positions are relative
-to their parent. Parents come before children. The layout checks exact visual-item
+to their parent. Parents come before children. The layout checks exact component
 coverage, parent IDs, finite geometry, positive sizes, and child containment
 below the parent inspection header. Missing or invalid output fails the load.
 [ArchitectureDiagram](../../src/components/architecture-diagram.tsx) renders
 that prepared data without file access or layout work. It gives React Flow its
-own mutable position records. Cards show the recorded component name, ID, and
-purpose. Interface and resource cards show their kind, name, ID, and recorded
-owner. A parent has a border around its children and a small inspection header.
-ELK rectangle packing makes a compact overview; it does not route the edges.
-No observed-import edges or file counts are invented.
+own mutable position records. Components show their names and the number of
+interfaces they directly own. Counts exclude descendant and unknown owners.
+A parent has a border around its children and one small inspection header.
+Names can wrap to two lines in a bounded header. Accessible names and panel
+details keep the full text. ELK rectangle packing prepares the component overview.
+Interfaces, resources, and relationship lines are absent from the drawing.
 
-The renderer derives links only from owner and allowed-consumer statements.
-An owner has a **provides** line to its interface or an **owns** line to its
-resource. Each allowed consumer has a **may use** arrow to the interface.
-This arrow records permission, not an observed call. Each link shows the status
-of its defining statement: **Proposed** or **Accepted (recorded)**. Acceptance
-is a recorded claim. Choom does not check evidence or infer links from rules,
-promises, access rules, or names. Unknown owners and consumer policies remain
-visible as labels. They do not create links. A known consumer is still shown
-when its interface owner is unknown. Separate interfaces and an owner that is
-also a consumer keep separate links.
-Each link uses a short internal key. Accessible link descriptions shorten each
-name or ID longer than 80 characters with an ellipsis. This prevents a long
-record value from being copied into every link description. Source and target
-IDs remain exact, and item details keep the complete saved names and IDs.
+The side panel preserves ownership and allowed-consumer statements separately,
+including unknown owners, repeated names, and an owner that is also a consumer.
+Each statement retains its own value, status, evidence references, and acceptance
+reference. Choom does not infer relationships from rules, promises, access rules,
+names, or code imports.
 
 The [display policy](../../src/lib/baseline-display-limits.ts) checks bounds
 before the layout graph is built, including when the component list is empty.
@@ -80,8 +72,11 @@ one link. Parent nesting does not add links. An excessive baseline reports
 **Too large to display** and keeps the previous view. The workflow imports this
 small policy module; it does not load ELK to handle the error.
 
-The canvas fits the prepared diagram once it has a usable size. Resizing and
-inspection preserve its pan and zoom. A single click, Enter, or Space opens
+Once the canvas has a usable size, the view starts at 100% zoom. It centers all
+root bounds when they fit with padding. Otherwise, it reveals the first root
+header in baseline order. This happens once per successful open. Resizing and
+inspection preserve its pan and zoom. Fit view can zoom out to show the entire
+diagram. A single click, Enter, or Space opens
 inspection in a nonmodal side panel. On narrow windows, the panel sits below
 the canvas. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
 (recorded)** status, **Evidence not loaded**, and its evidence references. An
@@ -117,7 +112,8 @@ baseline closes the old details.
 The heading is the baseline ID. An entirely empty model says **No architecture
 items modeled**. A baseline with other record kinds but no components says
 **No components modeled**. Neither empty state substitutes the example.
-Interfaces and resources still appear when there are no components. An empty
+Interfaces and resources remain available through Baseline details when there
+are no components. No diagram layout is needed in that case. An empty
 Rules list says **No rules modeled**.
 
 ## Starter and checks
@@ -140,6 +136,8 @@ bun test ./test/unit/lib/architecture-layout.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-diagram.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-04
 bun scripts/run-browser-behavior.ts --tags @bv-05
+bun test ./test/unit/lib/architecture-viewport.test.ts
+bun scripts/run-browser-behavior.ts --tags @br-02
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
 ```

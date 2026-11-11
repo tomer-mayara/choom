@@ -23,10 +23,11 @@ Feature: Display recorded component groups within safe limits
       | explicit link count     |
       | parent depth            |
 
-  Scenario Outline: Fit a component hierarchy at the display limits
+  @baseline-readability @br-02
+  Scenario Outline: Start a large hierarchy at readable size
     Given a baseline with 500 components and 16 levels is ready in a <width> by <height> window
     When the user opens the prepared hierarchy baseline
-    Then all 500 components fit inside the diagram
+    Then the hierarchy starts at 100 percent with its first root header visible
 
     Examples:
       | width | height |

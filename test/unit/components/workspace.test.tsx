@@ -37,7 +37,7 @@ test("opening publishes the prepared baseline only after layout finishes", async
   expect(screen.queryByRole("button", { name: "Explore example" })).toBeNull();
   expect(screen.getByRole("status").textContent).toBe("Baseline ready.");
   expect([...container.querySelectorAll(".react-flow__node[data-id]")].map((node) => node.getAttribute("data-id")))
-    .toEqual(["checkout", "billing", "invoice-api", "invoice-store"]);
+    .toEqual(["checkout", "billing"]);
 });
 
 test("native picker cancellation keeps opening disabled until selection settles", async () => {

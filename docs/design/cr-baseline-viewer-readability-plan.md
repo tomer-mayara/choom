@@ -258,7 +258,7 @@ No new package, analysis service, storage service, or native command is needed.
 | [Side panel](../../src/components/architecture-inspector.tsx) and [inspection state](../../src/components/use-architecture-inspection.ts) | Nonmodal inspection, owned-item lists, baseline lists, and local Back navigation. |
 | [Recorded fields](../../src/components/architecture-details.tsx) | Preserve complete fields, statement statuses, references, and rule details. |
 | [Layout](../../src/lib/architecture-layout.ts) and [geometry](../../src/lib/component-geometry.ts) | Prepare compact component-only geometry with header and child space. Check exact component coverage and valid containment. |
-| [Relationship mapping](../../src/lib/baseline-links.ts) | Reuse recorded ownership and consumer meanings for the later connection view. |
+| Connection view (BR-06) | Derive temporary links from saved owner and allowed-consumer statements when this follow-up is implemented. |
 | [Workspace view](../../src/architecture/workspace-view.ts) and [app](../../src/App.tsx) | Reset view state on each successful file open. Keep the existing example path. |
 | [Workspace contract notes](../../cookbook/interfaces/workspace.md) | Update display coverage, inspection, focus, movement, and fitting rules when their tickets are implemented. |
 

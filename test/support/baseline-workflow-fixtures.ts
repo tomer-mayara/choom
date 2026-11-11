@@ -1,4 +1,5 @@
 import { stringify } from "yaml";
+import { componentControlHeight } from "../../src/lib/component-geometry.ts";
 import type { Baseline } from "../../src/domain/generated/contracts.ts";
 import type { LoadWorkflowDependencies, SelectedBaseline } from "../../src/architecture/load-workflow.ts";
 import { baselineExample } from "./baseline-fixtures.ts";
@@ -17,7 +18,7 @@ export function selectedBaseline(baseline: Baseline = baselineExample()): Select
 export function baselineWorkflowDependencies(): LoadWorkflowDependencies {
   return {
     selectBaseline: async () => selectedBaseline(),
-    layout: async (baseline) => ({ nodes: [...baseline.components, ...baseline.interfaces, ...baseline.resources]
-      .map(({ id }, index) => ({ id, position: { x: index * 300, y: 0 }, width: 240, height: 120 })) }),
+    layout: async (baseline) => ({ nodes: baseline.components
+      .map(({ id }, index) => ({ id, position: { x: index * 300, y: 0 }, width: 240, height: componentControlHeight })) }),
   };
 }
