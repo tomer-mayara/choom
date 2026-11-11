@@ -157,3 +157,6 @@ playwright-report/
 test-results/
 reports/
 .DS_Store
+
+# Local Appendix A runs: snapshots, tool output, and review packets
+/work-choom/
