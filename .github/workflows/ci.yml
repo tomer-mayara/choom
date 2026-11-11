@@ -24,6 +24,11 @@ jobs:
         with:
           bun-version-file: .bun-version
       - run: bun install --frozen-lockfile
+      - name: Set up Ubuntu package downloads
+        run: |
+          # The runner's Azure mirror can stall package downloads.
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          printf '%s\n' 'APT::Update::Error-Mode "any";' | sudo tee /etc/apt/apt.conf.d/99choom-ci > /dev/null
       - run: bunx --no-install playwright install --with-deps chromium
       - name: Validate all four constraints
         run: ./scripts/run_all_constraints.sh
@@ -57,6 +62,12 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: .bun-version
+      - name: Set up Ubuntu package downloads
+        if: runner.os == 'Linux'
+        run: |
+          # The runner's Azure mirror can stall package downloads.
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          printf '%s\n' 'APT::Update::Error-Mode "any";' | sudo tee /etc/apt/apt.conf.d/99choom-ci > /dev/null
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
         run: |
