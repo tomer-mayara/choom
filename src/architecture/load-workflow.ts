@@ -1,5 +1,6 @@
 import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
+import { BaselineDisplayLimitError, displayLimitMessage } from "../lib/baseline-display-limits.ts";
 import { decodeBaselineYaml } from "../lib/baseline-yaml.ts";
 import type { ReadDocumentTextOutcome } from "../platform/generated/contracts.ts";
 import type { WorkflowFailure, WorkflowOperations, WorkflowOutcome, WorkflowStage, WorkflowState } from "./generated/workflow.ts";
@@ -135,7 +136,8 @@ export class LoadWorkflow implements WorkflowBindings {
     } catch (error) {
       return error instanceof LoadStopped ? error.outcome
         : operation.controller.signal.aborted ? { status: "cancelled", durationMs: elapsed(operation.started) }
-          : failed(operation.stage, "operation-failed", `The baseline ${operation.stage} operation could not complete.`, operation.started);
+          : error instanceof BaselineDisplayLimitError ? failed(operation.stage, "display-limit", displayLimitMessage, operation.started)
+            : failed(operation.stage, "operation-failed", `The baseline ${operation.stage} operation could not complete.`, operation.started);
     }
   }
 

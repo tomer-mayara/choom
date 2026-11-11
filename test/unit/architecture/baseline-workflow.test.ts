@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test";
 import { LoadWorkflow, type SelectedBaseline } from "../../../src/architecture/load-workflow.ts";
-import type { ArchitectureLayout } from "../../../src/lib/architecture-layout.ts";
+import { layoutBaseline, type ArchitectureLayout } from "../../../src/lib/architecture-layout.ts";
+import { BaselineDisplayLimitError } from "../../../src/lib/baseline-display-limits.ts";
 import { baselineExample, fixtureItem } from "../../support/baseline-fixtures.ts";
+import { baselineWithRules } from "../../support/baseline-layout-fixtures.ts";
 import { baselineWorkflowDependencies, pending, selectedBaseline } from "../../support/baseline-workflow-fixtures.ts";
 
 test("a saved baseline passes through the load workflow", async () => {
@@ -39,6 +41,34 @@ test.each(["selection", "reading", "validation", "layout"] as const)("%s failure
   expect(outcome).toMatchObject({ status: "failure", stage });
   expect(JSON.stringify(outcome)).not.toContain("/private");
   expect(workflow.getSnapshot().current).toBe(current);
+});
+
+test("a display limit keeps the current view and reports a safe size message", async () => {
+  const dependencies = baselineWorkflowDependencies();
+  dependencies.layout = layoutBaseline;
+  const workflow = new LoadWorkflow(dependencies);
+  await workflow.openBaseline();
+  const current = workflow.getSnapshot().current;
+  dependencies.selectBaseline = async () => selectedBaseline(baselineWithRules(501));
+  expect(await workflow.openBaseline()).toMatchObject({
+    status: "failure", stage: "layout", code: "display-limit",
+    message: "Too large to display. Use at most 500 records, 2,000 explicit links, and 16 component levels.",
+  });
+  expect(workflow.getSnapshot().current).toBe(current);
+  expect(workflow.getSnapshot().state.phase).toBe("idle");
+});
+
+test("a display-limit error cannot supply an unsafe message", async () => {
+  const dependencies = baselineWorkflowDependencies();
+  dependencies.layout = async () => {
+    const error = new BaselineDisplayLimitError();
+    error.message = "/private/baseline.yaml";
+    throw error;
+  };
+  const outcome = await new LoadWorkflow(dependencies).openBaseline();
+  expect(outcome).toMatchObject({ status: "failure", stage: "layout", code: "display-limit" });
+  expect(JSON.stringify(outcome)).toContain("Too large to display");
+  expect(JSON.stringify(outcome)).not.toContain("/private");
 });
 
 test("retry rereads the selected baseline and does not reopen its picker", async () => {
@@ -123,7 +153,7 @@ test("publication owns immutable copies without freezing collaborator data", asy
   const dependencies = baselineWorkflowDependencies();
   const baseline = baselineExample();
   let supplied: typeof baseline | undefined;
-  const positions: ArchitectureLayout = { nodes: [{ id: "checkout", position: { x: 0, y: 0 } }] };
+  const positions: ArchitectureLayout = { nodes: [{ id: "checkout", position: { x: 0, y: 0 }, width: 240, height: 120 }] };
   dependencies.selectBaseline = async () => selectedBaseline(baseline);
   dependencies.layout = async (value) => { supplied = value; return positions; };
   const workflow = new LoadWorkflow(dependencies);

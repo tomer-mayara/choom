@@ -6,7 +6,7 @@ establish browser or installed-app behavior.
 
 ## Environment
 
-- Host: macOS on ARM64.
+- Host: macOS on ARM64, Apple M1 Pro with 8 CPU cores and 16 GiB of memory.
 - Development tools: Bun 1.4.4, Node.js 26.13.0, and Rust 1.99.1.
 - Dependencies were installed with `bun install --frozen-lockfile`; Chromium is installed.
 - Before production changes, `bun run test:rust` passed 49 module/IPC tests and
@@ -29,10 +29,10 @@ characterization tests.
 | BV-01 | `bun run test:behavior --tags @bv-01`: 10 scenarios failed real assertions. The old document validator rejected baseline fields and could not identify invalid baseline fields. | 10 scenarios and 96 focused unit/interface tests pass. Reviewed and complete. |
 | BV-02 | `bun run test:behavior:native --tags @bv-02`: 3 scenarios failed and 4 existing input protections passed. Baselines were rejected, future versions were misclassified, and legacy diagrams were accepted. | 7 scenarios pass; reviewed and complete. |
 | BV-03 | The normal browser and installed desktop app both loaded, then their Open Baseline assertions failed because the control was absent. | Browser, core, host, and ordinary installed Linux acceptance pass. Reviewed and complete. |
-| BV-04 | Not run yet. | Pending. |
+| BV-04 | Five browser scenarios failed actual assertions: flat components did not form the recorded groups, and all four excessive-work cases lacked a display-limit error. | Nine focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-05 | Not run yet. | Pending. |
 | BV-06 | Not run yet. | Pending. |
-| BV-07 | Not run yet. | Pending. |
+| BV-07 | All 13 installed-host scenarios failed because the retired operations still returned registered-handler responses. | Removal pending. |
 
 ## BV-01
 
@@ -192,6 +192,68 @@ source, build log, and report are retained under
 The package is an unsigned local Linux/X11 build. This result does not establish
 macOS, Windows, Wayland, or desktop-portal behavior. The later evidence commit
 changes only this document.
+
+PR #20 CI passed web, macOS, Ubuntu, and Windows after one rerun of the same
+unchanged Windows analyzer test failure recorded for BV-01 and BV-02.
+
+## BV-04
+
+The first browser run used the normal BV-03 build. All five scenarios failed
+product assertions, with 29 steps passed, five failed, and two skipped. The
+hierarchy scenario failed component containment. The four limit cases supplied
+valid domain and YAML input, then failed because the app did not report
+**Too large to display**. The report is `test-results/bv-04-browser-red.json`;
+the log is `reports/baseline-viewer/bv-04/browser-red.log`.
+
+Focused TDD first failed the nested geometry, boundary, invalid-layout,
+safe size-message, and group-header UI cases. After implementation, independent
+review found no actionable defects and passed 50 layout/workflow tests and
+nine diagram DOM tests.
+
+The focused browser suite passes nine scenarios and 63 steps. It checks
+containment, keyboard inspection of every reviewed component, all four limit
+failures, and a 500-component hierarchy with 16 levels in 390×640 and 1600×1000
+windows. Fit View and keyboard focus after panning a large parent also pass.
+
+Five component-layout runs on the host measured 183–559 ms for 500 roots and
+127–236 ms for 500 components across 16 levels. A 2,000-link input with 100
+components took 17–66 ms, but BV-04 only counts those links; it does not yet lay
+out or draw them. The raw measurements are in
+`reports/baseline-viewer/bv-04/layout-measurements.json`. These are component-only
+measurements. Full viewer measurements remain required after BV-05 and BV-06.
+
+Completed candidate checks:
+
+- `bun run check`: 178 native unit tests, 19 DOM tests, 18 native Cucumber
+  scenarios with 57 steps, and 19 interface tests passed. Lint, contracts, types,
+  cookbook links, dependency boundaries, unused-code, and duplicate-code checks passed.
+- The complete browser suite passed 28 scenarios and 185 steps, including the
+  existing load, cancellation, starter, resize, focus, and zoom behavior.
+- `bun run build`, `bun run check-types`, and `bun run habit-hooks --all` passed.
+  The build retains the existing large-chunk warning; the snooze file is empty.
+- Changed document links and `git diff --check` passed.
+
+The duplicate-code check first rejected repeated viewport test setup. A shared
+test driver now owns that setup for its three callers. The affected DOM tests
+and the complete repository check passed after the refactor. Production files
+did not change after the complete browser run. The manager reviewed the final
+candidate. Logs are retained in `reports/baseline-viewer/bv-04/`.
+
+## BV-07
+
+Before removal, the new acceptance scenarios called all 13 retired operations
+through the actual installed host. Each operation returned a typed invalid-request
+response from its registered handler. The unavailable-operation assertion then
+failed: 13 scenarios failed, with 39 steps passed and 13 failed. There were no
+undefined steps or setup failures.
+
+The product was the unchanged BV-03 release from `96498ab`; its installed
+executable hash matched the recorded package before and after the test. The
+test checkout had three acceptance-only overlays. Their hashes matched the
+staged tests, and the 30 unchanged harness files matched the source archive.
+The overlay passed TypeScript checks. The report is
+`work/choom/test-results/packaged/run-gRW5x9/`, with retained evidence under
+`work/evidence/bv07-retirement-red/` in the Linux cache.
 
 ## Release checks
 

@@ -17,6 +17,6 @@ export function selectedBaseline(baseline: Baseline = baselineExample()): Select
 export function baselineWorkflowDependencies(): LoadWorkflowDependencies {
   return {
     selectBaseline: async () => selectedBaseline(),
-    layout: async (baseline) => ({ nodes: baseline.components.map(({ id }, index) => ({ id, position: { x: index * 300, y: 0 } })) }),
+    layout: async (baseline) => ({ nodes: baseline.components.map(({ id }, index) => ({ id, position: { x: index * 300, y: 0 }, width: 240, height: 120 })) }),
   };
 }
