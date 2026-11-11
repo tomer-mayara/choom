@@ -57,8 +57,9 @@ from replacing the current view.
 
 The display accepts at most 500 records across all four collections, 2,000
 explicit owner and consumer links, and 16 component levels. Larger inputs show
-**Too large to display** and keep the current view. Final measurements for the
-complete viewer remain part of the release checks.
+**Too large to display** and keep the current view. The
+[complete viewer measurements](docs/change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements)
+record the tested workloads, timings, and limits.
 
 Ownership lines say **provides** or **owns**. Explicit consumer arrows say
 **may use**; they show permission recorded in the file. They do not show observed

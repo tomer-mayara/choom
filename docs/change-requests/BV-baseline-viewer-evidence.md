@@ -329,6 +329,43 @@ Completed candidate checks:
 - Independent source review, manager visual review, and whitespace checks passed.
   Check and red/green logs are retained in `reports/baseline-viewer/bv-06/`.
 
+### Complete viewer measurements
+
+The normal production build from clean commit
+`2e30b456d97830ee9d32e2963e05807ed071e2d5` completed three runs of each workload
+below. The host was the Apple M1 Pro described above, with Chromium 158.0.8127.18,
+Playwright 1.65.0, Bun 1.4.4, Node.js 26.13.0, and a 1280×800 viewport.
+
+Each run used a fresh browser context and the real Open Baseline file chooser.
+Load time starts before file selection supplies the file and ends after exact
+node/link coverage and three stable animation frames. These times include test
+driver and observation overhead. No product test doubles were present.
+
+| Workload | Load time, ms | Keyboard details, ms |
+| --- | ---: | ---: |
+| 500 root components | 377 | 49–51 |
+| 500 components across 16 levels | 393–394 | 45–48 |
+| 500 mixed records, 2,000 links, 16 levels | 643–661 | 131–144 |
+| 120 diagram items with 2,000 links | 494–574 | 100–108 |
+| 500 rules with no diagram items | 209–226 | 34–41 for the last rule |
+| Reviewed 5/8/5/21 baseline | 226 | 13–15 |
+
+For diagram workloads, Escape and focus return took 6–79 ms and zoom activation
+took 29–47 ms. The 500-rule list opened in 42–49 ms; closing the last rule and
+restoring summary focus took 2–5 ms. A second Escape closed the list and returned
+focus in 6–33 ms. All expected records and links were present, all diagram nodes
+fit the initial canvas, and no browser errors or document overflow occurred.
+Large diagrams still need zoom and pan to read individual items.
+
+The supported limits remain **500 total records, 2,000 explicit links, and
+16 component levels**. These measurements support this local workload; they are
+not a latency guarantee for every input, machine, or desktop webview. Source,
+build files, and the measurement script remained unchanged throughout the run.
+The report records their hashes, fixture hashes, runtime details, and all raw
+timings. It is retained at
+`reports/baseline-viewer/final/2026-11-11T15-10-31-067Z/measurements.json`.
+The manager also inspected the final reviewed-baseline screenshot.
+
 ## BV-07
 
 Before removal, the new acceptance scenarios called all 13 retired operations
@@ -347,6 +384,6 @@ The overlay passed TypeScript checks. The report is
 
 ## Release checks
 
-Full browser and installed-app acceptance, display-limit measurements, and final
-repository checks remain pending. Each PR must report its own completed checks
+Final installed-app acceptance and repository checks after BV-07 remain pending.
+Complete viewer measurements passed at the supported limits. Each PR must report its own completed checks
 and remaining limits. Constraint changes still need human review before merge.

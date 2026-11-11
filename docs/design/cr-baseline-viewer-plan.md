@@ -176,15 +176,16 @@ depth limit of 32, and 250,000 YAML-node limit. Keep rejection of aliases, ancho
 tags, duplicate keys, and multiple documents. A UTF-8 byte order mark is allowed;
 preserving the original formatting is unnecessary for a read-only viewer.
 
-Add a small, named display-limit policy before layout. Proposed initial limits
+Apply a small, named display-limit policy before layout. Supported limits
 are **500 records**, **2,000 explicit links**, and **16 component levels**.
 Count records across all four collections, including rules. This bounds both
 the diagram and the Rules list. Count ownership and consumer links before
 creating them. Parent depth is separate from YAML nesting depth.
 Report **Too large to display** instead of silently omitting data.
-BV-04 introduces these bounds. The final verification must measure them after
-BV-05 and BV-06 complete the viewer, then record the supported values. Lower them
-if needed; do not claim a performance guarantee from the parser limits alone.
+BV-04 introduces these bounds. Complete viewer measurements after BV-06 retained
+them; see the [verification record](../change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements).
+Recheck them when rendering changes. Parser limits alone do not establish
+performance.
 
 ## Code and removal boundaries
 
