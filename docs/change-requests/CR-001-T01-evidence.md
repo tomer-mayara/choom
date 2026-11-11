@@ -1,5 +1,10 @@
 # CR-001-T01: Behavior specification and evidence map
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 This record accompanies [CR-001](CR-001-architecture-import.md). T01 registers
 its eight Features before production changes. The feature text preserves the
 plan's scenarios; tags select the execution environment and implementation owner.
@@ -20,7 +25,7 @@ runtime discovery. T08 uses `@packaged` and requires the assembled application.
 Existing browser-free model and desktop-adapter characterizations remain on the
 native Cucumber route.
 
-The additional [installed picker smoke](../../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature)
+The additional [installed picker smoke](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature)
 uses `@packaged @packaged-smoke` and the existing selection/cancellation behavior.
 It must pass on a platform before a missing Load Repo action can be accepted as
 native feature-red evidence there. An unavailable application or driver, or an
@@ -28,15 +33,15 @@ unexecuted smoke scenario, does not satisfy this gate.
 
 | Ticket and feature | Later implementation owners | Required behavior evidence |
 | --- | --- | --- |
-| [T01: Explore](../../cookbook/behavior/architecture-import/t01-explore.feature) | Workspace UI; T03 discovery, T05 execution, T06 documents, T07 workflow | Declared-component import; source-free viewing; retained starter and picker outcomes. |
-| [T01: Installed picker smoke](../../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature) | Workspace selection UI, platform dialog adapter and native shell | Retained installed selection/cancellation behavior establishes the native driver baseline before feature-red evidence. |
-| [T02: Model](../../cookbook/behavior/architecture-import/t02-model.feature) | `src/domain/`; T07 exposes results through the UI | Declared ownership across several subdirectories; deepest declared root; import variants; identity; directed findings; invalid-document rejection. |
-| [T03: Discovery](../../cookbook/behavior/architecture-import/t03-discovery.feature) | Workspace discovery, `src/platform/`, `src-tauri/src/`; manifest tooling | Exact selected root and linked tree; manifest-relative paths; explicit analyzer selection; containment and invalid-reference failures. |
-| [T04: Observations](../../cookbook/behavior/architecture-import/t04-observations.feature) | Workspace concrete converter; domain builder from T02; native canonical paths from T03 | Faithful file-pair aggregation, counts and findings; supported effective configuration; useful failures and warnings. Recorded reports alone do not establish real analysis. |
-| [T05: Execution](../../cookbook/behavior/architecture-import/t05-execution.feature) | Workspace strategy/runner, platform transport, native process owner | Fresh analysis; findings on successful runs; prerequisite and incomplete-run failures; cancellation. T05 adds real source-to-model and native cleanup evidence. |
-| [T06: Documents](../../cookbook/behavior/architecture-import/t06-documents.feature) | Workspace storage, `src/lib/` codec, platform/native storage | Portable round trips; strict encoding; sanitized paths; safe export replacement; export captures its starting document. |
-| [T07: Workflows](../../cookbook/behavior/architecture-import/t07-workflows.feature) | Workspace controller, UI and layout | Serialized loads; late-result rejection; cancellation and failure retention; declared cards/counts; retry and keyboard access. |
-| [T08: Installed](../../cookbook/behavior/architecture-import/t08-installed.feature) | All affected owners; packaged acceptance and release review | Real installed analysis and export; source-free browser/desktop reopening; denied access retains the current view. Earlier native cancellation/file/layout cases also need installed evidence. |
+| [T01: Explore](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t01-explore.feature) | Workspace UI; T03 discovery, T05 execution, T06 documents, T07 workflow | Declared-component import; source-free viewing; retained starter and picker outcomes. |
+| [T01: Installed picker smoke](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature) | Workspace selection UI, platform dialog adapter and native shell | Retained installed selection/cancellation behavior establishes the native driver baseline before feature-red evidence. |
+| [T02: Model](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t02-model.feature) | `src/domain/`; T07 exposes results through the UI | Declared ownership across several subdirectories; deepest declared root; import variants; identity; directed findings; invalid-document rejection. |
+| [T03: Discovery](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t03-discovery.feature) | Workspace discovery, `src/platform/`, `src-tauri/src/`; manifest tooling | Exact selected root and linked tree; manifest-relative paths; explicit analyzer selection; containment and invalid-reference failures. |
+| [T04: Observations](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t04-observations.feature) | Workspace concrete converter; domain builder from T02; native canonical paths from T03 | Faithful file-pair aggregation, counts and findings; supported effective configuration; useful failures and warnings. Recorded reports alone do not establish real analysis. |
+| [T05: Execution](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t05-execution.feature) | Workspace strategy/runner, platform transport, native process owner | Fresh analysis; findings on successful runs; prerequisite and incomplete-run failures; cancellation. T05 adds real source-to-model and native cleanup evidence. |
+| [T06: Documents](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t06-documents.feature) | Workspace storage, `src/lib/` codec, platform/native storage | Portable round trips; strict encoding; sanitized paths; safe export replacement; export captures its starting document. |
+| [T07: Workflows](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t07-workflows.feature) | Workspace controller, UI and layout | Serialized loads; late-result rejection; cancellation and failure retention; declared cards/counts; retry and keyboard access. |
+| [T08: Installed](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t08-installed.feature) | All affected owners; packaged acceptance and release review | Real installed analysis and export; source-free browser/desktop reopening; denied access retains the current view. Earlier native cancellation/file/layout cases also need installed evidence. |
 
 The root manifest links every feature. The workspace owns T01 and T03–T08;
 the domain owns T02. Platform and native-shell manifests additionally link
@@ -67,14 +72,14 @@ the new workflows from reaching their later assertions.
 TypeSpec is the source of truth for Choom-owned data and operation contracts.
 The entries below describe planned work in later tickets; they are not new
 contracts delivered by T01. Existing sources are imported through
-[`main.tsp`](../../cookbook/interfaces/main.tsp). New source filenames and output
+[`main.tsp`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/main.tsp). New source filenames and output
 owners must be registered when the corresponding contract is implemented.
 
 | Ticket | Planned source owner and definitions | Generated outputs and implementation conformance |
 | --- | --- | --- |
 | T01 | Map scenarios to the following source owners; change no TypeSpec definition. | Existing outputs stay unchanged; new-red evidence must arise from missing behavior rather than undefined steps. |
-| T02 | Domain: extend [`architecture.tsp`](../../cookbook/interfaces/architecture.tsp) and add neutral analysis requests/outcomes/observations under the same owner as needed. | Domain generated declarations and structural JSON Schema; compare the shared runtime validator and public data types with generated structures. Test ownership/reference/aggregation invariants separately. Live control and promise/callback binding stay in TypeScript. |
-| T03 | Workspace: manifest metadata definitions; platform: native text/path operations and DTOs in the [`desktop.tsp`](../../cookbook/interfaces/desktop.tsp) owner. | Register workspace output ownership; update platform declarations and structural schemas. Check production/tooling manifest parsing and both transport boundaries, including native serialization. |
+| T02 | Domain: extend [`architecture.tsp`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/architecture.tsp) and add neutral analysis requests/outcomes/observations under the same owner as needed. | Domain generated declarations and structural JSON Schema; compare the shared runtime validator and public data types with generated structures. Test ownership/reference/aggregation invariants separately. Live control and promise/callback binding stay in TypeScript. |
+| T03 | Workspace: manifest metadata definitions; platform: native text/path operations and DTOs in the [`desktop.tsp`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop.tsp) owner. | Register workspace output ownership; update platform declarations and structural schemas. Check production/tooling manifest parsing and both transport boundaries, including native serialization. |
 | T04 | Workspace: Choom-owned completed-report context and neutral conversion data. Dependency-cruiser reports retain their upstream contract. | Register concrete context output ownership; check adapter inputs/outputs and runtime validation of the accepted report subset. Reuse T02 outputs and builder invariants. |
 | T05 | Workspace: runner data; platform: native requests/results/progress/cancellation data. | Generated workspace/platform declarations and structural schemas; check TypeScript implementations, native serialization and runtime transport validation. Real process tests establish termination and cleanup. |
 | T06 | Domain: T02 saved-document structure; platform/workspace: storage and export operations and DTOs. | Reuse domain outputs; generate storage DTO outputs with their owner. Check codec, native serialization and file-operation boundaries. YAML restrictions, atomic replacement and cleanup remain runtime behavior. |
@@ -82,9 +87,9 @@ owners must be registered when the corresponding contract is implemented.
 | T08 | Review all affected sources, entrypoint registration and component links. | Run generated-output consistency and implementation conformance checks for the complete candidate; add no parallel handwritten structural contract. |
 
 Current generated declarations live under
-[`src/domain/generated/`](../../src/domain/generated/) and
-[`src/platform/generated/`](../../src/platform/generated/); the structural schema
-is [`contracts.schema.json`](../../cookbook/interfaces/generated/contracts.schema.json).
+[`src/domain/generated/`](https://github.com/tomer-mayara/choom/tree/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/generated) and
+[`src/platform/generated/`](https://github.com/tomer-mayara/choom/tree/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/platform/generated); the structural schema
+is [`contracts.schema.json`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/generated/contracts.schema.json).
 Extend the binding's configured output owners when new workspace types need an
 output location. Later contract tickets must run `bun run contracts:generate`,
 review source/output changes, then run `bun run check:contracts`. Native Rust

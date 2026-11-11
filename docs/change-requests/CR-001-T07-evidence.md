@@ -1,5 +1,10 @@
 # CR-001-T07 implementation and verification
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Date: 2026-11-07. Base: `3022acd`, the merged T06 change. Candidate branch:
 `codex/cr-001-t07`. Verification ran before commit; the production source
 manifest below identifies the exact source used for the platform builds.

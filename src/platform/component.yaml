@@ -1,21 +1,10 @@
 name: desktop-adapter
-description: >-
-  Detect the host, handle desktop dialogs, and bind repository, analyzer, and
-  document IPC. Select, read, and download diagram files in the browser.
+description: Select and read bounded baseline files in the browser and desktop.
 
 artifacts:
   behavior:
-    - path: ../../cookbook/behavior/desktop.feature
-    - path: ../../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
-    - path: ../../cookbook/behavior/architecture-import/t03-discovery.feature
-    - path: ../../cookbook/behavior/architecture-import/t05-execution.feature
-    - path: ../../cookbook/behavior/architecture-import/t05-api.feature
-    - path: ../../cookbook/behavior/architecture-import/t05-installed.feature
-    - path: ../../cookbook/behavior/architecture-import/t06-documents.feature
-    - path: ../../cookbook/behavior/architecture-import/t06-api.feature
-    - path: ../../cookbook/behavior/architecture-import/t06-installed.feature
-    - path: ../../cookbook/behavior/architecture-import/t07-dialogs.feature
-    - path: ../../cookbook/behavior/architecture-import/t08-installed.feature
+    - path: ../../cookbook/behavior/baseline-viewer/open.feature
+    - path: ../../cookbook/behavior/baseline-viewer/installed.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:

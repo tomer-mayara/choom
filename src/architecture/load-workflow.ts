@@ -1,126 +1,82 @@
-import type { ArchitecturalLayer } from "../domain/architectural-layer.ts";
-import type { AnalysisOutcome, ArchitectureDocument } from "../domain/generated/contracts.ts";
-import type { DocumentFiles } from "../documents/document-files.ts";
+import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
-import { decodeArchitectureYaml } from "../lib/architecture-yaml.ts";
-import type { DocumentCodecFailure } from "../lib/generated/contracts.ts";
-import type { DocumentNativeFailure, RepositoryOperations } from "../platform/generated/contracts.ts";
-import type { DiscoveryOperations } from "./generated/contracts.ts";
-import type {
-  WorkflowFailure, WorkflowOperation, WorkflowOperations, WorkflowOutcome, WorkflowStage, WorkflowState,
-} from "./generated/workflow.ts";
+import { decodeBaselineYaml } from "../lib/baseline-yaml.ts";
+import type { ReadDocumentTextOutcome } from "../platform/generated/contracts.ts";
+import type { WorkflowFailure, WorkflowOperations, WorkflowOutcome, WorkflowStage, WorkflowState } from "./generated/workflow.ts";
 import { ownCurrentView, ownOutcome, publishedSnapshot } from "./load-publication.ts";
 import type { LoadWorkflowSnapshot } from "./workspace-view.ts";
 
-export type SelectedDocument =
-  | { kind: "desktop"; path: string }
-  | { kind: "browser"; readText(signal: AbortSignal): Promise<string> };
+/** A selected file remains readable for Retry; selection does not copy or write it. */
+export interface SelectedBaseline {
+  read(signal: AbortSignal): Promise<ReadDocumentTextOutcome>;
+}
 
 export interface LoadWorkflowDependencies {
-  selectRepository(signal: AbortSignal): Promise<string | null>;
-  selectDocument(signal: AbortSignal): Promise<SelectedDocument | null>;
-  discover(request: Parameters<DiscoveryOperations["discover"]>[0]): Promise<ReturnType<DiscoveryOperations["discover"]>>;
-  createLayer(): ArchitecturalLayer;
-  closeRepository(request: Parameters<RepositoryOperations["closeRepository"]>[0]): Promise<ReturnType<RepositoryOperations["closeRepository"]>>;
-  documents: Pick<DocumentFiles, "prepareCandidate" | "openSavedFile" | "releaseSnapshot" | "retryCleanup">;
-  layout(document: ArchitectureDocument): Promise<ArchitectureLayout>;
+  selectBaseline(signal: AbortSignal): Promise<SelectedBaseline | null>;
+  layout(baseline: Baseline): Promise<ArchitectureLayout>;
 }
 
 type WorkflowBindings = {
-  [Name in Exclude<keyof WorkflowOperations, "documentCleanupFailed">]: () => Promise<ReturnType<WorkflowOperations[Name]>>;
-} & Pick<WorkflowOperations, "documentCleanupFailed">;
-type LoadSelection = { operation: "repository"; rootPath: string } | { operation: "document"; selected: SelectedDocument };
+  [Name in keyof WorkflowOperations]: () => Promise<ReturnType<WorkflowOperations[Name]>>;
+};
 
 interface LoadOperation {
-  operation: WorkflowOperation | null;
   controller: AbortController;
   started: number;
   stage: WorkflowStage;
   committed: boolean;
   completion: Promise<WorkflowOutcome>;
   complete(outcome: WorkflowOutcome): void;
-  repositorySession?: string;
-  repositoryCloseAttempted?: boolean;
-  candidateSnapshot?: string;
   outcome?: WorkflowOutcome;
-  cleanupFailure?: WorkflowFailure;
 }
 
 class LoadStopped extends Error {
   readonly outcome: WorkflowOutcome;
-
-  constructor(outcome: WorkflowOutcome) {
-    super(outcome.status);
-    this.outcome = outcome;
-  }
+  constructor(outcome: WorkflowOutcome) { super(outcome.status); this.outcome = outcome; }
 }
 
-function elapsed(started: number): number {
-  return Math.max(0, performance.now() - started);
-}
+function elapsed(started: number): number { return Math.max(0, performance.now() - started); }
 
 function failed(stage: WorkflowStage, code: string, message: string, started: number): WorkflowFailure {
   return { status: "failure", stage, code, message: message.slice(0, 2048), durationMs: elapsed(started) };
 }
 
-function cleanupFailure(started: number, restart = false): WorkflowFailure {
-  return failed("cleanup", "cleanup-failed", restart
-    ? "Cleanup could not be confirmed. Restart Choom before loading another diagram."
-    : "Cleanup could not complete. Retry cleanup before loading another diagram.", started);
-}
-
-/** Pure work can finish late after cancellation; all handlers remain attached. */
+/** A cancelled read or layout can settle later; its rejection handler stays attached. */
 function cancellable<Value>(work: Promise<Value>, operation: LoadOperation): Promise<Value> {
   return new Promise((resolve, reject) => {
     const signal = operation.controller.signal;
     const cancel = () => reject(new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) }));
     signal.addEventListener("abort", cancel, { once: true });
     if (signal.aborted) cancel();
-    work.then(resolve, reject).finally(() => signal.removeEventListener("abort", cancel));
+    void work.then(
+      (value) => { signal.removeEventListener("abort", cancel); resolve(value); },
+      (error: unknown) => { signal.removeEventListener("abort", cancel); reject(error); },
+    );
   });
 }
 
-/** Owns the single load slot, current snapshot, and retryable cleanup resources. */
+/** Owns one load slot and atomically publishes a baseline with its prepared layout. */
 export class LoadWorkflow implements WorkflowBindings {
-  private readonly dependencies: LoadWorkflowDependencies;
   private readonly listeners = new Set<() => void>();
-  private readonly repositories = new Map<string, "safe" | "unsafe">();
-  private snapshot = publishedSnapshot({ phase: "idle", operation: null, stage: null, lastOutcome: null, cleanupRecovery: "none" });
+  private snapshot = publishedSnapshot({ phase: "idle", stage: null, lastOutcome: null });
   private active?: LoadOperation;
-  private currentSnapshot?: string;
-  private previousSelection?: LoadSelection;
-  private previousOperation?: WorkflowOperation;
-  private documentCleanupPending = false;
-  private documentCleanupRevision = 0;
+  private previousSelection?: SelectedBaseline;
+  private attempted = false;
   private disposed = false;
-  private disposal?: Promise<void>;
 
-  constructor(dependencies: LoadWorkflowDependencies) {
-    this.dependencies = dependencies;
-  }
+  private readonly dependencies: LoadWorkflowDependencies;
+  constructor(dependencies: LoadWorkflowDependencies) { this.dependencies = dependencies; }
 
   readonly getSnapshot = (): LoadWorkflowSnapshot => this.snapshot;
-
   readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
   };
-
-  readonly loadRepository = (): Promise<WorkflowOutcome> => this.start("repository");
-  readonly openDocument = (): Promise<WorkflowOutcome> => this.start("document");
-
-  readonly documentCleanupFailed = (): void => {
-    this.documentCleanupPending = true;
-    this.documentCleanupRevision += 1;
-    this.blockCleanup();
-  };
-
+  readonly openBaseline = (): Promise<WorkflowOutcome> => this.start();
   readonly retry = (): Promise<WorkflowOutcome> => {
-    if (this.busy()) return Promise.resolve({ status: "busy", durationMs: 0 });
-    if (!this.previousOperation) return Promise.resolve(failed("selection", "no-previous-load", "There is no previous load to retry.", performance.now()));
-    return this.start(this.previousOperation, this.previousSelection);
+    if (!this.attempted) return Promise.resolve(ownOutcome(failed("selection", "no-previous-load", "There is no previous load to retry.", performance.now())));
+    return this.start(this.previousSelection);
   };
-
   readonly cancel = (): Promise<WorkflowOutcome | null> => {
     const operation = this.active;
     if (!operation) return Promise.resolve(this.snapshot.state.lastOutcome);
@@ -131,169 +87,56 @@ export class LoadWorkflow implements WorkflowBindings {
     }
     return operation.completion;
   };
-
-  readonly retryCleanup = (): Promise<WorkflowOutcome> => {
-    if (this.active) return Promise.resolve({ status: "busy", durationMs: 0 });
-    if (this.snapshot.state.cleanupRecovery === "restart") {
-      return Promise.resolve(this.snapshot.state.cleanupFailure ?? cleanupFailure(performance.now(), true));
-    }
-    if (this.snapshot.state.cleanupRecovery === "none") return Promise.resolve({ status: "success", durationMs: 0 });
-    const operation = this.reserve(null);
-    operation.committed = true;
-    this.publish({ ...this.snapshot.state, phase: "cleanup", operation: null, stage: "cleanup" });
-    void this.cleanPending(operation).then((outcome) => this.finish(operation, outcome, false));
-    return operation.completion;
-  };
-
-  readonly dispose = (): Promise<void> => {
-    if (this.disposal) return this.disposal;
+  readonly dispose = async (): Promise<void> => {
     this.disposed = true;
-    this.disposal = this.releaseWorkspace();
-    return this.disposal;
+    await this.cancel();
   };
 
-  private start(kind: WorkflowOperation, selection?: LoadSelection): Promise<WorkflowOutcome> {
-    if (this.disposed) return Promise.resolve(failed("selection", "disposed", "This workspace has been closed.", performance.now()));
-    if (this.busy()) return Promise.resolve({ status: "busy", durationMs: 0 });
-    this.previousOperation = kind;
+  private start(selection?: SelectedBaseline): Promise<WorkflowOutcome> {
+    if (this.disposed) return Promise.resolve(ownOutcome(failed("selection", "disposed", "This workspace has been closed.", performance.now())));
+    if (this.active) return Promise.resolve(ownOutcome({ status: "busy", durationMs: 0 }));
+    this.attempted = true;
     this.previousSelection = selection;
-    const operation = this.reserve(kind);
-    this.publish({ phase: "loading", operation: kind, stage: "selection", lastOutcome: null, cleanupRecovery: "none" });
-    void this.run(operation, selection).then((outcome) => this.finish(operation, outcome));
-    return operation.completion;
-  }
-
-  private reserve(kind: WorkflowOperation | null): LoadOperation {
     let complete: (outcome: WorkflowOutcome) => void = () => {};
     const completion = new Promise<WorkflowOutcome>((resolve) => { complete = resolve; });
     const operation: LoadOperation = {
-      operation: kind, controller: new AbortController(), started: performance.now(), stage: "selection",
-      committed: false, completion, complete,
+      controller: new AbortController(), started: performance.now(), stage: "selection", committed: false, completion, complete,
     };
     this.active = operation;
-    return operation;
+    this.publish({ phase: "loading", stage: "selection", lastOutcome: null });
+    void this.run(operation, selection).then((outcome) => this.finish(operation, outcome));
+    return completion;
   }
 
-  private busy(): boolean {
-    return this.active !== undefined || this.snapshot.state.cleanupRecovery !== "none";
-  }
-
-  private async run(operation: LoadOperation, selection?: LoadSelection): Promise<WorkflowOutcome> {
-    let outcome: WorkflowOutcome;
+  private async run(operation: LoadOperation, selection?: SelectedBaseline): Promise<WorkflowOutcome> {
     try {
       this.check(operation);
-      const selected = selection ?? await this.select(operation);
+      // A native picker cannot be closed by an AbortSignal. Keep the slot until it returns.
+      const selected = selection ?? await this.dependencies.selectBaseline(operation.controller.signal);
       this.check(operation);
       if (!selected) throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
       this.previousSelection = selected;
-      const document = selected.operation === "repository"
-        ? await this.repositoryDocument(operation, selected.rootPath)
-        : await this.savedDocument(operation, selected.selected);
+      this.stage(operation, "reading");
+      const read = await cancellable(selected.read(operation.controller.signal), operation);
+      this.check(operation);
+      if (read.status === "failure") throw new LoadStopped(failed("reading", read.code, read.message, operation.started));
+      this.stage(operation, "validation");
+      const decoded = decodeBaselineYaml(read.text);
+      if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
       this.stage(operation, "layout");
-      const layout = await cancellable(this.dependencies.layout(document), operation);
+      const layout = await cancellable(this.dependencies.layout(decoded.baseline), operation);
       this.check(operation);
-      const current = ownCurrentView(document, layout);
-      const superseded = this.currentSnapshot;
-      this.currentSnapshot = operation.candidateSnapshot;
-      operation.candidateSnapshot = undefined;
+      const current = ownCurrentView(decoded.baseline, layout);
+      this.check(operation);
       operation.committed = true;
-      outcome = ownOutcome({ status: "success", durationMs: elapsed(operation.started) });
-      operation.outcome = outcome;
-      this.publish({ ...this.snapshot.state, phase: "cleanup", stage: "cleanup", lastOutcome: outcome }, current);
-      if (superseded) await this.releaseSnapshot(superseded, operation);
+      operation.outcome = ownOutcome({ status: "success", durationMs: elapsed(operation.started) });
+      this.publish({ ...this.snapshot.state, lastOutcome: operation.outcome }, current);
+      return operation.outcome;
     } catch (error) {
-      outcome = error instanceof LoadStopped ? error.outcome
+      return error instanceof LoadStopped ? error.outcome
         : operation.controller.signal.aborted ? { status: "cancelled", durationMs: elapsed(operation.started) }
-          : failed(operation.stage, "operation-failed", `The ${operation.stage} operation could not complete.`, operation.started);
+          : failed(operation.stage, "operation-failed", `The baseline ${operation.stage} operation could not complete.`, operation.started);
     }
-    if (!operation.committed) {
-      if (operation.candidateSnapshot) await this.releaseSnapshot(operation.candidateSnapshot, operation);
-      if (operation.repositorySession && !operation.repositoryCloseAttempted && this.repositories.get(operation.repositorySession) === "safe") {
-        await this.closeRepository(operation.repositorySession, operation);
-      }
-      outcome = operation.cleanupFailure ?? outcome;
-    }
-    return outcome;
-  }
-
-  private async select(operation: LoadOperation): Promise<LoadSelection | null> {
-    if (operation.operation === "repository") {
-      const rootPath = await this.dependencies.selectRepository(operation.controller.signal);
-      return rootPath === null ? null : { operation: "repository", rootPath };
-    }
-    const selected = await this.dependencies.selectDocument(operation.controller.signal);
-    return selected === null ? null : { operation: "document", selected };
-  }
-
-  private async repositoryDocument(operation: LoadOperation, rootPath: string): Promise<ArchitectureDocument> {
-    this.stage(operation, "discovery");
-    const discovered = await this.dependencies.discover({ rootPath });
-    if (discovered.status === "failure") {
-      if (discovered.code === "cleanup-failed") {
-        throw new LoadStopped(this.blockCleanup(operation, true));
-      }
-      this.check(operation);
-      throw new LoadStopped(failed(discovered.stage, discovered.code, discovered.message, operation.started));
-    }
-    const { repositorySession, components, analysis } = discovered.repository;
-    operation.repositorySession = repositorySession;
-    this.repositories.set(repositorySession, "safe");
-    this.stage(operation, "setup");
-    const layer = this.dependencies.createLayer();
-    this.stage(operation, "analysis");
-    let analyzing = true;
-    let analyzed: AnalysisOutcome;
-    try {
-      analyzed = await layer.analyze({ repositorySession, components, analysis }, {
-        signal: operation.controller.signal,
-        onProgress: (progress) => {
-          if (analyzing && this.active === operation && !operation.controller.signal.aborted && !operation.committed) {
-            operation.stage = progress.stage;
-            this.publish({ ...this.snapshot.state, stage: progress.stage });
-          }
-        },
-      });
-    } catch {
-      this.repositories.set(repositorySession, "unsafe");
-      throw new LoadStopped(this.blockCleanup(operation, true));
-    } finally {
-      analyzing = false;
-    }
-    if (analyzed.status === "failure" && analyzed.stage === "cleanup") {
-      this.repositories.set(repositorySession, "unsafe");
-      throw new LoadStopped(this.blockCleanup(operation, true));
-    }
-    this.check(operation);
-    if (analyzed.status === "cancelled") throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
-    if (analyzed.status === "failure") throw new LoadStopped(failed(analyzed.stage, analyzed.code, analyzed.message, operation.started));
-    const closeFailure = await this.closeRepository(repositorySession, operation);
-    if (closeFailure) throw new LoadStopped(closeFailure);
-    this.stage(operation, "storage");
-    const candidate = await this.dependencies.documents.prepareCandidate(analyzed.document, operation.controller.signal);
-    if (candidate.status === "success") operation.candidateSnapshot = candidate.snapshotId;
-    if (candidate.status === "failure" && candidate.stage === "cleanup") {
-      this.documentCleanupPending = true;
-      throw new LoadStopped(this.blockCleanup(operation));
-    }
-    this.check(operation);
-    if (candidate.status === "cancelled") throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
-    if (candidate.status === "failure") throw new LoadStopped(this.documentFailure(candidate, operation, "storage"));
-    return candidate.document;
-  }
-
-  private async savedDocument(operation: LoadOperation, selected: SelectedDocument): Promise<ArchitectureDocument> {
-    this.stage(operation, "reading");
-    const decoded = selected.kind === "desktop"
-      ? await this.dependencies.documents.openSavedFile(selected.path)
-      : decodeArchitectureYaml(await cancellable(selected.readText(operation.controller.signal), operation));
-    this.check(operation);
-    if (decoded.status === "failure") throw new LoadStopped(this.documentFailure(decoded, operation, "reading"));
-    this.stage(operation, "validation");
-    return decoded.document;
-  }
-
-  private documentFailure(failure: DocumentCodecFailure | DocumentNativeFailure, operation: LoadOperation, stage: "storage" | "reading"): WorkflowFailure {
-    return failed(failure.stage === "decoding" ? "validation" : stage, failure.code, failure.message, operation.started);
   }
 
   private check(operation: LoadOperation): void {
@@ -309,105 +152,20 @@ export class LoadWorkflow implements WorkflowBindings {
     this.check(operation);
   }
 
-  private blockCleanup(operation?: LoadOperation, restart = false): WorkflowFailure {
-    const blocked = this.snapshot.state.cleanupRecovery === "restart";
-    const started = operation?.started ?? performance.now();
-    const failure = blocked ? this.snapshot.state.cleanupFailure ?? cleanupFailure(started, true) : cleanupFailure(started, restart);
-    if (operation) operation.cleanupFailure = failure;
-    this.publish({ ...this.snapshot.state,
-      ...(this.active ? {} : { phase: "cleanup", stage: "cleanup" }),
-      cleanupRecovery: blocked || restart ? "restart" : "retry", cleanupFailure: failure });
-    return failure;
-  }
-
-  private async releaseSnapshot(snapshotId: string, operation: LoadOperation): Promise<void> {
-    this.cleanupStage(operation);
-    try {
-      const released = await this.dependencies.documents.releaseSnapshot(snapshotId);
-      if (released.status === "success") return;
-    } catch {
-      // The document service retains failed releases, including transport failures.
-    }
-    this.documentCleanupPending = true;
-    this.blockCleanup(operation);
-  }
-
-  private async closeRepository(repositorySession: string, operation: LoadOperation): Promise<WorkflowFailure | undefined> {
-    operation.repositoryCloseAttempted = true;
-    this.cleanupStage(operation);
-    try {
-      const closed = await this.dependencies.closeRepository({ repositorySession });
-      if (closed.status === "success" || closed.code === "invalid-session") {
-        this.repositories.delete(repositorySession);
-        return;
-      }
-    } catch {
-      // An uncertain close retains the known owner for an explicit retry.
-    }
-    return this.blockCleanup(operation);
-  }
-
-  private cleanupStage(operation: LoadOperation): void {
-    if (this.active !== operation) return;
-    const phase = operation.controller.signal.aborted ? "cancelling" : operation.committed ? "cleanup" : "loading";
-    this.publish({ ...this.snapshot.state, phase, stage: "cleanup" });
-  }
-
-  private async cleanPending(operation: LoadOperation): Promise<WorkflowOutcome> {
-    for (const [session, safety] of this.repositories) {
-      if (safety === "unsafe") return this.blockCleanup(operation, true);
-      const failure = await this.closeRepository(session, operation);
-      if (failure) return failure;
-    }
-    if (this.documentCleanupPending) {
-      const revision = this.documentCleanupRevision;
-      try {
-        const cleaned = await this.dependencies.documents.retryCleanup();
-        if (cleaned.status === "failure" || revision !== this.documentCleanupRevision) return this.blockCleanup(operation);
-      } catch {
-        return this.blockCleanup(operation);
-      }
-      this.documentCleanupPending = false;
-    }
-    const { cleanupFailure: _, ...state } = this.snapshot.state;
-    this.publish({ ...state, cleanupRecovery: "none" });
-    return { status: "success", durationMs: elapsed(operation.started) };
-  }
-
-  private finish(operation: LoadOperation, outcome: WorkflowOutcome, replaceOutcome = true): void {
+  private finish(operation: LoadOperation, outcome: WorkflowOutcome): void {
+    const owned = ownOutcome(outcome);
     if (this.active === operation) {
       this.active = undefined;
-      const blocked = this.snapshot.state.cleanupRecovery !== "none";
-      this.publish({ ...this.snapshot.state, phase: blocked ? "cleanup" : "idle", operation: null,
-        stage: blocked ? "cleanup" : null, lastOutcome: replaceOutcome ? outcome : this.snapshot.state.lastOutcome });
+      this.publish({ phase: "idle", stage: null, lastOutcome: owned });
     }
-    operation.complete(ownOutcome(outcome));
-  }
-
-  private async releaseWorkspace(): Promise<void> {
-    const pending = this.active;
-    if (pending) {
-      await this.cancel();
-      await pending.completion;
-    }
-    const operation = this.reserve(null);
-    operation.committed = true;
-    if (this.currentSnapshot) {
-      const snapshot = this.currentSnapshot;
-      this.currentSnapshot = undefined;
-      await this.releaseSnapshot(snapshot, operation);
-    }
-    for (const [session, safety] of this.repositories) {
-      if (safety === "safe") await this.closeRepository(session, operation);
-    }
-    this.finish(operation, { status: "success", durationMs: elapsed(operation.started) }, false);
+    operation.complete(owned);
   }
 
   private publish(state: WorkflowState, current = this.snapshot.current): void {
     this.snapshot = publishedSnapshot(state, current);
-    for (const listener of this.listeners) {
+    for (const listener of [...this.listeners]) {
       try { listener(); } catch {
-        // A view observer cannot take ownership away from resource cleanup.
+        // A view observer cannot interrupt the load or take ownership of its result.
       }
     }
   }

@@ -5,10 +5,10 @@ job requests, results, and progress data. The platform binds the operations to
 promises and a live progress callback. Tauri channel handles are outside the
 serialized data contract. Commands are restricted to the local main window.
 
-The workspace's [execution contract](dependency-cruiser.tsp) uses native facts
-behind `ArchitecturalLayer`. `DepCruiserArchitecturalLayer` receives an execution
-collaborator and a `ReportConversion`. The runner owns native jobs. Conversion
-retains the common builder's component ownership and aggregation rules.
+The native implementation and wire contract remain until BV-07. The baseline
+viewer has no analyzer adapter, runner, report converter, or Load Repo action.
+The following lifecycle documents the retained native commands, not a viewer
+workflow. See the [viewer plan](../../docs/design/cr-baseline-viewer-plan.md).
 
 ## Job lifecycle
 
@@ -46,10 +46,8 @@ until it succeeds. Each cleanup attempt has a five-second deadline.
 
 API callers can supply `nodeExecutable` as an absolute executable path.
 Otherwise native code searches absolute entries in the packaged application's
-`PATH` for Node. The Load Repo UI uses this PATH discovery and has no Node-path
-setting. A missing runtime returns a setup error; UI users must make Node
-available to the desktop process, while API callers may supply an explicit
-path. It invokes no shell, package script, package manager, or installer.
+`PATH` for Node. A missing runtime returns a setup error. API callers may supply an explicit
+path. The baseline viewer does not call this operation or need Node. It invokes no shell, package script, package manager, or installer.
 
 The supported analyzer is dependency-cruiser 18.7.2 at the selected root's
 `node_modules/dependency-cruiser`. Native checks its manifest, version, engine
@@ -126,12 +124,10 @@ path. Windows cleanup retains at most 1,024 process handles for a job and refuse
 an incomplete member snapshot. Fixture checks establish resource bounds, not a measured large-repository
 performance guarantee. Repository and converter bounds also apply.
 
-JavaScript configuration executes trusted repository code. Process and path
-checks do not sandbox that code or reverse its side effects. T07's Load Repo
-flow must explain this before execution, for example: “Loading this repository
-runs its local analyzer and JavaScript configuration. Continue only if you
-trust this repository.” Runtime selection is a composition option and is not
-saved in the architecture document.
+JavaScript configuration executes trusted repository code. The retained native
+checks do not sandbox it or reverse its side effects. The baseline viewer never
+runs this configuration. Runtime selection remains an unused native API option
+until BV-07 removes the analyzer commands.
 
 See the pinned [package metadata](https://github.com/sverweij/dependency-cruiser/blob/v18.7.2/package.json),
 [CLI](https://github.com/sverweij/dependency-cruiser/blob/v18.7.2/doc/cli.md),

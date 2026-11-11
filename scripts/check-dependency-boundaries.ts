@@ -1,6 +1,6 @@
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ICruiseResult } from "dependency-cruiser";
 
@@ -10,101 +10,98 @@ type Probe = readonly [from: string, to: string, form: ImportForm, rule?: string
 const view = "src/architecture/workspace-view.ts";
 const workflow = "src/architecture/load-workflow.ts";
 const workspace = "src/architecture/workspace.ts";
-const analyzerFactory = "src/architecture/create-architectural-layer.ts";
-const analyzer = "src/architecture/dependency-cruiser/architectural-layer.ts";
-const discovery = "src/architecture/repository-discovery.ts";
-const manifest = "src/architecture/component-manifest.ts";
-const documents = "src/documents/document-files.ts";
-const codec = "src/lib/architecture-yaml.ts";
-const baselineCodec = "src/lib/baseline-yaml.ts";
+const publication = "src/architecture/load-publication.ts";
+const codec = "src/lib/baseline-yaml.ts";
 const parser = "src/lib/architecture-yaml/parse.ts";
 const layout = "src/lib/architecture-layout.ts";
-const domain = "src/domain/architecture-document.ts";
+const domain = "src/domain/baseline.ts";
 const controls = "src/components/workspace-controls.tsx";
+const diagram = "src/components/architecture-diagram.tsx";
 const platformContracts = "src/platform/generated/contracts.ts";
 const applicationBoundary = "application-does-not-import-ui-or-composition";
-const codecBoundary = "document-codec-is-independent-of-storage-and-analyzers";
+const codecBoundary = "baseline-codec-uses-domain-and-yaml";
 const viewBoundary = "workspace-view-uses-data-bindings";
-const analyzerBoundary = "concrete-analyzer-access-through-composition";
+const analyzerBoundary = "development-analyzers-stay-out-of-app";
+const layoutBoundary = "layout-engine-loads-through-composition";
 
 const allowed: readonly Probe[] = [
   ["src/App.tsx", workspace, "runtime"],
   ["src/App.tsx", "src/platform/desktop.ts", "runtime"],
   [workspace, workflow, "runtime"],
-  [workspace, analyzerFactory, "runtime"],
-  [analyzerFactory, analyzer, "runtime"],
+  [workspace, "src/platform/documents.ts", "runtime"],
+  [workspace, layout, "runtime"],
   [controls, view, "type"],
   [controls, "src/architecture/generated/workflow.ts", "type"],
-  [view, documents, "type"],
   [view, layout, "type-query"],
   [view, "src/architecture/generated/workflow.ts", "type"],
   [view, "src/domain/generated/contracts.ts", "type"],
   [view, "src/domain/readonly-data.ts", "type"],
-  [discovery, "src/platform/repository.ts", "type"],
-  [manifest, "node_modules/yaml/index.js", "runtime"],
   [workflow, platformContracts, "type"],
-  [documents, "src/platform/documents.ts", "type"],
-  [documents, platformContracts, "type"],
-  [documents, codec, "runtime"],
+  [workflow, codec, "runtime"],
+  [workflow, layout, "type"],
+  [workflow, publication, "runtime"],
+  [publication, "src/domain/generated/contracts.ts", "type"],
+  [layout, "src/domain/generated/contracts.ts", "type"],
+  [layout, "node_modules/elkjs/index.js", "runtime"],
+  [diagram, layout, "type"],
   [codec, parser, "runtime"],
   [codec, domain, "runtime"],
   [codec, "src/lib/generated/contracts.ts", "type"],
-  [baselineCodec, parser, "runtime"],
-  [baselineCodec, "src/domain/baseline.ts", "runtime"],
-  [baselineCodec, "src/lib/generated/contracts.ts", "type"],
   [parser, "node_modules/yaml/index.js", "runtime"],
   [domain, "node_modules/zod/index.js", "runtime"],
+  ["src/platform/browser-documents.ts", platformContracts, "type"],
 ];
 
 const forbidden: readonly Probe[] = [
-  [discovery, "src/components/diagram-panel.tsx", "runtime", applicationBoundary],
-  [discovery, "src/platform/documents.ts", "type", "discovery-uses-repository-access"],
-  [discovery, "src/platform/repository.ts", "runtime", "application-platform-imports-are-erased"],
-  [manifest, workspace, "type", applicationBoundary],
-  ["src/architecture/discovery-problem.ts", "node_modules/react/index.js", "type", applicationBoundary],
-  ["src/architecture/snapshot-copy.ts", analyzerFactory, "runtime", applicationBoundary],
-  ["src/architecture/snapshot-copy.ts", "node:fs", "runtime", "application-does-not-import-runtime-builtins"],
-  ["src/architecture/snapshot-copy.ts", "src/components/diagram-panel.tsx", "type", applicationBoundary],
-  ["src/architecture/snapshot-copy.ts", "src/platform/generated/unrelated.ts", "type", "application-architecture-uses-platform-contracts"],
-  [workflow, "src/platform/repository.ts", "type", "application-architecture-uses-platform-contracts"],
+  [workflow, "src/components/architecture-diagram.tsx", "runtime", applicationBoundary],
+  [publication, workspace, "type", applicationBoundary],
+  [publication, "node_modules/react/index.js", "type", applicationBoundary],
+  [publication, "node:fs", "runtime", "application-does-not-import-runtime-builtins"],
+  [publication, "src/platform/generated/unrelated.ts", "type", "application-architecture-uses-platform-contracts"],
+  [workflow, "src/platform/documents.ts", "type", "application-architecture-uses-platform-contracts"],
   [workflow, platformContracts, "runtime", "application-platform-imports-are-erased"],
-  [documents, "src/components/diagram-panel.tsx", "runtime", applicationBoundary],
-  [documents, workspace, "type", applicationBoundary],
-  [documents, "src/platform/repository.ts", "type", "document-lifecycle-uses-document-access"],
-  [documents, "src/platform/documents.ts", "inline-type", "application-platform-imports-are-erased"],
+  [publication, platformContracts, "inline-type", "application-platform-imports-are-erased"],
   [view, workflow, "type", viewBoundary],
-  [view, "src/platform/repository.ts", "type", viewBoundary],
+  [view, "src/platform/documents.ts", "type", viewBoundary],
   [view, "node_modules/react/index.js", "type", viewBoundary],
-  [view, analyzer, "type", viewBoundary],
-  [view, documents, "inline-type", "workspace-view-imports-are-erased"],
+  [view, "src/domain/readonly-data.ts", "inline-type", "workspace-view-imports-are-erased"],
   [view, layout, "runtime", "workspace-view-imports-are-erased"],
   [controls, workflow, "type", "components-use-workspace-view"],
   [controls, workspace, "type", "components-use-workspace-view"],
   ["src/App.tsx", workflow, "type", "app-uses-workspace-composition"],
+  ["src/App.tsx", "src/platform/documents.ts", "runtime", "app-uses-workspace-composition"],
   ["src/components/architecture-details.tsx", view, "type", "diagram-renders-prepared-data"],
+  [workflow, layout, "runtime", layoutBoundary],
+  [diagram, layout, "runtime", layoutBoundary],
+  [diagram, "node_modules/elkjs/index.js", "runtime", layoutBoundary],
   [codec, layout, "runtime", codecBoundary],
   [codec, "src/lib/generated/unrelated.ts", "type", codecBoundary],
-  [baselineCodec, layout, "runtime", codecBoundary],
-  [baselineCodec, documents, "type", codecBoundary],
-  [baselineCodec, "src/platform/documents.ts", "runtime", codecBoundary],
-  [baselineCodec, analyzer, "type", codecBoundary],
-  [baselineCodec, "node:fs", "runtime", codecBoundary],
-  [parser, documents, "type", codecBoundary],
+  [codec, "src/platform/documents.ts", "runtime", codecBoundary],
+  [codec, workspace, "type", codecBoundary],
+  [codec, "node:fs", "runtime", codecBoundary],
+  [parser, layout, "type", codecBoundary],
   [parser, "node_modules/elkjs/index.js", "runtime", codecBoundary],
   ["src/lib/generated/contracts.ts", "src/platform/documents.ts", "type", codecBoundary],
   [domain, "node_modules/yaml/index.js", "runtime", "domain-is-platform-independent"],
-  [workspace, analyzer, "type", analyzerBoundary],
   [workspace, "node_modules/dependency-cruiser/index.js", "runtime", analyzerBoundary],
+  [workflow, "node_modules/ts-morph/index.js", "type", analyzerBoundary],
+  [layout, "src/App.tsx", "type", "libraries-do-not-depend-on-ui-or-platform"],
+  [controls, "src/App.tsx", "runtime", "components-do-not-import-app-entrypoints"],
+  [domain, platformContracts, "type", "domain-is-platform-independent"],
+  ["src/platform/documents.ts", workflow, "type", "platform-does-not-depend-on-workspace"],
+  ["src/App.tsx", "node_modules/@tauri-apps/api/index.js", "runtime", "desktop-access-through-adapter"],
+  [workspace, "test/support/baseline-fixtures.ts", "type", "no-test-code-in-app"],
 ];
 
-function moduleSpecifier(target: string): string {
+function moduleSpecifier(source: string, target: string): string {
   if (target.startsWith("src/")) return `@/${target.slice(4)}`;
   if (target.startsWith("node_modules/")) return target.slice("node_modules/".length, -"/index.js".length);
+  if (target.startsWith("test/")) return relative(dirname(source), target).replaceAll("\\", "/");
   return target;
 }
 
-function importStatement(target: string, form: ImportForm, index: number): string {
-  const specifier = JSON.stringify(moduleSpecifier(target));
+function importStatement(source: string, target: string, form: ImportForm, index: number): string {
+  const specifier = JSON.stringify(moduleSpecifier(source, target));
   const alias = `Imported${index}`;
   switch (form) {
     case "runtime": return `import * as ${alias} from ${specifier}; export const value${index} = ${alias};`;
@@ -118,7 +115,7 @@ async function writeProbeModules(root: string, probes: readonly Probe[]): Promis
   const modules = new Map<string, string[]>();
   for (const [index, [from, to, form]] of probes.entries()) {
     const statements = modules.get(from) ?? [];
-    statements.push(importStatement(to, form, index));
+    statements.push(importStatement(from, to, form, index));
     modules.set(from, statements);
     if (!to.startsWith("node:") && !modules.has(to)) modules.set(to, []);
   }

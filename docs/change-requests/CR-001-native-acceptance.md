@@ -1,5 +1,9 @@
 # CR-001 native acceptance
 
+Historical procedure for the former repository-analysis app. Use the
+[baseline installed-acceptance guide](BV-native-acceptance.md) for the current
+viewer. The results and commands below describe their original candidates.
+
 This procedure separates installed application evidence from browser tests,
 mocked IPC, and compilation. Follow it with the exact candidate release build.
 The current automated route supports Linux with X11 and GTK3 dialogs. macOS and
@@ -240,7 +244,7 @@ retain equivalent identities. Signing or notarization status belongs in the
 evidence record; an unsigned test package is not a signed distribution release.
 
 No automated Windows or macOS adapter is included in T01. Record unavailable
-checks in [cookbook/TODO.md](../../cookbook/TODO.md).
+checks in [cookbook/TODO.md](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/TODO.md).
 
 ## Driver references and scope
 

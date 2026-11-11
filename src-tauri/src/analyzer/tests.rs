@@ -591,7 +591,7 @@ fn real_dependency_cruiser_18_7_2_runs_through_the_native_service() {
             .to_owned();
     let cache = std::env::temp_dir().join(format!("choom-real-analyzer-{}", std::process::id()));
     let service = AnalyzerService::new(repository.clone(), cache.clone());
-    assert_eq!(value(service.prepare(json!({"repositorySession":session,"config":".dependency-cruiser.cjs","inputs":["src/domain/component-catalog.ts"]})))["status"], "success");
+    assert_eq!(value(service.prepare(json!({"repositorySession":session,"config":".dependency-cruiser.cjs","inputs":["src/domain/baseline.ts"]})))["status"], "success");
     let outcome = value(service.run(json!({"jobId":"analysis-1"}), |_| Ok(())));
     assert_eq!(outcome["status"], "completed", "{outcome}");
     assert_eq!(outcome["version"], "18.7.2");
@@ -601,7 +601,7 @@ fn real_dependency_cruiser_18_7_2_runs_through_the_native_service() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|module| module["source"] == "src/domain/component-catalog.ts")
+            .any(|module| module["source"] == "src/domain/baseline.ts")
     );
     assert!(report["summary"]["error"].as_u64().is_some());
     assert_eq!(fs::read_dir(&cache).unwrap().count(), 0);

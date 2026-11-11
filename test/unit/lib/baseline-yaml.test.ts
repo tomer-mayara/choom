@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { stringify } from "yaml";
 import { decodeBaselineYaml } from "../../../src/lib/baseline-yaml.ts";
 import { baselineExample, invalidBaseline, reviewedBaseline } from "../../support/baseline-fixtures.ts";
-import { architectureDocumentFixture } from "../../support/document-fixtures.ts";
 
 test.each(["empty", "full"] as const)("decodes the reviewed %s baseline without changing its records", (example) => {
   const text = readFileSync(`test/fixtures/baseline-viewer/${example}.yaml`, "utf8");
@@ -42,7 +41,7 @@ test("identifies the field when baseline references are invalid", () => {
 });
 
 test("rejects legacy diagram content", () => {
-  const outcome = decodeBaselineYaml(stringify(architectureDocumentFixture()));
+  const outcome = decodeBaselineYaml(readFileSync(new URL("../../fixtures/baseline-viewer/legacy.choom.yaml", import.meta.url), "utf8"));
   expect(outcome.status).toBe("failure");
   expect(outcome).toMatchObject({
     status: "failure", stage: "decoding", code: "invalid-document",
@@ -51,7 +50,7 @@ test("rejects legacy diagram content", () => {
 });
 
 test("does not classify a declared baseline as a legacy diagram", () => {
-  const outcome = decodeBaselineYaml(stringify({ ...architectureDocumentFixture(), formatVersion: 1 }));
+  const outcome = decodeBaselineYaml(`formatVersion: 1\n${readFileSync(new URL("../../fixtures/baseline-viewer/legacy.choom.yaml", import.meta.url), "utf8")}`);
   expect(outcome).toMatchObject({ status: "failure", code: "invalid-document" });
   expect(JSON.stringify(outcome)).not.toContain("Legacy diagrams");
 });

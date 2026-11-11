@@ -1,5 +1,10 @@
 # CR-001-T05: Native analyzer execution and cancellation
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Implementation evidence for
 [CR-001-T05](CR-001-architecture-import.md#cr-001-t05--run-and-cancel-the-concrete-strategy).
 Work started from merged T04 commit `dd657ee` on `codex/cr-001-t05`.
@@ -20,17 +25,17 @@ The strategy checks cancellation through conversion and suppresses stale
 documents. TypeSpec owns native and concrete execution data; live cancellation
 and progress channels remain implementation bindings.
 
-See the [execution contract](../../cookbook/interfaces/desktop-analyzer.md) for
+See the [execution contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop-analyzer.md) for
 ownership, supported installations, error meanings, and initial bounds.
 
 ## Four constraints
 
 | Constraint | Change and evidence |
 | --- | --- |
-| Behavioral | Added [23 public API scenarios](../../cookbook/behavior/architecture-import/t05-api.feature) before production implementation. Separate [installed native-operation scenarios](../../cookbook/behavior/architecture-import/t05-installed.feature) use real IPC and the local analyzer before the later UI workflow. |
+| Behavioral | Added [23 public API scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t05-api.feature) before production implementation. Separate [installed native-operation scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t05-installed.feature) use real IPC and the local analyzer before the later UI workflow. |
 | Observability | Native progress and terminal outcomes report coarse stages and elapsed/duration data. The layer adds conversion and validation notifications. Errors and progress exclude raw streams and host paths. OpenSLO stays unmeasured. |
 | Architecture | The existing named composition exception allows the new strategy, runner, and converter wiring. Platform stays independent of domain/workspace. Native command permissions and the main-window capability constrain process access. |
-| Interface / contract | Added [desktop-analyzer.tsp](../../cookbook/interfaces/desktop-analyzer.tsp), concrete execution operations, and generated outputs. Neutral progress accepts optional elapsed milliseconds and the cleanup stage. Runtime transport validation and native wire conformance supplement compilation. |
+| Interface / contract | Added [desktop-analyzer.tsp](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop-analyzer.tsp), concrete execution operations, and generated outputs. Neutral progress accepts optional elapsed milliseconds and the cleanup stage. Runtime transport validation and native wire conformance supplement compilation. |
 
 ## Behavior-first development
 

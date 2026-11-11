@@ -1,15 +1,15 @@
-import type { DocumentCodecFailureCode } from "../generated/contracts.ts";
+import type { BaselineDecodeFailureCode } from "../generated/contracts.ts";
 
-export const MAX_YAML_BYTES = 16 * 1024 * 1024;
+const MAX_YAML_BYTES = 16 * 1024 * 1024;
 export const MAX_YAML_DEPTH = 32;
 export const MAX_YAML_NODES = 250_000;
 
 const utf8 = new TextEncoder();
 
 export class CodecProblem extends Error {
-  readonly code: DocumentCodecFailureCode;
+  readonly code: BaselineDecodeFailureCode;
 
-  constructor(code: DocumentCodecFailureCode, message: string) {
+  constructor(code: BaselineDecodeFailureCode, message: string) {
     super(message);
     this.code = code;
   }

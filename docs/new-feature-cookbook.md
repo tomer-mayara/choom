@@ -73,14 +73,11 @@ to that component; recursion does not require creating unaffected artifacts.
 Update the manifest when artifact or child references change, and preserve
 references to unchanged artifacts.
 
-For repository import, annotate exactly one root architecture artifact with
-`enforcer: dependency-cruiser` and explicit `inputs`. Inputs are literal existing
-files or directories relative to the manifest, not shell commands or glob
-patterns. This example has one component owning both source directories.
-Only linked `children` declare more components. Path-only architecture entries
-remain valid for constraint links; child analyzer metadata creates no extra job.
-See the [discovery contract](../cookbook/interfaces/discovery.md) for imported
-manifest requirements. Cookbook CI retains its stricter artifact inventory rules.
+Architecture artifacts can name an `enforcer` and literal `inputs` for local
+checks. Keep input paths relative to their manifest. Only linked `children`
+declare more development components. The viewer reads component records from
+a baseline; these manifest links do not trigger repository import or analysis.
+Cookbook CI checks the artifact inventory and declared paths.
 
 Link the relevant `.tsp` sources in `contracts`, alongside any behavioral or
 native boundary notes. Register those sources with the TypeSpec entrypoint and

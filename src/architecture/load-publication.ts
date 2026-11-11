@@ -1,11 +1,11 @@
-import type { ArchitectureDocument } from "../domain/generated/contracts.ts";
+import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { WorkflowOutcome, WorkflowState } from "./generated/workflow.ts";
 import type { LoadWorkflowSnapshot } from "./workspace-view.ts";
 
-/** Copy the validated document and prepared positions once, before the view commit. */
-export function ownCurrentView(document: ArchitectureDocument, layout: ArchitectureLayout): NonNullable<LoadWorkflowSnapshot["current"]> {
-  const current = structuredClone({ document, layout });
+/** Copy the validated baseline and prepared positions once, before the view commit. */
+export function ownCurrentView(baseline: Baseline, layout: ArchitectureLayout): NonNullable<LoadWorkflowSnapshot["current"]> {
+  const current = structuredClone({ baseline, layout });
   const pending: object[] = [current];
   while (pending.length > 0) {
     const value = pending.pop();
@@ -31,7 +31,6 @@ export function publishedSnapshot(state: WorkflowState, current: LoadWorkflowSna
     state: Object.freeze({
       ...state,
       lastOutcome: state.lastOutcome === null ? null : ownOutcome(state.lastOutcome),
-      ...(state.cleanupFailure === undefined ? {} : { cleanupFailure: ownOutcome(state.cleanupFailure) }),
     }),
     current,
   });

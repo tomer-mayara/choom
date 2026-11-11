@@ -1,5 +1,10 @@
 # CR-001: Import repository architecture through an Architectural Layer
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 **Status:** T01–T07 merged; T08 implementation and automated verification complete, with native evidence gaps
 
 **Date:** 2026-11-06
@@ -30,13 +35,13 @@ artifacts or authorize a merge.
 
 ## Foundation and responsibilities
 
-Reuse the existing [domain validation approach](../../src/domain/architecture.ts),
-[ELK layout](../../src/lib/layout.ts), [preview](../../src/components/architecture-preview.tsx),
-and [desktop adapter](../../src/platform/desktop.ts). Preserve their retained
-behavior through characterization. The [Rust host](../../src-tauri/src/lib.rs)
+Reuse the existing [domain validation approach](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/architecture.ts),
+[ELK layout](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/lib/layout.ts), [preview](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/components/architecture-preview.tsx),
+and [desktop adapter](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/platform/desktop.ts). Preserve their retained
+behavior through characterization. The [Rust host](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src-tauri/src/lib.rs)
 registers the dialog plugin and bounded repository, analyzer, and document
 operations delivered by T03–T06. The current analyzer
-[configuration](../../.dependency-cruiser.cjs) includes TypeScript pre-compilation
+[configuration](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/.dependency-cruiser.cjs) includes TypeScript pre-compilation
 dependencies and does not follow `node_modules`.
 
 Configuration defines analysis rules, not an observed graph; a fresh load must
@@ -67,7 +72,7 @@ Open Diagram ----------------------------------------> common decoder -> ELK
 | Workspace UI | Selection, progress, diagnostics, and model-driven rendering. |
 
 Author Choom-owned component models and operations in TypeSpec, extending the
-[contract entrypoint](../../cookbook/interfaces/main.tsp). Each owner links its
+[contract entrypoint](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/main.tsp). Each owner links its
 sources from `component.yaml`. Generated TypeScript declarations and JSON Schema
 must stay consistent with those sources; runtime validators and public
 implementations need conformance checks. Keep third-party report formats and
@@ -139,7 +144,7 @@ artifact checks on the imported repository.
 Native operations supply bounded text and path access. Workspace code parses
 manifests with one browser-compatible YAML library, introduced in T03; the
 existing tooling's `Bun.YAML` is unavailable in the WebView. Update the
-[strict manifest validator](../../scripts/validate-components.ts),
+[strict manifest validator](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/scripts/validate-components.ts),
 [linking guidance](../new-feature-cookbook.md#linking-file), and root metadata
 together without importing tooling into production.
 
@@ -416,7 +421,7 @@ Manual native evidence is acceptable where driver limits are recorded explicitly
 Target current CI platforms: Linux, macOS, and Windows. Each claimed platform
 needs packaged evidence for runtime discovery, permissions, cancellation, file
 lifecycle, and visible results. Missing checks do not count as passing; record
-limits in [cookbook/TODO.md](../../cookbook/TODO.md). Builds and mocked IPC do not
+limits in [cookbook/TODO.md](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/TODO.md). Builds and mocked IPC do not
 establish native acceptance. Retain evidence by platform/build version and rerun
 affected checks after fixes, without repeating unchanged complete suites.
 
@@ -500,7 +505,7 @@ steps. Establish the packaged driver here and exercise real execution in T05.
 **Dependencies:** T01. **Owner:** `src/domain/`.
 
 **Implementation:** [T02 evidence and limits](CR-001-T02-evidence.md). The
-[native domain scenarios](../../cookbook/behavior/architecture-import/t02-domain.feature)
+[native domain scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t02-domain.feature)
 exercise this ticket's public APIs. The workflow scenarios below remain the
 acceptance requirements for their later UI consumers.
 
@@ -613,7 +618,7 @@ manifest tooling.
 **Implementation:** [T03 evidence and limits](CR-001-T03-evidence.md). The
 workspace discovery operation, manifest contract, and native text/path commands
 are implemented. The original UI scenarios stay registered for T07; the
-[public API scenarios](../../cookbook/behavior/architecture-import/t03-api.feature)
+[public API scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t03-api.feature)
 exercise discovery independently of that future UI workflow.
 
 #### Behavioral (Gherkin)
@@ -685,7 +690,7 @@ rules before changing them; add only required native permissions/dependencies.
 
 Define manifest metadata and native text/path DTOs in TypeSpec. Update generated
 schemas, runtime/tooling conformance checks, linking guidance, root declaration,
-and [desktop contract](../../cookbook/interfaces/desktop.md).
+and [desktop contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop.md).
 Introduce the browser-compatible YAML dependency and bounded native text/path
 operations, including the canonical-path contract used by conversion. Validate
 DTOs at both boundaries. Cover spaces, limits, relative inputs, duplicate names,
@@ -701,7 +706,7 @@ directory. Run discovery/interface and Rust path cases; verify tooling with
 converter in `src/architecture/dependency-cruiser/`.
 
 **Implementation:** [T04 evidence and limits](CR-001-T04-evidence.md) and
-[converter contract](../../cookbook/interfaces/dependency-cruiser.md). The
+[converter contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/dependency-cruiser.md). The
 browser-free API scenarios exercise completed-report conversion separately from
 the Load Repo workflow below. T05 supplies execution; T07 supplies its UI.
 
@@ -857,7 +862,7 @@ reports establish source-to-model behavior.
 **Dependencies:** T03, T04. **Owners:** strategy/runner, platform, native shell.
 
 **Implementation:** [T05 evidence and limits](CR-001-T05-evidence.md) and
-[native execution contract](../../cookbook/interfaces/desktop-analyzer.md).
+[native execution contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop-analyzer.md).
 Native jobs use prepare/run/cancel/release operations. Public API and installed
 native-operation scenarios exercise execution before the later Load Repo UI.
 
@@ -947,7 +952,7 @@ that trusted repository configuration executes local code.
 shell; T05 supplies real-import integration evidence.
 
 **Implementation:** [T06 evidence and limits](CR-001-T06-evidence.md) and
-[portable document contract](../../cookbook/interfaces/documents.md).
+[portable document contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/documents.md).
 The API and installed-operation scenarios cover document behavior independently
 of the UI. T07 supplies the controls, layout, and final view replacement.
 
@@ -1145,7 +1150,7 @@ and explicit replacement consent. Keep them restricted to the main window.
 #### Interface / contract (TypeSpec)
 
 Define caller-visible load state and outcome data in TypeSpec. Update the
-[workspace contract](../../cookbook/interfaces/workspace.md), implementation
+[workspace contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/workspace.md), implementation
 conformance checks, and component links. Complete selection, coarse progress,
 cancel/retry, and the final view commit. Contract tests must cover late decoding/layout,
 cancellation after process exit, retry only after cleanup, and cancellation that
@@ -1156,9 +1161,9 @@ Exercise the workflow with a substitute neutral layer, separate DOM suites, and
 real browser rendering/common decoding;
 browser saved viewing must work without source files or analyzer tools.
 
-The [workflow operations](../../cookbook/interfaces/workflow.tsp) own serialized
+The [workflow operations](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/workflow.tsp) own serialized
 state and outcomes. Subscription callbacks, abort signals, and prepared layout
-stay in the TypeScript binding. The [diagram dialog operations](../../cookbook/interfaces/document-dialogs.tsp)
+stay in the TypeScript binding. The [diagram dialog operations](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/document-dialogs.tsp)
 describe file selection and replacement consent. A save-picker path alone is
 not overwrite consent: try without replacement, then request explicit consent
 if the destination exists, retaining the originally encoded bytes.
@@ -1272,7 +1277,7 @@ Feature: Use installed Choom to inspect and share architecture
 
 The document boundary also covers the export timing regression found during
 release verification. This scenario runs through the public document operations
-in [the document API feature](../../cookbook/behavior/architecture-import/t06-api.feature).
+in [the document API feature](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t06-api.feature).
 The installed and browser suites retain their separate evidence scopes.
 
 ```gherkin
@@ -1286,7 +1291,7 @@ Feature: Keep export available during document replacement
 
 #### Observability (OpenSLO)
 
-Review local signals and update [evidence gaps](../../cookbook/TODO.md). Keep the
+Review local signals and update [evidence gaps](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/TODO.md). Keep the
 Service unmeasured unless actual collection, baseline, and an agreed objective
 justify a separately reviewed change.
 

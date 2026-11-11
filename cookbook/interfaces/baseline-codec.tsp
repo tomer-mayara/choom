@@ -1,11 +1,17 @@
 import "@typespec/json-schema";
 import "./baseline.tsp";
-import "./documents.tsp";
 
 using TypeSpec.JsonSchema;
 
 @jsonSchema
 namespace Choom.Documents;
+
+union BaselineDecodeFailureCode {
+  "unsupported-version",
+  "invalid-encoding",
+  "invalid-document",
+  "limit-exceeded",
+}
 
 // The decoder also enforces the shared YAML byte, structure, and token limits.
 @maxLength(16777216)
@@ -24,7 +30,7 @@ model DecodedBaseline {
 model BaselineDecodeFailure {
   status: "failure";
   stage: "decoding";
-  code: DocumentCodecFailureCode;
+  code: BaselineDecodeFailureCode;
 
   @minLength(1)
   @maxLength(2048)

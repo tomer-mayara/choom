@@ -1,5 +1,10 @@
 # CR-001-T06: Portable YAML and document storage
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Implementation evidence for
 [CR-001-T06](CR-001-architecture-import.md#cr-001-t06--persist-candidates-and-export-portable-yaml).
 Work started from merged T05 commit `aaf0372` on `codex/cr-001-t06`.
@@ -25,17 +30,17 @@ Cleanup failure retains ownership and blocks further writes until retry succeeds
 Selected-file reads remain available. Export uses a temporary file in the
 destination directory and atomic promotion, with explicit replacement consent.
 
-See the [document contract](../../cookbook/interfaces/documents.md) for format
+See the [document contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/documents.md) for format
 limits, ownership, cleanup, and export guarantees.
 
 ## Four constraints
 
 | Constraint | Change and evidence |
 | --- | --- |
-| Behavioral | Added [public document scenarios](../../cookbook/behavior/architecture-import/t06-api.feature) before production implementation. Separate [installed scenarios](../../cookbook/behavior/architecture-import/t06-installed.feature) cover real analysis, export/reopen, replacement consent, and snapshot capacity through native IPC. |
+| Behavioral | Added [public document scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t06-api.feature) before production implementation. Separate [installed scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t06-installed.feature) cover real analysis, export/reopen, replacement consent, and snapshot capacity through native IPC. |
 | Observability | Encoding, decoding, storage, export, and cleanup outcomes include duration. Error messages omit host paths and raw parser or I/O output. The shared OpenSLO remains unmeasured. |
 | Architecture | A named dependency rule isolates the codec from platform, UI, and analyzer implementations. Workspace code owns document coordination; the platform exposes six product-specific native operations restricted to the local main window. |
-| Interface / contract | Added [documents.tsp](../../cookbook/interfaces/documents.tsp) and [desktop-documents.tsp](../../cookbook/interfaces/desktop-documents.tsp), generated declarations/schemas, exact TypeScript conformance, and shared native wire cases. Closed empty requests generate `Record<string, never>`. |
+| Interface / contract | Added [documents.tsp](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/documents.tsp) and [desktop-documents.tsp](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop-documents.tsp), generated declarations/schemas, exact TypeScript conformance, and shared native wire cases. Closed empty requests generate `Record<string, never>`. |
 
 ## Behavior-first development and review
 

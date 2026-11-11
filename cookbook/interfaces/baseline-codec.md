@@ -30,13 +30,13 @@ not contain raw input values, unknown field names, or parser exception text.
 Every result includes a nonnegative duration in milliseconds. These local
 results do not establish a production reliability or latency claim.
 
-The legacy diagram codec remains available for the existing app until BV-03.
+The viewer uses this decoder on both hosts. The legacy diagram codec was removed in BV-03.
 
 Run the focused checks from the repository root:
 
 ```sh
 bun run test:behavior:native --tags @bv-02
-bun test ./test/unit/lib/baseline-yaml.test.ts ./test/unit/lib/architecture-yaml.test.ts
+bun test ./test/unit/lib/baseline-yaml.test.ts
 bun test ./test/interface/lib/baseline-yaml.test.ts ./test/interface/platform/documents.test.ts
 bun test --preload ./test/preload.ts ./test/unit/platform/browser-documents.test.tsx
 bun run test:rust

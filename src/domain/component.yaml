@@ -1,11 +1,8 @@
 name: architecture-model
-description: Validates saved baselines, builds semantic component diagrams, and supplies the starter graph.
+description: Validates saved baselines and supplies a starter baseline.
 
 artifacts:
   behavior:
-    - path: ../../cookbook/behavior/architecture.feature
-    - path: ../../cookbook/behavior/architecture-import/t02-model.feature
-    - path: ../../cookbook/behavior/architecture-import/t02-domain.feature
     - path: ../../cookbook/behavior/baseline-viewer/validation.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
@@ -13,6 +10,5 @@ artifacts:
     - path: ../../.dependency-cruiser.cjs
   contracts:
     # TypeSpec owns the structure; the runtime schema also checks IDs and references.
-    - path: ../../cookbook/interfaces/architecture.tsp
     - path: ../../cookbook/interfaces/baseline.tsp
     - path: ../../cookbook/interfaces/baseline.md

@@ -1,21 +1,18 @@
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { createHash } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { access, mkdir, mkdtemp, open, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { createRequire } from "node:module";
 import { arch, platform, release, tmpdir } from "node:os";
-import { delimiter, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { delimiter, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { chromium, type BrowserServer } from "@playwright/test";
 
 const checkout = await realpath(fileURLToPath(new URL("..", import.meta.url)));
 const evidence = await mkdtemp(join(await evidenceRoot(), "run-"));
 const children: ChildProcess[] = [];
 let cancelledExitCode: number | undefined;
 let cucumberProcess: ChildProcess | undefined;
-let browserServer: BrowserServer | undefined;
 let cancelTermTimer: ReturnType<typeof setTimeout> | undefined;
 let cancelKillTimer: ReturnType<typeof setTimeout> | undefined;
 let workDirectory: string | undefined;
@@ -34,7 +31,7 @@ async function evidenceRoot(): Promise<string> {
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is required; see docs/change-requests/CR-001-native-acceptance.md`);
+  if (!value) throw new Error(`${name} is required; see docs/change-requests/BV-native-acceptance.md`);
   return value;
 }
 
@@ -65,31 +62,15 @@ function requireOutsideCheckout(path: string, label: string): void {
   }
 }
 
-async function packageVersion(path: string, name: string, expected: string): Promise<string> {
-  const packagePath = await realpath(path);
-  requireOutsideCheckout(packagePath, "Packaged fixture dependency");
-  const value: unknown = JSON.parse(await readFile(packagePath, "utf8"));
-  if (!value || typeof value !== "object" || !("name" in value) || value.name !== name || !("version" in value) || value.version !== expected) {
-    throw new Error(`${packagePath} must identify ${name} ${expected}`);
+async function harnessIdentity(): Promise<Array<Record<string, unknown>>> {
+  const files = ["cucumber.mjs", "package.json", "bun.lock", ".bun-version", ".node-version", "scripts/run-packaged-behavior.ts"];
+  for (const directory of ["test/steps", "test/support", "test/fixtures", "cookbook/behavior"]) {
+    const entries = await readdir(join(checkout, directory), { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile()) files.push(relative(checkout, join(entry.parentPath, entry.name)));
+    }
   }
-  return packagePath;
-}
-
-async function fixtureModules(): Promise<string | undefined> {
-  const configured = process.env.CHOOM_PACKAGED_FIXTURE_MODULES;
-  if (!configured) return undefined;
-  if (!isAbsolute(configured)) throw new Error("CHOOM_PACKAGED_FIXTURE_MODULES must be an absolute node_modules directory outside the checkout");
-  const modules = await realpath(configured);
-  requireOutsideCheckout(modules, "CHOOM_PACKAGED_FIXTURE_MODULES");
-  const analyzer = await packageVersion(join(modules, "dependency-cruiser", "package.json"), "dependency-cruiser", "18.7.2");
-  const resolveFromAnalyzer = createRequire(analyzer).resolve;
-  const parser = await packageVersion(resolveFromAnalyzer("typescript/package.json"), "@typescript/typescript6", "6.0.2");
-  const parserEntry = await realpath(resolveFromAnalyzer("typescript"));
-  requireOutsideCheckout(parserEntry, "TypeScript parser");
-  await access(parserEntry, constants.R_OK);
-  await access(join(modules, "dependency-cruiser", "bin", "dependency-cruiser.mjs"), constants.R_OK);
-  metadata.fixtureDependencies = { modules, analyzer: { path: analyzer, version: "18.7.2" }, parser: { path: parser, entry: parserEntry, version: "6.0.2" } };
-  return modules;
+  return Promise.all(files.sort().map(async (file) => ({ ...await artifact(join(checkout, file)), path: file })));
 }
 
 async function prerequisites() {
@@ -100,9 +81,6 @@ async function prerequisites() {
   const app = await executable("Choom", requestedApp);
   requireOutsideCheckout(app, "CHOOM_PACKAGED_APP");
   const buildId = required("CHOOM_PACKAGED_BUILD_ID");
-  await access(join(checkout, "dist", "index.html"), constants.R_OK).catch(() => {
-    throw new Error("A production frontend build is required for the browser export viewer; run bun run build first");
-  });
   const node = await executable("node");
   const nodeVersion = execFileSync(node, ["--version"], { encoding: "utf8", timeout: 5_000 }).trim();
   const expectedNode = `v${(await readFile(join(checkout, ".node-version"), "utf8")).trim()}`;
@@ -111,16 +89,14 @@ async function prerequisites() {
   const webkit = await executable("WebKitWebDriver", process.env.CHOOM_WEBKIT_DRIVER);
   const xdotool = await executable("xdotool", process.env.CHOOM_XDOTOOL);
   execFileSync(xdotool, ["getdisplaygeometry"], { timeout: 5_000, stdio: "pipe" });
-  const runtimePath = process.env.CHOOM_PACKAGED_RUNTIME_PATH ?? "/usr/local/bin:/usr/bin:/bin";
-  const modules = await fixtureModules();
   metadata.application = { ...await artifact(app), declaredBuildId: buildId };
   metadata.tools = { node: { path: node, version: nodeVersion }, tauri: await artifact(tauri), webkit: await artifact(webkit), xdotool: await artifact(xdotool) };
-  metadata.productEnvironment = { path: runtimePath, display: process.env.DISPLAY, workingDirectory: workDirectory, gtkUsePortal: "0" };
-  return { app, node, tauri, webkit, xdotool, runtimePath, modules };
+  metadata.harness = await harnessIdentity();
+  return { app, node, tauri, webkit, xdotool };
 }
 
-async function ports(): Promise<[number, number, number, number, number]> {
-  const servers = Array.from({ length: 5 }, () => createServer());
+async function ports(): Promise<[number, number]> {
+  const servers = Array.from({ length: 2 }, () => createServer());
   try {
     const values = await Promise.all(servers.map((listener) => new Promise<number>((resolvePort, reject) => {
       listener.once("error", reject);
@@ -130,11 +106,11 @@ async function ports(): Promise<[number, number, number, number, number]> {
         else reject(new Error("Could not reserve a local WebDriver port"));
       });
     })));
-    const [driverPort, nativePort, previewPort, noRuntimeDriverPort, noRuntimeNativePort] = values;
-    if (!driverPort || !nativePort || !previewPort || !noRuntimeDriverPort || !noRuntimeNativePort) {
-      throw new Error("WebDriver and preview ports are required");
+    const [driverPort, nativePort] = values;
+    if (!driverPort || !nativePort) {
+      throw new Error("Two WebDriver ports are required");
     }
-    return [driverPort, nativePort, previewPort, noRuntimeDriverPort, noRuntimeNativePort];
+    return [driverPort, nativePort];
   } finally {
     await Promise.all(servers.map((listener) => new Promise<void>((done) => listener.close(() => done()))));
   }
@@ -192,7 +168,6 @@ function cancel(signal: NodeJS.Signals): void {
 
 async function cleanup(): Promise<void> {
   const failures: unknown[] = [];
-  const closingBrowser = closeBrowserServer().catch((error: unknown) => { failures.push(error); });
   try {
     for (const child of children) signalGroup(child, "SIGTERM");
     const gracefulDeadline = Date.now() + 5_000;
@@ -205,31 +180,10 @@ async function cleanup(): Promise<void> {
       await delay(50);
     }
   } catch (error) { failures.push(error); }
-  await closingBrowser;
   try {
     if (workDirectory) await rm(workDirectory, { recursive: true, force: true });
   } catch (error) { failures.push(error); }
   if (failures.length) throw new AggregateError(failures, "Packaged resource cleanup failed");
-}
-
-async function closeBrowserServer(): Promise<void> {
-  const server = browserServer;
-  if (!server) return;
-  let killTimer: ReturnType<typeof setTimeout> | undefined;
-  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
-  const forced = new Promise<void>((done, reject) => {
-    killTimer = setTimeout(() => { void server.kill().then(done, reject); }, 5_000);
-  });
-  const deadline = new Promise<never>((_done, reject) => {
-    deadlineTimer = setTimeout(() => reject(new Error("The owned Chromium server did not stop within 10 seconds")), 10_000);
-  });
-  try {
-    const graceful = server.close().catch(async () => { await server.kill(); });
-    await Promise.race([graceful, forced, deadline]);
-  } finally {
-    clearTimeout(killTimer);
-    clearTimeout(deadlineTimer);
-  }
 }
 
 function scenarioCount(report: unknown): number {
@@ -237,8 +191,14 @@ function scenarioCount(report: unknown): number {
   let count = 0;
   for (const feature of report) {
     if (!feature || typeof feature !== "object" || !Array.isArray(feature.elements)) continue;
-    count += feature.elements.filter((element: unknown) => element && typeof element === "object"
-      && "type" in element && element.type === "scenario").length;
+    for (const element of feature.elements) {
+      if (!element || typeof element !== "object" || element.type !== "scenario") continue;
+      count += 1;
+      if (Array.isArray(element.steps) && element.steps.some((step: { result?: { status?: string } }) =>
+        ["undefined", "ambiguous", "pending"].includes(step.result?.status ?? ""))) {
+        throw new Error("Packaged scenarios have undefined, ambiguous, or pending steps; this is incomplete harness setup");
+      }
+    }
   }
   if (!count) throw new Error("No packaged scenarios matched the selection; an empty run is not acceptance evidence");
   return count;
@@ -260,52 +220,31 @@ process.on("SIGINT", cancel);
 process.on("SIGTERM", cancel);
 try {
   if (process.argv.includes("--help")) {
-    console.log("Usage: bun scripts/run-packaged-behavior.ts [--tags expression] [--name expression]\nRequires Linux/X11, CHOOM_PACKAGED_APP, CHOOM_PACKAGED_BUILD_ID, pinned Node, tauri-driver, WebKitWebDriver, xdotool, and a production frontend build. See docs/change-requests/CR-001-native-acceptance.md.");
+    console.log("Usage: bun scripts/run-packaged-behavior.ts [--tags expression] [--name expression]\nRequires Linux/X11, CHOOM_PACKAGED_APP, CHOOM_PACKAGED_BUILD_ID, pinned Node, tauri-driver, WebKitWebDriver, and xdotool. See docs/change-requests/BV-native-acceptance.md.");
     metadata.outcome = "help";
   } else {
     const selected = cucumberArguments();
     workDirectory = await mkdtemp(join(tmpdir(), "choom-packaged-"));
     const setup = await prerequisites();
-    const [driverPort, nativePort, previewPort, noRuntimeDriverPort, noRuntimeNativePort] = await ports();
-    const noRuntimePath = join(workDirectory, "no-analyzer-runtime");
-    await mkdir(noRuntimePath, { mode: 0o700 });
-    metadata.noRuntimeProductEnvironment = {
-      path: noRuntimePath, display: process.env.DISPLAY, workingDirectory: workDirectory, gtkUsePortal: "0",
+    const [driverPort, nativePort] = await ports();
+    const runtimePath = join(workDirectory, "no-analyzer-runtime");
+    await mkdir(runtimePath, { mode: 0o700 });
+    metadata.productEnvironment = {
+      path: runtimePath, display: process.env.DISPLAY, workingDirectory: workDirectory, gtkUsePortal: "0",
     };
     const log = await open(join(evidence, "tauri-driver.log"), "w", 0o600);
-    const noRuntimeLog = await open(join(evidence, "no-runtime-tauri-driver.log"), "w", 0o600);
-    const previewLog = await open(join(evidence, "preview.log"), "w", 0o600);
     try {
-      for (const product of [
-        { port: driverPort, nativePort, path: setup.runtimePath, log, name: "tauri-driver" },
-        { port: noRuntimeDriverPort, nativePort: noRuntimeNativePort, path: noRuntimePath, log: noRuntimeLog, name: "no-runtime-tauri-driver" },
-      ]) {
-        const driver = launch(setup.tauri, ["--port", String(product.port), "--native-port", String(product.nativePort), "--native-host", "127.0.0.1", "--native-driver", setup.webkit], {
-          cwd: workDirectory, env: { ...process.env, PATH: product.path, GTK_USE_PORTAL: "0" }, stdio: ["ignore", product.log.fd, product.log.fd],
-        });
-        await ready(driver, `http://127.0.0.1:${product.port}/status`, product.name);
-      }
-      const baseUrl = `http://127.0.0.1:${previewPort}`;
-      const previewProcess = launch(setup.node, ["node_modules/vite/bin/vite.js", "preview", "--host", "127.0.0.1", "--port", String(previewPort), "--strictPort"], {
-        cwd: checkout, stdio: ["ignore", previewLog.fd, previewLog.fd], env: { ...process.env, CI: "true" },
+      const driver = launch(setup.tauri, ["--port", String(driverPort), "--native-port", String(nativePort), "--native-host", "127.0.0.1", "--native-driver", setup.webkit], {
+        cwd: workDirectory, env: { ...process.env, PATH: runtimePath, NODE_PATH: "", GTK_USE_PORTAL: "0" }, stdio: ["ignore", log.fd, log.fd],
       });
-      await ready(previewProcess, baseUrl, "preview");
-      browserServer = await chromium.launchServer({
-        host: "127.0.0.1", headless: true, timeout: 20_000,
-        handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
-        downloadsPath: join(workDirectory, "downloads"), artifactsDir: join(workDirectory, "browser-artifacts"),
-        env: { ...process.env, TMPDIR: workDirectory, TMP: workDirectory, TEMP: workDirectory },
-      });
-      metadata.browserViewer = { baseUrl, processId: browserServer.process().pid, source: resolve(checkout, "dist"), index: await artifact(join(checkout, "dist", "index.html")) };
+      await ready(driver, `http://127.0.0.1:${driverPort}/status`, "tauri-driver");
       const cucumber = launch(setup.node, ["node_modules/@cucumber/cucumber/bin/cucumber.js", "--config", "cucumber.mjs", "--profile", "packaged", "--format", `json:${join(evidence, "cucumber.json")}`, ...selected], {
         cwd: checkout, stdio: "inherit", env: {
-          ...process.env, CHOOM_BASE_URL: baseUrl, CHOOM_PACKAGED_APP: setup.app,
+          ...process.env, CHOOM_PACKAGED_APP: setup.app,
           TMPDIR: workDirectory, TMP: workDirectory, TEMP: workDirectory,
-          CHOOM_PACKAGED_DRIVER_PORT: String(driverPort), CHOOM_XDOTOOL: setup.xdotool,
-          CHOOM_PACKAGED_NO_RUNTIME_DRIVER_PORT: String(noRuntimeDriverPort), CHOOM_PACKAGED_NO_RUNTIME_PATH: noRuntimePath,
+          CHOOM_XDOTOOL: setup.xdotool,
+          CHOOM_PACKAGED_NO_RUNTIME_DRIVER_PORT: String(driverPort), CHOOM_PACKAGED_NO_RUNTIME_PATH: runtimePath,
           CHOOM_PACKAGED_EVIDENCE_DIR: evidence,
-          CHOOM_PACKAGED_FIXTURE_MODULES: setup.modules,
-          CHOOM_PACKAGED_BROWSER_ENDPOINT: browserServer.wsEndpoint(),
         },
       });
       cucumberProcess = cucumber;
@@ -321,7 +260,7 @@ try {
       process.exitCode = cancelledExitCode ?? (setupFailure ? 2 : result);
       metadata.outcome = setupFailure ? "setup-failed" : result === 0 ? "passed" : "scenario-failed";
       if (setupFailure) metadata.setupFailure = JSON.parse(setupFailure);
-    } finally { await log.close(); await noRuntimeLog.close(); await previewLog.close(); }
+    } finally { await log.close(); }
   }
 } catch (error) {
   process.exitCode = cancelledExitCode ?? 2;
@@ -340,8 +279,7 @@ try {
   }
   if (cancelledExitCode) { process.exitCode = cancelledExitCode; metadata.outcome = "cancelled"; }
   metadata.exitCode = process.exitCode ?? 0;
-  const ownedProcesses = browserServer ? [...children, browserServer.process()] : children;
-  metadata.processes = ownedProcesses.map((child) => ({ pid: child.pid, exitCode: child.exitCode, signal: child.signalCode }));
+  metadata.processes = children.map((child) => ({ pid: child.pid, exitCode: child.exitCode, signal: child.signalCode }));
   metadata.finishedAt = new Date().toISOString();
   await writeFile(join(evidence, "run.json"), JSON.stringify(metadata, null, 2));
   console.log(`Packaged evidence: ${evidence}`);

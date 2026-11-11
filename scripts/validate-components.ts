@@ -1,7 +1,6 @@
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { z } from "zod";
-import type { ComponentManifest, ManifestArchitectureArtifact } from "../src/architecture/generated/contracts";
 
 const text = z.string().trim().min(1);
 const manifestText = z.string().min(1).refine((value) => value.trim().length > 0);
@@ -12,6 +11,8 @@ const architectureArtifact = z.strictObject({
   enforcer: manifestText.optional(),
   inputs: z.array(manifestText).max(128).optional(),
 });
+type ManifestArchitectureArtifact = z.output<typeof architectureArtifact>;
+
 const componentSchema = z.strictObject({
   name: manifestText,
   description: manifestText,
@@ -22,7 +23,7 @@ const componentSchema = z.strictObject({
     contracts: artifactList,
   }),
   children: z.array(z.strictObject({ name: manifestText, path: manifestText })).max(128).optional(),
-}) satisfies z.ZodType<ComponentManifest>;
+});
 
 // This bootstrap accepts Service inventory only. Add schema-aware checks with real SLIs.
 const serviceSchema = z.strictObject({

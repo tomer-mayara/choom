@@ -4,7 +4,7 @@ import type { DocumentFileOperations, DocumentNativeFailure } from "./generated/
 import { documentContracts } from "./documents-contract.ts";
 
 export type DocumentAccess = {
-  [Name in keyof DocumentFileOperations]: (
+  [Name in "readDocumentFile"]: (
     ...args: Parameters<DocumentFileOperations[Name]>
   ) => Promise<ReturnType<DocumentFileOperations[Name]>>;
 };
@@ -40,28 +40,8 @@ export class DesktopDocumentAccess implements DocumentAccess {
     this.available = available;
   }
 
-  createDocumentSnapshot(request: Parameters<DocumentFileOperations["createDocumentSnapshot"]>[0]) {
-    return this.call("document_snapshot_create", request, documentContracts.createDocumentSnapshot, "storage");
-  }
-
-  readDocumentSnapshot(request: Parameters<DocumentFileOperations["readDocumentSnapshot"]>[0]) {
-    return this.call("document_snapshot_read", request, documentContracts.readDocumentSnapshot, "storage");
-  }
-
-  releaseDocumentSnapshot(request: Parameters<DocumentFileOperations["releaseDocumentSnapshot"]>[0]) {
-    return this.call("document_snapshot_release", request, documentContracts.releaseDocumentSnapshot, "cleanup");
-  }
-
   readDocumentFile(request: Parameters<DocumentFileOperations["readDocumentFile"]>[0]) {
     return this.call("document_file_read", request, documentContracts.readDocumentFile, "storage");
-  }
-
-  exportDocument(request: Parameters<DocumentFileOperations["exportDocument"]>[0]) {
-    return this.call("document_export", request, documentContracts.exportDocument, "export");
-  }
-
-  retryDocumentCleanup(request: Parameters<DocumentFileOperations["retryDocumentCleanup"]>[0]) {
-    return this.call("document_cleanup", request, documentContracts.retryDocumentCleanup, "cleanup");
   }
 
   private async call<Request, Outcome extends DocumentNativeFailure | { status: "success" }>(
@@ -86,5 +66,3 @@ export class DesktopDocumentAccess implements DocumentAccess {
     return output.data;
   }
 }
-
-export const desktopDocumentAccess: DocumentAccess = new DesktopDocumentAccess();

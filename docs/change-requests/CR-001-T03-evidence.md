@@ -1,12 +1,17 @@
 # CR-001-T03: Manifest metadata and repository discovery
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Implementation and review evidence for
 [CR-001-T03](CR-001-architecture-import.md#cr-001-t03--add-manifest-metadata-and-repository-discovery).
 Work started from merged T02 commit `464cdc6` on `codex/cr-001-t03`.
 
 ## Result and ownership
 
-[`RepositoryDiscovery`](../../src/architecture/repository-discovery.ts) follows
+[`RepositoryDiscovery`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/architecture/repository-discovery.ts) follows
 only the selected root's declared manifest tree. A declared component can own
 several source directories. Inputs and unlinked manifests create no components.
 Canonical directory IDs determine ownership; declared parents remain independent
@@ -14,10 +19,10 @@ of directory nesting. Discovery selects one explicitly annotated root analyzer
 and returns its canonical configuration and inputs without executing it.
 
 The workspace owns manifest interpretation and the bounded YAML reader.
-[`DesktopRepositoryAccess`](../../src/platform/repository.ts) validates the
+[`DesktopRepositoryAccess`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/platform/repository.ts) validates the
 request/result boundary. The native `RepositoryService` owns canonical roots,
 bounded text reads, path classification, and session lifetime. The service and
-commands are in [`src-tauri/src`](../../src-tauri/src/repository.rs).
+commands are in [`src-tauri/src`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src-tauri/src/repository.rs).
 Filesystem work runs on the blocking pool. Tauri's application command manifest
 and capability restrict the four commands to the local main window.
 
@@ -29,8 +34,8 @@ cannot be read through the text operation. These IDs are not authorization
 tokens. Filesystem checks detect common source changes; they do not provide a
 transactional snapshot or sandbox concurrent hostile filesystem mutations.
 
-See the [discovery contract](../../cookbook/interfaces/discovery.md) and
-[desktop contract](../../cookbook/interfaces/desktop.md#repository-access) for
+See the [discovery contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/discovery.md) and
+[desktop contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop.md#repository-access) for
 all limits and reference semantics. The existing `yaml` version moved from a
 development dependency to a production dependency. No package version changed.
 
@@ -38,10 +43,10 @@ development dependency to a production dependency. No package version changed.
 
 | Constraint | Change and evidence |
 | --- | --- |
-| Behavioral | Added [22 public API scenarios](../../cookbook/behavior/architecture-import/t03-api.feature) before implementation. They exercise discovery through a repository transport double. Existing UI Gherkin stays registered and unchanged. Native filesystem and command tests verify the boundary that the double cannot establish. |
+| Behavioral | Added [22 public API scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t03-api.feature) before implementation. They exercise discovery through a repository transport double. Existing UI Gherkin stays registered and unchanged. Native filesystem and command tests verify the boundary that the double cannot establish. |
 | Observability | Discovery outcomes contain the stage, stable failure code, safe message, and nonnegative duration. OpenSLO is unchanged: there is no collection route, measured baseline, or agreed timing objective. |
 | Architecture | Existing dependency-cruiser rules allow workspace-to-domain/platform dependencies and keep platform independent of workspace. No rule change was needed. Native AppManifest command declarations, generated permissions, and the main-window capability changed. A dev-only Tauri test feature supports real handler/ACL checks; native crate versions are unchanged. |
-| Interface / contract | Added [discovery.tsp](../../cookbook/interfaces/discovery.tsp) and repository operations in [desktop.tsp](../../cookbook/interfaces/desktop.tsp), then regenerated types and schemas. New DTOs are closed. The generator supports explicit references between registered owners. Runtime conformance covers manifests, results, both transport boundaries, and Rust serialization through shared wire cases. |
+| Interface / contract | Added [discovery.tsp](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/discovery.tsp) and repository operations in [desktop.tsp](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/desktop.tsp), then regenerated types and schemas. New DTOs are closed. The generator supports explicit references between registered owners. Runtime conformance covers manifests, results, both transport boundaries, and Rust serialization through shared wire cases. |
 
 The root manifest now declares `dependency-cruiser` with input `src`. Linking
 guidance and cookbook validation accept architecture-only analyzer metadata.
@@ -94,7 +99,7 @@ still needs to confirm these results.
 | Packaged manual smoke | Fresh release bundle launches. Native directory selection displays the chosen path; cancellation preserves it. The example renders three nodes and both directed edges. |
 | Original T03 browser acceptance | All 17 scenarios fail at the missing Load Repo action; no undefined or ambiguous steps. They require the later import UI workflow. |
 
-The shared [wire fixture](../../test/fixtures/repository-native.json) is verified
+The shared [wire fixture](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/test/fixtures/repository-native.json) is verified
 by actual production command handlers under Tauri MockRuntime using real files.
 TypeScript checks the same values against TypeSpec schemas and frontend
 validators. MockRuntime verifies command dispatch and ACL decisions; it does

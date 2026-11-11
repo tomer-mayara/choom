@@ -1,14 +1,19 @@
 # R04: enforce import responsibilities
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Date: 7 November 2026. Base: R03 commit
 `6f3ecbccd118a64e29cf616f93ace690492e1bd7`. This implements R04 in the
 [agreed plan](2026-11-07-agreed-refactoring-plan.md).
 
 ## Result
 
-The [dependency rules](../../.dependency-cruiser.cjs) now cover application
+The [dependency rules](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/.dependency-cruiser.cjs) now cover application
 responsibility directories, including helpers with names other than `load-*`.
-The [probe command](../../scripts/check-dependency-boundaries.ts) exercises
+The [probe command](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/scripts/check-dependency-boundaries.ts) exercises
 allowed and forbidden imports in temporary projects, then the existing command
 checks the real frontend graph. CI already runs `check:dependencies`, so the
 probes are enforced there too. No production source file moved or changed.

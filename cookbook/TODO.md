@@ -1,69 +1,49 @@
 # Evidence and remaining work
 
-Passing checks support only the outcomes they exercise. Source inspection,
-configuration validation, and builds do not establish behavior or production
-reliability. All components share the unmeasured
-[OpenSLO Service](observability/service.yaml).
+A passing check supports only the outcomes it exercises. Source inspection,
+configuration validation, and a build do not establish behavior or production
+reliability. Use the [baseline verification record](../docs/change-requests/BV-baseline-viewer-evidence.md)
+for commands, results, tested revisions, and environment limits.
 
-| Component | Local evidence | Production prerequisites |
+| Area | Local evidence source | Remaining work |
 | --- | --- | --- |
-| Workspace UI and layout | Browser Cucumber exercises the real load controller, decoder, layout, and renderer through validated desktop transport doubles or source-free browser files. API and DOM tests cover cancellation, stale results, cleanup recovery, export capture, and retained starter behavior. See [T07 evidence](../docs/change-requests/CR-001-T07-evidence.md). | Run the browser journey against released web builds; retain reports by version. Add scheduled probes and a result store before using them as production evidence. |
-| Architecture model | TypeSpec compilation and output checks keep generated declarations/schemas current. Interface cases compare the strict document parser and builder with the generated contract and substitute an analyzer through the neutral layer. Native Cucumber and Bun tests cover declared ownership across subdirectories, aggregation, graph rules, diagnostics, and ordering; starter characterization is retained. See [T02 evidence](../docs/change-requests/CR-001-T02-evidence.md). | T07 renders the validated component graph through the complete load workflow. Domain tests do not prove analyzer execution, cancellation, filesystem safety, or installed application behavior. |
-| Desktop adapter | TypeScript conformance checks cover generated operation names, parameters, and awaited results. Cucumber calls the real adapter and dialog package through Tauri's IPC mock for browser absence, options, selection, cancellation, and rejection. Browser checks exercise the App's caller through an IPC double. | Exercise the released packaged app with an operating system dialog driver on each supported platform. Mocked IPC does not establish native plugin execution or permissions. |
-| Repository discovery | Native Cucumber exercises the workspace operation through a repository access double. Unit and interface cases cover manifest interpretation, YAML limits, and generated contracts. Rust tests use real files for bounded text/path operations, and the production Tauri handlers/capability context under MockRuntime verify native serialization and ACLs. See [T03 evidence](../docs/change-requests/CR-001-T03-evidence.md). | T07 invokes discovery through Load Repo. Verify the assembled import route on each supported platform. MockRuntime tests and successful packaging do not prove an installed webview can complete import. |
-| Completed-report conversion | Public API scenarios, unit cases, TypeSpec conformance, and recorded dependency-cruiser 18.7.2 reports cover semantic conversion through a repository path double. See [T04 evidence](../docs/change-requests/CR-001-T04-evidence.md). | T05 adds the native runner and process lifecycle evidence. Recorded reports alone do not prove source-to-model behavior or installed import; retain the distinct evidence in the T05 record. |
-| Analyzer execution | Public API scenarios cover the injected strategy, job release, cancellation races, progress, and converter gating. Rust tests exercise real processes, report ownership, cleanup, native ACLs, and dependency-cruiser 18.7.2. See [T05 evidence](../docs/change-requests/CR-001-T05-evidence.md). | Run the Linux installed native-operation scenarios and Windows lifecycle tests on their target systems. Cross-compilation does not prove Windows execution. T07 supplies the ordinary UI route and repository trust notice; T08 must finish assembled import evidence on each release platform. |
-| Native shell | Cargo and Tauri checks cover compilation and configuration. Earlier T01 macOS checks passed startup, the example, and directory selection/cancellation. T07's final macOS package passes native Load Repo, export, picker cancellation, and source-free reopening after restart. Linux installed picker and T05 analyzer operations pass locally and on hosted Ubuntu; T07 also passes the complete installed UI journey. See the [T07 evidence record](../docs/change-requests/CR-001-T07-evidence.md) for candidate-specific results. | Complete the remaining runtime-discovery, permission, cancellation, and file-failure cases on each supported platform, including Windows execution. Retain results by platform and version. |
-| Portable documents | Codec, workspace, platform, and native tests cover semantic round trips, malformed YAML limits, export capture, candidate cleanup, atomic replacement, cache ownership, and TypeSpec wire conformance. See [T06 evidence](../docs/change-requests/CR-001-T06-evidence.md) for exact checks and installed-operation results. | T07 supplies browser file selection/download, native dialogs, and displayed-document replacement. Retain installed evidence for those UI journeys on each release platform. Cross-compilation does not establish Windows filesystem behavior. |
+| Baseline model | BV-01 validates the reviewed examples and checks statement shapes, references, parent cycles, and membership selectors. Generated contracts and runtime interface tests cover the public model. | Keep recorded values and unknowns intact as later tickets add rendering. |
+| File input | BV-02 covers bounded YAML parsing, UTF-8 input, format versions, model errors, and explicit legacy-diagram rejection. Existing native file tests cover regular-file and identity checks. | Opening tests must also prove the complete browser and installed-app routes. |
+| Baseline opening | BV-03 scenarios cover ordinary opening, safe view replacement, cancellation, retry, and a basic component view. See the verification record for completed runs. | BV-04 through BV-06 add hierarchy, interfaces/resources, complete details, and the remaining accessibility checks. |
+| Native shell | Rust and native contract tests check the current file boundary. The [installed acceptance guide](../docs/change-requests/BV-native-acceptance.md) defines the ordinary Linux/X11 route with an empty product `PATH`. | Retain results for each tested release and platform. BV-07 removes unused repository, analyzer, snapshot, and export operations. |
+| Production observations | All components share one unmeasured [OpenSLO Service](observability/service.yaml). | Define a released workload and a collection route before proposing an SLI, SLO, window, or alert. |
 
-The [T08 review](../docs/change-requests/CR-001-T08-evidence.md) records the current
-candidate separately from these earlier results. It adds installed missing-Node,
-analyzer cancellation/cleanup, Retry, invalid-file, and runtime-isolated viewer
-checks. The corrected Linux package passes all 19 installed scenarios. It also
-records the Windows document correction and the export-during-release regression,
-with deterministic tests that preserve real cleanup-failure handling. Consult
-that record for each platform and build before making release claims. The final
-macOS UI retry is waiting for an unlocked desktop; Windows installed UI and
-native layout/save-failure coverage remain open.
+Browser opening tests use the actual file reader, decoder, layout, and renderer.
+Controlled workflow tests can inject failures and late results. Neither those
+tests nor successful packaging proves that a released native app can select and
+read a file. The automated installed route supports Linux/X11. macOS and Windows
+need separate installed-app evidence; an unavailable route is a limit, not a pass.
 
-## Local characterization still to add
+## Viewer work after BV-03
 
-These checks can be developed locally; they are not blocked on production
-infrastructure.
+- [ ] BV-04: show parent groups and enforce display limits before layout.
+- [ ] BV-05: show interfaces, resources, ownership, and recorded consumer links.
+- [ ] BV-06: expose complete record details, rules, status, references, and
+  keyboard behavior. Keep structured rules as recorded data.
+- [ ] BV-07: remove unused native commands and permissions, then recheck the
+  assembled read-only route.
+- [ ] Finish the [plan's final checks](../docs/design/cr-baseline-viewer-plan.md#final-verification),
+  including representative workload limits and platform evidence. Record any
+  deferred checks without treating them as passed.
 
-- [ ] Add controlled lazy-load and ELK fault drivers for the retained starter
-  example. Check its loading messages, layout rejection, closing while work is
-  pending, and reopening after failure. The example's rejected dynamic import
-  has no app error boundary; specify recovery separately if it is required.
-  T07's document load already covers layout failure, cancellation, and late
-  results through its separate controlled browser entry.
-- [ ] Establish a workload before adding large-graph resource limits or layout
-  timing targets. The UI accepts graph imports; interface cases cover missing/wrong-type fields
-  and structural limits without establishing a production workload.
+TypeSpec compilation and generated-output checks do not prove runtime behavior.
+Structural schemas supplement semantic validation and operation tests. Layout
+limits do not establish usability for every baseline; use the agreed fixtures
+and a measured workload to state supported limits.
 
-TypeSpec compilation and generated-output consistency do not prove runtime
-behavior. Structural schema checks supplement the graph invariants, normalization,
-and operation failure cases. Repository native serialization is checked against
-shared wire cases and the generated schemas. T05 adds the analyzer wire and
-lifecycle checks. T06 adds document commands with shared native serialization,
-strict platform validation, and codec conformance cases.
+## Historical evidence
 
-## Native and production work
+[CR-001](../docs/change-requests/CR-001-architecture-import.md) and its evidence
+records cover the former repository-analysis, snapshot, and export workflows.
+Those results do not prove the baseline viewer. The
+[earlier architecture review](../docs/architecture-reviews/2026-11-07-agreed-refactoring-plan.md)
+also describes that implementation. Historical records keep their original
+results and link to saved source revisions.
 
-- [ ] Complete platform evidence through the
-  [installed-app route](../docs/change-requests/CR-001-native-acceptance.md).
-  Keep each result tied to its OS and ordinary build. T08 extends Linux bindings
-  to running analyzer cancellation, child/report cleanup, disabled concurrent
-  loads, Retry, missing runtime, and malformed files. Retain the remaining macOS,
-  Windows, launcher, native save-failure, and ordinary-release layout-failure
-  gaps from the [T08 evidence record](../docs/change-requests/CR-001-T08-evidence.md).
-  Controlled browser layout faults do not close the installed layout gap.
-- [ ] Establish a released build, collection route, and measurement baseline for
-  each production claim. There is no configured probe scheduler, telemetry sink,
-  or agreed objective. Define any SLI, SLO, window, or alert only after those
-  prerequisites exist. Distinguish cancellation from picker failure and never
-  use selected directory paths as telemetry labels.
-
-Contract generation and validation add no production instrumentation. A
-collector, new input boundary, or recovery behavior needs its own behavior-first
-change.
+The [manual producer](../docs/design/app-a/start-here.md) is a separate workflow.
+Its tool runs and evidence do not run when the app opens a baseline.

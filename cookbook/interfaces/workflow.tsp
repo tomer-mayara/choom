@@ -5,22 +5,11 @@ using TypeSpec.JsonSchema;
 @jsonSchema
 namespace Choom.Workspace;
 
-union WorkflowOperation {
-  "repository",
-  "document",
-}
-
 union WorkflowStage {
   "selection",
-  "discovery",
-  "setup",
-  "analysis",
-  "conversion",
-  "storage",
   "reading",
   "validation",
   "layout",
-  "cleanup",
 }
 
 @extension("additionalProperties", false)
@@ -73,23 +62,15 @@ union WorkflowOutcome {
 
 @extension("additionalProperties", false)
 model WorkflowState {
-  phase: "idle" | "loading" | "cancelling" | "cleanup";
-  operation: WorkflowOperation | null;
+  phase: "idle" | "loading" | "cancelling";
   stage: WorkflowStage | null;
   lastOutcome: WorkflowOutcome | null;
-  cleanupRecovery: "none" | "retry" | "restart";
-  cleanupFailure?: WorkflowFailure;
 }
 
-// Live selection, cancellation signals, subscriptions, and prepared render data
-// remain TypeScript bindings. A synchronous view commit completes the load;
-// superseded-file cleanup can still gate the next load without reversing it.
+// Selection, cancellation signals, subscriptions, and prepared render data
+// remain TypeScript bindings. Publication owns the full baseline and layout.
 interface WorkflowOperations {
-  loadRepository(): WorkflowOutcome;
-  openDocument(): WorkflowOutcome;
+  openBaseline(): WorkflowOutcome;
   cancel(): WorkflowOutcome | null;
   retry(): WorkflowOutcome;
-  retryCleanup(): WorkflowOutcome;
-  // Synchronous notification from the independent exporter; it does not replace a load outcome.
-  documentCleanupFailed(): void;
 }

@@ -11,7 +11,7 @@ test("renders a browser workspace without desktop-only actions", () => {
     screen.getByRole("heading", { name: "Architecture starts here." }),
   ).toBeTruthy();
   expect(screen.getByText("Browser", { exact: true })).toBeTruthy();
-  expect(actions.getByRole("button", { name: "Open Diagram" })).toBeTruthy();
+  expect(actions.getByRole("button", { name: "Open Baseline" })).toBeTruthy();
   expect(
     actions
       .getByRole("button", { name: "Explore example" })

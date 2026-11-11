@@ -17,8 +17,6 @@ import { getExtensions } from "@typespec/json-schema";
 const targets = [
   { namespace: "Choom.Domain", path: "src/domain/generated/contracts.ts" },
   { namespace: "Choom.Desktop", path: "src/platform/generated/contracts.ts" },
-  { namespace: "Choom.Discovery", path: "src/architecture/generated/contracts.ts" },
-  { namespace: "Choom.DepCruiser", path: "src/architecture/dependency-cruiser/generated/contracts.ts" },
   { namespace: "Choom.Documents", path: "src/lib/generated/contracts.ts" },
   { namespace: "Choom.Workspace", path: "src/architecture/generated/workflow.ts" },
 ];

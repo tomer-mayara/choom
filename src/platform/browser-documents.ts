@@ -1,7 +1,9 @@
+import type { ReadDocumentTextOutcome } from "./generated/contracts.ts";
+
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 
 /** The browser owns this selection; no repository or native capability is used. */
-export function selectBrowserDiagram(signal: AbortSignal): Promise<File | null> {
+export function selectBrowserBaseline(signal: AbortSignal): Promise<File | null> {
   if (signal.aborted) return Promise.resolve(null);
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");
@@ -23,35 +25,29 @@ export function selectBrowserDiagram(signal: AbortSignal): Promise<File | null> 
     } catch {
       signal.removeEventListener("abort", cancel);
       input.remove();
-      reject(new Error("The diagram file picker could not be opened."));
+      reject(new Error("The baseline file picker could not be opened."));
     }
   });
 }
 
-export async function readBrowserDiagram(file: Pick<File, "size" | "arrayBuffer">, signal: AbortSignal): Promise<string> {
+export async function readBrowserBaseline(file: Pick<File, "size" | "arrayBuffer">, signal: AbortSignal): Promise<ReadDocumentTextOutcome> {
+  const started = performance.now();
+  const failure = (code: "limit-exceeded" | "invalid-utf8" | "io-error", message: string): ReadDocumentTextOutcome => ({
+    status: "failure", stage: "storage", code, message, durationMs: Math.max(0, performance.now() - started),
+  });
   signal.throwIfAborted();
-  if (file.size > MAX_DOCUMENT_BYTES) throw new Error("The document exceeds 16 MiB.");
-  const bytes = await file.arrayBuffer();
-  signal.throwIfAborted();
-  if (bytes.byteLength > MAX_DOCUMENT_BYTES) throw new Error("The document exceeds 16 MiB.");
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    throw new Error("The document is not valid UTF-8 text.");
+  if (file.size > MAX_DOCUMENT_BYTES) return failure("limit-exceeded", "The baseline exceeds 16 MiB.");
+  let bytes: ArrayBuffer;
+  try { bytes = await file.arrayBuffer(); }
+  catch {
+    signal.throwIfAborted();
+    return failure("io-error", "The selected baseline is no longer readable. Open Baseline and select the file again.");
   }
-}
-
-export function downloadDiagram(text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: "application/yaml;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "architecture.choom.yaml";
-  document.body.append(link);
+  signal.throwIfAborted();
+  if (bytes.byteLength > MAX_DOCUMENT_BYTES) return failure("limit-exceeded", "The baseline exceeds 16 MiB.");
   try {
-    link.click();
-  } finally {
-    link.remove();
-    // Let the browser consume the click before releasing the download URL.
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    return { status: "success", text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), durationMs: Math.max(0, performance.now() - started) };
+  } catch {
+    return failure("invalid-utf8", "The baseline is not valid UTF-8 text.");
   }
 }

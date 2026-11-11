@@ -1,63 +1,25 @@
-import { DocumentFiles } from "../documents/document-files.ts";
-import type { layoutArchitectureDocument } from "../lib/architecture-layout.ts";
-import { encodeArchitectureYaml } from "../lib/architecture-yaml.ts";
-import { downloadDiagram, readBrowserDiagram, selectBrowserDiagram } from "../platform/browser-documents.ts";
-import { isDesktop, selectProjectDirectory } from "../platform/desktop.ts";
-import { confirmDiagramReplacement, selectDiagramDestination, selectDiagramFile } from "../platform/document-dialogs.ts";
+import type { layoutBaseline } from "../lib/architecture-layout.ts";
+import { readBrowserBaseline, selectBrowserBaseline } from "../platform/browser-documents.ts";
+import { isDesktop } from "../platform/desktop.ts";
+import { selectBaselineFile } from "../platform/document-dialogs.ts";
 import { DesktopDocumentAccess } from "../platform/documents.ts";
-import { DesktopRepositoryAccess } from "../platform/repository.ts";
-import { createArchitecturalLayer } from "./create-architectural-layer.ts";
 import { LoadWorkflow } from "./load-workflow.ts";
-import { RepositoryDiscovery } from "./repository-discovery.ts";
 import type { WorkspaceBinding } from "./workspace-view.ts";
 
-/** Composition has no startup effects. Only a repository load creates an analyzer. */
-export function createWorkspace(options: { layout?: typeof layoutArchitectureDocument } = {}): WorkspaceBinding {
-  const documents = new DocumentFiles(new DesktopDocumentAccess());
-  const repository = new DesktopRepositoryAccess();
-  const discovery = new RepositoryDiscovery(repository);
-  const workflow = new LoadWorkflow({
-    documents,
-    selectRepository: selectProjectDirectory,
-    selectDocument: async (signal) => {
+/** Composition has no startup effects. Both hosts use the same decoder and viewer. */
+export function createWorkspace(options: { layout?: typeof layoutBaseline } = {}): WorkspaceBinding {
+  const files = new DesktopDocumentAccess();
+  return { workflow: new LoadWorkflow({
+    selectBaseline: async (signal) => {
       if (isDesktop()) {
-        const path = await selectDiagramFile();
-        return path === null ? null : { kind: "desktop", path };
+        const path = await selectBaselineFile();
+        return path === null ? null : { read: () => files.readDocumentFile({ path }) };
       }
-      const file = await selectBrowserDiagram(signal);
-      return file === null ? null : { kind: "browser", readText: (readSignal) => readBrowserDiagram(file, readSignal) };
+      const file = await selectBrowserBaseline(signal);
+      return file === null ? null : { read: (readSignal) => readBrowserBaseline(file, readSignal) };
     },
-    discover: discovery.discover,
-    createLayer: createArchitecturalLayer,
-    closeRepository: (request) => repository.closeRepository(request),
-    layout: options.layout ?? (async (document) => (await import("../lib/architecture-layout.ts")).layoutArchitectureDocument(document)),
-  });
-
-  return {
-    workflow,
-    exportDocument: async (document) => {
-      if (isDesktop()) {
-        const outcome = await documents.exportDocument(document, async () => {
-          const path = await selectDiagramDestination({ fileName: "architecture.choom.yaml" });
-          return path === null ? null : { path, overwrite: false };
-        }, confirmDiagramReplacement);
-        if (outcome.status === "failure" && outcome.stage === "cleanup") workflow.documentCleanupFailed();
-        return outcome;
-      }
-      const started = performance.now();
-      const encoded = encodeArchitectureYaml(document);
-      if (encoded.status === "failure") return encoded;
-      try {
-        downloadDiagram(encoded.text);
-        return { status: "success", exported: true, durationMs: Math.max(0, performance.now() - started) };
-      } catch {
-        return {
-          status: "failure", stage: "export", code: "unavailable",
-          message: "The browser could not download the diagram.", durationMs: Math.max(0, performance.now() - started),
-        };
-      }
-    },
-  };
+    layout: options.layout ?? (async (baseline) => (await import("../lib/architecture-layout.ts")).layoutBaseline(baseline)),
+  }) };
 }
 
 // One owner per workspace, outside React render and StrictMode effect replay.
