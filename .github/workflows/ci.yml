@@ -26,8 +26,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Set up Ubuntu package downloads
         run: |
-          # The runner's Azure mirror can stall package downloads.
-          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          # Use an independent mirror while Canonical DNS is unavailable.
+          printf '%s\n' 'https://mirrors.kernel.org/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
           printf '%s\n' 'APT::Update::Error-Mode "any";' | sudo tee /etc/apt/apt.conf.d/99choom-ci > /dev/null
       - run: bunx --no-install playwright install --with-deps chromium
       - name: Validate all four constraints
@@ -65,8 +65,8 @@ jobs:
       - name: Set up Ubuntu package downloads
         if: runner.os == 'Linux'
         run: |
-          # The runner's Azure mirror can stall package downloads.
-          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          # Use an independent mirror while Canonical DNS is unavailable.
+          printf '%s\n' 'https://mirrors.kernel.org/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
           printf '%s\n' 'APT::Update::Error-Mode "any";' | sudo tee /etc/apt/apt.conf.d/99choom-ci > /dev/null
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
