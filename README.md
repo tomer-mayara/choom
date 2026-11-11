@@ -10,6 +10,20 @@ architecture baseline, investigate boundary problems, and overlay findings and
 proposed changes. It specifies tools, LLM responsibilities, saved evidence, and
 outputs for whole-repository, regional, and change analysis.
 
+The [baseline viewer plan](docs/design/cr-baseline-viewer-plan.md) replaces the
+product's repository analysis with a saved-baseline viewer. The implementation
+is split into seven draft PRs. See the [verification record](docs/change-requests/BV-baseline-viewer-evidence.md)
+for completed checks and remaining work. The first ticket adds baseline
+validation; the current app route changes in BV-03.
+
+Run the baseline contract checks with:
+
+```sh
+bun run test:behavior --tags @bv-01
+bun test ./test/unit/domain/baseline.test.ts ./test/interface/domain/baseline.test.ts
+bun run check:contracts
+```
+
 ## Set up
 
 Use **Bun 1.4.4**, **Node.js 26.13.0**, and **Rust 1.99.1**. Versions are pinned in `.bun-version`, `.node-version`, `.nvmrc`, `package.json`, and `rust-toolchain.toml`. Bun manages packages and unit tests; Node runs development CLIs. Rustup installs the pinned Rust toolchain when a Cargo command runs.
