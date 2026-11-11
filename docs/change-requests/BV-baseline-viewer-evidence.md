@@ -31,7 +31,7 @@ characterization tests.
 | BV-03 | The normal browser and installed desktop app both loaded, then their Open Baseline assertions failed because the control was absent. | Browser, core, host, and ordinary installed Linux acceptance pass. Reviewed and complete. |
 | BV-04 | Five browser scenarios failed actual assertions: flat components did not form the recorded groups, and all four excessive-work cases lacked a display-limit error. | Nine focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-05 | Four browser scenarios failed actual assertions because interface/resource nodes and their relationships were absent. | Five focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
-| BV-06 | Not run yet. | Pending. |
+| BV-06 | Nineteen browser scenarios failed explicit assertions for missing controls or record fields. Four existing Escape/focus cases passed. | Twenty-four focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-07 | All 13 installed-host scenarios failed because the retired operations still returned registered-handler responses. | Removal pending. |
 
 ## BV-01
@@ -289,7 +289,45 @@ Completed candidate checks:
 
 PR #21's macOS and Windows jobs passed. Its web job failed to resolve the Ubuntu
 package mirror during setup; the Linux desktop job timed out at the same setup
-step. A web retry is running. These failures did not execute product tests.
+step. The web retry failed at the same mirror lookup; a Linux desktop retry is running. These failures did not execute product tests. PR #22 has the same web setup failure; its macOS and Windows jobs passed.
+
+## BV-06
+
+The first explicit assertion run used the unchanged BV-05 build from `cc1496d`.
+Of 23 scenarios, 19 failed on missing Baseline details or Rules controls, or on
+missing record fields such as Membership, Owner, Identity, and Excluded paths.
+Four existing Escape/focus characterizations passed. The run had 113 steps
+passed, 19 failed, and 21 skipped. Its report and log are
+`reports/baseline-viewer/bv-06/browser-red.json` and `browser-red.log`.
+
+The new steps were first adjusted so that their assertions failed before the
+Cucumber step deadline. Only the explicit assertion run above is acceptance-red
+evidence; the earlier timeout run is not.
+
+Focused TDD failed the field, record, and Rules cases before each implementation
+step. The final focused DOM run passes 29 tests and 263 assertions. Details show
+all fields and statement metadata as text. Rule rows format their data only when
+expanded. Native keyboard controls and the existing dialog preserve focus and
+zoom; new baselines close old selections.
+
+Independent review found that `parentId: null` was labeled as unknown intent.
+The design means that this is the first baseline. A new browser assertion and a
+focused unit assertion failed before the metadata field changed to **No parent
+baseline (null)**. Nullable statement values still say **Unknown (null)**.
+The manager inspected component, expanded-rule, and narrow-window metadata panels.
+
+Completed candidate checks:
+
+- The complete browser run passed 56 scenarios and 376 steps. After the small
+  parent-label correction, the current focused BV-06 run passes 24 scenarios
+  and 159 steps, including the new first-baseline case.
+- `bun run check`: 181 native unit tests, 39 DOM tests, 18 native Cucumber
+  scenarios with 57 steps, and 19 interface tests passed. Lint, contracts,
+  types, cookbook links, dependencies, unused-code, and duplicate-code checks passed.
+- `bun run build`, `bun run check-types`, and `bun run habit-hooks --all` passed.
+  The existing large-chunk warning remains; the snooze file is empty.
+- Independent source review, manager visual review, and whitespace checks passed.
+  Check and red/green logs are retained in `reports/baseline-viewer/bv-06/`.
 
 ## BV-07
 

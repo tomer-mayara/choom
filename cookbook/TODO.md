@@ -7,9 +7,10 @@ for commands, results, tested revisions, and environment limits.
 
 | Area | Local evidence source | Remaining work |
 | --- | --- | --- |
-| Baseline model | BV-01 validates the reviewed examples and checks statement shapes, references, parent cycles, and membership selectors. Generated contracts and runtime interface tests cover the public model. | Keep recorded values and unknowns intact as later tickets add rendering. |
-| File input | BV-02 covers bounded YAML parsing, UTF-8 input, format versions, model errors, and explicit legacy-diagram rejection. Existing native file tests cover regular-file and identity checks. | Opening tests must also prove the complete browser and installed-app routes. |
-| Baseline opening | BV-03 scenarios cover ordinary opening, safe view replacement, cancellation, retry, and a basic component view. See the verification record for completed runs. | BV-04 through BV-06 add hierarchy, interfaces/resources, complete details, and the remaining accessibility checks. |
+| Baseline model | BV-01 validates the reviewed examples and checks statement shapes, references, parent cycles, and membership selectors. Generated contracts and runtime interface tests cover the public model. | BV-06 exposes every recorded field and reference; its browser and DOM checks pass. No remaining model work. |
+| File input | BV-02 covers bounded YAML parsing, UTF-8 input, format versions, model errors, and explicit legacy-diagram rejection. Existing native file tests cover regular-file and identity checks. | Preserve those native checks during BV-07 removal. |
+| Baseline opening | BV-03 passes browser and ordinary installed Linux opening, view preservation, cancellation, and retry checks. See the verification record for artifact identities and limits. | Repeat installed acceptance for the final BV-07 release. |
+| Diagram | BV-04 and BV-05 pass hierarchy, display-limit, item, relationship, readability, and keyboard checks. | Measure the complete viewer after BV-06. |
 | Native shell | Rust and native contract tests check the current file boundary. The [installed acceptance guide](../docs/change-requests/BV-native-acceptance.md) defines the ordinary Linux/X11 route with an empty product `PATH`. | Retain results for each tested release and platform. BV-07 removes unused repository, analyzer, snapshot, and export operations. |
 | Production observations | All components share one unmeasured [OpenSLO Service](observability/service.yaml). | Define a released workload and a collection route before proposing an SLI, SLO, window, or alert. |
 
@@ -19,11 +20,11 @@ tests nor successful packaging proves that a released native app can select and
 read a file. The automated installed route supports Linux/X11. macOS and Windows
 need separate installed-app evidence; an unavailable route is a limit, not a pass.
 
-## Viewer work after BV-03
+## Viewer completion
 
-- [ ] BV-04: show parent groups and enforce display limits before layout.
-- [ ] BV-05: show interfaces, resources, ownership, and recorded consumer links.
-- [ ] BV-06: expose complete record details, rules, status, references, and
+- [x] BV-04: show parent groups and enforce display limits before layout.
+- [x] BV-05: show interfaces, resources, ownership, and recorded consumer links.
+- [x] BV-06: expose complete record details, rules, status, references, and
   keyboard behavior. Keep structured rules as recorded data.
 - [ ] BV-07: remove unused native commands and permissions, then recheck the
   assembled read-only route.

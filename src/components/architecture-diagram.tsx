@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type RefObject } from "react";
-import { X } from "lucide-react";
-import { Dialog } from "radix-ui";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent } from "react";
 import {
   Background, BaseEdge, Controls, getBezierPath, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore, useStoreApi,
   type Edge, type EdgeProps, type Node, type NodeProps,
@@ -10,7 +8,7 @@ import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { baselineLinks } from "../lib/baseline-links.ts";
 import { componentControlHeight, componentControlWidth } from "../lib/component-geometry.ts";
-import { ArchitectureDetails, type ArchitecturePanel } from "./architecture-details.tsx";
+import { ArchitectureDetailsPanel, type ArchitecturePanel } from "./architecture-details.tsx";
 import { Button } from "./ui/button.tsx";
 import "@xyflow/react/dist/style.css";
 
@@ -103,33 +101,6 @@ function FitPreparedDiagram({ layout }: { layout: ReadonlyData<ArchitectureLayou
   return null;
 }
 
-function DetailsPanel({ baseline, panel, opener, onClose }: {
-  baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel | null;
-  opener: RefObject<HTMLElement | null>; onClose: () => void;
-}) {
-  const title = panel?.kind === "interface" ? "Interface details" : panel?.kind === "resource" ? "Resource details" : "Component details";
-  return (
-    <Dialog.Root open={panel !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/10" />
-        <Dialog.Content
-          className="fixed inset-y-0 right-0 z-50 flex h-dvh w-full max-w-md flex-col border-l border-border bg-card shadow-xl focus:outline-none"
-          onCloseAutoFocus={(event) => { event.preventDefault(); if (opener.current?.isConnected) opener.current.focus(); }}
-        >
-          <div className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
-            <Dialog.Title className="min-w-0 flex-1 text-base font-semibold">{title}</Dialog.Title>
-            <Dialog.Close asChild><Button variant="outline" aria-label="Close details" className="size-8 shrink-0 p-0"><X aria-hidden="true" className="size-4" /></Button></Dialog.Close>
-          </div>
-          <Dialog.Description className="sr-only">Details from the current diagram. Press Escape to return to the canvas.</Dialog.Description>
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            {panel ? <ArchitectureDetails baseline={baseline} panel={panel} /> : null}
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
-}
-
 /** Render only the committed baseline and its already prepared positions. */
 export function ArchitectureDiagram({ baseline, layout }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
@@ -188,6 +159,8 @@ export function ArchitectureDiagram({ baseline, layout }: {
       <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
         <h1 id="current-diagram-heading" className="min-w-0 flex-1 truncate text-base font-semibold" title={baseline.id}>{baseline.id}</h1>
         <p id="item-inspection-hint" className="sr-only lg:not-sr-only lg:text-xs lg:text-muted-foreground">Double-click an item, or focus it and press Enter, to inspect.</p>
+        <Button variant="outline" onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget)}>Baseline details</Button>
+        <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget)}>Rules ({baseline.rules.length})</Button>
       </div>
       {baseline.components.length === 0 ? (
         <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
@@ -204,7 +177,7 @@ export function ArchitectureDiagram({ baseline, layout }: {
           <FitPreparedDiagram layout={layout} />
         </ReactFlow>
       </div> : null}
-      <DetailsPanel baseline={baseline} panel={panel} opener={opener} onClose={() => setSelection(null)} />
+      <ArchitectureDetailsPanel baseline={baseline} panel={panel} opener={opener} onClose={() => setSelection(null)} />
     </section>
   );
 }

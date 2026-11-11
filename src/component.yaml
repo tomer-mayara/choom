@@ -10,6 +10,7 @@ artifacts:
     - path: ../cookbook/behavior/baseline-viewer/workflow.feature
     - path: ../cookbook/behavior/baseline-viewer/hierarchy.feature
     - path: ../cookbook/behavior/baseline-viewer/relationships.feature
+    - path: ../cookbook/behavior/baseline-viewer/details.feature
     - path: ../cookbook/behavior/baseline-viewer/installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml
