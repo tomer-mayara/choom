@@ -163,6 +163,43 @@ export class InstalledBaselineDriver {
     }, "The installed viewer did not finish cancellation and enable Open Baseline again");
   }
 
+  async expectCompleteDiagram(
+    items: ReadonlyArray<readonly [string, string]>, ownership: readonly string[],
+  ): Promise<void> {
+    await waitFor(async () => {
+      const view = await this.view();
+      return view.nodes.length === items.length && view.edges.length === ownership.length
+        && items.every(([id, name]) => view.nodes.some((node) => node.id === id && node.text.includes(name)))
+        && ownership.every((label) => view.edges.some((edge) => edge.label === label))
+        && view.edges.every((edge) => !edge.arrow);
+    }, "The installed viewer must show all recorded items and ownership links, with no consumer arrows");
+  }
+
+  async inspectEveryRule(rules: ReadonlyArray<readonly [string, string]>): Promise<void> {
+    await this.session().$("button[aria-label='Rules']").click();
+    await waitFor(async () => (await this.session().$$('[role="dialog"] details')).length === rules.length,
+      "The installed Rules panel must show every recorded rule");
+    for (const [index, [id, name]] of rules.entries()) {
+      const rows = await this.session().$$('[role="dialog"] details');
+      const row = rows[index];
+      assert.ok(row);
+      const summary = row.$("summary");
+      assert.ok((await summary.getText()).includes(id));
+      assert.ok((await summary.getText()).includes(name));
+      await summary.click();
+      await waitFor(async () => this.session().execute((position, ruleId) => {
+        const row = document.querySelectorAll<HTMLDetailsElement>('[role="dialog"] details')[position];
+        return row?.open === true
+          && row.querySelector('[role="group"][aria-label="Rule ID"]')?.textContent?.includes(ruleId) === true
+          && ["Subject", "Expected", "Check"].every((name) => row.querySelector(`[role="group"][aria-label="${name}"]`));
+      }, index, id), `The installed viewer must expand rule ${id} with its recorded fields`);
+      await summary.click();
+    }
+    await this.session().$('button[aria-label="Close details"]').click();
+    await waitFor(async () => !(await this.session().$('[role="dialog"]').isExisting()),
+      "The installed Rules panel must close");
+  }
+
   async view() {
     return this.session().execute(() => {
       const visibleText = (node: HTMLElement) => node.getClientRects().length > 0 && getComputedStyle(node).visibility === "visible"
@@ -171,11 +208,30 @@ export class InstalledBaselineDriver {
         headings: Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3"), visibleText),
         nodes: Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]"),
           (node) => ({ id: node.getAttribute("data-id") ?? "", text: visibleText(node) })),
+        edges: Array.from(document.querySelectorAll(".react-flow__edge"), (edge) => ({
+          label: edge.getAttribute("aria-label"), arrow: Boolean(edge.querySelector(".react-flow__edge-path[marker-end]")),
+        })),
         buttons: Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (node) => node.innerText.trim()),
         alerts: Array.from(document.querySelectorAll<HTMLElement>('[role="alert"]'), visibleText),
         statuses: Array.from(document.querySelectorAll<HTMLElement>('[role="status"]'), visibleText),
       };
     });
+  }
+
+  async requestRetiredCommand(command: string): Promise<
+    { status: "resolved"; value: unknown } | { status: "rejected"; message: string }
+  > {
+    return this.session().execute(async (name) => {
+      const tauri = Reflect.get(window, "__TAURI_INTERNALS__") as {
+        invoke(command: string, args: { request: unknown }): Promise<unknown>;
+      };
+      if (typeof tauri?.invoke !== "function") throw new Error("The real Tauri transport is missing");
+      try {
+        return { status: "resolved" as const, value: await tauri.invoke(name, { request: { retirementProbe: true } }) };
+      } catch (reason) {
+        return { status: "rejected" as const, message: typeof reason === "string" ? reason : JSON.stringify(reason) };
+      }
+    }, command);
   }
 
   async close(): Promise<void> {

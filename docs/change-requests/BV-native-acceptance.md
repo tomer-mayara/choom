@@ -2,7 +2,9 @@
 
 This route tests the ordinary installed release through its real UI, native GTK
 file picker, and native file read. The test driver stays outside the product.
-It does not replace IPC or supply decoded baseline data to the app.
+It does not replace IPC or supply decoded baseline data to the app. Retirement
+checks use the existing Tauri transport in the real installed window; they add
+no product test hook or command-enumeration API.
 
 The automated route supports Linux with X11. The local validation environment
 also supports Linux ARM64 in a task-owned container. macOS, Windows, Wayland,
@@ -85,6 +87,19 @@ a useful error. Picker cancellation must show **Load cancelled.** and enable
 **Open Baseline** again. These UI cases complement the existing Rust read-limit, file
 identity, file-type, and UTF-8 tests.
 
+BV-07 adds one complete-view scenario to this same installed route. It checks
+all 18 visual items, the 12 recorded ownership links, no consumer arrows, and
+all 21 Rules entries in the reviewed fixture. Each rule must expand and show
+its ID, subject, expectation, and check. This is final assembled-app verification;
+browser and DOM checks cover the same viewer behavior in more detail.
+
+The `@bv-07` command-retirement scenarios request all 13 removed custom commands
+with a closed-contract-invalid probe. The test catches rejection inside the
+webview and requires the host's missing-command or ACL message. A registered
+handler's `invalid-request` response fails the test, as does an external driver
+error. Run `@baseline-viewer` against one exact installed package to verify native
+opening, preservation, the complete view, and retirement together.
+
 The picker helper finds the X11 window owned by the requested executable and
 focuses its new native dialog. It types an absolute file path or presses Escape,
 then requires the dialog to close. The runner sets `GTK_USE_PORTAL=0` for the
@@ -111,6 +126,10 @@ The first BV-03 installed red used the ordinary `df8537e` release. Its startup,
 native host, executable, runtime path, and working directory checks passed.
 The `When` assertion then failed because **Open Baseline** was absent. Keep that
 run and its separate test-only overlay hashes alongside the final green result.
+The BV-07 red used the unchanged `96498ab` installed BV-03 product with a separate
+test overlay. All 13 command assertions failed because the registered handlers
+returned typed request errors. Keep that product identity separate from the
+new harness hashes and final BV-07 package identity.
 The complete identities belong in the [verification record](BV-baseline-viewer-evidence.md).
 
 ## Manual installed checks on other platforms
@@ -118,7 +137,8 @@ The complete identities belong in the [verification record](BV-baseline-viewer-e
 Build and install the ordinary candidate bundle outside the checkout. Preserve
 existing installations and record source, package, executable, OS, architecture,
 and signing identities. Open only a copied baseline with no source repository or
-companion files. Check the ID and components, absence of old actions, unchanged
+companion files. Check all 18 items, 12 ownership links, no consumer arrows,
+all 21 Rules entries, absence of old actions, unchanged
 file bytes, native picker cancellation, and invalid-file preservation. Record
 each actual observation and screenshot.
 

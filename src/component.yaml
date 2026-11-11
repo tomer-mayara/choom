@@ -18,7 +18,6 @@ artifacts:
     - path: ../.dependency-cruiser.cjs
   contracts:
     - path: ../cookbook/interfaces/desktop.tsp
-    - path: ../cookbook/interfaces/desktop-analyzer.tsp
     - path: ../cookbook/interfaces/baseline-codec.tsp
     - path: ../cookbook/interfaces/baseline-codec.md
     - path: ../cookbook/interfaces/workflow.tsp

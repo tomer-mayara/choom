@@ -4,6 +4,8 @@ import { copyFile, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/pro
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
+import { baselineSchema } from "../../src/domain/baseline.ts";
+import { reviewedBaseline } from "../support/baseline-fixtures.ts";
 import { InstalledBaselineDriver } from "../support/baseline-viewer/installed-driver.ts";
 
 interface InstalledBaselineWorld extends World {
@@ -94,6 +96,32 @@ Then("the native read leaves the selected baseline bytes unchanged", async funct
   if (this.installedInvalidFile) {
     assert.equal(await readFile(this.installedInvalidFile.path, "utf8"), this.installedInvalidFile.bytes);
   }
+});
+
+Then("the installed viewer shows all eighteen items and twelve ownership links without consumer arrows", { timeout: 30_000 },
+  async function (this: InstalledBaselineWorld) {
+    const baseline = baselineSchema.parse(reviewedBaseline("full"));
+    const items = [...baseline.components, ...baseline.interfaces, ...baseline.resources];
+    const components = new Map(baseline.components.map((item) => [item.id, item]));
+    const ownership: string[] = [];
+    for (const [kind, records] of [["provides", baseline.interfaces], ["owns", baseline.resources]] as const) {
+      for (const item of records) {
+        if (item.owner.value === null) continue;
+        const owner = components.get(item.owner.value);
+        assert.ok(owner);
+        ownership.push(`${owner.name}, ${owner.id} ${kind} ${item.name}, ${item.id}. Proposed.`);
+      }
+    }
+    assert.equal(items.length, 18);
+    assert.equal(ownership.length, 12);
+    assert.ok(baseline.interfaces.every((item) => item.allowedConsumers.value === null));
+    await driver(this).expectCompleteDiagram(items.map(({ id, name }) => [id, name]), ownership);
+  });
+
+Then("all twenty-one installed Rules entries can be expanded", { timeout: 60_000 }, async function (this: InstalledBaselineWorld) {
+  const baseline = baselineSchema.parse(reviewedBaseline("full"));
+  assert.equal(baseline.rules.length, 21);
+  await driver(this).inspectEveryRule(baseline.rules.map(({ id, name }) => [id, name]));
 });
 
 After({ tags: "@baseline-viewer and @packaged", timeout: 30_000 }, async function (this: InstalledBaselineWorld) {

@@ -32,7 +32,7 @@ characterization tests.
 | BV-04 | Five browser scenarios failed actual assertions: flat components did not form the recorded groups, and all four excessive-work cases lacked a display-limit error. | Nine focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-05 | Four browser scenarios failed actual assertions because interface/resource nodes and their relationships were absent. | Five focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-06 | Nineteen browser scenarios failed explicit assertions for missing controls or record fields. Four existing Escape/focus cases passed. | Twenty-four focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
-| BV-07 | All 13 installed-host scenarios failed because the retired operations still returned registered-handler responses. | Removal pending. |
+| BV-07 | All 13 installed-host scenarios failed because the retired operations still returned registered-handler responses. | Core removal and focused tests pass. Final candidate and installed-release checks are in progress. |
 
 ## BV-01
 
@@ -381,6 +381,28 @@ staged tests, and the 30 unchanged harness files matched the source archive.
 The overlay passed TypeScript checks. The report is
 `work/choom/test-results/packaged/run-gRW5x9/`, with retained evidence under
 `work/evidence/bv07-retirement-red/` in the Linux cache.
+
+Five native read characterizations passed before extraction. They cover empty,
+BOM, CRLF, Unicode, exact-limit and excessive content; safe wire failures;
+invalid requests and UTF-8; unchanged input and sibling bytes; replaced file
+and directory identities; and Unix links and FIFOs. A new host-interface test
+then failed with responses from all 13 registered handlers. It passed after
+their registrations and permissions were removed.
+
+The reader now owns its handles for one read. It retains the file-type, byte,
+identity, metadata-change, and UTF-8 checks. The storage service, writable caches,
+startup/shutdown cleanup, repository access, analyzer processes, and all write
+operations are gone. The local main-window read and open-dialog permissions
+remain. Native read paths keep their existing rules; the documentation now
+distinguishes those rules from the stricter frontend path validation.
+
+After extraction, all eight retained Rust tests passed. Six interface assertions
+failed before the read contract stopped accepting retired write-stage failures.
+TypeSpec outputs were regenerated, and 23 focused TypeScript boundary tests
+then passed. Early focused command results were observed directly in tool output;
+`/tmp/choom-bv07-evidence/sequence.md` records that sequence and is not a raw log.
+Independent source review and the manager's native-boundary review found no
+actionable defects. Final candidate and ordinary installed-release results follow.
 
 ## Release checks
 

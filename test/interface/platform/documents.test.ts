@@ -8,14 +8,6 @@ import { documentContracts } from "../../../src/platform/documents-contract.ts";
 import type { DocumentFileOperations } from "../../../src/platform/generated/contracts.ts";
 
 const schemas = new Ajv2020({ schemas: [contracts] });
-const definitions = {
-  createDocumentSnapshot: { request: "CreateDocumentSnapshotRequest", outcome: "CreateDocumentSnapshotOutcome" },
-  readDocumentSnapshot: { request: "DocumentSnapshotRequest", outcome: "ReadDocumentTextOutcome" },
-  releaseDocumentSnapshot: { request: "DocumentSnapshotRequest", outcome: "ReleaseDocumentSnapshotOutcome" },
-  readDocumentFile: { request: "ReadDocumentFileRequest", outcome: "ReadDocumentTextOutcome" },
-  exportDocument: { request: "ExportDocumentRequest", outcome: "ExportDocumentOutcome" },
-  retryDocumentCleanup: { request: "RetryDocumentCleanupRequest", outcome: "RetryDocumentCleanupOutcome" },
-} as const;
 
 type RuntimeContracts = {
   [Name in keyof typeof documentContracts]: (
@@ -29,8 +21,8 @@ type LogicalAccess = {
 };
 
 test("selected-file validation and asynchronous access follow the native read contract", () => {
-  expectTypeOf<RuntimeContracts>().toEqualTypeOf<Pick<DocumentFileOperations, "readDocumentFile">>();
-  expectTypeOf<LogicalAccess>().toEqualTypeOf<Pick<DocumentFileOperations, "readDocumentFile">>();
+  expectTypeOf<RuntimeContracts>().toEqualTypeOf<DocumentFileOperations>();
+  expectTypeOf<LogicalAccess>().toEqualTypeOf<DocumentFileOperations>();
 });
 
 test("browser unavailability and closed read requests conform to the generated schema", async () => {
@@ -46,17 +38,23 @@ test("browser unavailability and closed read requests conform to the generated s
   }
 });
 
-test("shared native wire cases retain all native contracts until native retirement", () => {
+test.each([
+  ["export", "io-error"], ["cleanup", "io-error"],
+  ["storage", "invalid-snapshot"], ["storage", "snapshot-limit"],
+  ["storage", "destination-exists"], ["storage", "cleanup-failed"],
+])("the read contract rejects a retired failure: %s/%s", (stage, code) => {
+  const outcome = { status: "failure", stage, code, message: "Old operation failure", durationMs: 0 };
+  expect(documentContracts.readDocumentFile.outcome.safeParse(outcome).success).toBe(false);
+  expect(schemas.compile({ $ref: "ReadDocumentTextOutcome.json" })(outcome)).toBe(false);
+});
+
+test("the native and frontend read boundary share their wire fixtures", () => {
   for (const sample of nativeCases) {
-    expect(Object.hasOwn(definitions, sample.operation)).toBe(true);
-    const operation = sample.operation as keyof DocumentFileOperations;
-    const definition = definitions[operation];
+    expect(sample.operation).toBe("readDocumentFile");
     const validRequest = !(sample.outcome.status === "failure" && sample.outcome.code === "invalid-request");
-    expect(schemas.compile({ $ref: `${definition.request}.json` })(sample.request)).toBe(validRequest);
-    expect(schemas.compile({ $ref: `${definition.outcome}.json` })(sample.outcome)).toBe(true);
-    if (operation === "readDocumentFile") {
-      expect(documentContracts.readDocumentFile.request.safeParse(sample.request).success).toBe(validRequest);
-      expect(documentContracts.readDocumentFile.outcome.safeParse(sample.outcome).success).toBe(true);
-    }
+    expect(schemas.compile({ $ref: "ReadDocumentFileRequest.json" })(sample.request)).toBe(validRequest);
+    expect(schemas.compile({ $ref: "ReadDocumentTextOutcome.json" })(sample.outcome)).toBe(true);
+    expect(documentContracts.readDocumentFile.request.safeParse(sample.request).success).toBe(validRequest);
+    expect(documentContracts.readDocumentFile.outcome.safeParse(sample.outcome).success).toBe(true);
   }
 });

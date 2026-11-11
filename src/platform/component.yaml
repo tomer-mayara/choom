@@ -11,9 +11,7 @@ artifacts:
     - path: ../../.dependency-cruiser.cjs
   contracts:
     - path: ../../cookbook/interfaces/desktop.tsp
-    - path: ../../cookbook/interfaces/desktop-analyzer.tsp
     - path: ../../cookbook/interfaces/desktop-documents.tsp
     - path: ../../cookbook/interfaces/document-dialogs.tsp
     - path: ../../cookbook/interfaces/documents.md
-    - path: ../../cookbook/interfaces/desktop-analyzer.md
     - path: ../../cookbook/interfaces/desktop.md

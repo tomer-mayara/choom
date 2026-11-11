@@ -1,27 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Core window operations, file and directory selection, bounded repository reads, owned analyzer jobs, and document storage.",
+  "description": "Core window operations, baseline file selection, and bounded selected-file reads.",
   "local": true,
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "dialog:allow-open",
-    "dialog:allow-save",
-    "dialog:allow-message",
-    "allow-repository-open",
-    "allow-repository-read-text",
-    "allow-repository-resolve-paths",
-    "allow-repository-close",
-    "allow-depcruiser-prepare",
-    "allow-depcruiser-run",
-    "allow-depcruiser-cancel",
-    "allow-depcruiser-release",
-    "allow-document-snapshot-create",
-    "allow-document-snapshot-read",
-    "allow-document-snapshot-release",
-    "allow-document-file-read",
-    "allow-document-export",
-    "allow-document-cleanup"
+    "allow-document-file-read"
   ]
 }

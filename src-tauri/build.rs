@@ -1,23 +1,8 @@
 fn main() {
     let windows_msvc = std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
         && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc");
-    let mut attributes =
-        tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[
-            "repository_open",
-            "repository_read_text",
-            "repository_resolve_paths",
-            "repository_close",
-            "depcruiser_prepare",
-            "depcruiser_run",
-            "depcruiser_cancel",
-            "depcruiser_release",
-            "document_snapshot_create",
-            "document_snapshot_read",
-            "document_snapshot_release",
-            "document_file_read",
-            "document_export",
-            "document_cleanup",
-        ]));
+    let mut attributes = tauri_build::Attributes::new()
+        .app_manifest(tauri_build::AppManifest::new().commands(&["document_file_read"]));
     if windows_msvc {
         // The resource compiler links Tauri's default manifest only into app binaries.
         // Embed it through the linker so Cargo's test executables also select v6.

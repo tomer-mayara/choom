@@ -3,7 +3,7 @@ import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import Ajv2020 from "ajv/dist/2020.js";
 import contracts from "../../../cookbook/interfaces/generated/contracts.schema.json";
 import * as dialogs from "../../../src/platform/document-dialogs.ts";
-import type { DiagramDialogOperations } from "../../../src/platform/generated/contracts.ts";
+import type { BaselineDialogOperations } from "../../../src/platform/generated/contracts.ts";
 
 const schemas = new Ajv2020({ schemas: [contracts] });
 
@@ -33,11 +33,11 @@ afterEach(() => {
 
 test("baseline selection binds the retained file-selection contract", () => {
   expectTypeOf<ReturnType<typeof dialogs.selectBaselineFile>>()
-    .toEqualTypeOf<Promise<ReturnType<DiagramDialogOperations["selectDiagramFile"]>>>();
+    .toEqualTypeOf<Promise<ReturnType<BaselineDialogOperations["selectBaselineFile"]>>>();
 });
 
 test("the desktop opens a single baseline file and a browser opens no native dialog", async () => {
-  const validateSelection = schemas.compile({ $ref: "DiagramFileSelection.json" });
+  const validateSelection = schemas.compile({ $ref: "BaselineFileSelection.json" });
   expect(validateSelection(await dialogs.selectBaselineFile())).toBe(true);
   expect(requests).toEqual([{ command: "plugin:dialog|open", payload: { options: {
     directory: false, multiple: false, title: "Open Baseline",
