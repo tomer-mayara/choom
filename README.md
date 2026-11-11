@@ -4,6 +4,12 @@ A Bun / TypeScript / React workspace with a Tauri desktop shell. Choom analyzes
 declared repository components and displays their imports with React Flow and
 ELK. Portable YAML keeps the semantic architecture independent of rendering.
 
+The proposed [LLM-led architecture analysis design](docs/design/llm-led-architecture-analysis.md)
+defines a three-step review of component isolation and granularity: establish an
+architecture baseline, investigate boundary problems, and overlay findings and
+proposed changes. It specifies tools, LLM responsibilities, saved evidence, and
+outputs for whole-repository, regional, and change analysis.
+
 ## Set up
 
 Use **Bun 1.4.4**, **Node.js 26.13.0**, and **Rust 1.99.1**. Versions are pinned in `.bun-version`, `.node-version`, `.nvmrc`, `package.json`, and `rust-toolchain.toml`. Bun manages packages and unit tests; Node runs development CLIs. Rustup installs the pinned Rust toolchain when a Cargo command runs.

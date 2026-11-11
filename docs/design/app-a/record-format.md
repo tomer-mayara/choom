@@ -1,0 +1,269 @@
+# Stage 4 and 5 review records
+
+Read this with the [stage 4 cookbook](step-4-cookbook.md) or
+[stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
+to the shared publisher. The publisher is a trusted tool. Review folders contain
+data only; do not generate or execute a run-specific save script.
+
+## Review folder
+
+The LLM prepares these **nine files**, in a new folder outside `CHOOM_WORK`.
+The operator saves them if the LLM cannot write there. Do not ask the operator
+to classify source files or fill analysis records. Return complete records,
+not patches, ellipses, or example IDs. Keep the full prompt and response.
+
+| File | Contents |
+| --- | --- |
+| `baseline.proposed.yaml` | Complete proposed baseline. |
+| `discovery.proposed.yaml` | Complete working discovery; no `baselineRef` yet. |
+| `entry-analysis.yaml` | Complete updated entry analysis. |
+| `code-mapping.json` | Every inventory file, with one owner or an explicit unknown owner. |
+| `resource-access.json` | Source-supported resource observations. |
+| `llm/analysis-prompt.md` | Full instructions supplied to the LLM. |
+| `llm/analysis-response.md` | Full response, including the exact text of all five candidate records above. |
+| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`. Use `unknown` for values not exposed; settings can be a mapping or `unknown`. |
+| `llm/review-scope.json` | `formatVersion: 1`, `runRef`, `snapshotRef`, `attemptId`, `suppliedArtifactRefs`, `limits`. The last two are nonempty string arrays. |
+
+The folder must contain exactly these files. The full response can use fenced
+blocks for the five records. Their contents must match the individual files.
+Do not write into the attempt or change the working drafts before publication.
+
+## IDs and evidence
+
+Read IDs from the saved manifest and handoff; do not copy an earlier run's IDs.
+For attempt `s4-001`, the publisher registers `entry-analysis.yaml` as
+`s4-001-entry-analysis`. Each other attempt file uses
+`s4-001-file@` followed by `encodeURIComponent(relativeFilename)`.
+For example, `code-mapping.json` becomes `s4-001-file@code-mapping.json`.
+Stage 5 uses the same rule with its own attempt ID.
+
+Keep IDs for continuing components, candidates, mapped units and observations.
+Prefix new analysis IDs with the current attempt ID. Model IDs must not collide
+with artifact IDs, source-range IDs, or other current model IDs. A baseline item
+ID uses lowercase letters, digits and hyphens.
+
+An `evidenceRefs` field is a nonempty array of registered artifact IDs, proposed
+current-attempt artifact IDs, saved source-range IDs, or exact JSON Pointers into
+those records. Use `/` and `~` escaping from JSON Pointer. References must resolve
+against the saved records. A filename alone is not an evidence reference.
+`subjectRefs` identifies the files, components, statements or earlier issues
+being discussed; it is not a substitute for `evidenceRefs`.
+
+Use saved numbered excerpts for source claims. An excerpt being available does
+not mean it was read by the LLM. A source review record must use the exact saved
+excerpt ID, snapshot ID, hash and range. Request another excerpt for a different
+range. Preserve earlier questions and gaps unchanged; append linked resolution
+notes instead of deleting or rewriting history.
+This preservation rule applies to those historical records, not to current
+explanations. Rewrite the selected mapping/resource `limits`, reachability
+reason and discovery overview when they become stale. Recompute current counts
+from the selected records. Do not keep an obsolete count or a completed stage
+described as future work beside a newly appended correction.
+
+## Baseline
+
+Top-level fields are exactly `formatVersion: 1`, `id`, `parentId: null`,
+`components`, `interfaces`, `resources`, and `rules`. Keep the initial baseline
+ID. All four collections are arrays; at least one component must have supported
+evidence for this publication profile. Other collections can be empty.
+
+An intent statement has exactly `value`, `status: proposed`, and `evidenceRefs`.
+Unknown intent uses `value: null` and a question or gap whose `subjectRefs`
+includes the item ID or a field such as `interface-id.allowedConsumers`.
+Publication does not accept intent.
+
+| Collection | Exact item fields |
+| --- | --- |
+| `components` | `id`, `name`, `purpose`, `membership`, `groupingReason`; optional `parent`. |
+| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`. |
+| `resources` | `id`, `name`, `identity`, `owner`, `accessRules`. |
+| `rules` | `id`, `name`, `subject`, `expected`, `check`. |
+
+`id` and `name` are strings. Other fields use intent statements:
+
+- Component `purpose` and `groupingReason` values are nonempty text. `parent`
+  names another component or is null; parent cycles are invalid.
+- `membership.value` has `paths` and optional `excludePaths`. Each selector is
+  an exact snapshot-relative path or a subtree ending in `/**`. Other glob forms
+  are unsupported. Selectors must assign at most one direct owner. Exclude a
+  child's files from its parent; containment does not duplicate ownership.
+- An `owner` value names a component, or is null with an explained gap.
+- `publicAccess.value` lists access points as nonempty strings.
+  `allowedConsumers.value` is a nonempty list of component IDs, or null when the
+  complete positive policy is unknown. Observed callers do not establish it.
+- `promises.value` has exactly `behavior`, `data`, `errors`, and `lifecycle`.
+  Each is text, or null with a question or gap. The entire promises value may be
+  null when unsupported.
+- Resource `identity` and `accessRules` values are text or null.
+- Rule `subject`, `expected`, and `check` values are objects or null. State the
+  affected entities, intended restriction, and proposed check method in those
+  objects. A proposed check is not a passed tool result.
+
+## Entry analysis
+
+Use these fields:
+
+| Field | Required value |
+| --- | --- |
+| `formatVersion`, `kind`, `snapshotRef` | `1`, `entry-analysis`, current snapshot ID. |
+| `previousEntryAnalysisRef` | The selected entry analysis in `discovery.before.yaml`. |
+| `planRef`, `knipRunsRef` | Preserve the prior selected references. |
+| `candidates` | Preserve prior items unchanged and in order. Append supported candidates under the restrictions below. |
+| `inspectionPriorities` | Preserve the prior list exactly. |
+| `reviewedFiles` | New source ranges actually read in this stage. Earlier ranges stay in the predecessor chain. |
+| `questions`, `gaps` | Preserve earlier records and append new evidence-supported records. |
+| `llmReview` | `recorded`. |
+| `knipAssessment` | `{action: reuse, reason, evidenceRefs}`; explain why the saved analysis remains applicable. |
+| `reachability` | The context-specific graph selection described below. |
+| `behaviorEntries` | Source-supported behavior entry records. May be empty when none were established. |
+
+A `reviewedFiles` item has `id`, `snapshotRef`, `path`, `sha256`, and
+`lines: [first, last]`. It must match a saved excerpt. An inspected range does not
+establish complete file coverage or runtime execution.
+
+Set `reachability` to:
+
+```text
+status: assessed-with-limits
+method: context-specific-source-graph-traversal
+dependenciesRef: selected graph-results artifact ID
+reason: explanation of scope and limits
+contexts: [{id: context ID, resultRef: graph artifact ID + '#/contexts/N/reachability'}]
+```
+
+Use the graph context order and zero-based `N`. Do not combine incompatible
+contexts. The deterministic graph result owns the traversal, not the LLM.
+
+Each behavior entry has `id`, `kind`, `expression`,
+`source: {path, lines: [first, last]}`, `fileEntryRefs`, `componentRef`, and
+`evidenceRefs`. File entry references must name retained candidates. The source
+must belong to that component and lie within a cited reviewed range.
+
+New candidates may describe unresolved expressions, non-JavaScript/TypeScript
+entries outside the graph profile, or JavaScript/TypeScript files already in the
+saved graph roots. They still need evidence and explicit scope limits. They do
+not change saved entry patterns or turn an unresolved candidate into a root.
+
+This publisher preserves tool settings and the graph root set. If those need to
+change during Stage 4 review, stop before publication and return to the affected
+earlier cookbook with fresh attempt IDs. Once Stage 4 has been published, these
+helpers cannot rewind the model. A later root/settings change needs a new run
+with a new capture and corrected settings. That capture can use the saved
+snapshot as its source if the original exclusions and limits remain explicit.
+Do not publish facts that depend on analysis with different inputs.
+
+## Code mapping
+
+Use `formatVersion: 1`, `kind: code-mapping`, `snapshotRef`, `scope`, `units`,
+and a nonempty `limits` string array. The scope has:
+
+```text
+inventoryRef: current inventory artifact ID
+basis: all-inventoried-regular-files
+unitKind: file
+inspectionMeaning: explanation of reviewed vs unreviewed
+selectedEntryAnalysisRef: current attempt entry-analysis ID
+historicalEntryAnalysisRefs: predecessor IDs, newest first, following the whole chain
+```
+
+Every inventory file appears exactly once in `units`. Each unit has `id`,
+`path`, `sha256`, nonempty `roles`, `owner`, `membershipRef`, `inspection`,
+`reason`, and nonempty `evidenceRefs`.
+
+An owner is a component ID or null. With an owner, `membershipRef` points to that
+component's membership statement in the proposed baseline. With no owner, it is
+null and `reason` explains the uncertainty. Exact ownership must agree with all
+membership selectors. `inspection` is `reviewed` if any range for that path occurs
+in the selected entry-analysis chain; otherwise it is `unreviewed`. This flag is
+not full-file coverage. Keep the ranges in their source review records.
+
+Ownership and inspection answer different questions. A declared input can have
+an owner without an inspected body; a reviewed shared contract can still have
+an unknown exclusive owner. Shared artifact links do not assign ownership.
+A mixed test can follow its main workflow owner while exercising another
+component. Explain unknown ownership and deferred inspection using the checked
+scope and missing evidence, without a catch-all component or unused-code claim.
+
+## Resource observations
+
+Use `formatVersion: 1`, `kind: resource-observations`, `snapshotRef`, `scope`,
+`observations`, and a nonempty `limits` string array. Scope has
+`method: source-inspection`, `reviewedFilesRef` pointing to the current entry
+analysis's `#/reviewedFiles`, and `historicalEntryAnalysisRefs` as in the mapping.
+
+Each observation has `id`, `componentRef`, `source: {path, lines: [first, last]}`,
+`operation`, `target`, `context`, and nonempty `evidenceRefs`. `target` has
+`expression`, `resourceRef` (a modeled resource ID or null), and
+`identity: symbolic` or `unknown`. The actor must own the source file. The source
+site must lie within a cited reviewed range. Describe only the inspected access;
+do not infer a complete mutation history or exclusive access policy.
+Syntax-query matches identify sites to inspect. Establish the actor, operation
+and source context before adding an observation; a registration inside a
+deferred function body is not automatically a module-start effect. These
+records remain source observations, not runtime verification.
+
+## Discovery
+
+Top-level fields are exactly `formatVersion: 1`, `kind: architecture-discovery`,
+`runRef`, `entryAnalysisRef`, `codeMappingRef`, `dependenciesRef`,
+`resourceAccessRef`, `overview`, `inspectedPaths`, `questions`, and `gaps`.
+Leave `baselineRef` absent until stage 6.
+
+`overview` has `text` and nonempty `evidenceRefs`. `inspectedPaths` contains source
+paths actually reviewed. Each has `id`, `description`, `entryPointRef` naming a
+behavior entry, nonempty `componentIds`, `evidenceRefs`, `limits`, and `steps`.
+Each step has `action` and `evidenceRefs`. Include the entry's owner among the
+path's components. These are source inspections, not runtime traces.
+
+Questions have `id`, `subjectRefs`, `text`, and `evidenceRefs`. Gaps have `id`,
+`kind`, `subjectRefs`, `reason`, and `evidenceRefs`. Both lists must be identical
+to the lists in the current entry analysis. Keep unsupported languages, missing
+inputs, deferred areas and unknown ownership visible.
+The lists also retain history and linked clarification notes. Their lengths
+are record counts, not counts of unresolved questions or defects.
+
+Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
+selects its new mapping, resource observations and entry analysis. Source ownership
+changes must be reflected in paths, behavior entries and resource actors.
+
+## Check, publish and verify
+
+Apply the [review before publication](start-here.md#review-before-publication)
+guidance to the complete proposed packet before `finish`. Check the meaning of
+the source claims and current prose as well as the record structure. Include
+mapping/resource limits, the overview, selected manifest summaries and all
+current counts. Helper checks cannot detect an obsolete explanatory sentence.
+Keep full prompts and responses when correcting a packet before publication.
+
+Set `CHOOM_REVIEW` to the canonical absolute review-folder path. Keep the current
+stage's environment from its cookbook. For stage 4:
+
+```sh
+node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" check 4 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" finish 4 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" verify 4
+```
+
+For stage 5, replace each `4` with `5`. Run commands one at a time and stop on
+failure. `check` is read-only. Correct the separate candidate packet and repeat
+`check` until it passes; do not change saved evidence to force a pass.
+
+`finish` checks collected receipts, source digests, the review packet, references,
+source ranges, ownership and graph traversals. It copies the packet into the
+attempt, registers attempt files by digest, replaces the working baseline and
+discovery, and writes the run manifest last. It marks `componentRecovery` or
+`remainingCode` complete. It does not accept intent or verify semantic quality.
+`verify` checks the completed publication without writing files.
+
+Only one publisher may operate on a run at a time. Keep failed attempts and
+receipts. If `finish` fails after saving files, inspect the reported state and use
+a fresh attempt after correcting the cause; it is not a resumable transaction.
+Do not rerun a successful `finish` or change its evidence. A leftover publication
+lock or temporary file needs inspection before proceeding.
+After publication, use [correction guidance](start-here.md#record-a-correction)
+for a minor explanatory error. Do not change selected records, reopen completed
+Stage 5, or generate an in-place finalizer. Stage 5 can still refine the Stage 4
+proposal through its normal publication. A material ownership, interface, root
+or policy correction needs a new run when the next unpublished stage cannot
+handle it. If that run uses a saved snapshot as its source, preserve the original
+capture exclusions and limits in the new scope record.
