@@ -7,11 +7,11 @@ for commands, results, tested revisions, and environment limits.
 
 | Area | Local evidence source | Remaining work |
 | --- | --- | --- |
-| Baseline model | BV-01 validates the reviewed examples and checks statement shapes, references, parent cycles, and membership selectors. Generated contracts and runtime interface tests cover the public model. | BV-06 exposes every recorded field and reference; its browser and DOM checks pass. No remaining model work. |
-| File input | BV-02 covers bounded YAML parsing, UTF-8 input, format versions, model errors, and explicit legacy-diagram rejection. Existing native file tests cover regular-file and identity checks. | Preserve those native checks during BV-07 removal. |
-| Baseline opening | BV-03 passes browser and ordinary installed Linux opening, view preservation, cancellation, and retry checks. See the verification record for artifact identities and limits. | Repeat installed acceptance for the final BV-07 release. |
-| Diagram | BV-04 through BV-06 pass hierarchy, item, relationship, details, and keyboard checks. Complete viewer measurements pass at 500 records, 2,000 links, and 16 levels. | Repeat final browser acceptance after BV-07; see the verification record for measurement scope. |
-| Native shell | Rust and native contract tests check the current file boundary. The [installed acceptance guide](../docs/change-requests/BV-native-acceptance.md) defines the ordinary Linux/X11 route with an empty product `PATH`. | Retain results for each tested release and platform. BV-07 removes unused repository, analyzer, snapshot, and export operations. |
+| Baseline model | BV-01 checks the model and reviewed examples. BV-06 exposes every recorded field and reference; its browser and DOM checks pass. | No remaining model implementation work. |
+| File input | BV-02 covers bounded YAML parsing, UTF-8 input, format versions, model errors, and legacy rejection. BV-07 retains native file-type, byte, identity, and UTF-8 checks. | No remaining file-input implementation work. |
+| Baseline opening | The final browser suite and ordinary installed Linux release pass opening, view preservation, cancellation, and retry checks. | Installed macOS, Windows, Wayland, and portal observations remain separate platform work. |
+| Diagram | The final browser suite passes hierarchy, relationships, full details, and keyboard checks. Measurements retain 500 records, 2,000 links, and 16 levels. | See the verification record for workload and timing limits. |
+| Native shell | Eight Rust tests and 18 ordinary installed Linux scenarios pass. All 13 retired commands are unavailable; the final release opens the full baseline with an empty product `PATH`. | Complete required PR checks and human constraint review before merge. Follow the [installed acceptance guide](../docs/change-requests/BV-native-acceptance.md) for other platforms. |
 | Production observations | All components share one unmeasured [OpenSLO Service](observability/service.yaml). | Define a released workload and a collection route before proposing an SLI, SLO, window, or alert. |
 
 Browser opening tests use the actual file reader, decoder, layout, and renderer.
@@ -26,11 +26,12 @@ need separate installed-app evidence; an unavailable route is a limit, not a pas
 - [x] BV-05: show interfaces, resources, ownership, and recorded consumer links.
 - [x] BV-06: expose complete record details, rules, status, references, and
   keyboard behavior. Keep structured rules as recorded data.
-- [ ] BV-07: remove unused native commands and permissions, then recheck the
+- [x] BV-07: remove unused native commands and permissions, then recheck the
   assembled read-only route.
-- [ ] Finish the [plan's final checks](../docs/design/cr-baseline-viewer-plan.md#final-verification),
-  including representative workload limits and platform evidence. Record any
-  deferred checks without treating them as passed.
+- [x] Run the [plan's final local checks](../docs/design/cr-baseline-viewer-plan.md#final-verification),
+  including representative workloads and installed Linux acceptance. The
+  verification record states the platform and remote CI limits.
+- [ ] Complete required remote checks and human review before merging the drafts.
 
 TypeSpec compilation and generated-output checks do not prove runtime behavior.
 Structural schemas supplement semantic validation and operation tests. Layout

@@ -1,8 +1,9 @@
 # Baseline viewer verification
 
 This record tracks the seven tickets in the [baseline viewer plan](../design/cr-baseline-viewer-plan.md).
-The stack is work in progress. Passing a contract, build, or lint check does not
-establish browser or installed-app behavior.
+All seven tickets are implemented and locally verified. Passing a contract,
+build, or lint check alone does not establish browser or installed-app behavior.
+The draft PRs still require repository review and successful remote checks before merge.
 
 ## Environment
 
@@ -32,7 +33,7 @@ characterization tests.
 | BV-04 | Five browser scenarios failed actual assertions: flat components did not form the recorded groups, and all four excessive-work cases lacked a display-limit error. | Nine focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-05 | Four browser scenarios failed actual assertions because interface/resource nodes and their relationships were absent. | Five focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-06 | Nineteen browser scenarios failed explicit assertions for missing controls or record fields. Four existing Escape/focus cases passed. | Twenty-four focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
-| BV-07 | All 13 installed-host scenarios failed because the retired operations still returned registered-handler responses. | Core removal and focused tests pass. Final candidate and installed-release checks are in progress. |
+| BV-07 | All 13 installed-host scenarios failed because the retired operations still returned registered-handler responses. | All 13 retired operations are unavailable. Full local checks and 18 ordinary installed Linux scenarios pass. Reviewed and complete. |
 
 ## BV-01
 
@@ -289,7 +290,7 @@ Completed candidate checks:
 
 PR #21's macOS and Windows jobs passed. Its web job failed to resolve the Ubuntu
 package mirror during setup; the Linux desktop job timed out at the same setup
-step. The web retry failed at the same mirror lookup; a Linux desktop retry is running. These failures did not execute product tests. PR #22 has the same web setup failure; its macOS and Windows jobs passed.
+step. The web retry failed at the same mirror lookup. These failed setup steps did not execute product tests. PR #22 also encountered the web setup failure; its macOS and Windows jobs passed. Current retry status is available on the PR checks.
 
 ## BV-06
 
@@ -400,12 +401,78 @@ After extraction, all eight retained Rust tests passed. Six interface assertions
 failed before the read contract stopped accepting retired write-stage failures.
 TypeSpec outputs were regenerated, and 23 focused TypeScript boundary tests
 then passed. Early focused command results were observed directly in tool output;
-`/tmp/choom-bv07-evidence/sequence.md` records that sequence and is not a raw log.
+`reports/baseline-viewer/bv-07/sequence.md` records that sequence and is not a raw log.
 Independent source review and the manager's native-boundary review found no
-actionable defects. Final candidate and ordinary installed-release results follow.
+actionable defects.
+
+Completed candidate checks:
+
+- `bun run check`: 181 native unit tests, 39 DOM tests, 18 native Cucumber
+  scenarios with 57 steps, and 25 interface tests passed. Contract generation,
+  types, lint, cookbook links, dependency boundaries, unused-code, and duplicate
+  checks passed.
+- The final browser suite passed 57 scenarios and 382 steps. It covers the full
+  and empty baselines, unknown owners, recorded consumers, accepted statements,
+  repeated names, all record kinds, view preservation, and keyboard behavior.
+- `bun run check-types`, `bun run build`, and `bun run habit-hooks --all` passed.
+  The snooze file is empty; the existing large deferred ELK chunk warning remains.
+- `bun run test:rust` passed all eight retained tests. Cargo formatting and
+  Clippy passed. `bun run desktop:build` produced the macOS app and DMG.
+- Document inspection checked 267 local link targets and 246 saved source links.
+  Every target exists. External websites and Markdown anchors were not fetched.
+  `git diff --check` passed.
+
+The macOS DMG SHA-256 is
+`7d6e23aaa70af17a8d40d9145a951e98a61ebfb9b99ad3cf21c86a89e977c197`;
+its app executable SHA-256 is
+`52e37abf7d4a07f3976c77c243f6802e00853fc951e8121ae72405f2b0d60337`.
+This is build evidence, not an installed macOS UI check.
+
+### Final installed Linux release
+
+The ordinary Ubuntu 24.04 ARM64 release passed all 18 scenarios and 94 steps in
+29.355 seconds. Run `run-izotIy` used the real native picker and file reader,
+an empty product runtime PATH, and a working directory outside the checkout.
+It checked all 18 reviewed items, exactly 12 ownership links, no consumer arrows,
+and expansion of all 21 rules. Cancellation and invalid files preserved the
+view and selected bytes. All 13 retired commands returned host ACL rejections.
+
+To run each new test before committing, the package was built from the exact
+staged Git tree `daa12b2720f25e73cd1af8f3b38528cad3ed269f`. After testing, that
+same tree was committed as `c0bc7254793d413297ce23f727971b4a4aee4abc`.
+The original report labels the build as a precommit tree, not a commit.
+
+Recorded SHA-256 identities:
+
+- Source archive: `b751c3ec27c6972e73ed2306fa0ba2aca8ef67950ab2c5acf8403fb5ef0bff2d`.
+- Release package: `be38998aa7c942f2903977096c4d4e3c9593930a79fe8b49a93b19e430e3481d`.
+- Extracted and installed executable: `e173d4b6d115853735f424896f6beedd81625b9fd47ec481f49b02f7b338717a`.
+- Staged binary diff from parent `e6bcf8bc2e9fa16b76855b1bd875ced14d20d874`:
+  `fde00fb14b8e2e7de93fd29abf6561015639e671edf5c8535e1f508af5e82f68`.
+
+All 222 source files and all 41 harness files matched the archive. The manager
+also checked every harness file against the committed tree. The installed
+executable matched the package before and after the run. No app, driver, or Xvfb
+process remained after cleanup. The package is an unsigned local Linux/X11 build.
+
+The Linux cache retains the archive, package, identities, logs, reports, and
+screenshots under
+`work/evidence/products/tree-daa12b2720f25e73cd1af8f3b38528cad3ed269f/`.
+Its `linux-verification.json` records the command rejections and comparisons.
+A separate commit correlation record preserves the original precommit evidence.
+Local check logs are also retained in `reports/baseline-viewer/bv-07/`.
 
 ## Release checks
 
-Final installed-app acceptance and repository checks after BV-07 remain pending.
-Complete viewer measurements passed at the supported limits. Each PR must report its own completed checks
-and remaining limits. Constraint changes still need human review before merge.
+All local release checks above passed, and complete viewer measurements retained
+the supported limits. This verifies the browser and the ordinary Linux/X11
+installed route. Installed macOS, Windows, Wayland, desktop-portal, and signed
+release behavior remain unverified; builds and browser results do not replace
+those observations.
+
+Remote CI is separate. PRs #18–#20 passed all jobs. Later web/Linux jobs encountered
+Ubuntu mirror DNS failures before product checks. PR #23 also hit the unchanged
+Windows analyzer test already recorded above; BV-07 removes that analyzer and
+test. Retry and final-stack status belong to the PR checks. No remote setup
+failure is counted as a behavior pass. Human constraint review and required
+repository checks remain necessary before merge.

@@ -1,6 +1,6 @@
 # Baseline viewer change plan
 
-Status: **Implementation in progress as seven stacked draft PRs.**
+Status: **BV-01–BV-07 implemented and locally verified. The PR stack remains in draft.**
 
 Reviewed: **2026-11-10**
 
