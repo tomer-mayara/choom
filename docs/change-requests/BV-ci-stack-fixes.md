@@ -1,17 +1,26 @@
 # Baseline viewer CI follow-up
 
-On 2026-11-11, BV-01 through BV-03 had passing CI. BV-04 through BV-07 had
-Ubuntu package setup failures before product checks. BV-06 also failed an
-existing Windows test. This follow-up starts at BV-04 and is merged into the
-later branches. It preserves the original commits and release evidence.
+On 2026-11-11, BV-01 had passing PR checks, but a push run failed an existing
+Windows test. The same failure appeared on BV-06. BV-04 through BV-07 had Ubuntu
+package setup failures before product checks. This follow-up starts at BV-01
+and is merged through all seven branches. It preserves the original commits
+and release evidence.
 
 ## Changes
 
-The Ubuntu runner's mirror list tried the Azure archive, which repeatedly failed
-DNS lookup and exhausted the jobs' time limits. Both Linux jobs now use the
-official Ubuntu HTTPS archive. APT must fail if its index update is incomplete,
-including when Playwright invokes APT. Package lists, signature checks, test
-commands, and job time limits stay in place. The
+The Ubuntu runner's mirrors repeatedly failed DNS lookup and exhausted the jobs'
+time limits. Switching from the Azure mirror to archive.ubuntu.com did not fix
+this: Canonical reported a
+[DNS outage](https://status.canonical.com/rss), also reported in the
+[runner-images issue](https://github.com/actions/runner-images/issues/15296).
+Both Linux jobs now use the HTTPS Ubuntu mirror at
+[Kernel.org](https://mirrors.kernel.org/), which uses independent DNS. Kernel.org
+is listed in Ubuntu's
+[official mirror registry](https://launchpad.net/ubuntu/+archivemirrors).
+The change only replaces the runner's mirror-list URL. Ubuntu suites and signing
+keys stay in place. APT must fail if its index update is incomplete, including
+when Playwright invokes APT. Package lists, signature checks, test commands, and
+job time limits stay in place. The
 [runner image setup](https://github.com/actions/runner-images/blob/main/images/ubuntu/scripts/build/configure-apt-sources.sh)
 defines the mirror-list path.
 
@@ -34,17 +43,24 @@ when the fixes are merged forward.
 
 ## Validation
 
-- All 65 Rust tests passed on macOS after the fixture correction. Cargo
-  formatting and Clippy passed.
-- Both new workflow blocks passed YAML parsing and Bash syntax checks. An
-  isolated execution wrote the exact expected mirror and APT configuration.
-  Comparison with the prior workflow confirmed that every existing step remains.
+- All 65 Rust tests passed locally on macOS for both BV-01 and BV-04 after the
+  fixture corrections. Cargo formatting and Clippy passed.
+- Both workflow blocks passed YAML parsing and Bash syntax checks. Comparison
+  with the prior workflow confirmed that every existing step remains.
+- The four required Kernel.org suites (`noble`, `noble-updates`, `noble-security`,
+  and `noble-backports`) returned their `InRelease` files over HTTPS. Each
+  signature passed verification with the existing Ubuntu archive keyring. Each
+  file lists all four Ubuntu components for amd64. No trusted keys were added.
 - Habit Hooks passed with an empty snooze file. Independent review found no
   weakened assertions or missing CI checks.
-- The macOS host cannot execute the Windows-only test or reproduce the hosted
-  Ubuntu runner's network. The updated PR checks verify those environments.
+- Hosted BV-04 macOS and Windows jobs passed after the fixture corrections.
+  Updated hosted checks must still verify Ubuntu package installation and all
+  checks on the final heads of the seven branches.
 
 Local logs are in `reports/ci-stack-fixes/`. Use the checks on
+[BV-01](https://github.com/tomer-mayara/choom/pull/18),
+[BV-02](https://github.com/tomer-mayara/choom/pull/19),
+[BV-03](https://github.com/tomer-mayara/choom/pull/20),
 [BV-04](https://github.com/tomer-mayara/choom/pull/21),
 [BV-05](https://github.com/tomer-mayara/choom/pull/22),
 [BV-06](https://github.com/tomer-mayara/choom/pull/23), and
