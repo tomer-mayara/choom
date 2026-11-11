@@ -9,10 +9,11 @@ The app is read-only. It does not run repository analysis, accept proposals,
 change the selected file, or export a diagram. Recorded statement values,
 statuses, and references keep their meaning.
 
-The viewer shows the saved component hierarchy, interfaces, resources, and
-explicit relationships. The remaining
-[viewer plan](docs/design/cr-baseline-viewer-plan.md) adds complete details in
-BV-06 and removes unused native operations in BV-07. See the
+The viewer shows the saved component hierarchy, interfaces, resources, explicit
+relationships, and complete record details. The Rules list keeps recorded rule
+data available without running checks. BV-07 in the
+[viewer plan](docs/design/cr-baseline-viewer-plan.md) removes unused native
+operations. See the
 [verification record](docs/change-requests/BV-baseline-viewer-evidence.md) for
 completed checks and platform limits.
 
@@ -56,8 +57,9 @@ from replacing the current view.
 
 The display accepts at most 500 records across all four collections, 2,000
 explicit owner and consumer links, and 16 component levels. Larger inputs show
-**Too large to display** and keep the current view. Final measurements for the
-complete viewer remain part of the release checks.
+**Too large to display** and keep the current view. The
+[complete viewer measurements](docs/change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements)
+record the tested workloads, timings, and limits.
 
 Ownership lines say **provides** or **owns**. Explicit consumer arrows say
 **may use**; they show permission recorded in the file. They do not show observed
@@ -66,8 +68,16 @@ owner or consumer policy does not create a link or hide the item.
 
 Double-click an item or group header to inspect it. With a keyboard, focus the control
 and press **Enter** or **Space**. Close the panel with **Escape** or its close
-button to return to the diagram. Complete record details and the Rules list
-follow in BV-06.
+button to return to the diagram. **Baseline details** shows its format,
+ID, and parent baseline ID. **Rules** opens the recorded rule list; focus a rule
+and press Enter to expand it. Escape closes the expanded rule and returns focus
+to its summary. Another Escape closes the list and returns focus to Rules.
+
+Details show all recorded fields, including statement status, evidence references,
+and acceptance references. **Accepted (recorded)** describes the saved status;
+it is not a verified result. References remain plain text and say **Evidence not
+loaded**. Unknown values, omitted fields, and empty objects or lists stay distinct.
+Choom does not load referenced files or execute recorded checks.
 
 ## Development commands
 
@@ -115,7 +125,7 @@ bun test ./test/unit/lib/baseline-yaml.test.ts ./test/interface/lib/baseline-yam
 bun test ./test/unit/architecture
 bun test ./test/unit/lib/architecture-layout.test.ts
 bun run test:dom
-bun run test:e2e --tags '@bv-03 or @bv-04 or @bv-05'
+bun run test:e2e --tags @baseline-viewer
 bun run check:contracts
 ```
 

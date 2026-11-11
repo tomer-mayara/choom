@@ -4,8 +4,7 @@ The architecture-model component owns the baseline viewer profile in
 [baseline.tsp](baseline.tsp). `baselineSchema` in
 [`src/domain/baseline.ts`](../../src/domain/baseline.ts) validates an unknown value
 and returns the generated `Baseline` data type. Use `safeParse` to get field paths
-for invalid input. The legacy diagram contract remains until the app switches
-to baseline input.
+for invalid input. The viewer no longer accepts the legacy diagram format.
 
 The generated schema checks field shapes, nonblank text, statement statuses,
 acceptance references, and list sizes. The runtime validator also checks item ID
@@ -26,8 +25,9 @@ distinct.
 
 Rule values are JSON objects or null. Keep nested values and all own keys,
 including `__proto__`, without running expressions. Reject non-JSON values and
-cycles. No field is silently discarded. Byte, YAML, and display limits belong to
-the input and viewer boundaries in later tickets.
+cycles. No field is silently discarded. Byte and YAML limits belong to the
+[input boundary](baseline-codec.md); display limits belong to the
+[workspace](workspace.md).
 
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
 copies of the reviewed empty and full `work-choom` baselines. Tests use repository

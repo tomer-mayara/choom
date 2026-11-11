@@ -81,16 +81,33 @@ one link. Parent nesting does not add links. An excessive baseline reports
 small policy module; it does not load ELK to handle the error.
 
 The canvas uses the available window and refits on resize. Double-click, Enter,
-or Space opens basic component, interface, or resource details. Escape and the close button return
-focus to the opener. Keyboard focus brings an offscreen inspection header into view
-without changing zoom. A replacement baseline closes the old details.
+or Space opens component, interface, or resource details. Each detail shows all
+saved fields. Each statement shows its value, **Proposed** or **Accepted
+(recorded)** status, **Evidence not loaded**, and its evidence references. An
+accepted statement also shows its acceptance reference. Missing optional fields
+say **Not recorded**. Null statement values say **Unknown (null)**. Empty lists and objects
+remain `[]` and `{}`. Membership paths and exclusions are separate fields, and
+the four promise fields stay distinct from a wholly unknown promise value.
+
+**Baseline details** shows the format version, baseline ID, and parent baseline
+ID. A null parent baseline ID means this is the first baseline and shows **No
+parent baseline (null)**. **Rules** lists every rule, including when the baseline has no diagram items.
+A native expandable row shows each rule's subject, expected value, and check as
+plain JSON text. The viewer formats a rule's details only while its row is open.
+It does not evaluate checks, interpret markup, link references, or load evidence.
+Long values wrap and the panel scrolls without moving or zooming the diagram.
+
+Escape and the close button return focus to the opener. In the Rules list,
+Escape from an expanded rule first closes that rule and focuses its summary.
+The next Escape closes the list and focuses **Rules**. Keyboard focus brings an
+offscreen inspection header into view without changing zoom. A replacement
+baseline closes the old details.
 
 The heading is the baseline ID. An entirely empty model says **No architecture
 items modeled**. A baseline with other record kinds but no components says
 **No components modeled**. Neither empty state substitutes the example.
-Interfaces and resources still appear when there are no components. The Rules
-list and full statement inspection belong to the next ticket in the
-[viewer plan](../../docs/design/cr-baseline-viewer-plan.md).
+Interfaces and resources still appear when there are no components. An empty
+Rules list says **No rules modeled**.
 
 ## Starter and checks
 
@@ -112,6 +129,8 @@ bun test ./test/unit/lib/architecture-layout.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-diagram.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-04
 bun scripts/run-browser-behavior.ts --tags @bv-05
+bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
+bun scripts/run-browser-behavior.ts --tags @bv-06
 ```
 
 Installed acceptance uses the actual app and picker; see the

@@ -1,11 +1,12 @@
 import { afterEach, expect, test } from "bun:test";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ArchitectureDiagram } from "../../../src/components/architecture-diagram.tsx";
 import type { Baseline } from "../../../src/domain/generated/contracts.ts";
 import { accepted, baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { baselineWithParentLevels } from "../../support/baseline-layout-fixtures.ts";
 import { baselineWithDistinctInterfaceLinks, baselineWithLongNames, baselineWithUnknownInterfaceOwner, baselineWithoutComponents } from "../../support/baseline-relationship-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
+import { baselineWithOnlyRules } from "../../support/baseline-detail-fixtures.ts";
 
 afterEach(cleanup);
 function diagramFixture(baseline: Baseline = baselineExample()) {
@@ -215,4 +216,50 @@ test("zoom controls allow a large diagram to zoom below the library default", as
     const position = canvas.getViewport();
     expect(position.zoom).toBeLessThan(0.5);
   });
+});
+
+test("baseline metadata opens with a keyboard and Escape restores its control", async () => {
+  const { baseline, layout } = diagramFixture();
+  render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
+  const opener = screen.getByRole("button", { name: "Baseline details" });
+  fireEvent.click(opener, { detail: 0 });
+  const panel = screen.getByRole("dialog", { name: "Baseline details" });
+  expect(within(panel).getByRole("group", { name: "Baseline ID" }).textContent).toContain(baseline.id);
+  fireEvent.keyDown(panel, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(opener));
+});
+
+test("Escape first closes the current rule, then returns from Rules to its opener", async () => {
+  const baseline = baselineWithOnlyRules();
+  render(<ArchitectureDiagram baseline={baseline} layout={{ nodes: [] }} />);
+  const opener = screen.getByRole("button", { name: "Rules" });
+  fireEvent.click(opener, { detail: 0 });
+  const panel = screen.getByRole("dialog", { name: "Rules" });
+  const row = panel.querySelector("details");
+  const summary = row?.querySelector("summary");
+  if (!row || !summary) throw new Error("The Rules list must have an expandable rule.");
+  fireEvent.click(summary);
+  const check = within(panel).getByRole("group", { name: "Check" });
+  fireEvent.keyDown(check, { key: "Escape" });
+  expect(row.open).toBe(false);
+  expect(document.activeElement).toBe(summary);
+  expect(screen.getByRole("dialog", { name: "Rules" })).toBe(panel);
+  fireEvent.keyDown(summary, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(opener));
+});
+
+test("replacing a baseline closes Rules even when the replacement reuses its rule ID", () => {
+  const baseline = baselineWithOnlyRules();
+  const layout = { nodes: [] };
+  const { rerender } = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
+  fireEvent.click(screen.getByRole("button", { name: "Rules" }), { detail: 0 });
+  expect(screen.getByRole("dialog", { name: "Rules" })).toBeTruthy();
+  rerender(<ArchitectureDiagram baseline={baseline} layout={layout} />);
+  expect(screen.getByRole("dialog", { name: "Rules" })).toBeTruthy();
+  const replacement = baselineWithOnlyRules();
+  replacement.id = "replacement";
+  rerender(<ArchitectureDiagram baseline={replacement} layout={layout} />);
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
