@@ -164,9 +164,14 @@ fn stale_cleanup_preserves_active_sessions_unknown_files_and_symlinks() {
     let root_path = fixture.directory.join("cache");
     let root = Directory::open(&root_path).unwrap();
     let nonce = uuid::Uuid::new_v4().to_string();
-    let mut stale = Session::create(&root, nonce.clone()).unwrap();
-    stale.initialize().unwrap();
+    let stale = Session::create(&root, nonce.clone()).unwrap();
     let stale_path = stale.directory.path.clone();
+    // Model an inactive session with a valid lease marker and no held lock.
+    fs::write(
+        stale_path.join(".lease"),
+        format!("choom-documents-v1:{nonce}\n"),
+    )
+    .unwrap();
     let owned = stale_path.join(format!("document-{nonce}-1.choom.yaml"));
     fs::write(&owned, "stale").unwrap();
     let unknown = stale_path.join("notes.txt");
