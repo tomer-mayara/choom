@@ -28,7 +28,7 @@ characterization tests.
 | --- | --- | --- |
 | BV-01 | `bun run test:behavior --tags @bv-01`: 10 scenarios failed real assertions. The old document validator rejected baseline fields and could not identify invalid baseline fields. | 10 scenarios and 96 focused unit/interface tests pass. Reviewed and complete. |
 | BV-02 | `bun run test:behavior:native --tags @bv-02`: 3 scenarios failed and 4 existing input protections passed. Baselines were rejected, future versions were misclassified, and legacy diagrams were accepted. | 7 scenarios pass; reviewed and complete. |
-| BV-03 | The normal browser and installed desktop app both loaded, then their Open Baseline assertions failed because the control was absent. | Browser, core, and host checks pass. Installed verification of the completed candidate is pending. |
+| BV-03 | The normal browser and installed desktop app both loaded, then their Open Baseline assertions failed because the control was absent. | Browser, core, host, and ordinary installed Linux acceptance pass. Reviewed and complete. |
 | BV-04 | Not run yet. | Pending. |
 | BV-05 | Not run yet. | Pending. |
 | BV-06 | Not run yet. | Pending. |
@@ -169,9 +169,29 @@ Completed candidate checks:
 
 Independent reviews covered workflow lifetime and immutable publication,
 file-input boundaries, dependency rules, and current and historical documents.
-The manager closed the reported findings. The source change is ready for an
-exact-commit installed release build. Local check logs are in
+The manager closed the reported findings. Local check logs are in
 `reports/baseline-viewer/bv-03/`.
+
+The ordinary Linux ARM64 release from commit
+`96498ab9090079384b13f4b61a32eba64b27358e` passed all four installed scenarios
+and 34 steps in 16.949 seconds. The app used its real native picker and read
+command with an empty runtime PATH. Cancellation completed and enabled another
+open. Invalid files preserved the prior view, and selected bytes were unchanged.
+
+Green-run SHA-256 identities:
+
+- Source archive: `708456c54ea9309bb7b48fe35e14a503f78aaabc128bc27c8bb43b5229a74c84`.
+- Release package: `635988fdcd927c83961463baca3b44b8444e2041d8e29f5b8c4625d20ceef213`.
+- Installed executable: `b4a5421d3731a3566fb9be4d4384cd059b7f74f0e4b4d11f83770d31a0cfc995`.
+
+The installed executable matched the package before and after the run. All 31
+recorded harness files matched the source archive. The report is
+`work/choom/test-results/packaged/run-AcFAph/` in the Linux cache. The package,
+source, build log, and report are retained under
+`work/evidence/products/96498ab9090079384b13f4b61a32eba64b27358e/`.
+The package is an unsigned local Linux/X11 build. This result does not establish
+macOS, Windows, Wayland, or desktop-portal behavior. The later evidence commit
+changes only this document.
 
 ## Release checks
 
