@@ -9,23 +9,17 @@ pub(crate) const MAX_PATH_BYTES: usize = 4096;
 #[serde(rename_all = "lowercase")]
 pub enum Stage {
     Storage,
-    Export,
-    Cleanup,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum Code {
     InvalidRequest,
-    InvalidSnapshot,
-    SnapshotLimit,
     NotFound,
     NotFile,
     LimitExceeded,
     InvalidUtf8,
-    DestinationExists,
     SourceChanged,
-    CleanupFailed,
     IoError,
     Unavailable,
 }
@@ -34,19 +28,11 @@ impl Code {
     pub fn message(self) -> &'static str {
         match self {
             Self::InvalidRequest => "The document request is invalid.",
-            Self::InvalidSnapshot => "The document snapshot is not available.",
-            Self::SnapshotLimit => "Release a document snapshot before creating another.",
             Self::NotFound => "The selected document file was not found.",
             Self::NotFile => "The selected document is not a regular file.",
             Self::LimitExceeded => "The document exceeds the supported size.",
             Self::InvalidUtf8 => "The document is not valid UTF-8 text.",
-            Self::DestinationExists => {
-                "The destination already exists. Approve replacement before exporting."
-            }
             Self::SourceChanged => "An owned document file or directory changed.",
-            Self::CleanupFailed => {
-                "Document cleanup could not complete. Retry cleanup before writing again."
-            }
             Self::IoError => "The document file operation could not complete.",
             Self::Unavailable => "The document file service is unavailable in this environment.",
         }
@@ -84,11 +70,7 @@ impl<T> Outcome<T> {
             },
             Err(code) => Self::Failure {
                 status: "failure",
-                stage: if code == Code::CleanupFailed {
-                    Stage::Cleanup
-                } else {
-                    stage
-                },
+                stage,
                 code,
                 message: code.message(),
                 duration_ms,
@@ -101,53 +83,14 @@ impl<T> Outcome<T> {
 }
 
 #[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Created {
-    pub snapshot_id: String,
-}
-#[derive(Serialize, Debug)]
 pub struct Text {
     pub text: String,
-}
-#[derive(Serialize, Debug)]
-pub struct Released {
-    pub released: bool,
-}
-#[derive(Serialize, Debug)]
-pub struct Exported {
-    pub exported: bool,
-}
-#[derive(Serialize, Debug)]
-pub struct Cleaned {
-    pub cleaned: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct CreateRequest {
-    pub text: String,
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub(crate) struct SnapshotRequest {
-    pub snapshot_id: String,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ReadRequest {
     pub path: String,
 }
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct ExportRequest {
-    pub path: String,
-    pub text: String,
-    pub overwrite: bool,
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct CleanupRequest {}
-
 pub(crate) fn decode<T: serde::de::DeserializeOwned>(value: Value) -> Result<T, Code> {
     serde_json::from_value(value).map_err(|_| Code::InvalidRequest)
 }

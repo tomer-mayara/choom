@@ -1,11 +1,11 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { z } from "zod";
 import { isDesktop } from "./desktop.ts";
-import type { DiagramDialogOperations } from "./generated/contracts.ts";
+import type { BaselineDialogOperations } from "./generated/contracts.ts";
 
 const fileSelection = z.string().min(1).nullable();
 
-export async function selectBaselineFile(): Promise<ReturnType<DiagramDialogOperations["selectDiagramFile"]>> {
+export async function selectBaselineFile(): Promise<ReturnType<BaselineDialogOperations["selectBaselineFile"]>> {
   if (!isDesktop()) return null;
   try {
     return fileSelection.parse(await open({

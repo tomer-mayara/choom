@@ -15,10 +15,10 @@ const path = z.string().min(1).max(MAX_PATH_BYTES).refine(
 const duration = z.number().finite().nonnegative();
 const failure = z.strictObject({
   status: z.literal("failure"),
-  stage: z.enum(["storage", "export", "cleanup"]),
+  stage: z.literal("storage"),
   code: z.enum([
-    "invalid-request", "invalid-snapshot", "snapshot-limit", "not-found", "not-file", "limit-exceeded",
-    "invalid-utf8", "destination-exists", "source-changed", "cleanup-failed", "io-error", "unavailable", "invalid-response",
+    "invalid-request", "not-found", "not-file", "limit-exceeded",
+    "invalid-utf8", "source-changed", "io-error", "unavailable", "invalid-response",
   ]),
   message: z.string().min(1).max(2048),
   durationMs: duration,

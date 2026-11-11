@@ -51,44 +51,18 @@ fn document_commands_match_the_shared_typescript_wire_fixture() {
     let main = app.get_webview_window("main").unwrap();
     let fixtures: Vec<Value> =
         serde_json::from_str(include_str!("../../test/fixtures/document-native.json")).unwrap();
-    let normalized_id = "document-00000000-0000-4000-8000-000000000000-1";
-    let mut actual_id = Value::Null;
+    std::fs::write(directory.join("baseline.yaml"), "title: Atlas\n").unwrap();
     for case in fixtures {
-        let command = match case["operation"].as_str().unwrap() {
-            "createDocumentSnapshot" => "document_snapshot_create",
-            "readDocumentSnapshot" => "document_snapshot_read",
-            "releaseDocumentSnapshot" => "document_snapshot_release",
-            "readDocumentFile" => "document_file_read",
-            "exportDocument" => "document_export",
-            "retryDocumentCleanup" => "document_cleanup",
-            operation => panic!("Unknown operation: {operation}"),
-        };
+        assert_eq!(case["operation"], "readDocumentFile");
         let mut request = case["request"].clone();
-        if request["snapshotId"] == normalized_id {
-            request["snapshotId"] = actual_id.clone();
+        if request["path"] == "/choom-fixture/baseline.yaml" {
+            request["path"] = json!(directory.join("baseline.yaml"));
         }
-        if request["path"] == "/choom-fixture/export.choom.yaml" {
-            request["path"] = json!(directory.join("export.choom.yaml"));
-        }
-        let mut response = invoke(&main, command, request, LOCAL_ORIGIN).unwrap();
+        let mut response = invoke(&main, "document_file_read", request, LOCAL_ORIGIN).unwrap();
         assert!(response["durationMs"].is_u64());
         response["durationMs"] = json!(0);
-        if response.get("snapshotId").is_some() {
-            let id = response["snapshotId"].as_str().unwrap();
-            let nonce = id
-                .strip_prefix("document-")
-                .unwrap()
-                .strip_suffix("-1")
-                .unwrap();
-            assert_eq!(uuid::Uuid::parse_str(nonce).unwrap().get_version_num(), 4);
-            actual_id = response["snapshotId"].clone();
-            response["snapshotId"] = json!(normalized_id);
-        }
-        assert_eq!(response, case["outcome"], "{command}");
+        assert_eq!(response, case["outcome"]);
     }
-    app.state::<crate::documents::DocumentStorage>()
-        .shutdown()
-        .unwrap();
     std::fs::remove_dir_all(directory).unwrap();
 }
 
@@ -99,22 +73,54 @@ fn document_commands_allow_only_the_local_main_window() {
     let other = WebviewWindowBuilder::new(&app, "other", Default::default())
         .build()
         .unwrap();
+    let command = "document_file_read";
+    assert!(invoke(&other, command, json!({}), LOCAL_ORIGIN).is_err());
+    assert!(invoke(&main, command, json!({}), "https://example.com").is_err());
+    assert_eq!(
+        invoke(&main, command, json!({"unexpected":true}), LOCAL_ORIGIN).unwrap()["code"],
+        "invalid-request"
+    );
+}
+
+#[test]
+fn retired_native_commands_are_rejected_before_a_handler_runs() {
+    let app = application();
+    let main = app.get_webview_window("main").unwrap();
+    let mut registered = Vec::new();
     for command in [
+        "repository_open",
+        "repository_read_text",
+        "repository_resolve_paths",
+        "repository_close",
+        "depcruiser_prepare",
+        "depcruiser_run",
+        "depcruiser_cancel",
+        "depcruiser_release",
         "document_snapshot_create",
         "document_snapshot_read",
         "document_snapshot_release",
-        "document_file_read",
         "document_export",
         "document_cleanup",
     ] {
-        assert!(invoke(&other, command, json!({}), LOCAL_ORIGIN).is_err());
-        assert!(invoke(&main, command, json!({}), "https://example.com").is_err());
-        assert_eq!(
-            invoke(&main, command, json!({"unexpected":true}), LOCAL_ORIGIN).unwrap()["code"],
-            "invalid-request"
-        );
+        match invoke(
+            &main,
+            command,
+            json!({"retirementProbe":true}),
+            LOCAL_ORIGIN,
+        ) {
+            Ok(response) => registered.push((command, response)),
+            Err(error) => {
+                let message = error.as_str().expect("The host rejects with a message");
+                assert!(
+                    message.contains("not allowed")
+                        || message == format!("Command {command} not found"),
+                    "{command}: {message}"
+                );
+            }
+        }
     }
-    app.state::<crate::documents::DocumentStorage>()
-        .shutdown()
-        .unwrap();
+    assert!(
+        registered.is_empty(),
+        "Retired commands still reached their handlers: {registered:?}"
+    );
 }

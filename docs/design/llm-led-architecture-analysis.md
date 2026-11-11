@@ -471,6 +471,8 @@ architecture changes on the same snapshot.
 The [baseline viewer plan](cr-baseline-viewer-plan.md) supersedes the earlier
 requirement to keep Load Repo and version-1 diagram import/export. The manual
 producer workflow in this document remains separate from the viewer.
+The viewer opens the recorded baseline directly. It does not run this analysis
+process, load evidence, evaluate checks, or change recorded acceptance status.
 
 Analysis records use a separate format. The
 [legacy document builder](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/build-architecture-document.ts)

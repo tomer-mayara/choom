@@ -11,9 +11,9 @@ statuses, and references keep their meaning.
 
 The viewer shows the saved component hierarchy, interfaces, resources, explicit
 relationships, and complete record details. The Rules list keeps recorded rule
-data available without running checks. BV-07 in the
-[viewer plan](docs/design/cr-baseline-viewer-plan.md) removes unused native
-operations. See the
+data available without running checks. The desktop host provides file selection
+and bounded file reading. See the [viewer plan](docs/design/cr-baseline-viewer-plan.md)
+and
 [verification record](docs/change-requests/BV-baseline-viewer-evidence.md) for
 completed checks and platform limits.
 
@@ -150,7 +150,7 @@ installed-app evidence. Keep results tied to the tested build and platform.
 
 ```sh
 bun run test:rust
-bun run test:behavior:packaged --tags @bv-03
+bun run test:behavior:packaged --tags @baseline-viewer
 ```
 
 The [CR-001 records](docs/change-requests/CR-001-architecture-import.md) and
@@ -276,8 +276,9 @@ before a baseline view is committed.
 in temporary projects and checks the full frontend dependency graph. The probes
 cover permitted and rejected imports, including erased types and imports with
 runtime effects. Cargo dependencies and Tauri capabilities govern the Rust
-boundary. BV-07 removes the native analysis and storage operations that the
-baseline viewer no longer calls.
+boundary. The host registers only `document_file_read` and enables the open-file
+dialog. Repository analysis, snapshots, export, writable caches, and their
+startup/shutdown services have been removed.
 
 ELK produces a large deferred chunk and a Vite size warning. Opening the example
 or a baseline requests that chunk.
@@ -297,7 +298,9 @@ Use `bun run typecheck` to check with the native compiler. Do not replace the co
 
 `cn` supplies the `cn` utility; no separate `clsx` or `tailwind-merge` dependency is needed. The shadcn generator may add dependencies or rewrite the utility when generating components; review those changes before accepting them. Knip checks application, test, tooling, and CSS dependencies.
 
-The Codex CLI is a development tool. Authenticate it separately when needed; no credentials, AI backend, or Codex subprocess are embedded in the app. Rust serialization, process, and OS-binding crates support the bounded native operations.
+The Codex CLI is a development tool. Authenticate it separately when needed; no
+credentials, AI backend, or Codex subprocess are embedded in the app. Rust
+serialization and file-identity checks support bounded native reads.
 
 See [the cookbook](cookbook/README.md) for component artifacts, focused checks,
 and validation limits. The [evidence table and remaining work](cookbook/TODO.md)
