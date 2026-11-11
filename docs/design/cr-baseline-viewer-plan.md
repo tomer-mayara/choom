@@ -190,7 +190,7 @@ if needed; do not claim a performance guarantee from the parser limits alone.
 
 Keep the existing React Flow/ELK libraries, bounded YAML parser, browser file
 selection, desktop file reads, and useful view/focus behavior. Replace the
-[legacy document model](../../src/domain/architecture-document.ts) and the
+[legacy document model](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/architecture-document.ts) and the
 repository branches of the [load workflow](../../src/architecture/load-workflow.ts).
 Use the current source groups; no new package or service framework is needed.
 

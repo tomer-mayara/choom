@@ -16,7 +16,6 @@ const sourceDirectory = resolve(root, "cookbook/interfaces");
 const schemaDirectory = "cookbook/interfaces/generated";
 const generatedDirectories = [
   schemaDirectory, "src/domain/generated", "src/platform/generated", "src/architecture/generated",
-  "src/architecture/dependency-cruiser/generated",
   "src/lib/generated",
 ];
 

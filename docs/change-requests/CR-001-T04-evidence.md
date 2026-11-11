@@ -1,18 +1,23 @@
 # CR-001-T04: Completed dependency-cruiser reports
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Implementation and review evidence for
 [CR-001-T04](CR-001-architecture-import.md#cr-001-t04--convert-completed-dependency-cruiser-reports).
 Work started from merged T03 commit `8737715` on `codex/cr-001-t04`.
 
 ## Result and ownership
 
-[`DepCruiserReportConverter`](../../src/architecture/dependency-cruiser/converter.ts)
+[`DepCruiserReportConverter`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/architecture/dependency-cruiser/converter.ts)
 converts completed dependency-cruiser 18.7.2 JSON reports into neutral
 observations and calls the domain builder. It uses the injected repository path
 operation from T03. It borrows the caller's session; each conversion owns its
 path cache and classification state.
 
-The class implements [`ReportConversion`](../../src/architecture/dependency-cruiser/report-conversion.ts),
+The class implements [`ReportConversion`](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/architecture/dependency-cruiser/report-conversion.ts),
 an asynchronous TypeScript binding derived from the existing TypeSpec operation.
 This gives T05 an explicit converter interface to inject. The neutral
 `ArchitecturalLayer` remains the boundary for replacing the analyzer.
@@ -27,17 +32,17 @@ Findings do not require a cross-component edge.
 The converter preserves import flag variants, ordered cycle/via references,
 rule severity, subject roles, and numeric metrics. It checks effective graph
 semantics, missing-transpiler issues, source changes, and resource caps. See the
-[converter contract](../../cookbook/interfaces/dependency-cruiser.md) for the
+[converter contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/dependency-cruiser.md) for the
 supported subset and failure meanings.
 
 ## Four constraints
 
 | Constraint | Change and evidence |
 | --- | --- |
-| Behavioral | Added [28 public API scenarios](../../cookbook/behavior/architecture-import/t04-converter.feature) before implementation. They exercise the real converter and builder through a repository path double. The original Load Repo scenarios remain registered for the later workflow. |
+| Behavioral | Added [28 public API scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t04-converter.feature) before implementation. They exercise the real converter and builder through a repository path double. The original Load Repo scenarios remain registered for the later workflow. |
 | Observability | Conversion returns a neutral document or a stable failure code, stage, and safe message. Scope notes and diagnostics preserve accepted analyzer limitations. OpenSLO is unchanged: there is no collector, workload baseline, or timing objective. |
 | Architecture | A new dependency-cruiser rule limits concrete analyzer imports to their collaborators and the exact named composition entrypoint planned for T05. Other workspace code, domain, platform, and UI cannot import them. No runtime dependency-cruiser package import is added. |
-| Interface / contract | Added [dependency-cruiser.tsp](../../cookbook/interfaces/dependency-cruiser.tsp), generated concrete-owner declarations and structural schemas, and conformance cases for the async binding. Domain failures gain `source-changed` and `limit-exceeded`. Vendor report data retains its upstream format and a runtime subset validator. |
+| Interface / contract | Added [dependency-cruiser.tsp](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/dependency-cruiser.tsp), generated concrete-owner declarations and structural schemas, and conformance cases for the async binding. Domain failures gain `source-changed` and `limit-exceeded`. Vendor report data retains its upstream format and a runtime subset validator. |
 
 Component manifests link the new behavior, TypeSpec source, and contract notes.
 The generator registers the concrete contract owner. No package version,
@@ -76,7 +81,7 @@ actionable findings in the interface change.
 
 ## Recorded upstream evidence
 
-The [18.7.2 fixtures](../../test/fixtures/dependency-cruiser/18.7.2/README.md)
+The [18.7.2 fixtures](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/test/fixtures/dependency-cruiser/18.7.2/README.md)
 include recorded JSON output, source/configuration text, symlink targets, and
 recording metadata. Only the report's absolute base directory was normalized
 to the portable root marker. Both the complete report and missing-SWC report were

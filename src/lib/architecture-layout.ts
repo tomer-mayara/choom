@@ -1,12 +1,12 @@
 import ELK from "elkjs/lib/elk.bundled.js";
-import type { ArchitectureDocument } from "../domain/generated/contracts.ts";
+import type { Baseline } from "../domain/generated/contracts.ts";
 
 export interface ArchitectureLayout {
   nodes: Array<{ id: string; position: { x: number; y: number } }>;
 }
 
-/** Prepare positions without adding components or changing the semantic document. */
-export async function layoutArchitectureDocument(document: ArchitectureDocument): Promise<ArchitectureLayout> {
+/** Prepare positions without adding components or changing the saved baseline. */
+export async function layoutBaseline(baseline: Baseline): Promise<ArchitectureLayout> {
   const graph = await new ELK().layout({
     id: "architecture",
     layoutOptions: {
@@ -14,12 +14,11 @@ export async function layoutArchitectureDocument(document: ArchitectureDocument)
       "elk.direction": "RIGHT",
       "elk.spacing.nodeNode": "60",
     },
-    children: document.components.map(({ id }) => ({ id, width: 240, height: 120 })),
-    edges: document.relationships.map(({ id, source, target }) => ({ id, sources: [source], targets: [target] })),
+    children: baseline.components.map(({ id }) => ({ id, width: 240, height: 120 })),
   });
   const positions = new Map(graph.children?.map(({ id, x, y }) => [id, { x, y }]));
   return {
-    nodes: document.components.map(({ id }) => {
+    nodes: baseline.components.map(({ id }) => {
       const position = positions.get(id);
       if (!position || typeof position.x !== "number" || typeof position.y !== "number"
         || !Number.isFinite(position.x) || !Number.isFinite(position.y)) {

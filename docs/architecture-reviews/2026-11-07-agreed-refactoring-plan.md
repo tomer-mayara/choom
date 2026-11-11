@@ -1,5 +1,10 @@
 # Choom architecture review: agreed refactoring plan
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Date: 7 November 2026. Reviewed source:
 `565ecb407e119d29ed8b746ec5818e08a346ebc6` on `codex/cr-001-t08`.
 This includes the T08 candidate. Implementation must recheck the base commit
@@ -50,13 +55,13 @@ Line references in this document refer to the reviewed commit.
 
 | Finding | Evidence and consequence | Decision |
 | --- | --- | --- |
-| Published workflow state has shared mutation authority | [load-workflow.ts](../../src/architecture/load-workflow.ts), lines 27–29, 108, 183–185 and 411–412, returns retained mutable state. An in-memory reproduction bypassed its cleanup gate by changing a returned field. Current UI callers were not observed doing this. | Fix runtime ownership and narrow the view role in R02. This is an observable boundary defect, not an observed end-user failure or a claim of a security exploit. |
-| Validation wording acts as an informal protocol | [architecture-yaml.ts](../../src/lib/architecture-yaml.ts), lines 14–38 and 46–53, copies domain messages and compares exact wording. An independently changed message loses the specific explanation. | Centralize safe messages and their priority in R03. This is a maintenance defect; no current malformed-file failure was demonstrated. |
-| The UI depends on more than its consumed role | [workspace.ts](../../src/architecture/workspace.ts), lines 16–19, exposes concrete `LoadWorkflow`; [controls](../../src/components/workspace-controls.tsx), lines 43–90, use only a subset. | Expose a narrow TypeScript role in R02. Keep lifecycle and exporter notifications with composition. |
-| Documentation and guards lag intended ownership | [README](../../README.md), lines 306–326, omits `documents/` and understates codec/platform work. [Dependency rules](../../.dependency-cruiser.cjs), lines 31–38 and 61–74, allow all `lib/` imports from the codec and rely on selected filenames for workflow/render guards. | Correct the map in R01; add focused guard coverage in R04. Existing imports pass; these are maintenance and enforcement gaps. |
+| Published workflow state has shared mutation authority | [load-workflow.ts](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/src/architecture/load-workflow.ts), lines 27–29, 108, 183–185 and 411–412, returns retained mutable state. An in-memory reproduction bypassed its cleanup gate by changing a returned field. Current UI callers were not observed doing this. | Fix runtime ownership and narrow the view role in R02. This is an observable boundary defect, not an observed end-user failure or a claim of a security exploit. |
+| Validation wording acts as an informal protocol | [architecture-yaml.ts](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/src/lib/architecture-yaml.ts), lines 14–38 and 46–53, copies domain messages and compares exact wording. An independently changed message loses the specific explanation. | Centralize safe messages and their priority in R03. This is a maintenance defect; no current malformed-file failure was demonstrated. |
+| The UI depends on more than its consumed role | [workspace.ts](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/src/architecture/workspace.ts), lines 16–19, exposes concrete `LoadWorkflow`; [controls](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/src/components/workspace-controls.tsx), lines 43–90, use only a subset. | Expose a narrow TypeScript role in R02. Keep lifecycle and exporter notifications with composition. |
+| Documentation and guards lag intended ownership | [README](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/README.md), lines 306–326, omits `documents/` and understates codec/platform work. [Dependency rules](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/.dependency-cruiser.cjs), lines 31–38 and 61–74, allow all `lib/` imports from the codec and rely on selected filenames for workflow/render guards. | Correct the map in R01; add focused guard coverage in R04. Existing imports pass; these are maintenance and enforcement gaps. |
 
 The manager's bounded reproduction used `workflowDependencies()` from the
-[in-memory fixture](../../test/support/load-workflow-fixtures.ts). It performed
+[in-memory fixture](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/test/support/load-workflow-fixtures.ts). It performed
 no filesystem or native operations:
 
 ```text
@@ -84,8 +89,8 @@ Manifest parent relationships need not match physical directory nesting.
 | `desktop-adapter` (`src/platform`) | Native IPC/dialogs, host detection, and browser document access | Correct its description to include browser access. A component rename is unnecessary for this plan. |
 | `native-shell` (`src-tauri`) | Repository sessions, analyzer processes, document storage, native commands | Keep distinct resource owners and platform-specific process/file mechanics. |
 
-These are the declarations in the [root manifest](../../component.yaml) and
-[workspace manifest](../../src/component.yaml). No new manifest is required
+These are the declarations in the [root manifest](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/component.yaml) and
+[workspace manifest](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/src/component.yaml). No new manifest is required
 merely because a helper or role binding gains a file. New source files belong
 beside the behavior they serve. Suggested additions are a view-role binding
 beside the workflow and a semantic-message catalog in `domain/`; final filenames
@@ -143,9 +148,9 @@ for the behavior the later changes must retain. Correct the README tree and
 inaccurate component descriptions. Keep declaration names and child links.
 
 **Behavioral:** begin with the existing
-[domain scenarios](../../cookbook/behavior/architecture-import/t02-domain.feature),
-[workflow scenarios](../../cookbook/behavior/architecture-import/t07-api.feature),
-and [document scenarios](../../cookbook/behavior/architecture-import/t06-api.feature).
+[domain scenarios](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/cookbook/behavior/architecture-import/t02-domain.feature),
+[workflow scenarios](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/cookbook/behavior/architecture-import/t07-api.feature),
+and [document scenarios](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/cookbook/behavior/architecture-import/t06-api.feature).
 For example, retain this existing domain scenario:
 
 ```gherkin
@@ -162,7 +167,7 @@ the implementation ticket that needs it. Do not invent failing tests for unchang
 behavior or add behavior tests for documentation itself.
 
 **Observability:** document the existing stages and outcomes. The shared
-[OpenSLO service](../../cookbook/observability/service.yaml) remains unmeasured;
+[OpenSLO service](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/cookbook/observability/service.yaml) remains unmeasured;
 this plan creates no telemetry or reliability claim.
 
 **Architecture / dependency-cruiser:** document allowed imports and composition
@@ -170,8 +175,8 @@ exceptions as a small responsibility table. Record current guard gaps for R04.
 Keep one component owning multiple directories.
 
 **Interface / TypeSpec:** verify the ownership notes against
-[workflow.tsp](../../cookbook/interfaces/workflow.tsp) and
-[workspace.md](../../cookbook/interfaces/workspace.md). Correct prose drift;
+[workflow.tsp](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/cookbook/interfaces/workflow.tsp) and
+[workspace.md](https://github.com/tomer-mayara/choom/blob/565ecb407e119d29ed8b746ec5818e08a346ebc6/cookbook/interfaces/workspace.md). Correct prose drift;
 keep data/operation contracts unchanged.
 
 **Validation and done:** inspect links and manifest references; run the affected

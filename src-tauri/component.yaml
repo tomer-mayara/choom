@@ -3,18 +3,7 @@ description: Host the frontend and own bounded repository access, analyzer execu
 
 artifacts:
   behavior:
-    # Existing adapter characterization and CR-001 native constraints; execution evidence is recorded separately.
-    - path: ../cookbook/behavior/desktop.feature
-    - path: ../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
-    - path: ../cookbook/behavior/architecture-import/t03-discovery.feature
-    - path: ../cookbook/behavior/architecture-import/t05-execution.feature
-    - path: ../cookbook/behavior/architecture-import/t05-api.feature
-    - path: ../cookbook/behavior/architecture-import/t05-installed.feature
-    - path: ../cookbook/behavior/architecture-import/t06-documents.feature
-    - path: ../cookbook/behavior/architecture-import/t06-api.feature
-    - path: ../cookbook/behavior/architecture-import/t06-installed.feature
-    - path: ../cookbook/behavior/architecture-import/t07-dialogs.feature
-    - path: ../cookbook/behavior/architecture-import/t08-installed.feature
+    - path: ../cookbook/behavior/baseline-viewer/installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml
   architecture:

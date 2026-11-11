@@ -1,45 +1,27 @@
 name: workspace
-description: React workspace, repository analysis, portable documents, and graph layout.
+description: Read-only baseline workspace and graph layout.
 
 artifacts:
   behavior:
     - path: ../cookbook/behavior/workspace.feature
     - path: ../cookbook/behavior/diagram-workspace.feature
     - path: ../cookbook/behavior/baseline-viewer/input.feature
-    - path: ../cookbook/behavior/architecture-import/t01-explore.feature
-    - path: ../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
-    - path: ../cookbook/behavior/architecture-import/t03-discovery.feature
-    - path: ../cookbook/behavior/architecture-import/t03-api.feature
-    - path: ../cookbook/behavior/architecture-import/t04-observations.feature
-    - path: ../cookbook/behavior/architecture-import/t04-converter.feature
-    - path: ../cookbook/behavior/architecture-import/t05-execution.feature
-    - path: ../cookbook/behavior/architecture-import/t05-api.feature
-    - path: ../cookbook/behavior/architecture-import/t06-documents.feature
-    - path: ../cookbook/behavior/architecture-import/t06-api.feature
-    - path: ../cookbook/behavior/architecture-import/t06-installed.feature
-    - path: ../cookbook/behavior/architecture-import/t07-workflows.feature
-    - path: ../cookbook/behavior/architecture-import/t07-api.feature
-    - path: ../cookbook/behavior/architecture-import/t07-dialogs.feature
-    - path: ../cookbook/behavior/architecture-import/t08-installed.feature
+    - path: ../cookbook/behavior/baseline-viewer/open.feature
+    - path: ../cookbook/behavior/baseline-viewer/workflow.feature
+    - path: ../cookbook/behavior/baseline-viewer/installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml
   architecture:
     - path: ../.dependency-cruiser.cjs
   contracts:
-    - path: ../cookbook/interfaces/architecture.tsp
     - path: ../cookbook/interfaces/desktop.tsp
     - path: ../cookbook/interfaces/desktop-analyzer.tsp
-    - path: ../cookbook/interfaces/documents.tsp
     - path: ../cookbook/interfaces/baseline-codec.tsp
     - path: ../cookbook/interfaces/baseline-codec.md
     - path: ../cookbook/interfaces/workflow.tsp
     - path: ../cookbook/interfaces/document-dialogs.tsp
     - path: ../cookbook/interfaces/desktop-documents.tsp
     - path: ../cookbook/interfaces/documents.md
-    - path: ../cookbook/interfaces/discovery.tsp
-    - path: ../cookbook/interfaces/dependency-cruiser.tsp
-    - path: ../cookbook/interfaces/dependency-cruiser.md
-    - path: ../cookbook/interfaces/discovery.md
     - path: ../cookbook/interfaces/workspace.md
 
 children:

@@ -468,10 +468,14 @@ architecture changes on the same snapshot.
 
 ## Compatibility
 
-Keep existing Load Repo and version-1 diagram import/export behavior. Analysis
-records use a separate format. The current
-[document builder](../../src/domain/build-architecture-document.ts) drops internal
-component imports, so this analysis must retain facts before that step. The current
+The [baseline viewer plan](cr-baseline-viewer-plan.md) supersedes the earlier
+requirement to keep Load Repo and version-1 diagram import/export. The manual
+producer workflow in this document remains separate from the viewer.
+
+Analysis records use a separate format. The
+[legacy document builder](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/build-architecture-document.ts)
+dropped internal component imports, so analysis must retain facts before that
+kind of aggregation. The current
 ts-morph script provides counts, not the proposed queries. No application LLM
 workflow or general execution sandbox is assumed to exist.
 

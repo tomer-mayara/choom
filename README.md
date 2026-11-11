@@ -1,29 +1,25 @@
 # Choom
 
-A Bun / TypeScript / React workspace with a Tauri desktop shell. Choom analyzes
-declared repository components and displays their imports with React Flow and
-ELK. Portable YAML keeps the semantic architecture independent of rendering.
+Choom displays saved architecture baselines. Open a `baseline.yaml` in the
+browser or desktop app to view its recorded model. The file can have another
+YAML name. Choom recognizes its content and does not need the source repository,
+evidence files, Node.js, or an analyzer to open it.
 
-The proposed [LLM-led architecture analysis design](docs/design/llm-led-architecture-analysis.md)
-defines a three-step review of component isolation and granularity: establish an
-architecture baseline, investigate boundary problems, and overlay findings and
-proposed changes. It specifies tools, LLM responsibilities, saved evidence, and
-outputs for whole-repository, regional, and change analysis.
+The app is read-only. It does not run repository analysis, accept proposals,
+change the selected file, or export a diagram. Recorded statement values,
+statuses, and references keep their meaning.
 
-The [baseline viewer plan](docs/design/cr-baseline-viewer-plan.md) replaces the
-product's repository analysis with a saved-baseline viewer. The implementation
-is split into seven draft PRs. See the [verification record](docs/change-requests/BV-baseline-viewer-evidence.md)
-for completed checks and remaining work. The first two tickets add baseline
-validation and bounded YAML input; the current app route changes in BV-03.
+BV-03 connects baseline opening and a basic component view. The remaining
+[viewer plan](docs/design/cr-baseline-viewer-plan.md) adds nested component
+layout in BV-04, interfaces and resources in BV-05, complete details and keyboard
+access in BV-06, and removal of unused native operations in BV-07. See the
+[verification record](docs/change-requests/BV-baseline-viewer-evidence.md) for
+completed checks and platform limits.
 
-Run the baseline contract checks with:
-
-```sh
-bun run test:behavior --tags @baseline-viewer
-bun test ./test/unit/domain/baseline.test.ts ./test/interface/domain/baseline.test.ts
-bun test ./test/unit/lib/baseline-yaml.test.ts ./test/interface/lib/baseline-yaml.test.ts
-bun run check:contracts
-```
+The [manual analysis design](docs/design/llm-led-architecture-analysis.md) and
+[producer cookbook](docs/design/app-a/start-here.md) describe a separate workflow
+that creates baselines and evidence. Opening a baseline does not start that
+workflow.
 
 ## Set up
 
@@ -45,32 +41,22 @@ Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri sy
 bun run desktop
 ```
 
-Use **Load Repo** in desktop Choom to select a repository root with a
-`component.yaml`, explicit analyzer metadata, and dependency-cruiser **18.7.2**
-installed at that root's `node_modules/dependency-cruiser`. Stable Node **22, 24,
-or 26 and later** must be available on the desktop application's `PATH` (the
-analyzer's range is `^22||^24||>=26`; prereleases, 23, and 25 are excluded).
-The UI has no Node-path setting. A terminal's runtime environment does not prove
-that Finder or a desktop shortcut can find the same runtime. Loading runs the repository's JavaScript
-configuration; only load repositories you trust. One declared component may own
-several subdirectories. Choom does not infer extra components from folders.
+Use **Open Baseline** to select a supported `formatVersion: 1` baseline in
+the browser or desktop app. The input must be valid UTF-8 and at most 16 MiB.
+The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
+[input notes](cookbook/interfaces/baseline-codec.md) describe the file limits.
+An old `schemaVersion: 1` diagram is not a baseline.
 
-Use **Open Diagram** in desktop or browser to view a saved `.choom.yaml` without
-the repository or analyzer. **Export Diagram** saves the current semantic
-document. A failed or cancelled load preserves the current diagram; **Retry**
-reuses the last selection. Cleanup failures keep new loads blocked until cleanup
-succeeds. Unconfirmed analyzer or discovery cleanup requires restarting the app.
+The view shows the baseline ID and component cards. An empty baseline is valid.
+**Explore example** opens a small baseline through the same viewer. A failed or
+cancelled open keeps the current view; **Retry** uses the last selected file.
+Only one open operation can run at a time. **Cancel** prevents a pending load
+from replacing the current view.
 
-The retained **Choose directory** action only displays a path. Desktop
-capabilities are restricted to the main window; the browser hides desktop-only
-actions.
-
-Workspace actions sit in a compact bar above the diagram. The canvas fills the
-remaining window and grows when the window is resized. Use **?** for recorded
-analysis and **Findings** for diagnostics. Double-click a component to inspect
-its declaration and incoming or outgoing imports. With a keyboard, focus a
-component and press **Enter** or **Space**. Close the panel with **Escape** or
-its close button to return to the diagram.
+Double-click a component to inspect it. With a keyboard, focus the component
+and press **Enter** or **Space**. Close the panel with **Escape** or its close
+button to return to the diagram. Complete record details and rendering of
+other item types follow in the later viewer tickets.
 
 ## Development commands
 
@@ -84,10 +70,10 @@ its close button to return to the diagram.
 | `bun run test` | Native Bun and Happy DOM unit tests in separate processes |
 | `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
 | `bun run check-types` | Alias for the native TypeScript compiler check |
-| `bun run test:behavior` | Model and desktop-adapter Cucumber scenarios (no browser) |
+| `bun run test:behavior` | Baseline and boundary Cucumber scenarios (no browser) |
 | `bun run test:behavior:native` | Explicit browser-free Cucumber profile |
 | `bun run test:behavior:browser` | Browser Cucumber scenarios against a fresh production build |
-| `bun run test:behavior:packaged` | Installed Linux application acceptance; requires native drivers and a fresh frontend build |
+| `bun run test:behavior:packaged` | Linux acceptance against a freshly built and installed release package; native drivers required |
 | `bun run test:e2e` | Browser Cucumber acceptance against one fresh production build |
 | `bun run check:cookbook` | Component path integrity, contract ownership, and small OpenSLO Service shape |
 | `bun run check:contracts` | TypeSpec format/compilation, generated-output consistency, TypeScript conformance, and runtime interface tests |
@@ -109,153 +95,46 @@ bunx --no-install playwright install chromium
 bun run test:e2e
 ```
 
-Run `bun run test:e2e --tags @diagram-workspace` for canvas sizing, analysis,
-component details, findings, and keyboard access. The focused React suites are
-included in `bun run test:dom`.
-
-`bun run test:native` scans `test/unit` for native TypeScript suites;
-`bun run test:dom` runs the React suite with `test/preload.ts` in a separate
-process. Add new DOM suites to that command. `bun test` defaults to
-`test/unit/domain`. Cucumber loads `test/steps`; its default/native profile excludes
-`@browser` and `@packaged`. `test:e2e` runs the browser profile using Playwright through
-`test:behavior:browser`, with a production build and preview. Layout fault cases
-use a separate test entry that injects a controlled layout into the real App and
-workflow; it never enters the production bundle. Failed browser scenarios
-retain screenshots and traces under `test-results/`. `bun run check` stays
-browser-free. GitHub Actions runs the constraint script and separate code-hygiene
-checks on Linux, plus desktop executable builds on Linux, macOS, and Windows.
-Linux also installs the release package and runs the native picker
-characterization, native analyzer and document operations, and then the architecture-import
-scenarios. CI retains browser, constraint, and installed-app reports, plus the
-Linux installer, installed-executable hash, and source commit.
-
-[CR-001-T01](docs/change-requests/CR-001-T01-evidence.md) adds the architecture
-import specification before its production implementation. New behavior is
-expected to fail until later tickets implement it; existing characterization
-must remain green. The complete CI route includes the new scenarios. Focused
-commands help distinguish missing behavior from regressions:
+Run the focused baseline checks with:
 
 ```sh
-bun run test:behavior:native
-bun run test:e2e --tags 'not @cr-001'
-bun run test:e2e --tags '@cr-001'
-```
-
-[CR-001-T02](docs/change-requests/CR-001-T02-evidence.md) adds the analyzer-neutral
-domain contract, document builder, and strict version-1 validator. A declared
-component owns its subdirectories until a more-specific declaration takes over.
-These public APIs are covered without a browser and consumed by the T07 load
-workflow. Run the focused checks with:
-
-```sh
-bun run test:behavior:native --tags @cr-001-t02-domain
-bun test ./test/unit/domain
-bun test ./test/interface/domain/architecture-document.test.ts ./test/interface/domain/architectural-layer.test.ts
-```
-
-[CR-001-T03](docs/change-requests/CR-001-T03-evidence.md) adds manifest discovery
-and bounded native repository access. The workspace follows linked declarations
-and explicit root analyzer metadata; one component can own multiple source
-directories. Discovery does not run an analyzer; the load workflow composes it
-with the neutral architectural layer.
-See the [discovery contract](cookbook/interfaces/discovery.md) for path rules,
-session ownership, and resource limits. Focused checks:
-
-```sh
-bun run test:behavior:native --tags @cr-001-t03-api
-bun test ./test/unit/architecture ./test/unit/platform
-bun test ./test/interface/architecture ./test/interface/platform
-bun run test:rust
-```
-
-[CR-001-T04](docs/change-requests/CR-001-T04-evidence.md) adds conversion of
-completed dependency-cruiser 18.7.2 JSON reports into the neutral architecture
-document. Conversion preserves declared ownership, canonical file evidence,
-findings, and analysis scope. See the [converter contract](cookbook/interfaces/dependency-cruiser.md)
-for supported semantics and limits. T05 supplies the runner; T07 supplies the
-import UI.
-
-```sh
-bun run test:behavior:native --tags @cr-001-t04-api
-bun test ./test/unit/architecture/dependency-cruiser
-bun test ./test/interface/architecture/dependency-cruiser
-```
-
-[CR-001-T05](docs/change-requests/CR-001-T05-evidence.md) adds the concrete
-architectural layer and desktop analyzer jobs. The runner handles cancellation
-and cleanup before conversion; Rust selects the local runtime and analyzer and
-owns bounded process execution. See the [native execution contract](cookbook/interfaces/desktop-analyzer.md)
-for package layouts, path restrictions, and resource limits. Focused checks:
-
-```sh
-bun run test:behavior:native --tags @cr-001-t05-api
-bun test ./test/unit/architecture/dependency-cruiser ./test/unit/platform
-bun test ./test/interface/architecture/dependency-cruiser ./test/interface/platform
-bun run test:rust
-```
-
-The Linux installed route also runs
-`bun run test:behavior:packaged --tags @packaged-native-analysis` after picker
-smoke. Follow the [installed acceptance guide](docs/change-requests/CR-001-native-acceptance.md)
-for its release artifact, runtime, and independent dependency prerequisites.
-
-[CR-001-T06](docs/change-requests/CR-001-T06-evidence.md) adds portable YAML,
-validated candidate snapshots, selected-file reads, and atomic export. The codec
-preserves declared components and their full file evidence without the source
-repository. Native storage keeps at most a current snapshot and a candidate;
-failed cleanup blocks further writes until retry succeeds. See the
-[document contract](cookbook/interfaces/documents.md) for format limits and file
-ownership. T07 supplies the selection, export, and viewing UI. Focused checks:
-
-```sh
-bun run test:behavior:native --tags @cr-001-t06-api
-bun test ./test/unit/lib ./test/unit/documents ./test/unit/platform/documents.test.ts
-bun test ./test/interface/lib ./test/interface/platform/documents.test.ts
-bun run test:rust
-```
-
-The installed Linux route runs
-`bun run test:behavior:packaged --tags @packaged-native-documents` after analyzer
-operations. It checks source-to-document export/reopen through real native IPC,
-replacement consent, and bounded candidate storage.
-
-[CR-001-T07](docs/change-requests/CR-001-T07-evidence.md) connects selection, discovery, analysis, candidate validation, layout,
-and one final view commit. It renders declared components, import evidence,
-findings, and provenance. The [workspace contract](cookbook/interfaces/workspace.md)
-describes cancellation, retry, cleanup ownership, and export independence.
-Focused checks:
-
-```sh
-bun run test:behavior:native --tags '@cr-001-t07-api or @cr-001-t07-dialogs'
+bun run test:behavior --tags @baseline-viewer
+bun test ./test/unit/domain/baseline.test.ts ./test/interface/domain/baseline.test.ts
+bun test ./test/unit/lib/baseline-yaml.test.ts ./test/interface/lib/baseline-yaml.test.ts
 bun test ./test/unit/architecture
 bun run test:dom
-bun run test:e2e --tags @cr-001-t07
+bun run test:e2e --tags @bv-03
+bun run check:contracts
 ```
 
-[CR-001-T08](docs/change-requests/CR-001-T08-evidence.md) reviews the complete
-constraint and platform evidence. The installed Linux cases also cover missing
-Node, real analyzer cancellation and cleanup, Retry after analyzer failure, and
-invalid saved files. A fresh native viewer opens an export with the source
-repository removed and `PATH` pointing only to an empty directory. See the evidence record for
-results and the remaining platform limits.
-
-[R02 publication evidence](docs/architecture-reviews/R02-publication-evidence.md)
-records the workspace's immutable view contract, focused regression commands,
-and the measured copy cost for large saved documents.
-[R03 diagnostics evidence](docs/architecture-reviews/R03-diagnostics-evidence.md)
-records the shared safe-message catalog and its compatibility checks.
-
+`bun run test:native` scans `test/unit` for native TypeScript suites.
+`bun run test:dom` runs React suites with `test/preload.ts` in a separate process.
+Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
+Cucumber loads `test/steps`; its default/native profile excludes `@browser` and
+`@packaged`. `test:e2e` runs browser acceptance against a fresh production build.
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
-Desktop simulations double native dialogs and validate repository, analyzer,
-and document commands against their TypeSpec contracts. They use real fixture
-files and recorded analyzer reports, then run the real conversion and document
-workflow. Scenarios cannot pass until their required inputs and controls have
-runtime observations; staging facts alone supplies no evidence. These
-simulations do not prove native execution or failure handling. See the
-[installed acceptance guide](docs/change-requests/CR-001-native-acceptance.md)
-for Linux prerequisites, explicit application/dependency paths, and manual
-macOS/Windows checks. Build the frontend once with `bun run build` before using
-`bun run test:behavior:packaged`.
+Failed browser scenarios retain screenshots and traces under `test-results/`.
+
+The normal browser opening test uses the real app, file reader, decoder, layout,
+and component view. Controlled workflow tests cover failures, cancellation,
+concurrent requests, and late results. Browser tests and IPC doubles do not
+prove native file selection or installed-app behavior.
+
+Follow the [installed baseline acceptance guide](docs/change-requests/BV-native-acceptance.md)
+for the Linux/X11 driver, release artifact, and environment settings. It opens
+a baseline through the ordinary installed app with an empty product `PATH`.
+The runner does not require analyzer fixtures. macOS and Windows need their own
+installed-app evidence. Keep results tied to the tested build and platform.
+
+```sh
+bun run test:rust
+bun run test:behavior:packaged --tags @bv-03
+```
+
+The [CR-001 records](docs/change-requests/CR-001-architecture-import.md) and
+[architecture review](docs/architecture-reviews/2026-11-07-agreed-refactoring-plan.md)
+describe the former repository-analysis app. Their commands and results are
+historical, not current baseline-viewer evidence.
 
 TypeSpec sources in [`cookbook/interfaces/`](cookbook/interfaces/main.tsp) define
 Choom-owned component data and operations for internal and external callers.
@@ -292,7 +171,7 @@ set `NO_COLOR=1` for plain terminal output.
 
 | Constraint | Checks |
 | --- | --- |
-| Behavioral | Bun unit tests, model/adapter Cucumber scenarios, and browser Cucumber against one fresh production build |
+| Behavioral | Bun unit tests, baseline/boundary Cucumber scenarios, and browser Cucumber against one fresh production build |
 | Observability | Component links, contract ownership, and the OpenSLO Service shape |
 | Architectural | TypeScript dependency boundaries, cycles, and unresolved imports |
 | Interface | TypeSpec compilation and generated-output consistency, TypeScript implementation conformance, and runtime interface cases; broader schema/adapter behavior also runs in Behavioral |
@@ -346,55 +225,40 @@ findings with exit 0. Correct findings or document why they remain, and keep
 
 ```text
 src/
-  architecture/        Load workflow, composition, discovery, and analyzer integration
+  architecture/        Baseline opening, view ownership, and app composition
   components/          React components and shadcn-compatible UI
-  documents/           Candidate preparation, snapshot release, and desktop export
-  domain/              Platform-independent architecture model
-  lib/                 Portable YAML codec, ELK layout, and class merging
-  platform/            Host detection, desktop dialogs and IPC, and browser document access
+  domain/              Platform-independent baseline model and validation
+  lib/                 Bounded YAML input, ELK layout, and class merging
+  platform/            Host detection, native file selection/read, and browser file access
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, TypeSpec contracts, generated schemas, observability
-scripts/               Contract generation/checks and ts-morph analysis
+scripts/               Contract generation/checks and separate source-analysis tools
 test/                  Unit/interface suites and shared Cucumber steps
 ```
 
 The root [component manifest](component.yaml) links the four constraints and the
 `workspace` and `native-shell` children. The [workspace](src/component.yaml) owns
-the app entrypoints and `architecture/`, `components/`, `documents/`, and `lib/`.
-Its child declarations are `architecture-model` in `domain/` and
-`desktop-adapter` in `platform/`. One component can own several ordinary
-subdirectories. Only linked declarations add components. See the
-[behavior and ownership baseline](docs/architecture-reviews/R01-behavior-ownership-baseline.md)
-for resource transfers and import boundaries.
+the app entrypoints and `architecture/`, `components/`, and `lib/`. Its children
+are `architecture-model` in `domain/` and `desktop-adapter` in `platform/`.
+These manifests describe this repository for development checks. The viewer
+reads component records from the selected baseline.
 
-The [dependency rules](.dependency-cruiser.cjs) check direct imports, including
-type imports. Discovery, workflow, and document lifecycle modules depend on
-injected collaborators and stay separate from UI and composition. Their direct
-package imports are limited to YAML and Zod. The rules reject direct Node
-built-in imports. Their platform imports are erased types from the generated
-contracts or the named access module for discovery or document files. The
-platform owns Tauri access.
-
-The semantic domain uses its own modules and Zod. The YAML codec uses its own
-helpers, the generated format contracts, the semantic domain, and YAML. The
-concrete analyzer stays within its vendor folder and the named
-[analyzer factory](src/architecture/create-architectural-layer.ts).
-
-React components use the [workspace view](src/architecture/workspace-view.ts)
-and generated workflow data. The view imports only named data bindings erased
-during compilation. The diagram and details render prepared data. App binds the
-workspace composition and the retained directory picker. ELK loads on demand
-before a diagram commits.
+The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
+decoding separate from platform operations, UI, and layout. The workflow uses
+injected file and layout operations. The platform owns Tauri access. React
+components use the [workspace view](src/architecture/workspace-view.ts) and
+prepared diagram data. App connects the workspace to the UI. ELK loads on demand
+before a baseline view is committed.
 
 `bun run check:dependencies` runs [import probes](scripts/check-dependency-boundaries.ts)
 in temporary projects and checks the full frontend dependency graph. The probes
-cover permitted and rejected edges and distinguish erased type imports from
-inline type imports that retain a module side effect. When Choom analyzes its
-own repository, dependency-cruiser reports explicit `preCompilationOnly` values
-for these edges and Choom preserves them in import evidence. Cargo dependencies
-and Tauri capabilities govern the Rust boundary.
+cover permitted and rejected imports, including erased types and imports with
+runtime effects. Cargo dependencies and Tauri capabilities govern the Rust
+boundary. BV-07 removes the native analysis and storage operations that the
+baseline viewer no longer calls.
 
-ELK's bundled algorithms currently produce a large deferred chunk and a Vite size warning. The landing screen does not load that chunk; an example or document load requests it.
+ELK produces a large deferred chunk and a Vite size warning. Opening the example
+or a baseline requests that chunk.
 
 ## Dependency policy
 

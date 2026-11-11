@@ -18,28 +18,20 @@ export interface WorkflowFailure {
   durationMs: number;
 }
 
-export type WorkflowOperation = "repository" | "document";
-
 export interface WorkflowOperations {
-  loadRepository(): WorkflowOutcome;
-  openDocument(): WorkflowOutcome;
+  openBaseline(): WorkflowOutcome;
   cancel(): WorkflowOutcome | null;
   retry(): WorkflowOutcome;
-  retryCleanup(): WorkflowOutcome;
-  documentCleanupFailed(): void;
 }
 
 export type WorkflowOutcome = WorkflowSuccess | WorkflowCancelled | WorkflowBusy | WorkflowFailure;
 
-export type WorkflowStage = "selection" | "discovery" | "setup" | "analysis" | "conversion" | "storage" | "reading" | "validation" | "layout" | "cleanup";
+export type WorkflowStage = "selection" | "reading" | "validation" | "layout";
 
 export interface WorkflowState {
-  phase: "idle" | "loading" | "cancelling" | "cleanup";
-  operation: WorkflowOperation | null;
+  phase: "idle" | "loading" | "cancelling";
   stage: WorkflowStage | null;
   lastOutcome: WorkflowOutcome | null;
-  cleanupRecovery: "none" | "retry" | "restart";
-  cleanupFailure?: WorkflowFailure;
 }
 
 export interface WorkflowSuccess {

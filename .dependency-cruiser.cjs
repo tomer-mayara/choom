@@ -1,20 +1,16 @@
 const domain = "^src/domain/";
-const codec = "^src/lib/(architecture|baseline)-yaml(?:/|\\.ts$)";
+const codec = "^src/lib/(baseline-yaml\\.ts$|architecture-yaml/)";
 const codecContracts = "^src/lib/generated/contracts\\.ts$";
 const platform = "^src/platform/";
 const platformContracts = "^src/platform/generated/contracts\\.ts$";
-const discovery = "^src/architecture/repository-discovery\\.ts$";
-const documentLifecycle = "^src/documents/";
 const workspaceComposition = "^src/architecture/workspace\\.ts$";
-const analyzerComposition = "^src/architecture/create-architectural-layer\\.ts$";
-const analyzer = "^src/architecture/dependency-cruiser/";
 const application = {
-  path: "^src/(architecture|documents)/",
-  pathNot: [workspaceComposition, analyzerComposition, analyzer],
+  path: "^src/architecture/",
+  pathNot: [workspaceComposition],
 };
 const view = "^src/architecture/workspace-view\\.ts$";
 const workflowContracts = "^src/architecture/generated/workflow\\.ts$";
-const workspaceInternals = "^src/(architecture|documents|platform)/";
+const workspaceInternals = "^src/(architecture|platform)/";
 const retainedImports = { dependencyTypesNot: ["pre-compilation-only"] };
 
 module.exports = {
@@ -45,7 +41,7 @@ module.exports = {
       to: { path: "^src/", pathNot: platform },
     },
     {
-      name: "document-codec-is-independent-of-storage-and-analyzers",
+      name: "baseline-codec-uses-domain-and-yaml",
       severity: "error",
       from: { path: [codec, codecContracts] },
       to: { pathNot: [codec, codecContracts, domain, "^node_modules/yaml/"] },
@@ -63,13 +59,10 @@ module.exports = {
       to: { path: "node_modules/@tauri-apps/" },
     },
     {
-      name: "concrete-analyzer-access-through-composition",
+      name: "development-analyzers-stay-out-of-app",
       severity: "error",
-      from: {
-        path: "^src/",
-        pathNot: [analyzer, analyzerComposition],
-      },
-      to: { path: [analyzer, "^node_modules/dependency-cruiser/"] },
+      from: { path: "^src/" },
+      to: { path: "^node_modules/(dependency-cruiser|ts-morph)/" },
     },
     {
       name: "application-does-not-import-ui-or-composition",
@@ -80,7 +73,6 @@ module.exports = {
           "^src/(App\\.|main\\.|components/|styles\\.css$)",
           "^node_modules/(?!yaml/|zod/)",
           workspaceComposition,
-          analyzerComposition,
         ],
       },
     },
@@ -93,20 +85,8 @@ module.exports = {
     {
       name: "application-architecture-uses-platform-contracts",
       severity: "error",
-      from: { path: "^src/architecture/", pathNot: [...application.pathNot, discovery] },
+      from: application,
       to: { path: platform, pathNot: platformContracts },
-    },
-    {
-      name: "discovery-uses-repository-access",
-      severity: "error",
-      from: { path: discovery },
-      to: { path: platform, pathNot: [platformContracts, "^src/platform/repository\\.ts$"] },
-    },
-    {
-      name: "document-lifecycle-uses-document-access",
-      severity: "error",
-      from: { path: documentLifecycle },
-      to: { path: platform, pathNot: [platformContracts, "^src/platform/documents\\.ts$"] },
     },
     {
       name: "application-platform-imports-are-erased",
@@ -122,7 +102,6 @@ module.exports = {
         pathNot: [
           workflowContracts,
           "^src/domain/(generated/contracts|readonly-data)\\.ts$",
-          "^src/documents/document-files\\.ts$",
           "^src/lib/architecture-layout\\.ts$",
         ],
       },
@@ -152,7 +131,16 @@ module.exports = {
       name: "diagram-renders-prepared-data",
       severity: "error",
       from: { path: "^src/components/architecture-(diagram|details)\\.tsx$" },
-      to: { path: "^src/(architecture/|documents/|platform/)" },
+      to: { path: "^src/(architecture/|platform/)" },
+    },
+    {
+      name: "layout-engine-loads-through-composition",
+      severity: "error",
+      from: {
+        path: ["^src/architecture/", "^src/components/architecture-(diagram|details)\\.tsx$"],
+        pathNot: workspaceComposition,
+      },
+      to: { path: ["^src/lib/architecture-layout\\.ts$", "^node_modules/elkjs/"], ...retainedImports },
     },
     {
       name: "no-test-code-in-app",

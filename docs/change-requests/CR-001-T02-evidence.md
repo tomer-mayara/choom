@@ -1,5 +1,10 @@
 # CR-001-T02: Neutral architecture model
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 **Date:** 2026-11-06
 
 **Scope:** The semantic model and analyzer-neutral interface from
@@ -7,13 +12,13 @@
 
 ## Result
 
-The [builder](../../src/domain/build-architecture-document.ts) turns validated
+The [builder](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/build-architecture-document.ts) turns validated
 declarations and neutral observations into a version-1 architecture document.
 Only declarations create components. A component owns files throughout its
 subdirectories except where a more-specific declared component owns them.
 Manifest parents describe the declaration tree and do not determine ownership.
 
-The [ComponentCatalog](../../src/domain/component-catalog.ts) owns declaration
+The [ComponentCatalog](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/component-catalog.ts) owns declaration
 validation and file ownership. It keeps a private declaration snapshot and
 answers membership and ownership queries for the builder and saved-document
 validator. The refactor preserves the document format and analyzer interface.
@@ -24,13 +29,13 @@ pair and each combination of unknown, false, or true import flags. The inventory
 must contain both endpoints of every internal import, including reference-only
 records; missing endpoints fail instead of silently changing counts.
 
-The shared [document validator](../../src/domain/architecture-document.ts)
+The shared [document validator](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/architecture-document.ts)
 checks strict version-1 structure and graph consistency, then orders collections
 deterministically. It preserves reported counts in saved documents and accepts
 dependency cycles. Diagnostic roles, ordered cycle/via paths, and finite metrics
 remain available even without visible edges. The starter validator is unchanged.
 
-The [ArchitecturalLayer binding](../../src/domain/architectural-layer.ts) adds a
+The [ArchitecturalLayer binding](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/architectural-layer.ts) adds a
 promise result, `AbortSignal`, and progress callback to the generated data
 operation. It defines an interface only. A substitute analyzer demonstrates that
 the contract needs no dependency-cruiser, process, platform, or UI types.
@@ -39,10 +44,10 @@ the contract needs no dependency-cruiser, process, platform, or UI types.
 
 | Constraint | Assessment |
 | --- | --- |
-| Behavioral | Added [native Cucumber scenarios](../../cookbook/behavior/architecture-import/t02-domain.feature) before the domain implementation. They call the actual public builder and validator. The original [T02 browser scenarios](../../cookbook/behavior/architecture-import/t02-model.feature) stay registered and unchanged. |
+| Behavioral | Added [native Cucumber scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t02-domain.feature) before the domain implementation. They call the actual public builder and validator. The original [T02 browser scenarios](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t02-model.feature) stay registered and unchanged. |
 | Observability | Added neutral progress stages and failure codes in TypeSpec. No OpenSLO change: model correctness has no measured reliability objective. No telemetry or production reliability claim is added. |
 | Architecture | Retained domain isolation in the existing dependency-cruiser configuration. No new workspace, platform dependency, concrete report type, or dependency-rule exception is needed. |
-| Interface / contract | Extended [architecture.tsp](../../cookbook/interfaces/architecture.tsp) with declarations, provenance, neutral observations, semantic documents, and analysis requests/outcomes. Regenerated TypeScript and JSON Schema. New object models reject unknown fields; existing starter schemas retain their behavior. Runtime and substitute-layer conformance cases use the generated contracts. |
+| Interface / contract | Extended [architecture.tsp](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/architecture.tsp) with declarations, provenance, neutral observations, semantic documents, and analysis requests/outcomes. Regenerated TypeScript and JSON Schema. New object models reject unknown fields; existing starter schemas retain their behavior. Runtime and substitute-layer conformance cases use the generated contracts. |
 
 Root and domain manifests link the new feature. The TypeScript emitter adds only
 the numeric literals, integer/float64 scalars, and standard records used by this
@@ -103,7 +108,7 @@ The catalog owns a copied declaration snapshot and shares its declaration and tr
 validators with the input schemas. The builder reuses one catalog for file counts
 and import aggregation; saved-document validation creates one for reference and
 evidence checks. Path rules remain ordinary functions in
-[architecture-paths.ts](../../src/domain/architecture-paths.ts).
+[architecture-paths.ts](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/architecture-paths.ts).
 
 The behavioral outcomes, TypeSpec/generated contracts, OpenSLO, and dependency
 rules are unchanged. The catalog can inspect candidate declarations while the

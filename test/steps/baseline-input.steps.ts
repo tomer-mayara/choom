@@ -3,9 +3,8 @@ import { readFileSync } from "node:fs";
 import { Given, Then, When, type World } from "@cucumber/cucumber";
 import { stringify } from "yaml";
 import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
-import { readBrowserDiagram } from "../../src/platform/browser-documents.ts";
+import { readBrowserBaseline } from "../../src/platform/browser-documents.ts";
 import { baselineExample, reviewedBaseline } from "../support/baseline-fixtures.ts";
-import { architectureDocumentFixture } from "../support/document-fixtures.ts";
 
 interface BaselineInputWorld extends World {
   selectedBaselineFile: File;
@@ -43,7 +42,7 @@ Given(/^a selected file contains (.+)$/, function (this: BaselineInputWorld, pro
       this.expectedInputCode = "unsupported-version";
       break;
     case "legacy diagram content":
-      content = stringify(architectureDocumentFixture());
+      content = readFileSync(new URL("../fixtures/baseline-viewer/legacy.choom.yaml", import.meta.url), "utf8");
       this.expectedInputCode = "invalid-document";
       this.expectedInputMessage = /Legacy diagrams are unsupported.*formatVersion: 1/;
       break;
@@ -58,14 +57,12 @@ Given(/^a selected file contains (.+)$/, function (this: BaselineInputWorld, pro
 });
 
 When("its input is decoded", async function (this: BaselineInputWorld) {
-  let text: string;
-  try {
-    text = await readBrowserDiagram(this.selectedBaselineFile, new AbortController().signal);
-  } catch (error) {
-    this.inputReadError = error;
+  const read = await readBrowserBaseline(this.selectedBaselineFile, new AbortController().signal);
+  if (read.status === "failure") {
+    this.inputReadError = new Error(read.message);
     return;
   }
-  this.baselineDecode = decodeBaselineYaml(text);
+  this.baselineDecode = decodeBaselineYaml(read.text);
 });
 
 Then("the baseline model is returned", function (this: BaselineInputWorld) {

@@ -1,12 +1,17 @@
 # R03: one owner for safe semantic messages
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Date: 7 November 2026. Base: R02 commit
 `80d5272ca8fe26b87b510fffd44b260c8bcf8fa9`. This implements R03 in the
 [agreed plan](2026-11-07-agreed-refactoring-plan.md).
 
 ## Result and constraints
 
-[semantic-validation-messages.ts](../../src/domain/semantic-validation-messages.ts)
+[semantic-validation-messages.ts](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/semantic-validation-messages.ts)
 owns the 23 named messages and their explicit priority. Validators and the YAML
 codec use those references. The original message text and priority compare
 exactly with the base. The codec still classifies unsupported versions first,
@@ -34,12 +39,12 @@ The new cases cover:
 - Malformed YAML and an encoding input that throws. Neither returns parser
   details nor the raw exception message.
 
-The [T02 domain](../../cookbook/behavior/architecture-import/t02-domain.feature)
-and [T06 API](../../cookbook/behavior/architecture-import/t06-api.feature)
+The [T02 domain](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t02-domain.feature)
+and [T06 API](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t06-api.feature)
 characterization still covers declared ownership and portable documents. The
-[T02 model](../../cookbook/behavior/architecture-import/t02-model.feature),
-[T06 document](../../cookbook/behavior/architecture-import/t06-documents.feature),
-and [T07 workflow](../../cookbook/behavior/architecture-import/t07-workflows.feature)
+[T02 model](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t02-model.feature),
+[T06 document](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t06-documents.feature),
+and [T07 workflow](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t07-workflows.feature)
 browser cases cover semantic rejection, source-free reopening, multi-directory
 ownership, and preserving the current diagram on failure. Exact diagnostic
 selection is checked through the public codec; no new screen behavior is claimed.

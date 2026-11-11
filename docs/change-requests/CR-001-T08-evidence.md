@@ -1,5 +1,10 @@
 # CR-001-T08 release verification and constraint review
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Date: 2026-11-07. Base: `d37fea59fdc4db4179dd4593ef312c2337871ffc`, the merged
 [T07 PR](https://github.com/tomer-mayara/choom/pull/10). Candidate branch:
 `codex/cr-001-t08`. The first verification candidate is `54ab22c`; the corrected
@@ -70,7 +75,7 @@ from installed UI evidence. Logs are `/tmp/choom-t08-document-export-bdd-red.log
 | Constraint | Candidate review |
 | --- | --- |
 | Behavioral | T08 Gherkin and real installed bindings cover the added cases. A document API scenario and deferred unit cases cover export during normal release. The plan contains those scenarios. Existing replacement and cleanup tests retain their assertions; none are skipped. |
-| Observability | Stages, safe error messages, cancellation, and cleanup outcomes are locally observable. The shared OpenSLO Service stays `unmeasured`: no collector, production baseline, SLI, SLO, or alert is introduced. See [remaining evidence](../../cookbook/TODO.md). |
+| Observability | Stages, safe error messages, cancellation, and cleanup outcomes are locally observable. The shared OpenSLO Service stays `unmeasured`: no collector, production baseline, SLI, SLO, or alert is introduced. See [remaining evidence](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/TODO.md). |
 | Architecture | Reviewed dependency-cruiser rules, Cargo dependencies, command registration, main-window capabilities, and packaging. Neutral injection and render-only boundaries remain enforced. No dependency, capability, or architecture-rule change is needed. |
 | Interface | TypeSpec sources, generated outputs, manifest links, wire schemas, and implementation conformance remain the contract. Both corrections restore existing lifecycle behavior without changing an operation shape. Document boundary notes distinguish active release from failed cleanup. Runtime guidance distinguishes an API Node-path override from the UI's PATH discovery. |
 

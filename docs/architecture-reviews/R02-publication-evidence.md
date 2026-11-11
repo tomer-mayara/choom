@@ -1,5 +1,10 @@
 # R02: published workspace ownership
 
+Historical record for the repository-analysis app, replaced in the frontend
+by BV-03. Source and constraint links use saved revisions; results and line
+references describe the candidates stated below. See the
+[baseline viewer plan](../design/cr-baseline-viewer-plan.md) for current work.
+
 Date: 7 November 2026. Base: R01 commit
 `5059e48c3a36464072ca150b0a05aee5a1d14796`. This implements R02 in the
 [agreed plan](2026-11-07-agreed-refactoring-plan.md).
@@ -22,10 +27,10 @@ component declaration, document limit, or cancellation rule moved.
 
 | Constraint | Treatment |
 | --- | --- |
-| Behavioral | Added the `@r02` observer scenario in [T07 API](../../cookbook/behavior/architecture-import/t07-api.feature), then failing alias tests before implementation. Existing cleanup, cancellation, export, and multiple-directory ownership checks remain. |
+| Behavioral | Added the `@r02` observer scenario in [T07 API](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/behavior/architecture-import/t07-api.feature), then failing alias tests before implementation. Existing cleanup, cancellation, export, and multiple-directory ownership checks remain. |
 | Observability | Stage, outcome, duration units, and safe messages are unchanged. OpenSLO remains unmeasured. |
 | Architecture | Publication mechanics stay beside the workflow. The view role has no runtime dependency on the workflow or platform. R04 will enforce its exact imports. |
-| Interface / TypeSpec | Generated commands supply the view operations. Added structural role and nested read-only conformance checks and updated the [live binding contract](../../cookbook/interfaces/workspace.md). YAML and IPC contracts are unchanged. |
+| Interface / TypeSpec | Generated commands supply the view operations. Added structural role and nested read-only conformance checks and updated the [live binding contract](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/cookbook/interfaces/workspace.md). YAML and IPC contracts are unchanged. |
 
 ## Behavior and local checks
 

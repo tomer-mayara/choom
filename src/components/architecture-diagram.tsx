@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type RefObject } from "react";
-import { CircleHelp, ListChecks, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Dialog } from "radix-ui";
 import {
-  Background, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore, useStoreApi,
-  type Edge, type Node, type NodeProps,
+  Background, Controls, ReactFlow, useReactFlow, useStore, useStoreApi,
+  type Node, type NodeProps,
 } from "@xyflow/react";
-import type { ArchitectureComponent, ArchitectureDocument } from "../domain/generated/contracts.ts";
+import type { BaselineComponent, Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { ArchitectureDetails, type ArchitecturePanel } from "./architecture-details.tsx";
@@ -13,7 +13,7 @@ import { Button } from "./ui/button.tsx";
 import "@xyflow/react/dist/style.css";
 
 type ComponentNode = Node<{
-  component: ReadonlyData<ArchitectureComponent>;
+  component: ReadonlyData<BaselineComponent>;
   inspect: (componentId: string, opener: HTMLElement) => void;
 }, "component">;
 
@@ -39,7 +39,6 @@ function ComponentCard({ data: { component, inspect } }: NodeProps<ComponentNode
 
   return (
     <div>
-      <Handle type="target" position={Position.Left} isConnectable={false} />
       <button
         type="button" aria-label={`${component.name}, ${component.id}`} aria-haspopup="dialog"
         aria-describedby="component-inspection-hint"
@@ -50,9 +49,8 @@ function ComponentCard({ data: { component, inspect } }: NodeProps<ComponentNode
       >
         <span className="max-w-full truncate font-semibold" title={component.name}>{component.name}</span>
         <code className="max-w-full truncate text-xs text-muted-foreground" title={component.id}>{component.id}</code>
-        <span className="text-xs text-muted-foreground">{component.reportedFiles === 0 ? "No files reported" : `${component.reportedFiles} ${component.reportedFiles === 1 ? "file" : "files"} reported`}</span>
+        <span className="max-w-full truncate text-xs text-muted-foreground">{component.purpose.value}</span>
       </button>
-      <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
   );
 }
@@ -69,11 +67,11 @@ function FitPreparedDiagram({ layout }: { layout: ReadonlyData<ArchitectureLayou
   return null;
 }
 
-function DetailsPanel({ document, panel, opener, onClose }: {
-  document: ReadonlyData<ArchitectureDocument>; panel: ArchitecturePanel | null;
+function DetailsPanel({ baseline, panel, opener, onClose }: {
+  baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel | null;
   opener: RefObject<HTMLElement | null>; onClose: () => void;
 }) {
-  const title = panel?.kind === "analysis" ? "Recorded analysis" : panel?.kind === "findings" ? "Findings" : "Component details";
+  const title = "Component details";
   return (
     <Dialog.Root open={panel !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
       <Dialog.Portal>
@@ -88,7 +86,7 @@ function DetailsPanel({ document, panel, opener, onClose }: {
           </div>
           <Dialog.Description className="sr-only">Details from the current diagram. Press Escape to return to the canvas.</Dialog.Description>
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            {panel ? <ArchitectureDetails document={document} panel={panel} /> : null}
+            {panel ? <ArchitectureDetails baseline={baseline} panel={panel} /> : null}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
@@ -96,24 +94,24 @@ function DetailsPanel({ document, panel, opener, onClose }: {
   );
 }
 
-/** Render only the committed document and its already prepared positions. */
-export function ArchitectureDiagram({ document, layout }: {
-  document: ReadonlyData<ArchitectureDocument>; layout: ReadonlyData<ArchitectureLayout>;
+/** Render only the committed baseline and its already prepared positions. */
+export function ArchitectureDiagram({ baseline, layout }: {
+  baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
 }) {
-  const [selection, setSelection] = useState<{ document: ReadonlyData<ArchitectureDocument>; panel: ArchitecturePanel } | null>(null);
-  if (selection && selection.document !== document) setSelection(null);
+  const [selection, setSelection] = useState<{ baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel } | null>(null);
+  if (selection && selection.baseline !== baseline) setSelection(null);
   const opener = useRef<HTMLElement | null>(null);
-  const panel = selection?.document === document ? selection.panel : null;
+  const panel = selection?.baseline === baseline ? selection.panel : null;
   const openPanel = useCallback((panel: ArchitecturePanel, trigger: HTMLElement) => {
     opener.current = trigger;
-    setSelection({ document, panel });
-  }, [document]);
+    setSelection({ baseline, panel });
+  }, [baseline]);
   const inspect = useCallback((componentId: string, trigger: HTMLElement) => {
     openPanel({ kind: "component", componentId }, trigger);
   }, [openPanel]);
   const nodes = useMemo<ComponentNode[]>(() => {
     const positions = new Map(layout.nodes.map(({ id, position }) => [id, position]));
-    return document.components.map((component) => {
+    return baseline.components.map((component) => {
       const position = positions.get(component.id);
       if (!position) throw new Error("The prepared diagram is missing a component.");
       return {
@@ -122,28 +120,19 @@ export function ArchitectureDiagram({ document, layout }: {
         ariaLabel: `${component.name}, ${component.id}`,
       };
     });
-  }, [document, layout, inspect]);
-  const edges = useMemo<Edge[]>(() => document.relationships.map(({ id, source, target }) => ({
-    id, source, target,
-    ariaLabel: `Edge from ${source} to ${target}`,
-    markerEnd: { type: MarkerType.ArrowClosed },
-  })), [document]);
+  }, [baseline, layout, inspect]);
 
   return (
     <section aria-labelledby="current-diagram-heading" className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
-        <h1 id="current-diagram-heading" className="min-w-0 flex-1 truncate text-base font-semibold" title={document.name}>{document.name}</h1>
+        <h1 id="current-diagram-heading" className="min-w-0 flex-1 truncate text-base font-semibold" title={baseline.id}>{baseline.id}</h1>
         <p id="component-inspection-hint" className="sr-only lg:not-sr-only lg:text-xs lg:text-muted-foreground">Double-click a component, or focus it and press Enter, to inspect.</p>
-        <Button variant="outline" aria-label="Findings" aria-haspopup="dialog" className="shrink-0 gap-1.5 px-2 py-1 text-xs" onClick={(event) => openPanel({ kind: "findings" }, event.currentTarget)}>
-          <ListChecks aria-hidden="true" className="size-3.5" />Findings <span className="text-muted-foreground">{document.diagnostics.length}</span>
-        </Button>
-        <Button variant="outline" aria-label="Recorded analysis" aria-haspopup="dialog" title="Recorded analysis" className="size-7 shrink-0 p-0" onClick={(event) => openPanel({ kind: "analysis" }, event.currentTarget)}>
-          <CircleHelp aria-hidden="true" className="size-4" />
-        </Button>
       </div>
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card" aria-label="Architecture diagram">
+      {baseline.components.length === 0 ? (
+        <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
+      ) : <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card" aria-label="Architecture diagram">
         <ReactFlow
-          nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView
+          nodes={nodes} edges={[]} nodeTypes={nodeTypes} fitView
           nodesDraggable={false} nodesConnectable={false} nodesFocusable={false}
           edgesFocusable={false} elementsSelectable={false} zoomOnDoubleClick={false}
         >
@@ -151,8 +140,8 @@ export function ArchitectureDiagram({ document, layout }: {
           <Controls showInteractive={false} />
           <FitPreparedDiagram layout={layout} />
         </ReactFlow>
-      </div>
-      <DetailsPanel document={document} panel={panel} opener={opener} onClose={() => setSelection(null)} />
+      </div>}
+      <DetailsPanel baseline={baseline} panel={panel} opener={opener} onClose={() => setSelection(null)} />
     </section>
   );
 }
