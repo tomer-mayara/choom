@@ -1,6 +1,6 @@
 # Baseline viewer readability plan
 
-Status: **Planned. No implementation has started for these tickets.**
+Status: **BR-01 to BR-04 are in implementation. BR-05 and BR-06 remain planned.**
 
 Reviewed: **2026-11-11**
 
@@ -19,7 +19,7 @@ This document contains the implementation plan and expanded tickets. Its
 scenarios describe tests to write during implementation; they are not test
 results.
 
-## Problem in the current view
+## Problem in the starting view
 
 The reviewed baseline contains 5 components, 8 interfaces, and 5 resources.
 The current view gives all 18 records large cards. Interfaces and resources sit
@@ -255,7 +255,8 @@ No new package, analysis service, storage service, or native command is needed.
 | Area | Planned change |
 | --- | --- |
 | [Architecture diagram](../../src/components/architecture-diagram.tsx) | Selection, movable view positions, and explicit view controls. Remove fitting on resize. |
-| [Architecture details](../../src/components/architecture-details.tsx) | Nonmodal side panel, component-owned lists, baseline lists, and local Back navigation. Reuse recorded-field rendering. |
+| [Side panel](../../src/components/architecture-inspector.tsx) and [inspection state](../../src/components/use-architecture-inspection.ts) | Nonmodal inspection, owned-item lists, baseline lists, and local Back navigation. |
+| [Recorded fields](../../src/components/architecture-details.tsx) | Preserve complete fields, statement statuses, references, and rule details. |
 | [Layout](../../src/lib/architecture-layout.ts) and [geometry](../../src/lib/component-geometry.ts) | Prepare compact component-only geometry with header and child space. Check exact component coverage and valid containment. |
 | [Relationship mapping](../../src/lib/baseline-links.ts) | Reuse recorded ownership and consumer meanings for the later connection view. |
 | [Workspace view](../../src/architecture/workspace-view.ts) and [app](../../src/App.tsx) | Reset view state on each successful file open. Keep the existing example path. |

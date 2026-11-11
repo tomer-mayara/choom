@@ -229,9 +229,12 @@ Then("their relationship descriptions shorten names and IDs and keep statuses", 
 Then("the complete names and IDs remain available in item details", async function (this: BaselineRelationshipWorld) {
   assert.ok(this.page && this.relationshipBaseline);
   for (const item of [fixtureItem(this.relationshipBaseline.components), fixtureItem(this.relationshipBaseline.interfaces)]) {
-    await this.page.locator(`.react-flow__node[data-id="${item.id}"]`).getByRole("button").dblclick();
+    await this.page.locator(`.react-flow__node[data-id="${item.id}"]`).getByRole("button").click();
     const panel = this.page.getByRole("dialog");
     assert.equal(await panel.getByRole("heading", { name: item.name, exact: true }).textContent(), item.name);
+    if (this.relationshipBaseline.components.some(({ id }) => id === item.id)) {
+      await panel.getByText("Recorded details", { exact: true }).click();
+    }
     await expect(panel.getByText(item.id, { exact: true })).toBeVisible();
     await this.page.keyboard.press("Escape");
     await expect(panel).toBeHidden();

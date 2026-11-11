@@ -111,6 +111,9 @@ async function openRecord(world: BaselineDetailsWorld, kind: string, key = "Ente
   await tabTo(browserPage, world.detailOpener);
   await browserPage.keyboard.press(key === "Space" ? " " : key);
   await expect(browserPage.getByRole("dialog")).toBeVisible();
+  if (kind === "parent component" || kind === "leaf component") {
+    await browserPage.getByRole("dialog").getByText("Recorded details", { exact: true }).click();
+  }
 }
 
 Given("a rich baseline is open for record inspection", { timeout: 30_000 }, async function (this: BaselineDetailsWorld) {

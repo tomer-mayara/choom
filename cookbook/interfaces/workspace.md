@@ -80,9 +80,10 @@ one link. Parent nesting does not add links. An excessive baseline reports
 **Too large to display** and keeps the previous view. The workflow imports this
 small policy module; it does not load ELK to handle the error.
 
-The canvas uses the available window and refits on resize. Double-click, Enter,
-or Space opens component, interface, or resource details. Each detail shows all
-saved fields. Each statement shows its value, **Proposed** or **Accepted
+The canvas fits the prepared diagram once it has a usable size. Resizing and
+inspection preserve its pan and zoom. A single click, Enter, or Space opens
+inspection in a nonmodal side panel. On narrow windows, the panel sits below
+the canvas. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
 (recorded)** status, **Evidence not loaded**, and its evidence references. An
 accepted statement also shows its acceptance reference. Missing optional fields
 say **Not recorded**. Null statement values say **Unknown (null)**. Empty lists and objects
@@ -97,7 +98,17 @@ plain JSON text. The viewer formats a rule's details only while its row is open.
 It does not evaluate checks, interpret markup, link references, or load evidence.
 Long values wrap and the panel scrolls without moving or zooming the diagram.
 
-Escape and the close button return focus to the opener. In the Rules list,
+Component inspection lists interfaces directly owned by that component. Resources
+and Recorded details expand its resource list and component fields. Baseline
+details also lists every component, interface, and resource, including unknown
+owners and records in models with no components. Back restores the originating
+list position and row focus. A direct canvas selection starts a new inspection
+path; inspecting an owned record keeps its component highlighted.
+
+Keyboard activation focuses the panel heading; pointer selection keeps focus on
+the canvas. The panel has no overlay or focus trap. Escape and the close button
+return focus to the opener only when focus was inside the panel; external focus
+stays in place. In the Rules list,
 Escape from an expanded rule first closes that rule and focuses its summary.
 The next Escape closes the list and focuses **Rules**. Keyboard focus brings an
 offscreen inspection header into view without changing zoom. A replacement
