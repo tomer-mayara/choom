@@ -548,7 +548,14 @@ mod tests {
         parent.stop();
         unreported.stop();
         let deadline = Instant::now() + Duration::from_secs(5);
-        assert!(job.member_pids(deadline).unwrap().is_empty());
+        // The process handles can signal before the job's PID list is empty.
+        while !job
+            .member_pids(deadline)
+            .expect("could not observe an empty job after stopping both test processes")
+            .is_empty()
+        {
+            thread::sleep(Duration::from_millis(5));
+        }
         assert_eq!(job.accounting().unwrap().TotalProcesses, 2);
         assert_eq!(job.processes.len(), 1);
         let retained = job.processes[&parent.0.id()].handle.as_raw_handle();
