@@ -1,5 +1,5 @@
 const domain = "^src/domain/";
-const codec = "^src/lib/architecture-yaml(?:/|\\.ts$)";
+const codec = "^src/lib/(architecture|baseline)-yaml(?:/|\\.ts$)";
 const codecContracts = "^src/lib/generated/contracts\\.ts$";
 const platform = "^src/platform/";
 const platformContracts = "^src/platform/generated/contracts\\.ts$";

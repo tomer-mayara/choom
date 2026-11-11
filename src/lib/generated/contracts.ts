@@ -7,11 +7,31 @@ export interface ArchitectureDocumentCodec {
   decode(text: architectureYaml): DecodeArchitectureOutcome;
 }
 
+export interface BaselineCodec {
+  decode(text: baselineYaml): DecodeBaselineOutcome;
+}
+
+export interface BaselineDecodeFailure {
+  status: "failure";
+  stage: "decoding";
+  code: DocumentCodecFailureCode;
+  message: string;
+  durationMs: number;
+}
+
 export type DecodeArchitectureOutcome = DecodedArchitectureDocument | DocumentCodecFailure;
+
+export type DecodeBaselineOutcome = DecodedBaseline | BaselineDecodeFailure;
 
 export interface DecodedArchitectureDocument {
   status: "success";
   document: ChoomDomain.ArchitectureDocument;
+  durationMs: number;
+}
+
+export interface DecodedBaseline {
+  status: "success";
+  baseline: ChoomDomain.Baseline;
   durationMs: number;
 }
 
@@ -34,3 +54,5 @@ export interface EncodedArchitectureDocument {
 }
 
 export type architectureYaml = string;
+
+export type baselineYaml = string;

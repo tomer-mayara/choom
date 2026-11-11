@@ -16,6 +16,7 @@ const discovery = "src/architecture/repository-discovery.ts";
 const manifest = "src/architecture/component-manifest.ts";
 const documents = "src/documents/document-files.ts";
 const codec = "src/lib/architecture-yaml.ts";
+const baselineCodec = "src/lib/baseline-yaml.ts";
 const parser = "src/lib/architecture-yaml/parse.ts";
 const layout = "src/lib/architecture-layout.ts";
 const domain = "src/domain/architecture-document.ts";
@@ -48,6 +49,9 @@ const allowed: readonly Probe[] = [
   [codec, parser, "runtime"],
   [codec, domain, "runtime"],
   [codec, "src/lib/generated/contracts.ts", "type"],
+  [baselineCodec, parser, "runtime"],
+  [baselineCodec, "src/domain/baseline.ts", "runtime"],
+  [baselineCodec, "src/lib/generated/contracts.ts", "type"],
   [parser, "node_modules/yaml/index.js", "runtime"],
   [domain, "node_modules/zod/index.js", "runtime"],
 ];
@@ -80,6 +84,11 @@ const forbidden: readonly Probe[] = [
   ["src/components/architecture-details.tsx", view, "type", "diagram-renders-prepared-data"],
   [codec, layout, "runtime", codecBoundary],
   [codec, "src/lib/generated/unrelated.ts", "type", codecBoundary],
+  [baselineCodec, layout, "runtime", codecBoundary],
+  [baselineCodec, documents, "type", codecBoundary],
+  [baselineCodec, "src/platform/documents.ts", "runtime", codecBoundary],
+  [baselineCodec, analyzer, "type", codecBoundary],
+  [baselineCodec, "node:fs", "runtime", codecBoundary],
   [parser, documents, "type", codecBoundary],
   [parser, "node_modules/elkjs/index.js", "runtime", codecBoundary],
   ["src/lib/generated/contracts.ts", "src/platform/documents.ts", "type", codecBoundary],
