@@ -43,16 +43,33 @@ are stable; later progress reuses the current baseline and layout.
 Subscription changes during notification do not repeat the same notification.
 
 [layoutBaseline](../../src/lib/architecture-layout.ts) prepares a flat node list
-for React Flow from one nested component tree. Each node has its saved ID,
+for React Flow from nested component groups and root-level interfaces and resources. Each node has its saved ID,
 width, height, position, and optional parent ID. Child positions are relative
-to their parent. Parents come before children. The layout checks exact component
+to their parent. Parents come before children. The layout checks exact visual-item
 coverage, parent IDs, finite geometry, positive sizes, and child containment
 below the parent inspection header. Missing or invalid output fails the load.
 [ArchitectureDiagram](../../src/components/architecture-diagram.tsx) renders
 that prepared data without file access or layout work. It gives React Flow its
 own mutable position records. Cards show the recorded component name, ID, and
-purpose. A parent has a border around its children and a small inspection
-header. No observed-import edges or file counts are invented.
+purpose. Interface and resource cards show their kind, name, ID, and recorded
+owner. A parent has a border around its children and a small inspection header.
+ELK rectangle packing makes a compact overview; it does not route the edges.
+No observed-import edges or file counts are invented.
+
+The renderer derives links only from owner and allowed-consumer statements.
+An owner has a **provides** line to its interface or an **owns** line to its
+resource. Each allowed consumer has a **may use** arrow to the interface.
+This arrow records permission, not an observed call. Each link shows the status
+of its defining statement: **Proposed** or **Accepted (recorded)**. Acceptance
+is a recorded claim. Choom does not check evidence or infer links from rules,
+promises, access rules, or names. Unknown owners and consumer policies remain
+visible as labels. They do not create links. A known consumer is still shown
+when its interface owner is unknown. Separate interfaces and an owner that is
+also a consumer keep separate links.
+Each link uses a short internal key. Accessible link descriptions shorten each
+name or ID longer than 80 characters with an ellipsis. This prevents a long
+record value from being copied into every link description. Source and target
+IDs remain exact, and item details keep the complete saved names and IDs.
 
 The [display policy](../../src/lib/baseline-display-limits.ts) checks bounds
 before the layout graph is built, including when the component list is empty.
@@ -64,15 +81,16 @@ one link. Parent nesting does not add links. An excessive baseline reports
 small policy module; it does not load ELK to handle the error.
 
 The canvas uses the available window and refits on resize. Double-click, Enter,
-or Space opens basic component details. Escape and the close button return
+or Space opens basic component, interface, or resource details. Escape and the close button return
 focus to the opener. Keyboard focus brings an offscreen inspection header into view
 without changing zoom. A replacement baseline closes the old details.
 
 The heading is the baseline ID. An entirely empty model says **No architecture
 items modeled**. A baseline with other record kinds but no components says
 **No components modeled**. Neither empty state substitutes the example.
-Interfaces/resources, rules, and full statement inspection belong
-to later tickets in the [viewer plan](../../docs/design/cr-baseline-viewer-plan.md).
+Interfaces and resources still appear when there are no components. The Rules
+list and full statement inspection belong to the next ticket in the
+[viewer plan](../../docs/design/cr-baseline-viewer-plan.md).
 
 ## Starter and checks
 
@@ -93,6 +111,7 @@ bun scripts/run-browser-behavior.ts --tags @bv-03
 bun test ./test/unit/lib/architecture-layout.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-diagram.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-04
+bun scripts/run-browser-behavior.ts --tags @bv-05
 ```
 
 Installed acceptance uses the actual app and picker; see the

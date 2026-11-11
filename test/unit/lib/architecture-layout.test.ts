@@ -7,21 +7,31 @@ import {
   baselineOverDisplayLimit, baselineWithComponents, baselineWithLinks,
   baselineWithParentLevels, baselineWithRecords, baselineWithRules,
 } from "../../support/baseline-layout-fixtures.ts";
+import { baselineWithDistinctInterfaceLinks, baselineWithoutComponents } from "../../support/baseline-relationship-fixtures.ts";
 
-test("layout places every modeled component without changing the baseline", async () => {
+test("layout places every modeled component, interface, and resource without changing the baseline", async () => {
   const baseline = baselineExample();
   const original = structuredClone(baseline);
   const layout = await layoutBaseline(baseline);
-  expect(layout.nodes.map(({ id }) => id)).toEqual(["checkout", "billing"]);
+  expect(layout.nodes.map(({ id }) => id)).toEqual(["checkout", "billing", "invoice-api", "invoice-store"]);
   expect(layout.nodes.every(({ position }) => Number.isFinite(position.x) && Number.isFinite(position.y))).toBe(true);
-  expect(new Set(layout.nodes.map(({ position }) => `${position.x}:${position.y}`)).size).toBe(2);
+  expect(new Set(layout.nodes.map(({ position }) => `${position.x}:${position.y}`)).size).toBe(4);
   expect(baseline).toEqual(original);
 });
 
-test("layout leaves an empty component model empty", async () => {
-  const baseline = baselineExample();
-  baseline.components = [];
-  expect(await layoutBaseline(baseline)).toEqual({ nodes: [] });
+test("layout keeps unowned records when there are no components", async () => {
+  const { nodes } = await layoutBaseline(baselineWithoutComponents());
+  expect(nodes.map(({ id }) => id)).toEqual(["invoice-api", "invoice-store"]);
+  expect(nodes.every(({ parentId }) => parentId === undefined)).toBe(true);
+});
+
+test("the full fixture fits a normal window without shrinking its 12px labels below 8px", async () => {
+  const { nodes } = await layoutBaseline(baselineSchema.parse(reviewedBaseline("full")));
+  const roots = nodes.filter(({ parentId }) => !parentId);
+  const width = Math.max(...roots.map(({ position, width }) => position.x + width)) - Math.min(...roots.map(({ position }) => position.x));
+  const height = Math.max(...roots.map(({ position, height }) => position.y + height)) - Math.min(...roots.map(({ position }) => position.y));
+  const fitZoom = Math.min(1280 / (width * 1.1), 688 / (height * 1.1));
+  expect(12 * fitZoom).toBeGreaterThanOrEqual(8);
 });
 
 test("layout nests the reviewed components with complete geometry and parents before children", async () => {
@@ -29,7 +39,9 @@ test("layout nests the reviewed components with complete geometry and parents be
   baseline.components.reverse();
   const original = structuredClone(baseline);
   const { nodes } = await layoutBaseline(baseline);
-  expect(new Set(nodes.map(({ id }) => id))).toEqual(new Set(baseline.components.map(({ id }) => id)));
+  expect(new Set(nodes.map(({ id }) => id))).toEqual(new Set([
+    ...baseline.components, ...baseline.interfaces, ...baseline.resources,
+  ].map(({ id }) => id)));
   expect(nodes.every((node) => Number.isFinite(node.width) && node.width > 0
     && Number.isFinite(node.height) && node.height > 0)).toBe(true);
   const positions = new Map(nodes.map((node, index) => [node.id, { node, index }]));
@@ -88,7 +100,7 @@ test.each(["total record count", "rules-only record count", "explicit link count
 test("the record limit accepts exactly 500 records across all four collections", async () => {
   const baseline = baselineWithRecords(500);
   const result = await layoutBaseline(baseline);
-  expect(result.nodes).toHaveLength(baseline.components.length);
+  expect(result.nodes).toHaveLength(375);
 });
 
 test("exactly 500 rules need no component layout", async () => {
@@ -105,7 +117,7 @@ test("exactly 2000 owner and consumer links remain allowed with parent links", a
   const baseline = baselineWithLinks(2_000);
   for (const item of baseline.components.slice(1)) item.parent = proposed("component-0");
   const result = await layoutBaseline(baseline);
-  expect(result.nodes).toHaveLength(100);
+  expect(result.nodes).toHaveLength(baseline.components.length + baseline.interfaces.length);
 });
 
 test("resource owners count toward the explicit link limit", async () => {
@@ -113,7 +125,7 @@ test("resource owners count toward the explicit link limit", async () => {
   const resource = baselineWithRecords(4).resources[0];
   if (!resource) throw new Error("The fixture needs a resource.");
   baseline.resources.push(resource);
-  expect((await layoutBaseline(baseline)).nodes).toHaveLength(100);
+  expect((await layoutBaseline(baseline)).nodes).toHaveLength(baseline.components.length + baseline.interfaces.length + 1);
   resource.owner = proposed("component-0");
   let arranged = false;
   await expect(layoutBaseline(baseline, async () => {
@@ -156,4 +168,27 @@ test.each<[string, (graph: ElkNode, parent: ElkNode, child: ElkNode) => void]>([
 test("layout failures reach the caller", async () => {
   const failure = new Error("The layout engine failed.");
   await expect(layoutBaseline(baselineWithComponents(1), async () => { throw failure; })).rejects.toBe(failure);
+});
+
+test("layout keeps same-named interfaces as separate roots beside recorded component groups", async () => {
+  const baseline = baselineWithDistinctInterfaceLinks();
+  const { nodes } = await layoutBaseline(baseline);
+  expect(nodes.map(({ id }) => id)).toEqual(["checkout", "billing", "invoice-api", "invoice-events"]);
+  expect(nodes.find(({ id }) => id === "billing")?.parentId).toBe("checkout");
+  const interfaces = nodes.filter(({ id }) => id.startsWith("invoice"));
+  expect(interfaces.every(({ parentId }) => parentId === undefined)).toBe(true);
+  expect(interfaces[0]?.position).not.toEqual(interfaces[1]?.position);
+});
+
+test("permission arrows have room for their labels between the consumer group and interface cards", async () => {
+  const { nodes } = await layoutBaseline(baselineWithDistinctInterfaceLinks());
+  const consumer = nodes.find(({ id }) => id === "checkout");
+  if (!consumer) throw new Error("The consumer group must be present.");
+  for (const item of nodes.filter(({ id }) => id.startsWith("invoice"))) {
+    const horizontalGap = Math.max(item.position.x - consumer.position.x - consumer.width,
+      consumer.position.x - item.position.x - item.width);
+    const verticalGap = Math.max(item.position.y - consumer.position.y - consumer.height,
+      consumer.position.y - item.position.y - item.height);
+    expect(Math.max(horizontalGap, verticalGap)).toBeGreaterThanOrEqual(180);
+  }
 });

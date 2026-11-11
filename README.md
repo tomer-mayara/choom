@@ -9,10 +9,10 @@ The app is read-only. It does not run repository analysis, accept proposals,
 change the selected file, or export a diagram. Recorded statement values,
 statuses, and references keep their meaning.
 
-The viewer shows the saved component hierarchy. The remaining
-[viewer plan](docs/design/cr-baseline-viewer-plan.md) adds interfaces and resources
-in BV-05, complete details in BV-06, and removal of unused native operations
-in BV-07. See the
+The viewer shows the saved component hierarchy, interfaces, resources, and
+explicit relationships. The remaining
+[viewer plan](docs/design/cr-baseline-viewer-plan.md) adds complete details in
+BV-06 and removes unused native operations in BV-07. See the
 [verification record](docs/change-requests/BV-baseline-viewer-evidence.md) for
 completed checks and platform limits.
 
@@ -47,7 +47,8 @@ The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
 [input notes](cookbook/interfaces/baseline-codec.md) describe the file limits.
 An old `schemaVersion: 1` diagram is not a baseline.
 
-The view shows the baseline ID and nested component groups. An empty baseline is valid.
+The view shows the baseline ID, nested component groups, interfaces, and resources.
+An empty baseline is valid.
 **Explore example** opens a small baseline through the same viewer. A failed or
 cancelled open keeps the current view; **Retry** uses the last selected file.
 Only one open operation can run at a time. **Cancel** prevents a pending load
@@ -58,10 +59,15 @@ explicit owner and consumer links, and 16 component levels. Larger inputs show
 **Too large to display** and keep the current view. Final measurements for the
 complete viewer remain part of the release checks.
 
-Double-click a component or group header to inspect it. With a keyboard, focus the control
+Ownership lines say **provides** or **owns**. Explicit consumer arrows say
+**may use**; they show permission recorded in the file. They do not show observed
+code imports. Each relationship shows its recorded statement status. An unknown
+owner or consumer policy does not create a link or hide the item.
+
+Double-click an item or group header to inspect it. With a keyboard, focus the control
 and press **Enter** or **Space**. Close the panel with **Escape** or its close
-button to return to the diagram. Complete record details and rendering of
-other item types follow in the later viewer tickets.
+button to return to the diagram. Complete record details and the Rules list
+follow in BV-06.
 
 ## Development commands
 
@@ -109,7 +115,7 @@ bun test ./test/unit/lib/baseline-yaml.test.ts ./test/interface/lib/baseline-yam
 bun test ./test/unit/architecture
 bun test ./test/unit/lib/architecture-layout.test.ts
 bun run test:dom
-bun run test:e2e --tags '@bv-03 or @bv-04'
+bun run test:e2e --tags '@bv-03 or @bv-04 or @bv-05'
 bun run check:contracts
 ```
 

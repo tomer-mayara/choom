@@ -175,7 +175,8 @@ Then("each component name and inspection control is reachable", { timeout: 30_00
     for (const [id, name] of components) {
       const button = page.getByRole("button", { name: `${name}, ${id}`, exact: true });
       if (!(await button.evaluate((element) => element === document.activeElement))) continue;
-      await expect(button).toBeInViewport({ ratio: 1 });
+      // Leave room for fractional-pixel rounding in the browser intersection ratio.
+      await expect(button).toBeInViewport({ ratio: 0.999 });
       await expect(button).toContainText(name);
       await page.keyboard.press("Enter");
       const panel = page.getByRole("dialog", { name: "Component details" });

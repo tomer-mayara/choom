@@ -30,7 +30,7 @@ characterization tests.
 | BV-02 | `bun run test:behavior:native --tags @bv-02`: 3 scenarios failed and 4 existing input protections passed. Baselines were rejected, future versions were misclassified, and legacy diagrams were accepted. | 7 scenarios pass; reviewed and complete. |
 | BV-03 | The normal browser and installed desktop app both loaded, then their Open Baseline assertions failed because the control was absent. | Browser, core, host, and ordinary installed Linux acceptance pass. Reviewed and complete. |
 | BV-04 | Five browser scenarios failed actual assertions: flat components did not form the recorded groups, and all four excessive-work cases lacked a display-limit error. | Nine focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
-| BV-05 | Not run yet. | Pending. |
+| BV-05 | Four browser scenarios failed actual assertions because interface/resource nodes and their relationships were absent. | Five focused browser scenarios and the complete affected suites pass. Reviewed and complete. |
 | BV-06 | Not run yet. | Pending. |
 | BV-07 | All 13 installed-host scenarios failed because the retired operations still returned registered-handler responses. | Removal pending. |
 
@@ -238,6 +238,58 @@ test driver now owns that setup for its three callers. The affected DOM tests
 and the complete repository check passed after the refactor. Production files
 did not change after the complete browser run. The manager reviewed the final
 candidate. Logs are retained in `reports/baseline-viewer/bv-04/`.
+
+## BV-05
+
+The first browser run used the unchanged BV-04 build. All four scenarios failed
+actual assertions, with 20 steps passed, four failed, and five skipped. The
+reviewed fixture had five nodes instead of 18. The unknown-owner interface was
+absent. Records without components had no nodes, and the distinct-interface case
+had only its two component nodes. The log is
+`reports/baseline-viewer/bv-05/browser-red.log`. The focused layout tests then
+failed seven assertions before implementation.
+
+Visual review found two problems after the first implementation passed its
+record-count tests. The reviewed baseline formed a tall column with 4-pixel
+label bounds. Compact packing then exposed overlapping labels and text covered
+by lines. New browser assertions failed before each correction. The final
+layout uses ELK rectangle packing for node geometry. React Flow draws the
+recorded links. Ownership labels sit above their target, and permission labels
+have more space between root items. Edges stay behind inspection controls.
+
+The reviewed fixture has exactly 18 nodes and 12 ownership lines, with no
+consumer arrows. At 1280×800, its fit zoom is 0.807 and the smallest relationship
+label bounds are 12.1 pixels high. The full and self-consumer cases pass checks
+for label overlap, control overlap, and viewport containment. The manager also
+inspected their screenshots and the unknown-owner case.
+
+The initial edge-aware ELK layout took 15–17 seconds for 2,000-link inputs and
+failed the existing five-second unit timeout. The final node-packing preparation
+takes about 35–45 ms for those inputs. The timeout and supported bounds did not
+increase. This measures preparation only; complete viewer measurements remain
+required after BV-06.
+
+Review also found that long record names and target IDs could be repeated into
+every edge's DOM attributes. Failing browser and focused tests preceded the fix.
+Internal edge keys are now short ordinals. Edge descriptions abbreviate long
+name/ID segments with an ellipsis; exact model IDs remain the endpoints, and
+complete names and IDs remain available in details. The saved baseline is unchanged.
+
+Completed candidate checks:
+
+- Focused BV-05 browser acceptance: five scenarios and 38 steps passed.
+  The complete browser suite passed 33 scenarios and 223 steps.
+- `bun run check`: 181 native unit tests, 25 DOM tests, 18 native Cucumber
+  scenarios with 57 steps, and 19 interface tests passed. Lint, contracts, types,
+  cookbook links, dependencies, unused-code, and duplicate-code checks passed.
+- `bun run build`, `bun run check-types`, and `bun run habit-hooks --all` passed.
+  The existing large-chunk warning remains; the snooze file is empty.
+- Independent semantic/UI review, manager visual review, document links, and
+  whitespace checks passed. Logs are retained in `reports/baseline-viewer/bv-05/`.
+
+PR #21's macOS and Windows jobs passed. Its web job failed to resolve the Ubuntu
+package mirror during setup; the Linux desktop job timed out at the same setup
+step. A web retry is running. These failures did not execute product tests.
 
 ## BV-07
 
