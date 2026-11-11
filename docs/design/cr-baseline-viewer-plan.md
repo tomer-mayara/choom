@@ -543,8 +543,8 @@ Scenario: Return focus after inspection
   Then focus returns to the item's control
 ```
 
-**First failure to observe:** Existing details describe imports and analyzer
-results. The new view does not yet expose all baseline fields and rules.
+**First failure to observe:** Basic component details do not yet expose complete
+statements, the other record kinds, or the Rules list.
 
 **TDD steps:**
 

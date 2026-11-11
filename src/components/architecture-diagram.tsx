@@ -8,16 +8,20 @@ import {
 import type { BaselineComponent, Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
+import { componentControlHeight, componentControlWidth } from "../lib/component-geometry.ts";
 import { ArchitectureDetails, type ArchitecturePanel } from "./architecture-details.tsx";
 import { Button } from "./ui/button.tsx";
 import "@xyflow/react/dist/style.css";
 
 type ComponentNode = Node<{
   component: ReadonlyData<BaselineComponent>;
+  isGroup: boolean;
   inspect: (componentId: string, opener: HTMLElement) => void;
 }, "component">;
 
-function ComponentCard({ data: { component, inspect } }: NodeProps<ComponentNode>) {
+const fitOptions = { minZoom: 0.01 };
+
+function ComponentCard({ data: { component, isGroup, inspect } }: NodeProps<ComponentNode>) {
   const { getNodesBounds, getViewport, setCenter } = useReactFlow();
   const store = useStoreApi();
 
@@ -30,19 +34,20 @@ function ComponentCard({ data: { component, inspect } }: NodeProps<ComponentNode
     const left = bounds.x * viewport.zoom + viewport.x;
     const top = bounds.y * viewport.zoom + viewport.y;
     const fullyVisible = left >= 0 && top >= 0
-      && left + bounds.width * viewport.zoom <= width
-      && top + bounds.height * viewport.zoom <= height;
+      && left + componentControlWidth * viewport.zoom <= width
+      && top + componentControlHeight * viewport.zoom <= height;
     if (!fullyVisible) {
-      void setCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, { zoom: viewport.zoom });
+      void setCenter(bounds.x + componentControlWidth / 2, bounds.y + componentControlHeight / 2, { zoom: viewport.zoom });
     }
   }
 
   return (
-    <div>
+    <div className={isGroup ? "h-full w-full rounded-xl border border-border bg-muted/20" : undefined}>
       <button
         type="button" aria-label={`${component.name}, ${component.id}`} aria-haspopup="dialog"
         aria-describedby="component-inspection-hint"
-        className="nodrag nopan pointer-events-auto flex h-30 w-60 flex-col justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-left text-foreground shadow-sm hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="nodrag nopan pointer-events-auto flex flex-col justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-left text-foreground shadow-sm hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        style={{ width: componentControlWidth, height: componentControlHeight }}
         onFocus={revealFocusedComponent}
         onDoubleClick={(event) => { event.stopPropagation(); inspect(component.id, event.currentTarget); }}
         onClick={(event) => { if (event.detail === 0) inspect(component.id, event.currentTarget); }}
@@ -62,7 +67,7 @@ function FitPreparedDiagram({ layout }: { layout: ReadonlyData<ArchitectureLayou
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
   useEffect(() => {
-    if (width > 0 && height > 0) void fitView();
+    if (width > 0 && height > 0) void fitView(fitOptions);
   }, [fitView, layout, width, height]);
   return null;
 }
@@ -110,13 +115,14 @@ export function ArchitectureDiagram({ baseline, layout }: {
     openPanel({ kind: "component", componentId }, trigger);
   }, [openPanel]);
   const nodes = useMemo<ComponentNode[]>(() => {
-    const positions = new Map(layout.nodes.map(({ id, position }) => [id, position]));
-    return baseline.components.map((component) => {
-      const position = positions.get(component.id);
-      if (!position) throw new Error("The prepared diagram is missing a component.");
+    const components = new Map(baseline.components.map((component) => [component.id, component]));
+    const parents = new Set(baseline.components.flatMap((component) => component.parent?.value ? [component.parent.value] : []));
+    return layout.nodes.map(({ id, position, width, height, parentId }) => {
+      const component = components.get(id);
+      if (!component) throw new Error("The prepared diagram has an unknown component.");
       return {
-        id: component.id, type: "component", data: { component, inspect }, position: { ...position },
-        width: 240, height: 120,
+        id, type: "component", data: { component, isGroup: parents.has(id), inspect }, position: { ...position },
+        width, height, ...(parentId ? { parentId, extent: "parent" as const } : {}),
         ariaLabel: `${component.name}, ${component.id}`,
       };
     });
@@ -132,12 +138,12 @@ export function ArchitectureDiagram({ baseline, layout }: {
         <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
       ) : <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card" aria-label="Architecture diagram">
         <ReactFlow
-          nodes={nodes} edges={[]} nodeTypes={nodeTypes} fitView
+          nodes={nodes} edges={[]} nodeTypes={nodeTypes} fitView minZoom={fitOptions.minZoom} fitViewOptions={fitOptions}
           nodesDraggable={false} nodesConnectable={false} nodesFocusable={false}
           edgesFocusable={false} elementsSelectable={false} zoomOnDoubleClick={false}
         >
           <Background />
-          <Controls showInteractive={false} />
+          <Controls showInteractive={false} fitViewOptions={fitOptions} />
           <FitPreparedDiagram layout={layout} />
         </ReactFlow>
       </div>}

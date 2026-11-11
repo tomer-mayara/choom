@@ -9,10 +9,10 @@ The app is read-only. It does not run repository analysis, accept proposals,
 change the selected file, or export a diagram. Recorded statement values,
 statuses, and references keep their meaning.
 
-BV-03 connects baseline opening and a basic component view. The remaining
-[viewer plan](docs/design/cr-baseline-viewer-plan.md) adds nested component
-layout in BV-04, interfaces and resources in BV-05, complete details and keyboard
-access in BV-06, and removal of unused native operations in BV-07. See the
+The viewer shows the saved component hierarchy. The remaining
+[viewer plan](docs/design/cr-baseline-viewer-plan.md) adds interfaces and resources
+in BV-05, complete details in BV-06, and removal of unused native operations
+in BV-07. See the
 [verification record](docs/change-requests/BV-baseline-viewer-evidence.md) for
 completed checks and platform limits.
 
@@ -47,13 +47,18 @@ The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
 [input notes](cookbook/interfaces/baseline-codec.md) describe the file limits.
 An old `schemaVersion: 1` diagram is not a baseline.
 
-The view shows the baseline ID and component cards. An empty baseline is valid.
+The view shows the baseline ID and nested component groups. An empty baseline is valid.
 **Explore example** opens a small baseline through the same viewer. A failed or
 cancelled open keeps the current view; **Retry** uses the last selected file.
 Only one open operation can run at a time. **Cancel** prevents a pending load
 from replacing the current view.
 
-Double-click a component to inspect it. With a keyboard, focus the component
+The display accepts at most 500 records across all four collections, 2,000
+explicit owner and consumer links, and 16 component levels. Larger inputs show
+**Too large to display** and keep the current view. Final measurements for the
+complete viewer remain part of the release checks.
+
+Double-click a component or group header to inspect it. With a keyboard, focus the control
 and press **Enter** or **Space**. Close the panel with **Escape** or its close
 button to return to the diagram. Complete record details and rendering of
 other item types follow in the later viewer tickets.
@@ -102,8 +107,9 @@ bun run test:behavior --tags @baseline-viewer
 bun test ./test/unit/domain/baseline.test.ts ./test/interface/domain/baseline.test.ts
 bun test ./test/unit/lib/baseline-yaml.test.ts ./test/interface/lib/baseline-yaml.test.ts
 bun test ./test/unit/architecture
+bun test ./test/unit/lib/architecture-layout.test.ts
 bun run test:dom
-bun run test:e2e --tags @bv-03
+bun run test:e2e --tags '@bv-03 or @bv-04'
 bun run check:contracts
 ```
 
