@@ -1,0 +1,1586 @@
+formatVersion: 1
+id: baseline-002
+parentId: null
+components:
+  - id: choom
+    name: Choom
+    purpose:
+      value: Group the browser workspace and native desktop host, and own the identified repository tooling and
+        shared acceptance harness.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-README.md
+        - s4-001-source-component.yaml
+        - s4-001-source-src%2Fmain.tsx
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+        - s5-001-source-scripts%2Fcontracts%2Fgenerate.ts
+        - s5-001-source-scripts%2Frun-browser-behavior.ts
+        - s5-001-source-excerpt-014
+        - s5-001-source-excerpt-015
+    membership:
+      value:
+        paths:
+          - component.yaml
+          - .dependency-cruiser.cjs
+          - bunfig.toml
+          - cookbook/interfaces/main.tsp
+          - cucumber.mjs
+          - package.json
+          - scripts/analyze.ts
+          - scripts/check-dependency-boundaries.ts
+          - scripts/contracts/generate.ts
+          - scripts/contracts/typescript.ts
+          - scripts/run-browser-behavior.ts
+          - scripts/run-packaged-behavior.ts
+          - scripts/run_all_constraints.sh
+          - scripts/validate-components.ts
+          - scripts/validate-cookbook.ts
+          - test/browser/index.html
+          - test/browser/main.tsx
+          - test/preload.ts
+          - test/steps/import/installed.steps.ts
+          - test/steps/import/lifecycle.steps.ts
+          - test/support/import/world.ts
+          - tsconfig.tools.json
+        excludePaths: []
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-component.yaml
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+        - s5-001-source-package.json
+        - s5-001-source-excerpt-023
+        - s5-001-source-excerpt-024
+        - s5-001-source-scripts%2Fcontracts%2Fgenerate.ts
+        - s5-001-source-scripts%2Fcontracts%2Ftypescript.ts
+        - s3-001-reviewed-001
+        - s5-001-source-scripts%2Frun-browser-behavior.ts
+        - s3-001-reviewed-002
+        - s3-001-reviewed-006
+        - s5-001-source-scripts%2Frun-packaged-behavior.ts
+        - s5-001-source-excerpt-025
+        - s5-001-source-scripts%2Fvalidate-components.ts
+        - s3-001-reviewed-005
+        - s5-001-source-scripts%2Fvalidate-cookbook.ts
+        - s5-001-source-bunfig.toml
+        - s5-001-source-cucumber.mjs
+        - s5-001-source-tsconfig.tools.json
+        - s4-001-source-excerpt-019
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s3-001-reviewed-003
+        - s5-001-source-test%2Fpreload.ts
+        - s5-001-source-test%2Fsupport%2Fimport%2Fworld.ts
+        - s5-001-source-excerpt-014
+        - s5-001-source-excerpt-015
+        - s3-001-reviewed-004
+        - s5-001-source-excerpt-018
+        - s5-001-source-cookbook%2Finterfaces%2Fmain.tsp
+    groupingReason:
+      value: "The root declaration groups Workspace and Native shell. The saved plan assigns repository tooling
+        outside child roots to Choom. Inspected command, generator, validator and shared harness sources
+        support the listed exact additions. Root membership is not a catch-all: shared contracts and other
+        support files can remain unknown, and the parent does not duplicate child ownership."
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-component.yaml
+        - s4-001-source-src%2Fmain.tsx
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+        - s5-001-source-scripts%2Fcontracts%2Fgenerate.ts
+        - s5-001-source-scripts%2Fvalidate-components.ts
+        - s5-001-source-excerpt-014
+        - s5-001-source-excerpt-015
+  - id: workspace
+    name: Workspace
+    parent:
+      value: choom
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-component.yaml
+    purpose:
+      value: Compose repository loading, portable diagram open/export, layout and React presentation around one live
+        workspace.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fcomponent.yaml
+        - s4-001-source-src%2FApp.tsx
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-016
+    membership:
+      value:
+        paths:
+          - src/**
+          - cookbook/interfaces/dependency-cruiser.md
+          - cookbook/interfaces/dependency-cruiser.tsp
+          - cookbook/interfaces/discovery.md
+          - cookbook/interfaces/discovery.tsp
+          - cookbook/interfaces/documents.tsp
+          - cookbook/interfaces/workflow.tsp
+          - cookbook/interfaces/workspace.md
+          - index.html
+          - public/icon.svg
+          - test/interface/architecture/dependency-cruiser/converter.test.ts
+          - test/interface/architecture/dependency-cruiser/execution.test.ts
+          - test/interface/architecture/discovery.test.ts
+          - test/interface/architecture/load-workflow.test.ts
+          - test/interface/lib/architecture-yaml.test.ts
+          - test/steps/workspace.steps.ts
+          - test/unit/app.test.tsx
+          - test/unit/architecture/component-manifest.test.ts
+          - test/unit/architecture/dependency-cruiser/converter.test.ts
+          - test/unit/architecture/dependency-cruiser/execution.test.ts
+          - test/unit/architecture/dependency-cruiser/isolation.test.ts
+          - test/unit/architecture/dependency-cruiser/limits.test.ts
+          - test/unit/architecture/dependency-cruiser/recorded-reports.test.ts
+          - test/unit/architecture/load-workflow-cancellation.test.ts
+          - test/unit/architecture/load-workflow-cleanup.test.ts
+          - test/unit/architecture/load-workflow-publication.test.ts
+          - test/unit/architecture/load-workflow.test.ts
+          - test/unit/architecture/repository-discovery.test.ts
+          - test/unit/components/architecture-details.test.tsx
+          - test/unit/components/architecture-diagram.test.tsx
+          - test/unit/components/workspace.test.tsx
+          - test/unit/documents/document-files-concurrency.test.ts
+          - test/unit/lib/architecture-layout.test.ts
+          - test/unit/lib/architecture-yaml.test.ts
+        excludePaths:
+          - src/domain/**
+          - src/platform/**
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-component.yaml
+        - s4-001-source-src%2Fcomponent.yaml
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-016
+        - s5-001-source-excerpt-003
+        - s5-001-source-excerpt-004
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+        - s5-001-source-excerpt-005
+        - s5-001-source-excerpt-006
+        - s5-001-source-excerpt-007
+        - s4-001-source-excerpt-018
+        - s5-001-source-excerpt-008
+        - s5-001-source-excerpt-032
+        - s4-001-source-src%2Fmain.tsx
+        - s5-001-source-excerpt-033
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s5-001-file@test-group-evidence.json#/units/0
+        - s5-001-file@test-group-evidence.json#/units/1
+        - s5-001-file@test-group-evidence.json#/units/2
+        - s5-001-file@test-group-evidence.json#/units/3
+        - s4-001-source-excerpt-021
+        - s5-001-file@test-group-evidence.json#/units/7
+        - s5-001-file@test-group-evidence.json#/units/13
+        - s5-001-file@test-group-evidence.json#/units/14
+        - s5-001-file@test-group-evidence.json#/units/15
+        - s5-001-file@test-group-evidence.json#/units/16
+        - s5-001-file@test-group-evidence.json#/units/17
+        - s5-001-file@test-group-evidence.json#/units/18
+        - s5-001-file@test-group-evidence.json#/units/19
+        - s5-001-file@test-group-evidence.json#/units/20
+        - s5-001-file@test-group-evidence.json#/units/21
+        - s5-001-file@test-group-evidence.json#/units/22
+        - s5-001-file@test-group-evidence.json#/units/23
+        - s5-001-file@test-group-evidence.json#/units/24
+        - s5-001-file@test-group-evidence.json#/units/25
+        - s5-001-file@test-group-evidence.json#/units/26
+        - s5-001-file@test-group-evidence.json#/units/27
+        - s5-001-source-excerpt-021
+        - s5-001-file@test-group-evidence.json#/units/28
+        - s5-001-file@test-group-evidence.json#/units/35
+        - s5-001-file@test-group-evidence.json#/units/36
+        - s5-001-source-excerpt-017
+    groupingReason:
+      value: The workspace declaration and contract group one load workflow, document lifecycle, discovery, analyzer
+        factory, selectors and layout. Composition connects these collaborators and exposes a view binding.
+        Internal dependency rules are preserved separately; this grouping does not establish that all internal
+        modules share one replacement boundary. Stage 5 adds exact support-file memberships from inspected
+        contracts/tooling or the documented test-placement policy with per-file import evidence. Uninspected
+        test bodies remain marked unreviewed.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fcomponent.yaml
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace-view.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-016
+        - s4-001-source-excerpt-019
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+  - id: architecture-model
+    name: Architecture model
+    parent:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fcomponent.yaml
+    purpose:
+      value: Build and validate semantic architecture data and supply the starter graph.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Farchitecture.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+    membership:
+      value:
+        paths:
+          - src/domain/**
+          - cookbook/interfaces/architecture.tsp
+          - test/interface/domain/architectural-layer.test.ts
+          - test/interface/domain/architecture-document.test.ts
+          - test/interface/domain/architecture.test.ts
+          - test/unit/domain/architecture-document.test.ts
+          - test/unit/domain/architecture.test.ts
+          - test/unit/domain/build-architecture-document.test.ts
+          - test/unit/domain/component-catalog.test.ts
+          - test/unit/domain/declaration-validation.test.ts
+        excludePaths: []
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Farchitecture.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s5-001-file@test-group-evidence.json#/units/4
+        - s5-001-source-excerpt-022
+        - s5-001-file@test-group-evidence.json#/units/5
+        - s5-001-file@test-group-evidence.json#/units/6
+        - s4-001-source-excerpt-022
+        - s5-001-file@test-group-evidence.json#/units/30
+        - s5-001-file@test-group-evidence.json#/units/31
+        - s5-001-source-excerpt-019
+        - s5-001-file@test-group-evidence.json#/units/32
+        - s5-001-file@test-group-evidence.json#/units/33
+        - s5-001-file@test-group-evidence.json#/units/34
+    groupingReason:
+      value: The declaration, schema and builder place graph identity, component ownership and portable document
+        validation in the domain. The codec and layout consume this model. The declared dependency rule keeps
+        domain imports within the domain and Zod. Stage 5 adds exact support-file memberships from inspected
+        contracts/tooling or the documented test-placement policy with per-file import evidence. Uninspected
+        test bodies remain marked unreviewed.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Farchitecture.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-src%2Flib%2Farchitecture-yaml.ts
+        - s4-001-source-excerpt-013
+        - s4-001-source-excerpt-019
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+  - id: desktop-adapter
+    name: Platform adapter
+    parent:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fcomponent.yaml
+    purpose:
+      value: Detect the host, handle selectors and translate repository, analyzer and document requests across the
+        desktop boundary; provide browser file selection, reading and download.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fcomponent.yaml
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-017
+    membership:
+      value:
+        paths:
+          - src/platform/**
+          - cookbook/interfaces/document-dialogs.tsp
+          - test/interface/platform/analyzer.test.ts
+          - test/interface/platform/desktop.test.ts
+          - test/interface/platform/document-dialogs.test.ts
+          - test/interface/platform/documents.test.ts
+          - test/interface/platform/repository.test.ts
+          - test/steps/desktop.steps.ts
+          - test/unit/platform/analyzer.test.ts
+          - test/unit/platform/browser-documents.test.tsx
+          - test/unit/platform/documents.test.ts
+          - test/unit/platform/repository.test.ts
+        excludePaths: []
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fcomponent.yaml
+        - s4-001-source-src%2Fplatform%2Fcomponent.yaml
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s5-001-source-excerpt-013
+        - s5-001-source-excerpt-031
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s5-001-file@test-group-evidence.json#/units/8
+        - s5-001-file@test-group-evidence.json#/units/9
+        - s4-001-source-excerpt-020
+        - s5-001-file@test-group-evidence.json#/units/10
+        - s5-001-file@test-group-evidence.json#/units/11
+        - s5-001-file@test-group-evidence.json#/units/12
+        - s5-001-file@test-group-evidence.json#/units/37
+        - s5-001-file@test-group-evidence.json#/units/38
+        - s5-001-file@test-group-evidence.json#/units/39
+        - s5-001-file@test-group-evidence.json#/units/40
+        - s5-001-source-excerpt-020
+        - s5-001-source-excerpt-016
+    groupingReason:
+      value: The saved declaration calls this desktop-adapter but explicitly includes browser file operations. The
+        inspected adapters share host checks, typed ports and request/response validation, while workspace
+        composition selects the environment. Keep the declared identity and make its broader scope explicit.
+        Stage 5 adds exact support-file memberships from inspected contracts/tooling or the documented
+        test-placement policy with per-file import evidence. Uninspected test bodies remain marked unreviewed.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fcomponent.yaml
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s5-001-source-docs%2Fcoding-principles.md
+        - s5-001-source-docs%2Farchitecture-reviews%2F2026-11-07-agreed-refactoring-plan.md
+  - id: native-shell
+    name: Native shell
+    parent:
+      value: choom
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-component.yaml
+    purpose:
+      value: Host the desktop frontend and own native repository sessions, analyzer execution and document storage.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+    membership:
+      value:
+        paths:
+          - src-tauri/**
+        excludePaths: []
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-component.yaml
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    groupingReason:
+      value: The native declaration groups these operating-system responsibilities. The inspected entry manages
+        repository, analyzer and document services and registers their commands in one Tauri host. Native
+        service implementations and permissions remain only partly inspected.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+interfaces:
+  - id: interface-workspace-view
+    name: Workspace view and commands
+    owner:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2FApp.tsx
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace-view.ts
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-016
+        - s4-001-source-excerpt-021
+    publicAccess:
+      value:
+        - src/architecture/workspace.ts#createWorkspace
+        - src/architecture/workspace-view.ts#WorkspaceBinding
+        - src/architecture/workspace-view.ts#WorkflowView
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2FApp.tsx
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace-view.ts
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-016
+        - s4-001-source-excerpt-021
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2FApp.tsx
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace-view.ts
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-016
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Expose load, open, cancel, retry, cleanup retry, subscription and current snapshot. Composition
+          exposes document export and retains lifecycle disposal and cleanup notification.
+        data: Read-only published state, semantic document and prepared layout; the TypeScript binding is separate
+          from saved document data.
+        errors: A second load is busy while a load or cleanup gate is held. Precommit failure or cancellation
+          preserves the previous view. Unconfirmed cleanup blocks another load.
+        lifecycle: One load slot and workspace owner. Copy and freeze the document and layout before commit; retain
+          failed cleanup ownership for retry or restart.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2FApp.tsx
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace-view.ts
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-016
+        - s4-001-source-excerpt-021
+        - s5-001-source-excerpt-008
+  - id: interface-domain-model
+    name: Semantic architecture data
+    owner:
+      value: architecture-model
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Farchitecture.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-022
+    publicAccess:
+      value:
+        - src/domain/architecture.ts#architectureSchema
+        - src/domain/architecture.ts#starterArchitecture
+        - src/domain/architecture-document.ts#architectureDocumentSchema
+        - src/domain/build-architecture-document.ts#buildArchitectureDocument
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Farchitecture.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-022
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Farchitecture.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-022
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Validate starter graphs and portable semantic documents; build a document from declared components
+          and normalized observations.
+        data: The starter Architecture and portable schemaVersion 1 ArchitectureDocument are different schemas.
+          Portable data records components, import relationships, analysis and diagnostics; prepared layout is
+          separate.
+        errors: The inspected schemas reject duplicate or invalid references. The builder rejects internal import
+          endpoints absent from inventory or without an owner. Exact helper-level rules remain partly
+          uninspected.
+        lifecycle: Model transformation and validation have no observed storage port in the inspected functions.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fcomponent.yaml
+        - s4-001-source-src%2Fdomain%2Farchitecture.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-022
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+        - s5-001-source-excerpt-028
+  - id: interface-discovery
+    name: Declared repository discovery
+    owner:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fcomponent-manifest.ts
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-016
+    publicAccess:
+      value:
+        - src/architecture/repository-discovery.ts#RepositoryDiscovery.discover
+        - src/architecture/component-manifest.ts#readComponentManifest
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fcomponent-manifest.ts
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-016
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fcomponent-manifest.ts
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-016
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Open a repository through RepositoryAccess, follow root and linked component declarations, validate
+          linked artifacts and select one explicit dependency-cruiser descriptor.
+        data: Return a repository session, declared component records and analyzer inputs. Manifest paths are checked
+          and resolved through the repository port.
+        errors: Return a staged discovery failure for invalid roots, missing or inconsistent declarations, invalid
+          references and resource limits. A failed close remains a cleanup failure.
+        lifecycle: Failed discovery attempts close an opened session; successful discovery passes the session to the
+          workflow for subsequent ownership.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fcomponent-manifest.ts
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-016
+        - s5-001-source-excerpt-005
+        - s5-001-source-excerpt-006
+  - id: interface-analysis-layer
+    name: Architectural analysis port
+    owner:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-016
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    publicAccess:
+      value:
+        - src/architecture/create-architectural-layer.ts#createArchitecturalLayer
+        - src/architecture/dependency-cruiser/architectural-layer.ts#DepCruiserArchitecturalLayer.analyze
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-016
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-016
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Composition supplies a concrete execution and conversion pair behind the ArchitecturalLayer role.
+          The adapter validates the request and selected enforcer, awaits execution, then conversion.
+        data: Repository session, component declarations and analyzer descriptor enter; the orchestration consumes the
+          declared success, cancellation or staged failure outcome.
+        errors: The inspected adapter rejects unsupported enforcers and invalid requests, observes cancellation and
+          maps thrown execution/conversion failures. Detailed runner/converter guarantees are not established
+          here.
+        lifecycle: A repository load creates the layer. The workflow treats unconfirmed analysis cleanup as requiring
+          restart. The inspected runner holds one prepared job, forwards cancellation and release, and removes
+          its abort listener. Native process lifetime and filesystem cleanup remain unverified.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-016
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s5-001-source-excerpt-003
+        - s5-001-source-excerpt-004
+        - s5-001-source-excerpt-026
+        - s5-001-source-excerpt-027
+  - id: interface-document-files
+    name: Document lifecycle
+    owner:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-018
+    publicAccess:
+      value:
+        - src/documents/document-files.ts#DocumentFiles
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-018
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Prepare a candidate by encode, native snapshot write/read and decode; read saved files; export
+          captured bytes through an injected document port.
+        data: Use the shared semantic document codec and opaque native snapshot IDs. Destination selection and
+          replacement confirmation remain injected.
+        errors: Encoding and storage failures remain separate. Failed releases are retained and block subsequent write
+          dispatch; cancellation or rejected preparation releases the candidate.
+        lifecycle: Retain one DocumentFiles instance per workspace. Share concurrent release requests and retain
+          failed release IDs. Writes wait for active releases, then fail while retained IDs remain. An
+          explicit retryCleanup call retries those IDs and requests native cleanup.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-018
+        - s5-001-source-excerpt-011
+        - s5-001-source-excerpt-013
+        - s5-001-source-excerpt-031
+  - id: interface-document-codec
+    name: Portable YAML codec
+    owner:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-yaml.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    publicAccess:
+      value:
+        - src/lib/architecture-yaml.ts#encodeArchitectureYaml
+        - src/lib/architecture-yaml.ts#decodeArchitectureYaml
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-yaml.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-yaml.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Encode or decode the portable semantic document through bounded data parsing and shared domain
+          validation, without taking a storage or analyzer port.
+        data: Return YAML text or a schemaVersion 1 semantic document. Encoding validates before serialization and
+          applies byte/token guards; decode uses the same document check.
+        errors: Return encoding/decoding failures with code, message and elapsed time. The inspected wrapper
+          distinguishes unsupported-version, invalid-document and invalid-encoding. The local parser source
+          rejects unsupported syntax and checks structure; lexical-limit and scalar helpers remain
+          uninspected.
+        lifecycle: Per-call conversion, with no repository or native resource ownership in the inspected wrapper.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-yaml.ts
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+        - s5-001-source-excerpt-007
+        - s5-001-source-excerpt-029
+  - id: interface-platform
+    name: Host and file access ports
+    owner:
+      value: desktop-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-020
+    publicAccess:
+      value:
+        - src/platform/desktop.ts#selectProjectDirectory
+        - src/platform/browser-documents.ts#selectBrowserDiagram
+        - src/platform/browser-documents.ts#readBrowserDiagram
+        - src/platform/browser-documents.ts#downloadDiagram
+        - src/platform/repository.ts#DesktopRepositoryAccess
+        - src/platform/documents.ts#DesktopDocumentAccess
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-020
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-020
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Select host-specific file operations. Desktop repository/document classes validate requests, check
+          availability, invoke a named native command and validate its result. Browser operations use browser
+          file and download APIs.
+        data: Desktop requests use a request envelope and typed outcomes. Browser reads enforce a 16 MiB bound and
+          fatal UTF-8 decoding; YAML interpretation remains in the codec.
+        errors: Desktop validation failures map to invalid-request or invalid-response; unavailable hosts or transport
+          rejection return unavailable. Picker rejection and browser read errors are handled by their callers.
+        lifecycle: Browser selection removes temporary inputs/listeners. Download schedules Blob URL revocation.
+          Native session/snapshot lifetime is carried through the ports, not implemented by the TypeScript
+          transport.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-020
+        - s5-001-source-excerpt-009
+        - s5-001-source-excerpt-011
+        - s5-001-source-excerpt-012
+        - s5-001-source-excerpt-013
+        - s5-001-source-excerpt-031
+  - id: interface-native-commands
+    name: Native host command surface
+    owner:
+      value: native-shell
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+    publicAccess:
+      value:
+        - src-tauri/src/lib.rs#builder:repository_*
+        - src-tauri/src/lib.rs#builder:depcruiser_*
+        - src-tauri/src/lib.rs#builder:document_*
+        - src-tauri/src/lib.rs#run
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    promises:
+      value:
+        behavior: The inspected host registers four repository, four analyzer and six document command handlers and
+          the dialog plugin.
+        data: Repository and document payloads are described by the saved contracts and validated on the TypeScript
+          side. Native payload enforcement and analyzer-specific guarantees remain unverified.
+        errors: On ExitRequested, reported analyzer or document shutdown errors prevent exit. Handler error behavior
+          is documented in part but its native implementation was not inspected.
+        lifecycle: The host manages repository.clone() and passes the original repository value to AnalyzerService.
+          The clone implementation was not inspected. Analyzer and document storage receive separate app-cache
+          paths. The main entry calls the native run function.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-018
+        - s5-001-source-excerpt-009
+        - s5-001-source-excerpt-010
+        - s5-001-source-excerpt-011
+        - s5-001-source-excerpt-012
+resources:
+  - id: resource-workspace-state
+    name: Live workspace state
+    identity:
+      value: In-process current document/layout, active load slot, repository handles and cleanup state for one
+        workspace instance.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-006
+    owner:
+      value: workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-016
+    accessRules:
+      value: The workflow publishes read-only copies through its view role. View observers do not own lifecycle
+        disposal or cleanup notifications; composition retains those operations.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace-view.ts
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-016
+        - s4-001-source-excerpt-021
+  - id: resource-repository-sessions
+    name: Selected repository sessions
+    identity:
+      value: Opaque session handles for a user-selected repository root; the concrete filesystem path varies per
+        selection.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Frepository.ts
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-017
+    owner:
+      value: native-shell
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-excerpt-017
+    accessRules:
+      value: Use bounded native repository commands. Discovery hands a successful session to the workflow; it closes
+        the session after analysis or retains a failed close for cleanup. Native root and path enforcement are
+        documented intent, not verified native execution.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-017
+  - id: resource-analyzer-cache
+    name: Native analyzer jobs and cache
+    identity:
+      value: AnalyzerService configured with the analyzer child of the Tauri application cache directory. The
+        concrete host path and job IDs vary.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    owner:
+      value: native-shell
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    accessRules:
+      value: The host manages the analyzer service and registers prepare/run/cancel/release operations. It requests
+        shutdown before exit and prevents exit on a reported error. Detailed process, filesystem and
+        permission guarantees remain unverified.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+  - id: resource-document-cache
+    name: Native document snapshots
+    identity:
+      value: DocumentStorage configured with documents/v1 under the Tauri application cache directory; opaque
+        snapshot IDs are passed to the workspace.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-018
+    owner:
+      value: native-shell
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src-tauri%2Fcomponent.yaml
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-excerpt-018
+    accessRules:
+      value: The documented storage contract retains issued snapshots and failed cleanup ownership; the workspace
+        retains unconfirmed releases and blocks writes until recovery. Cache locking, atomic file promotion
+        and native cleanup remain documented promises whose implementations were not inspected.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-018
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+  - id: resource-selected-diagram
+    name: Selected and exported diagram file
+    identity:
+      value: A user-selected desktop file or browser File/download destination; no single saved runtime path is
+        established.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-018
+    owner:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-018
+    accessRules:
+      value: Read/decode or encode/export through the selected platform and document ports. Desktop replacement
+        requires explicit consent; browser export requests a YAML download. Access by these components does
+        not establish ownership of the user's file.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-018
+rules:
+  - id: rule-no-cycles
+    name: no-cycles
+    subject:
+      value: {}
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/0
+    expected:
+      value:
+        forbiddenTarget:
+          circular: true
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/0
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: no-cycles
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-no-unresolved
+    name: no-unresolved
+    subject:
+      value: {}
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/1
+    expected:
+      value:
+        forbiddenTarget:
+          couldNotResolve: true
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/1
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: no-unresolved
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-domain-is-platform-independent
+    name: domain-is-platform-independent
+    subject:
+      value:
+        path: ^src/domain/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/2
+    expected:
+      value:
+        forbiddenTarget:
+          pathNot:
+            - ^src/domain/
+            - ^node_modules/zod/
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/2
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: domain-is-platform-independent
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-libraries-do-not-depend-on-ui-or-platform
+    name: libraries-do-not-depend-on-ui-or-platform
+    subject:
+      value:
+        path: ^src/lib/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/3
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/(App\.|main\.|components/|platform/)
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/3
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: libraries-do-not-depend-on-ui-or-platform
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-platform-does-not-depend-on-workspace
+    name: platform-does-not-depend-on-workspace
+    subject:
+      value:
+        path: ^src/platform/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/4
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/
+          pathNot: ^src/platform/
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/4
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: platform-does-not-depend-on-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-document-codec-is-independent-of-storage-and-analyzers
+    name: document-codec-is-independent-of-storage-and-analyzers
+    subject:
+      value:
+        path:
+          - ^src/lib/architecture-yaml(?:/|\.ts$)
+          - ^src/lib/generated/contracts\.ts$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/5
+    expected:
+      value:
+        forbiddenTarget:
+          pathNot:
+            - ^src/lib/architecture-yaml(?:/|\.ts$)
+            - ^src/lib/generated/contracts\.ts$
+            - ^src/domain/
+            - ^node_modules/yaml/
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/5
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: document-codec-is-independent-of-storage-and-analyzers
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-components-do-not-import-app-entrypoints
+    name: components-do-not-import-app-entrypoints
+    subject:
+      value:
+        path: ^src/components/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/6
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/(App\.|main\.)
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/6
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: components-do-not-import-app-entrypoints
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-desktop-access-through-adapter
+    name: desktop-access-through-adapter
+    subject:
+      value:
+        path: ^src/
+        pathNot: ^src/platform/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/7
+    expected:
+      value:
+        forbiddenTarget:
+          path: node_modules/@tauri-apps/
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/7
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: desktop-access-through-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-concrete-analyzer-access-through-composition
+    name: concrete-analyzer-access-through-composition
+    subject:
+      value:
+        path: ^src/
+        pathNot:
+          - ^src/architecture/dependency-cruiser/
+          - ^src/architecture/create-architectural-layer\.ts$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/8
+    expected:
+      value:
+        forbiddenTarget:
+          path:
+            - ^src/architecture/dependency-cruiser/
+            - ^node_modules/dependency-cruiser/
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/8
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: concrete-analyzer-access-through-composition
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-application-does-not-import-ui-or-composition
+    name: application-does-not-import-ui-or-composition
+    subject:
+      value:
+        path: ^src/(architecture|documents)/
+        pathNot:
+          - ^src/architecture/workspace\.ts$
+          - ^src/architecture/create-architectural-layer\.ts$
+          - ^src/architecture/dependency-cruiser/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/9
+    expected:
+      value:
+        forbiddenTarget:
+          path:
+            - ^src/(App\.|main\.|components/|styles\.css$)
+            - ^node_modules/(?!yaml/|zod/)
+            - ^src/architecture/workspace\.ts$
+            - ^src/architecture/create-architectural-layer\.ts$
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/9
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: application-does-not-import-ui-or-composition
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-application-does-not-import-runtime-builtins
+    name: application-does-not-import-runtime-builtins
+    subject:
+      value:
+        path: ^src/(architecture|documents)/
+        pathNot:
+          - ^src/architecture/workspace\.ts$
+          - ^src/architecture/create-architectural-layer\.ts$
+          - ^src/architecture/dependency-cruiser/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/10
+    expected:
+      value:
+        forbiddenTarget:
+          dependencyTypes:
+            - core
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/10
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: application-does-not-import-runtime-builtins
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-application-architecture-uses-platform-contracts
+    name: application-architecture-uses-platform-contracts
+    subject:
+      value:
+        path: ^src/architecture/
+        pathNot:
+          - ^src/architecture/workspace\.ts$
+          - ^src/architecture/create-architectural-layer\.ts$
+          - ^src/architecture/dependency-cruiser/
+          - ^src/architecture/repository-discovery\.ts$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/11
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/platform/
+          pathNot: ^src/platform/generated/contracts\.ts$
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/11
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: application-architecture-uses-platform-contracts
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-discovery-uses-repository-access
+    name: discovery-uses-repository-access
+    subject:
+      value:
+        path: ^src/architecture/repository-discovery\.ts$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/12
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/platform/
+          pathNot:
+            - ^src/platform/generated/contracts\.ts$
+            - ^src/platform/repository\.ts$
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/12
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: discovery-uses-repository-access
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-document-lifecycle-uses-document-access
+    name: document-lifecycle-uses-document-access
+    subject:
+      value:
+        path: ^src/documents/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/13
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/platform/
+          pathNot:
+            - ^src/platform/generated/contracts\.ts$
+            - ^src/platform/documents\.ts$
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/13
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: document-lifecycle-uses-document-access
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-application-platform-imports-are-erased
+    name: application-platform-imports-are-erased
+    subject:
+      value:
+        path: ^src/(architecture|documents)/
+        pathNot:
+          - ^src/architecture/workspace\.ts$
+          - ^src/architecture/create-architectural-layer\.ts$
+          - ^src/architecture/dependency-cruiser/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/14
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/platform/
+          dependencyTypesNot:
+            - pre-compilation-only
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/14
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: application-platform-imports-are-erased
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-workspace-view-uses-data-bindings
+    name: workspace-view-uses-data-bindings
+    subject:
+      value:
+        path: ^src/architecture/workspace-view\.ts$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/15
+    expected:
+      value:
+        forbiddenTarget:
+          pathNot:
+            - ^src/architecture/generated/workflow\.ts$
+            - ^src/domain/(generated/contracts|readonly-data)\.ts$
+            - ^src/documents/document-files\.ts$
+            - ^src/lib/architecture-layout\.ts$
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/15
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: workspace-view-uses-data-bindings
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-workspace-view-imports-are-erased
+    name: workspace-view-imports-are-erased
+    subject:
+      value:
+        path: ^src/architecture/workspace-view\.ts$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/16
+    expected:
+      value:
+        forbiddenTarget:
+          dependencyTypesNot:
+            - pre-compilation-only
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/16
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: workspace-view-imports-are-erased
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-components-use-workspace-view
+    name: components-use-workspace-view
+    subject:
+      value:
+        path: ^src/components/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/17
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/(architecture|documents|platform)/
+          pathNot:
+            - ^src/architecture/workspace-view\.ts$
+            - ^src/architecture/generated/workflow\.ts$
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/17
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: components-use-workspace-view
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-app-uses-workspace-composition
+    name: app-uses-workspace-composition
+    subject:
+      value:
+        path: ^src/App\.tsx$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/18
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/(architecture|documents|platform)/
+          pathNot:
+            - ^src/architecture/workspace-view\.ts$
+            - ^src/architecture/generated/workflow\.ts$
+            - ^src/architecture/workspace\.ts$
+            - ^src/platform/desktop\.ts$
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/18
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: app-uses-workspace-composition
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-diagram-renders-prepared-data
+    name: diagram-renders-prepared-data
+    subject:
+      value:
+        path: ^src/components/architecture-(diagram|details)\.tsx$
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/19
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^src/(architecture/|documents/|platform/)
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/19
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: diagram-renders-prepared-data
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+  - id: rule-no-test-code-in-app
+    name: no-test-code-in-app
+    subject:
+      value:
+        path: ^src/
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/20
+    expected:
+      value:
+        forbiddenTarget:
+          path: ^test/
+        severity: error
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019
+        - s4-001-file@boundary-rules.json#/rules/20
+    check:
+      value:
+        tool: dependency-cruiser
+        configuration: .dependency-cruiser.cjs
+        ruleName: no-test-code-in-app
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-019

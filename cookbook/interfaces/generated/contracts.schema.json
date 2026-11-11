@@ -769,6 +769,986 @@
             ],
             "additionalProperties": false
         },
+        "BaselineRuleObject": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineRuleObject.json",
+            "type": "object",
+            "properties": {},
+            "unevaluatedProperties": {
+                "$ref": "BaselineRuleValue.json"
+            }
+        },
+        "BaselineRuleValue": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineRuleValue.json",
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "null"
+                },
+                {
+                    "$ref": "BaselineRuleObject.json"
+                },
+                {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineRuleValue.json"
+                    }
+                }
+            ]
+        },
+        "BaselineAccessPoints": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineAccessPoints.json",
+            "type": "array",
+            "items": {
+                "$ref": "baselineText.json"
+            },
+            "minItems": 1
+        },
+        "baselineText": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "baselineText.json",
+            "type": "string",
+            "pattern": "\\S"
+        },
+        "BaselineConsumers": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineConsumers.json",
+            "type": "array",
+            "items": {
+                "$ref": "baselineId.json"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "baselineId": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "baselineId.json",
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "BaselineMembership": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineMembership.json",
+            "type": "object",
+            "properties": {
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineSelector.json"
+                    },
+                    "minItems": 1
+                },
+                "excludePaths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineSelector.json"
+                    }
+                }
+            },
+            "required": [
+                "paths"
+            ],
+            "additionalProperties": false
+        },
+        "baselineSelector": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "baselineSelector.json",
+            "type": "string",
+            "pattern": "\\S"
+        },
+        "BaselinePromises": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselinePromises.json",
+            "type": "object",
+            "properties": {
+                "behavior": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "data": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "errors": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "lifecycle": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "behavior",
+                "data",
+                "errors",
+                "lifecycle"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedTextStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedTextStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "$ref": "baselineText.json"
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedTextStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedTextStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "$ref": "baselineText.json"
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedNullableTextStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedNullableTextStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedNullableTextStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedNullableTextStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedComponentReferenceStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedComponentReferenceStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedComponentReferenceStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedComponentReferenceStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedMembershipStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedMembershipStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "$ref": "BaselineMembership.json"
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedMembershipStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedMembershipStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "$ref": "BaselineMembership.json"
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedAccessPointsStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedAccessPointsStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselineAccessPoints.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedAccessPointsStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedAccessPointsStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselineAccessPoints.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedConsumersStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedConsumersStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselineConsumers.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedConsumersStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedConsumersStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselineConsumers.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedPromisesStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedPromisesStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselinePromises.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedPromisesStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedPromisesStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselinePromises.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedRuleObjectStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedRuleObjectStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselineRuleObject.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedRuleObjectStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedRuleObjectStatement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "$ref": "BaselineRuleObject.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineComponent": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineComponent.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "purpose": {
+                    "$ref": "BaselineTextStatement.json"
+                },
+                "membership": {
+                    "$ref": "BaselineMembershipStatement.json"
+                },
+                "groupingReason": {
+                    "$ref": "BaselineTextStatement.json"
+                },
+                "parent": {
+                    "$ref": "BaselineComponentReferenceStatement.json"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "purpose",
+                "membership",
+                "groupingReason"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineTextStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineTextStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedTextStatement.json"
+                },
+                {
+                    "$ref": "AcceptedTextStatement.json"
+                }
+            ]
+        },
+        "BaselineMembershipStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineMembershipStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedMembershipStatement.json"
+                },
+                {
+                    "$ref": "AcceptedMembershipStatement.json"
+                }
+            ]
+        },
+        "BaselineComponentReferenceStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineComponentReferenceStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedComponentReferenceStatement.json"
+                },
+                {
+                    "$ref": "AcceptedComponentReferenceStatement.json"
+                }
+            ]
+        },
+        "BaselineInterface": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineInterface.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "owner": {
+                    "$ref": "BaselineComponentReferenceStatement.json"
+                },
+                "publicAccess": {
+                    "$ref": "BaselineAccessPointsStatement.json"
+                },
+                "allowedConsumers": {
+                    "$ref": "BaselineConsumersStatement.json"
+                },
+                "promises": {
+                    "$ref": "BaselinePromisesStatement.json"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "owner",
+                "publicAccess",
+                "allowedConsumers",
+                "promises"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineAccessPointsStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineAccessPointsStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedAccessPointsStatement.json"
+                },
+                {
+                    "$ref": "AcceptedAccessPointsStatement.json"
+                }
+            ]
+        },
+        "BaselineConsumersStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineConsumersStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedConsumersStatement.json"
+                },
+                {
+                    "$ref": "AcceptedConsumersStatement.json"
+                }
+            ]
+        },
+        "BaselinePromisesStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselinePromisesStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedPromisesStatement.json"
+                },
+                {
+                    "$ref": "AcceptedPromisesStatement.json"
+                }
+            ]
+        },
+        "BaselineResource": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineResource.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "identity": {
+                    "$ref": "BaselineNullableTextStatement.json"
+                },
+                "owner": {
+                    "$ref": "BaselineComponentReferenceStatement.json"
+                },
+                "accessRules": {
+                    "$ref": "BaselineNullableTextStatement.json"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "identity",
+                "owner",
+                "accessRules"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineNullableTextStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineNullableTextStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedNullableTextStatement.json"
+                },
+                {
+                    "$ref": "AcceptedNullableTextStatement.json"
+                }
+            ]
+        },
+        "BaselineRule": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineRule.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "subject": {
+                    "$ref": "BaselineRuleObjectStatement.json"
+                },
+                "expected": {
+                    "$ref": "BaselineRuleObjectStatement.json"
+                },
+                "check": {
+                    "$ref": "BaselineRuleObjectStatement.json"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "subject",
+                "expected",
+                "check"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineRuleObjectStatement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineRuleObjectStatement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedRuleObjectStatement.json"
+                },
+                {
+                    "$ref": "AcceptedRuleObjectStatement.json"
+                }
+            ]
+        },
+        "Baseline": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "Baseline.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 1
+                },
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "parentId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineComponent.json"
+                    }
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineInterface.json"
+                    }
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineResource.json"
+                    }
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineRule.json"
+                    }
+                }
+            },
+            "required": [
+                "formatVersion",
+                "id",
+                "parentId",
+                "components",
+                "interfaces",
+                "resources",
+                "rules"
+            ],
+            "additionalProperties": false
+        },
         "AnalysisOutcome": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "AnalysisOutcome.json",

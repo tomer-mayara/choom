@@ -79,6 +79,12 @@ function parameter(property: ModelProperty, owner: Namespace, imports: Map<strin
 }
 
 function modelDeclaration(program: Program, model: Model, owner: Namespace, imports: Map<string, string>): string {
+  if (isArrayModelType(model)) {
+    return `export type ${identifier(model.name)} = Array<${reference(model.indexer.value, owner, imports)}>;`;
+  }
+  if (isRecordModelType(model) && model.properties.size === 0 && !model.baseModel) {
+    return `export interface ${identifier(model.name)} {\n  [key: string]: ${reference(model.indexer.value, owner, imports)};\n}`;
+  }
   if (model.baseModel || model.indexer || model.sourceModels.length > 0) {
     throw new Error(`Unsupported model inheritance, spread, or indexer: ${model.name}`);
   }
