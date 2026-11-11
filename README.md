@@ -13,14 +13,15 @@ outputs for whole-repository, regional, and change analysis.
 The [baseline viewer plan](docs/design/cr-baseline-viewer-plan.md) replaces the
 product's repository analysis with a saved-baseline viewer. The implementation
 is split into seven draft PRs. See the [verification record](docs/change-requests/BV-baseline-viewer-evidence.md)
-for completed checks and remaining work. The first ticket adds baseline
-validation; the current app route changes in BV-03.
+for completed checks and remaining work. The first two tickets add baseline
+validation and bounded YAML input; the current app route changes in BV-03.
 
 Run the baseline contract checks with:
 
 ```sh
-bun run test:behavior --tags @bv-01
+bun run test:behavior --tags @baseline-viewer
 bun test ./test/unit/domain/baseline.test.ts ./test/interface/domain/baseline.test.ts
+bun test ./test/unit/lib/baseline-yaml.test.ts ./test/interface/lib/baseline-yaml.test.ts
 bun run check:contracts
 ```
 

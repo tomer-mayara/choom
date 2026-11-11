@@ -5,6 +5,7 @@ artifacts:
   behavior:
     - path: ../cookbook/behavior/workspace.feature
     - path: ../cookbook/behavior/diagram-workspace.feature
+    - path: ../cookbook/behavior/baseline-viewer/input.feature
     - path: ../cookbook/behavior/architecture-import/t01-explore.feature
     - path: ../cookbook/behavior/architecture-import/t01-installed-picker-smoke.feature
     - path: ../cookbook/behavior/architecture-import/t03-discovery.feature
@@ -29,6 +30,8 @@ artifacts:
     - path: ../cookbook/interfaces/desktop.tsp
     - path: ../cookbook/interfaces/desktop-analyzer.tsp
     - path: ../cookbook/interfaces/documents.tsp
+    - path: ../cookbook/interfaces/baseline-codec.tsp
+    - path: ../cookbook/interfaces/baseline-codec.md
     - path: ../cookbook/interfaces/workflow.tsp
     - path: ../cookbook/interfaces/document-dialogs.tsp
     - path: ../cookbook/interfaces/desktop-documents.tsp

@@ -1764,6 +1764,226 @@
                 }
             ]
         },
+        "DecodedBaseline": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodedBaseline.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "baseline": {
+                    "$ref": "Baseline.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "baseline",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineDecodeFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineDecodeFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "type": "string",
+                    "const": "decoding"
+                },
+                "code": {
+                    "$ref": "DocumentCodecFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DocumentCodecFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentCodecFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "unsupported-version"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-encoding"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-document"
+                },
+                {
+                    "type": "string",
+                    "const": "limit-exceeded"
+                }
+            ]
+        },
+        "DocumentCodecFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DocumentCodecFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "encoding"
+                        },
+                        {
+                            "type": "string",
+                            "const": "decoding"
+                        }
+                    ]
+                },
+                "code": {
+                    "$ref": "DocumentCodecFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "EncodedArchitectureDocument": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "EncodedArchitectureDocument.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "text": {
+                    "$ref": "architectureYaml.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "text",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "architectureYaml": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "architectureYaml.json",
+            "type": "string",
+            "maxLength": 16777216
+        },
+        "DecodedArchitectureDocument": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodedArchitectureDocument.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "document": {
+                    "$ref": "ArchitectureDocument.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "document",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DecodeBaselineOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodeBaselineOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "DecodedBaseline.json"
+                },
+                {
+                    "$ref": "BaselineDecodeFailure.json"
+                }
+            ]
+        },
+        "EncodeArchitectureOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "EncodeArchitectureOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "EncodedArchitectureDocument.json"
+                },
+                {
+                    "$ref": "DocumentCodecFailure.json"
+                }
+            ]
+        },
+        "DecodeArchitectureOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodeArchitectureOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "DecodedArchitectureDocument.json"
+                },
+                {
+                    "$ref": "DocumentCodecFailure.json"
+                }
+            ]
+        },
+        "baselineYaml": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "baselineYaml.json",
+            "type": "string",
+            "maxLength": 16777216
+        },
         "OpenRepositoryRequest": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "OpenRepositoryRequest.json",
@@ -3423,149 +3643,6 @@
                 },
                 {
                     "$ref": "AnalysisCancelled.json"
-                }
-            ]
-        },
-        "DocumentCodecFailure": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DocumentCodecFailure.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "const": "failure"
-                },
-                "stage": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "const": "encoding"
-                        },
-                        {
-                            "type": "string",
-                            "const": "decoding"
-                        }
-                    ]
-                },
-                "code": {
-                    "$ref": "DocumentCodecFailureCode.json"
-                },
-                "message": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 2048
-                },
-                "durationMs": {
-                    "type": "number",
-                    "minimum": 0
-                }
-            },
-            "required": [
-                "status",
-                "stage",
-                "code",
-                "message",
-                "durationMs"
-            ],
-            "additionalProperties": false
-        },
-        "DocumentCodecFailureCode": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DocumentCodecFailureCode.json",
-            "anyOf": [
-                {
-                    "type": "string",
-                    "const": "unsupported-version"
-                },
-                {
-                    "type": "string",
-                    "const": "invalid-encoding"
-                },
-                {
-                    "type": "string",
-                    "const": "invalid-document"
-                },
-                {
-                    "type": "string",
-                    "const": "limit-exceeded"
-                }
-            ]
-        },
-        "EncodedArchitectureDocument": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "EncodedArchitectureDocument.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "const": "success"
-                },
-                "text": {
-                    "$ref": "architectureYaml.json"
-                },
-                "durationMs": {
-                    "type": "number",
-                    "minimum": 0
-                }
-            },
-            "required": [
-                "status",
-                "text",
-                "durationMs"
-            ],
-            "additionalProperties": false
-        },
-        "architectureYaml": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "architectureYaml.json",
-            "type": "string",
-            "maxLength": 16777216
-        },
-        "DecodedArchitectureDocument": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DecodedArchitectureDocument.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "const": "success"
-                },
-                "document": {
-                    "$ref": "ArchitectureDocument.json"
-                },
-                "durationMs": {
-                    "type": "number",
-                    "minimum": 0
-                }
-            },
-            "required": [
-                "status",
-                "document",
-                "durationMs"
-            ],
-            "additionalProperties": false
-        },
-        "EncodeArchitectureOutcome": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "EncodeArchitectureOutcome.json",
-            "anyOf": [
-                {
-                    "$ref": "EncodedArchitectureDocument.json"
-                },
-                {
-                    "$ref": "DocumentCodecFailure.json"
-                }
-            ]
-        },
-        "DecodeArchitectureOutcome": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DecodeArchitectureOutcome.json",
-            "anyOf": [
-                {
-                    "$ref": "DecodedArchitectureDocument.json"
-                },
-                {
-                    "$ref": "DocumentCodecFailure.json"
                 }
             ]
         },
