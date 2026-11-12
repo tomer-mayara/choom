@@ -72,3 +72,18 @@ test("a failed replacement keeps the current view and Retry uses the same select
   await waitFor(() => expect(screen.getByRole("heading", { name: "replacement" })).toBeTruthy());
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+test.each(["canvas", "panel", "toolbar", "outside"])("successful replacement handles focus from the %s", async (target) => {
+  const workflow = new LoadWorkflow(baselineWorkflowDependencies());
+  await workflow.openBaseline();
+  render(<App workspace={{ workflow }} />);
+  const header = screen.getByRole("button", { name: "Checkout, checkout" });
+  const opener = screen.getByRole("button", { name: "Open Baseline" });
+  if (target === "panel") fireEvent.click(header, { detail: 0 });
+  else act(() => (target === "toolbar" ? opener : header).focus());
+  if (target === "outside") act(() => header.blur());
+  await act(async () => { await workflow.openBaseline(); });
+  const expected = target === "outside" ? document.body
+    : target === "toolbar" ? opener : screen.getByRole("heading", { name: "baseline-example" });
+  expect(document.activeElement === expected).toBe(true);
+});

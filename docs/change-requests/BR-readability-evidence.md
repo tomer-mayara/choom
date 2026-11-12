@@ -133,3 +133,80 @@ hash stayed unchanged through the run, and all owned processes were cleaned up.
 The archive, package, hashes, red/green reports, and logs remain in the task's
 Linux evidence directory. Local `reports/br-02-installed-evidence.md` records
 their paths and the separate product/harness identities.
+
+[PR #26](https://github.com/tomer-mayara/choom/pull/26) is draft and is based on
+BR-01. [CI run 135](https://github.com/tomer-mayara/choom/actions/runs/43121194697)
+and the push workflow passed for commit `7a4e95b`. Web, macOS, Ubuntu, and Windows
+checks passed. Ubuntu also passed the installed Linux acceptance suite.
+
+## BR-03: Move components and keep the current arrangement
+
+The first browser acceptance test ran against the unchanged, built BR-02 app.
+Setup and the pointer gesture completed. The assertion required Workspace to
+move 35 diagram units horizontally and observed zero movement. This was the
+expected missing-feature failure, recorded in `reports/br-03-acceptance-red.log`.
+
+Focused red/green tests drove an owned geometry copy, parent movement, child
+containment, growth through ancestors, and rollback of positions and bounds.
+The same rules handle pointer movement and 10-unit arrow-key steps. Pointer
+events belong to the view that received the press. Cancellation and replacement
+invalidate those events, including a release that would otherwise open details.
+
+The inspection path, arrangement, and starting camera use the current
+baseline/layout pair. Either object changing starts a fresh view. Ordinary
+inspection, resizing, and failed or cancelled loads retain the current view.
+Keyboard focus reveals a header with the smallest needed pan at the same zoom;
+an oversized header exposes its leading name and focus edge.
+
+Independent review found two defects, each covered by a failing regression
+test before its fix. An intentional blur could leave stale focus ownership and
+move focus on publication. A replacement that closed the panel could start its
+camera using the previous, narrower canvas size. The fixes distinguish an
+intentional blur from removal of a focused record and read the committed canvas
+bounds for the starting view. The reviewer reported no other actionable findings.
+
+Completed local checks:
+
+- `bun run check` passed with 195 native unit tests, 60 DOM tests, 18 native
+  Cucumber scenarios, and 25 interface tests, plus the structural checks.
+  The limit case covers movement and rollback at 500 components and 16 levels.
+- The final full browser suite passed: 91 scenarios and 642 steps, including
+  all 23 BR-03 scenarios. The build and TypeScript checks passed.
+- `bun run habit-hooks --all` passed without findings. Snoozes remain empty.
+  Whitespace checks and 51 local Markdown link targets passed.
+
+The final focus scenario captures the actual external focus target during a
+held load. It does not require focus on Open Baseline after that button becomes
+disabled. The camera and replacement assertions are unchanged. Intermediate
+failures and final results are retained under `reports/br-03-*`.
+
+Two installed attempts against the unchanged BR-02 package stopped at the
+native picker before reaching movement. Those setup failures are kept separate
+and are not claimed as missing-feature red. Native captures showed the correct
+dialog and the location entry during its reveal. The test helper now gives
+Ctrl+L and Ctrl+A the same 200-millisecond key cadence used for End and Return;
+the file path and picker-close assertion are unchanged.
+
+The normal harness then produced a clean native red in `run-zo8KDR`. File
+opening and side-panel inspection passed; the real pointer drag failed the
+assertion that Workspace must move. The old installed executable remained
+`92dacb23ec35b762b69b65b3fe1707c788f6761c2c7f8f77fb669914b55c5d64`.
+Its BR-02 product identity is separate from the new harness hashes. Final
+verification used an ordinary BR-03 release package and passed: 19 scenarios
+and 102 steps in `run-yvad7O`. The new journey checks real parent dragging,
+child keyboard movement, retained inspection and camera, containment, focus,
+and unchanged selected file bytes. The existing complete-record, native-picker,
+invalid-input, and retired-command cases remain green.
+
+The release was built from reviewed tree
+`bbfc1d58b682bfef6b60852e6509573e626456de`, with source archive SHA-256
+`6bcd10a1e4ee3b21af90d4d66a7d6a0516008318d832954d00d0b4d375dfda67`.
+The package SHA-256 is
+`c5cebfa23bf53174b679882c67c314a68886e33cc59937579181420e7b2d285d`.
+The extracted and installed executable hashes match:
+`28070fe68e47afda3f8970dce0075f4c3b833f34d556aee773e85b66cf5d29cd`.
+All 241 source files and 48 harness files matched the archive after acceptance.
+The executable hash stayed unchanged, and no owned app or driver process
+remained. Production and harness files are unchanged after the tested snapshot;
+this result was added afterward. Full identities and local paths are in
+`reports/br-03-installed-evidence.md`.

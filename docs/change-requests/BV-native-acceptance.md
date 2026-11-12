@@ -94,6 +94,14 @@ the reviewed fixture. Each rule must expand and show
 its ID, subject, expectation, and check. This is final assembled-app verification;
 browser and DOM checks cover the same viewer behavior in more detail.
 
+The `@br-03` journey opens Workspace with one click, checks its five owned
+interfaces, opens an interface, and uses Back. It selects Native shell while
+the panel is open, then drags Workspace with real pointer input. The test checks
+that its children follow, Native shell stays fixed, and inspection and camera
+stay unchanged. It then moves Architecture model with an arrow key and checks
+the 10-unit step, containment, focus, and unchanged file bytes. DOM queries only
+observe the result; they do not move components or dispatch input events.
+
 The `@bv-07` command-retirement scenarios request all 13 removed custom commands
 with a closed-contract-invalid probe. The test catches rejection inside the
 webview and requires the host's missing-command or ACL message. A registered
@@ -103,7 +111,9 @@ opening, preservation, the complete view, and retirement together.
 
 The picker helper finds the X11 window owned by the requested executable and
 focuses its new native dialog. It types an absolute file path or presses Escape,
-then requires the dialog to close. The runner sets `GTK_USE_PORTAL=0` for the
+then requires the dialog to close. The Ctrl+L and Ctrl+A sequence uses a
+200-millisecond key cadence so GTK can reveal and focus the location entry.
+End and Return use the same cadence. The runner sets `GTK_USE_PORTAL=0` for the
 application's GTK3 dialog backend and owns its D-Bus/X11 session. It does not
 claim desktop portal or launcher behavior. Fixtures and child processes are
 cleaned up after completion, failure, or interruption.
@@ -140,8 +150,9 @@ existing installations and record source, package, executable, OS, architecture,
 and signing identities. Open only a copied baseline with no source repository or
 companion files. Check the five-component overview without relationship lines,
 side-panel access to all eight interfaces and five resources, all 21 Rules
-entries, absence of old actions, unchanged
-file bytes, native picker cancellation, and invalid-file preservation. Record
+entries, parent dragging, child movement with arrow keys, and continued
+inspection while arranging the drawing. Check the absence of old actions,
+unchanged file bytes, native picker cancellation, and invalid-file preservation. Record
 each actual observation and screenshot.
 
 Verify the launched process environment separately when claiming operation

@@ -106,8 +106,28 @@ return focus to the opener only when focus was inside the panel; external focus
 stays in place. In the Rules list,
 Escape from an expanded rule first closes that rule and focuses its summary.
 The next Escape closes the list and focuses **Rules**. Keyboard focus brings an
-offscreen inspection header into view without changing zoom. A replacement
-baseline closes the old details.
+offscreen inspection header into view without changing zoom. An oversized header
+keeps its leading name and focus edge visible. A successful replacement closes
+the old details and starts a fresh view, even when baseline and record IDs match.
+If focus was in the old canvas or panel, it moves to the new baseline heading;
+focus outside that view stays in place.
+
+Header dragging and arrow keys move only viewer-owned geometry. Arrow keys move
+10 diagram units and announce the new position. Pointer frames do not produce
+repeated announcements. Parents carry descendants through their relative
+positions. Child movement stops at the left edge and below the parent header;
+right or bottom movement grows every enclosing bound as needed. Other component
+origins stay fixed. Unused group space remains available for canvas panning.
+
+Escape, window interruption, or lost pointer capture cancels a drag and restores
+its starting positions and bounds. Escape cancels the drag before it can close
+inspection. Releasing a drag never selects a component. A later event from a
+cancelled gesture or replaced view cannot change the current view.
+
+The published baseline/layout pair stays immutable. Its viewer-owned arrangement
+survives inspection, resize, pan, zoom, loading progress, and unsuccessful loads.
+Each successful open gets a new arrangement; closing the example ends its view.
+Movement adds no file writes, storage permission, or persistent cache.
 
 The heading is the baseline ID. An entirely empty model says **No architecture
 items modeled**. A baseline with other record kinds but no components says

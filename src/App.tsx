@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Workflow } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,15 @@ export default function App({ workspace = defaultWorkspace }: { workspace?: Work
   const { current } = snapshot;
   const desktop = isDesktop();
   const [showExample, setShowExample] = useState(false);
+  const focusInView = useRef(false);
+  const previous = useRef(current);
+  useLayoutEffect(() => {
+    const replaced = previous.current !== current;
+    previous.current = current;
+    if (replaced && current && focusInView.current) {
+      document.getElementById("current-diagram-heading")?.focus({ preventScroll: true });
+    }
+  }, [current]);
   return (
     <div className="flex h-dvh min-w-0 flex-col overflow-hidden">
       <WorkspaceControls workspace={workspace} snapshot={snapshot} desktop={desktop}>
@@ -34,7 +43,12 @@ export default function App({ workspace = defaultWorkspace }: { workspace?: Work
           </Button>
         ) : null}
       </WorkspaceControls>
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col"
+        onFocusCapture={() => { focusInView.current = true; }}
+        onBlurCapture={(event) => {
+          if (event.relatedTarget instanceof Node) focusInView.current = event.currentTarget.contains(event.relatedTarget);
+          else if (event.target instanceof Node && event.target.isConnected) focusInView.current = false;
+        }}>
         {current ? <ArchitectureDiagram baseline={current.baseline} layout={current.layout} /> : (
           <>
             {!showExample ? (

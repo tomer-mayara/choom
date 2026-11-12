@@ -71,6 +71,17 @@ control and press **Enter** or **Space**. The side panel keeps the canvas usable
 it sits below the canvas in a narrow window. Inspection and resizing preserve
 pan and zoom. **Fit view** remains available when the drawing is outside the view.
 
+Drag a component header to move it. A parent carries its children. A child stays
+inside its recorded parent and below the parent header; enclosing groups grow
+to the right or bottom when needed. Arrow keys on a focused header move it by
+10 diagram units. Drag unused group space to pan. Movement does not select a
+record or change the saved baseline. A drag release does not open inspection.
+
+The arrangement lasts while this view remains open. Inspection, pan, zoom,
+resize, failed opens, and cancelled opens keep it. Each successful file open
+starts a fresh arrangement, including reopening the same file. Closing and
+reopening the example also starts fresh. No arrangement is saved to disk.
+
 Component inspection lists directly owned interfaces. Select a list entry to
 read its complete record; **Back** restores the originating list and entry.
 **Resources** lists directly owned resources, and **Recorded details** exposes
@@ -78,10 +89,14 @@ all component fields. **Baseline details** includes metadata and lists of all
 components, interfaces, and resources, including items with unknown owners.
 **Rules** opens the recorded rule list.
 
-**Escape** closes the expanded rule containing focus, then the panel on the next
-press. Closing the panel returns focus to its opener if focus was inside the
-panel; focus already on the canvas stays there. A new baseline closes the old
-inspection path.
+**Escape** first cancels an active drag and restores its starting positions and
+bounds. An interrupted drag does the same. Otherwise, Escape closes the expanded
+rule containing focus, then the panel on the next press. Closing the panel
+returns focus to its opener if focus was inside the panel; focus already on the
+canvas stays there. A new baseline closes the old
+inspection path. If focus was in the replaced view, it moves to the new baseline
+heading. Keyboard focus and movement reveal the component name without changing
+zoom, even when a header is wider than the canvas.
 
 Details show all recorded fields, including statement status, evidence references,
 and acceptance references. **Accepted (recorded)** describes the saved status;
@@ -152,6 +167,14 @@ Run the focused component-overview checks with:
 bun test ./test/unit/lib/architecture-layout.test.ts ./test/unit/lib/architecture-viewport.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-diagram.test.tsx
 bun run test:e2e --tags @br-02
+```
+
+Run the focused component-movement checks with:
+
+```sh
+bun test ./test/unit/lib/component-arrangement.test.ts ./test/unit/lib/architecture-viewport.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/component-movement.test.tsx ./test/unit/components/workspace.test.tsx
+bun run test:e2e --tags @br-03
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

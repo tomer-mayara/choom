@@ -19,6 +19,13 @@ Feature: Open a baseline in installed Choom
     And the installed viewer has no repository selection or diagram export actions
     And the native read leaves the selected baseline bytes unchanged
 
+  @baseline-readability @br-03
+  Scenario: Arrange components while inspecting an installed baseline
+    Given the reviewed baseline is open in installed Choom
+    When the user inspects and moves installed components with the pointer and keyboard
+    Then parents carry their children and keyboard movement keeps the installed inspection usable
+    And the native read leaves the selected baseline bytes unchanged
+
   Scenario: Cancelling the native picker preserves the loaded baseline
     When the user selects that baseline through the native Open Baseline picker
     Then the installed viewer shows its baseline ID and five component names

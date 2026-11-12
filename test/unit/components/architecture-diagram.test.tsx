@@ -8,6 +8,7 @@ import { baselineWithParentLevels } from "../../support/baseline-layout-fixtures
 import { baselineWithDistinctInterfaceLinks, baselineWithoutComponents } from "../../support/baseline-relationship-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { baselineWithOnlyRules } from "../../support/baseline-detail-fixtures.ts";
+import { pointerClick } from "../../support/pointer.ts";
 
 afterEach(cleanup);
 function diagramFixture(baseline: Baseline = baselineExample()) {
@@ -34,7 +35,7 @@ test("one click opens component inspection and Escape inside it restores focus",
   const { baseline, layout } = diagramFixture();
   render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
   const component = screen.getByRole("button", { name: "Checkout, checkout" });
-  fireEvent.click(component, { detail: 1 });
+  pointerClick(component);
   const panel = screen.getByRole("dialog", { name: "Component details" });
   const details = within(panel).getByText("Recorded details");
   fireEvent.click(details);
