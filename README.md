@@ -74,9 +74,11 @@ use that interface; it does not claim that a call occurs. Several consumers
 produce several arrows without increasing the owner's interface count.
 
 Choom draws an arc only when both its owner and allowed consumers are known.
-It does not infer consumers. Read full interface records through the component
-list or **Baseline details**. Arc labels keep the full interface and endpoint
-names available to assistive tools.
+It does not infer consumers. A note identifies interfaces with missing endpoint
+facts; their full records remain in **Baseline details**. The reviewed
+`full.yaml` fixture has eight unknown consumer lists, so it shows the note and
+no arcs. Arc labels keep the full interface and endpoint names available to
+assistive tools.
 
 Select a component or group header once to inspect it. With a keyboard, focus the
 control and press **Enter** or **Space**. The side panel keeps the canvas usable;
@@ -206,9 +208,9 @@ bun run test:e2e --tags @br-04
 Run the focused interface-arc checks with:
 
 ```sh
-bun test ./test/unit/lib/interface-arcs.test.ts ./test/unit/lib/interface-arc-geometry.test.ts
-bun test --preload ./test/preload.ts ./test/unit/components/interface-arcs.test.tsx
-bun run test:e2e --tags @br-07a
+bun test ./test/unit/lib/interface-*.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/interface-*.test.tsx
+bun run test:e2e --tags @br-07
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

@@ -50,7 +50,13 @@ function ComponentFields({ item }: { item: ReadonlyData<BaselineComponent> }) {
 
 function InterfaceFields({ item }: { item: ReadonlyData<BaselineInterface> }) {
   const promises = item.promises.value;
+  const unknownOwner = item.owner.value === null;
+  const unknownConsumers = item.allowedConsumers.value === null;
+  const explanation = unknownOwner && unknownConsumers ? "Owner and allowed consumers are unknown."
+    : unknownOwner ? "Owner is unknown."
+      : unknownConsumers ? "Allowed consumers are unknown." : null;
   return <>
+    {explanation ? <p className="text-sm text-muted-foreground">{explanation}</p> : null}
     <StatementDetails name="Owner" statement={item.owner} />
     <StatementDetails name="Public access" statement={item.publicAccess} />
     <StatementDetails name="Allowed consumers" statement={item.allowedConsumers} />

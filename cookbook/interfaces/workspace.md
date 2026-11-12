@@ -63,9 +63,12 @@ opposite directions, and an owner that is also a consumer remain distinct.
 Arcs attach to the actual component headers, including within nested groups.
 They follow the current arrangement without changing the prepared layout.
 
-An interface with a null owner or null consumer list produces no arc.
-Labels use at most two lines and the width of a component header. Their accessible
-names include full interface and endpoint names and IDs.
+An interface with a null owner or null consumer list produces no arc. A note
+counts these interfaces once each and directs the user to Baseline details.
+The note also appears when there are no components. Interface details explain
+which endpoint facts are unknown and retain any known values. Labels use at
+most two lines and the width of a component header; their accessible names
+include full interface and endpoint names and IDs.
 
 The side panel preserves ownership and allowed-consumer statements separately,
 including unknown owners, repeated names, and an owner that is also a consumer.
@@ -182,7 +185,7 @@ bun scripts/run-browser-behavior.ts --tags @br-02
 bun test ./test/unit/lib/component-arrangement.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/component-layout-controls.test.tsx
 bun scripts/run-browser-behavior.ts --tags @br-04
-bun scripts/run-browser-behavior.ts --tags @br-07a
+bun scripts/run-browser-behavior.ts --tags @br-07
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
 ```
