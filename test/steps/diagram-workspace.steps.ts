@@ -176,7 +176,7 @@ When("the diagram workspace is {int} pixels wide and {int} pixels tall", async f
 
 Given("component {string} is outside the visible diagram after panning", async function (this: DiagramWorkspaceWorld, id: string) {
   const browserPage = page(this);
-  const canvas = await browserPage.getByLabel("Architecture diagram", { exact: true }).boundingBox();
+  const canvas = await browserPage.locator(".react-flow").boundingBox();
   assert.ok(canvas);
   await browserPage.mouse.move(canvas.x + 80, canvas.y + 24);
   await browserPage.mouse.down();
@@ -199,7 +199,7 @@ When("the user tabs to component {string}", async function (this: DiagramWorkspa
 });
 
 Then("focused component {string} is fully visible in the diagram", async function (this: DiagramWorkspaceWorld, id: string) {
-  const canvas = await page(this).getByLabel("Architecture diagram", { exact: true }).boundingBox();
+  const canvas = await page(this).locator(".react-flow").boundingBox();
   assert.ok(canvas);
   const button = component(this, id).getByRole("button");
   await expect.poll(async () => {

@@ -17,7 +17,7 @@ function diagramFixture(baseline: Baseline = baselineExample()) {
   return { baseline, layout };
 }
 
-test("the canvas shows compact components at prepared positions and no relationship lines", () => {
+test("the canvas keeps compact components at prepared positions with recorded interface arcs", () => {
   const { baseline, layout } = diagramFixture();
   const { container } = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
   expect(screen.getByRole("heading", { name: "baseline-example" })).toBeTruthy();
@@ -25,7 +25,7 @@ test("the canvas shows compact components at prepared positions and no relations
   expect(cards.map((node) => node.getAttribute("data-id"))).toEqual(["checkout", "billing"]);
   expect(cards[0]?.textContent).toBe("Checkout0 interfaces");
   expect(cards[1]?.textContent).toBe("Billing1 interface");
-  expect(container.querySelectorAll(".react-flow__edge")).toHaveLength(0);
+  expect(container.querySelectorAll(".react-flow__edge")).toHaveLength(1);
   expect(cards[1]?.getAttribute("style")).toContain("translate(300px,24px)");
   expect(screen.queryByRole("button", { name: "Findings" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Recorded analysis" })).toBeNull();
@@ -75,7 +75,7 @@ test("component counts exclude descendant and unknown owners", async () => {
   const canvas = await renderDiagramWithViewport(baseline, diagramFixture(baseline).layout);
   expect(screen.getByRole("button", { name: "Checkout, checkout" }).textContent).toBe("Checkout0 interfaces");
   expect(screen.getByRole("button", { name: "Billing, billing" }).textContent).toBe("Billing2 interfaces");
-  expect(canvas.getEdges()).toHaveLength(0);
+  expect(canvas.getEdges()).toHaveLength(4);
   expect(baseline).toEqual(original);
 });
 

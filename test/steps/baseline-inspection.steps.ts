@@ -102,9 +102,12 @@ Then("the canvas remains available for pan and zoom", async function (this: Insp
   const zoomed = await camera(browser);
   const canvas = await browser.getByLabel("Architecture diagram", { exact: true }).boundingBox();
   assert.ok(canvas);
-  await browser.mouse.move(canvas.x + 60, canvas.y + 20);
+  const start = { x: canvas.x + canvas.width - 100, y: canvas.y + 20 };
+  assert.equal(await browser.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest("button, .react-flow__edge")), start), false,
+    "The pan gesture must start in unused canvas space.");
+  await browser.mouse.move(start.x, start.y);
   await browser.mouse.down();
-  await browser.mouse.move(canvas.x + 110, canvas.y + 60, { steps: 5 });
+  await browser.mouse.move(start.x + 50, start.y + 40, { steps: 5 });
   await browser.mouse.up();
   await expect.poll(async () => (await camera(browser))[1]).not.toBe(zoomed[1]);
   await expect(browser.getByRole("dialog")).toBeVisible();

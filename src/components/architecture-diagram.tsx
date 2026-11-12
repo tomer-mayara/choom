@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FocusEvent } from "react";
 import {
-  Background, ControlButton, Controls, ReactFlow, useReactFlow, useStore, useStoreApi, type Node, type NodeProps,
+  Background, ControlButton, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore, useStoreApi, type Node, type NodeProps,
 } from "@xyflow/react";
 import { RotateCcw } from "lucide-react";
 import type { BaselineComponent, Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { revealHeader, startingViewport } from "../lib/architecture-viewport.ts";
-import { componentControlHeight, componentControlWidth } from "../lib/component-geometry.ts";
+import { componentControlHeight, componentControlWidth, componentGroupBorderWidth } from "../lib/component-geometry.ts";
 import { ComponentArrangement } from "../lib/component-arrangement.ts";
+import { interfaceArcs } from "../lib/interface-arcs.ts";
+import { routeInterfaceArcs } from "../lib/interface-arc-geometry.ts";
+import { InterfaceArc, type InterfaceEdge } from "./interface-arc.tsx";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 import { ArchitectureDetailsPanel } from "./architecture-inspector.tsx";
 import { useArchitectureInspection } from "./use-architecture-inspection.ts";
@@ -57,7 +60,10 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, inspect, selec
   }
 
   return (
-    <div className={isGroup ? "h-full w-full rounded-xl border border-border bg-muted/20" : undefined}>
+    <div className={isGroup ? "h-full w-full rounded-xl border border-border bg-muted/20" : undefined}
+      style={isGroup ? { borderWidth: componentGroupBorderWidth } : undefined}>
+      <Handle type="source" position={Position.Bottom} style={{ visibility: "hidden" }} />
+      <Handle type="target" position={Position.Bottom} style={{ visibility: "hidden" }} />
       <button
         type="button" aria-label={`${item.name}, ${item.id}`} aria-haspopup="dialog"
         aria-describedby="item-inspection-hint" aria-pressed={selected}
@@ -96,6 +102,7 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, inspect, selec
 }
 
 const nodeTypes = { item: ItemCard };
+const edgeTypes = { interface: InterfaceArc };
 
 function StartPreparedDiagram({ layout, firstRootId, arrangement }: {
   layout: ReadonlyData<ArchitectureLayout>; firstRootId: string; arrangement: ComponentArrangement;
@@ -140,6 +147,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
   const [announcement, setAnnouncement] = useState<{ owner: ComponentArrangement; text: string } | null>(null);
   const announce = useCallback((text: string) => { setAnnouncement({ owner: arrangement, text }); }, [arrangement]);
   const firstRootId = baseline.components.find(({ parent }) => !parent?.value)?.id;
+  const connections = useMemo(() => interfaceArcs(baseline), [baseline]);
   const items = useMemo(() => {
     const parents = new Set(baseline.components.flatMap((component) => component.parent?.value ? [component.parent.value] : []));
     const items = new Map<string, ArchitectureNode["data"]>();
@@ -160,14 +168,35 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
       if (!data) throw new Error("The prepared diagram has an unknown item.");
       return {
         id, type: "item", data, position: { ...position }, zIndex: 1,
-        width, height, ...(parentId ? { parentId } : {}),
+        // Explicit handles need current dimensions for React Flow's queued Fit.
+        width, height, measured: { width, height }, ...(parentId ? { parentId } : {}),
+        handles: [
+          { type: "source", position: Position.Bottom, x: componentControlWidth / 2, y: componentControlHeight },
+          { type: "target", position: Position.Bottom, x: componentControlWidth / 2, y: componentControlHeight },
+        ],
         ariaLabel: `${data.item.name}, ${id}`,
       };
     });
   }, [geometry, items]);
 
-  return <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card" aria-label="Architecture diagram">
-    <ReactFlow nodes={nodes} edges={[]} nodeTypes={nodeTypes} minZoom={fitOptions.minZoom}
+  const edges = useMemo<InterfaceEdge[]>(() => {
+    const names = new Map(baseline.interfaces.map(({ id, name }) => [id, name]));
+    const components = new Map(baseline.components.map(({ id, name }) => [id, name]));
+    return routeInterfaceArcs(connections, geometry).map((route) => {
+      const name = names.get(route.interfaceId) ?? route.interfaceId;
+      const consumer = `${components.get(route.consumerId)}, ${route.consumerId}`;
+      const owner = `${components.get(route.ownerId)}, ${route.ownerId}`;
+      return { id: route.id, source: route.consumerId, target: route.ownerId, type: "interface",
+        domAttributes: { "aria-hidden": true }, markerEnd: { type: MarkerType.ArrowClosed, color: "var(--foreground)" },
+        data: { route, name, accessibleName: `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}` },
+      };
+    });
+  }, [baseline, connections, geometry]);
+
+  return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card" aria-label="Architecture diagram">
+    {edges.length > 0 ? <p className="shrink-0 border-b border-border px-3 py-1 text-xs text-muted-foreground">Arrow: consumer may use the owner's interface.</p> : null}
+    <div className="min-h-0 flex-1">
+    <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} minZoom={fitOptions.minZoom}
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} zIndexMode="manual"
       edgesFocusable={false} elementsSelectable={false} zoomOnDoubleClick={false}>
       <Background />
@@ -177,6 +206,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
       </Controls>
       {firstRootId ? <StartPreparedDiagram layout={layout} firstRootId={firstRootId} arrangement={arrangement} /> : null}
     </ReactFlow>
+    </div>
     <p aria-label="Component position" aria-live="polite" aria-atomic="true" className="sr-only">{
       announcement?.owner === arrangement ? announcement.text : ""
     }</p>
