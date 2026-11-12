@@ -27,14 +27,15 @@ test("the canvas shows every modeled item at prepared positions", () => {
   expect(screen.queryByRole("button", { name: "Recorded analysis" })).toBeNull();
 });
 
-test("double-click opens basic component details and Escape restores focus", async () => {
+test("one click opens component inspection and Escape inside it restores focus", async () => {
   const { baseline, layout } = diagramFixture();
   render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
   const component = screen.getByRole("button", { name: "Checkout, checkout" });
   fireEvent.click(component, { detail: 1 });
-  expect(screen.queryByRole("dialog")).toBeNull();
-  fireEvent.doubleClick(component);
   const panel = screen.getByRole("dialog", { name: "Component details" });
+  const details = within(panel).getByText("Recorded details");
+  fireEvent.click(details);
+  act(() => details.focus());
   expect(panel.textContent).toContain("Create orders");
   expect(panel.textContent).not.toContain("Prepare invoices");
   fireEvent.keyDown(panel, { key: "Escape" });

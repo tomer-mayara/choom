@@ -1,13 +1,10 @@
-import { useState, type ReactNode, type RefObject } from "react";
-import { X } from "lucide-react";
-import { Dialog } from "radix-ui";
+import { useState, type ReactNode } from "react";
 import type {
   Baseline, BaselineComponent, BaselineInterface, BaselineResource, BaselineRule,
   BaselineAccessPointsStatement, BaselineComponentReferenceStatement, BaselineConsumersStatement,
   BaselineMembershipStatement, BaselineNullableTextStatement, BaselinePromisesStatement, BaselineRuleObjectStatement, BaselineTextStatement,
 } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
-import { Button } from "./ui/button.tsx";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
   | { kind: "interface"; interfaceId: string }
@@ -92,7 +89,7 @@ function RuleRow({ rule }: { rule: ReadonlyData<BaselineRule> }) {
   </details>;
 }
 
-export function ArchitectureDetails({ baseline, panel }: { baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel }) {
+export function ArchitectureDetails({ baseline, panel, showHeading = true }: { baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel; showHeading?: boolean }) {
   if (panel.kind === "baseline") return <section className="space-y-4 wrap-anywhere">
     <Field name="Format version"><RecordedValue value={baseline.formatVersion} /></Field>
     <Field name="Baseline ID"><RecordedValue value={baseline.id} /></Field>
@@ -110,43 +107,10 @@ export function ArchitectureDetails({ baseline, panel }: { baseline: ReadonlyDat
   const kind = panel.kind === "component" ? "Component" : panel.kind === "interface" ? "Interface" : "Resource";
   return (
     <section className="space-y-4 wrap-anywhere">
-      <h2 className="text-lg font-semibold">{item.name}</h2>
+      {showHeading ? <h2 className="text-lg font-semibold">{item.name}</h2> : null}
       <Field name={`${kind} ID`}><RecordedValue value={item.id} /></Field>
       {"purpose" in item ? <ComponentFields item={item} />
         : "allowedConsumers" in item ? <InterfaceFields item={item} /> : <ResourceFields item={item} />}
     </section>
   );
-}
-
-export function ArchitectureDetailsPanel({ baseline, panel, opener, onClose }: {
-  baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel | null;
-  opener: RefObject<HTMLElement | null>; onClose: () => void;
-}) {
-  const titles = { component: "Component details", interface: "Interface details", resource: "Resource details", baseline: "Baseline details", rules: "Rules" };
-  return <Dialog.Root open={panel !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-    <Dialog.Portal>
-      <Dialog.Overlay className="fixed inset-0 z-40 bg-black/10" />
-      <Dialog.Content
-        className="fixed inset-y-0 right-0 z-50 flex h-dvh w-full max-w-md flex-col border-l border-border bg-card shadow-xl focus:outline-none"
-        onCloseAutoFocus={(event) => { event.preventDefault(); if (opener.current?.isConnected) opener.current.focus(); }}
-        onEscapeKeyDown={(event) => {
-          if (panel?.kind !== "rules" || !(event.target instanceof Element)) return;
-          const row = event.target.closest("details[open]");
-          if (!(row instanceof HTMLDetailsElement)) return;
-          event.preventDefault();
-          row.open = false;
-          row.querySelector("summary")?.focus();
-        }}
-      >
-        <div className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
-          <Dialog.Title className="min-w-0 flex-1 text-base font-semibold">{titles[panel?.kind ?? "baseline"]}</Dialog.Title>
-          <Dialog.Close asChild><Button variant="outline" aria-label="Close details" className="size-8 shrink-0 p-0"><X aria-hidden="true" className="size-4" /></Button></Dialog.Close>
-        </div>
-        <Dialog.Description className="sr-only">Recorded baseline data. Escape closes an expanded rule, then closes the panel.</Dialog.Description>
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {panel ? <ArchitectureDetails baseline={baseline} panel={panel} /> : null}
-        </div>
-      </Dialog.Content>
-    </Dialog.Portal>
-  </Dialog.Root>;
 }

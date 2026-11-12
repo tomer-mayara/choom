@@ -66,12 +66,22 @@ Ownership lines say **provides** or **owns**. Explicit consumer arrows say
 code imports. Each relationship shows its recorded statement status. An unknown
 owner or consumer policy does not create a link or hide the item.
 
-Double-click an item or group header to inspect it. With a keyboard, focus the control
-and press **Enter** or **Space**. Close the panel with **Escape** or its close
-button to return to the diagram. **Baseline details** shows its format,
-ID, and parent baseline ID. **Rules** opens the recorded rule list; focus a rule
-and press Enter to expand it. Escape closes the expanded rule and returns focus
-to its summary. Another Escape closes the list and returns focus to Rules.
+Select an item or group header once to inspect it. With a keyboard, focus the
+control and press **Enter** or **Space**. The side panel keeps the canvas usable;
+it sits below the canvas in a narrow window. Inspection and resizing preserve
+pan and zoom. **Fit view** remains available when the drawing is outside the view.
+
+Component inspection lists directly owned interfaces. Select a list entry to
+read its complete record; **Back** restores the originating list and entry.
+**Resources** lists directly owned resources, and **Recorded details** exposes
+all component fields. **Baseline details** includes metadata and lists of all
+components, interfaces, and resources, including items with unknown owners.
+**Rules** opens the recorded rule list.
+
+**Escape** closes the expanded rule containing focus, then the panel on the next
+press. Closing the panel returns focus to its opener if focus was inside the
+panel; focus already on the canvas stays there. A new baseline closes the old
+inspection path.
 
 Details show all recorded fields, including statement status, evidence references,
 and acceptance references. **Accepted (recorded)** describes the saved status;
@@ -127,6 +137,13 @@ bun test ./test/unit/lib/architecture-layout.test.ts
 bun run test:dom
 bun run test:e2e --tags @baseline-viewer
 bun run check:contracts
+```
+
+Run the focused side-panel checks with:
+
+```sh
+bun test --preload ./test/preload.ts ./test/unit/components/architecture-inspection.test.tsx
+bun run test:e2e --tags @br-01
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

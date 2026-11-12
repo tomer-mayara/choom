@@ -78,7 +78,7 @@ Given("a baseline at the component limits is open", { timeout: 30_000 }, async f
   await expect(this.page.locator(".react-flow__node[data-id]")).toHaveCount(500);
 });
 
-Given("its large parent header is outside the diagram after panning", async function (this: BaselineHierarchyWorld) {
+Given("its large parent header is outside the diagram after panning", { timeout: 30_000 }, async function (this: BaselineHierarchyWorld) {
   assert.ok(this.page);
   const page = this.page;
   const diagram = page.getByLabel("Architecture diagram", { exact: true });

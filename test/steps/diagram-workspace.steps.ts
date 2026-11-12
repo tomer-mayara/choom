@@ -94,14 +94,15 @@ Then("the diagram grows in width and height without page scrolling", async funct
 
 When("the user inspects component {string}", async function (this: DiagramWorkspaceWorld, id: string) {
   this.initialZoom = (await readDiagramViewport(this)).zoom;
-  await component(this, id).dblclick();
+  await component(this, id).getByRole("button").click();
 });
 
 Then("the component details identify {string} and purpose {string}", async function (this: DiagramWorkspaceWorld, name: string, purpose: string) {
   const dialog = page(this).getByRole("dialog", { name: "Component details", exact: true });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("heading", { name, exact: true })).toBeVisible();
-  await expect(dialog).toContainText(purpose);
+  await dialog.getByText("Recorded details", { exact: true }).click();
+  await expect(dialog.getByRole("group", { name: "Purpose", exact: true }).getByText(purpose, { exact: true })).toBeVisible();
 });
 
 When("the user activates component {string} with {string}", async function (this: DiagramWorkspaceWorld, id: string, key: string) {
@@ -134,7 +135,7 @@ When("a replacement diagram finishes while component details are open", async fu
   const chooser = page(this).waitForEvent("filechooser");
   await page(this).getByRole("button", { name: "Open Baseline", exact: true }).click();
   const selection = await chooser;
-  await component(this, "checkout").dblclick();
+  await component(this, "checkout").getByRole("button").click();
   await expect(page(this).getByRole("dialog", { name: "Component details", exact: true })).toBeVisible();
   await selection.setFiles(savedDiagram("replacement"));
 });
