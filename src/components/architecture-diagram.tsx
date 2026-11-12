@@ -9,7 +9,7 @@ import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { revealHeader, startingViewport } from "../lib/architecture-viewport.ts";
 import { componentControlHeight, componentControlWidth, componentGroupBorderWidth } from "../lib/component-geometry.ts";
 import { ComponentArrangement } from "../lib/component-arrangement.ts";
-import { interfaceArcs } from "../lib/interface-arcs.ts";
+import { incompleteInterfaceCount, interfaceArcs } from "../lib/interface-arcs.ts";
 import { routeInterfaceArcs } from "../lib/interface-arc-geometry.ts";
 import { InterfaceArc, type InterfaceEdge } from "./interface-arc.tsx";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
@@ -220,6 +220,7 @@ export function ArchitectureDiagram({ baseline, layout }: {
   const inspection = useArchitectureInspection(baseline, layout);
   const arrangement = useMemo(() => new ComponentArrangement(layout), [baseline, layout]);
   const openPanel = inspection.open;
+  const incompleteInterfaces = incompleteInterfaceCount(baseline);
 
   return (
     <section aria-labelledby="current-diagram-heading" className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -229,6 +230,9 @@ export function ArchitectureDiagram({ baseline, layout }: {
         <Button id="baseline-details-control" variant="outline" onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>Baseline details</Button>
         <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget, event.detail === 0)}>Rules ({baseline.rules.length})</Button>
       </div>
+      {incompleteInterfaces > 0 ? <p className="shrink-0 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+        {incompleteInterfaces} {incompleteInterfaces === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.
+      </p> : null}
       {baseline.components.length === 0 ? (
         <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
       ) : null}

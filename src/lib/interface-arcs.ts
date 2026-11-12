@@ -17,3 +17,7 @@ export function interfaceArcs(baseline: ReadonlyData<Baseline>): InterfaceArc[] 
     }));
   });
 }
+
+export function incompleteInterfaceCount(baseline: ReadonlyData<Baseline>): number {
+  return baseline.interfaces.filter(({ owner, allowedConsumers }) => owner.value === null || allowedConsumers.value === null).length;
+}
