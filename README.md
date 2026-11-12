@@ -19,7 +19,7 @@ completed checks and platform limits.
 
 The [readability plan](docs/design/cr-baseline-viewer-readability-plan.md) and
 [readability checks](docs/change-requests/BR-readability-evidence.md) cover the
-component overview, side panel, movement, and layout controls.
+component overview, side panel, interface arcs, movement, and layout controls.
 
 The [manual analysis design](docs/design/llm-led-architecture-analysis.md) and
 [producer cookbook](docs/design/app-a/start-here.md) describe a separate workflow
@@ -67,8 +67,16 @@ record the tested workloads, timings, and limits.
 
 The drawing starts at 100% zoom. If all components fit, it centers them. Otherwise,
 it starts with the first root component in view. Pan to reach the rest, or use
-**Fit view** to see the whole drawing at a smaller scale. Interface and resource
-records stay in the panel; the overview has no relationship lines.
+**Fit view** to see all components at a smaller scale. Interface and resource
+records stay in the panel. A labelled arrow connects each recorded allowed
+consumer to the component that owns the interface. It means the consumer may
+use that interface; it does not claim that a call occurs. Several consumers
+produce several arrows without increasing the owner's interface count.
+
+Choom draws an arc only when both its owner and allowed consumers are known.
+It does not infer consumers. Read full interface records through the component
+list or **Baseline details**. Arc labels keep the full interface and endpoint
+names available to assistive tools.
 
 Select a component or group header once to inspect it. With a keyboard, focus the
 control and press **Enter** or **Space**. The side panel keeps the canvas usable;
@@ -193,6 +201,14 @@ Run the focused layout-control checks with:
 bun test ./test/unit/lib/component-arrangement.test.ts ./test/unit/lib/architecture-viewport.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/component-layout-controls.test.tsx
 bun run test:e2e --tags @br-04
+```
+
+Run the focused interface-arc checks with:
+
+```sh
+bun test ./test/unit/lib/interface-arcs.test.ts ./test/unit/lib/interface-arc-geometry.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/interface-arcs.test.tsx
+bun run test:e2e --tags @br-07a
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

@@ -1,6 +1,7 @@
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "./architecture-layout.ts";
 import { componentControlHeight } from "./component-geometry.ts";
+import { componentPosition } from "./component-positions.ts";
 
 type Point = { x: number; y: number };
 type Geometry = ReadonlyData<ArchitectureLayout>;
@@ -52,17 +53,7 @@ export class ComponentArrangement {
   };
 
   positionOf(id: string): Point {
-    const nodes = new Map(this.geometry.nodes.map((node) => [node.id, node]));
-    let node = nodes.get(id);
-    if (!node) throw new Error(`Unknown component: ${id}`);
-    const position = { ...node.position };
-    while (node.parentId) {
-      node = nodes.get(node.parentId);
-      if (!node) throw new Error("The component has no parent geometry.");
-      position.x += node.position.x;
-      position.y += node.position.y;
-    }
-    return position;
+    return componentPosition(this.geometry, id);
   }
 
   moveBy(id: string, delta: Point): void {

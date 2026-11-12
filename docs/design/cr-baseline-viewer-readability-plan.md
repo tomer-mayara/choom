@@ -1,24 +1,28 @@
 # Baseline viewer readability plan
 
-Status: **BR-01 to BR-04 are implemented and locally verified. The PR stack
-remains draft. BR-05 and BR-06 remain planned.**
+Status: **BR-01 to BR-04 are merged, with CI checked after each merge. BR-05
+remains planned. BR-07A is implemented. BR-07B to BR-07D remain planned.
+BR-07 replaces BR-06.**
 
-Reviewed: **2026-11-11**
+Reviewed: **2026-11-12**
 
 ## Decision and goal
 
 Show components first. When the user selects a component, show its interfaces
 in a side panel. Let the user move components to make the drawing easier to read.
+BR-07 adds labelled interface arcs between recorded consumers and owners. Keep
+the interface counts and the side panel.
 
 This plan follows the [baseline viewer plan](cr-baseline-viewer-plan.md).
-BR-01 to BR-04 replace that plan's rules for showing every record on
-the canvas, double-click inspection, and automatic fitting on resize. The baseline format, read-only
-file access, recorded statement meanings, and load protections stay in force.
+BR-01 to BR-04 replaced that plan's rules for showing every record on the canvas,
+double-click inspection, and automatic fitting on resize. The baseline format,
+read-only file access, statement meanings, and load protections stay in force.
 
 This document defines the intended behavior and ticket sequence. Its scenarios
 are requirements, not test results. See the
 [verification record](../change-requests/BR-readability-evidence.md) for completed
-checks and platform limits.
+checks and platform limits. That record describes checks made before the stack
+merged; its draft-PR wording is historical. The status above is current.
 
 ## Problem in the starting view
 
@@ -34,18 +38,20 @@ and resizing fitted the whole diagram again.
 
 | Stage | Tickets | Result |
 | --- | --- | --- |
-| First release | BR-01 to BR-04 | Side-panel inspection, a compact component overview, movement, and reset. |
+| Merged | BR-01 to BR-04 | Side-panel inspection, a compact component overview, movement, and reset. |
 | Follow-up | BR-05 | Expand and collapse component groups. |
-| Follow-up | BR-06 | Show the recorded connections of one selected interface. |
+| Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
+| Implemented | BR-07A | Static interface arcs with full accessible names. |
+| Planned | BR-07B to BR-07D | Unknown-endpoint explanations, arc inspection, and complete-drawing Fit. |
 
-BR-05 and BR-06 have full tickets so that the later behavior is clear. They are
-not required to release BR-01 to BR-04. Review the first release with the real
-baseline before implementing the follow-ups.
+BR-07 follows review of the component-only view. It can build directly on BR-04;
+it does not require BR-05. The collapse rules below apply when both features
+exist. BR-05 remains a separate follow-up.
 
-For the first release, remember the arrangement while the current baseline
-remains open. Saving arrangements across app restarts or successful file opens
-is deferred. Also defer multi-selection, comparison panels, global filters,
-interface editing, model editing, export, and automatic dependency inference.
+Remember the arrangement while the current baseline remains open. Saving it
+across app restarts or successful file opens remains out of scope, as do
+multi-selection, comparison panels, global filters, interface editing, model
+editing, export, and automatic dependency inference.
 
 ## View behavior
 
@@ -66,8 +72,10 @@ interface editing, model editing, export, and automatic dependency inference.
   to show the whole drawing.
 - Keep IDs, purpose, membership, evidence, and statement status in the panel.
   Do not assign a single accepted/proposed status to a whole component.
-- Hide interface and resource nodes in the overview. Hide their relationship
-  lines as well. Component nesting shows the parent relationship without lines.
+- Keep interface and resource nodes off the canvas. BR-01 to BR-04 hide all
+  relationship lines. BR-07 adds the interface arcs specified below. Component
+  nesting shows the parent relationship without lines; resource details stay
+  in the panel.
 - Check limits against the complete baseline before layout. Hiding records does
   not increase the supported limits or make excessive input valid.
 
@@ -75,7 +83,7 @@ interface editing, model editing, export, and automatic dependency inference.
 
 Use one side panel. On wide windows it sits beside the canvas and does not
 block it. The user can select another component, pan, zoom, and move components
-while it is open. Do not retain the current modal overlay or focus trap.
+while it is open. Keep this existing behavior, without an overlay or focus trap.
 When the window cannot fit both regions, place the panel below the canvas.
 Keep both regions usable without horizontal page scrolling. Keep the canvas
 and panel header in view; scroll long panel content within its region.
@@ -85,6 +93,7 @@ and panel header in view; scroll long panel content within its region.
 | Select a component with one click, Enter, or Space | Highlight it. Show its name and directly owned interfaces in the panel. |
 | Select the same component again | Keep its panel open; do not toggle it closed. |
 | Select an interface in the list | Show its complete recorded details in the same panel. |
+| Select an interface arc (BR-07) | Show that interface in the same panel, starting a new inspection path. |
 | Use Back in record details | Return to the originating component or baseline list and restore the list position and row focus. |
 | Expand Resources | List resources directly owned by this component. Each opens complete details. |
 | Expand Recorded details | Show all fields of the selected component, with exact statement statuses and references. |
@@ -112,9 +121,9 @@ resources. A baseline with no components still exposes interfaces, resources,
 and rules through its lists. Four empty collections show **No architecture
 items modeled**. Preserve the distinction from **No components modeled**.
 
-The camera is the canvas pan and zoom. Outside the later connection view,
-inspection preserves the camera and component positions. Keyboard activation
-moves focus into the panel. Pointer selection on the canvas keeps focus there.
+The camera is the canvas pan and zoom. Inspection preserves the camera and
+component positions. Keyboard activation moves focus into the panel. Pointer
+selection on the canvas keeps focus there.
 If a panel update removes the focused row, move focus to the new record heading.
 Clicking canvas background keeps the panel open.
 
@@ -127,24 +136,25 @@ that inspection path. If that control is hidden, use its nearest visible
 ancestor, then Baseline details as the fallback. If focus is already outside
 the panel, leave it there. A successful file open has its own focus rule below.
 If keyboard focus reaches an off-screen canvas control, pan only enough to
-reveal its header and preserve zoom. For a header larger than the canvas, reveal
-its focus indicator and name rather than trying to fit the whole parent group.
+reveal it and preserve zoom. Apply the same rule after keyboard movement. If
+the control is larger than the canvas, reveal its start and the nearby focus
+outline; do not fit the whole group or reduce zoom. This also applies to BR-07 labels.
 
 ### Movement, reset, and view state
 
 The baseline remains immutable. Canvas coordinates, selection, panel navigation,
-collapse choices, and shown connections are view state, separate from recorded
-data.
+and collapse choices are view state, separate from recorded data. Derive arcs
+from the baseline and current component geometry; do not store edited links.
 
 | Operation | Rule |
 | --- | --- |
 | Drag a component header | Move that component. A parent carries its descendant component positions with it. |
 | Move a child | Keep its recorded parent and keep it below the parent's header. Grow enclosing bounds to the right or bottom as needed; stop at the left or top boundary. |
-| Move with the keyboard | Arrow keys on a focused component header move it by 10 diagram units. Do not intercept keys used inside panel fields or lists. |
+| Move with the keyboard | Arrow keys on a focused component header move it by 10 diagram units, then reveal it at the current zoom if needed. Leave panel keys alone. |
 | Finish a drag | Do not treat the release as a click that opens or replaces the panel. |
 | Cancel an active drag | Escape or an interrupted drag restores the positions and bounds from the start of that drag. |
-| Fit view | In overview, fit all shown components. In connection view, fit the interface and its endpoint headers. Include items outside the viewport; keep all positions. |
-| Reset layout | Restore the initial component positions and bounds, then use the same 100% starting view as a new open. Keep panel content. In the follow-ups, expand all groups and end connection view. |
+| Fit view | Fit all shown components. BR-07 also includes visible arc paths, arrowheads, and labels. Include items outside the viewport; keep all positions. |
+| Reset layout | Restore the initial component positions and bounds, then use the same 100% starting view as a new open. Keep panel content and redraw arcs. With BR-05, expand all groups. |
 
 Use the same movement rules for pointer and keyboard input. Keyboard moves are
 announced without announcing every pointer frame. Automatic layout starts
@@ -169,9 +179,8 @@ it to the new baseline heading; otherwise leave focus where it is.
 A late cancelled load cannot replace or reset the current view.
 
 Resize preserves pan, zoom, and positions. Panel changes do too, except for
-keyboard focus reveal and leaving the later connection view. Reset layout,
-Fit view, Reveal component, and Show/Hide connections use their explicit camera
-rules. They do not run a new automatic arrangement.
+keyboard focus reveal. Reset layout, Fit view, and Reveal component use their
+explicit camera rules. They do not run a new automatic arrangement.
 Reset uses the prepared initial layout; it does not read the file or run layout
 again. With no canvas nodes, Fit view and Reset layout are unavailable and
 baseline lists remain usable.
@@ -187,9 +196,9 @@ or throwing away their positions. Keep the parent origin and unrelated nodes
 fixed. The group can become smaller, leaving free space in the drawing.
 Expanding restores the stored child positions and the children's own collapse
 choices. Moving a collapsed parent carries its hidden descendants too.
-Expansion, Reveal component, and Show connections use the same ancestor-growth
-rule as movement. This keeps restored children inside their parents without
-moving parent origins or siblings. Ancestor bounds do not shrink automatically.
+Expansion and Reveal component use the same ancestor-growth rule as movement.
+This keeps restored children inside their parents without moving parent origins
+or siblings. Ancestor bounds do not shrink automatically.
 
 If the panel refers to a hidden component, including one opened from the
 baseline list, identify its nearest visible collapsed ancestor. **Reveal
@@ -197,56 +206,140 @@ component** expands only the ancestors needed to expose it, then pans to its
 header at the current zoom. Keep other collapse choices. If collapse hides a
 focused canvas control, move focus to the collapsed parent's control.
 
-### Follow-up: one interface's connections
+### BR-07: Interface arcs between components
 
-An interface detail has **Show connections**, which becomes **Hide connections**
-while active. The connection view adds one temporary interface node and shows
-only its recorded links. Keep components as context. Showing another
-interface's connections replaces the current one.
+The arc represents the interface. Show a curved arrow from each recorded allowed
+consumer to the recorded owner, labelled with the interface name:
 
-Use the existing relationship meanings:
+```text
+Consumer ── interface name ──▶ Owner
+```
 
-- Owner to interface: **provides**.
-- Allowed consumer to interface: **may use**. This is recorded permission.
-- Unknown owner: no owner line. Keep known consumer links.
-- Unknown consumer policy: no consumer arrows. Keep a known owner line.
+Show known arcs in the normal overview. There is no separate connection mode,
+temporary interface node, or Show/Hide connections control. When arcs are shown,
+include a short legend:
+**Arrow: consumer may use the owner's interface.** This describes recorded
+permission, not observed calls, data flow, or a confirmed runtime dependency.
 
-Keep relationship kinds and exact defining-statement statuses available in a
-list in the panel. Use short kind labels on the connection lines, rather than
-repeating status text over the canvas. Do not infer component-to-component
-dependencies or give a mixed set of statements one status.
+#### Recorded facts and unknown values
 
-Place the temporary interface node in free space beside the component drawing.
-It has no component parent and is not movable in this release. Moving a
-component updates its lines; the interface stays in place. With no components,
-place it at the normal starting position.
+Read `owner.value` and `allowedConsumers.value` from each interface. An arc
+needs both endpoint IDs. The following table applies before collapse visibility.
 
-Show connections fits that interface and the headers of its actual endpoints,
-with zoom no greater than 100%. Do not fit the whole bounds of a large parent
-group. Fit view uses this same set while connections are shown. These explicit
-actions change the camera without moving components. Ordinary endpoint movement
-does not refit the view.
+| Recorded owner | Recorded allowed consumers | Canvas and panel result |
+| --- | --- | --- |
+| Known | Known, nonempty list | One arc from each listed consumer to the owner. Keep the complete list in the panel. |
+| Known | `null` | No arc. Keep the owner's interface count. Show **Allowed consumers are unknown.** in the interface panel. |
+| `null` | Known, nonempty list | No arc. Show **Owner is unknown.** and keep the known consumer list in the panel. |
+| `null` | `null` | No arc. Explain both unknown values in the panel. |
 
-Expand ancestors of hidden owner/consumer endpoints so each link ends at the
-actual recorded component. Do not replace a child endpoint with an ancestor.
-Those groups remain expanded after leaving the connection view. If the user
-collapses a group that hides an endpoint, end the connection view as part of
-that action. Collapsing the endpoint itself keeps its header and links visible.
+Unknown consumers do not mean no consumers. The current format cannot express
+a known empty consumer list. Preserve validation of empty lists, duplicate
+consumer IDs, and references to missing components; invalid input must not
+become a partial diagram. A valid `null` is missing knowledge, not a load error.
+Do not infer endpoints from component nesting, `publicAccess`, rules, names,
+source code, or repository analysis. Do not add placeholder components or
+unconnected arrow stubs.
 
-**Hide connections**, panel close, opening a different record, or hiding an
-endpoint removes the temporary node and links. Fit the remaining component
-drawing, with zoom no greater than 100%, so an interface-only view cannot leave
-the user looking at empty space. Keep positions and apply the usual keyboard
-focus rule. Do not store a camera history. If there are no components, show the
-normal no-components view. Reset uses its own starting-view rule; a successful
-file open uses the new file's starting view. Failed loads keep this view.
+When any interface has an unknown owner or allowed-consumer list, show a short
+note above the canvas or the no-components message. For example: **8 interfaces
+have unknown owners or allowed consumers. Open Baseline details to inspect them.**
+Count each interface once, even when both facts are unknown. Use the existing
+Baseline details route. Keep the note readable at narrow widths without covering the
+drawing controls. With no unknown endpoint facts, omit the note. A baseline
+with no interfaces needs no unknown-interface note.
 
-An interface can have both an unknown owner and an unknown consumer policy.
-Show its node without links and explain both values. The format cannot express
-a known empty consumer list: unknown policy must not become "no consumers."
+The reviewed `test/fixtures/baseline-viewer/full.yaml` records an owner for each
+of its eight interfaces, but all eight allowed-consumer lists are unknown. It
+must show the explanation and no arcs. New arcs require consumers recorded by
+the baseline author; BR-07 does not change that file's meaning. Use separate
+synthetic fixtures to verify arcs.
 
-The reviewed baseline has no known consumer policy on any of its eight
-interfaces. It must not acquire consumer arrows through this change.
+Use `(interface ID, consumer ID, owner ID)` as arc identity. Preserve distinct
+interfaces between the same components, opposite directions, and multiple
+consumers of one interface. An owner also listed as a consumer gets a self-loop.
+The owned-interface count still counts each directly owned interface once.
+
+Keep the exact owner and allowed-consumer statements, statuses, and evidence in
+the panel. They can have different statuses. Do not give their combined arc a
+single accepted/proposed status or repeat status text along the drawing.
+
+#### Drawing and inspection
+
+Attach arcs to the actual header borders, including parent-child links. Arcs
+must remain visible inside groups; header names and controls must stay readable
+and usable. Test these outcomes with nested groups rather than prescribing a
+global layer order. The same baseline and positions produce the same curves.
+Separate parallel arcs enough to identify them in small diagrams. Manual moves
+can cause crossings or overlap; do not move other components to repair them.
+
+Labels scale with the diagram. Use at most two lines and no more width than a
+component header. Keep the full name in the accessible label and panel. The
+accessible label also identifies the consumer and owner, with IDs where names
+repeat. Give the curve a generous pointer target and the label a keyboard
+control for Enter and Space. The HTML label is the focus return target for
+either input route.
+Arc input must not start a canvas pan or component drag. A fresh arc click must
+work on first open and after a component drag; it needs no prior component press.
+
+| Current inspection | Arc emphasis |
+| --- | --- |
+| Component | Highlight its incoming and outgoing arcs; dim unrelated arcs. |
+| Interface, opened from an arc or a list | Highlight all arcs for that interface; dim unrelated arcs. |
+| Resource, Baseline details, Rules, or closed panel | Show arcs normally. |
+
+An arc selection opens the existing interface panel and starts a new inspection
+path, without a Back entry. Selection from an owned-interface list keeps that
+list's Back behavior and the originating component highlight. Do not add a
+second persistent selection model for arcs. Different arcs for one interface
+open the same recorded details, but keep the exact initiating arc as the focus
+return target.
+
+Pointer selection keeps focus on the arc's label. Keyboard activation moves
+focus to the panel heading. Closing the panel restores that label only when
+focus was in the panel. Keyboard focus alone does not select an interface.
+Keyboard navigation and keyboard focus return use the shared focus-reveal rule,
+including its fallback when the enlarged label cannot fit in the canvas.
+Pointer-driven label focus must not pan, even when the clicked curve is visible
+and its label is off-screen. Do not fit the whole arc. Keep arc keyboard order
+stable in interface order, then consumer order.
+The existing lists remain an alternative way to inspect every interface.
+
+#### Movement, fitting, and view lifetime
+
+Derive arc paths from the current arrangement. Pointer and keyboard movement,
+parent movement, ancestor growth, cancellation, and Reset must update them.
+Arcs have no separate manual positions or saved arrangement.
+
+Fit view includes all shown components and the full bounds of visible curves,
+arrowheads, and labels, including self-loops outside component bounds. It uses
+the actual canvas space beside or above the open panel. Use a positive, finite
+zoom small enough to contain those bounds. The current 1% zoom floor must not
+clip a widely spread drawing. After Fit, Zoom Out decreases zoom when enabled
+or is disabled at the minimum. Zoom In remains available. Neither control may
+snap back to a larger minimum. Selection, panel close, resize, and movement
+do not fit the view. Initial open and Reset keep the 100% starting-view rule.
+
+Apply the existing view lifetime rules to arcs as well as components. A pending
+arc press belongs to the view where it started; releasing it after a successful
+open must not select a record in the replacement view, even if IDs repeat.
+
+#### Compatibility with BR-05
+
+BR-07 does not require collapse. When BR-05 and BR-07 are both present, hide an
+arc if either actual endpoint header is hidden. Never redirect it to an
+ancestor. Collapsing an endpoint itself keeps its header and arcs visible if
+the other endpoint remains visible. Expansion restores arcs at stored positions.
+Inspection does not expand groups or fit the view. Keyboard focus reveal still
+applies.
+
+Keep interface details available and explain when a collapsed group hides a
+known connection. Distinguish this from an unknown endpoint. If collapse hides
+the focused arc label, move focus to that group's collapse control. If an arc
+opener is hidden when the panel closes, use the owner's visible header or its
+nearest visible ancestor, then Baseline details. Leave focus alone when it is
+already outside the panel. The ticket implemented last must verify this combined
+behavior; neither ticket needs to implement the other one.
 
 ## Implementation boundaries
 
@@ -255,28 +348,28 @@ No new package, analysis service, storage service, or native command is needed.
 
 | Area | Responsibility |
 | --- | --- |
-| [Architecture diagram](../../src/components/architecture-diagram.tsx) | Selection, movable view positions, and explicit view controls. Remove fitting on resize. |
+| [Architecture diagram](../../src/components/architecture-diagram.tsx) | Selection, movable view positions, and explicit view controls. Preserve the camera on resize. |
 | [Side panel](../../src/components/architecture-inspector.tsx) and [inspection state](../../src/components/use-architecture-inspection.ts) | Nonmodal inspection, owned-item lists, baseline lists, and local Back navigation. |
 | [Recorded fields](../../src/components/architecture-details.tsx) | Preserve complete fields, statement statuses, references, and rule details. |
 | [Layout](../../src/lib/architecture-layout.ts) and [geometry](../../src/lib/component-geometry.ts) | Prepare compact component-only geometry with header and child space. Check exact component coverage and valid containment. |
 | [Arrangement](../../src/lib/component-arrangement.ts) and [gestures](../../src/components/use-component-gestures.ts) | Own manual positions, containment, ancestor growth, cancellation, and Reset for one current view. |
-| [Camera rules](../../src/lib/architecture-viewport.ts) | Calculate the normal starting view and keyboard focus reveal without changing recorded data. |
-| Connection view (BR-06) | Derive temporary links from saved owner and allowed-consumer statements when this follow-up is implemented. |
+| [Camera rules](../../src/lib/architecture-viewport.ts) | Calculate the normal starting view, keyboard focus reveal, and Fit bounds including BR-07 arcs. |
+| Interface arcs (BR-07) | Derive arcs from recorded owners and consumers. Anchor them to current headers, expose inspection, and explain unknown endpoints. |
 | [Workspace view](../../src/architecture/workspace-view.ts) and [app](../../src/App.tsx) | Reset view state on each successful file open. Keep the existing example path. |
 | [Workspace contract notes](../../cookbook/interfaces/workspace.md) | Update display coverage, inspection, focus, movement, and fitting rules when their tickets are implemented. |
 
 The initial published baseline/layout pair stays read-only. Keep user positions
 in a viewer-owned copy. Derive interface ownership lists and counts from the
-baseline; do not maintain a second mutable architecture model. Keep a single
-owner for view state, tied to the current baseline/layout pair rather than
-`baseline.id` or each progress notification. The existing load workflow keeps
-that pair stable until the next successful open. No new load identifier or
-persistent cache is needed.
+baseline; do not maintain a second mutable architecture model. Each kind of
+view state has one owner: reuse the existing inspection state, arrangement, and
+gesture owners. They share the lifetime of the current baseline/layout pair,
+which stays stable until a successful open. Do not key that lifetime by saved
+IDs or progress updates. No new load ID or persistent cache is needed.
 
-Component-only layout changes the geometry coverage rule: the prepared overview
-contains every component exactly once, rather than every interface/resource as
-well. The complete baseline remains available to the inspector. Keep finite
-positions, valid dimensions, parent order, and child containment checks. Runtime
+The prepared layout already contains every component exactly once and no
+interface or resource nodes. Keep that coverage. All records remain available
+to the inspector. Keep finite positions, valid dimensions, parent order, and
+child containment checks. Runtime
 movement applies the same containment rules to its own view geometry.
 
 Assess all four constraint categories in the
@@ -288,35 +381,46 @@ same ticket. Record unchanged architecture/OpenSLO constraints as unchanged.
 
 ## Appendix: Tickets
 
-### Working sequence for every ticket
+### Working sequence for planned tickets
 
-1. Write the ticket's Cucumber acceptance scenarios first. Connect their steps
-   to the real app or an existing public boundary. Run them and observe an
-   assertion failure caused by the missing behavior. Undefined steps, syntax
-   errors, missing tools, and failed builds do not count as the red result.
-2. For each new behavior below, write a focused failing unit, interface, or
-   integration test. Make it pass with the smallest useful change, then refactor
-   while it remains green. Repeat until the acceptance scenarios pass.
-3. Preserve existing behavior with passing characterization tests before a
-   refactor. Do not break a working behavior to manufacture a red test.
-4. Record the first real acceptance failure, focused red/green evidence, final
-   checks, and remaining limits. The examples below are planned acceptance
-   tests; add cases when implementation exposes a distinct missing behavior.
+1. After the predecessor passes, write the Cucumber acceptance scenarios first.
+   Connect them to the real app or an existing public boundary. Each scenario
+   has one When–Then pair. Record an assertion failure caused by missing behavior.
+   For an absent arc or control, assert the expected presence or count after
+   setup succeeds; do not rely on a failed attempt to click it.
+2. Work through each TDD row in order. **Red:** write a focused test and observe
+   its behavior assertion fail. **Green:** make the smallest useful change that
+   passes it. **Refactor:** simplify the working code with tests green. Do not
+   add an abstraction just to have a refactor change.
+3. Keep existing behavior as passing characterization before changing it. If an
+   earlier step already makes a later case pass, record that and keep the test;
+   never break working behavior to manufacture red. Missing steps, imports,
+   tools, fixtures, type errors, and locator-action errors are setup failures.
+4. Rerun the relevant acceptance when its behavior is connected to the app.
+   Before closing a ticket, run all its scenarios, changed focused tests, affected
+   earlier acceptance, and the required checks below. Record actual red/green
+   assertions, commands, results, and limits. Build output is not behavior evidence.
 
 Use the [test definitions](../coding-principles.md#test-types), the DRY3 rule in
 the [coding principles](../coding-principles.md), and the
-[Gherkin guide](../gherkin-guide.md). A React/library test in one Choom workspace
-is a unit test; crossing Choom workspaces through their real boundaries makes
-it an integration test. Test public data/operation contracts with interface
-tests. Keep assertions about user interaction in browser acceptance where
-layout, focus, or input behavior matters.
+[Gherkin guide](../gherkin-guide.md). Here, **native unit** means calculations
+within the root workspace; **DOM unit** means its React behavior. Use interface
+tests for public contracts and integration tests for real interactions between
+Choom workspaces. Test layout, focus, and input outcomes in the browser too.
 
-Put features under `cookbook/behavior/baseline-viewer/`, with
-`@baseline-viewer`, `@baseline-readability`, and `@br-01` through `@br-06`.
-Use `@browser` or `@packaged` for their execution environment. Register features,
-steps, and any new suite locations in the real runners and owning manifests.
-Shared fixtures stay outside the test category directories. Do not add tests
-for this plan itself.
+Put focused suites under the corresponding `test/unit/lib/` or
+`test/unit/components/` group. Keep native and DOM tests in separate processes.
+Shared fixtures belong in `test/support/` or `test/fixtures/`; browser steps go
+in `test/steps/`. Reuse the existing validator contract tests as characterization.
+
+Put features under `cookbook/behavior/baseline-viewer/`, tagged
+`@baseline-viewer`, `@baseline-readability`, and the ticket ID. BR-07 uses
+`@br-07` plus `@br-07a` through `@br-07d`. Use `@browser` or `@packaged` for the
+execution environment. Register changed artifacts with the real runners and
+owning manifests. Do not add the superseded BR-06 cases or tests for this plan.
+
+The scenarios and TDD steps are requirements, not evidence that tests have run.
+The verification records above contain actual implementation and test results.
 
 | Ticket | Deliverable | Depends on |
 | --- | --- | --- |
@@ -325,312 +429,56 @@ for this plan itself.
 | [BR-03](#br-03-move-components-and-retain-the-current-arrangement) | Pointer/keyboard movement and view state that survives ordinary use. | BR-02 |
 | [BR-04](#br-04-separate-reset-layout-from-fit-view) | Restore the initial arrangement or fit the current one. | BR-03 |
 | [BR-05](#br-05-expand-and-collapse-component-groups) | Stable group expansion and collapse. Follow-up. | BR-04 |
-| [BR-06](#br-06-show-one-interfaces-recorded-connections) | Focused interface node, exact endpoints, and recorded links. Follow-up. | BR-05 |
+| [BR-06](#br-06-show-one-interfaces-recorded-connections) | Superseded by BR-07. | Not scheduled |
+| [BR-07](#br-07-use-interface-arcs-between-components) | Recorded interface arcs, unknown-endpoint explanations, inspection, and stable geometry. | BR-04 |
 
-Implement BR-01 before hiding nodes in BR-02, so each record has another route
-to its details. Keep tickets reviewable on their own. The requested BR-01 to
-BR-04 implementation uses a separate draft PR for each ticket, based on the
-previous ticket. BR-05 and BR-06 remain follow-ups.
+BR-01 preceded hiding nodes in BR-02 so each record retained a route to its
+details. BR-01 to BR-04 landed as a PR stack. Keep future tickets reviewable on
+their own. BR-07's smaller tickets below define implementation order; this plan
+does not change the repository's pull-request review and approval rules.
 
 ### BR-01: Inspect components in a side panel
 
-**Acceptance first — `@br-01 @browser`:**
-
-```gherkin
-Scenario: Inspect a component with one selection
-  Given the reviewed baseline is open
-  When the user selects Workspace once
-  Then the side panel lists the five interfaces owned by Workspace
-  And the diagram keeps its positions, pan, and zoom
-
-Scenario: Keep the drawing usable during inspection
-  Given Workspace is selected in the side panel
-  When the user selects Native shell on the drawing
-  Then the panel shows Native shell and its owned interfaces
-  And the canvas remains available for pan and zoom
-
-Scenario: Return from an interface to its originating list
-  Given the user is inspecting an interface opened from Workspace
-  When the user returns to Workspace in the panel
-  Then the same interface list position is restored
-  And keyboard focus returns to the interface entry
-
-Scenario: Inspect a record without a component owner
-  Given a baseline contains an unowned resource and no components
-  When the user selects the resource from Baseline details
-  Then its complete recorded details are shown
-  And its owner is identified as unknown
-
-Scenario: Reach inspection with the keyboard
-  Given a component control has keyboard focus
-  When the user activates it
-  Then the component side panel opens with focus inside it
-  And the canvas remains reachable without closing the panel
-
-Scenario: Close inspection without taking focus from the canvas
-  Given Workspace details are open and Native shell has keyboard focus
-  When the user closes the panel with Escape
-  Then the panel closes
-  And Native shell keeps keyboard focus
-```
-
-**Expected first failure:** One pointer selection does not open details, and
-current component details have no owned-interface list. The current modal also
-blocks selecting another canvas item while details are open.
-
-**TDD and characterization steps:**
-
-1. Unit-test directly owned interface/resource lists, stable input order,
-   counts, unknown owners, repeated names, and empty results. Derive these
-   results from saved IDs and owner values.
-2. Unit-test panel selection, same-component selection, component-to-record
-   navigation, Back, and baseline lists. Keep panel routes local and bounded;
-   do not add application-wide routing or an unlimited navigation history.
-3. Unit-test complete field access, optional/null/empty distinctions, exact
-   statement statuses, and the existing Rules behavior. Reuse passing field
-   characterization tests; add failures only for missing navigation outcomes.
-4. Test panel focus entry, Back, close, and hidden-opener fallback. Preserve
-   external focus and let Escape collapse only the rule containing focus.
-   Browser-test tab order, pointer access to the canvas, long content, and the
-   narrow layout. Distinguish keyboard focus from the inspected record.
-5. Test that panel changes and window resize preserve the camera. Remove
-   automatic fitting on resize. Keep the existing initial fit until BR-02
-   changes the starting view. Verify on the rendered canvas.
-
-**Complete when:** All saved record kinds remain reachable without double-click.
-The panel is usable with the keyboard and does not block the canvas. Update the
-workspace notes, inspection help, README interaction text, and affected
-BV-06 acceptance expectations. Keep the existing full canvas until BR-02.
+**Merged.** One selection opens a nonmodal panel. Owned lists, Baseline details,
+Rules, and Back keep every record reachable, with the specified focus behavior.
+Keep the [inspection acceptance](../../cookbook/behavior/baseline-viewer/inspection.feature)
+as regression coverage. Completed checks are in the
+[BR-01 evidence](../change-requests/BR-readability-evidence.md#br-01-inspect-records-in-a-side-panel).
 
 ### BR-02: Show a compact component overview
 
-**Acceptance first — `@br-02 @browser`:**
-
-```gherkin
-Scenario: Open the reviewed baseline as a component overview
-  Given the reviewed baseline contains five components
-  And it contains eight interfaces and five resources
-  When the user opens the baseline
-  Then the drawing shows exactly the five components in their saved hierarchy
-  And interface nodes, resource nodes, and relationship lines are hidden
-
-Scenario: Show only directly owned interface counts
-  Given Workspace owns five interfaces
-  And its child Architecture model owns one interface
-  When the user views the component overview
-  Then Workspace shows an owned-interface count of five
-  And Architecture model shows an owned-interface count of one
-
-Scenario: Inspect records omitted from the overview
-  Given the component overview is displayed
-  When the user opens the baseline record lists
-  Then all eight interfaces and five resources are available
-  And records with unknown owners can be inspected
-
-Scenario: Read the reviewed component names at the initial view
-  Given the app viewport is 1280 by 800
-  When the user opens the reviewed baseline
-  Then all five component names are readable without opening details
-  And component cards and parent headers do not overlap
-
-Scenario: Start a large drawing at a readable position
-  Given a supported baseline is too large to fit at 100% zoom
-  When the user opens the baseline
-  Then the view starts at 100% zoom with the first root header visible
-  And other components can be reached by panning or keyboard navigation
-
-Scenario: Inspect known permission when ownership is unknown
-  Given an interface has unknown ownership and explicitly permits Workspace
-  When the user inspects that interface through Baseline details
-  Then its owner is shown as unknown and Workspace as an allowed consumer
-  And each statement keeps its own status and references
-
-Scenario: Keep same-named interfaces and their statement meanings distinct
-  Given two same-named interfaces both permit their owner
-  And their ownership and permission statements have different recorded statuses
-  When the user inspects those interfaces in turn
-  Then each interface keeps its own ID, values, statuses, and references
-  And ownership and permission are presented as separate statements
-```
-
-**Expected first failure:** Opening the baseline currently creates 18 cards and
-their ownership lines. Its prepared geometry also requires all 18 records.
-
-**TDD and characterization steps:**
-
-1. Unit-test component-only layout input and exact component coverage in its
-   output. Test multiple roots, repeated names, nested groups, and zero
-   components. Keep validation of finite geometry and recorded parent IDs.
-2. Unit-test compact leaf/header geometry and child containment. Test bounded
-   handling of long names and names without spaces. Avoid assertions tied to
-   one incidental ELK coordinate result.
-3. Unit-test visible names, direct ownership counts, separate parent
-   headers, and absence of interface/resource nodes and lines. Ensure accessible
-   names and complete panel text still identify repeated or truncated names.
-4. Characterize empty and partial baselines, complete record access, and all
-   input/display limits. The 500-record, 2,000-link, and 16-level bounds still
-   apply to hidden data. Keep rejection before layout and view replacement.
-5. Test the starting view once per successful open, including the first root
-   on a large drawing and zero-component input. Replace BV-04's expectation
-   that all 500 components fit on initial open. Keep its explicit Fit view and
-   keyboard-reveal acceptance, including unchanged zoom during keyboard reveal.
-6. Replace BV-05's initial-card/line expectations with browser acceptance through
-   the panel. Preserve unknown owners with known consumers, same-named records,
-   owner-as-consumer, separate statuses, and complete long text. Mapping tests
-   alone do not verify these user outcomes. Update installed acceptance that
-   currently expects all 18 initial cards too.
-
-**Complete when:** The reviewed baseline has a readable five-component overview,
-and no record loses its inspection route. Update layout coverage notes and
-affected display documentation. Use repository fixtures, not the external
-`work-choom` path, in automated tests.
+**Merged.** The canvas shows nested components with direct-owned interface counts
+and starts at 100% zoom. Records remain available through the panel. BR-07
+replaces the general no-lines rule for interfaces with known endpoints.
+Keep the [overview acceptance](../../cookbook/behavior/baseline-viewer/overview.feature)
+and [record-meaning acceptance](../../cookbook/behavior/baseline-viewer/relationships.feature).
+See the [BR-02 evidence](../change-requests/BR-readability-evidence.md#br-02-show-a-compact-component-overview).
 
 ### BR-03: Move components and retain the current arrangement
 
-**Acceptance first — `@br-03 @browser`:**
-
-```gherkin
-Scenario: Move a parent and its contents
-  Given Workspace contains Architecture model and Platform adapter
-  When the user drags Workspace to another position
-  Then both children move with Workspace and keep their relative positions
-  And Native shell keeps its position
-
-Scenario: Move a child without changing its recorded parent
-  Given Architecture model is inside Workspace
-  When the user moves Architecture model beyond the current right boundary
-  Then Workspace grows to contain it
-  And the saved parent and all baseline statements are unchanged
-
-Scenario: Move a component with the keyboard
-  Given Workspace has keyboard focus on the canvas
-  When the user moves it one step to the right with the keyboard
-  Then Workspace and its descendants move ten diagram units to the right
-  And focus remains on Workspace
-
-Scenario: Cancel a drag
-  Given the user is dragging a component and its parent bounds have grown
-  When the user cancels the drag
-  Then the positions and bounds from before the drag are restored
-  And the existing panel selection is unchanged
-
-Scenario Outline: Retain an arrangement during ordinary use
-  Given the component overview has a manual arrangement and camera position
-  When <event>
-  Then the manual positions and camera are retained
-
-  Examples:
-    | event                                         |
-    | the user inspects another component            |
-    | the window is resized                         |
-    | another baseline fails validation              |
-    | another baseline load is cancelled             |
-
-Scenario: Retain the example arrangement after an unsuccessful file open
-  Given the example is open and the user has moved a component
-  When the first baseline file fails to open
-  Then the example keeps its arrangement
-  And its component details remain available
-
-Scenario: A successful load gets separate view state
-  Given the user has moved a component in the current baseline
-  And a different file uses the same baseline ID and item IDs
-  When that file is successfully opened
-  Then its initial arrangement is shown
-  And the earlier selection and movement are not applied to it
-
-Scenario: An old drag cannot change a newly opened baseline
-  Given a new baseline opened while a component in the previous view was being dragged
-  And both files use the same item IDs
-  When the earlier drag ends
-  Then the new baseline keeps its initial arrangement
-  And the old selection does not return
-```
-
-**Expected first failure:** Component dragging and movement are disabled. The
-renderer recreates its positions from the prepared layout and has no owner for
-the user's arrangement across the required view events.
-
-**TDD and characterization steps:**
-
-1. Unit-test a viewer-owned position copy and component movement by ID. Test
-   parent/descendant relative coordinates and unchanged unrelated components.
-   Verify that the frozen published layout and baseline are never mutated.
-2. Unit-test child bounds, header exclusion, left/top limits, and right/bottom
-   growth through multiple ancestors. Test finite coordinates and cancelled
-   drag restoration. Keep pointer and keyboard movement on the same rules.
-3. Unit-test position changes, click-versus-drag behavior, and keyboard
-   activation versus arrow movement. Browser-test dragging, interrupted/cancelled
-   gestures, unchanged inspection selection, and movement with the panel open.
-4. Unit-test state lifetime against the current baseline/layout pair, including
-   reopened files and reused IDs. Ignore old drag events after replacement.
-   Keep the arrangement during progress and unsuccessful loads. Characterize
-   existing protection against late cancelled loads.
-5. Test the existing example path during loading, failure, and cancellation.
-   A successful file open starts fresh; closing and reopening the example does
-   too. Keep a single state owner per current view without adding a baseline
-   cache or a new loaded-file/example switch.
-
-**Complete when:** Pointer and keyboard movement agree, inspection does not
-undo it, and successful loads start cleanly. Verify saved file bytes are
-unchanged through a normal app journey. Record that persistence ends at a
-successful file open or app restart; no storage permission is added.
+**Merged.** Pointer and keyboard movement preserve recorded nesting. Parent
+moves carry descendants; cancellation restores positions and bounds. The
+current baseline/layout pair owns the view lifetime, including reused IDs.
+Keep the [movement acceptance](../../cookbook/behavior/baseline-viewer/movement.feature).
+See the [BR-03 evidence](../change-requests/BR-readability-evidence.md#br-03-move-components-and-keep-the-current-arrangement).
 
 ### BR-04: Separate Reset layout from Fit view
 
-**Acceptance first — `@br-04 @browser`:**
-
-```gherkin
-Scenario: Reset positions while retaining inspection
-  Given the user has moved Workspace and grown its bounds
-  And its side panel is open while the camera is far from the initial drawing
-  When the user resets the layout
-  Then the prepared initial component positions and bounds are restored
-  And the normal starting view is shown with the same panel content
-
-Scenario: Fit the current arrangement
-  Given the user has moved a component outside the visible canvas
-  When the user fits the view
-  Then all shown components fit in the canvas region beside the panel
-  And the manual component positions remain unchanged
-
-Scenario: Resize without resetting the view
-  Given the user has chosen a manual arrangement and zoom
-  When the window changes size
-  Then the positions and camera transform remain unchanged
-  And Fit view remains available
-
-Scenario: A reset ends the current drag
-  Given the user is dragging a component
-  When the user resets the layout
-  Then the initial arrangement and starting view are restored
-  And later events from that drag cannot change the reset arrangement
-```
-
-**Expected first failure:** There is no Reset layout action. Existing Fit view
-and BR-01 resize behavior are characterization; keep their tests green.
-
-**TDD and characterization steps:**
-
-1. Unit-test resetting manual positions and grown bounds from the immutable
-   prepared layout. Test repeated reset, active-drag termination, and preserved
-   panel navigation. With no nodes, keep the controls unavailable.
-2. Unit-test accessible Reset layout and Fit view controls. Reset reuses BR-02's
-   starting-view rule and must not read files, change the model, or run layout.
-3. Browser-test camera-only fitting against the real canvas size with the panel
-   open. Include keyboard access and the narrow stacked arrangement.
-4. Keep BR-01's stable-camera and BR-02's starting-view tests green. Explicit Fit
-   view can zoom out below 100%; Reset restores the readable starting view.
-
-**Complete when:** Reset restores the initial drawing; Fit keeps manual
-positions. Add short guidance and focused test commands. Complete the first-release
-verification below before calling BR-01 to BR-04 ready.
+**Merged.** Reset restores initial geometry at 100% and keeps inspection. Fit
+changes the camera without moving components. BR-07 extends Fit to include arcs.
+Keep the [layout-control acceptance](../../cookbook/behavior/baseline-viewer/reset.feature).
+See the [BR-04 evidence](../change-requests/BR-readability-evidence.md#br-04-restore-the-initial-layout-or-fit-the-current-arrangement).
 
 ### BR-05: Expand and collapse component groups
 
 **Follow-up. Acceptance first — `@br-05 @browser`:**
 
 ```gherkin
+Scenario: Offer a separate collapse action
+  Given a baseline contains a parent component with a child
+  When the user opens the baseline
+  Then the parent offers separate selection and collapse actions
+
 Scenario: Collapse a parent without moving its neighbors
   Given Workspace and its descendants are expanded
   When the user collapses Workspace
@@ -669,129 +517,521 @@ Scenario: Reveal a hidden component without expanding unrelated branches
   And the other branch remains collapsed
 ```
 
-**Expected first failure:** There is no control or view state for collapsing a
-component group.
+**Expected first failure:** After a successful open, the assertion that the
+parent offers a separate collapse action fails. Do not attempt to activate a
+missing control as the first red result.
 
-**TDD and characterization steps:**
+**Small TDD cycles:**
 
-1. Unit-test visibility from recorded parentage and collapsed IDs, including
-   nested collapsed groups and multiple roots. Count all hidden descendants
-   without changing direct-interface counts.
-2. Unit-test stored child positions, nested collapse choices, and movement of
-   hidden descendants. Expansion restores positions and grows enclosing bounds
-   where needed; it does not run layout or move unrelated components.
-3. Unit-test separate select/collapse controls, hidden-selection context, and
-   Reveal component from both a component panel and the baseline list.
-   Browser-test focus fallback, keyboard access, and reveal at unchanged zoom.
-4. Test that Reset layout expands all groups and restores initial geometry and
-   the starting view while keeping selected details. A successful load clears
-   collapse choices; failed loads preserve them.
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Visibility | Native unit: collapse hides descendants and counts them while retaining the parent. | Derive visibility from parentage and collapse choices. | Reuse ancestry rules; keep direct-interface counts unchanged. |
+| 2 — Stored geometry | Native unit: a moved collapsed subtree expands at stored positions and grows enclosing bounds. | Keep hidden positions and nested collapse choices. | Reuse movement containment; do not rerun layout. |
+| 3 — Controls | DOM unit: select and collapse have separate actions and preserve unrelated positions. | Add the collapse control and render the derived view. | Keep component selection with its existing owner. |
+| 4 — Reveal and focus | DOM unit: a hidden inspected component identifies its ancestor and can be revealed at unchanged zoom. | Expand only required ancestors and apply the existing reveal rule. | Share focus fallback only where the rules match. |
+| 5 — Lifetime | DOM unit: Reset expands all groups while keeping details; successful opens clear choices and failed opens keep them. | Tie collapse choices to the current view and Reset action. | Reuse existing lifetime boundaries. Keep cases already passing as characterization. |
 
 **Complete when:** Collapse reduces visible detail without losing context,
 positions, or record access. Review a 16-level fixture and the real five-component
-baseline before proceeding to the connection view.
+baseline. If BR-07 is already present, also verify its collapse compatibility
+rules. Collapse does not block implementation of BR-07.
 
 ### BR-06: Show one interface's recorded connections
 
-**Follow-up. Acceptance first — `@br-06 @browser`:**
+**Superseded by [BR-07](#br-07-use-interface-arcs-between-components).**
+The temporary interface node and Show/Hide connections mode are no longer
+planned. Retain this ticket ID for reference; its old acceptance scenarios do
+not apply to BR-07.
+
+### BR-07: Use interface arcs between components
+
+**BR-07A is implemented; BR-07B to BR-07D remain planned.** This is their
+umbrella. The expanded tickets below retain their acceptance and implementation
+requirements.
+Each begins with its own acceptance test. The `@br-07` tag selects their combined
+acceptance.
+
+**Scope:** Apply the BR-07 view rules above. Keep the baseline format, original
+file bytes, component nesting, owned counts, and resource access unchanged.
+BR-07 replaces BR-06 and depends only on BR-04. It adds no repository analysis,
+inferred consumers, model editing, saved positions, or new connection mode.
+It also replaces BR-02's general ban on relationship lines. Update tests that
+assert no lines for known-consumer data; keep the reviewed baseline's no-arcs
+assertion because its consumers are unknown.
+
+The four outcomes are separate: draw arcs, explain unknown facts, inspect arcs,
+and fit the complete drawing. Keep small implementation cycles within these
+user-facing tickets instead of creating tickets for helpers alone.
+
+| Ticket | Result | Depends on |
+| --- | --- | --- |
+| [BR-07A](#br-07a-draw-recorded-interface-arcs) | Correct arcs, endpoints, labels, and direction. | BR-04 |
+| [BR-07B](#br-07b-explain-unknown-endpoints) | Clear reasons for absent arcs, with complete details. | BR-07A |
+| [BR-07C](#br-07c-inspect-and-highlight-interface-arcs) | Pointer and keyboard inspection with stable focus. | BR-07B |
+| [BR-07D](#br-07d-fit-arcs-and-preserve-them-through-view-changes) | Fit includes arcs; movement and load lifetime remain correct. | BR-07C |
+
+Follow the [planned-ticket sequence](#working-sequence-for-planned-tickets).
+Keep each ticket's acceptance green before proceeding to its successor.
+
+**Complete when:** All four tickets pass their acceptance tests and the complete
+viewer journey. Record the known-consumer and unknown-consumer cases separately.
+The reviewed baseline must stay truthful even though it still has no arcs.
+
+#### BR-07A: Draw recorded interface arcs
+
+**Acceptance first — `@br-07 @br-07a @browser`:**
 
 ```gherkin
-Scenario: Focus one interface's recorded relationships
-  Given an interface has a known owner and two explicit allowed consumers
-  When the user shows that interface's connections
-  Then the canvas shows that interface, its provides line, and two may use arrows
-  And unrelated interfaces and their lines remain hidden
-  And the interface and endpoint headers fit in view without moving components
+Scenario: Draw one interface for two allowed consumers
+  Given Billing owns Invoice API and has no other owned interfaces
+  And Checkout and Reporting are its recorded allowed consumers
+  When the user opens the baseline
+  Then two arcs labelled Invoice API point from those consumers to Billing
+  And the legend explains that the arrows mean may use
+  And Billing shows 1 interface
+  And the canvas has no separate interface or resource nodes
 
-Scenario: Keep consumers when ownership is unknown
-  Given an interface has an unknown owner and a known allowed consumer
-  When the user shows its connections
-  Then its may use arrow is shown without an owner line
-  And the panel identifies ownership as unknown
+Scenario: Preserve two interfaces between the same components
+  Given two interfaces with the same name connect Checkout to Billing
+  When the user opens the baseline
+  Then two distinct arcs point from Checkout to Billing
+  And their accessible names distinguish their interface IDs
 
-Scenario: Preserve unknown consumer policy
-  Given an interface has a known owner and unknown consumer policy
-  When the user shows its connections
-  Then its provides line is shown without consumer arrows
-  And the panel identifies consumer policy as unknown
+Scenario: Preserve opposite permissions
+  Given one interface permits Checkout to use Billing's interface
+  And another permits Billing to use Checkout's interface
+  When the user opens the baseline
+  Then separate arcs show each interface and its recorded direction
 
-Scenario: Reveal the actual endpoint of a permission
-  Given an interface's allowed consumer is hidden inside a collapsed group
-  When the user shows the interface's connections
-  Then that consumer's ancestors are expanded
-  And the permission arrow ends at the recorded consumer
+Scenario: Show an owner using its own interface
+  Given Billing owns Invoice API and is also its allowed consumer
+  When the user opens the baseline
+  Then a labelled self-loop starts and ends at Billing's header
+  And Billing shows 1 interface
 
-Scenario: Return to the component overview
-  Given an interface with unknown owner and consumer policy is shown outside the component drawing
-  When the user hides its connections
-  Then the temporary interface and its lines are removed
-  And the component overview is brought into view without moving components
+Scenario: Connect the actual headers in a nested group
+  Given a parent is an allowed consumer of its child's interface
+  When the user opens the baseline
+  Then the arc starts at the parent's header and ends at the child's header
+  And the arrow is visible inside the group while both headers remain usable
 
-Scenario: Inspect a component while connections are shown
-  Given an interface owned by Workspace is shown in connection view
-  When the user selects Workspace on the canvas
-  Then Workspace details and the component overview are shown
-  And the overview is fitted without changing component positions
-
-Scenario: Fit only the connections being inspected
-  Given one interface's connections are shown among other components
-  And the user has panned away from them
-  When the user fits the view
-  Then that interface and its endpoint headers fit in the canvas
-  And unrelated components do not determine the fit
-
-Scenario: Collapse an endpoint without hiding its header
-  Given a parent component is an endpoint in the connection view
-  And none of its descendants is another endpoint
-  When the user collapses that component
-  Then its recorded links remain attached to its visible header
-  And the connection view remains open
+Scenario: Bound a long label without losing its name
+  Given an interface name is too long for its canvas label
+  When the user opens the baseline
+  Then the label uses at most two lines and is no wider than a component header
+  And its full interface name and endpoints are available to assistive technology
 ```
 
-**Expected first failure:** Interface details have no Show connections action.
-The component overview cannot reveal one interface and only its recorded links.
+**Expected first failure:** The first scenario expects two arcs; the current
+canvas renders none. Owned counts and component-only nodes already work and
+remain characterization checks.
 
-**TDD and characterization steps:**
+**Before implementation:** BR-04 must pass. Keep passing characterization for
+direct-owned counts, component-only nodes, nesting, complete recorded fields,
+and source limits. Preserve the reviewed baseline's unknown consumers.
 
-1. Unit-test the selected interface and links using existing recorded meanings.
-   Include unknown owners, unknown consumers, repeated names, an owner also
-   named as a consumer, and two interfaces between the same components. Preserve
-   every source ID and the status of the statement that defines each link.
-2. Unit-test placement of one temporary node outside component bounds.
-   Do not move existing components, add component parentage, or mutate the
-   prepared layout. Test unknown owner/consumers with no components and long
-   names. An entirely empty baseline has no Show connections action.
-3. Unit-test required ancestor expansion and exact endpoints. Do not aggregate
-   links to parent components. Test that collapsing an endpoint's ancestor
-   closes the connection view without discarding its panel details.
-4. Unit-test the relationship list, short labels, exact statuses, and changing
-   the shown interface. Test Hide connections, panel close, record changes,
-   hidden endpoints, Reset, and successful/failed loads. Each exit removes the
-   temporary node and uses the specified view rule. Keep the panel usable when
-   no components remain to fit.
-5. Browser-test Show connections and Fit view against endpoint headers, including
-   a very large parent. Test exit from an isolated interface back to a visible
-   overview and links after endpoint movement without automatic refitting.
-   Keyboard users can inspect the same meanings in the panel without targeting
-   thin lines. Keep the first-release semantic acceptance green.
+**Small TDD cycles, in order:**
 
-**Complete when:** The connection view shows only recorded relationships and
-removes them cleanly. Recheck record/link/depth limits. Add canvas acceptance
-beside the first-release panel checks. Resource details remain in the panel;
-showing resources on the canvas is outside this ticket.
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| A1 — One endpoint pair | Native unit: one known owner and one allowed consumer produce exactly one consumer-to-owner arc. A null owner or consumer-list value produces none. | Derive the endpoint pair and interface ID from the two recorded fields. Do not infer missing values. | Keep this calculation separate from drawing coordinates; preserve the tested result. |
+| A2 — Several consumers | Native unit: one interface with two consumers produces two arcs in recorded order. | Derive one arc per listed consumer. Keep one interface record and the existing owned count. | Remove duplicate traversal only where it makes the rule clearer. |
+| A3 — Distinct identity | Native unit: repeated names, IDs containing separators, reverse permissions, and reordered input retain distinct identities. | Use an unambiguous interface/consumer/owner tuple; keep display order equal to input order. | Keep names out of identity and simplify lookup code without changing order. |
+| A4 — Visible arrow | DOM unit: the diagram renders the known arc, its interface name, direction, and permission legend. | Connect the derived arc to the existing component canvas and render an arrow and label. | Keep rendering separate from baseline interpretation. Do not add a new state owner. |
+| A5 — Actual header anchors | Native unit: arc endpoints use current header borders for separate roots and parent-child pairs, with finite coordinates. | Use actual component header geometry, including parent offsets. | Reuse existing geometry rules instead of duplicating parent-position logic. |
+| A6 — Parallel and reverse paths | Native unit: two arcs sharing endpoints, including opposite directions, have distinct stable paths. | Add deterministic curve offsets without moving components. | Simplify path calculations; keep identity and routing order independent of names. |
+| A7 — Self-loop | Native unit: an owner listed as its consumer has a finite loop outside its header with both endpoints on that header. | Handle coincident endpoint IDs explicitly. | Keep the loop rule small and separate from ordinary endpoint routing where useful. |
+| A8 — Accessible labels | DOM unit: labels expose the full interface and endpoint names, with IDs that distinguish repeated names. | Use a two-line label no wider than a header, scaled with the diagram, and provide its full accessible name. | Reuse typography; keep display text separate from identity. |
+
+Rerun the matching browser scenario after its supporting cycles pass. Browser
+acceptance must check visible arrows, actual header attachment, usable headers, and
+long-label bounds; native or DOM geometry tests alone cannot prove those
+results. Do not snapshot incidental ELK positions or private SVG path strings.
+
+**Where to work:** The diagram and its component geometry. Keep new calculations
+near the owning viewer code. The prepared layout still contains components
+only. This ticket does not add inspection behavior; BR-07C connects the arcs to
+the existing inspector.
+
+**Checks and completion:** Run `bun run test:e2e --tags @br-07a` and the shared
+ticket checks, including affected overview acceptance. In small fixtures, arcs
+must remain distinct and headers usable. Source limits still count recorded
+links, not rendered arcs; format and layout coverage stay unchanged.
+
+#### BR-07B: Explain unknown endpoints
+
+**Acceptance first — `@br-07 @br-07b @browser`:**
+
+```gherkin
+Scenario: Explain the reviewed baseline's missing arcs
+  Given full.yaml records owners for all eight interfaces
+  And all eight allowed-consumer lists are null
+  When the user opens the baseline
+  Then a visible note says 8 interfaces have unknown owners or allowed consumers
+  And no interface arcs are shown
+  And the recorded owners retain their interface counts
+
+Scenario: Explain an unknown consumer list in interface details
+  Given the reviewed baseline is open and an interface's allowed-consumer list is unknown
+  When the user inspects that interface from its owner's list
+  Then the panel says Allowed consumers are unknown
+  And its recorded null value, status, and evidence remain available
+
+Scenario Outline: Preserve partial endpoint knowledge
+  Given an interface has <owner> ownership and <consumers> allowed consumers
+  When the user opens its details from Baseline details
+  Then its panel explains <reason>
+  And its known endpoint values remain available
+  And it contributes no arc and exactly one interface to the unknown-endpoint note
+
+  Examples:
+    | owner   | consumers | reason                                    |
+    | known   | unknown   | Allowed consumers are unknown             |
+    | unknown | known     | Owner is unknown                          |
+    | unknown | unknown   | Owner and allowed consumers are unknown   |
+
+Scenario: Keep known arcs beside unknown endpoint facts
+  Given one interface has a recorded owner and allowed consumer
+  And another interface has an unknown allowed-consumer list
+  When the user opens the baseline
+  Then the first interface has its recorded arc
+  And the second has no arc
+  And the note counts only the second interface
+
+Scenario: Explain missing endpoints without a component drawing
+  Given a valid baseline has no components and one interface with both endpoint facts unknown
+  When the user opens the baseline
+  Then the no-components message and the note about 1 incomplete interface are visible
+
+Scenario: Inspect an interface when there are no components
+  Given a baseline is open with no components and an interface with both endpoint facts unknown
+  When the user inspects that interface from Baseline details
+  Then its panel explains both unknown values and keeps all recorded fields available
+
+Scenario Outline: Omit an unnecessary unknown-endpoint note
+  Given the baseline contains <data>
+  When the user opens the baseline
+  Then no unknown-endpoint note is shown
+
+  Examples:
+    | data                                       |
+    | only interfaces with both endpoints known  |
+    | no interfaces                              |
+```
+
+**Expected first failure:** The current viewer has no visible explanation of
+missing arcs and no specific allowed-consumer explanation in interface details.
+The new explanatory-text assertion must fail. Absence of guessed arcs and the
+existing raw `Unknown (null)` field are passing characterization, not red tests.
+
+**Before implementation:** BR-07A must pass. Keep the absence of guessed arcs,
+raw `Unknown (null)` fields, known endpoint values, independent statuses and
+evidence, and original file bytes as passing characterization. The existing
+validator already rejects empty consumer lists, duplicate consumer IDs, and
+references to missing components. Add any missing contract characterization
+before changing related code; do not change these rules for this ticket.
+
+**Small TDD cycles, in order:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| B1 — Unknown consumers | DOM unit: an interface with a known owner and null consumers shows the specific unknown-consumer explanation alongside its recorded fields. | Add the explanation from the null consumer value. Keep the owner and owned count. | Keep the explanation separate from the raw statement renderer. |
+| B2 — Unknown owner | DOM unit: a null owner produces its own explanation while a known consumer list remains visible; both null values show both reasons. | Add the owner reason independently of the consumer reason. | Simplify the four known/unknown combinations without replacing distinct facts with one status. |
+| B3 — Summary count | Native unit: a mixed baseline counts incomplete interfaces once, including an interface missing both facts; complete and empty collections give zero. | Count interfaces with either endpoint fact unknown. | Keep summary counting consistent with the panel reasons without storing another mutable count. |
+| B4 — Summary display | DOM unit: incomplete interfaces produce the visible note and the existing Baseline details route stays available. | Render the summary when its count is positive, with singular/plural text. | Keep the message concise and reuse the existing record-access route. |
+| B5 — No component drawing | DOM unit: a valid baseline with interfaces but no components shows the note beside the empty-view message and keeps interface inspection available. | Place the note in the common viewer region, outside the canvas-only branch. | Share the note rendering where useful; do not add an empty-state navigation path. |
+
+Keep passing cases for no note on complete/no-interface data and known arcs in
+mixed data. If B4 already makes B5 pass, record B5 as characterization and keep
+that simpler implementation. Do not add a branch just to create a red test.
+
+**Where to work:** The viewer message and existing interface panel. Reuse the
+baseline lists and raw recorded-field display. No new unknown placeholder nodes,
+validation rule, schema, or file write is needed.
+
+**Checks and completion:** Run `bun run test:e2e --tags @br-07b` and the shared
+ticket checks, including BR-07A and record-details acceptance. Verify the note
+and all known facts at 320 by 640, including the no-components case. Use the
+unchanged full fixture and repository synthetic data; preserve source bytes.
+
+#### BR-07C: Inspect and highlight interface arcs
+
+**Acceptance first — `@br-07 @br-07c @browser`:**
+
+```gherkin
+Scenario Outline: Inspect an arc with one pointer selection
+  Given Invoice API has two arcs and another interface has an unrelated arc
+  And the user has not pressed a component header
+  When the user clicks an Invoice API arc's <target>
+  Then the panel shows Invoice API's complete details without a Back entry
+  And both Invoice API arcs are highlighted while the unrelated arc is dimmed
+  And focus stays on the initiating arc's label
+  And the camera and component positions are unchanged
+
+  Examples:
+    | target |
+    | curve  |
+    | label  |
+
+Scenario: Inspect a visible curve whose label is off-screen
+  Given an Invoice API curve is visible but its label is outside the viewport
+  When the user clicks that curve
+  Then Invoice API details open and focus moves to that arc's label
+  And the camera does not pan or zoom
+
+Scenario Outline: Inspect an arc with the keyboard
+  Given two arcs represent Invoice API
+  And keyboard focus is on the second arc's label
+  When the user activates it with <key>
+  Then focus moves to the Invoice API panel heading
+  And both Invoice API arcs are highlighted
+
+  Examples:
+    | key   |
+    | Enter |
+    | Space |
+
+Scenario: Return keyboard focus to the exact arc
+  Given Invoice API's panel was opened from the second of its two arc labels
+  And focus is inside the panel
+  When the user closes the panel
+  Then focus returns to that second arc's label
+  And all arcs remain visible with normal emphasis
+
+Scenario: Show a component's relevant connections
+  Given a component has incoming and outgoing arcs and an unrelated arc exists
+  When the user selects the component
+  Then its incoming and outgoing arcs are highlighted and the unrelated arc is dimmed
+
+Scenario: Emphasize an interface opened from its owner's list
+  Given a component's panel lists its owned interfaces
+  When the user inspects one of those interfaces
+  Then only that interface's arcs are highlighted
+  And the component remains highlighted
+
+Scenario: Restore component context with Back
+  Given an interface was opened from a scrolled list in its owner's panel
+  When the user goes Back
+  Then its list position and row focus are restored
+  And the component's incoming and outgoing arcs are highlighted again
+
+Scenario: Reach an off-screen arc label
+  Given an arc label is outside the viewport but would fit at the current zoom
+  When keyboard focus reaches the label
+  Then the canvas pans only enough to reveal its label and focus indicator
+  And zoom and the inspected record stay unchanged
+
+Scenario: Reach a label larger than the available canvas
+  Given an enlarged arc label is wider or taller than the available canvas
+  When keyboard focus reaches the label
+  Then the start of its name and the nearby focus outline come into view
+  And zoom and the inspected record stay unchanged
+
+Scenario Outline: Accept a fresh arc click after a component drag
+  Given a component drag has <ending> without changing inspection
+  When the user makes a new pointer press and release on an arc
+  Then that interface's details open
+  And the camera and component positions stay unchanged
+
+  Examples:
+    | ending         |
+    | finished       |
+    | been cancelled |
+```
+
+**Expected first failure:** BR-07A's drawn arcs do not yet open the interface
+panel or apply the specified emphasis. Assert the visible panel after a real
+arc click; a missing test locator alone is not acceptance evidence.
+
+**Before implementation:** BR-07B must pass. The current inspection operation
+already accepts an interface record and an HTML opener. Its fresh-path, Back,
+scroll, focus-entry, and close behavior is characterization. The new arc control
+must call that operation correctly; do not rewrite it to create a failing test.
+Keep component movement and the drag-release guard green.
+
+**Small TDD cycles, in order:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| C1 — Label selection | DOM unit: a first click on an arc label opens that interface as a fresh path without Back, with no prior component press. | Pass the interface ID and HTML opener to inspection. Keep component-only click permission out of arc activation. | Reuse the inspection owner; keep direct selection separate from list navigation. |
+| C2 — Curve selection | DOM unit: clicking the curve opens the same details and focuses that arc's label without starting a pan or drag. | Give the curve a pointer target and route its action through the same inspection behavior. | Keep pointer handling small; remove repeated selection logic only where it clarifies the behavior. |
+| C3 — Keyboard entry | DOM unit: Enter and Space on an arc label open the correct interface and focus its panel heading. | Connect the label's keyboard activation and input-mode flag. | Use the existing keyboard/pointer distinction; avoid parallel event paths that activate twice. |
+| C4 — Exact opener | DOM unit: opening each of two arcs for the same interface and closing from the panel returns focus to that exact label. | Supply the complete arc identity to the rendered control and preserve its opener through inspection. | Reuse existing close behavior. If C1–C3 already pass this case, keep it as characterization. |
+| C5 — Component emphasis | DOM unit: selecting a component emphasizes its incoming and outgoing arcs and dims unrelated arcs. | Derive emphasis from the inspected component and each arc's endpoints. | Keep emphasis derived rather than storing selected edge IDs. |
+| C6 — Interface emphasis | DOM unit: inspecting an interface emphasizes all its arcs, through either route, and retains the owner's highlight only for list navigation. | Give the current interface panel precedence over component-based arc emphasis. | Keep one readable decision for the inspection states; reuse the existing path for component highlight. |
+| C7 — Label reveal calculation | Native unit: reveal a label fully when it fits, or reveal its start and focus edge when it is larger than the canvas, without changing zoom. | Apply the existing header-reveal rule to scaled label bounds. | Reuse viewport calculations; keep component and label dimensions explicit. |
+| C8 — Keyboard reveal | DOM unit: keyboard navigation to an off-screen label applies that reveal without selecting the interface. | Connect keyboard focus and keyboard focus return to the label reveal. | Keep focus separate from activation; simplify the connection to existing focus handling. |
+| C9 — Pointer focus guard | DOM unit: selecting a visible curve with an off-screen label opens details without changing the camera. | Suppress keyboard reveal for pointer-driven label focus. | Keep input-mode handling in one place; preserve keyboard reveal and panel focus rules. |
+
+Keep normal arc emphasis on resources, Baseline details, Rules, and panel close
+as characterization, along with focus-only navigation, Back/scroll restoration,
+and external focus on close. Check that a component drag release does not open
+an arc, but a fresh arc click and later keyboard activation still work. If
+these cases or C9 already pass after earlier cycles, keep them green.
+
+**Where to work:** The diagram's arc controls and existing inspection hook.
+Touch gesture or viewport code only for the input or reveal rules it owns.
+Keep the inspected interface ID separate from the initiating arc's identity.
+Do not introduce a second selection store or a new navigation history.
+
+**Checks and completion:** Run `bun run test:e2e --tags @br-07c` and the shared
+ticket checks, including inspection and movement acceptance. Verify hit areas,
+both activation keys, exact focus return, tab order, oversized-label reveal,
+and fresh clicks after dragging in the browser. Lists must still provide full
+record access without using arcs.
+
+#### BR-07D: Fit arcs and preserve them through view changes
+
+**Acceptance first — `@br-07 @br-07d @browser`:**
+
+```gherkin
+Scenario: Fit the complete drawing with an open panel
+  Given visible arc curves, a self-loop, and labels extend beyond component bounds
+  And the interface panel is open
+  When the user chooses Fit view
+  Then all shown components, curves, arrowheads, and labels fit in the available canvas
+  And component positions and inspected details are unchanged
+
+Scenario: Fit a widely spread drawing in a narrow canvas
+  Given the drawing is too wide to fit at 1% zoom in the available canvas
+  When the user chooses Fit view
+  Then the complete drawing fits at a positive zoom below 1%
+  And component positions and inspected details are unchanged
+
+Scenario: Keep zoom controls usable after a small-scale Fit
+  Given the drawing has been fitted below 1% zoom
+  When the user requests Zoom Out
+  Then an enabled control decreases zoom to a positive finite value
+  And at the minimum the control is disabled and zoom stays unchanged
+  And Zoom In remains available
+
+Scenario: Keep arcs attached when a parent is dragged
+  Given a consumer is inside a parent group and its interface arc is shown
+  And the parent's header and destination are inside the viewport
+  When the user drags the parent with the pointer
+  Then the consumer and its arc endpoint move with it
+  And inspection and the camera remain unchanged
+
+Scenario: Restore arcs after a cancelled drag
+  Given a consumer is being dragged and its parent bounds have grown
+  When the user cancels the drag with Escape
+  Then the component positions, grown bounds, and arcs return to their pre-drag state
+  And the panel and camera remain unchanged
+
+Scenario: Reset geometry without clearing interface inspection
+  Given components have been moved and an interface is being inspected
+  When the user resets the layout
+  Then components and arcs return to the initial arrangement
+  And the canvas uses the normal 100% component starting view
+  And the interface details remain open
+
+Scenario: Replace arcs even when record IDs repeat
+  Given a baseline is open with an inspected interface arc
+  When a different baseline with the same IDs and different endpoint facts opens successfully
+  Then only the new baseline's recorded arcs are shown in a fresh view
+  And the old panel is closed
+
+Scenario Outline: Ignore input started in a replaced view
+  Given a new baseline opened while an old <input> was unfinished
+  And both views use the same component and interface IDs
+  When the old input is released
+  Then the new view's arcs, positions, camera, and inspection stay unchanged
+
+  Examples:
+    | input          |
+    | component drag |
+    | arc press      |
+
+Scenario Outline: Preserve arcs after an unsuccessful open
+  Given a baseline has moved components and an inspected interface arc
+  When another file open <outcome>
+  Then its arcs, positions, panel, and camera remain unchanged
+
+  Examples:
+    | outcome      |
+    | fails        |
+    | is cancelled |
+```
+
+**Expected first failure:** Existing Fit view uses component bounds only. Use a
+fixture with curves or a self-loop beyond that fit, including its padding, and
+assert the actual visible bounds. A second case exposes the current 1% minimum:
+including all geometry is not enough if the chosen zoom still clips it.
+Attachment and load behavior already passing is characterization.
+
+**Before implementation:** BR-07C must pass. Capture passing characterization
+for current manual positions, inspection paths, normal 100% starting view,
+Reset, and load lifetime. Use arc paths derived from the current arrangement.
+Do not add a second position store to make Fit work.
+
+**Small TDD cycles, in order:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| D1 — Curve bounds | Native unit: the drawing bounds contain a curved arc and self-loop that extend beyond the components, including negative coordinates. | Include the full path bounds with component bounds. | Keep bounds derived from the same routing geometry; avoid a second routing calculation. |
+| D2 — Arrow and label bounds | Native unit: an arrowhead or bounded label outside those path bounds is included in Fit. | Extend the bounds to include the visible arrow and label extents. | Reuse one bounds-combination rule where it removes repeated knowledge. |
+| D3 — Available canvas | Native unit: wide and narrow canvases contain the complete bounds, including a spread that requires zoom below 1%. | Calculate a positive finite Fit zoom from the actual bounds and available size, without the clipping floor. | Reuse viewport calculations; keep Fit separate from initial open and Reset. |
+| D4 — Fit control | DOM unit: the explicit Fit action uses the current arc-inclusive bounds while retaining the panel and arrangement. | Connect the existing control to the complete bounds and current canvas size. | Remove obsolete node-only fitting from this action; keep one explicit Fit path. |
+| D5 — Zoom controls | DOM unit: after Fit below 1%, Zoom Out decreases zoom when enabled or is disabled at the minimum; Zoom In remains available and positions stay unchanged. | Keep the allowed zoom range compatible with the Fit result, without snapping to the old minimum. | Keep one zoom policy; do not introduce automatic fitting on ordinary view events. |
+
+Once Fit is connected to the app, run the clipping scenarios against the actual
+canvas. Computed bounds alone do not prove that curves, arrows, and labels fit.
+For Zoom Out, assert a disabled control's state without activating it; otherwise
+activate it and assert a real decrease. An enabled control that does nothing
+does not pass.
+Keep the no-arcs case and no-components controls as characterization. Initial
+open and Reset remain at 100%.
+
+**Characterization and fixes for view lifetime:**
+
+Run these cases before changing their owning code. Keep passing cases as
+characterization; use the shared acceptance-first/TDD sequence for each real gap.
+Add an acceptance scenario only when the missing outcome is not covered.
+
+| Area | Cases and expected outcome | Focused test if a gap exists |
+| --- | --- | --- |
+| Movement | Child and parent movement, ancestor growth, and keyboard moves keep arcs on current headers. Both input methods preserve inspection and never trigger Fit. Keyboard movement can use the existing minimal reveal pan at unchanged zoom. | Native unit for coordinates; DOM unit for arrangement-to-render updates. |
+| Cancellation | Escape or interruption restores starting positions, bounds, and arc paths. | Native unit for restored geometry; DOM unit for cancellation through the gesture owner. |
+| Reset | Reset restores initial geometry and paths at 100%, keeps inspection and Back, and ends a held press or drag. Later events cannot undo it. | DOM unit through the existing Reset action; preserve the arrangement tests. |
+| Successful open | Reopening a file or reusing IDs creates fresh arcs and closes inspection. An old component drag or arc press cannot act on the new view. | DOM unit through the workspace/view boundary; release old input after replacement. |
+| Failed or cancelled open | Rejection, cancellation, and a late cancelled result preserve the current arcs, positions, panel, and camera. | DOM unit through the existing load boundary with controlled completion. |
+| Example lifetime | A failed open keeps the example; closing and reopening it starts fresh; a successful file open replaces it. | DOM unit through the existing example and open actions. |
+
+Keep baseline data, source bytes, and prepared geometry unchanged throughout.
+Movement, Fit, cancellation, and Reset must not read the file or rerun layout.
+
+**BR-05 compatibility:** If collapse exists, verify each
+[combined behavior](#compatibility-with-br-05) with its own acceptance scenario
+and focused TDD cycle for any missing outcome. Otherwise leave those cases with
+BR-05; do not add collapse here.
+
+**Where to work:** The diagram's Fit action and viewport calculations. Change
+arrangement, gesture, or load code only when a behavior test shows a real gap.
+Preserve the current baseline/layout pair as the view lifetime boundary.
+
+**Checks and completion:** Run `bun run test:e2e --tags @br-07d`, the shared
+ticket checks, and the complete `@br-07` and `@baseline-readability` acceptance.
+Verify actual drawing bounds at 1280 by 800 and 320 by 640 with the panel open,
+including a Fit below 1%. Complete the installed-app journey and the verification
+below for dense data, original bytes, full details, and supported limits.
 
 ## Verification and review
 
 Use `test/fixtures/baseline-viewer/full.yaml` and `empty.yaml`, plus small
 synthetic fixtures for repeated names, long names, multiple roots, mixed
-statement statuses, unknown owners with known consumers, owner-as-consumer,
-and records without components. Include at-limit and excessive inputs.
+statement statuses, and records without components. For BR-07, include two
+consumers of one interface, parallel and opposite arcs, self-use, parent-child
+endpoints, all four known/unknown endpoint combinations, and mixed complete and
+incomplete interfaces. Keep `full.yaml` unchanged for the unknown-consumer case.
+Include at-limit and excessive inputs. Test fixtures must live in the repository.
 
 For each implemented ticket, run its changed tests locally before committing.
 Examples of focused commands after the features exist:
 
 ```sh
 bun run test:e2e --tags @br-01
+bun run test:e2e --tags @br-07
+bun run test:e2e --tags @br-07d
 bun run test:e2e --tags @baseline-readability
 bun run test:behavior --tags @baseline-viewer
 ```
@@ -801,30 +1041,42 @@ relevant suites under `test/unit/components/`, `test/unit/lib/`, and
 `test/unit/architecture/`, with interface/integration suites only where the
 repository definitions call for them. Keep DOM globals out of native tests.
 
-For the complete first release, and again for each follow-up release:
+For each implemented follow-up release:
 
 - Run affected behavior tests, `bun run test`, `bun run check`,
   `bun run check-types`, `bun run build`, and `bun run habit-hooks --all`.
   Run contract generation/checks if a contract changes. Keep the snooze file empty.
 - Build the desktop app and check the assembled route. Run installed acceptance
-  for opening the baseline, side-panel inspection, movement, and reset. Browser
-  tests alone do not verify the installed app. Follow the
+  for opening the baseline, side-panel inspection, movement, and reset. For
+  BR-07, also open a known-consumer fixture, inspect an arc, move an endpoint,
+  fit the whole drawing, and reset. Open the reviewed unknown-consumer baseline
+  and verify its explanation without arcs. Browser tests alone do not verify
+  the installed app. Follow the
   [native acceptance guide](../change-requests/BV-native-acceptance.md).
 - If Rust changes become necessary, run Rust tests, formatting, and Clippy too.
   This plan does not require a native behavior change.
 - Inspect the reviewed baseline at 1280 by 800, a narrow 320 by 640 viewport, and
   a resized desktop window. Check names, contrast, focus, scrolling, pointer
   movement, and keyboard movement. Test long labels at increased browser text
-  size. Do not use pixel snapshots as the only readability evidence.
+  size. For BR-07, check arc direction, header attachment, pointer targets,
+  keyboard return to the exact label, high-zoom focus reveal, and Fit including
+  curve and label bounds. Check duplicate names, fresh arc clicks after dragging,
+  and pending arc input during a successful replacement. Do not use pixel
+  snapshots as the only readability evidence.
 - Recheck the existing workload fixtures at 500 records, 2,000 explicit links,
   and 16 levels. Record time to usable overview and interaction delays on named
-  hardware. Use the existing measurements in the
-  [BV evidence record](../change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements)
-  as the comparison; hidden records still count toward limits.
+  hardware. Compare with the
+  [BR-04 measurements](../change-requests/BR-readability-evidence.md#workload-measurements)
+  using the same method where practical. These are observed timings, not a new
+  latency guarantee. Hidden records still count toward limits. Keep source-link
+  counting unchanged when projecting arcs. Include dense known-consumer data;
+  a full unknown-consumer fixture alone does not exercise arc rendering. Dense
+  paths can cross, but rendering must complete, controls must respond, and every
+  interface must remain available through the lists.
 - Verify full recorded details and original file bytes after the complete
   inspection/movement/reset journey. Preserve cancellation, retry, limits, and
   protection against a late load replacing the current view.
-- Update README, workspace boundary notes, affected constraints, and the new
+- Update README, workspace boundary notes, affected constraints, and the
   verification record with actual results and platform limits. Distinguish
   checks run from deferred checks. Do not claim build/lint output proves UI
   behavior.

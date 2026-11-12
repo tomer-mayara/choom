@@ -55,7 +55,17 @@ interfaces they directly own. Counts exclude descendant and unknown owners.
 A parent has a border around its children and one small inspection header.
 Names can wrap to two lines in a bounded header. Accessible names and panel
 details keep the full text. ELK rectangle packing prepares the component overview.
-Interfaces, resources, and relationship lines are absent from the drawing.
+Interfaces and resources have no separate nodes. Labelled interface arcs run
+from each recorded allowed consumer to the recorded owner. They show permission
+to use the interface, not observed calls. Each arc has the identity
+`(interface ID, consumer ID, owner ID)`. Repeated names, parallel permissions,
+opposite directions, and an owner that is also a consumer remain distinct.
+Arcs attach to the actual component headers, including within nested groups.
+They follow the current arrangement without changing the prepared layout.
+
+An interface with a null owner or null consumer list produces no arc.
+Labels use at most two lines and the width of a component header. Their accessible
+names include full interface and endpoint names and IDs.
 
 The side panel preserves ownership and allowed-consumer statements separately,
 including unknown owners, repeated names, and an owner that is also a consumer.
@@ -172,6 +182,7 @@ bun scripts/run-browser-behavior.ts --tags @br-02
 bun test ./test/unit/lib/component-arrangement.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/component-layout-controls.test.tsx
 bun scripts/run-browser-behavior.ts --tags @br-04
+bun scripts/run-browser-behavior.ts --tags @br-07a
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
 ```
