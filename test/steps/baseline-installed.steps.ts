@@ -4,9 +4,11 @@ import { copyFile, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/pro
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
+import { parse } from "yaml";
 import { baselineSchema } from "../../src/domain/baseline.ts";
 import { reviewedBaseline } from "../support/baseline-fixtures.ts";
 import { InstalledBaselineDriver } from "../support/baseline-viewer/installed-driver.ts";
+import { expectInstalledArcJourney } from "../support/baseline-viewer/installed-arcs.ts";
 
 interface InstalledBaselineWorld extends World {
   installedBaselineDriver?: InstalledBaselineDriver;
@@ -16,6 +18,7 @@ interface InstalledBaselineWorld extends World {
   installedBaselineView?: Awaited<ReturnType<InstalledBaselineDriver["view"]>>;
   installedMovement?: Awaited<ReturnType<InstalledBaselineDriver["inspectAndMoveComponents"]>>;
   installedReset?: Awaited<ReturnType<InstalledBaselineDriver["fitAndResetLayout"]>>;
+  installedArcs?: Awaited<ReturnType<InstalledBaselineDriver["inspectAndArrangeArcs"]>>;
   installedInvalidFile?: { path: string; bytes: string };
 }
 
@@ -146,6 +149,35 @@ Then("fitting keeps the arrangement while resetting restores its starting view a
   assert.ok(this.installedMovement && this.installedReset);
   driver(this).expectLayoutReset(this.installedMovement, this.installedReset);
 });
+
+Given("the standalone installed file records known interface consumers", async function (this: InstalledBaselineWorld) {
+  assert.ok(this.installedBaselineFile);
+  await copyFile(new URL("../fixtures/baseline-viewer/installed-known-consumers.yaml", import.meta.url), this.installedBaselineFile);
+  this.installedBaselineBytes = await readFile(this.installedBaselineFile);
+  const fixture = baselineSchema.parse(parse(this.installedBaselineBytes.toString("utf8")));
+  assert.equal(fixture.components.length, 4);
+  assert.equal(fixture.interfaces.length, 2);
+  await this.attach(JSON.stringify({
+    selectedBaseline: this.installedBaselineFile, fixture: "installed-known-consumers.yaml",
+    sha256: createHash("sha256").update(this.installedBaselineBytes).digest("hex"), bytes: this.installedBaselineBytes.length,
+  }), "application/json");
+});
+
+When("the user inspects and arranges installed interface arcs with the pointer and keyboard", { timeout: 60_000 },
+  async function (this: InstalledBaselineWorld) {
+    await driver(this).expectBaseline("installed-known-consumers", [
+      ["commerce", "Commerce"], ["billing", "Billing"], ["checkout", "Checkout"], ["reporting", "Reporting"],
+    ]);
+    this.installedArcs = await driver(this).inspectAndArrangeArcs();
+  });
+
+Then("installed arcs follow the arrangement and retain inspection through Fit and Reset", async function (this: InstalledBaselineWorld) {
+  assert.ok(this.installedArcs);
+  expectInstalledArcJourney(this.installedArcs);
+});
+
+Then("the installed viewer explains eight unknown consumer lists without drawing arcs", { timeout: 30_000 },
+  async function (this: InstalledBaselineWorld) { await driver(this).expectUnknownConsumers(); });
 
 After({ tags: "@baseline-viewer and @packaged", timeout: 30_000 }, async function (this: InstalledBaselineWorld) {
   try { await this.installedBaselineDriver?.close(); }

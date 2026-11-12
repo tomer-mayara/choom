@@ -1,0 +1,53 @@
+formatVersion: 1
+id: installed-known-consumers
+parentId: null
+components:
+  - id: commerce
+    name: Commerce
+    purpose: { value: Group the invoice components, status: proposed, evidenceRefs: [installed-fixture] }
+    membership: { value: { paths: [commerce/**] }, status: proposed, evidenceRefs: [installed-fixture] }
+    groupingReason: { value: Keep invoice work together, status: proposed, evidenceRefs: [installed-fixture] }
+  - id: billing
+    name: Billing
+    purpose: { value: Create invoices, status: proposed, evidenceRefs: [installed-fixture] }
+    membership: { value: { paths: [commerce/billing/**] }, status: proposed, evidenceRefs: [installed-fixture] }
+    groupingReason: { value: Own invoice behavior, status: proposed, evidenceRefs: [installed-fixture] }
+    parent: { value: commerce, status: proposed, evidenceRefs: [installed-fixture] }
+  - id: checkout
+    name: Checkout
+    purpose: { value: Place orders, status: proposed, evidenceRefs: [installed-fixture] }
+    membership: { value: { paths: [commerce/checkout/**] }, status: proposed, evidenceRefs: [installed-fixture] }
+    groupingReason: { value: Own order entry, status: proposed, evidenceRefs: [installed-fixture] }
+    parent: { value: commerce, status: proposed, evidenceRefs: [installed-fixture] }
+  - id: reporting
+    name: Reporting
+    purpose: { value: Read invoice reports, status: proposed, evidenceRefs: [installed-fixture] }
+    membership: { value: { paths: [commerce/reporting/**] }, status: proposed, evidenceRefs: [installed-fixture] }
+    groupingReason: { value: Own reporting behavior, status: proposed, evidenceRefs: [installed-fixture] }
+    parent: { value: commerce, status: proposed, evidenceRefs: [installed-fixture] }
+interfaces:
+  - id: invoice-api
+    name: Invoice API
+    owner: { value: billing, status: proposed, evidenceRefs: [fixture-owner] }
+    publicAccess: { value: [createInvoice], status: proposed, evidenceRefs: [installed-fixture] }
+    allowedConsumers:
+      value: [checkout, reporting]
+      status: accepted
+      evidenceRefs: [fixture-consumers]
+      acceptanceRef: fixture-review
+    promises:
+      value:
+        behavior: Create an invoice
+        data: Invoice
+        errors: Invalid invoice
+        lifecycle: One request
+      status: proposed
+      evidenceRefs: [installed-fixture]
+  - id: audit-api
+    name: Audit API
+    owner: { value: commerce, status: proposed, evidenceRefs: [installed-fixture] }
+    publicAccess: { value: [recordAudit], status: proposed, evidenceRefs: [installed-fixture] }
+    allowedConsumers: { value: [commerce], status: proposed, evidenceRefs: [installed-fixture] }
+    promises: { value: null, status: proposed, evidenceRefs: [installed-fixture] }
+resources: []
+rules: []

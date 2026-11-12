@@ -28,6 +28,20 @@ Feature: Open a baseline in installed Choom
     Then fitting keeps the arrangement while resetting restores its starting view and inspection path
     And the native read leaves the selected baseline bytes unchanged
 
+  @baseline-readability @br-07 @br-07-installed
+  Scenario: Inspect and arrange recorded interfaces in installed Choom
+    Given the standalone installed file records known interface consumers
+    When the user selects that baseline through the native Open Baseline picker
+    And the user inspects and arranges installed interface arcs with the pointer and keyboard
+    Then installed arcs follow the arrangement and retain inspection through Fit and Reset
+    And the native read leaves the selected baseline bytes unchanged
+
+  @baseline-readability @br-07 @br-07-installed
+  Scenario: Explain unknown interface consumers in installed Choom
+    When the user selects that baseline through the native Open Baseline picker
+    Then the installed viewer explains eight unknown consumer lists without drawing arcs
+    And the native read leaves the selected baseline bytes unchanged
+
   Scenario: Cancelling the native picker preserves the loaded baseline
     When the user selects that baseline through the native Open Baseline picker
     Then the installed viewer shows its baseline ID and five component names

@@ -1,5 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, useReactFlow, useStoreApi, type Edge, type EdgeProps } from "@xyflow/react";
-import { useRef, type FocusEvent, type MouseEvent, type PointerEvent } from "react";
+import { useRef, type FocusEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { interfaceArcHighlightedStroke, type InterfaceArcRoute } from "../lib/interface-arc-geometry.ts";
 import { componentControlWidth } from "../lib/component-geometry.ts";
 import type { ComponentArrangement } from "../lib/component-arrangement.ts";
@@ -9,18 +9,19 @@ import { revealBounds } from "../lib/architecture-viewport.ts";
 export type InterfaceEdge = Edge<{
   route: InterfaceArcRoute; name: string; accessibleName: string;
   inspect: ArchitectureInspection["open"]; view: ComponentArrangement;
+  pressGeneration: RefObject<number>;
   emphasis: "normal" | "highlighted" | "dimmed";
   labelOrder: string;
 }, "interface">;
 
 export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) {
   const label = useRef<HTMLButtonElement | null>(null);
-  const pressed = useRef<ComponentArrangement | null>(null);
+  const pressed = useRef<{ view: ComponentArrangement; generation: number } | null>(null);
   const pointerSelection = useRef(false);
   const { getViewport, setViewport } = useReactFlow();
   const store = useStoreApi();
   if (!data) return null;
-  const { route, name, accessibleName, inspect, view, emphasis, labelOrder } = data;
+  const { route, name, accessibleName, inspect, view, pressGeneration, emphasis, labelOrder } = data;
   const identity = { "data-interface-id": route.interfaceId, "data-consumer-id": route.consumerId, "data-owner-id": route.ownerId };
 
   function revealFocusedLabel(event: FocusEvent<HTMLButtonElement>) {
@@ -49,14 +50,14 @@ export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) 
   function begin(event: PointerEvent) {
     if (event.button !== 0 || event.isPrimary === false) return;
     event.stopPropagation();
-    pressed.current = view;
+    pressed.current = { view, generation: pressGeneration.current };
     focusPointerLabel();
   }
 
   function activate(event: MouseEvent) {
     event.stopPropagation();
     const keyboard = event.detail === 0;
-    if (!label.current || (!keyboard && pressed.current !== view)) return;
+    if (!label.current || (!keyboard && (pressed.current?.view !== view || pressed.current.generation !== pressGeneration.current))) return;
     pressed.current = null;
     if (!keyboard) focusPointerLabel();
     inspect({ kind: "interface", interfaceId: route.interfaceId }, label.current, keyboard);
