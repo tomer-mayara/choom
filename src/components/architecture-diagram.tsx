@@ -147,7 +147,10 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
   const [announcement, setAnnouncement] = useState<{ owner: ComponentArrangement; text: string } | null>(null);
   const announce = useCallback((text: string) => { setAnnouncement({ owner: arrangement, text }); }, [arrangement]);
   const firstRootId = baseline.components.find(({ parent }) => !parent?.value)?.id;
-  const connections = useMemo(() => interfaceArcs(baseline), [baseline]);
+  const connections = useMemo(() => {
+    const arcs = interfaceArcs(baseline);
+    return { arcs, labelOrder: JSON.stringify(arcs.map(({ id }) => id)) };
+  }, [baseline]);
   const items = useMemo(() => {
     const parents = new Set(baseline.components.flatMap((component) => component.parent?.value ? [component.parent.value] : []));
     const items = new Map<string, ArchitectureNode["data"]>();
@@ -182,16 +185,21 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
   const edges = useMemo<InterfaceEdge[]>(() => {
     const names = new Map(baseline.interfaces.map(({ id, name }) => [id, name]));
     const components = new Map(baseline.components.map(({ id, name }) => [id, name]));
-    return routeInterfaceArcs(connections, geometry).map((route) => {
+    return routeInterfaceArcs(connections.arcs, geometry).map((route) => {
       const name = names.get(route.interfaceId) ?? route.interfaceId;
       const consumer = `${components.get(route.consumerId)}, ${route.consumerId}`;
       const owner = `${components.get(route.ownerId)}, ${route.ownerId}`;
+      const panel = inspection.panel;
+      const relevant = panel?.kind === "interface" ? route.interfaceId === panel.interfaceId
+        : panel?.kind === "component" ? route.consumerId === panel.componentId || route.ownerId === panel.componentId : null;
+      const emphasis = relevant === null ? "normal" : relevant ? "highlighted" : "dimmed";
       return { id: route.id, source: route.consumerId, target: route.ownerId, type: "interface",
         domAttributes: { "aria-hidden": true }, markerEnd: { type: MarkerType.ArrowClosed, color: "var(--foreground)" },
-        data: { route, name, accessibleName: `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}` },
+        data: { route, name, accessibleName: `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}`,
+          inspect: inspection.open, view: arrangement, emphasis, labelOrder: connections.labelOrder },
       };
     });
-  }, [baseline, connections, geometry]);
+  }, [baseline, connections, geometry, inspection.open, inspection.panel, arrangement]);
 
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card" aria-label="Architecture diagram">
     {edges.length > 0 ? <p className="shrink-0 border-b border-border px-3 py-1 text-xs text-muted-foreground">Arrow: consumer may use the owner's interface.</p> : null}
