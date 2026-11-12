@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FocusEvent } from "react";
 import {
-  Background, Controls, ReactFlow, useReactFlow, useStore, useStoreApi, type Node, type NodeProps,
+  Background, ControlButton, Controls, ReactFlow, useReactFlow, useStore, useStoreApi, type Node, type NodeProps,
 } from "@xyflow/react";
+import { RotateCcw } from "lucide-react";
 import type { BaselineComponent, Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
@@ -114,6 +115,22 @@ function StartPreparedDiagram({ layout, firstRootId, arrangement }: {
   return null;
 }
 
+function ResetLayoutControl({ layout, firstRootId, arrangement, gestures, announce }: {
+  layout: ReadonlyData<ArchitectureLayout>; firstRootId: string;
+  arrangement: ComponentArrangement; gestures: ComponentGestures; announce: (message: string) => void;
+}) {
+  const { setViewport } = useReactFlow();
+  const store = useStoreApi();
+  return <ControlButton type="button" title="Reset layout" aria-label="Reset layout" onClick={() => {
+    gestures.cancel();
+    arrangement.reset();
+    const { domNode, width, height } = store.getState();
+    const bounds = domNode?.getBoundingClientRect();
+    void setViewport(startingViewport(layout, firstRootId, bounds?.width || width, bounds?.height || height));
+    announce("Layout reset.");
+  }}><RotateCcw aria-hidden="true" style={{ fill: "none" }} /></ControlButton>;
+}
+
 function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; arrangement: ComponentArrangement;
   inspection: ReturnType<typeof useArchitectureInspection>;
@@ -154,7 +171,10 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} zIndexMode="manual"
       edgesFocusable={false} elementsSelectable={false} zoomOnDoubleClick={false}>
       <Background />
-      <Controls showInteractive={false} fitViewOptions={fitOptions} />
+      <Controls showInteractive={false} fitViewOptions={fitOptions}>
+        {firstRootId ? <ResetLayoutControl layout={layout} firstRootId={firstRootId}
+          arrangement={arrangement} gestures={gestures} announce={announce} /> : null}
+      </Controls>
       {firstRootId ? <StartPreparedDiagram layout={layout} firstRootId={firstRootId} arrangement={arrangement} /> : null}
     </ReactFlow>
     <p aria-label="Component position" aria-live="polite" aria-atomic="true" className="sr-only">{

@@ -14,6 +14,7 @@ artifacts:
     - path: ../cookbook/behavior/baseline-viewer/inspection.feature
     - path: ../cookbook/behavior/baseline-viewer/overview.feature
     - path: ../cookbook/behavior/baseline-viewer/movement.feature
+    - path: ../cookbook/behavior/baseline-viewer/reset.feature
     - path: ../cookbook/behavior/baseline-viewer/installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml

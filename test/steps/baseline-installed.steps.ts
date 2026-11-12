@@ -15,6 +15,7 @@ interface InstalledBaselineWorld extends World {
   installedBaselineBytes?: Buffer;
   installedBaselineView?: Awaited<ReturnType<InstalledBaselineDriver["view"]>>;
   installedMovement?: Awaited<ReturnType<InstalledBaselineDriver["inspectAndMoveComponents"]>>;
+  installedReset?: Awaited<ReturnType<InstalledBaselineDriver["fitAndResetLayout"]>>;
   installedInvalidFile?: { path: string; bytes: string };
 }
 
@@ -136,6 +137,14 @@ When("the user inspects and moves installed components with the pointer and keyb
 Then("parents carry their children and keyboard movement keeps the installed inspection usable", async function (this: InstalledBaselineWorld) {
   assert.ok(this.installedMovement);
   driver(this).expectComponentMovement(this.installedMovement);
+});
+
+When("the user fits and resets the installed drawing while inspecting an owned interface", { timeout: 30_000 },
+  async function (this: InstalledBaselineWorld) { this.installedReset = await driver(this).fitAndResetLayout(); });
+
+Then("fitting keeps the arrangement while resetting restores its starting view and inspection path", async function (this: InstalledBaselineWorld) {
+  assert.ok(this.installedMovement && this.installedReset);
+  driver(this).expectLayoutReset(this.installedMovement, this.installedReset);
 });
 
 After({ tags: "@baseline-viewer and @packaged", timeout: 30_000 }, async function (this: InstalledBaselineWorld) {

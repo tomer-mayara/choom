@@ -94,13 +94,18 @@ the reviewed fixture. Each rule must expand and show
 its ID, subject, expectation, and check. This is final assembled-app verification;
 browser and DOM checks cover the same viewer behavior in more detail.
 
-The `@br-03` journey opens Workspace with one click, checks its five owned
+The `@br-03` and `@br-04` journey opens Workspace with one click, checks its five owned
 interfaces, opens an interface, and uses Back. It selects Native shell while
 the panel is open, then drags Workspace with real pointer input. The test checks
 that its children follow, Native shell stays fixed, and inspection and camera
 stay unchanged. It then moves Architecture model with an arrow key and checks
-the 10-unit step, containment, focus, and unchanged file bytes. DOM queries only
-observe the result; they do not move components or dispatch input events.
+the 10-unit step, containment, and focus. With an owned interface open from the
+baseline catalog, Fit must keep the manual geometry and contain all components.
+Reset must restore the prepared geometry and the normal 100% starting view in
+the current canvas. The interface stays open, and Back returns through Workspace
+to the catalog with row focus restored. The selected file bytes stay unchanged.
+DOM queries only observe results; they do not move components or dispatch input
+events.
 
 The `@bv-07` command-retirement scenarios request all 13 removed custom commands
 with a closed-contract-invalid probe. The test catches rejection inside the
@@ -151,7 +156,9 @@ and signing identities. Open only a copied baseline with no source repository or
 companion files. Check the five-component overview without relationship lines,
 side-panel access to all eight interfaces and five resources, all 21 Rules
 entries, parent dragging, child movement with arrow keys, and continued
-inspection while arranging the drawing. Check the absence of old actions,
+inspection while arranging the drawing. Fit must keep manual positions; Reset
+must restore the initial geometry at 100% zoom and keep inspection and Back
+navigation. Check the absence of old actions,
 unchanged file bytes, native picker cancellation, and invalid-file preservation. Record
 each actual observation and screenshot.
 

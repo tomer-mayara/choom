@@ -17,6 +17,10 @@ and
 [verification record](docs/change-requests/BV-baseline-viewer-evidence.md) for
 completed checks and platform limits.
 
+The [readability plan](docs/design/cr-baseline-viewer-readability-plan.md) and
+[readability checks](docs/change-requests/BR-readability-evidence.md) cover the
+component overview, side panel, movement, and layout controls.
+
 The [manual analysis design](docs/design/llm-led-architecture-analysis.md) and
 [producer cookbook](docs/design/app-a/start-here.md) describe a separate workflow
 that creates baselines and evidence. Opening a baseline does not start that
@@ -81,6 +85,12 @@ The arrangement lasts while this view remains open. Inspection, pan, zoom,
 resize, failed opens, and cancelled opens keep it. Each successful file open
 starts a fresh arrangement, including reopening the same file. Closing and
 reopening the example also starts fresh. No arrangement is saved to disk.
+
+**Fit view** changes only pan and zoom to show the current arrangement, including
+components outside the view. **Reset layout** restores the initial positions and
+group bounds at 100% zoom. It keeps the current inspection and its Back path.
+Reset also ends a held press or drag. Both controls use the available canvas
+beside or above the panel; they are absent when there are no components.
 
 Component inspection lists directly owned interfaces. Select a list entry to
 read its complete record; **Back** restores the originating list and entry.
@@ -175,6 +185,14 @@ Run the focused component-movement checks with:
 bun test ./test/unit/lib/component-arrangement.test.ts ./test/unit/lib/architecture-viewport.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/component-movement.test.tsx ./test/unit/components/workspace.test.tsx
 bun run test:e2e --tags @br-03
+```
+
+Run the focused layout-control checks with:
+
+```sh
+bun test ./test/unit/lib/component-arrangement.test.ts ./test/unit/lib/architecture-viewport.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/component-layout-controls.test.tsx
+bun run test:e2e --tags @br-04
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

@@ -99,6 +99,46 @@ test("a finished drag keeps its changes and cannot affect a fresh arrangement wi
   expect(current.getSnapshot()).toEqual(initial);
 });
 
+test("reset restores prepared positions and grown bounds without changing the prepared layout", () => {
+  const initial = prepared();
+  const arrangement = new ComponentArrangement(initial);
+  arrangement.moveBy("workspace", { x: 35, y: 25 });
+  arrangement.moveBy("model", { x: 800, y: 900 });
+  expect(arrangement.getSnapshot()).not.toEqual(initial);
+  arrangement.reset();
+  expect(arrangement.getSnapshot()).toEqual(initial);
+  expect(arrangement.positionOf("model")).toEqual({ x: 148, y: 324 });
+  arrangement.moveBy("model", { x: 50, y: 50 });
+  arrangement.reset();
+  expect(arrangement.getSnapshot()).toEqual(initial);
+  expect(initial.nodes[1]?.width).toBe(300);
+});
+
+test.each([false, true])("reset ends a pending or active drag and ignores stale updates: moved=%s", (moved) => {
+  const initial = prepared();
+  const arrangement = new ComponentArrangement(initial);
+  arrangement.moveBy("workspace", { x: 35, y: 25 });
+  const drag = arrangement.beginDrag("model");
+  if (moved) drag.moveTo({ x: 824, y: 1012 });
+  arrangement.reset();
+  drag.moveTo({ x: 900, y: 900 });
+  drag.finish();
+  arrangement.cancelDrag();
+  expect(arrangement.getSnapshot()).toEqual(initial);
+});
+
+test("repeated reset is stable and empty geometry remains empty", () => {
+  for (const initial of [prepared(), { nodes: [] }]) {
+    const arrangement = new ComponentArrangement(initial);
+    let notifications = 0;
+    arrangement.subscribe(() => { notifications += 1; });
+    arrangement.reset();
+    arrangement.reset();
+    expect(arrangement.getSnapshot()).toEqual(initial);
+    expect(notifications).toBe(0);
+  }
+});
+
 test("movement and rollback preserve finite containment at the supported component and depth limits", async () => {
   const initial = await layoutBaseline(baselineAtComponentLimits());
   const arrangement = new ComponentArrangement(initial);
