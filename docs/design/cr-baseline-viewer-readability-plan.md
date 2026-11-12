@@ -1,6 +1,7 @@
 # Baseline viewer readability plan
 
-Status: **BR-01 to BR-04 are in implementation. BR-05 and BR-06 remain planned.**
+Status: **BR-01 to BR-04 are implemented and locally verified. The PR stack
+remains draft. BR-05 and BR-06 remain planned.**
 
 Reviewed: **2026-11-11**
 
@@ -10,24 +11,24 @@ Show components first. When the user selects a component, show its interfaces
 in a side panel. Let the user move components to make the drawing easier to read.
 
 This plan follows the [baseline viewer plan](cr-baseline-viewer-plan.md).
-When implemented, it replaces that plan's rules for showing every record on
-the canvas, double-click
-inspection, and automatic fitting on resize. The baseline format, read-only
+BR-01 to BR-04 replace that plan's rules for showing every record on
+the canvas, double-click inspection, and automatic fitting on resize. The baseline format, read-only
 file access, recorded statement meanings, and load protections stay in force.
 
-This document contains the implementation plan and expanded tickets. Its
-scenarios describe tests to write during implementation; they are not test
-results.
+This document defines the intended behavior and ticket sequence. Its scenarios
+are requirements, not test results. See the
+[verification record](../change-requests/BR-readability-evidence.md) for completed
+checks and platform limits.
 
 ## Problem in the starting view
 
 The reviewed baseline contains 5 components, 8 interfaces, and 5 resources.
-The current view gives all 18 records large cards. Interfaces and resources sit
-outside their owners, with ownership lines crossing the drawing. Repeated IDs,
-types, and statuses compete with names, which are often truncated.
+Before this work, the view gave all 18 records large cards. Interfaces and
+resources sat outside their owners, with ownership lines crossing the drawing.
+Repeated IDs, types, and statuses competed with names, which were often truncated.
 
-The current code also disables dragging. Its detail panel blocks interaction
-with the canvas, and resizing fits the whole diagram again.
+Dragging was disabled. The detail panel blocked interaction with the canvas,
+and resizing fitted the whole diagram again.
 
 ## Delivery scope
 
@@ -252,12 +253,14 @@ interfaces. It must not acquire consumer arrows through this change.
 Reuse React Flow, ELK, the current baseline validator, and the file readers.
 No new package, analysis service, storage service, or native command is needed.
 
-| Area | Planned change |
+| Area | Responsibility |
 | --- | --- |
 | [Architecture diagram](../../src/components/architecture-diagram.tsx) | Selection, movable view positions, and explicit view controls. Remove fitting on resize. |
 | [Side panel](../../src/components/architecture-inspector.tsx) and [inspection state](../../src/components/use-architecture-inspection.ts) | Nonmodal inspection, owned-item lists, baseline lists, and local Back navigation. |
 | [Recorded fields](../../src/components/architecture-details.tsx) | Preserve complete fields, statement statuses, references, and rule details. |
 | [Layout](../../src/lib/architecture-layout.ts) and [geometry](../../src/lib/component-geometry.ts) | Prepare compact component-only geometry with header and child space. Check exact component coverage and valid containment. |
+| [Arrangement](../../src/lib/component-arrangement.ts) and [gestures](../../src/components/use-component-gestures.ts) | Own manual positions, containment, ancestor growth, cancellation, and Reset for one current view. |
+| [Camera rules](../../src/lib/architecture-viewport.ts) | Calculate the normal starting view and keyboard focus reveal without changing recorded data. |
 | Connection view (BR-06) | Derive temporary links from saved owner and allowed-consumer statements when this follow-up is implemented. |
 | [Workspace view](../../src/architecture/workspace-view.ts) and [app](../../src/App.tsx) | Reset view state on each successful file open. Keep the existing example path. |
 | [Workspace contract notes](../../cookbook/interfaces/workspace.md) | Update display coverage, inspection, focus, movement, and fitting rules when their tickets are implemented. |
@@ -325,8 +328,9 @@ for this plan itself.
 | [BR-06](#br-06-show-one-interfaces-recorded-connections) | Focused interface node, exact endpoints, and recorded links. Follow-up. | BR-05 |
 
 Implement BR-01 before hiding nodes in BR-02, so each record has another route
-to its details. Keep tickets reviewable on their own. Do not create PRs or
-implement these tickets as part of saving this plan.
+to its details. Keep tickets reviewable on their own. The requested BR-01 to
+BR-04 implementation uses a separate draft PR for each ticket, based on the
+previous ticket. BR-05 and BR-06 remain follow-ups.
 
 ### BR-01: Inspect components in a side panel
 
@@ -825,7 +829,5 @@ For the complete first release, and again for each follow-up release:
   checks run from deferred checks. Do not claim build/lint output proves UI
   behavior.
 
-The manager reviews the complete candidate. If PRs are later requested, open
-them as drafts, keep validation current, and follow the repository's constraint
-review requirements before merge. This plan authorizes no implementation or PR
-creation by itself.
+The manager reviews the complete candidate. Keep PRs as drafts, keep validation
+current, and follow the repository's constraint review requirements before merge.

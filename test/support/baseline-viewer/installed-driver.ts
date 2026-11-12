@@ -12,6 +12,7 @@ const run = promisify(execFile);
 
 interface InstalledDiagramState {
   camera: { x: number; y: number; zoom: number };
+  canvas: { width: number; height: number };
   nodes: Array<{
     id: string; x: number; y: number; width: number; height: number; headerHeight: number; selected: boolean;
   }>;
@@ -28,6 +29,13 @@ interface InstalledMovement {
   afterDrag: InstalledDiagramState;
   beforeKeyboard: InstalledDiagramState;
   afterKeyboard: InstalledDiagramState;
+}
+
+interface InstalledReset {
+  beforeFit: InstalledDiagramState;
+  afterFit: InstalledDiagramState;
+  afterReset: InstalledDiagramState;
+  afterBack: InstalledDiagramState;
 }
 
 function diagramNode(state: InstalledDiagramState, id: string) {
@@ -240,9 +248,12 @@ export class InstalledBaselineDriver {
       const viewport = document.querySelector<HTMLElement>(".react-flow__viewport");
       if (!viewport) throw new Error("The installed diagram must have a viewport");
       const camera = new DOMMatrixReadOnly(getComputedStyle(viewport).transform);
+      const canvas = viewport.closest(".react-flow")?.getBoundingClientRect();
+      if (!canvas) throw new Error("The installed diagram must have a canvas");
       const panel = document.querySelector<HTMLElement>('[role="dialog"]');
       return {
         camera: { x: camera.e, y: camera.f, zoom: camera.a },
+        canvas: { width: canvas.width, height: canvas.height },
         nodes: Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]"), (node) => {
           const style = getComputedStyle(node);
           const position = new DOMMatrixReadOnly(style.transform);
@@ -373,6 +384,72 @@ export class InstalledBaselineDriver {
     assert.deepEqual(afterKeyboard.camera, beforeKeyboard.camera, "Keyboard movement must preserve the installed camera");
     assert.equal(afterKeyboard.panelText, beforeKeyboard.panelText, "Keyboard movement must preserve the inspected details");
     assert.deepEqual(afterKeyboard.nodes.filter((node) => node.selected).map((node) => node.id), ["architecture-model"]);
+  }
+
+  async fitAndResetLayout(): Promise<InstalledReset> {
+    await this.session().$("#baseline-details-control").click();
+    await this.session().$('[role="region"][aria-label="Components"] button[data-record-id="workspace"]').click();
+    const [record] = await this.session().$$('[role="region"][aria-label="Owned interfaces"] button');
+    assert.ok(record);
+    const recordId = await record.getAttribute("data-record-id");
+    assert.ok(recordId);
+    await record.click();
+    await waitFor(async () => (await this.diagramState()).panelTitle === "Interface details",
+      "The installed panel must inspect an interface before fitting or resetting");
+    const beforeFit = await this.diagramState();
+    await this.session().$('button[aria-label="Fit View"]').click();
+    await waitFor(async () => (await this.diagramState()).camera.zoom < 1,
+      "Fit view must show the full installed drawing at a smaller scale");
+    const afterFit = await this.diagramState();
+    const reset = this.session().$('button[aria-label="Reset layout"]');
+    assert.equal(await reset.isExisting(), true, "The installed viewer must expose Reset layout");
+    assert.equal(await reset.isDisplayed(), true, "Reset layout must be visible");
+    assert.equal(await reset.isEnabled(), true, "Reset layout must be enabled");
+    await reset.click();
+    await waitFor(async () => (await this.diagramState()).camera.zoom === 1,
+      "Reset layout must return the installed drawing to 100 percent zoom");
+    const afterReset = await this.diagramState();
+    for (const [title, entry] of [["Component details", recordId], ["Baseline details", "workspace"]]) {
+      await this.session().$('button[aria-label="Back"]').click();
+      await waitFor(async () => {
+        const state = await this.diagramState();
+        return state.panelTitle === title && state.focusedRecord === entry;
+      }, "Back after Reset must restore the installed inspection list and its focused entry");
+    }
+    const result = { beforeFit, afterFit, afterReset, afterBack: await this.diagramState() };
+    await this.world.attach(JSON.stringify(result), "application/json");
+    return result;
+  }
+
+  expectLayoutReset({ initial, afterKeyboard }: InstalledMovement, { beforeFit, afterFit, afterReset, afterBack }: InstalledReset): void {
+    for (const [before, after] of [[afterKeyboard, beforeFit], [beforeFit, afterFit], [initial, afterReset], [afterReset, afterBack]] as const) {
+      for (const node of before.nodes) {
+        const current = diagramNode(after, node.id);
+        for (const field of ["x", "y", "width", "height"] as const) {
+          expectNear(current[field], node[field], `Layout controls must preserve or restore ${node.id} ${field}`);
+        }
+      }
+    }
+    for (const node of afterFit.nodes) {
+      const { x, y, zoom } = afterFit.camera;
+      assert.ok(node.x * zoom + x >= -0.01 && node.y * zoom + y >= -0.01
+        && (node.x + node.width) * zoom + x <= afterFit.canvas.width + 0.01
+        && (node.y + node.height) * zoom + y <= afterFit.canvas.height + 0.01,
+      `Fit view must contain ${node.id} in the installed canvas beside the panel`);
+    }
+    for (const state of [afterFit, afterReset]) {
+      assert.equal(state.panelText, beforeFit.panelText, "Layout controls must preserve the inspected interface");
+      assert.equal(state.panelModal, "false");
+    }
+    const root = diagramNode(afterReset, "choom");
+    const { width, height } = afterReset.canvas;
+    const fits = root.width + 48 <= width && root.height + 48 <= height;
+    assert.equal(afterReset.camera.zoom, 1);
+    expectNear(afterReset.camera.x + root.x, fits ? (width - root.width) / 2 : 24,
+      "Reset must use the normal horizontal starting view in the current canvas");
+    expectNear(afterReset.camera.y + root.y, fits ? (height - root.height) / 2 : 24,
+      "Reset must use the normal vertical starting view in the current canvas");
+    assert.deepEqual(afterBack.camera, afterReset.camera, "Back after Reset must preserve the installed camera");
   }
 
   async inspectEveryRule(rules: ReadonlyArray<readonly [string, string]>): Promise<void> {

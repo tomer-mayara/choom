@@ -4,8 +4,8 @@ This record covers BR-01 to BR-04 in the
 [readability plan](../design/cr-baseline-viewer-readability-plan.md). Each ticket
 is a separate draft PR based on the previous ticket. BR-05 and BR-06 are deferred.
 
-The first release is still in progress. Each section records completed checks;
-it does not claim that an unfinished ticket or an untested platform works.
+BR-01 to BR-04 are implemented and locally verified. The PR stack remains
+draft. Each section records completed checks and the platform limits below.
 
 ## Environment and scope
 
@@ -210,3 +210,144 @@ The executable hash stayed unchanged, and no owned app or driver process
 remained. Production and harness files are unchanged after the tested snapshot;
 this result was added afterward. Full identities and local paths are in
 `reports/br-03-installed-evidence.md`.
+
+[PR #27](https://github.com/tomer-mayara/choom/pull/27) is draft and is based on
+BR-02. [CI run 137](https://github.com/tomer-mayara/choom/actions/runs/43128349950)
+and the push workflow passed for commit `d3f4aa4`: web, macOS, Ubuntu, and
+Windows checks are green, including installed Linux acceptance.
+
+## BR-04: Restore the initial layout or fit the current arrangement
+
+The first browser acceptance test ran against the built BR-03 app. Real file
+opening, component movement, grown bounds, and navigation from the catalog to
+an owned interface all passed. The explicit visible-control assertion then
+failed because Reset layout did not exist. This was an assertion about the
+missing feature, not a build, setup, or scenario-watchdog failure. Its log is
+`reports/br-04-browser-red.log`.
+
+Focused red/green tests drove restoration from the owned initial geometry,
+repeated Reset, drag-token invalidation, current-canvas starting view, and
+retained inspector content, scroll, and Back navigation. Reset uses the current
+gesture owner and arrangement. It does not remount the viewer, reread the file,
+or call the layout engine. Fit continues to change only the camera.
+
+Independent review found that the live region kept old arrow-move coordinates
+after Reset. A browser regression and a DOM regression failed before the fix.
+Reset now uses the existing announcer to report **Layout reset.** The reviewer
+rechecked the change and reported no further findings.
+
+The final focused browser run passed 12 scenarios and 111 steps. The complete
+browser suite passed 103 scenarios and 753 steps. `bun run check` passed with
+199 native tests, 65 DOM tests, 18 native Cucumber scenarios, and 25 interface
+tests, plus all structural checks. Explicit type checks, the frontend build,
+and Habit Hooks passed; snoozes remain empty.
+
+The clean installed red, `run-djM9ux`, used the unchanged BR-03 package with the
+new harness. Opening, movement, the owned-interface path, and Fit completed.
+The assertion then failed because the accessible Reset control was absent.
+Earlier selector diagnostics are retained separately. The final installed run,
+`run-Rc7z3I`, passed all 19 scenarios and 105 reported steps. The step count
+includes Cucumber cleanup hooks. It verifies real parent dragging, child
+keyboard movement, camera-only Fit, Reset with the current open-panel canvas,
+retained interface details, Back through Workspace to the catalog, and original
+file bytes. The complete-record, native-picker, invalid-input, and retired-command
+cases also passed.
+
+The ordinary Linux ARM64 release was built from reviewed tree
+`af35b242e3e9cecde3fe26fbbf219ba2774febd7`, with archive SHA-256
+`61027acac973db82e8e4f7d8a93b16a924a90ba05b54130cc3942e3cc1e2cfd9`.
+The retained package SHA-256 is
+`989c81c378fd5058790660d6f843a994458d02393bb74dc6745272649ea071d3`.
+Its extracted and installed executable hashes match:
+`d52f6b89534d7f02ca4e148bee076d5d24d36a74763dc7074b9ef3928b115017`.
+All 244 source files and 50 harness files matched the archive after acceptance.
+The executable hash stayed unchanged. Owned processes were cleaned up and the
+container was stopped. Production and harness files remain unchanged after
+that snapshot; these verification results were added afterward. Full identities,
+logs, and paths are in `reports/br-04-installed-evidence.md`.
+
+The final `bun run desktop:build` also passed on the macOS ARM64 host. It produced
+`Choom.app` and `Choom_0.1.0_aarch64.dmg`. This verifies packaging; the installed
+interaction evidence above comes from Linux.
+
+The manager reviewed the complete candidate. The final Habit Hooks scan passed
+without findings, with an empty snooze file. Whitespace checks and all 63 local
+Markdown link targets and anchors passed. The final check, build, and scan logs
+are retained under `reports/br-04-final-*`.
+
+### Visual review of the complete first release
+
+Manager review covered twelve captures from the ordinary built app. At 1280 by
+800, all five component names and their interface counts are readable. The
+Workspace panel shows its five owned interfaces without covering the canvas.
+Pointer focus stays on the component; keyboard activation gives the panel a
+visible focus indicator. Parent movement carries children. Child movement can
+grow its ancestors and go off screen; Fit brings the current bounds into view,
+and Reset restores the initial arrangement at 100% zoom. Inspection stays open.
+
+Resizing to 1024 by 720 preserves the camera and positions, so some content can
+remain outside the viewport. Fit and Reset remain reachable. At 320 by 640,
+the panel sits below a usable canvas without horizontal page overflow. At 125%
+text size, unusually long names occupy two complete lines on the component;
+their full text wraps in the panel, which scrolls independently. Recorded
+details remain reachable below the long text.
+
+The first review found a filled Reset icon caused by React Flow's SVG rule.
+The control now explicitly keeps the icon unfilled. Independent source review,
+the complete check, and a fresh frontend build passed after this correction.
+The final twelve captures were inspected again and show the outline correctly.
+The visual script also confirmed unchanged source, build files, and selected
+baseline bytes, with no browser errors. Its final report and observations are
+under `reports/baseline-readability/final/visual-2026-11-12T00-53-18.872Z/`.
+
+### Workload measurements
+
+The final ordinary frontend build completed all eighteen runs: three fresh
+browser contexts for each workload below. Chromium 158.0.8127.18 and Playwright
+1.65.0 ran on the host described above, at 1280 by 800. The clock starts just
+before the file picker receives the file and ends after exact component
+coverage, zero diagram links, and three stable animation frames. Times include
+automation and observation overhead. No latency target is asserted.
+
+| Workload | Previous viewer load range (ms) | BR-04 load range (ms) | BR-04 median (ms) |
+| --- | ---: | ---: | ---: |
+| 500 root components | 377–377 | 446–523 | 452 |
+| 500 components, 16 levels | 393–394 | 490–724 | 523 |
+| 500 mixed records, 2,000 links, 16 levels | 643–661 | 387–537 | 453 |
+| 120 records, 2,000 links | 494–574 | 350–469 | 436 |
+| 500 rules, no components | 209–226 | 344–444 | 417 |
+| Reviewed baseline, 39 records | 226–226 | 338–487 | 472 |
+
+Both samples used the same host and browser versions, but the host was more
+loaded in the final sample: one-minute load average 26.0 versus 4.8 previously,
+on eight logical CPUs. Some observations are slower and some are faster. These
+runs establish completion and record observed delay; they do not establish a
+controlled performance comparison or a speed improvement.
+
+Across component workloads, keyboard inspection took 11–66 ms, Escape with
+focus return 6–53 ms, keyboard movement 4–44 ms, Reset 32–98 ms, and zoom
+21–48 ms. Opening the 500-rule list took 33–66 ms; opening its last rule took
+16–32 ms. All runs retained the selected file bytes. Component coverage,
+finite geometry, and record access checks passed. Source, built files, and the
+measurement script were unchanged during the sample. The report stores their
+SHA-256 hashes, fixture counts and hashes, runtime versions, and host details.
+
+Final measurements are in
+`reports/baseline-readability/final/2026-11-12T00-53-53-288Z/measurements.json`.
+The comparison sample is in
+`reports/baseline-viewer/final/2026-11-11T15-10-31-067Z/measurements.json`.
+Both are local ignored evidence; the observations above are the committed
+record. The 120-second operation watchdog is not a performance requirement.
+
+### Platform scope
+
+Local installed acceptance verifies an unsigned Linux ARM64 release on
+Ubuntu 24.04.5 with X11, GTK 3.24.41, and WebKit 2.52.6. It uses the native file
+picker and the real app, without a test bridge or mocked file reader. The app
+runs outside the checkout with an empty runtime PATH. The 320 by 640 checks
+apply to the browser; the desktop window has a larger minimum size.
+
+The macOS app and DMG build passed. Installed macOS, Windows, Wayland, and
+desktop portal interaction checks remain unverified. CI platform build results
+do not replace those interaction checks. The draft stack still needs the
+repository's human review before merge.

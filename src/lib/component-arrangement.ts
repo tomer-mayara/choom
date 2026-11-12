@@ -35,12 +35,14 @@ function moveComponent(geometry: Geometry, id: string, requested: Point): Geomet
 
 /** One open view owns these positions. Recorded data and prepared layout stay unchanged. */
 export class ComponentArrangement {
+  private readonly initial: Geometry;
   private geometry: Geometry;
   private readonly listeners = new Set<() => void>();
   private drag: { token: ComponentDrag; before: Geometry } | null = null;
 
   constructor(layout: Geometry) {
-    this.geometry = { nodes: layout.nodes.map((node) => ({ ...node, position: { ...node.position } })) };
+    this.initial = { nodes: layout.nodes.map((node) => ({ ...node, position: { ...node.position } })) };
+    this.geometry = this.initial;
   }
 
   getSnapshot = (): Geometry => this.geometry;
@@ -88,6 +90,11 @@ export class ComponentArrangement {
     const { before } = this.drag;
     this.drag = null;
     this.publish(before);
+  }
+
+  reset(): void {
+    this.drag = null;
+    this.publish(this.initial);
   }
 
   private publish(geometry: Geometry): void {

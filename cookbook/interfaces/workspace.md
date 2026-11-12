@@ -124,6 +124,16 @@ its starting positions and bounds. Escape cancels the drag before it can close
 inspection. Releasing a drag never selects a component. A later event from a
 cancelled gesture or replaced view cannot change the current view.
 
+**Reset layout** ends any held press or drag, restores the prepared initial
+positions and bounds, and applies the normal 100% starting view using the current
+canvas size. Late pointer events cannot undo the reset or select another record.
+Reset keeps the same view owner, inspected record, Back path, and panel scroll
+position. Its announcement replaces any old keyboard movement coordinates with
+**Layout reset.** It does not reread the file or run layout. Repeated resets have the
+same result. **Fit view** changes only the camera to include all shown component
+bounds, including components outside the viewport. It uses the canvas beside
+or above the panel and preserves manual geometry. Neither action runs on resize.
+
 The published baseline/layout pair stays immutable. Its viewer-owned arrangement
 survives inspection, resize, pan, zoom, loading progress, and unsuccessful loads.
 Each successful open gets a new arrangement; closing the example ends its view.
@@ -134,7 +144,8 @@ items modeled**. A baseline with other record kinds but no components says
 **No components modeled**. Neither empty state substitutes the example.
 Interfaces and resources remain available through Baseline details when there
 are no components. No diagram layout is needed in that case. An empty
-Rules list says **No rules modeled**.
+Rules list says **No rules modeled**. Fit view and Reset layout controls are
+absent without canvas nodes.
 
 ## Starter and checks
 
@@ -158,6 +169,9 @@ bun scripts/run-browser-behavior.ts --tags @bv-04
 bun scripts/run-browser-behavior.ts --tags @bv-05
 bun test ./test/unit/lib/architecture-viewport.test.ts
 bun scripts/run-browser-behavior.ts --tags @br-02
+bun test ./test/unit/lib/component-arrangement.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/component-layout-controls.test.tsx
+bun scripts/run-browser-behavior.ts --tags @br-04
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
 ```
