@@ -83,7 +83,11 @@ assistive tools.
 Select a component or group header once to inspect it. With a keyboard, focus the
 control and press **Enter** or **Space**. The side panel keeps the canvas usable;
 it sits below the canvas in a narrow window. Inspection and resizing preserve
-pan and zoom. **Fit view** remains available when the drawing is outside the view.
+pan and zoom. Select an arc or its label to inspect the interface. With a
+keyboard, focus its label and press **Enter** or **Space**. Component inspection
+emphasizes its incoming and outgoing arcs. Interface inspection emphasizes all
+arcs for that interface. **Fit view** remains available when the drawing is
+outside the view.
 
 Drag a component header to move it. A parent carries its children. A child stays
 inside its recorded parent and below the parent header; enclosing groups grow
@@ -99,7 +103,7 @@ reopening the example also starts fresh. No arrangement is saved to disk.
 **Fit view** changes only pan and zoom to show the current arrangement, including
 components outside the view. **Reset layout** restores the initial positions and
 group bounds at 100% zoom. It keeps the current inspection and its Back path.
-Reset also ends a held press or drag. Both controls use the available canvas
+Reset also ends a held component press or drag. Both controls use the available canvas
 beside or above the panel; they are absent when there are no components.
 
 Component inspection lists directly owned interfaces. Select a list entry to
@@ -116,7 +120,7 @@ returns focus to its opener if focus was inside the panel; focus already on the
 canvas stays there. A new baseline closes the old
 inspection path. If focus was in the replaced view, it moves to the new baseline
 heading. Keyboard focus and movement reveal the component name without changing
-zoom, even when a header is wider than the canvas.
+zoom, even when a header or arc label is wider than the canvas.
 
 Details show all recorded fields, including statement status, evidence references,
 and acceptance references. **Accepted (recorded)** describes the saved status;

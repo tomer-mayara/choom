@@ -17,6 +17,7 @@ artifacts:
     - path: ../cookbook/behavior/baseline-viewer/reset.feature
     - path: ../cookbook/behavior/baseline-viewer/interface-arcs.feature
     - path: ../cookbook/behavior/baseline-viewer/interface-endpoints.feature
+    - path: ../cookbook/behavior/baseline-viewer/interface-inspection.feature
     - path: ../cookbook/behavior/baseline-viewer/installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml

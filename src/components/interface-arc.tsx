@@ -1,24 +1,84 @@
-import { BaseEdge, EdgeLabelRenderer, type Edge, type EdgeProps } from "@xyflow/react";
-import type { InterfaceArcRoute } from "../lib/interface-arc-geometry.ts";
+import { BaseEdge, EdgeLabelRenderer, useReactFlow, useStoreApi, type Edge, type EdgeProps } from "@xyflow/react";
+import { useRef, type FocusEvent, type MouseEvent, type PointerEvent } from "react";
+import { interfaceArcHighlightedStroke, type InterfaceArcRoute } from "../lib/interface-arc-geometry.ts";
 import { componentControlWidth } from "../lib/component-geometry.ts";
+import type { ComponentArrangement } from "../lib/component-arrangement.ts";
+import type { ArchitectureInspection } from "./use-architecture-inspection.ts";
+import { revealBounds } from "../lib/architecture-viewport.ts";
 
 export type InterfaceEdge = Edge<{
   route: InterfaceArcRoute; name: string; accessibleName: string;
+  inspect: ArchitectureInspection["open"]; view: ComponentArrangement;
+  emphasis: "normal" | "highlighted" | "dimmed";
+  labelOrder: string;
 }, "interface">;
 
 export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) {
+  const label = useRef<HTMLButtonElement | null>(null);
+  const pressed = useRef<ComponentArrangement | null>(null);
+  const pointerSelection = useRef(false);
+  const { getViewport, setViewport } = useReactFlow();
+  const store = useStoreApi();
   if (!data) return null;
-  const { route, name, accessibleName } = data;
+  const { route, name, accessibleName, inspect, view, emphasis, labelOrder } = data;
   const identity = { "data-interface-id": route.interfaceId, "data-consumer-id": route.consumerId, "data-owner-id": route.ownerId };
+
+  function revealFocusedLabel(event: FocusEvent<HTMLButtonElement>) {
+    if (pointerSelection.current || !event.currentTarget.matches(":focus-visible")) return;
+    const viewport = getViewport();
+    const labelBounds = event.currentTarget.getBoundingClientRect();
+    const { domNode, width, height } = store.getState();
+    const canvas = domNode?.getBoundingClientRect();
+    const labelWidth = labelBounds.width / viewport.zoom;
+    const labelHeight = labelBounds.height / viewport.zoom;
+    if (labelWidth <= 0 || labelHeight <= 0 || width <= 0 || height <= 0) return;
+    // The 2px outline and 2px offset scale with the label.
+    const focusPadding = 4 * viewport.zoom;
+    const next = revealBounds(viewport, {
+      x: route.label.x - labelWidth / 2, y: route.label.y - labelHeight / 2, width: labelWidth, height: labelHeight,
+    }, canvas?.width || width, canvas?.height || height, focusPadding);
+    if (next.x !== viewport.x || next.y !== viewport.y) void setViewport(next);
+  }
+
+  function focusPointerLabel() {
+    pointerSelection.current = true;
+    label.current?.focus({ preventScroll: true });
+    pointerSelection.current = false;
+  }
+
+  function begin(event: PointerEvent) {
+    if (event.button !== 0 || event.isPrimary === false) return;
+    event.stopPropagation();
+    pressed.current = view;
+    focusPointerLabel();
+  }
+
+  function activate(event: MouseEvent) {
+    event.stopPropagation();
+    const keyboard = event.detail === 0;
+    if (!label.current || (!keyboard && pressed.current !== view)) return;
+    pressed.current = null;
+    if (!keyboard) focusPointerLabel();
+    inspect({ kind: "interface", interfaceId: route.interfaceId }, label.current, keyboard);
+  }
+
+  const cancel = () => { pressed.current = null; };
   return <>
-    <BaseEdge id={id} path={route.path} markerEnd={markerEnd}
-      style={{ stroke: "var(--foreground)", strokeWidth: 1.5 }} data-interface-arc="" {...identity} />
-    <EdgeLabelRenderer>
-      <span role="img" data-interface-label="" {...identity} aria-label={accessibleName} title={name}
-        className="pointer-events-none absolute rounded bg-card px-2 py-1 text-center text-xs text-foreground"
-        style={{ width: "max-content", maxWidth: componentControlWidth, transform: `translate(-50%, -50%) translate(${route.label.x}px, ${route.label.y}px)` }}>
+    <g className="nopan cursor-pointer" style={{ pointerEvents: "visibleStroke" }}
+      onPointerDown={begin} onPointerCancel={cancel} onClick={activate}>
+      <BaseEdge id={id} path={route.path} markerEnd={markerEnd}
+        style={{ stroke: "var(--foreground)", strokeWidth: emphasis === "highlighted" ? interfaceArcHighlightedStroke : 1.5, opacity: emphasis === "dimmed" ? 0.35 : 1 }}
+        data-interface-arc="" {...identity} />
+    </g>
+    {/* Moving SVG edges does not reorder their HTML portals. */}
+    <EdgeLabelRenderer key={labelOrder}>
+      <button ref={label} type="button" data-interface-label="" {...identity} aria-label={accessibleName} title={name}
+        aria-haspopup="dialog"
+        className="nodrag nopan pointer-events-auto absolute cursor-pointer rounded bg-card px-2 py-1 text-center text-xs text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        style={{ width: "max-content", maxWidth: componentControlWidth, transform: `translate(-50%, -50%) translate(${route.label.x}px, ${route.label.y}px)` }}
+        onFocus={revealFocusedLabel} onPointerDown={begin} onPointerCancel={cancel} onClick={activate}>
         <span className="line-clamp-2 leading-4 wrap-anywhere">{name}</span>
-      </span>
+      </button>
     </EdgeLabelRenderer>
   </>;
 }

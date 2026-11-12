@@ -1,7 +1,7 @@
 # Baseline viewer readability plan
 
 Status: **BR-01 to BR-04 are merged, with CI checked after each merge. BR-05
-remains planned. BR-07A and BR-07B are implemented. BR-07C and BR-07D remain planned.
+remains planned. BR-07A to BR-07C are implemented. BR-07D remains planned.
 BR-07 replaces BR-06.**
 
 Reviewed: **2026-11-12**
@@ -41,8 +41,8 @@ and resizing fitted the whole diagram again.
 | Merged | BR-01 to BR-04 | Side-panel inspection, a compact component overview, movement, and reset. |
 | Follow-up | BR-05 | Expand and collapse component groups. |
 | Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
-| Implemented | BR-07A and BR-07B | Static interface arcs and unknown-endpoint explanations. |
-| Planned | BR-07C and BR-07D | Arc inspection and complete-drawing Fit. |
+| Implemented | BR-07A to BR-07C | Interface arcs, unknown-endpoint explanations, and arc inspection. |
+| Planned | BR-07D | Complete-drawing Fit and remaining view-lifetime checks. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
@@ -545,7 +545,7 @@ not apply to BR-07.
 
 ### BR-07: Use interface arcs between components
 
-**BR-07A and BR-07B are implemented; BR-07C and BR-07D remain planned.** This is their
+**BR-07A to BR-07C are implemented; BR-07D remains planned.** This is their
 umbrella. The expanded tickets below retain their acceptance and implementation
 requirements.
 Each begins with its own acceptance test. The `@br-07` tag selects their combined

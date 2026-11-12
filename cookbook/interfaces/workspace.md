@@ -111,7 +111,10 @@ and Recorded details expand its resource list and component fields. Baseline
 details also lists every component, interface, and resource, including unknown
 owners and records in models with no components. Back restores the originating
 list position and row focus. A direct canvas selection starts a new inspection
-path; inspecting an owned record keeps its component highlighted.
+path; inspecting an owned record keeps its component highlighted. Selecting an
+arc or its label opens that interface in a fresh path. Component inspection
+emphasizes incoming and outgoing arcs. Interface inspection emphasizes all
+arcs for that interface. Other panel kinds and a closed panel show normal arcs.
 
 Keyboard activation focuses the panel heading; pointer selection keeps focus on
 the canvas. The panel has no overlay or focus trap. Escape and the close button
@@ -119,8 +122,10 @@ return focus to the opener only when focus was inside the panel; external focus
 stays in place. In the Rules list,
 Escape from an expanded rule first closes that rule and focuses its summary.
 The next Escape closes the list and focuses **Rules**. Keyboard focus brings an
-offscreen inspection header into view without changing zoom. An oversized header
-keeps its leading name and focus edge visible. A successful replacement closes
+offscreen inspection header or arc label into view without changing zoom.
+An oversized control keeps its leading name and focus edge visible. Pointer
+selection does not pan the canvas. Arc inspection keeps the exact initiating
+label as its focus-return target. A successful replacement closes
 the old details and starts a fresh view, even when baseline and record IDs match.
 If focus was in the old canvas or panel, it moves to the new baseline heading;
 focus outside that view stays in place.
@@ -137,9 +142,9 @@ its starting positions and bounds. Escape cancels the drag before it can close
 inspection. Releasing a drag never selects a component. A later event from a
 cancelled gesture or replaced view cannot change the current view.
 
-**Reset layout** ends any held press or drag, restores the prepared initial
+**Reset layout** ends any held component press or drag, restores the prepared initial
 positions and bounds, and applies the normal 100% starting view using the current
-canvas size. Late pointer events cannot undo the reset or select another record.
+canvas size. Late events from that component gesture cannot undo the reset or select another record.
 Reset keeps the same view owner, inspected record, Back path, and panel scroll
 position. Its announcement replaces any old keyboard movement coordinates with
 **Layout reset.** It does not reread the file or run layout. Repeated resets have the
