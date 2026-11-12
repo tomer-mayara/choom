@@ -11,10 +11,12 @@ function CaptureViewport({ capture }: { capture: (viewport: ReactFlowInstance) =
   return null;
 }
 
-export async function renderDiagramWithViewport(baseline: Baseline, layout: ArchitectureLayout): Promise<ReactFlowInstance> {
+export async function renderDiagramWithViewport(
+  baseline: Baseline, layout: ArchitectureLayout, size = { width: 500, height: 500 },
+): Promise<ReactFlowInstance> {
   let viewport: ReactFlowInstance | undefined;
   const capture = (instance: ReactFlowInstance) => { viewport = instance; };
-  render(<ReactFlowProvider initialWidth={500} initialHeight={500}>
+  render(<ReactFlowProvider initialWidth={size.width} initialHeight={size.height}>
     <ArchitectureDiagram baseline={baseline} layout={layout} />
     <CaptureViewport capture={capture} />
   </ReactFlowProvider>);

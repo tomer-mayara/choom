@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { ArchitectureDiagram } from "../../../src/components/architecture-diagram.tsx";
 import { baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
+import { pointerClick } from "../../support/pointer.ts";
 
 afterEach(cleanup);
 
@@ -19,7 +20,7 @@ test("one pointer selection opens a nonmodal side panel without moving focus int
   view();
   const billing = screen.getByRole("button", { name: "Billing, billing" });
   billing.focus();
-  fireEvent.click(billing, { detail: 1 });
+  pointerClick(billing);
   const panel = screen.getByRole("dialog", { name: "Component details" });
   expect(panel.getAttribute("aria-modal")).toBe("false");
   expect(document.activeElement).toBe(billing);
@@ -36,7 +37,7 @@ test("pointer selection moves focus from the panel to its canvas header without 
   await act(async () => { await canvas.setViewport({ x: -120, y: 20, zoom: 1 }); });
   const camera = canvas.getViewport();
   const checkout = screen.getByRole("button", { name: "Checkout, checkout" });
-  fireEvent.click(checkout, { detail: 1 });
+  pointerClick(checkout);
   expect(document.activeElement === checkout).toBe(true);
   expect(canvas.getViewport()).toEqual(camera);
 });

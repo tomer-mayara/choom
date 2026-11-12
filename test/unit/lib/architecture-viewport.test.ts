@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { componentControlHeight } from "../../../src/lib/component-geometry.ts";
-import { startingViewport } from "../../../src/lib/architecture-viewport.ts";
+import { revealHeader, startingViewport } from "../../../src/lib/architecture-viewport.ts";
 import type { ArchitectureLayout } from "../../../src/lib/architecture-layout.ts";
 
 const layout: ArchitectureLayout = { nodes: [
@@ -23,4 +23,14 @@ test("the starting view uses the requested root rather than layout output order"
 
 test("the starting view uses the available canvas, including a narrower open-panel canvas", () => {
   expect(startingViewport(layout, "first-root", 896, 688)).toEqual({ x: 28, y: 94, zoom: 1 });
+});
+
+test("keyboard reveal shifts only the clipped edge and preserves zoom", () => {
+  expect(revealHeader({ x: 0, y: 0, zoom: 1 }, { x: 300, y: 24 }, 500, 500))
+    .toEqual({ x: -44, y: 0, zoom: 1 });
+});
+
+test("an oversized header reveals its name and leading focus edge", () => {
+  expect(revealHeader({ x: 2000, y: 1000, zoom: 2 }, { x: 300, y: 24 }, 320, 150))
+    .toEqual({ x: -596, y: -44, zoom: 2 });
 });

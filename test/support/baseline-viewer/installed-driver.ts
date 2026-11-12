@@ -6,9 +6,39 @@ import { isAbsolute, join, relative, sep } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import type { World } from "@cucumber/cucumber";
-import { remote, type Browser } from "webdriverio";
+import { Key, remote, type Browser } from "webdriverio";
 
 const run = promisify(execFile);
+
+interface InstalledDiagramState {
+  camera: { x: number; y: number; zoom: number };
+  nodes: Array<{
+    id: string; x: number; y: number; width: number; height: number; headerHeight: number; selected: boolean;
+  }>;
+  panelTitle: string;
+  panelText: string;
+  panelModal: string | null;
+  focusedNode: string | null;
+  focusedRecord: string | null;
+}
+
+interface InstalledMovement {
+  initial: InstalledDiagramState;
+  beforeDrag: InstalledDiagramState;
+  afterDrag: InstalledDiagramState;
+  beforeKeyboard: InstalledDiagramState;
+  afterKeyboard: InstalledDiagramState;
+}
+
+function diagramNode(state: InstalledDiagramState, id: string) {
+  const node = state.nodes.find((item) => item.id === id);
+  assert.ok(node, `The installed diagram must contain ${id}`);
+  return node;
+}
+
+function expectNear(actual: number, expected: number, message: string): void {
+  assert.ok(Math.abs(actual - expected) <= 0.01, `${message}: expected ${expected}, received ${actual}`);
+}
 
 function environment(name: string): string {
   const value = process.env[name];
@@ -133,7 +163,8 @@ export class InstalledBaselineDriver {
     if (path === null) {
       await xdo(["key", "--clearmodifiers", "Escape"]);
     } else {
-      await xdo(["key", "--clearmodifiers", "ctrl+l", "ctrl+a"]);
+      // Let GTK reveal and focus the location entry before selecting its text.
+      await xdo(["key", "--clearmodifiers", "--delay", "200", "ctrl+l", "ctrl+a"]);
       await xdo(["type", "--clearmodifiers", "--delay", "1", path]);
       // Accept the location entry's inline completion before submitting the file.
       await xdo(["key", "--clearmodifiers", "--delay", "200", "End", "Return"]);
@@ -198,6 +229,150 @@ export class InstalledBaselineDriver {
         "Back must restore the installed record catalog");
     }
     await this.session().$('button[aria-label="Close details"]').click();
+  }
+
+  private componentControl(id: string) {
+    return this.session().$(`.react-flow__node[data-id="${id}"] button[aria-haspopup="dialog"]`);
+  }
+
+  private async diagramState(): Promise<InstalledDiagramState> {
+    return this.session().execute(() => {
+      const viewport = document.querySelector<HTMLElement>(".react-flow__viewport");
+      if (!viewport) throw new Error("The installed diagram must have a viewport");
+      const camera = new DOMMatrixReadOnly(getComputedStyle(viewport).transform);
+      const panel = document.querySelector<HTMLElement>('[role="dialog"]');
+      return {
+        camera: { x: camera.e, y: camera.f, zoom: camera.a },
+        nodes: Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]"), (node) => {
+          const style = getComputedStyle(node);
+          const position = new DOMMatrixReadOnly(style.transform);
+          const control = node.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
+          if (!control) throw new Error("Each installed component must have an inspection control");
+          return {
+            id: node.getAttribute("data-id") ?? "", x: position.e, y: position.f,
+            width: Number.parseFloat(style.width), height: Number.parseFloat(style.height),
+            headerHeight: control.getBoundingClientRect().height / camera.a,
+            selected: control.getAttribute("aria-pressed") === "true",
+          };
+        }),
+        panelTitle: panel?.querySelector("#inspection-title")?.textContent?.trim() ?? "",
+        panelText: panel?.innerText.trim() ?? "",
+        panelModal: panel?.getAttribute("aria-modal") ?? null,
+        focusedNode: document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id") ?? null,
+        focusedRecord: document.activeElement?.getAttribute("data-record-id") ?? null,
+      };
+    });
+  }
+
+  private async selectComponent(id: string): Promise<void> {
+    await this.componentControl(id).click();
+    await waitFor(async () => {
+      const state = await this.diagramState();
+      return diagramNode(state, id).selected && state.panelTitle === "Component details";
+    }, `The installed panel must inspect ${id} after one selection`);
+  }
+
+  async inspectAndMoveComponents(ownedInterfaces: ReadonlyArray<readonly [string, string]>): Promise<InstalledMovement> {
+    const initial = await this.diagramState();
+    await this.selectComponent("workspace");
+    const selector = '[role="dialog"] [role="region"][aria-label="Owned interfaces"] button';
+    await waitFor(async () => (await this.session().$$(selector)).length === ownedInterfaces.length,
+      "The installed Workspace panel must list its directly owned interfaces");
+    assert.equal((await this.diagramState()).panelModal, "false", "The installed panel must be nonmodal");
+    const rows = await this.session().$$(selector);
+    for (const [index, [id, name]] of ownedInterfaces.entries()) {
+      assert.equal(await rows[index]?.getAttribute("aria-label"), `${name}, ${id}`);
+    }
+    const first = ownedInterfaces[0];
+    assert.ok(first && rows[0]);
+    await rows[0].click();
+    await waitFor(async () => this.session().execute((id) => {
+      const panel = document.querySelector('[role="dialog"]');
+      return panel?.querySelector('[role="group"][aria-label="Interface ID"]')?.textContent?.includes(id) === true
+        && panel.querySelector('[role="group"][aria-label="Owner"]')?.textContent?.includes("workspace") === true
+        && ["Public access", "Allowed consumers", "Promises"].every((name) =>
+          panel.querySelector(`[role="group"][aria-label="${name}"]`));
+    }, first[0]), "An owned interface must open with its recorded details in the installed panel");
+    await this.session().$('button[aria-label="Back"]').click();
+    await waitFor(async () => {
+      const state = await this.diagramState();
+      return state.panelTitle === "Component details" && state.focusedRecord === first[0]
+        && (await this.session().$$(selector)).length === ownedInterfaces.length;
+    }, "Back must restore the installed Workspace list and focus its interface entry");
+
+    await this.selectComponent("native-shell");
+    const beforeDrag = await this.diagramState();
+    assert.ok(beforeDrag.panelText.includes("Native shell"));
+    await this.session().action("pointer")
+      .move({ origin: await this.componentControl("workspace") })
+      .down("left")
+      .move({ origin: "pointer", x: 40, y: 20, duration: 300 })
+      .up("left")
+      .perform();
+    await waitFor(async () => diagramNode(await this.diagramState(), "workspace").x !== diagramNode(beforeDrag, "workspace").x,
+      "The installed Workspace must move when its header is dragged");
+    const afterDrag = await this.diagramState();
+
+    await this.selectComponent("architecture-model");
+    const beforeKeyboard = await this.diagramState();
+    assert.equal(beforeKeyboard.focusedNode, "architecture-model");
+    await this.session().keys(Key.ArrowRight);
+    await waitFor(async () => diagramNode(await this.diagramState(), "architecture-model").x !== diagramNode(beforeKeyboard, "architecture-model").x,
+      "The installed child component must move when its focused header receives ArrowRight");
+    const afterKeyboard = await this.diagramState();
+    const movement = { initial, beforeDrag, afterDrag, beforeKeyboard, afterKeyboard };
+    await this.world.attach(JSON.stringify(movement), "application/json");
+    return movement;
+  }
+
+  expectComponentMovement({ initial, beforeDrag, afterDrag, beforeKeyboard, afterKeyboard }: InstalledMovement): void {
+    for (const [beforeInspection, afterInspection] of [[initial, beforeDrag], [afterDrag, beforeKeyboard]] as const) {
+      assert.deepEqual(afterInspection.camera, beforeInspection.camera, "Inspection must preserve the installed camera");
+      for (const before of beforeInspection.nodes) {
+        const after = diagramNode(afterInspection, before.id);
+        for (const field of ["x", "y", "width", "height"] as const) {
+          expectNear(after[field], before[field], `Inspection must preserve ${before.id} ${field}`);
+        }
+      }
+    }
+    for (const id of ["workspace", "architecture-model", "desktop-adapter"]) {
+      const before = diagramNode(beforeDrag, id);
+      const after = diagramNode(afterDrag, id);
+      expectNear(after.x, before.x + 40 / beforeDrag.camera.zoom, `${id} must follow the parent drag horizontally`);
+      expectNear(after.y, before.y + 20 / beforeDrag.camera.zoom, `${id} must follow the parent drag vertically`);
+      expectNear(after.width, before.width, `Dragging must preserve ${id} width`);
+      expectNear(after.height, before.height, `Dragging must preserve ${id} height`);
+    }
+    assert.deepEqual(diagramNode(afterDrag, "native-shell"), diagramNode(beforeDrag, "native-shell"),
+      "Dragging Workspace must leave Native shell unchanged");
+    assert.deepEqual(afterDrag.camera, beforeDrag.camera, "Dragging must preserve the installed camera");
+    assert.equal(afterDrag.panelText, beforeDrag.panelText, "Releasing a drag must keep Native shell details open");
+    assert.deepEqual(afterDrag.nodes.filter((node) => node.selected).map((node) => node.id), ["native-shell"]);
+
+    const child = diagramNode(afterKeyboard, "architecture-model");
+    const previousChild = diagramNode(beforeKeyboard, "architecture-model");
+    expectNear(child.x, previousChild.x + 10, "ArrowRight must move the child ten diagram units");
+    expectNear(child.y, previousChild.y, "ArrowRight must preserve the child vertical position");
+    expectNear(child.width, previousChild.width, "Keyboard movement must preserve the child width");
+    expectNear(child.height, previousChild.height, "Keyboard movement must preserve the child height");
+    for (const before of beforeKeyboard.nodes.filter((node) => node.id !== child.id)) {
+      const after = diagramNode(afterKeyboard, before.id);
+      expectNear(after.x, before.x, `Child movement must preserve ${before.id} horizontal position`);
+      expectNear(after.y, before.y, `Child movement must preserve ${before.id} vertical position`);
+    }
+    for (const [childId, parentId] of [["workspace", "choom"], ["native-shell", "choom"],
+      ["architecture-model", "workspace"], ["desktop-adapter", "workspace"]] as const) {
+      const item = diagramNode(afterKeyboard, childId);
+      const parent = diagramNode(afterKeyboard, parentId);
+      assert.ok(item.x >= parent.x && item.y >= parent.y + parent.headerHeight
+        && item.x + item.width <= parent.x + parent.width + 0.01
+        && item.y + item.height <= parent.y + parent.height + 0.01,
+      `${childId} must remain inside ${parentId}, below its header`);
+    }
+    assert.equal(afterKeyboard.focusedNode, "architecture-model", "Keyboard movement must retain component focus");
+    assert.deepEqual(afterKeyboard.camera, beforeKeyboard.camera, "Keyboard movement must preserve the installed camera");
+    assert.equal(afterKeyboard.panelText, beforeKeyboard.panelText, "Keyboard movement must preserve the inspected details");
+    assert.deepEqual(afterKeyboard.nodes.filter((node) => node.selected).map((node) => node.id), ["architecture-model"]);
   }
 
   async inspectEveryRule(rules: ReadonlyArray<readonly [string, string]>): Promise<void> {

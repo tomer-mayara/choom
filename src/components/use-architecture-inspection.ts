@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 
 interface InspectionFrame {
@@ -12,6 +13,7 @@ interface InspectionFrame {
 
 interface InspectionState {
   baseline: ReadonlyData<Baseline>;
+  layout: ReadonlyData<ArchitectureLayout>;
   frames: InspectionFrame[];
   opener: HTMLElement;
   focusHeading: boolean;
@@ -22,22 +24,22 @@ function frame(panel: ArchitecturePanel): InspectionFrame {
   return { panel, scrollTop: 0, sections: [] };
 }
 
-/** One inspection path belongs to one published baseline. */
-export function useArchitectureInspection(baseline: ReadonlyData<Baseline>) {
+/** One inspection path belongs to one published baseline/layout pair. */
+export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>) {
   const [state, setState] = useState<InspectionState | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
-  if (state && state.baseline !== baseline) setState(null);
-  const current = state?.baseline === baseline ? state : null;
+  if (state && (state.baseline !== baseline || state.layout !== layout)) setState(null);
+  const current = state?.baseline === baseline && state.layout === layout ? state : null;
   const entry = current?.frames.at(-1);
   const panel = entry?.panel ?? null;
   const component = current?.frames.findLast(({ panel }) => panel.kind === "component")?.panel;
 
   const open = useCallback((panel: ArchitecturePanel, opener: HTMLElement, keyboard: boolean) => {
     const focusHeading = keyboard || Boolean(container.current?.contains(document.activeElement));
-    setState({ baseline, frames: [frame(panel)], opener, focusHeading, returning: false });
-  }, [baseline]);
+    setState({ baseline, layout, frames: [frame(panel)], opener, focusHeading, returning: false });
+  }, [baseline, layout]);
 
   function navigate(panel: ArchitecturePanel, trigger: HTMLElement) {
     if (!current || !entry) return;

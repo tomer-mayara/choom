@@ -14,6 +14,7 @@ interface InstalledBaselineWorld extends World {
   installedBaselineFile?: string;
   installedBaselineBytes?: Buffer;
   installedBaselineView?: Awaited<ReturnType<InstalledBaselineDriver["view"]>>;
+  installedMovement?: Awaited<ReturnType<InstalledBaselineDriver["inspectAndMoveComponents"]>>;
   installedInvalidFile?: { path: string; bytes: string };
 }
 
@@ -113,6 +114,28 @@ Then("all twenty-one installed Rules entries can be expanded", { timeout: 60_000
   const baseline = baselineSchema.parse(reviewedBaseline("full"));
   assert.equal(baseline.rules.length, 21);
   await driver(this).inspectEveryRule(baseline.rules.map(({ id, name }) => [id, name]));
+});
+
+Given("the reviewed baseline is open in installed Choom", { timeout: 30_000 }, async function (this: InstalledBaselineWorld) {
+  assert.ok(this.installedBaselineFile);
+  await driver(this).openBaseline(this.installedBaselineFile);
+  const baseline = baselineSchema.parse(reviewedBaseline("full"));
+  const components = baseline.components.map(({ id, name }) => [id, name] as const);
+  assert.equal(components.length, 5);
+  await driver(this).expectBaseline(baseline.id, components);
+  await driver(this).expectComponentOverview(components);
+});
+
+When("the user inspects and moves installed components with the pointer and keyboard", { timeout: 60_000 },
+  async function (this: InstalledBaselineWorld) {
+    const interfaces = baselineSchema.parse(reviewedBaseline("full")).interfaces.filter(({ owner }) => owner.value === "workspace");
+    assert.equal(interfaces.length, 5);
+    this.installedMovement = await driver(this).inspectAndMoveComponents(interfaces.map(({ id, name }) => [id, name]));
+  });
+
+Then("parents carry their children and keyboard movement keeps the installed inspection usable", async function (this: InstalledBaselineWorld) {
+  assert.ok(this.installedMovement);
+  driver(this).expectComponentMovement(this.installedMovement);
 });
 
 After({ tags: "@baseline-viewer and @packaged", timeout: 30_000 }, async function (this: InstalledBaselineWorld) {
