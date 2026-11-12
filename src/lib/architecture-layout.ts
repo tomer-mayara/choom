@@ -44,23 +44,12 @@ function baselineGraph(baseline: Baseline): ElkNode {
       node.height = componentControlHeight;
     }
   }
-  for (const item of [...baseline.interfaces, ...baseline.resources]) {
-    children.push({ id: item.id, width: componentControlWidth, height: componentControlHeight });
-  }
-  // Pack nodes into a readable overview. React Flow draws the recorded links.
-  const hasPermissions = baseline.interfaces.some((item) => item.allowedConsumers.value !== null);
-  const layoutOptions = {
-    ...arrangement,
-    // Permission captions need space between cards; ownership captions sit above them.
-    "elk.spacing.nodeNode": hasPermissions ? "200" : arrangement["elk.spacing.nodeNode"],
-  };
-  return { id: rootId, layoutOptions, children };
+  return { id: rootId, layoutOptions: arrangement, children };
 }
 
 function positionedNodes(graph: ElkNode, baseline: Baseline): ArchitectureLayout["nodes"] {
   if (graph.id !== rootId) throw new Error(invalidLayoutMessage);
   const expectedParents = new Map(baseline.components.map((component) => [component.id, component.parent?.value ?? undefined]));
-  for (const item of [...baseline.interfaces, ...baseline.resources]) expectedParents.set(item.id, undefined);
   const seen = new Set<string>();
   const nodes: ArchitectureLayout["nodes"] = [];
   function visit(item: ElkNode, parent?: ArchitectureLayout["nodes"][number], origin = { x: 0, y: 0 }): void {
@@ -92,7 +81,7 @@ export async function layoutBaseline(
   arrange: (graph: ElkNode) => Promise<ElkNode> = (graph) => new ELK().layout(graph),
 ): Promise<ArchitectureLayout> {
   checkBaselineDisplayLimits(baseline);
-  if (baseline.components.length + baseline.interfaces.length + baseline.resources.length === 0) return { nodes: [] };
+  if (baseline.components.length === 0) return { nodes: [] };
   return {
     nodes: positionedNodes(await arrange(baselineGraph(baseline)), baseline),
   };

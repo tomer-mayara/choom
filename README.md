@@ -9,8 +9,8 @@ The app is read-only. It does not run repository analysis, accept proposals,
 change the selected file, or export a diagram. Recorded statement values,
 statuses, and references keep their meaning.
 
-The viewer shows the saved component hierarchy, interfaces, resources, explicit
-relationships, and complete record details. The Rules list keeps recorded rule
+The drawing shows the saved component hierarchy. A side panel provides complete
+component, interface, and resource details. The Rules list keeps recorded rule
 data available without running checks. The desktop host provides file selection
 and bounded file reading. See the [viewer plan](docs/design/cr-baseline-viewer-plan.md)
 and
@@ -48,8 +48,8 @@ The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
 [input notes](cookbook/interfaces/baseline-codec.md) describe the file limits.
 An old `schemaVersion: 1` diagram is not a baseline.
 
-The view shows the baseline ID, nested component groups, interfaces, and resources.
-An empty baseline is valid.
+The view shows the baseline ID and nested component groups. Each component has
+its name and the number of interfaces it directly owns. An empty baseline is valid.
 **Explore example** opens a small baseline through the same viewer. A failed or
 cancelled open keeps the current view; **Retry** uses the last selected file.
 Only one open operation can run at a time. **Cancel** prevents a pending load
@@ -61,12 +61,12 @@ explicit owner and consumer links, and 16 component levels. Larger inputs show
 [complete viewer measurements](docs/change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements)
 record the tested workloads, timings, and limits.
 
-Ownership lines say **provides** or **owns**. Explicit consumer arrows say
-**may use**; they show permission recorded in the file. They do not show observed
-code imports. Each relationship shows its recorded statement status. An unknown
-owner or consumer policy does not create a link or hide the item.
+The drawing starts at 100% zoom. If all components fit, it centers them. Otherwise,
+it starts with the first root component in view. Pan to reach the rest, or use
+**Fit view** to see the whole drawing at a smaller scale. Interface and resource
+records stay in the panel; the overview has no relationship lines.
 
-Select an item or group header once to inspect it. With a keyboard, focus the
+Select a component or group header once to inspect it. With a keyboard, focus the
 control and press **Enter** or **Space**. The side panel keeps the canvas usable;
 it sits below the canvas in a narrow window. Inspection and resizing preserve
 pan and zoom. **Fit view** remains available when the drawing is outside the view.
@@ -144,6 +144,14 @@ Run the focused side-panel checks with:
 ```sh
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-inspection.test.tsx
 bun run test:e2e --tags @br-01
+```
+
+Run the focused component-overview checks with:
+
+```sh
+bun test ./test/unit/lib/architecture-layout.test.ts ./test/unit/lib/architecture-viewport.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/architecture-diagram.test.tsx
+bun run test:e2e --tags @br-02
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

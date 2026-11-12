@@ -11,10 +11,10 @@ Feature: Open a baseline in installed Choom
     And the installed viewer has no repository selection or diagram export actions
     And the native read leaves the selected baseline bytes unchanged
 
-  @bv-07
+  @bv-07 @baseline-readability @br-02
   Scenario: Read the complete reviewed baseline in the final installed viewer
     When the user selects that baseline through the native Open Baseline picker
-    Then the installed viewer shows all eighteen items and twelve ownership links without consumer arrows
+    Then the installed viewer shows five components and keeps every interface and resource inspectable
     And all twenty-one installed Rules entries can be expanded
     And the installed viewer has no repository selection or diagram export actions
     And the native read leaves the selected baseline bytes unchanged

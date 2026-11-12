@@ -23,7 +23,7 @@ function savedDiagram(id = "baseline-example") {
 }
 
 function component(world: DiagramWorkspaceWorld, id: string) {
-  return page(world).locator(".react-flow__node[data-id]").filter({ has: page(world).locator("code", { hasText: new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) }) });
+  return page(world).locator(`.react-flow__node[data-id="${id}"]`);
 }
 
 function readDiagramViewport(world: DiagramWorkspaceWorld): Promise<{ transform: string; zoom: number }> {
@@ -40,7 +40,7 @@ Given("a saved architecture is open in the diagram workspace", { timeout: 30_000
   const chooser = browserPage.waitForEvent("filechooser");
   await browserPage.getByRole("button", { name: "Open Baseline", exact: true }).click();
   await (await chooser).setFiles(savedDiagram());
-  await expect(browserPage.locator(".react-flow__node[data-id]")).toHaveCount(4);
+  await expect(browserPage.locator(".react-flow__node[data-id]")).toHaveCount(2);
   await expect(browserPage.getByRole("heading", { name: "baseline-example", exact: true })).toBeVisible();
 });
 

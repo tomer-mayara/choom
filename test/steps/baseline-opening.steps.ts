@@ -93,7 +93,7 @@ Then("the previous baseline remains visible with a legacy format error", async f
   assert.ok(this.page);
   await expect(this.page.getByRole("alert")).toContainText("Legacy diagrams are unsupported");
   await expect(this.page.getByRole("heading", { name: "baseline-002", exact: true })).toBeVisible();
-  assert.equal((await viewer(this).view()).nodes.length, 18);
+  assert.equal((await viewer(this).view()).nodes.length, 5);
 });
 
 When("the next selected file read fails", async function (this: BaselineOpeningWorld) {
@@ -169,7 +169,7 @@ Then("the previous baseline remains visible with a layout error", async function
   assert.ok(this.page);
   await expect(this.page.getByRole("alert")).toContainText("baseline layout failed");
   await expect(this.page.getByRole("heading", { name: "baseline-002", exact: true })).toBeVisible();
-  assert.equal((await viewer(this).view()).nodes.length, 18);
+  assert.equal((await viewer(this).view()).nodes.length, 5);
 });
 
 Then("the read failure explains how to select the file again", async function (this: BaselineOpeningWorld) {

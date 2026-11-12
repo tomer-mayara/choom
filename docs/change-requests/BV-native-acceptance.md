@@ -87,9 +87,10 @@ a useful error. Picker cancellation must show **Load cancelled.** and enable
 **Open Baseline** again. These UI cases complement the existing Rust read-limit, file
 identity, file-type, and UTF-8 tests.
 
-BV-07 adds one complete-view scenario to this same installed route. It checks
-all 18 visual items, the 12 recorded ownership links, no consumer arrows, and
-all 21 Rules entries in the reviewed fixture. Each rule must expand and show
+The complete-view scenario uses this same installed route. BR-02 updates it to
+check five component nodes without relationship lines, inspection of all eight
+interfaces and five resources through the catalog, and all 21 Rules entries in
+the reviewed fixture. Each rule must expand and show
 its ID, subject, expectation, and check. This is final assembled-app verification;
 browser and DOM checks cover the same viewer behavior in more detail.
 
@@ -137,8 +138,9 @@ The complete identities belong in the [verification record](BV-baseline-viewer-e
 Build and install the ordinary candidate bundle outside the checkout. Preserve
 existing installations and record source, package, executable, OS, architecture,
 and signing identities. Open only a copied baseline with no source repository or
-companion files. Check all 18 items, 12 ownership links, no consumer arrows,
-all 21 Rules entries, absence of old actions, unchanged
+companion files. Check the five-component overview without relationship lines,
+side-panel access to all eight interfaces and five resources, all 21 Rules
+entries, absence of old actions, unchanged
 file bytes, native picker cancellation, and invalid-file preservation. Record
 each actual observation and screenshot.
 

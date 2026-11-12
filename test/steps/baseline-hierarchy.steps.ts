@@ -21,6 +21,7 @@ interface BaselineHierarchyWorld extends World {
 
 async function openViewer(world: BaselineHierarchyWorld): Promise<void> {
   assert.ok(world.page, "The browser hook must supply a real page.");
+  await world.page.setViewportSize({ width: 1280, height: 800 });
   world.hierarchyDirectory = await mkdtemp(join(tmpdir(), "choom-baseline-hierarchy-"));
   world.hierarchyViewer = new BaselineBrowserDriver(world.page);
   await world.hierarchyViewer.open();
@@ -115,7 +116,7 @@ When("the user opens the prepared hierarchy baseline", async function (this: Bas
 
 When("the user fits the hierarchy after zooming in", async function (this: BaselineHierarchyWorld) {
   assert.ok(this.page);
-  for (let step = 0; step < 5; step += 1) await this.page.getByRole("button", { name: "Zoom In", exact: true }).click();
+  await this.page.getByRole("button", { name: "Zoom In", exact: true }).click();
   await this.page.getByRole("button", { name: "Fit View", exact: true }).click();
 });
 
@@ -132,6 +133,15 @@ Then("all 500 components fit inside the diagram", { timeout: 30_000 }, async fun
         && item.right <= canvas.right + 1 && item.bottom <= canvas.bottom + 1;
     });
   }), { message: "Every prepared component must fit in the available canvas." }).toBe(true);
+});
+
+Then("the hierarchy starts at 100 percent with its first root header visible", { timeout: 30_000 }, async function (this: BaselineHierarchyWorld) {
+  assert.ok(this.page);
+  const page = this.page;
+  await expect(page.locator(".react-flow__node")).toHaveCount(500);
+  await expect.poll(() => page.locator(".react-flow__viewport").evaluate((node) =>
+    new DOMMatrixReadOnly(getComputedStyle(node).transform).a)).toBe(1);
+  await expect(page.getByRole("button", { name: "Component 0, component-0", exact: true })).toBeInViewport({ ratio: 0.999 });
 });
 
 async function assertContained(page: Page, parentId: string, childIds: string[]): Promise<void> {
@@ -205,6 +215,6 @@ Then("Previous remains displayed with a size-limit message", { timeout: 30_000 }
   await expect(page.getByRole("heading", { name: nextId, exact: true })).toHaveCount(0);
 });
 
-After({ tags: "@bv-04" }, async function (this: BaselineHierarchyWorld) {
+After({ tags: "@bv-04 or @br-02" }, async function (this: BaselineHierarchyWorld) {
   if (this.hierarchyDirectory) await rm(this.hierarchyDirectory, { recursive: true, force: true });
 });

@@ -44,7 +44,7 @@ async function prepareBaseline(world: BaselineRelationshipWorld, baseline: Basel
   await writeFile(world.relationshipPath, text);
 }
 
-Given("the reviewed baseline is ready for its relationships to be shown", async function (this: BaselineRelationshipWorld) {
+Given("the reviewed baseline is ready for relationship inspection", async function (this: BaselineRelationshipWorld) {
   await openViewer(this);
   assert.ok(this.relationshipDirectory && this.page);
   this.relationshipPath = join(this.relationshipDirectory, "baseline.yaml");
@@ -70,175 +70,157 @@ Given("recorded items have long names and a long interface ID", async function (
   await prepareBaseline(this, baselineWithLongNames());
 });
 
+Given("the user has increased text size by 25 percent", async function (this: BaselineRelationshipWorld) {
+  assert.ok(this.page);
+  await this.page.evaluate(() => { document.documentElement.style.fontSize = "20px"; });
+});
+
 When("the user opens the prepared relationship baseline", async function (this: BaselineRelationshipWorld) {
   assert.ok(this.relationshipViewer && this.relationshipPath && this.relationshipBaseline && this.page);
   await this.relationshipViewer.openBaseline(this.relationshipPath);
   await expect(this.page.getByRole("heading", { name: this.relationshipBaseline.id, exact: true })).toBeVisible();
 });
 
-function statusLabel(status: "accepted" | "proposed"): string {
-  return status === "accepted" ? "Accepted (recorded)" : "Proposed";
+async function openRecord(world: BaselineRelationshipWorld, kind: "Interfaces" | "Resources", item: { id: string; name: string }): Promise<Locator> {
+  assert.ok(world.page);
+  await world.page.getByRole("button", { name: "Baseline details", exact: true }).click();
+  const catalog = world.page.getByRole("dialog", { name: "Baseline details" });
+  await catalog.getByRole("region", { name: kind, exact: true })
+    .getByRole("button", { name: `${item.name}, ${item.id}`, exact: true }).click();
+  const panel = world.page.getByRole("dialog", { name: kind === "Interfaces" ? "Interface details" : "Resource details" });
+  await expect(panel.getByRole("heading", { name: item.name, exact: true })).toHaveText(item.name);
+  await expect(panel.getByRole("group", { name: kind === "Interfaces" ? "Interface ID" : "Resource ID", exact: true })).toContainText(item.id);
+  return panel;
 }
 
-function relationship(world: BaselineRelationshipWorld, sourceId: string,
-  kind: "provides" | "owns" | "may use", target: { id: string; name: string }, status: "accepted" | "proposed"): Locator {
-  assert.ok(world.page && world.relationshipBaseline);
-  const source = world.relationshipBaseline.components.find(({ id }) => id === sourceId);
-  assert.ok(source, `The recorded source ${sourceId} must exist.`);
-  return world.page.getByRole("img", {
-    name: `${source.name}, ${source.id} ${kind} ${target.name}, ${target.id}. ${statusLabel(status)}.`, exact: true,
-  });
+async function expectStatement(panel: Locator, name: string, statement: Baseline["interfaces"][number]["owner"] | Baseline["interfaces"][number]["allowedConsumers"]): Promise<void> {
+  const group = panel.getByRole("group", { name, exact: true });
+  if (Array.isArray(statement.value)) {
+    assert.deepEqual(JSON.parse(await group.locator(":scope > pre").textContent() ?? "null"), statement.value);
+  } else {
+    await expect(group.locator(":scope > p").nth(1)).toHaveText(statement.value ?? "Unknown (null)");
+  }
+  const status = statement.status === "accepted" ? "Accepted (recorded)" : "Proposed";
+  await expect(group.locator(":scope > p").filter({ hasText: new RegExp(`^${status.replace(/[()]/g, "\\$&")}$`) })).toHaveCount(1);
+  const references = group.getByRole("group", { name: "Evidence references", exact: true });
+  assert.deepEqual(JSON.parse(await references.locator("pre").textContent() ?? "null"), statement.evidenceRefs);
+  if (statement.status === "accepted") {
+    await expect(group.getByRole("group", { name: "Acceptance reference", exact: true }).locator("p").nth(1))
+      .toHaveText(statement.acceptanceRef);
+  } else {
+    await expect(group.getByRole("group", { name: "Acceptance reference", exact: true })).toHaveCount(0);
+  }
 }
 
-async function expectRelationship(edge: Locator, kind: "provides" | "owns" | "may use",
-  status: "accepted" | "proposed"): Promise<void> {
-  await expect(edge).toBeVisible();
-  await expect(edge).toContainText(`${kind} · ${statusLabel(status)}`);
-  const marker = await edge.locator(".react-flow__edge-path").getAttribute("marker-end");
-  if (kind === "may use") assert.match(marker ?? "", /^url\(.+\)$/, "Permission must have an arrow to its interface.");
-  else assert.ok(!marker, "Ownership must be a line without an arrow.");
-}
-
-Then("its eight interfaces and five resources appear with their recorded owners", { timeout: 15_000 }, async function (this: BaselineRelationshipWorld) {
+Then("its eight interfaces and five resources can be inspected with their recorded owners", { timeout: 30_000 }, async function (this: BaselineRelationshipWorld) {
   assert.ok(this.page && this.relationshipBaseline);
-  const { page, relationshipBaseline: baseline } = this;
+  const baseline = this.relationshipBaseline;
   assert.equal(baseline.interfaces.length, 8);
   assert.equal(baseline.resources.length, 5);
-  await expect(page.locator(".react-flow__node")).toHaveCount(18);
-  await expect(page.locator(".react-flow__edge")).toHaveCount(12);
-  for (const [kind, items] of [["provides", baseline.interfaces], ["owns", baseline.resources]] as const) {
-    for (const item of items) {
-      const card = page.getByRole("button", { name: `${item.name}, ${item.id}`, exact: true });
-      await expect(card).toBeVisible();
-      await expect(card).toContainText(item.name);
-      if (item.owner.value !== null) {
-        await expectRelationship(relationship(this, item.owner.value, kind, item, item.owner.status), kind, item.owner.status);
-      }
-    }
+  for (const [kind, items] of [["Interfaces", baseline.interfaces], ["Resources", baseline.resources]] as const) {
+    for (const item of items) await expectStatement(await openRecord(this, kind, item), "Owner", item.owner);
   }
 });
 
-Then("the resource with no owner remains visible", async function (this: BaselineRelationshipWorld) {
-  assert.ok(this.page && this.relationshipBaseline);
+Then("the resource with no owner remains available", async function (this: BaselineRelationshipWorld) {
+  assert.ok(this.relationshipBaseline);
   const unowned = this.relationshipBaseline.resources.filter(({ owner }) => owner.value === null);
   assert.equal(unowned.length, 1);
   const item = fixtureItem(unowned);
-  await expect(this.page.getByRole("button", { name: `${item.name}, ${item.id}`, exact: true })).toContainText("Owner unknown");
+  await expectStatement(await openRecord(this, "Resources", item), "Owner", item.owner);
 });
 
-Then("all consumer policies are unknown with no consumer arrows", async function (this: BaselineRelationshipWorld) {
-  assert.ok(this.page && this.relationshipBaseline);
+Then("all consumer policies remain unknown", { timeout: 30_000 }, async function (this: BaselineRelationshipWorld) {
+  assert.ok(this.relationshipBaseline);
   for (const item of this.relationshipBaseline.interfaces) {
     assert.equal(item.allowedConsumers.value, null);
-    await expect(this.page.getByRole("button", { name: `${item.name}, ${item.id}`, exact: true }))
-      .toContainText("Consumer policy unknown");
-  }
-  await expect(this.page.locator(".react-flow__edge-path[marker-end]")).toHaveCount(0);
-});
-
-Then("the relationship labels can be read without covering an item", async function (this: BaselineRelationshipWorld) {
-  assert.ok(this.page);
-  const labels = await this.page.locator(".react-flow__edge-text").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON()));
-  const controls = await this.page.locator(".react-flow__node button").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON()));
-  assert.equal(labels.length, await this.page.locator(".react-flow__edge").count());
-  for (const [index, label] of labels.entries()) {
-    assert.ok(label.height >= 8, `Relationship label ${index} must remain readable at fit (actual height ${label.height.toFixed(2)}px).`);
-    assert.ok(label.left >= 0 && label.top >= 0 && label.right <= 1280 && label.bottom <= 800,
-      `Relationship label ${index} must stay inside the window.`);
-    const overlaps = (other: typeof label) => label.left < other.right && other.left < label.right
-      && label.top < other.bottom && other.top < label.bottom;
-    assert.equal(labels.slice(index + 1).some(overlaps), false, `Relationship label ${index} must not cover another relationship label.`);
-    assert.equal(controls.some(overlaps), false, `Relationship label ${index} must not cover an item inspection control.`);
+    await expectStatement(await openRecord(this, "Interfaces", item), "Allowed consumers", item.allowedConsumers);
   }
 });
 
-Then("the interface appears without an ownership line", { timeout: 15_000 }, async function (this: BaselineRelationshipWorld) {
-  assert.ok(this.page && this.relationshipBaseline);
+Then("the interface owner remains unknown and Checkout remains an allowed consumer", async function (this: BaselineRelationshipWorld) {
+  assert.ok(this.relationshipBaseline);
   const item = fixtureItem(this.relationshipBaseline.interfaces);
-  await expect(this.page.getByRole("button", { name: `${item.name}, ${item.id}`, exact: true })).toContainText("Owner unknown");
-  await expect(this.page.locator(".react-flow__edge")).toHaveCount(1);
-  await expect(this.page.getByRole("img", { name: / provides / })).toHaveCount(0);
+  assert.equal(item.owner.value, null);
+  assert.deepEqual(item.allowedConsumers.value, ["checkout"]);
+  const panel = await openRecord(this, "Interfaces", item);
+  await expectStatement(panel, "Owner", item.owner);
+  await expectStatement(panel, "Allowed consumers", item.allowedConsumers);
 });
 
-Then("Checkout has a may use arrow to that interface", async function (this: BaselineRelationshipWorld) {
-  assert.ok(this.page && this.relationshipBaseline);
-  const item = fixtureItem(this.relationshipBaseline.interfaces);
-  await expectRelationship(relationship(this, "checkout", "may use", item,
-    item.allowedConsumers.status), "may use", item.allowedConsumers.status);
-});
-
-Then("both records remain available and no component is invented", { timeout: 15_000 }, async function (this: BaselineRelationshipWorld) {
+Then("both records remain available and no component is invented", async function (this: BaselineRelationshipWorld) {
   assert.ok(this.page && this.relationshipBaseline);
   await expect(this.page.getByText("No components modeled", { exact: true })).toBeVisible();
-  await expect(this.page.locator(".react-flow__node")).toHaveCount(2);
+  await expect(this.page.locator(".react-flow__node")).toHaveCount(0);
   await expect(this.page.locator(".react-flow__edge")).toHaveCount(0);
-  for (const item of [...this.relationshipBaseline.interfaces, ...this.relationshipBaseline.resources]) {
-    await expect(this.page.getByRole("button", { name: `${item.name}, ${item.id}`, exact: true })).toBeVisible();
+  for (const [kind, items] of [["Interfaces", this.relationshipBaseline.interfaces], ["Resources", this.relationshipBaseline.resources]] as const) {
+    for (const item of items) await expectStatement(await openRecord(this, kind, item), "Owner", item.owner);
   }
 });
 
-Then("each interface keeps its own ownership line and consumer arrows", { timeout: 15_000 }, async function (this: BaselineRelationshipWorld) {
+Then("both same-named interfaces remain distinct in Baseline details", async function (this: BaselineRelationshipWorld) {
   assert.ok(this.page && this.relationshipBaseline);
-  await expect(this.page.locator(".react-flow__node")).toHaveCount(4);
-  await expect(this.page.locator(".react-flow__edge")).toHaveCount(6);
+  const items = this.relationshipBaseline.interfaces;
+  assert.equal(items.length, 2);
+  assert.equal(items[0]?.name, items[1]?.name);
+  assert.notEqual(items[0]?.id, items[1]?.id);
+  await this.page.getByRole("button", { name: "Baseline details", exact: true }).click();
+  const list = this.page.getByRole("dialog").getByRole("region", { name: "Interfaces", exact: true });
+  await expect(list.getByRole("button")).toHaveCount(2);
+  for (const item of items) await expect(list.getByRole("button", { name: `${item.name}, ${item.id}`, exact: true })).toBeVisible();
+});
+
+Then("each ownership and permission statement keeps its own status and references", async function (this: BaselineRelationshipWorld) {
+  assert.ok(this.relationshipBaseline);
   for (const item of this.relationshipBaseline.interfaces) {
-    await expect(this.page.getByRole("button", { name: `${item.name}, ${item.id}`, exact: true })).toBeVisible();
+    const panel = await openRecord(this, "Interfaces", item);
+    await expectStatement(panel, "Owner", item.owner);
+    await expectStatement(panel, "Allowed consumers", item.allowedConsumers);
   }
 });
 
-Then("each line shows the status of its defining statement", async function (this: BaselineRelationshipWorld) {
+Then("the owner is also listed as an allowed consumer for each interface", async function (this: BaselineRelationshipWorld) {
+  assert.ok(this.relationshipBaseline);
+  for (const item of this.relationshipBaseline.interfaces) {
+    assert.ok(item.owner.value && item.allowedConsumers.value?.includes(item.owner.value));
+    const panel = await openRecord(this, "Interfaces", item);
+    await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText(item.owner.value);
+    await expect(panel.getByRole("group", { name: "Allowed consumers", exact: true })).toContainText(item.owner.value);
+  }
+});
+
+Then("the long component name stays inside its compact header", async function (this: BaselineRelationshipWorld) {
   assert.ok(this.page && this.relationshipBaseline);
-  const baseline = this.relationshipBaseline;
-  for (const item of baseline.interfaces) {
-    assert.ok(item.owner.value && item.allowedConsumers.value);
-    await expectRelationship(relationship(this, item.owner.value, "provides", item, item.owner.status), "provides", item.owner.status);
-    for (const consumer of item.allowedConsumers.value) {
-      await expectRelationship(relationship(this, consumer, "may use", item, item.allowedConsumers.status),
-        "may use", item.allowedConsumers.status);
-    }
+  const item = fixtureItem(this.relationshipBaseline.components);
+  const control = this.page.locator(`.react-flow__node[data-id="${item.id}"]`).getByRole("button");
+  await expect(control).toHaveAccessibleName(`${item.name}, ${item.id}`);
+  const bounds = await control.boundingBox();
+  assert.ok(bounds && bounds.width <= 240 && bounds.height <= 88);
+  assert.equal(await control.evaluate((node) => node.scrollWidth <= node.clientWidth && node.scrollHeight <= node.clientHeight), true);
+  const lines = await control.evaluate((node) => Array.from(node.querySelectorAll("span"), (span) => {
+    const control = node.getBoundingClientRect();
+    const text = span.getBoundingClientRect();
+    return { height: text.height, lineHeight: Number.parseFloat(getComputedStyle(span).lineHeight),
+      contained: text.left >= control.left && text.right <= control.right && text.top >= control.top && text.bottom <= control.bottom };
+  }));
+  assert.equal(lines.length, 2);
+  for (const [index, text] of lines.entries()) {
+    assert.ok(text.contained, "Name and count must stay inside their header.");
+    assert.ok(text.height >= text.lineHeight * (index === 0 ? 2 : 1) - 1,
+      "The name must show two whole lines and the count must show one whole line.");
   }
-});
-
-Then("ownership and permission remain separate when their source is the same", async function (this: BaselineRelationshipWorld) {
-  assert.ok(this.page && this.relationshipBaseline);
-  const baseline = this.relationshipBaseline;
-  for (const item of baseline.interfaces) {
-    assert.ok(item.owner.value);
-    const ownership = relationship(this, item.owner.value, "provides", item, item.owner.status);
-    const permission = relationship(this, item.owner.value, "may use", item, item.allowedConsumers.status);
-    const ownershipPath = await ownership.locator(".react-flow__edge-path").getAttribute("d");
-    const permissionPath = await permission.locator(".react-flow__edge-path").getAttribute("d");
-    assert.ok(ownershipPath && permissionPath, "Both relationships must have a drawn path.");
-    assert.notEqual(ownershipPath, permissionPath, "Ownership and permission must not cover the same path.");
-  }
-});
-
-Then("their relationship descriptions shorten names and IDs and keep statuses", async function (this: BaselineRelationshipWorld) {
-  assert.ok(this.page);
-  await expect(this.page.locator(".react-flow__edge")).toHaveCount(2);
-  const descriptions = await this.page.locator(".react-flow__edge").evaluateAll((elements) => elements.map((element) => element.getAttribute("aria-label") ?? ""));
-  for (const description of descriptions) {
-    assert.ok(description.length < 400, `A relationship description must bound record text (actual length ${description.length}).`);
-    assert.ok(description.includes("…"));
-    assert.ok(description.includes("invoice-api"));
-  }
-  assert.ok(descriptions.some((description) => description.includes("checkout") && description.endsWith("Accepted (recorded).")));
-  assert.ok(descriptions.some((description) => description.includes("billing") && description.endsWith("Proposed.")));
 });
 
 Then("the complete names and IDs remain available in item details", async function (this: BaselineRelationshipWorld) {
   assert.ok(this.page && this.relationshipBaseline);
-  for (const item of [fixtureItem(this.relationshipBaseline.components), fixtureItem(this.relationshipBaseline.interfaces)]) {
-    await this.page.locator(`.react-flow__node[data-id="${item.id}"]`).getByRole("button").click();
-    const panel = this.page.getByRole("dialog");
-    assert.equal(await panel.getByRole("heading", { name: item.name, exact: true }).textContent(), item.name);
-    if (this.relationshipBaseline.components.some(({ id }) => id === item.id)) {
-      await panel.getByText("Recorded details", { exact: true }).click();
-    }
-    await expect(panel.getByText(item.id, { exact: true })).toBeVisible();
-    await this.page.keyboard.press("Escape");
-    await expect(panel).toBeHidden();
-  }
+  const component = fixtureItem(this.relationshipBaseline.components);
+  await this.page.locator(`.react-flow__node[data-id="${component.id}"]`).getByRole("button").click();
+  const panel = this.page.getByRole("dialog", { name: "Component details" });
+  await expect(panel.getByRole("heading", { name: component.name, exact: true })).toHaveText(component.name);
+  await panel.getByText("Recorded details", { exact: true }).click();
+  await expect(panel.getByRole("group", { name: "Component ID", exact: true })).toContainText(component.id);
+  const item = fixtureItem(this.relationshipBaseline.interfaces);
+  await openRecord(this, "Interfaces", item);
 });
 
 After({ tags: "@bv-05" }, async function (this: BaselineRelationshipWorld) {

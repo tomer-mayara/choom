@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { componentControlHeight } from "../../../src/lib/component-geometry.ts";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ArchitectureDiagram } from "../../../src/components/architecture-diagram.tsx";
 import { baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
@@ -7,8 +8,8 @@ import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 afterEach(cleanup);
 
 function view(baseline = baselineExample()) {
-  const layout = { nodes: [...baseline.components, ...baseline.interfaces, ...baseline.resources].map(({ id }, index) => ({
-    id, position: { x: index * 260, y: 0 }, width: 240, height: 120,
+  const layout = { nodes: baseline.components.map(({ id }, index) => ({
+    id, position: { x: index * 260, y: 0 }, width: 240, height: componentControlHeight,
   })) };
   render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
   return baseline;
@@ -28,7 +29,7 @@ test("one pointer selection opens a nonmodal side panel without moving focus int
 test("pointer selection moves focus from the panel to its canvas header without moving the camera", async () => {
   const baseline = baselineExample();
   const canvas = await renderDiagramWithViewport(baseline, { nodes: baseline.components.map(({ id }, index) => ({
-    id, position: { x: index * 240, y: 24 }, width: 240, height: 120,
+    id, position: { x: index * 240, y: 24 }, width: 240, height: componentControlHeight,
   })) });
   fireEvent.click(screen.getByRole("button", { name: "Billing, billing" }), { detail: 0 });
   expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true);

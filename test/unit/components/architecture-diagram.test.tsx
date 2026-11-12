@@ -1,27 +1,30 @@
 import { afterEach, expect, test } from "bun:test";
+import { componentControlHeight } from "../../../src/lib/component-geometry.ts";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ArchitectureDiagram } from "../../../src/components/architecture-diagram.tsx";
 import type { Baseline } from "../../../src/domain/generated/contracts.ts";
-import { accepted, baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
+import { baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { baselineWithParentLevels } from "../../support/baseline-layout-fixtures.ts";
-import { baselineWithDistinctInterfaceLinks, baselineWithLongNames, baselineWithUnknownInterfaceOwner, baselineWithoutComponents } from "../../support/baseline-relationship-fixtures.ts";
+import { baselineWithDistinctInterfaceLinks, baselineWithoutComponents } from "../../support/baseline-relationship-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { baselineWithOnlyRules } from "../../support/baseline-detail-fixtures.ts";
 
 afterEach(cleanup);
 function diagramFixture(baseline: Baseline = baselineExample()) {
-  const items = [...baseline.components, ...baseline.interfaces, ...baseline.resources];
-  const layout = { nodes: items.map(({ id }, index) => ({ id, position: { x: index * 300, y: 24 }, width: 240, height: 120 })) };
+  const items = baseline.components;
+  const layout = { nodes: items.map(({ id }, index) => ({ id, position: { x: index * 300, y: 24 }, width: 240, height: componentControlHeight })) };
   return { baseline, layout };
 }
 
-test("the canvas shows every modeled item at prepared positions", () => {
+test("the canvas shows compact components at prepared positions and no relationship lines", () => {
   const { baseline, layout } = diagramFixture();
   const { container } = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
   expect(screen.getByRole("heading", { name: "baseline-example" })).toBeTruthy();
   const cards = [...container.querySelectorAll(".react-flow__node[data-id]")];
-  expect(cards.map((node) => node.getAttribute("data-id"))).toEqual(["checkout", "billing", "invoice-api", "invoice-store"]);
-  expect(cards[0]?.textContent).toContain("Create orders");
+  expect(cards.map((node) => node.getAttribute("data-id"))).toEqual(["checkout", "billing"]);
+  expect(cards[0]?.textContent).toBe("Checkout0 interfaces");
+  expect(cards[1]?.textContent).toBe("Billing1 interface");
+  expect(container.querySelectorAll(".react-flow__edge")).toHaveLength(0);
   expect(cards[1]?.getAttribute("style")).toContain("translate(300px,24px)");
   expect(screen.queryByRole("button", { name: "Findings" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Recorded analysis" })).toBeNull();
@@ -61,81 +64,35 @@ test.each([true, false])("an empty component list keeps its own model and correc
   const { container } = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
   expect(screen.getByRole("heading", { name: "records-without-components" })).toBeTruthy();
   expect(screen.getByRole("status").textContent).toBe(allEmpty ? "No architecture items modeled" : "No components modeled");
-  expect(container.querySelectorAll(".react-flow__node").length).toBe(allEmpty ? 0 : 2);
+  expect(container.querySelectorAll(".react-flow__node").length).toBe(0);
 });
 
-test("unknown owners keep known consumer arrows and unknown policies remain labels", async () => {
-  const { baseline, layout } = diagramFixture(baselineWithUnknownInterfaceOwner());
-  const canvas = await renderDiagramWithViewport(baseline, layout);
-  const edges = canvas.getEdges();
-  expect(edges.map(({ source, target, label, markerEnd }) => ({ source, target, label, arrow: Boolean(markerEnd) }))).toEqual([
-    { source: "checkout", target: "invoice-api", label: "may use · Accepted (recorded)", arrow: true },
-  ]);
-  expect(screen.getByRole("button", { name: "Invoice API, invoice-api" }).textContent).toContain("Owner unknown");
-});
-
-test("each interface keeps its own owner and consumer links with the defining recorded status", async () => {
+test("component counts exclude descendant and unknown owners", async () => {
   const baseline = baselineWithDistinctInterfaceLinks();
-  delete fixtureItem(baseline.components, 1).parent;
+  baseline.interfaces.push({ ...fixtureItem(baseline.interfaces), id: "unowned-api", owner: proposed(null) });
   const original = structuredClone(baseline);
   const canvas = await renderDiagramWithViewport(baseline, diagramFixture(baseline).layout);
-  const edges = canvas.getEdges();
-  expect(edges.map(({ source, target, label }) => ({ source, target, label }))).toEqual([
-    { source: "billing", target: "invoice-api", label: "provides · Proposed" },
-    { source: "checkout", target: "invoice-api", label: "may use · Accepted (recorded)" },
-    { source: "billing", target: "invoice-api", label: "may use · Accepted (recorded)" },
-    { source: "billing", target: "invoice-events", label: "provides · Accepted (recorded)" },
-    { source: "checkout", target: "invoice-events", label: "may use · Proposed" },
-    { source: "billing", target: "invoice-events", label: "may use · Proposed" },
-  ]);
-  expect(new Set(edges.map(({ id }) => id)).size).toBe(6);
-  expect(edges[0]?.markerEnd).toBeUndefined();
-  expect(edges[1]?.markerEnd).toBeDefined();
-  expect(edges[0]?.targetHandle).not.toBe(edges[2]?.targetHandle);
-  expect(baseline).toEqual(original);
-});
-
-test("a resource owner has a plain line and prose or rules do not add relationships", async () => {
-  const baseline = baselineWithoutComponents();
-  baseline.components = baselineExample().components;
-  baseline.rules = baselineExample().rules;
-  const resource = fixtureItem(baseline.resources);
-  resource.owner = accepted("checkout");
-  resource.accessRules = proposed("Billing may use Invoice API.");
-  const canvas = await renderDiagramWithViewport(baseline, diagramFixture(baseline).layout);
-  expect(canvas.getEdges().map(({ source, target, label, markerEnd }) => ({ source, target, label, markerEnd }))).toEqual([
-    { source: "checkout", target: "invoice-store", label: "owns · Accepted (recorded)", markerEnd: undefined },
-  ]);
-  expect(screen.getByRole("button", { name: "Invoice API, invoice-api" }).textContent).toContain("Consumer policy unknown");
-});
-
-test("relationship descriptions bound each repeated name without changing record data", async () => {
-  const baseline = baselineWithLongNames();
-  const original = structuredClone(baseline);
-  const canvas = await renderDiagramWithViewport(baseline, diagramFixture(baseline).layout);
-  for (const edge of canvas.getEdges()) {
-    expect(edge.id.length).toBeLessThan(40);
-    expect(edge.target).toBe(fixtureItem(baseline.interfaces).id);
-    expect(edge.ariaLabel?.length).toBeLessThan(400);
-    expect(edge.ariaLabel).toContain("…");
-    expect(edge.ariaLabel).toContain("invoice-api");
-  }
+  expect(screen.getByRole("button", { name: "Checkout, checkout" }).textContent).toBe("Checkout0 interfaces");
+  expect(screen.getByRole("button", { name: "Billing, billing" }).textContent).toBe("Billing2 interfaces");
+  expect(canvas.getEdges()).toHaveLength(0);
   expect(baseline).toEqual(original);
 });
 
 test.each([
   ["Invoice API, invoice-api", "Interface details", "invoice-api"],
   ["Invoices, invoice-store", "Resource details", "invoice-store"],
-])("keyboard activation opens %s and Escape restores its opener", async (name, title, id) => {
+])("the catalog opens %s with a keyboard and Escape restores the catalog opener", async (name, title, id) => {
   const { baseline, layout } = diagramFixture();
   render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
-  const item = screen.getByRole("button", { name });
+  const opener = screen.getByRole("button", { name: "Baseline details" });
+  fireEvent.click(opener, { detail: 0 });
+  const item = within(screen.getByRole("dialog")).getByRole("button", { name });
   fireEvent.click(item, { detail: 0 });
   const panel = screen.getByRole("dialog", { name: title });
   expect(panel.textContent).toContain(id);
   fireEvent.keyDown(panel, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  await waitFor(() => expect(document.activeElement).toBe(item));
+  await waitFor(() => expect(document.activeElement).toBe(opener));
 });
 
 test("keyboard focus reveals a clipped component without changing zoom or moving a visible component", async () => {
@@ -171,7 +128,7 @@ test("the canvas keeps prepared group dimensions, parent order, and relative chi
   baseline.components.reverse();
   const layout = { nodes: [
     { id: "component-0", position: { x: 12, y: 12 }, width: 2000, height: 2000 },
-    { id: "component-1", position: { x: 24, y: 144 }, width: 240, height: 120, parentId: "component-0" },
+    { id: "component-1", position: { x: 24, y: 144 }, width: 240, height: componentControlHeight, parentId: "component-0" },
   ] };
   const { container } = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
   const nodes = [...container.querySelectorAll(".react-flow__node[data-id]")];
@@ -187,7 +144,7 @@ test("keyboard focus reveals a large group header at the current zoom", async ()
   const baseline = baselineWithParentLevels(2);
   const layout = { nodes: [
     { id: "component-0", position: { x: 12, y: 12 }, width: 2000, height: 2000 },
-    { id: "component-1", position: { x: 24, y: 144 }, width: 240, height: 120, parentId: "component-0" },
+    { id: "component-1", position: { x: 24, y: 144 }, width: 240, height: componentControlHeight, parentId: "component-0" },
   ] };
   const canvas = await renderDiagramWithViewport(baseline, layout);
   await act(async () => { await canvas.setViewport({ x: -1500, y: -1500, zoom: 1 }); });
@@ -200,8 +157,17 @@ test("keyboard focus reveals a large group header at the current zoom", async ()
     expect(group.x + position.x).toBeGreaterThanOrEqual(0);
     expect(group.x + 240 + position.x).toBeLessThanOrEqual(500);
     expect(group.y + position.y).toBeGreaterThanOrEqual(0);
-    expect(group.y + 120 + position.y).toBeLessThanOrEqual(500);
+    expect(group.y + componentControlHeight + position.y).toBeLessThanOrEqual(500);
   });
+});
+
+test("a large overview starts at 100 percent with its first root header in view", async () => {
+  const { baseline, layout } = diagramFixture();
+  const distant = layout.nodes[1];
+  if (!distant) throw new Error("The fixture needs a second component.");
+  distant.position.x = 30_000;
+  const canvas = await renderDiagramWithViewport(baseline, layout);
+  await waitFor(() => expect(canvas.getViewport()).toEqual({ x: 24, y: 0, zoom: 1 }));
 });
 
 test("zoom controls allow a large diagram to zoom below the library default", async () => {

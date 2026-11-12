@@ -163,16 +163,41 @@ export class InstalledBaselineDriver {
     }, "The installed viewer did not finish cancellation and enable Open Baseline again");
   }
 
-  async expectCompleteDiagram(
-    items: ReadonlyArray<readonly [string, string]>, ownership: readonly string[],
-  ): Promise<void> {
+  async expectComponentOverview(components: ReadonlyArray<readonly [string, string]>): Promise<void> {
     await waitFor(async () => {
       const view = await this.view();
-      return view.nodes.length === items.length && view.edges.length === ownership.length
-        && items.every(([id, name]) => view.nodes.some((node) => node.id === id && node.text.includes(name)))
-        && ownership.every((label) => view.edges.some((edge) => edge.label === label))
-        && view.edges.every((edge) => !edge.arrow);
-    }, "The installed viewer must show all recorded items and ownership links, with no consumer arrows");
+      return view.nodes.length === components.length && view.edges.length === 0
+        && components.every(([id, name]) => view.nodes.some((node) => node.id === id && node.text.includes(name)));
+    }, "The installed overview must show only its recorded components and no relationship lines");
+  }
+
+  async inspectRecords(kind: "Interfaces" | "Resources", records: ReadonlyArray<{
+    id: string; name: string; owner: { value: string | null; status: "accepted" | "proposed" };
+  }>): Promise<void> {
+    await this.session().$("#baseline-details-control").click();
+    const selector = `[role="dialog"] [role="region"][aria-label="${kind}"] button`;
+    await waitFor(async () => (await this.session().$$(selector)).length === records.length,
+      `The installed catalog must list every ${kind.toLowerCase()} record`);
+    for (const [index, { id, name, owner }] of records.entries()) {
+      const rows = await this.session().$$(selector);
+      const row = rows[index];
+      assert.ok(row);
+      assert.equal(await row.getAttribute("aria-label"), `${name}, ${id}`);
+      if (owner.value === null) assert.ok((await row.getText()).includes("Owner unknown"));
+      await row.click();
+      await waitFor(async () => this.session().execute((recordId, recordOwner, recordKind) => {
+        const panel = document.querySelector('[role="dialog"]');
+        const idField = recordKind === "Interfaces" ? "Interface ID" : "Resource ID";
+        const ownership = panel?.querySelector('[role="group"][aria-label="Owner"]')?.textContent;
+        return panel?.querySelector(`[role="group"][aria-label="${idField}"]`)?.textContent?.includes(recordId) === true
+          && ownership?.includes(recordOwner.value ?? "Unknown (null)") === true
+          && ownership.includes(recordOwner.status === "accepted" ? "Accepted (recorded)" : "Proposed");
+      }, id, owner, kind), `The installed viewer must inspect ${id} with its recorded owner`);
+      await this.session().$('button[aria-label="Back"]').click();
+      await waitFor(async () => (await this.session().$$(selector)).length === records.length,
+        "Back must restore the installed record catalog");
+    }
+    await this.session().$('button[aria-label="Close details"]').click();
   }
 
   async inspectEveryRule(rules: ReadonlyArray<readonly [string, string]>): Promise<void> {

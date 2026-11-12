@@ -71,7 +71,7 @@ Feature: Inspect recorded baseline details
     Given a rich baseline is open for record inspection
     And the <kind> record is open with a keyboard
     When the user closes the current record with Escape
-    Then focus returns to the <kind> inspection control
+    Then focus returns to the start of the <kind> inspection path
 
     Examples:
       | kind             |
