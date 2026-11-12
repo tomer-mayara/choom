@@ -5,6 +5,7 @@ import { componentPositions } from "./component-positions.ts";
 import type { InterfaceArc } from "./interface-arcs.ts";
 
 type Point = { x: number; y: number };
+export const interfaceArcMarkerSize = 12.5;
 export const interfaceArcHighlightedStroke = 3;
 export interface InterfaceArcRoute extends InterfaceArc {
   start: Point;

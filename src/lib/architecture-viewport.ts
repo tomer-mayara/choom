@@ -1,6 +1,18 @@
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "./architecture-layout.ts";
 import { componentControlHeight, componentControlWidth } from "./component-geometry.ts";
+import type { DrawingBounds } from "./architecture-bounds.ts";
+
+export const normalMinimumZoom = 0.01;
+export const maximumDiagramZoom = 2;
+
+export function fitDrawingBounds(bounds: DrawingBounds, width: number, height: number): { x: number; y: number; zoom: number } {
+  const padding = Math.min(24, width / 4, height / 4);
+  const zoom = Math.min(maximumDiagramZoom,
+    (width - padding * 2) / bounds.width, (height - padding * 2) / bounds.height);
+  return { x: width / 2 - (bounds.x + bounds.width / 2) * zoom,
+    y: height / 2 - (bounds.y + bounds.height / 2) * zoom, zoom };
+}
 
 /** Reveal focused content at the current zoom, or its start when it is larger than the canvas. */
 export function revealBounds(

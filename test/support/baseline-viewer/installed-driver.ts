@@ -7,6 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import type { World } from "@cucumber/cucumber";
 import { Key, remote, type Browser } from "webdriverio";
+import { expectInstalledUnknownConsumers, inspectAndArrangeInstalledArcs } from "./installed-arcs.ts";
 
 const run = promisify(execFile);
 
@@ -476,6 +477,10 @@ export class InstalledBaselineDriver {
     await waitFor(async () => !(await this.session().$('[role="dialog"]').isExisting()),
       "The installed Rules panel must close");
   }
+
+  async inspectAndArrangeArcs() { return inspectAndArrangeInstalledArcs(this.session(), this.world); }
+
+  async expectUnknownConsumers(): Promise<void> { await expectInstalledUnknownConsumers(this.session()); }
 
   async view() {
     return this.session().execute(() => {

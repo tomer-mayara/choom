@@ -142,14 +142,16 @@ its starting positions and bounds. Escape cancels the drag before it can close
 inspection. Releasing a drag never selects a component. A later event from a
 cancelled gesture or replaced view cannot change the current view.
 
-**Reset layout** ends any held component press or drag, restores the prepared initial
+**Reset layout** ends any held press or drag, restores the prepared initial
 positions and bounds, and applies the normal 100% starting view using the current
-canvas size. Late events from that component gesture cannot undo the reset or select another record.
+canvas size. Late pointer events cannot undo the reset or select another record.
 Reset keeps the same view owner, inspected record, Back path, and panel scroll
 position. Its announcement replaces any old keyboard movement coordinates with
 **Layout reset.** It does not reread the file or run layout. Repeated resets have the
 same result. **Fit view** changes only the camera to include all shown component
-bounds, including components outside the viewport. It uses the canvas beside
+bounds, arc curves, arrowheads, and labels, including items outside the viewport.
+It can zoom below 1% for a widely spread arrangement. Zoom controls remain
+consistent with the fitted scale. It uses the canvas beside
 or above the panel and preserves manual geometry. Neither action runs on resize.
 
 The published baseline/layout pair stays immutable. Its viewer-owned arrangement

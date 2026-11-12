@@ -1,7 +1,7 @@
 # Baseline viewer readability plan
 
 Status: **BR-01 to BR-04 are merged, with CI checked after each merge. BR-05
-remains planned. BR-07A to BR-07C are implemented. BR-07D remains planned.
+remains planned. BR-07A to BR-07D are implemented and verified locally.
 BR-07 replaces BR-06.**
 
 Reviewed: **2026-11-12**
@@ -23,6 +23,8 @@ are requirements, not test results. See the
 [verification record](../change-requests/BR-readability-evidence.md) for completed
 checks and platform limits. That record describes checks made before the stack
 merged; its draft-PR wording is historical. The status above is current.
+See the [BR-07 verification record](../change-requests/BR-interface-arcs-evidence.md)
+for interface-arc implementation checks.
 
 ## Problem in the starting view
 
@@ -41,8 +43,7 @@ and resizing fitted the whole diagram again.
 | Merged | BR-01 to BR-04 | Side-panel inspection, a compact component overview, movement, and reset. |
 | Follow-up | BR-05 | Expand and collapse component groups. |
 | Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
-| Implemented | BR-07A to BR-07C | Interface arcs, unknown-endpoint explanations, and arc inspection. |
-| Planned | BR-07D | Complete-drawing Fit and remaining view-lifetime checks. |
+| Implemented and verified locally | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
@@ -545,9 +546,10 @@ not apply to BR-07.
 
 ### BR-07: Use interface arcs between components
 
-**BR-07A to BR-07C are implemented; BR-07D remains planned.** This is their
-umbrella. The expanded tickets below retain their acceptance and implementation
-requirements.
+**Implemented and verified locally.** This is the umbrella for BR-07A to BR-07D.
+See the [verification record](../change-requests/BR-interface-arcs-evidence.md)
+for results, source identity, measurements, and platform limits. The expanded
+tickets below retain their acceptance and implementation requirements.
 Each begins with its own acceptance test. The `@br-07` tag selects their combined
 acceptance.
 

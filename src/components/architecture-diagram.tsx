@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FocusEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FocusEvent, type RefObject } from "react";
 import {
   Background, ControlButton, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore, useStoreApi, type Node, type NodeProps,
 } from "@xyflow/react";
@@ -6,12 +6,13 @@ import { RotateCcw } from "lucide-react";
 import type { BaselineComponent, Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
-import { revealHeader, startingViewport } from "../lib/architecture-viewport.ts";
+import { maximumDiagramZoom, normalMinimumZoom, revealHeader, startingViewport } from "../lib/architecture-viewport.ts";
 import { componentControlHeight, componentControlWidth, componentGroupBorderWidth } from "../lib/component-geometry.ts";
 import { ComponentArrangement } from "../lib/component-arrangement.ts";
 import { incompleteInterfaceCount, interfaceArcs } from "../lib/interface-arcs.ts";
-import { routeInterfaceArcs } from "../lib/interface-arc-geometry.ts";
+import { interfaceArcMarkerSize, routeInterfaceArcs } from "../lib/interface-arc-geometry.ts";
 import { InterfaceArc, type InterfaceEdge } from "./interface-arc.tsx";
+import { FitDrawingControl } from "./fit-drawing-control.tsx";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 import { ArchitectureDetailsPanel } from "./architecture-inspector.tsx";
 import { useArchitectureInspection } from "./use-architecture-inspection.ts";
@@ -30,7 +31,6 @@ type ArchitectureNode = Node<{
   inspect: (panel: ArchitecturePanel, opener: HTMLElement, keyboard: boolean) => void;
 }, "item">;
 
-const fitOptions = { minZoom: 0.01 };
 const arrowSteps: Record<string, { x: number; y: number }> = {
   ArrowLeft: { x: -10, y: 0 }, ArrowRight: { x: 10, y: 0 }, ArrowUp: { x: 0, y: -10 }, ArrowDown: { x: 0, y: 10 },
 };
@@ -122,15 +122,19 @@ function StartPreparedDiagram({ layout, firstRootId, arrangement }: {
   return null;
 }
 
-function ResetLayoutControl({ layout, firstRootId, arrangement, gestures, announce }: {
+function ResetLayoutControl({ layout, firstRootId, arrangement, gestures, announce, setMinimumZoom, pressGeneration }: {
   layout: ReadonlyData<ArchitectureLayout>; firstRootId: string;
   arrangement: ComponentArrangement; gestures: ComponentGestures; announce: (message: string) => void;
+  setMinimumZoom: (zoom: number) => void;
+  pressGeneration: RefObject<number>;
 }) {
   const { setViewport } = useReactFlow();
   const store = useStoreApi();
   return <ControlButton type="button" title="Reset layout" aria-label="Reset layout" onClick={() => {
     gestures.cancel();
+    pressGeneration.current += 1;
     arrangement.reset();
+    setMinimumZoom(normalMinimumZoom);
     const { domNode, width, height } = store.getState();
     const bounds = domNode?.getBoundingClientRect();
     void setViewport(startingViewport(layout, firstRootId, bounds?.width || width, bounds?.height || height));
@@ -144,6 +148,12 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
 }) {
   const geometry = useSyncExternalStore(arrangement.subscribe, arrangement.getSnapshot);
   const gestures = useComponentGestures(arrangement);
+  const pressGeneration = useRef(0);
+  const [zoomRange, setZoomRange] = useState<{ owner: ComponentArrangement; minimum: number } | null>(null);
+  const minimumZoom = zoomRange?.owner === arrangement ? zoomRange.minimum : normalMinimumZoom;
+  const setMinimumZoom = useCallback((zoom: number) => {
+    setZoomRange({ owner: arrangement, minimum: Math.min(normalMinimumZoom, zoom) });
+  }, [arrangement]);
   const [announcement, setAnnouncement] = useState<{ owner: ComponentArrangement; text: string } | null>(null);
   const announce = useCallback((text: string) => { setAnnouncement({ owner: arrangement, text }); }, [arrangement]);
   const firstRootId = baseline.components.find(({ parent }) => !parent?.value)?.id;
@@ -171,8 +181,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
       if (!data) throw new Error("The prepared diagram has an unknown item.");
       return {
         id, type: "item", data, position: { ...position }, zIndex: 1,
-        // Explicit handles need current dimensions for React Flow's queued Fit.
-        width, height, measured: { width, height }, ...(parentId ? { parentId } : {}),
+        width, height, ...(parentId ? { parentId } : {}),
         handles: [
           { type: "source", position: Position.Bottom, x: componentControlWidth / 2, y: componentControlHeight },
           { type: "target", position: Position.Bottom, x: componentControlWidth / 2, y: componentControlHeight },
@@ -181,7 +190,6 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
       };
     });
   }, [geometry, items]);
-
   const edges = useMemo<InterfaceEdge[]>(() => {
     const names = new Map(baseline.interfaces.map(({ id, name }) => [id, name]));
     const components = new Map(baseline.components.map(({ id, name }) => [id, name]));
@@ -194,9 +202,10 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
         : panel?.kind === "component" ? route.consumerId === panel.componentId || route.ownerId === panel.componentId : null;
       const emphasis = relevant === null ? "normal" : relevant ? "highlighted" : "dimmed";
       return { id: route.id, source: route.consumerId, target: route.ownerId, type: "interface",
-        domAttributes: { "aria-hidden": true }, markerEnd: { type: MarkerType.ArrowClosed, color: "var(--foreground)" },
+        domAttributes: { "aria-hidden": true },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "var(--foreground)", width: interfaceArcMarkerSize, height: interfaceArcMarkerSize },
         data: { route, name, accessibleName: `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}`,
-          inspect: inspection.open, view: arrangement, emphasis, labelOrder: connections.labelOrder },
+          inspect: inspection.open, view: arrangement, pressGeneration, emphasis, labelOrder: connections.labelOrder },
       };
     });
   }, [baseline, connections, geometry, inspection.open, inspection.panel, arrangement]);
@@ -204,13 +213,14 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card" aria-label="Architecture diagram">
     {edges.length > 0 ? <p className="shrink-0 border-b border-border px-3 py-1 text-xs text-muted-foreground">Arrow: consumer may use the owner's interface.</p> : null}
     <div className="min-h-0 flex-1">
-    <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} minZoom={fitOptions.minZoom}
+    <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} minZoom={minimumZoom} maxZoom={maximumDiagramZoom}
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} zIndexMode="manual"
       edgesFocusable={false} elementsSelectable={false} zoomOnDoubleClick={false}>
       <Background />
-      <Controls showInteractive={false} fitViewOptions={fitOptions}>
+      <Controls showInteractive={false} showFitView={false}>
+        <FitDrawingControl geometry={geometry} arcs={edges.flatMap(({ data }) => data ? [data.route] : [])} setMinimumZoom={setMinimumZoom} />
         {firstRootId ? <ResetLayoutControl layout={layout} firstRootId={firstRootId}
-          arrangement={arrangement} gestures={gestures} announce={announce} /> : null}
+          arrangement={arrangement} gestures={gestures} announce={announce} setMinimumZoom={setMinimumZoom} pressGeneration={pressGeneration} /> : null}
       </Controls>
       {firstRootId ? <StartPreparedDiagram layout={layout} firstRootId={firstRootId} arrangement={arrangement} /> : null}
     </ReactFlow>

@@ -20,6 +20,8 @@ completed checks and platform limits.
 The [readability plan](docs/design/cr-baseline-viewer-readability-plan.md) and
 [readability checks](docs/change-requests/BR-readability-evidence.md) cover the
 component overview, side panel, interface arcs, movement, and layout controls.
+The [interface-arc checks](docs/change-requests/BR-interface-arcs-evidence.md)
+record BR-07 acceptance and its platform limits.
 
 The [manual analysis design](docs/design/llm-led-architecture-analysis.md) and
 [producer cookbook](docs/design/app-a/start-here.md) describe a separate workflow
@@ -67,7 +69,7 @@ record the tested workloads, timings, and limits.
 
 The drawing starts at 100% zoom. If all components fit, it centers them. Otherwise,
 it starts with the first root component in view. Pan to reach the rest, or use
-**Fit view** to see all components at a smaller scale. Interface and resource
+**Fit view** to see the whole drawing at a smaller scale. Interface and resource
 records stay in the panel. A labelled arrow connects each recorded allowed
 consumer to the component that owns the interface. It means the consumer may
 use that interface; it does not claim that a call occurs. Several consumers
@@ -77,8 +79,9 @@ Choom draws an arc only when both its owner and allowed consumers are known.
 It does not infer consumers. A note identifies interfaces with missing endpoint
 facts; their full records remain in **Baseline details**. The reviewed
 `full.yaml` fixture has eight unknown consumer lists, so it shows the note and
-no arcs. Arc labels keep the full interface and endpoint names available to
-assistive tools.
+no arcs. To try the arc view, open the separate
+[known-consumer example](test/fixtures/baseline-viewer/installed-known-consumers.yaml).
+It includes two consumers of one interface and an interface used by its own owner.
 
 Select a component or group header once to inspect it. With a keyboard, focus the
 control and press **Enter** or **Space**. The side panel keeps the canvas usable;
@@ -101,9 +104,9 @@ starts a fresh arrangement, including reopening the same file. Closing and
 reopening the example also starts fresh. No arrangement is saved to disk.
 
 **Fit view** changes only pan and zoom to show the current arrangement, including
-components outside the view. **Reset layout** restores the initial positions and
+components, arcs, arrowheads, and labels outside the view. **Reset layout** restores the initial positions and
 group bounds at 100% zoom. It keeps the current inspection and its Back path.
-Reset also ends a held component press or drag. Both controls use the available canvas
+Reset also ends a held press or drag. Both controls use the available canvas
 beside or above the panel; they are absent when there are no components.
 
 Component inspection lists directly owned interfaces. Select a list entry to
@@ -212,7 +215,7 @@ bun run test:e2e --tags @br-04
 Run the focused interface-arc checks with:
 
 ```sh
-bun test ./test/unit/lib/interface-*.test.ts
+bun test ./test/unit/lib/interface-*.test.ts ./test/unit/lib/architecture-bounds.test.ts ./test/unit/lib/architecture-viewport.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/interface-*.test.tsx
 bun run test:e2e --tags @br-07
 ```

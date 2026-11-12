@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import { baselineExample } from "../../support/baseline-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { interfaceArcBaseline } from "../../support/interface-arc-fixtures.ts";
@@ -33,19 +33,4 @@ test("bounded labels retain full interface and endpoint identities even when nam
     expect(label.style.maxWidth).toBe("240px");
     expect(label.querySelector("span")?.className).toContain("line-clamp-2");
   }
-});
-
-test("component Fit completes after a controlled move instead of waiting for Reset", async () => {
-  const baseline = baselineExample();
-  const layout = { nodes: baseline.components.map(({ id }, index) => ({ id, position: { x: index * 300, y: 24 }, width: 240, height: 88 })) };
-  const canvas = await renderDiagramWithViewport(baseline, layout);
-  fireEvent.keyDown(screen.getByRole("button", { name: "Checkout, checkout" }), { key: "ArrowRight" });
-  await act(async () => { await canvas.setViewport({ x: 1000, y: 1000, zoom: 1 }); });
-  fireEvent.click(screen.getByRole("button", { name: "Fit View" }));
-  await waitFor(() => expect(canvas.getViewport().x).toBeLessThan(500));
-  const fitted = canvas.getViewport();
-  expect(fitted.x + 540 * fitted.zoom).toBeLessThanOrEqual(500);
-  expect(fitted.y + 112 * fitted.zoom).toBeLessThanOrEqual(500);
-  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Reset layout" })); });
-  expect(canvas.getViewport().zoom).toBe(1);
 });
