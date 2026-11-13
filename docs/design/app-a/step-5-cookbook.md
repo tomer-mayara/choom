@@ -36,6 +36,8 @@ node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" start
 
 The helper requires completed component recovery and its published working
 drafts. The baseline must still be proposed, before Stage 6 saves a fixed version.
+Version 1 and version 2 inputs are supported. Use version 2 to preserve or add
+the [interface documentation](record-format.md#version-2-interface-documentation).
 It verifies the registered artifacts, the selected Stage 4 facts,
 the published draft pair, and every indexed snapshot file. It saves the three
 draft checkpoints, its tools, the cookbook, the query scope, and a handoff record.
@@ -99,6 +101,11 @@ Coverage describes saved source ranges. A `complete` range status means those
 ranges cover the file's text; it does not prove complete behavior analysis.
 Parser scans and newly collected excerpts do not count as LLM inspections.
 Keep current Stage 4 ranges separate from historical review records.
+For a source-reviewed example, cite its exact reviewed source record in the
+example's own content statement and add the matching located source note. A
+newly collected excerpt is not yet reviewed. Record each new null documentation
+fact with its exact discovery subject. Review example meaning before publication;
+the helper checks references and saved bytes, not what the example teaches.
 
 The initial excerpts select up to 20 indexed files by common README, package,
 component-manifest, compiler-config and test-setup filenames, in path order.
@@ -151,6 +158,16 @@ Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
 proposed. Retain an unknown owner with a specific reason where evidence is
 insufficient. Do not create a utilities group to eliminate unknowns.
+
+Use version 2 for structured interface documentation. For each function or
+method entry (`kind: function`), record a signature statement with its own
+status and evidence references. Copy the supported declaration with parameters
+and return type, without the body or opening brace. Do not invent types, void,
+defaults or parameters, or derive types from prose. If the complete declaration
+is unsupported, use a null signature and the exact discovery subject
+interface-id.documentation.entries.entry-id.signature. Keep known interaction
+facts separately. Omit signatures for other kinds. An absent signature means
+not recorded; a null signature means unknown.
 
 Preserve prior questions, gaps and evidence in this manual prototype. Append
 linked resolution notes when the new evidence answers part of an earlier

@@ -25,6 +25,197 @@ function list(value, label) {
   return value;
 }
 
+function fields(value, required, optional = []) {
+  return object(value) && required.every(key => Object.hasOwn(value, key)) &&
+    Object.keys(value).every(key => required.includes(key) || optional.includes(key));
+}
+
+function boundedText(value, bytes = 8192) {
+  return text(value) && Buffer.byteLength(value, 'utf8') <= bytes;
+}
+
+// The saved tools run outside the viewer. Keep its bounded YAML profile here too.
+// The caller supplies the trusted, pinned YAML module; no saved run code is loaded.
+export function readBaselineYaml(bytes, yaml) {
+  assert(bytes.length <= 16 * 1024 * 1024, 'Baseline exceeds the 16 MiB file limit.');
+  const input = bytes.toString('utf8');
+  assert(Buffer.from(input).equals(bytes), 'Baseline must use UTF-8.');
+  const { CST, Lexer, Parser, Composer, visit, isScalar } = yaml;
+  const nodeLimit = 250000;
+  const structure = () => { throw new Error('Baseline exceeds the YAML structure limit.'); };
+  const lines = /\r\n|[\r\n]/gu;
+  let lineCount = 0;
+  while (lines.test(input)) if (++lineCount > nodeLimit) structure();
+  let tokens = 0;
+  let commas = 0;
+  let scalar = false;
+  for (const token of new Lexer().lex(input)) {
+    assert(++tokens <= 1500000, 'Baseline exceeds the YAML token limit.');
+    if (!scalar && token === ',' && ++commas > nodeLimit) structure();
+    scalar = !scalar && token === CST.SCALAR;
+  }
+  const properties = items => assert(!items.some(item => ['anchor', 'tag'].includes(item.type)),
+    'Baseline YAML anchors and explicit tags are unsupported.');
+  let nodes = 0;
+  function inspect(token, depth) {
+    if (++nodes > nodeLimit) structure();
+    assert(!['alias', 'error'].includes(token?.type), 'Baseline YAML aliases and syntax errors are unsupported.');
+    if (!CST.isCollection(token)) {
+      if (token?.type !== 'block-scalar' || depth > 0)
+        CST.resolveAsScalar(token, true, () => { throw new Error('Invalid baseline YAML scalar.'); });
+      return;
+    }
+    if (depth >= 32) structure();
+    if (token.type === 'flow-collection') {
+      for (const [index, item] of token.items.entries()) {
+        const separators = item.start.filter(part => part.type === 'comma').length;
+        const empty = item.key === undefined && !item.sep && !item.value;
+        assert(!(separators > 1 || (index === 0 && separators > 0) ||
+          (index > 0 && !empty && separators === 0) || (empty && index < token.items.length - 1)),
+        'Invalid baseline YAML flow separators.');
+      }
+    }
+    const sequence = token.type === 'block-seq' ||
+      (token.type === 'flow-collection' && token.start.type === 'flow-seq-start');
+    for (const { start, key, sep, value } of token.items) {
+      properties(start);
+      if (sep) properties(sep);
+      if (key === undefined && !value && !start.some(item => item.type === 'seq-item-ind')) continue;
+      const implicitMap = sequence && key !== undefined;
+      if (implicitMap && (depth + 1 >= 32 || ++nodes > nodeLimit)) structure();
+      const nextDepth = depth + (implicitMap ? 2 : 1);
+      if (!sequence || implicitMap) inspect(key, nextDepth);
+      inspect(value, nextDepth);
+    }
+  }
+  function* checkedTokens() {
+    let documents = 0;
+    for (const token of new Parser().parse(input)) {
+      assert(!['directive', 'error'].includes(token.type), 'Baseline YAML directives and syntax errors are unsupported.');
+      if (token.type === 'document') {
+        assert(++documents === 1, 'Baseline must contain one YAML document.');
+        properties(token.start);
+        inspect(token.value, 0);
+      }
+      yield token;
+    }
+    assert(documents === 1, 'Baseline must contain one YAML document.');
+  }
+  const composer = new Composer({ schema: 'core', version: '1.2', strict: true, merge: false,
+    resolveKnownTags: false, uniqueKeys: false, prettyErrors: false });
+  const [document] = [...composer.compose(checkedTokens())];
+  assert(document && !document.errors.length && !document.warnings.length, 'Baseline must contain valid YAML.');
+  visit(document, {
+    Map: (_key, map) => {
+      const keys = new Set();
+      for (const { key } of map.items) {
+        assert(isScalar(key) && typeof key.value === 'string' && !keys.has(key.value),
+          'Baseline YAML mapping keys must be unique strings.');
+        keys.add(key.value);
+      }
+    },
+    Scalar: (_key, { value }) => assert(value === null || ['string', 'boolean'].includes(typeof value) ||
+      (typeof value === 'number' && Number.isFinite(value)), 'Baseline must contain JSON-compatible data.'),
+  });
+  return document.toJS({ maxAliasCount: 0 });
+}
+
+function validateDocumentation({ baseline, discovery, evidence, source, reviewedRanges }) {
+  const documents = baseline.interfaces.filter(item => Object.hasOwn(item, 'documentation'));
+  assert(Buffer.byteLength(JSON.stringify(documents.map(item => item.documentation)), 'utf8') <= 2 * 1024 * 1024,
+    'Interface documentation exceeds the 2 MiB byte limit.');
+  const unknowns = new Set([...discovery.questions, ...discovery.gaps].flatMap(issue => issue.subjectRefs));
+  const reviewed = new Set(reviewedRanges.map(record => record.id));
+  for (const item of documents) {
+    const citations = new Set();
+    const root = item.id + '.documentation';
+    const nullableText = (value, path) => value === null ? unknowns.has(path) : boundedText(value);
+    function statement(record, path, valid) {
+      assert(exact(record, ['value', 'status', 'evidenceRefs']) && record.status === 'proposed' &&
+        strings(record.evidenceRefs) && record.evidenceRefs.every(ref => boundedText(ref, 4096)), 'Invalid proposed documentation statement: ' + path);
+      evidence(record);
+      record.evidenceRefs.forEach(ref => citations.add(ref));
+      assert(valid(record.value, path), 'Invalid or unexplained documentation fact: ' + path);
+      return record.value;
+    }
+    for (const name of ['owner', 'publicAccess', 'allowedConsumers', 'promises'])
+      item[name]?.evidenceRefs?.forEach(ref => citations.add(ref));
+    const doc = item.documentation;
+    assert(exact(doc, ['summary', 'entries', 'sourceNotes']) && Array.isArray(doc.entries) &&
+      doc.entries.length <= 32 && Array.isArray(doc.sourceNotes), 'Invalid interface documentation: ' + item.id);
+    statement(doc.summary, root + '.summary', nullableText);
+    const entryIds = new Set();
+    const reviewedExamples = [];
+    for (const entry of doc.entries) {
+      const path = root + '.entries.' + entry?.id;
+      assert(fields(entry, ['id', 'name', 'accessPoint', 'kind', 'description', 'examples'], ['interaction', 'signature']) &&
+        plainId(entry.id) && boundedText(entry.id, 4096) && !entryIds.has(entry.id) && boundedText(entry.name) &&
+        boundedText(entry.accessPoint, 4096) && item.publicAccess.value?.includes(entry.accessPoint) &&
+        Array.isArray(entry.examples) && entry.examples.length <= 8, 'Invalid documentation entry: ' + path);
+      entryIds.add(entry.id);
+      const kind = statement(entry.kind, path + '.kind', (value, subject) => value === null ? unknowns.has(subject) :
+        ['function', 'command', 'type', 'data', 'message', 'workflow'].includes(value));
+      statement(entry.description, path + '.description', nullableText);
+      if (Object.hasOwn(entry, 'signature')) {
+        assert(kind === 'function', 'Signature requires a function or method entry: ' + path);
+        statement(entry.signature, path + '.signature', nullableText);
+      }
+      if (Object.hasOwn(entry, 'interaction')) {
+        assert(['function', 'command', 'workflow'].includes(kind), 'Interaction requires a callable or workflow entry: ' + path);
+        statement(entry.interaction, path + '.interaction', (value, subject) =>
+          exact(value, ['input', 'success', 'failures', 'effects']) &&
+          Object.entries(value).every(([key, fact]) => nullableText(fact, subject + '.' + key)));
+      }
+      const exampleIds = new Set();
+      for (const example of entry.examples) {
+        const subject = path + '.examples.' + example?.id;
+        assert(exact(example, ['id', 'name', 'basis', 'content']) && plainId(example.id) && boundedText(example.id, 4096) &&
+          !exampleIds.has(example.id) && boundedText(example.name) && ['illustrative', 'source-reviewed'].includes(example.basis),
+        'Invalid documented example: ' + subject);
+        exampleIds.add(example.id);
+        statement(example.content, subject + '.content', value => fields(value, ['text'], ['input', 'result']) &&
+          boundedText(value.text, 16384) && (!Object.hasOwn(value, 'input') || boundedText(value.input, 16384)) &&
+          (!Object.hasOwn(value, 'result') || (exact(value.result, ['text', 'summary', 'scope']) &&
+            boundedText(value.result.text, 16384) && boundedText(value.result.summary) &&
+            ['complete', 'excerpt'].includes(value.result.scope))));
+        if (example.basis === 'source-reviewed') reviewedExamples.push({ example, subject });
+      }
+    }
+    const located = new Set();
+    const notes = new Set();
+    for (const note of doc.sourceNotes) {
+      assert(fields(note, ['evidenceRef', 'description'], ['location']) && boundedText(note.evidenceRef, 4096) &&
+        citations.has(note.evidenceRef) && !notes.has(note.evidenceRef) && boundedText(note.description),
+      'Invalid source note: ' + item.id);
+      notes.add(note.evidenceRef);
+      if (!Object.hasOwn(note, 'location')) continue;
+      const location = note.location;
+      const record = source.records.get(note.evidenceRef);
+      assert(!note.evidenceRef.includes('#') && exact(location, ['snapshotRef', 'path', 'sha256', 'lines']) &&
+        boundedText(location.snapshotRef, 4096) &&
+        boundedText(location.path, 4096) && safe(location.path) && !/^[A-Za-z]:/.test(location.path) &&
+        /^[a-fA-F0-9]{64}$/.test(location.sha256) &&
+        Array.isArray(location.lines) && location.lines.length === 2 && location.lines.every(Number.isSafeInteger) &&
+        location.lines[0] > 0 && location.lines[1] >= location.lines[0] && record &&
+        same(location, { snapshotRef: record.snapshotRef, path: record.path, sha256: record.sha256, lines: record.lines }),
+      'Source note differs from its saved source record: ' + note.evidenceRef);
+      source.verify(record);
+      located.add(note.evidenceRef);
+    }
+    for (const { example, subject } of reviewedExamples)
+      assert(example.content.evidenceRefs.some(ref => reviewed.has(ref) && located.has(ref)),
+        'Source-reviewed example needs its own reviewed range and location note: ' + subject);
+  }
+}
+
+function validateDisplayLimits(baseline) {
+  assert(collectionKeys.reduce((sum, key) => sum + list(baseline[key], key).length, 0) <= 500,
+    'Baseline exceeds the 500-record display limit.');
+  const links = baseline.interfaces.reduce((sum, item) => sum + Number(item.owner?.value != null) +
+    (item.allowedConsumers?.value?.length ?? 0), 0) + baseline.resources.filter(item => item.owner?.value != null).length;
+  assert(links <= 2000, 'Baseline exceeds the 2,000-link display limit.');
+}
+
 function sourcesFor({ artifacts, document, snapshotRef, inventory, readSource }) {
   const records = new Map();
   const excerpts = [];
@@ -101,8 +292,9 @@ function sourcesFor({ artifacts, document, snapshotRef, inventory, readSource })
 }
 
 function validateBaseline({ baseline, discovery, claim, evidence }) {
-  assert(exact(baseline, ['formatVersion', 'id', 'parentId', ...collectionKeys]) && baseline.formatVersion === 1 &&
+  assert(exact(baseline, ['formatVersion', 'id', 'parentId', ...collectionKeys]) && [1, 2].includes(baseline.formatVersion) &&
     plainId(baseline.id) && baseline.parentId === null, 'Expected a first proposed baseline.');
+  validateDisplayLimits(baseline);
   const componentIds = new Set(list(baseline.components, 'components').map(item => item.id));
   assert(componentIds.size > 0 && componentIds.size === baseline.components.length, 'Missing or duplicate components.');
   const fields = {
@@ -117,19 +309,17 @@ function validateBaseline({ baseline, discovery, claim, evidence }) {
   const members = new Map();
   function selector(path) {
     const base = path.endsWith('/**') ? path.slice(0, -3) : path;
-    return safe(base) && !/[?*\[\]{}]/.test(base);
+    return safe(base) && !/^[A-Za-z]:/.test(base) && !/[?*\[\]{}]/.test(base);
   }
   for (const [key, required] of Object.entries(fields)) {
     for (const item of list(baseline[key], key)) {
-      const keys = key === 'components' && Object.hasOwn(item, 'parent') ? [...required, 'parent'] : required;
+      const keys = [...required,
+        ...(key === 'components' && Object.hasOwn(item, 'parent') ? ['parent'] : []),
+        ...(key === 'interfaces' && baseline.formatVersion === 2 && Object.hasOwn(item, 'documentation') ? ['documentation'] : [])];
       assert(exact(item, keys) && plainId(item.id) && text(item.name), 'Invalid baseline item: ' + item?.id);
       claim(item.id);
       for (const [name, statement] of Object.entries(item)) {
-        if (name === 'id' || name === 'name') continue;
-        if (statement === null) {
-          assert(name === 'parent' || unknown(item.id), 'Unexplained unknown intent: ' + item.id + '.' + name);
-          continue;
-        }
+        if (name === 'id' || name === 'name' || name === 'documentation') continue;
         assert(exact(statement, ['value', 'status', 'evidenceRefs']) && statement.status === 'proposed',
           'Only proposed intent is supported: ' + item.id + '.' + name);
         evidence(statement);
@@ -173,6 +363,7 @@ function validateBaseline({ baseline, discovery, claim, evidence }) {
     for (let parent = parents.get(id); parent !== null; parent = parents.get(parent)) {
       assert(!ancestors.has(parent), 'Component parent cycle: ' + id);
       ancestors.add(parent);
+      assert(ancestors.size <= 16, 'Baseline exceeds the 16-parent-level display limit.');
     }
   }
   return { componentIds, members };
@@ -330,6 +521,7 @@ export function validateRecords({ run, discovery, baseline, inventory, artifacts
   }
   const historyRefs = chain.slice(1).map(item => item.ref);
   const reviewedRanges = chain.flatMap(item => item.record.reviewedFiles);
+  validateDocumentation({ baseline, discovery, evidence, source, reviewedRanges });
   const reviewedPaths = new Set(reviewedRanges.map(item => item.path));
   assert(mapping.kind === 'code-mapping' && mapping.scope?.inventoryRef === run.snapshot.inventoryRef &&
     mapping.scope.basis === 'all-inventoried-regular-files' && mapping.scope.unitKind === 'file' &&

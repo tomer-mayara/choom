@@ -42,6 +42,12 @@ completed stage 3 inspection priorities, a selected entry analysis that supports
 Knip reuse, and an empty initial baseline. It saves checkpoints and copies the
 tools into the new attempt. Later evidence commands use these saved copies.
 The publication commands in section 6 use the matching trusted checkout helper.
+The input remains the empty version 1 seed. A proposal can use version 1 or
+version 2. Use version 2 for the structured
+[interface documentation](record-format.md#version-2-interface-documentation).
+Keep unknown facts explicit. Review a source range before claiming that it
+supports an example; a collected excerpt alone is insufficient. Check the full
+baseline against the reader limits before publication.
 
 Before creating the attempt, it also checks every indexed snapshot path, file
 type, and byte count. This catches missing or truncated input before the toolchain
@@ -279,6 +285,15 @@ Verify the registered inputs and proposed artifact digests before analysis.
 Use the stage 3 inspection priorities and the separate graph contexts.
 Request additional numbered source excerpts when needed.
 Recover the apparent intended architecture; do not recommend redesigns.
+Use version 2 for structured interface documentation. For each function or
+method entry (`kind: function`), record a signature statement with its own
+status and evidence references. Copy the supported declaration with parameters
+and return type, without the body or opening brace. Do not invent types, void,
+defaults or parameters, or derive types from prose. If the complete declaration
+is unsupported, use a null signature and the exact discovery subject
+interface-id.documentation.entries.entry-id.signature. Keep known interaction
+facts separately. Omit signatures for other kinds. An absent signature means
+not recorded; a null signature means unknown.
 Prepare the proposed baseline and the supporting discovery records described
 in step-4-cookbook.md. Keep the working drafts unchanged during review.
 ```

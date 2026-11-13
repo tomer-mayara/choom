@@ -62,10 +62,15 @@ described as future work beside a newly appended correction.
 
 ## Baseline
 
-Top-level fields are exactly `formatVersion: 1`, `id`, `parentId: null`,
+Top-level fields are exactly `formatVersion`, `id`, `parentId: null`,
 `components`, `interfaces`, `resources`, and `rules`. Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
+
+Stage 1 still creates the empty version 1 seed. Stages 4 and 5 can publish
+version 1 or version 2. Use `formatVersion: 2` when adding interface documentation.
+Version 1 does not permit the `documentation` field. Version 2 keeps all version
+1 fields and rules. Stage 6 validates either version and saves its exact bytes.
 
 An intent statement has exactly `value`, `status: proposed`, and `evidenceRefs`.
 Unknown intent uses `value: null` and a question or gap whose `subjectRefs`
@@ -75,7 +80,7 @@ Publication does not accept intent.
 | Collection | Exact item fields |
 | --- | --- |
 | `components` | `id`, `name`, `purpose`, `membership`, `groupingReason`; optional `parent`. |
-| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`. |
+| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; version 2 also permits `documentation`. |
 | `resources` | `id`, `name`, `identity`, `owner`, `accessRules`. |
 | `rules` | `id`, `name`, `subject`, `expected`, `check`. |
 
@@ -98,6 +103,170 @@ Publication does not accept intent.
 - Rule `subject`, `expected`, and `check` values are objects or null. State the
   affected entities, intended restriction, and proposed check method in those
   objects. A proposed check is not a passed tool result.
+
+### Version 2 interface documentation
+
+Documentation explains an interface to a reader. It does not replace its owner,
+public access, access policy, or promises. Do not rename allowed consumers as
+observed users. Source inspection does not prove that an example was executed.
+
+`documentation` has exactly `summary`, `entries`, and `sourceNotes`. All three
+fields are required when documentation is present. Missing documentation means
+that no structured documentation was supplied. Empty `entries` and `examples`
+arrays are valid; do not add placeholder entries or examples.
+
+`summary` is an intent statement whose value is nonempty text or null. Each
+entry has these fields:
+
+| Field | Value |
+| --- | --- |
+| `id`, `name` | A local ID and a readable name. Entry IDs are unique within this interface. |
+| `accessPoint` | One exact string from this interface's `publicAccess.value`. Do not infer a path or symbol. |
+| `kind` | A statement with value `function`, `command`, `type`, `data`, `message`, `workflow`, or null. |
+| `description` | A statement with nonempty text or null. |
+| `signature` | Optional statement, only for `kind: function`, including methods. Its value is the supported literal declaration with parameters and return type, or null. |
+| `interaction` | Optional statement, only for a function, command, or workflow. Its value is an object with exactly `input`, `success`, `failures`, and `effects`. Each fact is nonempty text or null. The object itself is not null. |
+| `examples` | An array of the example records below. |
+
+Use the same statement envelope as legacy intent: `value`, `status: proposed`,
+and nonempty `evidenceRefs`. `interaction` has one envelope for its four facts;
+do not wrap each fact separately. Entry and example IDs use the model ID syntax.
+They are local identifiers, not registered artifact or source IDs.
+
+Copy a function or method signature from its saved declaration or registered
+contract. Preserve parameter names, parameter types and the return type. Keep
+supported modifiers and defaults. Omit the body and its opening brace. Do not
+invent types, `void`, defaults or parameters, and do not derive types from prose.
+If the complete declaration cannot be supported, record `signature.value: null`
+and its exact gap subject. Keep supported interaction facts separately.
+An absent signature means not recorded; null means unknown. Omit signatures for
+all other entry kinds. The signature has its own status and evidence references;
+its sources need not be the same as the description's sources.
+
+Each example has exactly `id`, `name`, `basis`, and `content`. Its ID is unique
+within its entry. `basis` is `illustrative` or `source-reviewed`. `content` is
+one non-null statement. Its value has required nonempty `text`, optional nonempty
+`input` text, and an optional `result` object. A result has exactly nonempty `text`, nonempty
+`summary`, and `scope: complete` or `scope: excerpt`. Use `excerpt` for shortened
+output. Do not invent absent sample output or describe a source review as a run.
+
+A source note has `evidenceRef` and a nonempty `description`. It can also have
+`location`. Each note must name a reference cited by a statement in the same
+interface, including its legacy fields. One note per reference is allowed.
+An unlocated note can explain a registered artifact. A located note must name a
+direct source-record ID, without a JSON Pointer fragment. Its location has
+exactly `snapshotRef`, snapshot-relative `path`, `sha256`, and
+`lines: [first, last]`. Copy these values from that saved source record. The hash
+has 64 hexadecimal digits; line numbers are positive safe integers in order.
+Never substitute the live checkout, a matching filename, or a newly read range.
+
+For `basis: source-reviewed`, the example's own `content.evidenceRefs` must
+include a direct `reviewedFiles` record ID from the selected entry-analysis
+predecessor chain. The same interface must have a located source note for that
+ID. A collected excerpt, a graph reference, a source note alone, or an unrelated
+statement's citation does not establish review. The helper checks this link and
+the saved snapshot identity. The reviewer checks whether the cited lines support
+the example and any result. An `illustrative` example still needs support from a
+registered contract. If neither reviewed source nor a contract supports it, omit
+the example and keep the real gap.
+
+For each new unknown fact, add its exact field subject to a question or gap in
+the discovery. Use the entry ID, not an array index. For example:
+
+```text
+interface-id.documentation.summary
+interface-id.documentation.entries.entry-id.kind
+interface-id.documentation.entries.entry-id.description
+interface-id.documentation.entries.entry-id.signature
+interface-id.documentation.entries.entry-id.interaction.input
+```
+
+The interaction subject uses the fact name (`input`, `success`, `failures`, or
+`effects`) and omits the statement envelope's `value`. One issue can list several
+subjects. An interface-wide issue is not sufficient for these nested facts.
+Legacy unknown fields keep their existing subject rules. Omitted optional data
+and empty lists do not need invented gaps.
+
+This abbreviated shape shows the statement boundaries. Replace its illustrative
+IDs with this run's saved IDs and include all legacy interface fields in the
+complete proposal. The source reference must resolve in the saved run:
+
+```yaml
+documentation:
+  summary:
+    value: Decode and validate baseline YAML.
+    status: proposed
+    evidenceRefs: [saved-decoder-review]
+  entries:
+    - id: decode
+      name: Decode baseline YAML
+      accessPoint: src/lib/baseline-yaml.ts#decodeBaselineYaml
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs: [saved-decoder-review]
+      description:
+        value: Return a success or failure outcome for the supplied YAML text.
+        status: proposed
+        evidenceRefs: [saved-decoder-review]
+      signature:
+        value: "export function decodeBaselineYaml(text: string): DecodeBaselineOutcome"
+        status: proposed
+        evidenceRefs: [saved-decoder-review]
+      interaction:
+        value:
+          input: Baseline YAML text.
+          success: An outcome with the validated baseline and decoding duration.
+          failures: An outcome with a failure code and message.
+          effects: No file access.
+        status: proposed
+        evidenceRefs: [saved-decoder-review]
+      examples:
+        - id: valid-input
+          name: Decode supplied text
+          basis: illustrative
+          content:
+            value:
+              text: decodeBaselineYaml(text)
+            status: proposed
+            evidenceRefs: [saved-decoder-review]
+  sourceNotes:
+    - evidenceRef: saved-decoder-review
+      description: Saved decoder contract used for this explanation.
+```
+
+### Reader limits
+
+The publisher and Stage 6 use the viewer's bounded YAML profile before parsing
+the baseline. It permits one UTF-8 YAML document with JSON-compatible values.
+Aliases, anchors, explicit tags, directives, duplicate keys, non-string keys,
+and invalid flow separators are rejected. Limits are 16 MiB per baseline,
+32 YAML levels, 250,000 YAML nodes and line breaks, and 1,500,000 lexer tokens.
+
+The complete architecture permits at most 500 records, 2,000 explicit owner and
+consumer links, and 16 component levels. These are viewer limits, separate from
+the command readers' larger per-file ceilings. Stage 4 and 5 can read at most
+128 MiB per artifact; Stage 6 review files are limited to 16 MiB each. Those
+ceilings do not establish viewer compatibility.
+
+Documentation permits at most 32 entries per interface and 8 examples per entry.
+Names, descriptions, signatures, summary text, interaction facts, source-note
+descriptions, and result summaries each use at most 8 KiB of UTF-8. Example text,
+input and result text each use at most 16 KiB. New IDs, references, access points, snapshot
+references and paths each use at most 4,096 bytes. Required or supplied text must
+not be blank. Nullable facts use null rather than an empty string.
+
+The combined documentation limit is 2 MiB. Count UTF-8 bytes of
+`JSON.stringify` applied to the array of all present documentation objects, in
+interface order. Include array delimiters, metadata, punctuation and repeated
+values. Do not count only displayed text or deduplicate references for the limit.
+
+Before publishing, review the documentation's meaning with its exact saved
+source ranges. Keep the review in `llm/analysis-response.md`. The nine-file packet
+does not change. During tool development, check saved version 1 and new version
+2 proposals with the public reader and display boundary, and record those
+results outside the publication packet. Reader success does not replace source
+review or the publisher's provenance checks.
 
 ## Entry analysis
 

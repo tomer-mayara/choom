@@ -159,7 +159,7 @@ function readState(parse) {
     discovery.runRef === run.id && !Object.hasOwn(discovery, 'baselineRef') &&
     text(discovery.overview?.text) && Array.isArray(discovery.inspectedPaths),
   'Expected published Stage 4 discovery without a fixed baseline.');
-  assert(baseline?.formatVersion === 1 && text(baseline.id) && baseline.parentId === null &&
+  assert([1, 2].includes(baseline?.formatVersion) && text(baseline.id) && baseline.parentId === null &&
     ['components', 'interfaces', 'resources', 'rules'].every(key => Array.isArray(baseline[key])) && baseline.components.length > 0,
   'Expected the proposed working baseline.');
   const header = { formatVersion: 1, attemptId: id, runRef: run.id, snapshotRef: run.snapshot.id };

@@ -239,3 +239,62 @@ All four CI jobs passed on these updated heads:
 | --- | --- | --- |
 | [37](https://github.com/tomer-mayara/choom/pull/37) | `077026ab6e1f7e5e705ba48e804d246a99cfaf65` | [43521403660](https://github.com/tomer-mayara/choom/actions/runs/43521403660) |
 | [38](https://github.com/tomer-mayara/choom/pull/38) | `4edc237627cb4c3d92265d0fbc0f04070af50535` | [43521407254](https://github.com/tomer-mayara/choom/actions/runs/43521407254) |
+
+
+## BR-10E
+
+The separate producer supports version 2 documentation with the same shapes,
+UTF-8 limits and display limits as the reader. It keeps existing version 1
+records readable. Saved proposed statements need resolving evidence; unknown
+facts need their exact discovery subject. Source-reviewed examples need their
+own reviewed range and matching source note. Located notes retain the captured
+snapshot, path, hash and line range. No publisher turns an inference into an
+accepted claim.
+
+Both the Markdown prompts and actual Stage 4/5 emitted prompts request source-
+supported function declarations with parameters and return types. Signatures
+have their own statement and evidence. Missing types stay unknown; no type or
+parameter is inferred from prose. The shared publisher rejects wrong-kind
+signatures, missing metadata, unexplained nulls, unsupported references and
+excessive content before replacing drafts. Frozen tools and manifest-last
+publication remain intact. The bounded YAML reader also enforces the viewer's
+file, syntax and structure profile before publication.
+
+Command checks first demonstrated the old producer rejecting documented v2 and
+later rejecting the new signature key. Valid and invalid candidate artifacts
+then checked the corrected boundary. Checks include 22 documentation rejection
+cases, bounded YAML cases, 15 signature artifact cases and six signature cases
+through the ordinary publisher. Rejections left working drafts unchanged.
+These are command/artifact checks for external tools, not product unit tests.
+
+Manager review corrected two semantic issues that schema checks cannot detect:
+the exported schema object had initially been classified as a function, and
+a later starter-value description claimed startup behavior unsupported by its
+source. It is now a data entry, and its description only says it supplies an
+example baseline value. Each correction used a fresh run. Prior completed runs,
+fixed baselines, and their tool pins were preserved.
+
+The final demonstration is a replay of the captured analysis snapshot, not a
+new analysis of the BR-10 implementation. The normal Stage 4→5→6 sequence
+completed in `/Users/tomermayara/.codex/tmp/choom-br10e-flow-006/`. It inspected six
+dependency contexts and the saved 40 Stage 4 plus 89 Stage 5 source requests.
+Final verification checked 1,191 artifacts, 280 snapshot files and 272 source
+records, resolved 3,984 references, and reported `writes: []`. The manager reran
+that read-only verification successfully.
+
+Final baseline: `baselines/baseline-003/baseline.yaml` in that run. It is 46,990
+bytes, SHA-256 `cc16625927985c9cc05e85ed9152ad5d0d24ffaa040663cbb9a7007eaf34adda`.
+All four publication copies are byte-identical. Its literal declaration is
+`export function decodeBaselineYaml(text: string): DecodeBaselineOutcome`.
+The manager checked it against captured `src/lib/baseline-yaml.ts:6` and inspected
+its rendering and source location through the normal browser file control.
+New v2 with a signature, prior v2 without one, and original v1 pass the current
+public decoder and display boundary. F commits a byte-identical published fixture
+and checks the installed route.
+
+Five changed script syntax checks, 45 relative Markdown links, and whitespace
+checks passed. The complete candidate's existing build/type/Habit Hooks checks
+also include these unchanged ten app-a files. The original analysis run and its
+input copy still match across all 1,755 files. All 96 pre-existing original
+checkout documents also retain their saved hashes. Unrelated BR-09 work remains
+in its original checkout.

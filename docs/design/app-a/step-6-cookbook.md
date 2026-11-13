@@ -12,6 +12,14 @@ artifact is an error, not a coverage gap that the helper can ignore.
 The helper supports this Mode A first-baseline profile: retained Knip inputs
 and completed dependency graphs with explicit partial coverage. Other result
 formats need a separate validator.
+Baseline versions 1 and 2 use the same shared record checks as Stages 4 and 5.
+For version 2, review each documented entry, example, source note and exact
+unknown-field subject against the
+[record contract](record-format.md#version-2-interface-documentation). A
+source-reviewed example means that its cited saved lines were reviewed; it does
+not mean the example ran. Stage 6 checks the complete viewer bounds and preserves
+the published baseline bytes. It does not fill missing documentation or migrate
+an older baseline.
 
 ## Contents
 
@@ -61,6 +69,15 @@ Check whether the overview, proposed memberships and inspected paths agree
 with their cited evidence. Distinguish source ownership, runtime resource
 ownership, test placement and source inspection. Keep observations separate
 from intended access policy. Preserve unknown owners and partial coverage.
+
+Check each documented function or method signature against its cited saved
+source or registered contract. It must preserve the supported declaration's
+parameters and return type, without a body or opening brace. Do not accept
+invented types, void, defaults or parameters, or types derived from prose.
+Signatures are only for kind: function. An absent signature means not recorded;
+a null signature means unknown and needs the exact discovery subject
+interface-id.documentation.entries.entry-id.signature. An unsupported complete
+signature must remain unknown; known interaction facts can remain separate.
 
 Check that earlier questions, gaps and resolutions remain understandable.
 A historical gap can remain unchanged when a linked later note explains what
