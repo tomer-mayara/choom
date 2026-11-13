@@ -215,6 +215,17 @@ data, and message entries have no invented call contract. Rich entry details put
 the unchanged general promises in Interface-wide contract. Access rule resolves
 component names, keeps self-use, and distinguishes permission from activity.
 
+A function or method can record a Signature. The selected entry shows its exact
+declaration, including parameters and return type, near the entry name. Code text
+keeps line breaks and wraps within the panel. Choom does not parse, infer, or run
+it. A missing statement reads **Signature not recorded.** A null statement reads
+**Signature is unknown.** Other entry kinds have no Signature block. A recorded
+signature keeps its own status. Its evidence and acceptance reference appear in
+Sources under `interface-id.documentation.entries.entry-id.signature`, including
+notes cited only by that signature. A signature alone does not replace the
+general behavior, so the legacy contract stays visible when the description and
+interaction are absent. Original record keeps the complete signature statement.
+
 Overview, Example, and Sources use standard keyboard tabs in the existing inspector width.
 Sources starts with saved note descriptions and exact supplied source locations.
 A missing location stays missing. Recorded statements retains each field path,

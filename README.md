@@ -143,7 +143,11 @@ Interface inspection starts with **Overview**. It names the provider and shows
 the saved contract as readable text. Version 1 promises appear as **Behavior**,
 **Data exchanged**, **Failures**, and **What changes and when it ends**. Version 2
 can add named entries and explicit interaction facts. Select an entry to read
-its own description. A type or data entry does not acquire invented call details.
+its own description. A function or method can show a saved **Signature**, including
+its parameters and return type. Choom shows the exact declaration and its own
+recorded status. **Signature not recorded.** and **Signature is unknown.** are
+different states. Other entry kinds do not show a Signature block. A type or data
+entry does not acquire invented call details.
 Unknown facts stay unknown. **Access rule** lists permitted components; it does
 not report actual calls or runtime authorization. Use arrow keys, Home, or End
 to change tabs. A direct interface selection starts a fresh Overview.

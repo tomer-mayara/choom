@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { projectInterfaceSources } from "../../../src/lib/interface-provenance.ts";
 import { baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { interfaceSourceFixture } from "../../support/interface-source-fixtures.ts";
+import { baselineWithSignature } from "../../support/interface-documentation-fixtures.ts";
 
 const prefix = "invoice-api.";
 const paths = ["owner", "publicAccess", "allowedConsumers", "promises", "documentation.summary",
@@ -55,4 +56,19 @@ test("legacy null statements keep metadata without invented notes or locations",
   expect(view.statements.map(({ path }) => path)).toEqual(paths.slice(0, 4).map((path) => prefix + path));
   expect(view.notes).toEqual([]);
   expect(view.references.map(({ id }) => id)).toEqual(["missing-evidence#/items/0", "missing-evidence#/items/1"]);
+});
+
+test("a signature keeps its own metadata, citing path, and signature-only source note", () => {
+  const { input, entry } = baselineWithSignature();
+  const item = fixtureItem(input.interfaces);
+  const original = structuredClone(item);
+  const view = projectInterfaceSources(item);
+  const path = prefix + "documentation.entries.create-invoice.signature";
+  expect(view.statements.find((statement) => statement.path === path)).toEqual({
+    path, label: "Create invoice: signature", status: "accepted", evidenceRefs: ["invoice-declaration"],
+    acceptanceRef: entry.signature.acceptanceRef,
+  });
+  expect(view.references.find(({ id }) => id === "invoice-declaration")?.statements.map(({ path }) => path)).toEqual([path]);
+  expect(view.notes.find(({ note }) => note.evidenceRef === "invoice-declaration")?.statements.map(({ path }) => path)).toEqual([path]);
+  expect(item).toEqual(original);
 });

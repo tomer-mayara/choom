@@ -97,7 +97,8 @@ artifact, which retains the same Sources contract. The B follow-up commit
 contains only those two helper changes and this evidence; its new CI run checks
 the exact B snapshot independently of C.
 
-[PR 38](https://github.com/tomer-mayara/choom/pull/38) remains a draft at
+Before the signature restack, [PR 38](https://github.com/tomer-mayara/choom/pull/38)
+was checked at
 `cf0242cb973fc55391a896007ccbd82e95871e92`.
 [CI run 43513816522](https://github.com/tomer-mayara/choom/actions/runs/43513816522)
 passed all four jobs, including full browser acceptance and the Linux installed
@@ -141,7 +142,8 @@ wide/narrow screenshots. Overview/Sources disclosure persistence remains D's
 scope; installed clipboard behavior remains F's scope. The inspector width,
 graph navigation, source-file behavior, and baseline bytes are unchanged.
 
-[PR 39](https://github.com/tomer-mayara/choom/pull/39) is a draft at
+Before the signature restack, [PR 39](https://github.com/tomer-mayara/choom/pull/39)
+was checked at
 `a7f8e32ce6767efbfa86bc143882d410a6e29281`.
 [CI run 43515327307](https://github.com/tomer-mayara/choom/actions/runs/43515327307)
 passed all four jobs, including full browser and Linux installed acceptance.
@@ -203,3 +205,37 @@ app's current light palette; this is not a dark-theme claim.
 
 These D results precede the signature UI follow-up. Its checks and the final
 installed-app and reader checks are recorded below when complete.
+
+
+### Signature display and restacked validation
+
+A valid signature baseline first loaded through the browser file control, then
+failed at the missing Signature block. Focused UI and projection tests failed
+before the declaration display and common statement traversal were added. The
+selected function now shows its literal declaration, parameters, and return
+type. Unknown and missing signatures have different messages; other entry kinds
+have no method-signature block. Signature-only evidence, independent status,
+acceptance reference, and Original record are retained.
+
+Manager review caught a reading-order issue in the first implementation: a
+signature alone hid the existing general behavior. A failing characterization
+captured it. The older prose now stays visible until a saved description or
+known interaction supplies explanatory detail.
+
+All 68 BR-10 browser scenarios / 466 steps passed after the signature change.
+The final nine signature scenarios / 65 steps also passed with a stronger real
+mouse-wheel check: readers can bring the return type into view below the sticky
+tabs at narrow and short sizes. Long literal declarations remain wrapped, retain
+their exact text, and cause no source request or navigation. The full check
+passed 274 native tests, 209 DOM tests, 30 native constraints / 93 steps, and 41
+interface tests. Build, types, code hygiene and Habit Hooks passed; the snooze
+file is empty. The manager inspected the code and actual wide/narrow/short
+rendered panels. Final assembled acceptance is recorded in BR-10F below.
+
+The contract addition was restacked without changing the B/C behavior patches.
+All four CI jobs passed on these updated heads:
+
+| PR | Head | CI |
+| --- | --- | --- |
+| [37](https://github.com/tomer-mayara/choom/pull/37) | `077026ab6e1f7e5e705ba48e804d246a99cfaf65` | [43521403660](https://github.com/tomer-mayara/choom/actions/runs/43521403660) |
+| [38](https://github.com/tomer-mayara/choom/pull/38) | `4edc237627cb4c3d92265d0fbc0f04070af50535` | [43521407254](https://github.com/tomer-mayara/choom/actions/runs/43521407254) |

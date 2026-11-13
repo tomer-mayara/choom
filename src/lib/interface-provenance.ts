@@ -25,6 +25,7 @@ export function interfaceSourceStatements(item: ReadonlyData<BaselineInterface>)
       const name = docs.entries.some((other) => other.id !== entry.id && other.name === entry.name) ? `${entry.name} (${entry.id})` : entry.name;
       add(`${path}.kind`, `${name}: kind`, entry.kind);
       add(`${path}.description`, `${name}: description`, entry.description);
+      if (entry.signature) add(`${path}.signature`, `${name}: signature`, entry.signature);
       if (entry.interaction) add(`${path}.interaction`, `${name}: interaction`, entry.interaction);
       for (const example of entry.examples) {
         const exampleName = entry.examples.some((other) => other.id !== example.id && other.name === example.name)

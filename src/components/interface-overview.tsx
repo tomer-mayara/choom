@@ -76,10 +76,23 @@ function EntryInteraction({ entry }: { entry: Entry }) {
   </div>;
 }
 
+function EntrySignature({ entry }: { entry: Entry }) {
+  if (entry.kind.value !== "function") return null;
+  const signature = entry.signature;
+  return <Fact name="Signature">
+    {!signature ? <p>Signature not recorded.</p> : <>
+      {signature.value === null ? <p>Signature is unknown.</p>
+        : <pre className="rounded-md bg-muted p-3 whitespace-pre-wrap wrap-anywhere"><code>{signature.value}</code></pre>}
+      <RecordedStatus status={signature.status} />
+    </>}
+  </Fact>;
+}
+
 function EntryDetails({ entry, duplicateName }: { entry: Entry; duplicateName: boolean }) {
   return <section aria-label="Selected entry" className="space-y-4 rounded-lg border border-border p-3">
     <h3 className="font-semibold">{entry.name}</h3>
     {duplicateName ? <code className="block text-xs text-muted-foreground">{entry.id}</code> : null}
+    <EntrySignature entry={entry} />
     <Fact name="Entry reference"><code className="wrap-anywhere">{entry.accessPoint}</code></Fact>
     <Fact name="Kind"><p>{entry.kind.value ?? "Kind is unknown."}</p><RecordedStatus status={entry.kind.status} /></Fact>
     <Fact name="Description"><p className="whitespace-pre-wrap">{entry.description.value ?? "Description is unknown."}</p><RecordedStatus status={entry.description.status} /></Fact>
