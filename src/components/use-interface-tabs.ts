@@ -8,7 +8,7 @@ export function revealInterfaceFocus(content: HTMLDivElement) {
   const tabs = content.querySelector('[role="tablist"]');
   const inset = content.clientTop + (Number.parseFloat(getComputedStyle(content).paddingTop) || 0);
   const top = area.top + inset + (tabs?.contains(active) ? 0 : tabs?.getBoundingClientRect().height ?? 0);
-  // A short panel must not restore or reset past the control that still has focus.
+  // Keep the focused control below sticky tabs and inside this reading area.
   if (control.top < top || control.bottom > area.bottom) content.scrollTop += control.top - top;
 }
 

@@ -13,6 +13,7 @@ const expect = browserExpect.configure({ timeout: 2_000 });
 interface SourcesWorld extends World {
   page?: Page; sourceDirectory?: string; sourceFile?: string; sourceUrl?: string; sourceRequests?: string[];
   sourceTextPercent?: number; sourceExampleScroll?: number; sourceListScroll?: number;
+  sourcePointerPress?: { before: number; after: number };
   sourceDrawing?: Awaited<ReturnType<typeof drawing>>; sourceComponentArcs?: string[];
 }
 function page(world: SourcesWorld): Page { assert.ok(world.page); return world.page; }
@@ -213,6 +214,51 @@ Then("source controls stay visible and the page has no horizontal overflow", asy
   await focusedVisible(this, sources(this).locator("details[data-section='original-interface-record'] summary"));
   const size = await page(this).evaluate(() => ({ width: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
   assert.ok(size.content <= size.width, JSON.stringify(size));
+});
+When("the user returns from Detailed result to the first example with Shift Tab", async function (this: SourcesWorld) {
+  await panel(this).getByRole("tab", { name: "Example", exact: true }).click();
+  const result = examples(this).locator("details[data-section='example-result'] summary");
+  for (let step = 0; step < 8 && !await result.evaluate((element) => element === document.activeElement); step++) await page(this).keyboard.press("Tab");
+  await expect(result).toBeFocused();
+  const first = examples(this).getByRole("button", { name: "A valid order, valid-order", exact: true });
+  for (let step = 0; step < 6 && !await first.evaluate((element) => element === document.activeElement); step++) {
+    await page(this).keyboard.press("Shift+Tab");
+    await focusedVisible(this, page(this).locator(":focus"));
+  }
+  await expect(first).toBeFocused();
+});
+Then("the focused first example is fully below the sticky tabs", async function (this: SourcesWorld) {
+  await focusedVisible(this, examples(this).getByRole("button", { name: "A valid order, valid-order", exact: true }));
+  assert.deepEqual(await drawing(this), this.sourceDrawing);
+});
+When("the user presses and releases the visible part of an example choice", async function (this: SourcesWorld) {
+  await panel(this).getByRole("tab", { name: "Example", exact: true }).click();
+  await examples(this).locator("details[data-section='example-result'] summary").focus();
+  const choice = examples(this).getByRole("button", { name: "An empty order, empty-order", exact: true });
+  const movement = await choice.evaluate((element) => {
+    const area = element.closest('[aria-label="Record content"]');
+    const tabs = area?.querySelector('[role="tablist"]');
+    if (!area || !tabs) throw new Error("Example choices need the tabbed reading area.");
+    return { x: area.getBoundingClientRect().right - 20, y: area.getBoundingClientRect().bottom - 20,
+      delta: element.getBoundingClientRect().top - tabs.getBoundingClientRect().bottom + 20 };
+  });
+  await page(this).mouse.move(movement.x, movement.y); await page(this).mouse.wheel(0, movement.delta);
+  await expect.poll(() => choice.evaluate((element) => {
+    const tabs = element.closest('[aria-label="Record content"]')?.querySelector('[role="tablist"]');
+    return element.getBoundingClientRect().top - (tabs?.getBoundingClientRect().bottom ?? 0);
+  })).toBe(-20);
+  const bounds = await choice.boundingBox(); assert.ok(bounds);
+  const before = await content(this).evaluate((element) => element.scrollTop);
+  await page(this).mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height - 4);
+  await page(this).mouse.down(); await expect(choice).toBeFocused();
+  this.sourcePointerPress = { before, after: await content(this).evaluate((element) => element.scrollTop) };
+  await page(this).mouse.up();
+});
+Then("the press keeps the choice in place and selects that example", async function (this: SourcesWorld) {
+  assert.ok(this.sourcePointerPress);
+  assert.equal(this.sourcePointerPress.after, this.sourcePointerPress.before);
+  await expect(examples(this).getByRole("button", { name: "An empty order, empty-order", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(examples(this).getByRole("group", { name: "Example", exact: true }).locator("pre")).toHaveText("createInvoice({ items: [] })\n");
 });
 When("the user opens Sources and its evidence list with touch", async function (this: SourcesWorld) {
   await panel(this).getByRole("tab", { name: "Sources", exact: true }).tap();

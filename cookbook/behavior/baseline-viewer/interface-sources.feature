@@ -61,6 +61,26 @@ Feature: Read interface sources and retain inspection context
       | 1280  | 360    | 100     |
       | 1280  | 800    | 200     |
 
+  @interface-reverse-focus
+  Scenario Outline: Read earlier example choices with reverse keyboard navigation
+    Given the source reader window is <width> by <height> with <percent> percent text
+    And the interface source baseline is open
+    When the user returns from Detailed result to the first example with Shift Tab
+    Then the focused first example is fully below the sticky tabs
+
+    Examples:
+      | width | height | percent |
+      | 1280  | 360    | 100     |
+      | 320   | 640    | 100     |
+      | 1280  | 800    | 200     |
+
+  @interface-reverse-focus
+  Scenario: Select a partly visible example with the pointer
+    Given the source reader window is 1280 by 360 with 100 percent text
+    And the interface source baseline is open
+    When the user presses and releases the visible part of an example choice
+    Then the press keeps the choice in place and selects that example
+
   @touch
   Scenario: Read Sources with touch
     Given the interface source baseline is open
