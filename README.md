@@ -22,6 +22,8 @@ The [readability plan](docs/design/cr-baseline-viewer-readability-plan.md) and
 component overview, side panel, interface arcs, movement, and layout controls.
 The [interface-arc checks](docs/change-requests/BR-interface-arcs-evidence.md)
 record BR-07 acceptance and its platform limits.
+The [connection-readability checks](docs/change-requests/BR-connection-readability-evidence.md)
+record BR-08A acceptance for selected connections.
 
 The [manual analysis design](docs/design/llm-led-architecture-analysis.md) and
 [producer cookbook](docs/design/app-a/start-here.md) describe a separate workflow
@@ -70,10 +72,18 @@ record the tested workloads, timings, and limits.
 The drawing starts at 100% zoom. If all components fit, it centers them. Otherwise,
 it starts with the first root component in view. Pan to reach the rest, or use
 **Fit view** to see the whole drawing at a smaller scale. Interface and resource
-records stay in the panel. A labelled arrow connects each recorded allowed
+records stay in the panel. An arrow connects each recorded allowed
 consumer to the component that owns the interface. It means the consumer may
 use that interface; it does not claim that a call occurs. Several consumers
 produce several arrows without increasing the owner's interface count.
+
+**Connections: Selected** is the default. The initial view has no arrows.
+Select a component to show only arrows where it is the consumer or owner.
+Selecting a parent does not include connections only between its children.
+Choose **All** to see all known connections. Each shown arrow has an interface
+label. A component that is also a consumer of its own interface has a loop
+when that connection is in scope. The drawing shows **No connections shown.**
+when the current scope has no arrows. Interface counts always reflect ownership.
 
 Choom draws an arc only when both its owner and allowed consumers are known.
 It does not infer consumers. A note identifies interfaces with missing endpoint
@@ -87,10 +97,11 @@ Select a component or group header once to inspect it. With a keyboard, focus th
 control and press **Enter** or **Space**. The side panel keeps the canvas usable;
 it sits below the canvas in a narrow window. Inspection and resizing preserve
 pan and zoom. Select an arc or its label to inspect the interface. With a
-keyboard, focus its label and press **Enter** or **Space**. Component inspection
-emphasizes its incoming and outgoing arcs. Interface inspection emphasizes all
-arcs for that interface. **Fit view** remains available when the drawing is
-outside the view.
+keyboard, focus its control and press **Enter** or **Space**. An owned-item list
+keeps the selected component's connections and Back path. Selecting an arc or
+opening an interface directly from Baseline details shows that interface's
+connections in Selected mode. In All mode, unrelated arrows stay visible but
+dimmed. **Fit view** remains available when the drawing is outside the view.
 
 Drag a component header to move it. A parent carries its children. A child stays
 inside its recorded parent and below the parent header; enclosing groups grow
@@ -98,14 +109,16 @@ to the right or bottom when needed. Arrow keys on a focused header move it by
 10 diagram units. Drag unused group space to pan. Movement does not select a
 record or change the saved baseline. A drag release does not open inspection.
 
-The arrangement lasts while this view remains open. Inspection, pan, zoom,
-resize, failed opens, and cancelled opens keep it. Each successful file open
-starts a fresh arrangement, including reopening the same file. Closing and
-reopening the example also starts fresh. No arrangement is saved to disk.
+The arrangement and connection mode last while this view remains open.
+Inspection, pan, zoom, resize, failed opens, and cancelled opens keep them.
+Each successful file open starts a fresh arrangement in Selected mode with no
+inspection, including when reopening the same file. Closing and reopening the
+example also starts fresh.
 
 **Fit view** changes only pan and zoom to show the current arrangement, including
-components, arcs, arrowheads, and labels outside the view. **Reset layout** restores the initial positions and
-group bounds at 100% zoom. It keeps the current inspection and its Back path.
+components and shown arcs with their arrowheads and labels, even outside the
+viewport. **Reset layout** restores the initial positions and group bounds at
+100% zoom. It keeps the current inspection, Back path, and connection mode.
 Reset also ends a held press or drag. Both controls use the available canvas
 beside or above the panel; they are absent when there are no components.
 
@@ -119,8 +132,10 @@ components, interfaces, and resources, including items with unknown owners.
 **Escape** first cancels an active drag and restores its starting positions and
 bounds. An interrupted drag does the same. Otherwise, Escape closes the expanded
 rule containing focus, then the panel on the next press. Closing the panel
-returns focus to its opener if focus was inside the panel; focus already on the
-canvas stays there. A new baseline closes the old
+returns focus to its opener if focus was inside the panel and the opener remains
+shown. If an arc opener disappears, focus returns to its owner's header. The
+same fallback applies when closing removes a focused arc outside the panel;
+focus on other surviving controls stays there. A new baseline closes the old
 inspection path. If focus was in the replaced view, it moves to the new baseline
 heading. Keyboard focus and movement reveal the component name without changing
 zoom, even when a header or arc label is wider than the canvas.
@@ -218,6 +233,14 @@ Run the focused interface-arc checks with:
 bun test ./test/unit/lib/interface-*.test.ts ./test/unit/lib/architecture-bounds.test.ts ./test/unit/lib/architecture-viewport.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/interface-*.test.tsx
 bun run test:e2e --tags @br-07
+```
+
+Run the focused connection-scope checks with:
+
+```sh
+bun test ./test/unit/lib/interface-arc-visibility.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/connection-scope.test.tsx
+bun run test:e2e --tags @br-08a
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

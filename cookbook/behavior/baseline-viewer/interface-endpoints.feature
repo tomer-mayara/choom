@@ -1,5 +1,6 @@
 @baseline-viewer @baseline-readability @br-07 @br-07b @browser
 Feature: Explain unknown interface endpoints
+  These scenarios use All connections when a drawing is available.
   Missing endpoint facts do not create guessed arcs.
   The viewer explains missing facts and keeps the recorded details available.
 

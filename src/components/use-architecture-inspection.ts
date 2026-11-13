@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
+import type { ConnectionMode } from "../lib/interface-arc-visibility.ts";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 
 interface InspectionFrame {
@@ -24,8 +25,40 @@ function frame(panel: ArchitecturePanel): InspectionFrame {
   return { panel, scrollTop: 0, sections: [] };
 }
 
+function visibleControl(control: HTMLElement | null | undefined): control is HTMLElement {
+  return Boolean(control?.isConnected && control.checkVisibility({ visibilityProperty: true })
+    && !control.closest("[hidden], [inert], [aria-hidden='true']"));
+}
+
+function ownerHeader(opener: HTMLElement, baseline: ReadonlyData<Baseline>): HTMLElement | undefined {
+  let id = opener.dataset.ownerId;
+  while (id) {
+    const header = [...document.querySelectorAll<HTMLElement>("[data-component-id]")].find((control) => control.dataset.componentId === id);
+    if (visibleControl(header)) return header;
+    id = baseline.components.find((component) => component.id === id)?.parent?.value ?? undefined;
+  }
+}
+
+function restoreInspectionFocus(current: InspectionState | null, container: HTMLElement | null, mode: ConnectionMode) {
+  const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const fromPanel = Boolean(container?.contains(active));
+  const opener = fromPanel ? current?.opener : active;
+  const arc = opener?.hasAttribute("data-interface-label");
+  const survives = visibleControl(opener) && (!arc || mode === "all");
+  if (!fromPanel && (!arc || survives)) return;
+  const target = survives ? opener : arc && opener && current ? ownerHeader(opener, current.baseline) : undefined;
+  (target ?? document.getElementById("baseline-details-control"))?.focus({ preventScroll: true });
+}
+
+function hidesFocusedArc(panel: ArchitecturePanel, mode: ConnectionMode): boolean {
+  const active = document.activeElement;
+  if (mode === "all" || !(active instanceof HTMLElement) || !active.hasAttribute("data-interface-label")) return false;
+  if (panel.kind === "component") return active.dataset.consumerId !== panel.componentId && active.dataset.ownerId !== panel.componentId;
+  return panel.kind !== "interface" || active.dataset.interfaceId !== panel.interfaceId;
+}
+
 /** One inspection path belongs to one published baseline/layout pair. */
-export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>) {
+export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>, connectionMode: ConnectionMode = "selected") {
   const [state, setState] = useState<InspectionState | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
@@ -37,9 +70,9 @@ export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layo
   const component = current?.frames.findLast(({ panel }) => panel.kind === "component")?.panel;
 
   const open = useCallback((panel: ArchitecturePanel, opener: HTMLElement, keyboard: boolean) => {
-    const focusHeading = keyboard || Boolean(container.current?.contains(document.activeElement));
+    const focusHeading = keyboard || Boolean(container.current?.contains(document.activeElement)) || hidesFocusedArc(panel, connectionMode);
     setState({ baseline, layout, frames: [frame(panel)], opener, focusHeading, returning: false });
-  }, [baseline, layout]);
+  }, [baseline, layout, connectionMode]);
 
   function navigate(panel: ArchitecturePanel, trigger: HTMLElement) {
     if (!current || !entry) return;
@@ -57,14 +90,8 @@ export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layo
   }
 
   function close() {
-    const restore = container.current?.contains(document.activeElement);
     setState(null);
-    if (restore) {
-      const target = current?.opener.checkVisibility({ visibilityProperty: true })
-        && !current.opener.closest("[hidden], [inert], [aria-hidden='true']")
-        ? current.opener : document.getElementById("baseline-details-control");
-      target?.focus({ preventScroll: true });
-    }
+    restoreInspectionFocus(current, container.current, connectionMode);
   }
 
   useInspectionFocus(current, { container, content, heading }, close);

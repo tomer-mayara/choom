@@ -9,6 +9,7 @@ import { baselineWithDistinctInterfaceLinks, baselineWithoutComponents } from ".
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { baselineWithOnlyRules } from "../../support/baseline-detail-fixtures.ts";
 import { pointerClick } from "../../support/pointer.ts";
+import { showAllConnections } from "../../support/connection-controls.tsx";
 
 afterEach(cleanup);
 function diagramFixture(baseline: Baseline = baselineExample()) {
@@ -20,6 +21,7 @@ function diagramFixture(baseline: Baseline = baselineExample()) {
 test("the canvas keeps compact components at prepared positions with recorded interface arcs", () => {
   const { baseline, layout } = diagramFixture();
   const { container } = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
+  showAllConnections();
   expect(screen.getByRole("heading", { name: "baseline-example" })).toBeTruthy();
   const cards = [...container.querySelectorAll(".react-flow__node[data-id]")];
   expect(cards.map((node) => node.getAttribute("data-id"))).toEqual(["checkout", "billing"]);
@@ -73,6 +75,7 @@ test("component counts exclude descendant and unknown owners", async () => {
   baseline.interfaces.push({ ...fixtureItem(baseline.interfaces), id: "unowned-api", owner: proposed(null) });
   const original = structuredClone(baseline);
   const canvas = await renderDiagramWithViewport(baseline, diagramFixture(baseline).layout);
+  showAllConnections();
   expect(screen.getByRole("button", { name: "Checkout, checkout" }).textContent).toBe("Checkout0 interfaces");
   expect(screen.getByRole("button", { name: "Billing, billing" }).textContent).toBe("Billing2 interfaces");
   expect(canvas.getEdges()).toHaveLength(4);

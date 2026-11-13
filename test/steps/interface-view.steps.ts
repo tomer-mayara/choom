@@ -53,6 +53,7 @@ async function openView(world: InterfaceViewWorld, width: number, height: number
   await world.viewDriver.open(options.controlled);
   await world.viewDriver.openBaseline(world.viewFile);
   await expect(browser.getByRole("heading", { name: baseline.id, exact: true })).toBeVisible();
+  await browser.getByRole("radio", { name: "All", exact: true }).check();
   await expect(browser.locator("path[data-interface-arc]")).toHaveCount(2);
   await paint(world);
   world.viewInitial = await observe(world);
@@ -330,6 +331,8 @@ async function finishReplacement(world: InterfaceViewWorld) {
   assert.ok(world.viewRelease);
   world.viewRelease();
   await expect(page(world).getByRole("heading", { name: "replacement-interface-view", exact: true })).toBeVisible();
+  await page(world).getByRole("radio", { name: "All", exact: true }).focus();
+  await page(world).keyboard.press("Space");
   await paint(world);
 }
 

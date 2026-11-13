@@ -140,7 +140,7 @@ async function dragHeader(world: MovementWorld, id: string, x: number, y: number
 async function makeRoomForDrag(world: MovementWorld, id: string, x: number, y: number): Promise<void> {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const bounds = await header(world, id).boundingBox();
-    const canvas = await page(world).getByLabel("Architecture diagram", { exact: true }).boundingBox();
+    const canvas = await page(world).locator(".react-flow").boundingBox();
     const { zoom } = await camera(world);
     assert.ok(bounds && canvas);
     const endX = bounds.x + bounds.width / 2 + x * zoom;
@@ -173,7 +173,7 @@ async function growChild(world: MovementWorld, finish: boolean): Promise<void> {
 async function unusedParentPoint(world: MovementWorld): Promise<{ x: number; y: number }> {
   const point = await page(world).evaluate(() => {
     const parent = document.querySelector('.react-flow__node[data-id="workspace"]');
-    const canvas = document.querySelector('[aria-label="Architecture diagram"]');
+    const canvas = document.querySelector(".react-flow");
     if (!parent || !canvas) return null;
     const parentBounds = parent.getBoundingClientRect();
     const canvasBounds = canvas.getBoundingClientRect();
@@ -347,7 +347,7 @@ When("the user reaches Workspace with the keyboard", async function (this: Movem
 Then("its name and leading focus edge stay visible at the same zoom", async function (this: MovementWorld) {
   const browser = page(this);
   const bounds = await header(this, "workspace").boundingBox();
-  const canvas = await browser.getByLabel("Architecture diagram", { exact: true }).boundingBox();
+  const canvas = await browser.locator(".react-flow").boundingBox();
   assert.ok(bounds && canvas && this.movementCamera);
   assert.ok(bounds.width > canvas.width, "The focused header must really exceed the canvas width.");
   assert.ok(bounds.x >= canvas.x && bounds.x < canvas.x + 12, "The leading name and focus edge must remain visible.");

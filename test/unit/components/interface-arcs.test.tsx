@@ -3,6 +3,7 @@ import { cleanup, screen } from "@testing-library/react";
 import { baselineExample } from "../../support/baseline-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { interfaceArcBaseline } from "../../support/interface-arc-fixtures.ts";
+import { showAllConnections } from "../../support/connection-controls.tsx";
 
 afterEach(cleanup);
 
@@ -10,6 +11,7 @@ test("the known interface is a named curved consumer-to-owner arrow with a permi
   const baseline = baselineExample();
   const layout = { nodes: baseline.components.map(({ id }, index) => ({ id, position: { x: index * 300, y: 24 }, width: 240, height: 88 })) };
   await renderDiagramWithViewport(baseline, layout);
+  showAllConnections();
   const paths = document.querySelectorAll("path[data-interface-arc]");
   expect(paths).toHaveLength(1);
   expect(paths[0]?.getAttribute("data-consumer-id")).toBe("checkout");
@@ -26,6 +28,7 @@ test("bounded labels retain full interface and endpoint identities even when nam
   for (const item of baseline.interfaces) item.name = `Invoice ${"interface ".repeat(100)}`;
   const layout = { nodes: baseline.components.map(({ id }, index) => ({ id, position: { x: index * 300, y: 24 }, width: 240, height: 88 })) };
   await renderDiagramWithViewport(baseline, layout);
+  showAllConnections();
   const labels = [...document.querySelectorAll<HTMLElement>("[data-interface-label]")];
   expect(labels).toHaveLength(2);
   for (const [index, label] of labels.entries()) {

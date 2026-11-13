@@ -164,6 +164,9 @@ async function invoiceReady(browser: Browser): Promise<void> {
 }
 
 export async function inspectAndArrangeInstalledArcs(browser: Browser, world: World) {
+  const all = browser.$('input[name="connection-mode"][value="all"]');
+  assert.equal(await all.isExisting(), true, "The installed viewer must expose the All connection choice");
+  await all.click();
   await waitFor(async () => {
     const state = await observe(browser);
     return state.nodes.length === 4 && state.arcs.length === 3 && state.labelCount === 3;
@@ -280,6 +283,9 @@ export async function expectInstalledUnknownConsumers(browser: Browser): Promise
   const note = "8 interfaces have unknown owners or allowed consumers. Open Baseline details to inspect them.";
   await waitFor(async () => (await browser.$("body").getText()).replace(/\s+/g, " ").includes(note),
     "The reviewed installed baseline must explain its eight unknown allowed-consumer lists");
+  const all = browser.$('input[name="connection-mode"][value="all"]');
+  assert.equal(await all.isExisting(), true, "The installed viewer must expose the All connection choice");
+  await all.click();
   assert.equal((await browser.$$("path[data-interface-arc]")).length, 0);
   assert.equal((await browser.$$("[data-interface-label]")).length, 0);
   await browser.$("#baseline-details-control").click();

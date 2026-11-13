@@ -1,5 +1,6 @@
 @baseline-viewer @baseline-readability @br-07 @br-07c @browser
 Feature: Inspect recorded interface arcs
+  These scenarios use All connections when a drawing is available.
   The interface panel explains an arc without changing the component arrangement.
 
   Scenario Outline: Inspect an arc with one pointer selection

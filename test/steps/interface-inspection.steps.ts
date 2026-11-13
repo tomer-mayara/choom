@@ -56,6 +56,7 @@ async function openBaseline(world: ArcInspectionWorld, baseline: Baseline): Prom
   await driver.open();
   await driver.openBaseline(path);
   await expect(browser.getByRole("heading", { name: "interface-inspection", exact: true })).toBeVisible();
+  await browser.getByRole("radio", { name: "All", exact: true }).check();
   await expect(browser.locator("path[data-interface-arc]")).toHaveCount(3);
   await expect(browser.getByRole("dialog")).toHaveCount(0);
 }
@@ -157,6 +158,7 @@ When("a replacement baseline puts the same interfaces and consumers in a differe
   await writeFile(path, stringify(replacement, { aliasDuplicateObjects: false }));
   await new BaselineBrowserDriver(page(this)).openBaseline(path);
   await expect(page(this).getByRole("heading", { name: replacement.id, exact: true })).toBeVisible();
+  await page(this).getByRole("radio", { name: "All", exact: true }).check();
 });
 
 Then("the arc labels and keyboard navigation follow the replacement order", async function (this: ArcInspectionWorld) {
@@ -297,7 +299,7 @@ Given("a long interface label is enlarged beyond the available canvas", async fu
 When("keyboard focus reaches the Checkout Invoice API label", async function (this: ArcInspectionWorld) {
   this.arcInspectionConsumer = "checkout";
   await label(this).evaluate((element) => {
-    const controls = [...document.querySelectorAll<HTMLElement>("button, [tabindex='0']")]
+    const controls = [...document.querySelectorAll<HTMLElement>("button, input:not([type='radio']), input[type='radio']:checked, [tabindex='0']")]
       .filter((control) => control.checkVisibility() && !control.hasAttribute("disabled"));
     const previous = controls[controls.indexOf(element as HTMLElement) - 1];
     if (!previous) throw new Error("The arc label must have a preceding keyboard control.");

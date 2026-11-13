@@ -82,7 +82,7 @@ Given("a baseline at the component limits is open", { timeout: 30_000 }, async f
 Given("its large parent header is outside the diagram after panning", { timeout: 30_000 }, async function (this: BaselineHierarchyWorld) {
   assert.ok(this.page);
   const page = this.page;
-  const diagram = page.getByLabel("Architecture diagram", { exact: true });
+  const diagram = page.locator(".react-flow");
   for (let step = 0; step < 30; step += 1) {
     const zoom = await page.locator(".react-flow__viewport").evaluate((node) => new DOMMatrixReadOnly(getComputedStyle(node).transform).a);
     if (zoom >= 1) break;
@@ -124,7 +124,7 @@ Then("all 500 components fit inside the diagram", { timeout: 30_000 }, async fun
   assert.ok(this.page);
   await expect(this.page.locator(".react-flow__node[data-id]")).toHaveCount(500);
   await expect.poll(() => this.page?.evaluate(() => {
-    const canvas = document.querySelector('[aria-label="Architecture diagram"]')?.getBoundingClientRect();
+    const canvas = document.querySelector(".react-flow")?.getBoundingClientRect();
     const nodes = [...document.querySelectorAll(".react-flow__node[data-id]")];
     return canvas !== undefined && nodes.length === 500 && nodes.every((node) => {
       const item = node.getBoundingClientRect();

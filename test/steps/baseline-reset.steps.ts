@@ -60,7 +60,7 @@ async function rememberRecordScroll(world: ResetWorld): Promise<void> {
     .evaluate((element) => element.scrollTop);
 }
 async function allComponentsFit(world: ResetWorld): Promise<boolean> {
-  return page(world).getByLabel("Architecture diagram", { exact: true }).evaluate((canvas) => {
+  return page(world).locator(".react-flow").evaluate((canvas) => {
     const bounds = canvas.getBoundingClientRect();
     return [...canvas.querySelectorAll(".react-flow__node")].every((element) => {
       const item = element.getBoundingClientRect();
@@ -98,7 +98,7 @@ async function open(world: ResetWorld, empty?: string): Promise<void> {
 async function drag(world: ResetWorld, id: string, dx: number, dy: number): Promise<void> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const [bounds, canvas, view] = await Promise.all([
-      header(world, id).boundingBox(), page(world).getByLabel("Architecture diagram", { exact: true }).boundingBox(), camera(world),
+      header(world, id).boundingBox(), page(world).locator(".react-flow").boundingBox(), camera(world),
     ]);
     assert.ok(bounds && canvas);
     const start = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
@@ -203,7 +203,7 @@ When("the user opens its baseline catalog", async function (this: ResetWorld) {
 Then("the prepared positions and bounds return at the normal starting view", async function (this: ResetWorld) {
   await expect.poll(() => geometry(this)).toEqual(this.resetInitial);
   await expect.poll(async () => (await camera(this)).zoom).toBe(1);
-  const canvas = await page(this).getByLabel("Architecture diagram", { exact: true }).boundingBox();
+  const canvas = await page(this).locator(".react-flow").boundingBox();
   const root = await page(this).locator('.react-flow__node[data-id="choom"]').boundingBox();
   assert.ok(canvas && root);
   const fits = root.width + 48 <= canvas.width && root.height + 48 <= canvas.height;

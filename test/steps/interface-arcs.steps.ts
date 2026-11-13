@@ -37,6 +37,7 @@ When("the user opens the prepared interface baseline", async function (this: Int
   assert.ok(this.arcViewer && this.arcPath && this.page && this.arcBaseline);
   await this.arcViewer.openBaseline(this.arcPath);
   await expect(this.page.getByRole("heading", { name: this.arcBaseline.id, exact: true })).toBeVisible();
+  await this.page.getByRole("radio", { name: "All", exact: true }).check();
 });
 
 Then("{int} interface arcs show the recorded consumers and owners", async function (this: InterfaceArcWorld, count: number) {

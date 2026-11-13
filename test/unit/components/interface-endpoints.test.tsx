@@ -5,6 +5,7 @@ import { ArchitectureDiagram } from "../../../src/components/architecture-diagra
 import { fixtureItem } from "../../support/baseline-fixtures.ts";
 import { interfaceEndpointBaseline } from "../../support/interface-endpoint-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
+import { showAllConnections } from "../../support/connection-controls.tsx";
 
 afterEach(cleanup);
 
@@ -49,6 +50,7 @@ test.each([1, 2])("the overview explains %s incomplete interfaces and keeps Base
   if (count === 2) baseline.interfaces.push({ ...fixtureItem(baseline.interfaces), id: "invoice-events" });
   const layout = { nodes: baseline.components.map(({ id }, index) => ({ id, position: { x: index * 300, y: 24 }, width: 240, height: 88 })) };
   await renderDiagramWithViewport(baseline, layout);
+  showAllConnections();
   expect(screen.getByText(`${count} ${count === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.`)).toBeTruthy();
   expect(screen.getByRole("button", { name: "Baseline details" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Billing, billing" }).textContent).toBe(`Billing${count} ${count === 1 ? "interface" : "interfaces"}`);
