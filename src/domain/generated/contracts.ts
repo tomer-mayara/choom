@@ -117,6 +117,7 @@ export interface BaselineDocumentedEntry {
   accessPoint: baselineText;
   kind: BaselineEntryKindStatement;
   description: BaselineNullableTextStatement;
+  signature?: BaselineNullableTextStatement;
   interaction?: BaselineInteractionStatement;
   examples: Array<BaselineDocumentationExample>;
 }

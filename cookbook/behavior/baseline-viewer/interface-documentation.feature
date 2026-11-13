@@ -7,6 +7,11 @@ Feature: Read versioned interface documentation
     When the public decoder reads the documented baseline
     Then all saved architecture and documentation values are preserved
 
+  Scenario: Keep a recorded method signature
+    Given a documented method with its parameters and return type recorded
+    When the public decoder reads the documented baseline
+    Then all saved architecture and documentation values are preserved
+
   Scenario: Keep version 1 strict
     Given a version 1 baseline with new documentation fields
     When the public decoder reads the documented baseline

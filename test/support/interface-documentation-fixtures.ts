@@ -1,4 +1,4 @@
-import { baselineExample, fixtureItem, proposed } from "./baseline-fixtures.ts";
+import { accepted, baselineExample, fixtureItem, proposed } from "./baseline-fixtures.ts";
 
 export function enrichedBaseline() {
   const baseline = baselineExample();
@@ -34,6 +34,21 @@ export function enrichedBaseline() {
       },
     }],
   };
+}
+
+export function baselineWithSignature() {
+  const input = enrichedBaseline();
+  const docs = fixtureItem(input.interfaces).documentation;
+  const entry = fixtureItem(docs.entries);
+  const signature = {
+    ...accepted("createInvoice(\n  order: Order,\n): Promise<Invoice>"),
+    evidenceRefs: ["invoice-declaration"],
+  };
+  docs.sourceNotes.push({
+    ...structuredClone(fixtureItem(docs.sourceNotes)),
+    evidenceRef: "invoice-declaration", description: "Declaration of createInvoice.",
+  });
+  return { input, entry: Object.assign(entry, { signature }) };
 }
 
 export function invalidDocumentation(defect: string): unknown {

@@ -938,6 +938,10 @@
                 "description": {
                     "$ref": "BaselineNullableTextStatement.json"
                 },
+                "signature": {
+                    "$ref": "BaselineNullableTextStatement.json",
+                    "description": "Saved declaration text for a function or method, with parameters and return type when known. Only function entries may record it."
+                },
                 "interaction": {
                     "$ref": "BaselineInteractionStatement.json"
                 },

@@ -31,11 +31,20 @@ source notes. Each entry names one exact value from the same interface's
 `publicAccess.value`. Entry IDs are unique within an interface; example IDs are
 unique within an entry. They do not add architecture records or graph links.
 
-An entry's kind and description are separate statements. Function, command, and
-workflow entries can also have one interaction statement with nullable input,
-success, failure, and effect text. Each example has its own content statement,
-with saved text, optional input, and an optional complete or excerpt result.
-The reader preserves every value and status. It does not execute examples.
+An entry's kind and description are separate statements. Only entries whose
+recorded kind is `function` can also have a `signature` statement. This includes
+methods. A signature saves the declaration as text, including the parameters
+and return type where the source supports both. A missing signature means it
+was not recorded; a signature with a null value means it is unknown. The
+signature has its own status and evidence references, and its own acceptance
+reference if accepted. The reader preserves signature text without parsing,
+inferring, or running it.
+
+Function, command, and workflow entries can also have one interaction statement
+with nullable input, success, failure, and effect text. Each example has its own
+content statement, with saved text, optional input, and an optional complete or
+excerpt result. The reader preserves every value and status. It does not execute
+examples.
 
 A source note describes one evidence reference cited by this interface or its
 documentation. Each reference has at most one note. A location has a snapshot

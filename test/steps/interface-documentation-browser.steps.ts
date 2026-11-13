@@ -7,7 +7,7 @@ import { expect as browserExpect, type Page } from "@playwright/test";
 import { stringify } from "yaml";
 import { baselineExample, fixtureItem } from "../support/baseline-fixtures.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
-import { enrichedBaseline, excessiveDocumentation } from "../support/interface-documentation-fixtures.ts";
+import { baselineWithSignature, enrichedBaseline, excessiveDocumentation } from "../support/interface-documentation-fixtures.ts";
 
 const expect = browserExpect.configure({ timeout: 2_000 });
 
@@ -45,7 +45,7 @@ async function open(world: DocumentationBrowserWorld, enriched: boolean): Promis
   world.documentationDirectory = await mkdtemp(join(tmpdir(), "choom-documentation-"));
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(await save(world, enriched ? enrichedBaseline() : baselineExample()));
+  await driver.openBaseline(await save(world, enriched ? baselineWithSignature().input : baselineExample()));
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
   await inspectInvoice(world);
   world.documentationNodes = await browser.locator(".react-flow__node").allTextContents();
@@ -89,7 +89,7 @@ When("the user opens its interface's Original record disclosure", async function
 Then("all saved interface values and statement statuses are readable", async function (this: DocumentationBrowserWorld) {
   const record = page(this).getByRole("dialog").locator("details[data-section='original-interface-record'] pre");
   await expect(record).toBeVisible();
-  assert.deepEqual(JSON.parse(await record.innerText()), fixtureItem(enrichedBaseline().interfaces));
+  assert.deepEqual(JSON.parse(await record.innerText()), fixtureItem(baselineWithSignature().input.interfaces));
 });
 When("the user opens a new documented baseline with the same IDs", async function (this: DocumentationBrowserWorld) {
   const replacement = enrichedBaseline();

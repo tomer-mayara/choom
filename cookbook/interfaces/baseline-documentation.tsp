@@ -127,6 +127,10 @@ model BaselineDocumentedEntry {
   accessPoint: baselineText;
   kind: BaselineEntryKindStatement;
   description: BaselineNullableTextStatement;
+
+  @doc("Saved declaration text for a function or method, with parameters and return type when known. Only function entries may record it.")
+  signature?: BaselineNullableTextStatement;
+
   interaction?: BaselineInteractionStatement;
 
   @maxItems(8)

@@ -12,6 +12,7 @@ const reference = boundedText(baselineText, 4 * 1024);
 const localId = boundedText(baselineId, 4 * 1024);
 const description = boundedText(baselineText, 8 * 1024);
 const sampleText = boundedText(baselineText, 16 * 1024);
+const nullableTextStatement = baselineStatement(description.nullable(), reference);
 
 const interaction = z.strictObject({
   input: description.nullable(), success: description.nullable(),
@@ -27,7 +28,8 @@ const example = z.strictObject({
 const entry = z.strictObject({
   id: localId, name: description, accessPoint: reference,
   kind: baselineStatement(z.enum(["function", "command", "type", "data", "message", "workflow"]).nullable(), reference),
-  description: baselineStatement(description.nullable(), reference),
+  description: nullableTextStatement,
+  signature: nullableTextStatement.optional(),
   interaction: baselineStatement(interaction, reference).optional(),
   examples: z.array(example).max(8, "The limit is 8 examples per entry."),
 });
@@ -44,7 +46,7 @@ const location = z.strictObject({
 const note = z.strictObject({ evidenceRef: reference, description, location: location.optional() });
 
 export const baselineDocumentationSchema = z.strictObject({
-  summary: baselineStatement(description.nullable(), reference),
+  summary: nullableTextStatement,
   entries: z.array(entry).max(32, "The limit is 32 entries per interface."), sourceNotes: z.array(note),
 });
 
@@ -55,9 +57,9 @@ function validateDocumentationLinks(item: BaselineInterface, index: number, cont
     code: "custom", path: ["interfaces", index, "documentation", ...path], message,
   });
   const statements = [item.owner, item.publicAccess, item.allowedConsumers, item.promises, docs.summary,
-    ...docs.entries.flatMap((entry) => [entry.kind, entry.description, ...(entry.interaction ? [entry.interaction] : []),
+    ...docs.entries.flatMap((entry) => [entry.kind, entry.description, entry.signature, entry.interaction,
       ...entry.examples.map((example) => example.content)])];
-  const evidence = new Set(statements.flatMap((statement) => statement.evidenceRefs));
+  const evidence = new Set(statements.flatMap((statement) => statement?.evidenceRefs ?? []));
   const located = new Set(docs.sourceNotes.filter((note) => note.location && !note.evidenceRef.includes("#"))
     .map((note) => note.evidenceRef));
   const notes = new Set<string>();
@@ -74,6 +76,9 @@ function validateDocumentationLinks(item: BaselineInterface, index: number, cont
     if (entries.has(entry.id)) issue([...path, "id"], "Entry IDs must be unique within the interface.");
     entries.add(entry.id);
     if (!item.publicAccess.value?.includes(entry.accessPoint)) issue([...path, "accessPoint"], "Entry access must match this interface's recorded access.");
+    if (entry.signature && entry.kind.value !== "function") {
+      issue([...path, "signature"], "Only a function may record a signature.");
+    }
     if (entry.interaction && !["function", "command", "workflow"].some((kind) => kind === entry.kind.value)) {
       issue([...path, "interaction"], "Only a function, command, or workflow may describe an interaction.");
     }

@@ -37,7 +37,7 @@ architecture fields in either supported version.
 | --- | --- |
 | Documented entries per interface | 32 |
 | Examples per entry | 8 |
-| Each new name or descriptive text | 8 KiB of UTF-8 |
+| Each new name, signature, or descriptive text | 8 KiB of UTF-8 |
 | Each example text, input, or result text | 16 KiB of UTF-8 |
 | Each new ID, reference, or path | 4 KiB of UTF-8 |
 | All present documentation objects | 2 MiB of UTF-8 |

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Given, Then, When, type World } from "@cucumber/cucumber";
 import { stringify } from "yaml";
 import { baselineCodec } from "../../src/lib/baseline-yaml.ts";
-import { enrichedBaseline, invalidDocumentation } from "../support/interface-documentation-fixtures.ts";
+import { baselineWithSignature, enrichedBaseline, invalidDocumentation } from "../support/interface-documentation-fixtures.ts";
 
 interface DocumentationWorld extends World {
   documentationInput: unknown;
@@ -11,6 +11,9 @@ interface DocumentationWorld extends World {
 
 Given("a valid documented version 2 baseline", function (this: DocumentationWorld) {
   this.documentationInput = enrichedBaseline();
+});
+Given("a documented method with its parameters and return type recorded", function (this: DocumentationWorld) {
+  this.documentationInput = baselineWithSignature().input;
 });
 Given("a version 1 baseline with new documentation fields", function (this: DocumentationWorld) {
   this.documentationInput = { ...enrichedBaseline(), formatVersion: 1 };

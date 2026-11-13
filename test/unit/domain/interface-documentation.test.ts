@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { baselineSchema } from "../../../src/domain/baseline.ts";
 import { fixtureItem } from "../../support/baseline-fixtures.ts";
-import { enrichedBaseline, invalidDocumentation } from "../../support/interface-documentation-fixtures.ts";
+import { baselineWithSignature, enrichedBaseline, invalidDocumentation } from "../../support/interface-documentation-fixtures.ts";
 
 test.each([
   "duplicate entry ID", "unknown access point", "interaction on a type", "uncited source note",
@@ -50,4 +50,27 @@ test("an unlocated note may describe an existing artifact reference", () => {
     evidenceRef: fixtureItem(docs.summary.evidenceRefs), description: "Analysis context.",
   }] });
   expect(baselineSchema.parse(input)).toEqual(input);
+});
+
+test.each([["command"], ["type"], ["data"], ["message"], ["workflow"], ["unknown"]] as const)(
+  "an entry of kind %s cannot record even an unknown signature", (kind) => {
+    const { input, entry } = baselineWithSignature();
+    Object.assign(entry.kind, { value: kind === "unknown" ? null : kind });
+    Object.assign(entry.signature, { value: null });
+    Reflect.deleteProperty(entry, "interaction");
+    const result = baselineSchema.safeParse(input);
+    expect(result.error?.issues).toContainEqual(expect.objectContaining({
+      path: ["interfaces", 0, "documentation", "entries", 0, "signature"],
+    }));
+  },
+);
+
+test("a source note can cite evidence from a signature alone", () => {
+  const { input, entry } = baselineWithSignature();
+  expect(baselineSchema.parse(input)).toEqual(input);
+  entry.signature.evidenceRefs = ["unlocated-signature-evidence"];
+  const result = baselineSchema.safeParse(input);
+  expect(result.error?.issues).toContainEqual(expect.objectContaining({
+    path: ["interfaces", 0, "documentation", "sourceNotes", 1, "evidenceRef"],
+  }));
 });
