@@ -149,6 +149,7 @@ Given("its manual arrangement has grown bounds and an owned record open", { time
   const entry = browser.getByRole("dialog").getByRole("region", { name: "Owned interfaces" }).getByRole("button").last();
   this.resetRecordLabel = await entry.getAttribute("aria-label") ?? undefined;
   await entry.click();
+  await browser.getByRole("dialog").getByRole("tab", { name: "Sources", exact: true }).click();
   this.resetRecordId = await browser.getByRole("dialog").getByRole("group", { name: "Interface ID", exact: true }).locator("p").nth(1).textContent() ?? undefined;
   const content = browser.getByRole("dialog").getByLabel("Record content", { exact: true });
   await content.hover();

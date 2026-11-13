@@ -84,3 +84,15 @@ derived entry lookup, lazy original-record serialization, and no new fetching,
 execution, cache, or dependency. The inspector width is unchanged. Installed
 test adapters retain complete value, status, reference, and focus assertions;
 their assembled run remains part of CI and F.
+
+The first B CI run passed all three desktop jobs, including installed acceptance.
+Web CI exposed 15 failures in the old relationship and Reset scenarios. Two
+shared helpers still expected raw interface fields in Overview. Both now enter
+Sources before those reads; all original field, status, reference, geometry,
+scroll, and Back assertions remain.
+
+The focused `@bv-05 or @br-04` browser run passed 18 scenarios and 161 steps
+after this correction. It used the shared checkout's then-current built C
+artifact, which retains the same Sources contract. The B follow-up commit
+contains only those two helper changes and this evidence; its new CI run checks
+the exact B snapshot independently of C.

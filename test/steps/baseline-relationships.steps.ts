@@ -89,6 +89,7 @@ async function openRecord(world: BaselineRelationshipWorld, kind: "Interfaces" |
     .getByRole("button", { name: `${item.name}, ${item.id}`, exact: true }).click();
   const panel = world.page.getByRole("dialog", { name: kind === "Interfaces" ? "Interface details" : "Resource details" });
   await expect(panel.getByRole("heading", { name: item.name, exact: true })).toHaveText(item.name);
+  if (kind === "Interfaces") await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   await expect(panel.getByRole("group", { name: kind === "Interfaces" ? "Interface ID" : "Resource ID", exact: true })).toContainText(item.id);
   return panel;
 }
