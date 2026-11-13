@@ -149,6 +149,20 @@ not report actual calls or runtime authorization. **Sources** keeps the original
 fields, statuses, references, and expandable **Original record**. Use arrow keys,
 Home, or End to change tabs. A direct interface selection starts a fresh Overview.
 
+**Example** names the selected entry and lists its saved examples. Select a case
+to read its sample and, when supplied, its input and result summary. **Detailed
+result** shows the recorded output and marks excerpts. Missing parts stay
+explicit. **Source-reviewed (recorded)** and **Illustrative example** describe the saved
+basis; Choom does not run examples. **Copy example** copies only the selected
+sample text. If copying fails, the text stays selectable for manual copying.
+
+Changing entries or examples clears old copy feedback and closes the result.
+A late clipboard response cannot change feedback for a newer choice or request.
+Switching tabs preserves the current case, result disclosure, copy feedback, and
+one reading position per tab. Tab controls remain reachable while scrolling.
+When a panel is short, restoring or resetting its position also keeps the
+focused control visible.
+
 **Escape** first cancels an active drag and restores its starting positions and
 bounds. An interrupted drag does the same. Otherwise, Escape closes the expanded
 rule containing focus, then the panel on the next press. Closing the panel

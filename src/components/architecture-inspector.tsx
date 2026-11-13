@@ -30,7 +30,7 @@ function InspectionContent({ baseline, inspection }: {
     </div>;
   }
   return <div className="space-y-6">
-    <ArchitectureDetails baseline={baseline} panel={panel} />
+    <ArchitectureDetails baseline={baseline} panel={panel} contentRef={inspection.content} />
     {panel.kind === "baseline" ? <>
       <ArchitectureRecordList title="Components" kind="component" items={baseline.components} navigate={navigate} />
       <ArchitectureRecordList title="Interfaces" kind="interface" items={baseline.interfaces} navigate={navigate} />

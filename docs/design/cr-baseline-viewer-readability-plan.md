@@ -1865,7 +1865,11 @@ interface. Selecting an entry starts with its first example. Tab changes
 preserve the frame's other choices and each tab's scroll position. Changing
 entry or example resets Example to the top with its detailed result collapsed
 and copy feedback cleared. Returning to the same content keeps its reading
-position. Do not add per-entry or per-example scroll histories.
+position. In a narrow or short panel, keep the focused control visible after
+restoring or resetting that position, including below the sticky tab strip.
+Scroll only the record area. An entry change in Overview resets the Example
+bookmark without moving Overview. Do not add per-entry or per-example scroll
+histories.
 
 Use standard tab keyboard behavior: Left/Right, Home/End, and Tab into the
 selected panel. Keep focus on the tab when switching tabs. Keyboard interface

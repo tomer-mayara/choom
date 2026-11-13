@@ -1,26 +1,54 @@
 import { Tabs } from "radix-ui";
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import type { Baseline, BaselineInterface } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import { InterfaceOverview, InterfaceProvider, InterfaceRecordedStatus } from "./interface-overview.tsx";
+import { InterfaceExamples } from "./interface-examples.tsx";
+import { useExampleCopy } from "./use-example-copy.ts";
+import { useInterfaceTabs } from "./use-interface-tabs.ts";
 
-export function InterfaceDetails({ baseline, item, children }: {
+export function InterfaceDetails({ baseline, item, children, contentRef }: {
   baseline: ReadonlyData<Baseline>; item: ReadonlyData<BaselineInterface>; children: ReactNode;
+  contentRef?: RefObject<HTMLDivElement | null>;
 }) {
-  const [tab, setTab] = useState("overview");
+  const tabs = useInterfaceTabs(contentRef);
   const [entryId, setEntryId] = useState(item.documentation?.entries[0]?.id);
   const entry = item.documentation?.entries.find(({ id }) => id === entryId);
+  const [exampleId, setExampleId] = useState(entry?.examples[0]?.id);
+  const [resultOpen, setResultOpen] = useState(false);
+  const example = entry?.examples.find(({ id }) => id === exampleId);
+  const copy = useExampleCopy();
+  function selectEntry(id: string) {
+    if (id === entryId) return;
+    setEntryId(id);
+    setExampleId(item.documentation?.entries.find((candidate) => candidate.id === id)?.examples[0]?.id);
+    setResultOpen(false);
+    copy.reset();
+    tabs.resetExample();
+  }
+  function selectExample(id: string) {
+    if (id === exampleId) return;
+    setExampleId(id);
+    setResultOpen(false);
+    copy.reset();
+    tabs.resetExample();
+  }
   return <section className="space-y-4 wrap-anywhere">
     <h2 className="text-lg font-semibold">{item.name}</h2>
     <InterfaceRecordedStatus item={item} />
     <InterfaceProvider baseline={baseline} item={item} />
-    <Tabs.Root value={tab} onValueChange={setTab} className="space-y-4">
-      <Tabs.List aria-label="Interface views" className="flex gap-1 border-b border-border">
-        {["Overview", "Sources"].map((name) => <Tabs.Trigger key={name} value={name.toLowerCase()}
+    <Tabs.Root value={tabs.tab} onValueChange={tabs.changeTab} className="space-y-4">
+      <Tabs.List aria-label="Interface views" className="sticky top-0 z-10 flex gap-1 border-b border-border bg-card">
+        {["Overview", "Example", "Sources"].map((name) => <Tabs.Trigger key={name} value={name.toLowerCase()}
           className="min-w-0 flex-1 rounded-t px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:font-semibold">{name}</Tabs.Trigger>)}
       </Tabs.List>
       <Tabs.Content value="overview" className="focus-visible:outline-2 focus-visible:outline-ring">
-        <InterfaceOverview baseline={baseline} item={item} entry={entry} selectEntry={setEntryId} />
+        <InterfaceOverview baseline={baseline} item={item} entry={entry} selectEntry={selectEntry} />
+      </Tabs.Content>
+      <Tabs.Content value="example" className="focus-visible:outline-2 focus-visible:outline-ring">
+        <InterfaceExamples entry={entry} example={example} selectExample={selectExample} resultOpen={resultOpen} setResultOpen={setResultOpen}
+          onCopy={() => { if (example) void copy.write(example.content.value.text); }} copyFeedback={copy.feedback}
+          showEntryId={Boolean(entry && item.documentation?.entries.some((other) => other.id !== entry.id && other.name === entry.name))} />
       </Tabs.Content>
       <Tabs.Content value="sources" className="space-y-4 focus-visible:outline-2 focus-visible:outline-ring">{children}</Tabs.Content>
     </Tabs.Root>

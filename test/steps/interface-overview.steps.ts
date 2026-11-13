@@ -47,7 +47,8 @@ Then("the saved legacy contract is readable without evidence arrays", async func
   await expect(overview).not.toContainText("Evidence references");
   await expect(overview).not.toContainText("s4-001-source-excerpt");
   await expect(overview.getByRole("group", { name: "Input", exact: true })).toHaveCount(0);
-  await expect(panel(this).getByRole("tab", { name: "Example", exact: true })).toHaveCount(0);
+  await panel(this).getByRole("tab", { name: "Example", exact: true }).click();
+  await expect(panel(this).getByRole("tabpanel", { name: "Example", exact: true })).toHaveText("No examples recorded.");
 });
 Then("Sources retains the complete unchanged interface record", async function (this: OverviewWorld) {
   await panel(this).getByRole("tab", { name: "Sources", exact: true }).click();
@@ -157,12 +158,16 @@ When("the user selects Invoice type and changes tabs with the keyboard", async f
   const tabs = panel(this).getByRole("tablist", { name: "Interface views" });
   await tabs.getByRole("tab", { name: "Overview", exact: true }).focus();
   await page(this).keyboard.press("ArrowRight");
+  await expect(tabs.getByRole("tab", { name: "Example", exact: true })).toBeFocused();
+  await page(this).keyboard.press("ArrowRight");
   await expect(tabs.getByRole("tab", { name: "Sources", exact: true })).toBeFocused();
   await expect(panel(this).getByRole("tabpanel", { name: "Sources", exact: true })).toBeVisible();
   await page(this).keyboard.press("Home");
   await expect(tabs.getByRole("tab", { name: "Overview", exact: true })).toBeFocused();
   await page(this).keyboard.press("End");
   await expect(tabs.getByRole("tab", { name: "Sources", exact: true })).toBeFocused();
+  await page(this).keyboard.press("ArrowLeft");
+  await expect(tabs.getByRole("tab", { name: "Example", exact: true })).toBeFocused();
   await page(this).keyboard.press("ArrowLeft");
   await expect(tabs.getByRole("tab", { name: "Overview", exact: true })).toBeFocused();
   await page(this).keyboard.press("Tab");

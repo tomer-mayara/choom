@@ -96,3 +96,47 @@ after this correction. It used the shared checkout's then-current built C
 artifact, which retains the same Sources contract. The B follow-up commit
 contains only those two helper changes and this evidence; its new CI run checks
 the exact B snapshot independently of C.
+
+[PR 38](https://github.com/tomer-mayara/choom/pull/38) remains a draft at
+`cf0242cb973fc55391a896007ccbd82e95871e92`.
+[CI run 43513816522](https://github.com/tomer-mayara/choom/actions/runs/43513816522)
+passed all four jobs, including full browser acceptance and the Linux installed
+baseline-viewer journey, on that corrected B snapshot.
+
+## BR-10C
+
+The first browser run opened a valid interface and passed 35 setup steps, then
+eight scenarios failed because Example was absent. Five reading tests and then
+12 copy/lifetime tests failed before their respective implementations. A real
+tab-return test exposed lost scroll position; the focused test also showed
+Sources inheriting Example's position. One position per tab and sticky tab
+controls fixed both cases.
+
+Narrow and short-window tests then exposed focus outside the visible record
+area. Post-commit restoration now scrolls only Record content and keeps its
+focused control visible. Visual review found that the sticky strip could still
+cover that control by 20 pixels. Stronger browser and DOM assertions captured
+that failure before the padding/border correction. An entry change in Overview
+clears the Example bookmark without moving Overview.
+
+Copy feedback belongs to the current request and mounted frame. Tests cover
+exact saved whitespace and Unicode, missing or denied clipboard access,
+synchronous and asynchronous failures, both out-of-order outcomes, repeated
+local IDs, entry A→B→A, direct same-ID selection, closing, and baseline replacement.
+Tab changes keep the current case and request. No test or UI claims to cancel
+an operating-system clipboard write.
+
+The broad browser run passed 90 scenarios and 643 steps across BR-10 and
+BR-01/07C/08C. The focused DOM suite passed 21 tests and 80 assertions. The full
+check passed 258 native tests, 182 DOM tests, 29 native constraints, and 31
+interface tests, plus contracts, types, lint, links, boundaries, unused-code,
+and duplication checks. After the visual-review correction, the rebuilt
+`@br-10c` run passed all 27 scenarios and 185 steps. The complete check passed
+again with the same counts, and Habit Hooks and whitespace checks passed.
+The snooze file is empty. Final settled screenshots at 1280×800, 320×640,
+1280×360, and 200% text size show the focused choice below the sticky tabs.
+
+The manager reviewed state ownership, copy lifetime, lazy content, and actual
+wide/narrow screenshots. Overview/Sources disclosure persistence remains D's
+scope; installed clipboard behavior remains F's scope. The inspector width,
+graph navigation, source-file behavior, and baseline bytes are unchanged.

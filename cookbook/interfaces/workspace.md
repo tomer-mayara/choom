@@ -215,7 +215,7 @@ data, and message entries have no invented call contract. Rich entry details put
 the unchanged general promises in Interface-wide contract. Access rule resolves
 component names, keeps self-use, and distinguishes permission from activity.
 
-Overview and Sources use standard keyboard tabs in the existing inspector width.
+Overview, Example, and Sources use standard keyboard tabs in the existing inspector width.
 Sources retains the original fields and a lazy Original record disclosure.
 Recorded statuses remain separate from verification. No source reference is
 resolved or executed. Tab and entry choices belong to one mounted inspection
@@ -223,6 +223,28 @@ frame. A fresh direct selection has a new frame key even when its ID is unchange
 Tab changes keep that frame mounted; interfaces add no deeper navigation path.
 This avoids a global cache or duplicate state in the inspection hook. Existing
 Back, focus return, successful replacement, and failed-load behavior still apply.
+
+Example uses the entry selected in Overview. It starts with that entry's first
+saved case, or says that no example is recorded. A sample is neutral text: type,
+data, and message examples do not imply a call. Optional input and output keep
+their saved text. The result summary precedes a lazy result disclosure, which
+labels excerpts. The basis and the example's own status remain visible. Choom
+does not run, fetch, or interpret sample content.
+
+Copy example writes exactly the selected sample text to the host clipboard.
+Success is announced only after that write completes. An unavailable or denied
+clipboard leaves selectable text and manual-copy guidance. The latest request
+owns feedback. A new entry, case, frame, or baseline invalidates older feedback,
+even when local IDs repeat or a user returns to an earlier entry. Tab changes
+keep the same request current. This does not cancel a write at the operating
+system boundary.
+
+The mounted interface frame owns the selected case, result disclosure, copy
+feedback, and one scroll position per tab. New entry and case selections close
+the result, clear feedback, and reset the Example position. An entry change in
+Overview does not move Overview. Sticky tabs remain reachable; restoration and
+reset keep the focused control visible within a narrow or short Record content
+area. Only this container scrolls. No per-entry history or global cache is added.
 
 ## Starter and checks
 
@@ -255,6 +277,8 @@ bun test --preload ./test/preload.ts ./test/unit/components/architecture-details
 bun scripts/run-browser-behavior.ts --tags @bv-06
 bun test --preload ./test/preload.ts ./test/unit/components/interface-overview.test.tsx
 bun scripts/run-browser-behavior.ts --tags @br-10b
+bun test --preload ./test/preload.ts ./test/unit/components/interface-examples.test.tsx
+bun scripts/run-browser-behavior.ts --tags @br-10c
 ```
 
 Installed acceptance uses the actual app and picker; see the
