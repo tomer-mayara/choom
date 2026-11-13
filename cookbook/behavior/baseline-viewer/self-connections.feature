@@ -83,8 +83,8 @@ Feature: Hide self-connections without losing recorded facts
   Scenario Outline: Hide a directly inspected loop without losing its details
     Given Health is inspected from its self-loop in <mode> mode
     When the user disables Show self-connections
-    Then Health records Billing as both owner and consumer
-    And the self-connection choice keeps focus
+    Then the self-connection choice keeps focus
+    And Health records Billing as both owner and consumer
 
     Examples:
       | mode     |

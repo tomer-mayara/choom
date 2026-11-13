@@ -200,6 +200,30 @@ are no components. No diagram layout is needed in that case. An empty
 Rules list says **No rules modeled**. Fit view and Reset layout controls are
 absent without canvas nodes.
 
+## Interface reading view
+
+Interface inspection starts in Overview with the recorded name and friendly
+provider name. Null ownership reads **Provider unknown**. Legacy promises keep
+their saved text under Behavior, Data exchanged, Failures, and What changes and
+when it ends. An unclassified access point remains a Recorded entry reference.
+
+Version 2 entries appear in saved order. The first entry starts selected, and
+each selection names the contract it describes. Explicit function, command, and
+workflow facts can show input, success, failures, and effects. Missing interaction
+details, partly unknown facts, and wholly unknown facts remain distinct. Type,
+data, and message entries have no invented call contract. Rich entry details put
+the unchanged general promises in Interface-wide contract. Access rule resolves
+component names, keeps self-use, and distinguishes permission from activity.
+
+Overview and Sources use standard keyboard tabs in the existing inspector width.
+Sources retains the original fields and a lazy Original record disclosure.
+Recorded statuses remain separate from verification. No source reference is
+resolved or executed. Tab and entry choices belong to one mounted inspection
+frame. A fresh direct selection has a new frame key even when its ID is unchanged.
+Tab changes keep that frame mounted; interfaces add no deeper navigation path.
+This avoids a global cache or duplicate state in the inspection hook. Existing
+Back, focus return, successful replacement, and failed-load behavior still apply.
+
 ## Starter and checks
 
 The initial heading is **Architecture starts here.** with a Desktop or Browser
@@ -229,6 +253,8 @@ bun scripts/run-browser-behavior.ts --tags @br-07
 bun scripts/run-browser-behavior.ts --tags @br-08
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
+bun test --preload ./test/preload.ts ./test/unit/components/interface-overview.test.tsx
+bun scripts/run-browser-behavior.ts --tags @br-10b
 ```
 
 Installed acceptance uses the actual app and picker; see the

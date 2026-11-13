@@ -203,6 +203,7 @@ Then(/^all recorded (.+) fields are readable$/, async function (this: BaselineDe
   const values = expected[kind];
   assert.ok(values, `Unknown record kind: ${kind}`);
   const panel = page(this).getByRole("dialog");
+  if (kind === "interface") await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   for (const value of [...values, "Proposed", "Accepted (recorded)", "Evidence not loaded"]) {
     await expect(panel).toContainText(value);
   }
@@ -248,6 +249,7 @@ Then(/^the (.+) record identifies its unknown and missing fields$/, async functi
   const expected = fields[kind];
   assert.ok(expected);
   const panel = page(this).getByRole("dialog");
+  if (kind === "interface") await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   for (const field of [...expected, "Unknown (null)"]) await expect(panel).toContainText(field);
 });
 

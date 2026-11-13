@@ -94,6 +94,7 @@ test.each([
   const item = within(screen.getByRole("dialog")).getByRole("button", { name });
   fireEvent.click(item, { detail: 0 });
   const panel = screen.getByRole("dialog", { name: title });
+  if (title === "Interface details") fireEvent.keyDown(within(panel).getByRole("tab", { name: "Sources" }), { key: "Enter" });
   expect(panel.textContent).toContain(id);
   fireEvent.keyDown(panel, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

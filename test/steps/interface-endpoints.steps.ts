@@ -98,6 +98,7 @@ Then("directly owned interface counts and selected file bytes are unchanged", as
 
 Then("interface details explain {string}", async function (this: EndpointWorld, reason: string) {
   assert.ok(this.page);
+  await this.page.getByRole("dialog").getByRole("tab", { name: "Sources", exact: true }).click();
   await expect(this.page.getByRole("dialog", { name: "Interface details", exact: true }).getByText(reason, { exact: true }))
     .toBeVisible();
 });

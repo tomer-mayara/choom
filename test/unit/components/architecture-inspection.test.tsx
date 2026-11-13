@@ -5,6 +5,8 @@ import { ArchitectureDiagram } from "../../../src/components/architecture-diagra
 import { baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { pointerClick } from "../../support/pointer.ts";
+import { interfaceOverviewFixture } from "../../support/interface-overview-fixtures.ts";
+import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
 
 afterEach(cleanup);
 
@@ -52,11 +54,29 @@ test("component inspection lists only direct ownership and Back restores the cho
   const row = within(list).getByRole("button", { name: "Invoice API, invoice-api" });
   fireEvent.click(row);
   expect(screen.getByRole("dialog", { name: "Interface details" })).toBeTruthy();
+  selectInterfaceTab("Sources");
   expect(screen.getByRole("group", { name: "Allowed consumers" }).textContent).toContain("checkout");
   fireEvent.click(screen.getByRole("button", { name: "Back" }));
   const restored = within(screen.getByRole("dialog")).getByRole("button", { name: "Invoice API, invoice-api" });
   expect(document.activeElement).toBe(restored);
   expect(baseline).toEqual(original);
+});
+
+test("tabs retain the selected entry but a direct same-interface arc starts a fresh frame", () => {
+  view(interfaceOverviewFixture());
+  fireEvent.click(screen.getByRole("button", { name: "Billing, billing" }));
+  fireEvent.click(within(screen.getByRole("region", { name: "Owned interfaces" })).getByRole("button", { name: "Invoice API, invoice-api" }));
+  fireEvent.click(screen.getByRole("button", { name: "Invoice type, invoice-type" }));
+  selectInterfaceTab("Sources");
+  selectInterfaceTab("Overview");
+  expect(screen.getByRole("button", { name: "Invoice type, invoice-type" }).getAttribute("aria-pressed")).toBe("true");
+  selectInterfaceTab("Sources");
+  const arc = document.querySelector<HTMLElement>("[data-interface-label][data-interface-id='invoice-api']");
+  if (!arc) throw new Error("The inspected interface must retain its known-consumer arc.");
+  fireEvent.click(arc);
+  expect(screen.getByRole("tab", { name: "Overview" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("button", { name: "Create invoice, create-invoice" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
 });
 
 test("baseline lists include unowned resources and open their recorded details", () => {

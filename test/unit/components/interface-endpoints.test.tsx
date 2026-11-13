@@ -6,6 +6,7 @@ import { fixtureItem } from "../../support/baseline-fixtures.ts";
 import { interfaceEndpointBaseline } from "../../support/interface-endpoint-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { showAllConnections } from "../../support/connection-controls.tsx";
+import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
 
 afterEach(cleanup);
 
@@ -13,6 +14,7 @@ test("unknown consumers have a clear explanation without losing the owner or sta
   const baseline = interfaceEndpointBaseline("unknown consumers");
   const item = fixtureItem(baseline.interfaces);
   render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
+  selectInterfaceTab("Sources");
   expect(screen.getByText("Allowed consumers are unknown.")).toBeTruthy();
   expect(within(screen.getByRole("group", { name: "Owner" })).getByText("billing")).toBeTruthy();
   const consumers = within(screen.getByRole("group", { name: "Allowed consumers" }));
@@ -29,6 +31,7 @@ test.each([
   const baseline = interfaceEndpointBaseline(facts);
   const item = fixtureItem(baseline.interfaces);
   render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
+  selectInterfaceTab("Sources");
   expect(screen.getByText(message)).toBeTruthy();
   const owner = within(screen.getByRole("group", { name: "Owner" }));
   expect(owner.getByText("Unknown (null)")).toBeTruthy();
@@ -42,6 +45,7 @@ test.each([
 test("complete endpoints need no missing-facts explanation", () => {
   const baseline = interfaceEndpointBaseline("complete");
   render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: "invoice-api" }} />);
+  selectInterfaceTab("Sources");
   expect(screen.queryByText(/^(Owner|Allowed consumers|Owner and allowed consumers) (is|are) unknown\.$/)).toBeNull();
 });
 
@@ -73,5 +77,6 @@ test("a baseline without components keeps the summary, empty message, and interf
   fireEvent.click(screen.getByRole("button", { name: "Baseline details" }));
   fireEvent.click(within(screen.getByRole("region", { name: "Interfaces" }))
     .getByRole("button", { name: "Invoice API, invoice-api" }));
+  selectInterfaceTab("Sources");
   expect(screen.getByText("Owner and allowed consumers are unknown.")).toBeTruthy();
 });

@@ -5,6 +5,7 @@ import type {
   BaselineMembershipStatement, BaselineNullableTextStatement, BaselinePromisesStatement, BaselineRuleObjectStatement, BaselineTextStatement,
 } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
+import { InterfaceDetails } from "./interface-details.tsx";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
   | { kind: "interface"; interfaceId: string }
@@ -115,13 +116,16 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true }: { b
     : panel.kind === "interface" ? baseline.interfaces.find(({ id }) => id === panel.interfaceId)
       : baseline.resources.find(({ id }) => id === panel.resourceId);
   if (!item) return null;
+  if ("allowedConsumers" in item) return <InterfaceDetails key={item.id} baseline={baseline} item={item}>
+    <Field name="Interface ID"><RecordedValue value={item.id} /></Field>
+    <InterfaceFields item={item} />
+  </InterfaceDetails>;
   const kind = panel.kind === "component" ? "Component" : panel.kind === "interface" ? "Interface" : "Resource";
   return (
     <section className="space-y-4 wrap-anywhere">
       {showHeading ? <h2 className="text-lg font-semibold">{item.name}</h2> : null}
       <Field name={`${kind} ID`}><RecordedValue value={item.id} /></Field>
-      {"purpose" in item ? <ComponentFields item={item} />
-        : "allowedConsumers" in item ? <InterfaceFields item={item} /> : <ResourceFields item={item} />}
+      {"purpose" in item ? <ComponentFields item={item} /> : <ResourceFields item={item} />}
     </section>
   );
 }

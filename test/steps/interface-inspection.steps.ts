@@ -105,11 +105,19 @@ Then("Invoice API details are shown as a fresh inspection path", async function 
   const panel = page(this).getByRole("dialog", { name: "Interface details", exact: true });
   await expect(panel).toBeVisible({ timeout: 1500 });
   await expect(panel.getByRole("heading", { name: "Invoice API", exact: true })).toBeVisible();
+  await expect(panel.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(panel.getByRole("group", { name: "Provider", exact: true })).toContainText("Billing");
+  await expect(panel.getByRole("group", { name: "Behavior", exact: true })).toContainText("Create an invoice");
+  await expect(panel.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
+});
+
+Then("the arc's original interface fields remain readable in Sources", async function (this: ArcInspectionWorld) {
+  const panel = page(this).getByRole("dialog", { name: "Interface details", exact: true });
+  await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   await expect(panel.getByRole("group", { name: "Interface ID", exact: true })).toContainText("invoice-api");
   await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText("billing");
   await expect(panel.getByRole("group", { name: "Allowed consumers", exact: true })).toContainText("reporting");
   await expect(panel.getByRole("group", { name: "Behavior", exact: true })).toContainText("Create an invoice");
-  await expect(panel.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
 });
 
 Given("keyboard focus is on the Reporting Invoice API arc label", async function (this: ArcInspectionWorld) {

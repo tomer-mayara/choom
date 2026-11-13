@@ -226,6 +226,7 @@ export class InstalledBaselineDriver {
       assert.equal(await row.getAttribute("aria-label"), `${name}, ${id}`);
       if (owner.value === null) assert.ok((await row.getText()).includes("Owner unknown"));
       await row.click();
+      if (kind === "Interfaces") await this.session().$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
       await waitFor(async () => this.session().execute((recordId, recordOwner, recordKind) => {
         const panel = document.querySelector('[role="dialog"]');
         const idField = recordKind === "Interfaces" ? "Interface ID" : "Resource ID";
@@ -299,6 +300,7 @@ export class InstalledBaselineDriver {
     const first = ownedInterfaces[0];
     assert.ok(first && rows[0]);
     await rows[0].click();
+    await this.session().$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
     await waitFor(async () => this.session().execute((id) => {
       const panel = document.querySelector('[role="dialog"]');
       return panel?.querySelector('[role="group"][aria-label="Interface ID"]')?.textContent?.includes(id) === true

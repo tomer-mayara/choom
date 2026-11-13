@@ -86,10 +86,12 @@ test("mixed and self-only interface facts remain readable with no unknown-fact w
   await view(); selectBilling();
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Invoice API, invoice-api" }));
   expect(arcs()).toEqual(billing);
+  fireEvent.keyDown(screen.getByRole("tab", { name: "Sources" }), { key: "Enter" });
   const consumers = within(screen.getByRole("dialog")).getByRole("group", { name: "Allowed consumers" }).textContent;
   for (const id of ["checkout", "reporting", "billing"]) expect(consumers).toContain(id);
   fireEvent.click(screen.getByRole("button", { name: "Baseline details" }));
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Health, health" }));
+  fireEvent.keyDown(screen.getByRole("tab", { name: "Sources" }), { key: "Enter" });
   expect(arcs()).toEqual([]);
   for (const name of ["Owner", "Allowed consumers"]) expect(within(screen.getByRole("dialog")).getByRole("group", { name }).textContent).toContain("billing");
   expect(screen.getByText("No connections shown.").style.visibility).toBe("visible");
