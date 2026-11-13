@@ -211,6 +211,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
         domAttributes: { "aria-hidden": true },
         markerEnd: { type: MarkerType.ArrowClosed, color: "var(--foreground)", width: interfaceArcMarkerSize, height: interfaceArcMarkerSize },
         data: { route, name, accessibleName: `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}`,
+          inspected: panel?.kind === "interface" && panel.interfaceId === route.interfaceId,
           inspect: inspection.open, view: arrangement, pressGeneration, emphasis, labelOrder: connections.order.get(route.id) ?? 0 },
       };
     });

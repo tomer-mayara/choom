@@ -84,9 +84,12 @@ counts these interfaces once each and directs the user to Baseline details.
 The note also appears when there are no components. Interface details explain
 which endpoint facts are unknown and retain any known values. Labels use at
 most two lines and the width of a component header; their accessible names
-include full interface and endpoint names and IDs. Each shown arc has a visible
-label and a keyboard control. A filtered arc has no pointer target or keyboard
-stop.
+include full interface and endpoint names and IDs. Curve or label hover,
+keyboard focus, and inspection of the interface reveal its transparent label.
+Pointer focus alone does not reveal the name. The keyboard control stays
+available with hidden text, which has no pointer target. A filtered arc has no
+pointer target or keyboard stop. Moving from the curve to its label keeps the
+label visible. A touch tap on the curve opens the interface in one action.
 
 The side panel preserves ownership and allowed-consumer statements separately,
 including unknown owners, repeated names, and an owner that is also a consumer.
@@ -132,7 +135,9 @@ list position and row focus. A direct canvas selection starts a new inspection
 path; inspecting an owned record keeps its component highlighted. Selecting an
 arc or its label opens that interface in a fresh path. Within the shown set,
 component inspection emphasizes incoming and outgoing arcs. Interface inspection
-emphasizes its arcs. Other panel kinds and a closed panel show normal arcs in All.
+emphasizes its shown arcs and reveals their labels. Other shown labels still
+respond to hover and keyboard focus. Other panels and a closed panel show
+normal arcs in All.
 
 Keyboard activation focuses the panel heading; pointer selection keeps focus on
 the canvas. The panel has no overlay or focus trap. Escape and the close button
@@ -167,11 +172,13 @@ cancelled gesture or replaced view cannot change the current view.
 positions and bounds, and applies the normal 100% starting view using the current
 canvas size. Late pointer events cannot undo the reset or select another record.
 Reset keeps the same view owner, inspected record, Back path, panel scroll,
-and connection mode. Reset's announcement replaces any old keyboard movement
-coordinates with **Layout reset.** It does not reread the file or run layout.
-Repeated resets have the same result. **Fit view** changes only the camera to
-include all shown component bounds and shown arc curves, arrowheads, and labels,
-including items outside the viewport.
+and connection mode. Labels follow current hover, keyboard focus, and
+inspection after Reset. Reset’s announcement replaces any old keyboard
+movement coordinates with **Layout reset.** Repeated resets have the same
+result and use the prepared layout. **Fit view** changes only the camera to
+include all shown component bounds, shown arc curves and arrowheads, and
+label bounds for each shown arc, including labels with hidden text and items
+outside the viewport.
 It can zoom below 1% for a widely spread arrangement. Zoom controls remain
 consistent with the fitted scale. It uses the canvas beside
 or above the panel and preserves manual geometry. Neither action runs on resize.

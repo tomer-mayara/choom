@@ -9,6 +9,7 @@ import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
 import { interfaceViewBaseline } from "../support/interface-view-fixtures.ts";
 import { clippedInterfaceShapes, observeInterfaceView, type InterfaceViewObservation } from "../support/interface-view-observer.ts";
+import { hoverArcLabel } from "../support/interface-pointer.ts";
 
 interface InterfaceViewWorld extends World {
   page?: Page;
@@ -216,7 +217,9 @@ async function fit(world: InterfaceViewWorld) {
 }
 
 async function press(world: InterfaceViewWorld, selector: string) {
-  const box = await page(world).locator(selector).boundingBox();
+  const control = page(world).locator(selector);
+  if (await control.getAttribute("data-interface-label") !== null) await hoverArcLabel(page(world), control);
+  const box = await control.boundingBox();
   assert.ok(box);
   world.viewPointer = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await page(world).mouse.move(world.viewPointer.x, world.viewPointer.y);

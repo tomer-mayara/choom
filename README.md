@@ -23,7 +23,8 @@ component overview, side panel, interface arcs, movement, and layout controls.
 The [interface-arc checks](docs/change-requests/BR-interface-arcs-evidence.md)
 record BR-07 acceptance and its platform limits.
 The [connection-readability checks](docs/change-requests/BR-connection-readability-evidence.md)
-record BR-08A acceptance for selected connections.
+record BR-08A and BR-08B acceptance for selected connections and labels on
+demand.
 
 The [manual analysis design](docs/design/llm-led-architecture-analysis.md) and
 [producer cookbook](docs/design/app-a/start-here.md) describe a separate workflow
@@ -80,10 +81,16 @@ produce several arrows without increasing the owner's interface count.
 **Connections: Selected** is the default. The initial view has no arrows.
 Select a component to show only arrows where it is the consumer or owner.
 Selecting a parent does not include connections only between its children.
-Choose **All** to see all known connections. Each shown arrow has an interface
-label. A component that is also a consumer of its own interface has a loop
-when that connection is in scope. The drawing shows **No connections shown.**
-when the current scope has no arrows. Interface counts always reflect ownership.
+Choose **All** to see all known connections. A component that also consumes
+its own interface has a loop when that connection is in scope.
+The drawing says **No connections shown.** when the current scope has no
+arrows. Interface counts always reflect ownership.
+
+An arrow’s label appears when the pointer hovers over its curve or label, when
+its control has keyboard focus, or when its interface is open in the panel.
+Label backgrounds are transparent. Tab to an arrow to reveal its name. Press
+**Enter** or **Space** to inspect it. Pointer and touch input can open details
+from the curve in one action.
 
 Choom draws an arc only when both its owner and allowed consumers are known.
 It does not infer consumers. A note identifies interfaces with missing endpoint
@@ -117,8 +124,9 @@ example also starts fresh.
 
 **Fit view** changes only pan and zoom to show the current arrangement, including
 components and shown arcs with their arrowheads and labels, even outside the
-viewport. **Reset layout** restores the initial positions and group bounds at
-100% zoom. It keeps the current inspection, Back path, and connection mode.
+viewport. Fit also reserves room for hidden labels of shown arrows.
+**Reset layout** restores the initial positions and group bounds at 100% zoom.
+It keeps the current inspection, Back path, and connection mode.
 Reset also ends a held press or drag. Both controls use the available canvas
 beside or above the panel; they are absent when there are no components.
 
@@ -235,12 +243,14 @@ bun test --preload ./test/preload.ts ./test/unit/components/interface-*.test.tsx
 bun run test:e2e --tags @br-07
 ```
 
-Run the focused connection-scope checks with:
+Run the focused connection-readability checks with:
 
 ```sh
 bun test ./test/unit/lib/interface-arc-visibility.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/connection-scope.test.tsx
+bun test --preload ./test/preload.ts ./test/unit/components/connection-labels.test.tsx
 bun run test:e2e --tags @br-08a
+bun run test:e2e --tags @br-08b
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

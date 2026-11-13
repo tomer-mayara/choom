@@ -9,6 +9,7 @@ import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 import { interfaceInspectionBaseline } from "../support/interface-inspection-fixtures.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
 import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import { hoverArcLabel, unobscuredArcPoint } from "../support/interface-pointer.ts";
 
 interface ArcInspectionWorld extends World {
   page?: Page;
@@ -75,35 +76,29 @@ async function tabToLabel(world: ArcInspectionWorld, consumer: string): Promise<
   await expect(label(world)).toBeFocused();
 }
 
-When("the user selects the Checkout Invoice API arc by its {word}", async function (this: ArcInspectionWorld, target: string) {
-  this.arcInspectionConsumer = "checkout";
-  await rememberView(this);
+async function selectCheckoutArc(world: ArcInspectionWorld, target: string) {
+  world.arcInspectionConsumer = "checkout";
+  await rememberView(world);
   let point: { x: number; y: number };
   if (target === "label") {
-    const bounds = await label(this).boundingBox();
+    await hoverArcLabel(page(world), label(world));
+    const bounds = await label(world).boundingBox();
     assert.ok(bounds);
     point = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
   } else {
-    point = await page(this).locator('path[data-interface-arc][data-interface-id="invoice-api"][data-consumer-id="checkout"]').evaluate((element) => {
-      const path = element as SVGPathElement;
-      const matrix = path.getScreenCTM();
-      if (!matrix) throw new Error("The arc must have a screen transform.");
-      const canvas = path.closest(".react-flow")?.getBoundingClientRect();
-      if (!canvas) throw new Error("The arc must belong to the diagram canvas.");
-      for (let sample = 1; sample < 20; sample += 1) {
-        const measured = path.getPointAtLength(path.getTotalLength() * sample / 20).matrixTransform(matrix);
-        const point = { x: Math.round(measured.x), y: Math.round(measured.y) };
-        const hit = document.elementFromPoint(point.x, point.y);
-        const edge = hit?.closest(".react-flow__edge");
-        if (point.x > canvas.left + 16 && point.x < canvas.right - 16 && point.y > canvas.top + 16 && point.y < canvas.bottom - 16
-          && !hit?.closest("button, .react-flow__node") && edge?.querySelector("path[data-interface-arc]") === path) {
-          return { x: point.x, y: point.y };
-        }
-      }
-      throw new Error("The curve must have a visible pointer target outside its label and component headers.");
-    });
+    point = await unobscuredArcPoint(page(world).locator('path[data-interface-arc][data-interface-id="invoice-api"][data-consumer-id="checkout"]'));
   }
-  await page(this).mouse.click(point.x, point.y);
+  await page(world).mouse.click(point.x, point.y);
+}
+
+When("the user selects the Checkout Invoice API arc by its {word}", async function (this: ArcInspectionWorld, target: string) {
+  await selectCheckoutArc(this, target);
+});
+
+Given("the off-screen Checkout Invoice API label has pointer focus without moving the drawing", async function (this: ArcInspectionWorld) {
+  await selectCheckoutArc(this, "curve");
+  await expect(label(this)).toBeFocused();
+  await unchangedView(this);
 });
 
 Then("Invoice API details are shown as a fresh inspection path", async function (this: ArcInspectionWorld) {
@@ -361,6 +356,26 @@ Then("pointer focus stays on the exact initiating arc label", async function (th
   await expect(label(this)).toBeFocused();
 });
 
+When("Escape closes the panel from the pointer-focused off-screen arc", async function (this: ArcInspectionWorld) {
+  await expect(label(this)).toBeFocused();
+  this.arcInspectionLabelBounds = await label(this).boundingBox() ?? undefined;
+  this.arcInspectionCanvasBounds = await page(this).locator(".react-flow").boundingBox() ?? undefined;
+  await page(this).keyboard.press("Escape");
+});
+
+Then("the same focused label is revealed with the smallest horizontal pan", async function (this: ArcInspectionWorld) {
+  const before = this.arcInspectionLabelBounds;
+  const canvas = this.arcInspectionCanvasBounds;
+  const after = await label(this).boundingBox();
+  assert.ok(before && canvas && after && before.x + before.width < canvas.x);
+  await expect(label(this)).toBeFocused();
+  await expect(label(this)).toHaveCSS("opacity", "1");
+  assert.ok(Math.abs(after.x - canvas.x - 4) < 1, "Keyboard input must reveal the already-focused label and outline.");
+  assert.ok(Math.abs(after.y - before.y) < 1);
+  assert.equal((await camera(page(this)))[0], this.arcInspectionCamera?.[0]);
+  await expect(page(this).getByRole("dialog")).toHaveCount(0);
+});
+
 Then("the short arc label has no long empty background beside its name", async function (this: ArcInspectionWorld) {
   const sizes = await label(this).evaluate((element) => {
     const text = document.createRange();
@@ -372,14 +387,18 @@ Then("the short arc label has no long empty background beside its name", async f
   assert.ok(sizes.label <= sizes.text + 24, `The short label has ${sizes.label - sizes.text}px of unused width.`);
 });
 
-Then("arc inspection preserves the camera and component positions", async function (this: ArcInspectionWorld) {
-  assert.ok(this.arcInspectionCamera && this.arcInspectionPositions);
-  await expect.poll(() => camera(page(this))).toEqual(this.arcInspectionCamera);
-  const positions = await page(this).locator(".react-flow__node").evaluateAll((nodes) =>
+async function unchangedView(world: ArcInspectionWorld) {
+  assert.ok(world.arcInspectionCamera && world.arcInspectionPositions);
+  await expect.poll(() => camera(page(world))).toEqual(world.arcInspectionCamera);
+  const positions = await page(world).locator(".react-flow__node").evaluateAll((nodes) =>
     nodes.map((node) => `${node.getAttribute("data-id")}:${(node as HTMLElement).style.transform}`));
-  assert.deepEqual(positions, this.arcInspectionPositions);
-  const scroll = await page(this).locator(".react-flow").evaluate((element) => ({ x: element.scrollLeft, y: element.scrollTop }));
+  assert.deepEqual(positions, world.arcInspectionPositions);
+  const scroll = await page(world).locator(".react-flow").evaluate((element) => ({ x: element.scrollLeft, y: element.scrollTop }));
   assert.deepEqual(scroll, { x: 0, y: 0 }, "Pointer inspection must not scroll the canvas to its off-screen label.");
+}
+
+Then("arc inspection preserves the camera and component positions", async function (this: ArcInspectionWorld) {
+  await unchangedView(this);
 });
 
 After({ tags: "@br-07c" }, async function (this: ArcInspectionWorld) {

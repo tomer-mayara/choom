@@ -3,6 +3,14 @@ Feature: Inspect recorded interface arcs
   These scenarios use All connections when a drawing is available.
   The interface panel explains an arc without changing the component arrangement.
 
+  @br-08 @br-08b
+  Scenario: Reveal an off-screen label when pointer focus changes to keyboard input
+    Given the interface inspection baseline is open
+    And the Checkout Invoice API curve is visible with its label off-screen
+    And the off-screen Checkout Invoice API label has pointer focus without moving the drawing
+    When Escape closes the panel from the pointer-focused off-screen arc
+    Then the same focused label is revealed with the smallest horizontal pan
+
   Scenario Outline: Inspect an arc with one pointer selection
     Given the interface inspection baseline is open
     When the user selects the Checkout Invoice API arc by its <target>

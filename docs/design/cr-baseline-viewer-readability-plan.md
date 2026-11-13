@@ -1,7 +1,7 @@
 # Baseline viewer readability plan
 
 Status: **BR-01 to BR-04 and BR-07A to BR-07D are merged. BR-07 replaces BR-06.
-BR-08A is implemented. BR-05 and BR-08B to BR-08D remain planned.**
+BR-08A and BR-08B are implemented. BR-05, BR-08C, and BR-08D remain planned.**
 
 Reviewed: **2026-11-13**
 
@@ -32,7 +32,7 @@ merged; its draft-PR wording is historical. The status above is current.
 See the [BR-07 verification record](../change-requests/BR-interface-arcs-evidence.md)
 for interface-arc implementation checks.
 See the [BR-08 verification record](../change-requests/BR-connection-readability-evidence.md)
-for the completed connection scope checks.
+for the completed connection scope and label checks.
 
 ## Problem in the starting view
 
@@ -58,7 +58,8 @@ at once makes even this small model hard to read.
 | Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
 | Merged | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
 | Implemented | BR-08A | Selected and All modes, stable arc controls, and safe focus when an arc disappears. |
-| Planned | BR-08B to BR-08D | Labels on demand, optional self-connections, and Fit and view lifetime checks. |
+| Implemented | BR-08B | Labels on demand. |
+| Planned | BR-08C and BR-08D | Optional self-connections, Fit, and view lifetime checks. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
@@ -1126,16 +1127,15 @@ below for dense data, original bytes, full details, and supported limits.
 
 ### BR-08: Reduce connection clutter
 
-BR-08A implements selected connections and All mode. Each shown arc has a label,
-and self-loops remain eligible in both modes. Fit includes the labels of shown
-arcs. BR-08B to BR-08D add labels on demand, a self-connection choice, and Fit
-for the final view. The side panel keeps complete recorded facts available
-throughout the stack.
+BR-08A implements selected connections and All mode. BR-08B adds labels on
+demand. Self-loops remain eligible in both modes until BR-08C. Fit still includes
+label bounds for every shown arc. BR-08D will fit only labels that are revealed
+at activation. The side panel keeps complete recorded facts available.
 
 | Ticket | Status | Result | Depends on |
 | --- | --- | --- | --- |
 | [BR-08A](#br-08a-show-connections-for-the-current-selection) | Implemented | Selected and All modes, stable inspection, and safe focus when an arc disappears. | BR-07D |
-| [BR-08B](#br-08b-reveal-labels-on-demand) | Planned | Hover, keyboard focus, and inspection reveal transparent labels. | BR-08A |
+| [BR-08B](#br-08b-reveal-labels-on-demand) | Implemented | Hover, keyboard focus, and inspection reveal transparent labels. | BR-08A |
 | [BR-08C](#br-08c-hide-self-connections-by-default) | Planned | Self-loops start hidden and are available through one checkbox. | BR-08B |
 | [BR-08D](#br-08d-fit-the-shown-drawing-and-preserve-view-choices) | Planned | Fit uses shown content. Reset and file-open behavior follow the view lifetime. | BR-08C |
 
@@ -1186,7 +1186,7 @@ fixture must show exactly its known arcs in All, with the same unknown-facts not
 
 The [connection scope feature](../../cookbook/behavior/baseline-viewer/connection-scope.feature)
 and [verification record](../change-requests/BR-connection-readability-evidence.md#br-08a-selected-connections)
-cover the implementation. Validation for the draft PR stack is pending.
+cover the implementation.
 
 **Acceptance first — `@br-08 @br-08a @browser`:**
 
@@ -1276,6 +1276,10 @@ Run `bun run test:e2e --tags @br-08a`, affected BR-07 inspection acceptance, and
 the shared checks. Record positions, zoom, expected arc tuples, and focus targets.
 
 #### BR-08B: Reveal labels on demand
+
+The [connection label feature](../../cookbook/behavior/baseline-viewer/connection-labels.feature)
+and [verification record](../change-requests/BR-connection-readability-evidence.md#br-08b-labels-on-demand)
+cover the implementation.
 
 **Acceptance first — `@br-08 @br-08b @browser`:**
 
