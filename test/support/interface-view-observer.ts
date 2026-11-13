@@ -40,6 +40,12 @@ export function observeInterfaceView() {
     return { id, d: path.getAttribute("d"), stroke };
   });
   for (const label of flow.querySelectorAll<HTMLElement>("[data-interface-label]")) {
+    let painted = true;
+    for (let element: Element | null = label; element; element = element.parentElement) {
+      const style = getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) { painted = false; break; }
+    }
+    if (!painted) continue;
     shapes.push({ kind: "label", id: JSON.stringify([label.dataset.interfaceId, label.dataset.consumerId, label.dataset.ownerId]),
       bounds: rectangle(label.getBoundingClientRect()) });
   }

@@ -10,6 +10,7 @@ import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 import { fixtureItem } from "../support/baseline-fixtures.ts";
 import { interfaceArcBaseline } from "../support/interface-arc-fixtures.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
+import { unobscuredArcPoint } from "../support/interface-pointer.ts";
 
 interface InterfaceArcWorld extends World {
   page?: Page;
@@ -33,11 +34,19 @@ Given("the {string} interface baseline is ready to open", async function (this: 
   await this.arcViewer.open();
 });
 
-When("the user opens the prepared interface baseline", async function (this: InterfaceArcWorld) {
+When("the user opens the prepared interface baseline with All connections", async function (this: InterfaceArcWorld) {
   assert.ok(this.arcViewer && this.arcPath && this.page && this.arcBaseline);
   await this.arcViewer.openBaseline(this.arcPath);
   await expect(this.page.getByRole("heading", { name: this.arcBaseline.id, exact: true })).toBeVisible();
   await this.page.getByRole("radio", { name: "All", exact: true }).check();
+});
+
+When("the user inspects the first interface from its curve", async function (this: InterfaceArcWorld) {
+  assert.ok(this.page);
+  const point = await unobscuredArcPoint(this.page.locator("path[data-interface-arc]").first());
+  await this.page.mouse.click(point.x, point.y);
+  await expect(this.page.getByRole("dialog", { name: "Interface details", exact: true })).toBeVisible();
+  await this.page.mouse.move(8, 8);
 });
 
 Then("{int} interface arcs show the recorded consumers and owners", async function (this: InterfaceArcWorld, count: number) {
@@ -114,7 +123,9 @@ Then("each short interface label is unobscured and all component headers remain 
     const headers = [...document.querySelectorAll(".react-flow__node button")].map((header) => header.getBoundingClientRect());
     const clear = !headers.some((header) => text.left < header.right && text.right > header.left && text.top < header.bottom && text.bottom > header.top);
     const hits = [text.left + 1, (text.left + text.right) / 2, text.right - 1].map((x) => document.elementFromPoint(x, (text.top + text.bottom) / 2));
-    return text.width > 0 && text.height > 0 && clear && hits.every((hit) => !hit?.closest(".react-flow__node"));
+    const style = getComputedStyle(element);
+    return Number(style.opacity) > 0 && style.visibility !== "hidden" && text.width > 0 && text.height > 0
+      && clear && hits.every((hit) => !hit?.closest(".react-flow__node"));
   }));
   assert.ok(readable.length > 0);
   assert.deepEqual(readable, readable.map(() => true), "Interface names must be visible in full, with no component header covering their text.");
@@ -152,6 +163,7 @@ Then("a labelled loop extends outside Billing's header", async function (this: I
   assert.ok(header && loop);
   assert.ok(loop.x < header.x || loop.x + loop.width > header.x + header.width || loop.y < header.y || loop.y + loop.height > header.y + header.height);
   await expect(this.page.locator("[data-interface-label]")).toHaveText("Invoice API");
+  await expect(this.page.locator("[data-interface-label]")).toHaveCSS("opacity", "1");
 });
 
 Then("the arc is visible inside the group while both headers remain usable", async function (this: InterfaceArcWorld) {
@@ -179,6 +191,7 @@ Then("the arc is visible inside the group while both headers remain usable", asy
 Then("the arc label uses at most two lines and no more width than a header", async function (this: InterfaceArcWorld) {
   assert.ok(this.page);
   const label = this.page.locator("[data-interface-label]");
+  await expect(label).toHaveCSS("opacity", "1");
   const bounds = await label.boundingBox();
   const header = await this.page.getByRole("button", { name: "Billing, billing", exact: true }).boundingBox();
   assert.ok(bounds && header && bounds.width <= header.width + 1);

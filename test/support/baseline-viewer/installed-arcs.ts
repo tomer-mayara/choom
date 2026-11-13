@@ -25,6 +25,13 @@ async function observe(browser: Browser) {
     const rect = (value: DOMRect) => ({ x: value.x, y: value.y, width: value.width, height: value.height });
     const identity = (element: Element | null) => element ? ["interface", "consumer", "owner"]
       .map((kind) => element.getAttribute(`data-${kind}-id`)).join("/") : null;
+    const painted = (element: Element) => {
+      for (let current: Element | null = element; current; current = current.parentElement) {
+        const style = getComputedStyle(current);
+        if (style.display === "none" || style.visibility !== "visible" || Number(style.opacity) === 0) return false;
+      }
+      return element.getClientRects().length > 0;
+    };
     const camera = new DOMMatrixReadOnly(getComputedStyle(viewport).transform);
     // Apply the observed CSS camera so endpoints include the same zoom as headers.
     const matrix = new DOMMatrixReadOnly().translate(canvas.x, canvas.y).multiply(camera);
@@ -79,6 +86,8 @@ async function observe(browser: Browser) {
           arrowBounds: { x: left, y: top, width: Math.max(...corners.map(({ x }) => x)) - left,
             height: Math.max(...corners.map(({ y }) => y)) - top },
           label: rect(label.getBoundingClientRect()), name: label.getAttribute("aria-label"),
+          labelPainted: painted(label), labelBackground: getComputedStyle(label).backgroundColor,
+          labelOutline: { width: Number.parseFloat(getComputedStyle(label).outlineWidth), style: getComputedStyle(label).outlineStyle },
           start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y } };
       }),
       labelCount: document.querySelectorAll("[data-interface-label]").length,
@@ -163,6 +172,28 @@ async function invoiceReady(browser: Browser): Promise<void> {
   }, "The installed arc must open its recorded Invoice API details");
 }
 
+async function clickInvoiceCurve(browser: Browser): Promise<void> {
+  const point = await browser.execute(() => {
+    const path = document.querySelector<SVGPathElement>('path[data-interface-arc][data-interface-id="invoice-api"][data-consumer-id="checkout"]');
+    const canvas = document.querySelector(".react-flow")?.getBoundingClientRect();
+    const viewport = document.querySelector(".react-flow__viewport");
+    if (!path || !canvas || !viewport) throw new Error("The installed curve needs a visible canvas");
+    const matrix = new DOMMatrixReadOnly().translate(canvas.x, canvas.y)
+      .multiply(new DOMMatrixReadOnly(getComputedStyle(viewport).transform));
+    for (let index = 1; index < 40; index += 1) {
+      const value = matrix.transformPoint(path.getPointAtLength(path.getTotalLength() * index / 40));
+      const x = Math.round(value.x);
+      const y = Math.round(value.y);
+      const hit = document.elementFromPoint(x, y);
+      if (x > canvas.left + 12 && x < canvas.right - 12 && y > canvas.top + 12 && y < canvas.bottom - 12
+        && !hit?.closest("button, .react-flow__node")
+        && hit?.closest(".react-flow__edge")?.querySelector("[data-interface-arc]") === path) return { x, y };
+    }
+    throw new Error("The installed Invoice API curve needs an unobscured pointer target");
+  });
+  await browser.action("pointer").move({ origin: "viewport", ...point }).down("left").up("left").perform();
+}
+
 export async function inspectAndArrangeInstalledArcs(browser: Browser, world: World) {
   const all = browser.$('input[name="connection-mode"][value="all"]');
   assert.equal(await all.isExisting(), true, "The installed viewer must expose the All connection choice");
@@ -176,8 +207,9 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
   assert.ok(text.includes("Arrow: consumer may use the owner's interface."));
   assert.equal(text.includes("unknown owners or allowed consumers"), false);
 
-  await browser.$(invoiceArc("checkout")).click();
+  await clickInvoiceCurve(browser);
   await invoiceReady(browser);
+  await browser.action("pointer").move({ origin: "viewport", x: 8, y: 8 }).perform();
   const pointer = await observe(browser);
   await browser.$('button[aria-label="Close details"]').click();
   await waitFor(async () => (await observe(browser)).panelTitle === "", "The installed interface panel must close");
@@ -228,7 +260,24 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
   return result;
 }
 
+function expectLabelDemand(result: Awaited<ReturnType<typeof inspectAndArrangeInstalledArcs>>): void {
+  const painted = (state: ArcState) => state.arcs.filter(({ labelPainted }) => labelPainted).map(({ id }) => id);
+  assert.deepEqual(painted(result.initial), [], "All must retain three keyboard controls without painting their labels on open");
+  assert.deepEqual(painted(result.beforeKeyboard), ["invoice-api/reporting/billing"], "Tab must reveal only its focused arc label");
+  const focused = result.beforeKeyboard.arcs.find(({ id }) => id === "invoice-api/reporting/billing");
+  assert.ok(focused && focused.labelOutline.width > 0 && focused.labelOutline.style !== "none",
+    "The installed keyboard label must have a visible focus outline before activation");
+  for (const state of [result.pointer, result.keyboard]) {
+    assert.deepEqual(painted(state), ["invoice-api/checkout/billing", "invoice-api/reporting/billing"],
+      "Inspecting Invoice API must reveal both of its labels while leaving Audit API hidden");
+    for (const arc of state.arcs.filter(({ labelPainted }) => labelPainted)) {
+      assert.equal(arc.labelBackground, "rgba(0, 0, 0, 0)", "Revealed installed labels must have transparent backgrounds");
+    }
+  }
+}
+
 export function expectInstalledArcJourney(result: Awaited<ReturnType<typeof inspectAndArrangeInstalledArcs>>): void {
+  expectLabelDemand(result);
   const { initial, pointer, beforeKeyboard, keyboard, beforeMove, afterMove, afterFit, afterReset, afterBack } = result;
   const expected = ["invoice-api/checkout/billing", "invoice-api/reporting/billing", "audit-api/commerce/commerce"];
   for (const state of Object.values(result)) {

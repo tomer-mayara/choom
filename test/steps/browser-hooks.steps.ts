@@ -24,10 +24,10 @@ interface WorkspaceWorld extends World {
 
 Before(
   { tags: "@browser", timeout: 30_000 },
-  async function (this: WorkspaceWorld) {
+  async function (this: WorkspaceWorld, { pickle }) {
     this.pageErrors = [];
     this.browser = await chromium.launch();
-    this.context = await this.browser.newContext();
+    this.context = await this.browser.newContext({ hasTouch: pickle.tags.some((tag) => tag.name === "@touch") });
     await this.context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     this.page = await this.context.newPage();
     this.page.on("pageerror", (error) => this.pageErrors.push(error.message));
