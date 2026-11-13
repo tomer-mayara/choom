@@ -64,15 +64,14 @@ Arcs attach to the actual component headers, including within nested groups.
 They follow the current arrangement without changing the prepared layout.
 
 The view starts with **Connections: Selected**, self-connections off, and no
-inspection, so it shows components without arcs. Selected shows arcs whose consumer or owner is the
-component in the inspection path. An owned interface or resource
+inspection, so it shows components without arcs. Selected shows arcs directly
+incident to the component in the inspection path. An owned interface or resource
 keeps that scope. A standalone inspected interface, including direct arc input,
 shows its known arcs. Other panels and a closed panel show none. Selecting a
 parent does not include descendant-only links. **All** shows the complete known
-arc set apart from any loops hidden by the self-connection choice. **Show
-self-connections** permits loops within the current scope. Future collapse
-excludes an arc when an actual endpoint header is hidden and keeps the
-recorded endpoints for when the arc is shown again.
+arc set. Either choice excludes self-loops unless **Show self-connections** is
+on. Future collapse excludes an arc when an actual endpoint header is hidden;
+it does not redirect the arc to an ancestor.
 
 These are view filters, not changes to recorded knowledge. Keep complete
 interface counts, unknown-fact summaries, and validation limits. An empty shown
@@ -85,12 +84,12 @@ counts these interfaces once each and directs the user to Baseline details.
 The note also appears when there are no components. Interface details explain
 which endpoint facts are unknown and retain any known values. Labels use at
 most two lines and the width of a component header; their accessible names
-include full interface and endpoint names and IDs. Curve or label hover,
-keyboard focus, and inspection of the interface reveal its transparent label.
-Pointer focus alone does not reveal the name. The keyboard control stays
-available with hidden text, which has no pointer target. A filtered arc has no
-pointer target or keyboard stop. Moving from the curve to its label keeps the
-label visible. A touch tap on the curve opens the interface in one action.
+include full interface and endpoint names and IDs. A shown arc reveals its
+transparent label on curve/label hover, keyboard focus, or inspection of its
+interface. Pointer focus alone does not keep the label revealed. The keyboard
+control remains available while its text is hidden; hidden text has no pointer
+hit rectangle. Filtered arcs have no input target. Curve-to-label movement keeps
+the revealed label stable. Touch can open the interface without prior hover.
 
 The side panel preserves ownership and allowed-consumer statements separately,
 including unknown owners, repeated names, and an owner that is also a consumer.
@@ -136,9 +135,8 @@ list position and row focus. A direct canvas selection starts a new inspection
 path; inspecting an owned record keeps its component highlighted. Selecting an
 arc or its label opens that interface in a fresh path. Within the shown set,
 component inspection emphasizes incoming and outgoing arcs. Interface inspection
-emphasizes its shown arcs and reveals their labels. Other shown labels still
-respond to hover and keyboard focus. Other panels and a closed panel show
-normal arcs in All.
+emphasizes its arcs and reveals their labels; unrelated shown labels still respond
+to hover and keyboard focus. Other panel kinds and a closed panel show normal arcs.
 
 Keyboard activation focuses the panel heading; pointer selection keeps focus on
 the canvas. The panel has no overlay or focus trap. Escape and the close button
@@ -174,25 +172,25 @@ cancelled gesture or replaced view cannot change the current view.
 positions and bounds, and applies the normal 100% starting view using the current
 canvas size. Late pointer events cannot undo the reset or select another record.
 Reset keeps the same view owner, inspected record, Back path, panel scroll,
-and connection choices. Labels follow current hover, keyboard focus, and
-inspection after Reset. Reset’s announcement replaces any old keyboard
-movement coordinates with **Layout reset.** Repeated resets have the same
-result and use the prepared layout. **Fit view** changes only the camera to
-include all shown component bounds, shown arc curves and arrowheads, and
-label bounds for each shown arc, including labels with hidden text and items
-outside the viewport.
+and connection choices. It recomputes label visibility from current input and
+inspection rather than stored visibility flags. Reset's
+announcement replaces any old keyboard movement coordinates with
+**Layout reset.** It does not reread the file or run layout. Repeated resets have the
+same result. **Fit view** changes only the camera to include all shown component
+bounds, shown arc curves and arrowheads, and labels revealed at activation,
+including items outside the viewport. Hidden label rectangles do not enlarge it.
 It can zoom below 1% for a widely spread arrangement. Zoom controls remain
 consistent with the fitted scale. It uses the canvas beside
 or above the panel and preserves manual geometry. Neither action runs on resize.
 
 The published baseline/layout pair stays immutable. Its viewer-owned arrangement
 survives inspection, resize, pan, zoom, loading progress, and unsuccessful loads.
-Each successful open gets a new arrangement and starts in Selected mode with
-self-connections off. Closing the example ends its view. Failed, cancelled,
-and ignored late loads keep both connection choices. Arc presses belong to their published view and are
-cancelled when their arc disappears. A reappearing tuple or a same-ID
-replacement cannot revive the old press. Movement and connection choices add
-no file writes, storage permission, or persistent cache.
+Each successful open gets a new arrangement and default connection choices;
+closing the example ends its view. Failed, cancelled, and ignored late loads
+keep the choices. Arc presses belong to their published view and are cancelled
+when their arc disappears. A reappearing tuple or a same-ID replacement cannot
+revive the old press. Movement and connection choices add no file writes,
+storage permission, or persistent cache.
 
 The heading is the baseline ID. An entirely empty model says **No architecture
 items modeled**. A baseline with other record kinds but no components says

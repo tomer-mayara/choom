@@ -1,9 +1,11 @@
 import { afterEach, expect, test } from "bun:test";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "../../../src/App.tsx";
 import { LoadWorkflow, type SelectedBaseline } from "../../../src/architecture/load-workflow.ts";
 import type { LoadWorkflowSnapshot, WorkflowView } from "../../../src/architecture/workspace-view.ts";
-import { baselineWorkflowDependencies, pending } from "../../support/baseline-workflow-fixtures.ts";
+import { baselineWorkflowDependencies, pending, selectedBaseline } from "../../support/baseline-workflow-fixtures.ts";
+import { selfConnectionBaseline } from "../../support/connection-scope-fixtures.ts";
+import { showAllConnections, showSelfConnections } from "../../support/connection-controls.tsx";
 
 afterEach(() => { cleanup(); Reflect.deleteProperty(globalThis, "isTauri"); });
 
@@ -86,4 +88,47 @@ test.each(["canvas", "panel", "toolbar", "outside"])("successful replacement han
   const expected = target === "outside" ? document.body
     : target === "toolbar" ? opener : screen.getByRole("heading", { name: "baseline-example" });
   expect(document.activeElement === expected).toBe(true);
+});
+
+function publishedView() {
+  return {
+    positions: [...document.querySelectorAll<HTMLElement>(".react-flow__node")].map((node) => node.style.transform),
+    camera: document.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform,
+    panel: screen.queryByRole("dialog")?.textContent ?? null,
+    all: screen.getByRole<HTMLInputElement>("radio", { name: "All" }).checked,
+    self: screen.getByRole<HTMLInputElement>("checkbox", { name: "Show self-connections" }).checked,
+    arcs: [...document.querySelectorAll("path[data-interface-arc]")].map((arc) => arc.getAttribute("d")),
+  };
+}
+
+test.each(["failure", "picker cancellation", "cancelled then late result"])("a %s replacement keeps both choices and the published view", async (outcome) => {
+  const dependencies = baselineWorkflowDependencies();
+  dependencies.selectBaseline = async () => selectedBaseline(selfConnectionBaseline());
+  const workflow = new LoadWorkflow(dependencies);
+  await workflow.openBaseline();
+  render(<App workspace={{ workflow }} />);
+  showAllConnections(); showSelfConnections();
+  fireEvent.keyDown(screen.getByRole("button", { name: "Billing, billing" }), { key: "ArrowRight" });
+  fireEvent.click(screen.getByRole("button", { name: "Billing, billing" }));
+  fireEvent.click(within(screen.getByRole("region", { name: "Owned interfaces" })).getByRole("button", { name: "Invoice API, invoice-api" }));
+  const before = publishedView();
+  expect(before.all && before.self).toBe(true);
+  if (outcome === "failure") {
+    dependencies.selectBaseline = async () => ({ read: async () => ({ status: "failure", stage: "storage", code: "not-found", message: "The selected baseline was not found.", durationMs: 0 }) });
+    await act(async () => { await workflow.openBaseline(); });
+  } else if (outcome === "picker cancellation") {
+    dependencies.selectBaseline = async () => null;
+    await act(async () => { await workflow.openBaseline(); });
+  } else {
+    const layout = pending<void>();
+    const prepare = dependencies.layout;
+    dependencies.layout = async (baseline) => { await layout.promise; return prepare(baseline); };
+    let loading: ReturnType<LoadWorkflow["openBaseline"]> | undefined;
+    act(() => { loading = workflow.openBaseline(); });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Arranging"));
+    await act(async () => { await workflow.cancel(); });
+    expect(publishedView()).toEqual(before);
+    await act(async () => { layout.resolve(); await loading; });
+  }
+  expect(publishedView()).toEqual(before);
 });

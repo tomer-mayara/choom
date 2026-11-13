@@ -8,7 +8,8 @@ import { parse } from "yaml";
 import { baselineSchema } from "../../src/domain/baseline.ts";
 import { reviewedBaseline } from "../support/baseline-fixtures.ts";
 import { InstalledBaselineDriver } from "../support/baseline-viewer/installed-driver.ts";
-import { expectInstalledArcJourney } from "../support/baseline-viewer/installed-arcs.ts";
+import { expectInstalledArcJourney, expectInstalledArcLayout } from "../support/baseline-viewer/installed-arcs.ts";
+import { expectInstalledArcOpens } from "../support/baseline-viewer/installed-arc-files.ts";
 
 interface InstalledBaselineWorld extends World {
   installedBaselineDriver?: InstalledBaselineDriver;
@@ -19,6 +20,7 @@ interface InstalledBaselineWorld extends World {
   installedMovement?: Awaited<ReturnType<InstalledBaselineDriver["inspectAndMoveComponents"]>>;
   installedReset?: Awaited<ReturnType<InstalledBaselineDriver["fitAndResetLayout"]>>;
   installedArcs?: Awaited<ReturnType<InstalledBaselineDriver["inspectAndArrangeArcs"]>>;
+  installedArcOpens?: Awaited<ReturnType<InstalledBaselineDriver["inspectArcOpens"]>>;
   installedInvalidFile?: { path: string; bytes: string };
 }
 
@@ -163,20 +165,33 @@ Given("the standalone installed file records known interface consumers", async f
   }), "application/json");
 });
 
-When("the user inspects and arranges installed interface arcs with the pointer and keyboard", { timeout: 60_000 },
+When("the user explores installed connections and replaces the baseline through the native picker", { timeout: 120_000 },
   async function (this: InstalledBaselineWorld) {
+    assert.ok(this.installedBaselineDirectory && this.installedBaselineFile);
     await driver(this).expectBaseline("installed-known-consumers", [
       ["commerce", "Commerce"], ["billing", "Billing"], ["checkout", "Checkout"], ["reporting", "Reporting"],
     ]);
     this.installedArcs = await driver(this).inspectAndArrangeArcs();
+    this.installedInvalidFile = { path: join(this.installedBaselineDirectory, "invalid.yaml"), bytes: "formatVersion: [\n" };
+    await writeFile(this.installedInvalidFile.path, this.installedInvalidFile.bytes);
+    this.installedArcOpens = await driver(this).inspectArcOpens({ baseline: this.installedBaselineFile, invalid: this.installedInvalidFile.path });
   });
 
-Then("installed arcs follow the arrangement and retain inspection through Fit and Reset", async function (this: InstalledBaselineWorld) {
+Then("installed connections reveal labels on demand and follow the current view choices", async function (this: InstalledBaselineWorld) {
   assert.ok(this.installedArcs);
   expectInstalledArcJourney(this.installedArcs);
 });
 
-Then("the installed viewer explains eight unknown consumer lists without drawing arcs", { timeout: 30_000 },
+Then("Reset and unsuccessful native opens keep the view choices while reopening starts a fresh view", { timeout: 30_000 },
+  async function (this: InstalledBaselineWorld) {
+    assert.ok(this.installedArcs && this.installedArcOpens && this.installedBaselineBytes);
+    expectInstalledArcLayout(this.installedArcs);
+    expectInstalledArcOpens(this.installedArcs.initial, this.installedArcOpens);
+    const fixture = baselineSchema.parse(parse(this.installedBaselineBytes.toString("utf8")));
+    await driver(this).inspectRecords("Interfaces", fixture.interfaces);
+  });
+
+Then("the installed viewer explains eight unknown consumer lists without drawing arcs in either connection mode", { timeout: 30_000 },
   async function (this: InstalledBaselineWorld) { await driver(this).expectUnknownConsumers(); });
 
 After({ tags: "@baseline-viewer and @packaged", timeout: 30_000 }, async function (this: InstalledBaselineWorld) {

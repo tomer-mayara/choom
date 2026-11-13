@@ -1,112 +1,25 @@
 import assert from "node:assert/strict";
-import { setTimeout as delay } from "node:timers/promises";
 import type { World } from "@cucumber/cucumber";
 import { Key, type Browser } from "webdriverio";
+import { installedDrawingFits, observeInstalledArcs, type InstalledArcState } from "./installed-arc-observer.ts";
 
+const invoiceIds = ["invoice-api/checkout/billing", "invoice-api/reporting/billing"] as const;
+const auditId = "audit-api/commerce/commerce";
+const allIds = [...invoiceIds, auditId];
 const invoiceArc = (consumer: string) =>
   `button[data-interface-label][data-interface-id="invoice-api"][data-consumer-id="${consumer}"][data-owner-id="billing"]`;
 const component = (id: string) => `.react-flow__node[data-id="${id}"] button[aria-haspopup="dialog"]`;
+const mode = (value: string) => `input[name="connection-mode"][value="${value}"]`;
+const selfChoice = '//label[normalize-space(.)="Show self-connections"]//input[@type="checkbox"]';
 
-async function waitFor(check: () => Promise<boolean>, message: string): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  do {
-    if (await check()) return;
-    await delay(100);
-  } while (Date.now() < deadline);
-  assert.fail(message);
+async function stateWhen(browser: Browser, check: (state: InstalledArcState) => boolean, message: string) {
+  let state = await observeInstalledArcs(browser);
+  await browser.waitUntil(async () => { state = await observeInstalledArcs(browser); return check(state); },
+    { timeout: 10_000, interval: 100, timeoutMsg: message });
+  return state;
 }
 
-async function observe(browser: Browser) {
-  return browser.execute(() => {
-    const canvasElement = document.querySelector<HTMLElement>(".react-flow");
-    const viewport = document.querySelector<HTMLElement>(".react-flow__viewport");
-    if (!canvasElement || !viewport) throw new Error("The installed arc journey needs a component drawing");
-    const canvas = canvasElement.getBoundingClientRect();
-    const rect = (value: DOMRect) => ({ x: value.x, y: value.y, width: value.width, height: value.height });
-    const identity = (element: Element | null) => element ? ["interface", "consumer", "owner"]
-      .map((kind) => element.getAttribute(`data-${kind}-id`)).join("/") : null;
-    const painted = (element: Element) => {
-      for (let current: Element | null = element; current; current = current.parentElement) {
-        const style = getComputedStyle(current);
-        if (style.display === "none" || style.visibility !== "visible" || Number(style.opacity) === 0) return false;
-      }
-      return element.getClientRects().length > 0;
-    };
-    const camera = new DOMMatrixReadOnly(getComputedStyle(viewport).transform);
-    // Apply the observed CSS camera so endpoints include the same zoom as headers.
-    const matrix = new DOMMatrixReadOnly().translate(canvas.x, canvas.y).multiply(camera);
-    const panel = document.querySelector<HTMLElement>('[role="dialog"]');
-    return {
-      camera: { x: camera.e, y: camera.f, zoom: camera.a }, canvas: rect(canvas),
-      nativeScroll: { canvasX: canvasElement.scrollLeft, canvasY: canvasElement.scrollTop,
-        viewportX: viewport.scrollLeft, viewportY: viewport.scrollTop },
-      nodes: Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]"), (node) => {
-        const style = getComputedStyle(node);
-        const position = new DOMMatrixReadOnly(style.transform);
-        const header = node.querySelector('button[aria-haspopup="dialog"]');
-        if (!header) throw new Error("An installed component is missing its header");
-        return { id: node.getAttribute("data-id"), x: position.e, y: position.f,
-          width: Number.parseFloat(style.width), height: Number.parseFloat(style.height),
-          bounds: rect(node.getBoundingClientRect()), header: rect(header.getBoundingClientRect()) };
-      }),
-      arcs: Array.from(document.querySelectorAll<SVGPathElement>("path[data-interface-arc]"), (path) => {
-        const interfaceId = path.getAttribute("data-interface-id");
-        const consumerId = path.getAttribute("data-consumer-id");
-        const ownerId = path.getAttribute("data-owner-id");
-        const label = document.querySelector(`[data-interface-label][data-interface-id="${interfaceId}"][data-consumer-id="${consumerId}"][data-owner-id="${ownerId}"]`);
-        if (!label) throw new Error("An installed arc needs its rendered label");
-        const start = matrix.transformPoint(path.getPointAtLength(0));
-        const length = path.getTotalLength();
-        const tip = path.getPointAtLength(length);
-        const end = matrix.transformPoint(tip);
-        const markerId = path.getAttribute("marker-end")?.match(/^url\(\s*(['"]?)#(.+?)\1\s*\)$/)?.[2];
-        const marker = markerId ? document.getElementById(markerId) : null;
-        if (!(marker instanceof SVGMarkerElement)) throw new Error("An installed arc needs a rendered arrowhead");
-        const shape = marker.querySelector<SVGGraphicsElement>("polyline, polygon, path");
-        if (!shape) throw new Error("The installed arrowhead needs a visible shape");
-        const box = shape.getBBox();
-        const markerView = marker.viewBox.baseVal;
-        const units = marker.getAttribute("markerUnits") === "userSpaceOnUse" ? 1 : Number.parseFloat(getComputedStyle(path).strokeWidth);
-        const scale = Math.min(marker.markerWidth.baseVal.value / markerView.width, marker.markerHeight.baseVal.value / markerView.height) * units;
-        const previous = path.getPointAtLength(Math.max(0, length - 0.01));
-        const angle = Math.atan2(tip.y - previous.y, tip.x - previous.x);
-        const stroke = getComputedStyle(shape).stroke === "none" ? 0 : Number.parseFloat(getComputedStyle(shape).strokeWidth) / 2;
-        // Observe the SVG marker at the path tip; path bounds alone omit it.
-        const corners = [box.x - stroke, box.x + box.width + stroke].flatMap((x) =>
-          [box.y - stroke, box.y + box.height + stroke].map((y) => {
-            const dx = (x - marker.refX.baseVal.value) * scale;
-            const dy = (y - marker.refY.baseVal.value) * scale;
-            return matrix.transformPoint({ x: tip.x + dx * Math.cos(angle) - dy * Math.sin(angle),
-              y: tip.y + dx * Math.sin(angle) + dy * Math.cos(angle) });
-          }));
-        const left = Math.min(...corners.map(({ x }) => x));
-        const top = Math.min(...corners.map(({ y }) => y));
-        return { id: identity(path), interfaceId, consumerId, ownerId, d: path.getAttribute("d"),
-          arrow: path.getAttribute("marker-end"), bounds: rect(path.getBoundingClientRect()),
-          arrowBounds: { x: left, y: top, width: Math.max(...corners.map(({ x }) => x)) - left,
-            height: Math.max(...corners.map(({ y }) => y)) - top },
-          label: rect(label.getBoundingClientRect()), name: label.getAttribute("aria-label"),
-          labelPainted: painted(label), labelBackground: getComputedStyle(label).backgroundColor,
-          labelOutline: { width: Number.parseFloat(getComputedStyle(label).outlineWidth), style: getComputedStyle(label).outlineStyle },
-          start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y } };
-      }),
-      labelCount: document.querySelectorAll("[data-interface-label]").length,
-      panelTitle: panel?.querySelector("#inspection-title")?.textContent?.trim() ?? "",
-      panelText: panel?.innerText.trim() ?? "", back: Boolean(panel?.querySelector('button[aria-label="Back"]')),
-      fields: Object.fromEntries(["Interface ID", "Owner", "Allowed consumers", "Public access", "Promises"].map((name) =>
-        [name, panel?.querySelector<HTMLElement>(`[role="group"][aria-label="${name}"]`)?.innerText ?? ""])),
-      focusedArc: identity(document.activeElement?.closest("[data-interface-label]") ?? null),
-      focusedNode: document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id") ?? null,
-      focusedRecord: document.activeElement?.getAttribute("data-record-id") ?? null,
-      focusedHeading: document.activeElement?.id === "inspection-title",
-    };
-  });
-}
-
-type ArcState = Awaited<ReturnType<typeof observe>>;
-type Bounds = ArcState["canvas"];
-
-function node(state: ArcState, id: string) {
+function node(state: InstalledArcState, id: string) {
   const found = state.nodes.find((entry) => entry.id === id);
   assert.ok(found, `The installed diagram must contain ${id}`);
   return found;
@@ -116,7 +29,7 @@ function near(actual: number, expected: number, message: string): void {
   assert.ok(Math.abs(actual - expected) < 0.01, `${message}: expected ${expected}, received ${actual}`);
 }
 
-function sameGeometry(before: ArcState, after: ArcState): void {
+export function expectInstalledArcGeometry(before: InstalledArcState, after: InstalledArcState): void {
   assert.deepEqual(after.nodes.map(({ id }) => id), before.nodes.map(({ id }) => id));
   for (const previous of before.nodes) {
     const current = node(after, previous.id ?? "");
@@ -124,16 +37,22 @@ function sameGeometry(before: ArcState, after: ArcState): void {
   }
 }
 
-function fits(state: ArcState): boolean {
-  const inside = (box: Bounds) => box.x >= state.canvas.x - 1 && box.y >= state.canvas.y - 1
-    && box.x + box.width <= state.canvas.x + state.canvas.width + 1
-    && box.y + box.height <= state.canvas.y + state.canvas.height + 1;
-  return Number.isFinite(state.camera.zoom) && state.camera.zoom > 0
-    && state.nodes.every(({ bounds }) => inside(bounds))
-    && state.arcs.every(({ bounds, arrowBounds, label }) => inside(bounds) && inside(arrowBounds) && inside(label));
+function expectArcSet(state: InstalledArcState, expected: readonly string[]): void {
+  assert.deepEqual(state.arcs.map(({ id }) => id), expected, "The installed drawing must show the exact recorded arc tuples");
+  assert.deepEqual(state.labels.map(({ id }) => id), expected, "Every shown arc must retain its own keyboard control");
+  for (const label of state.labels) assert.ok(label.tabIndex >= 0, `${label.id} must remain a keyboard stop while its text is hidden`);
 }
 
-function expectAttached(state: ArcState): void {
+function expectPainted(state: InstalledArcState, expected: readonly string[]): void {
+  assert.deepEqual(state.labels.filter(({ painted }) => painted).map(({ id }) => id), expected,
+    "Only hovered, keyboard-focused, or inspected interface labels must be painted");
+  for (const label of state.labels) {
+    if (label.painted) assert.equal(label.background, "rgba(0, 0, 0, 0)", "Revealed labels must have transparent backgrounds");
+    else assert.equal(label.pointerEvents, "none", "A hidden label must not retain an invisible pointer rectangle");
+  }
+}
+
+function expectAttached(state: InstalledArcState): void {
   for (const arc of state.arcs) {
     assert.ok(arc.arrow?.includes("url("), "Each recorded arc must have an owner arrowhead");
     for (const [point, id] of [[arc.start, arc.consumerId], [arc.end, arc.ownerId]] as const) {
@@ -145,7 +64,18 @@ function expectAttached(state: ArcState): void {
   }
 }
 
-function expectInvoice(state: ArcState, back: boolean): void {
+function expectAccessibleNames(state: InstalledArcState): void {
+  const names: Record<string, string> = { "invoice-api": "Invoice API", "audit-api": "Audit API", commerce: "Commerce",
+    billing: "Billing", checkout: "Checkout", reporting: "Reporting" };
+  for (const arc of state.arcs) {
+    for (const id of [arc.interfaceId, arc.consumerId, arc.ownerId]) {
+      assert.ok(id && arc.label.name?.includes(id) && arc.label.name.includes(names[id] ?? ""),
+        "Each retained control must identify its interface and both endpoints");
+    }
+  }
+}
+
+function expectInvoice(state: InstalledArcState, back: boolean): void {
   assert.equal(state.panelTitle, "Interface details");
   assert.ok(state.fields["Interface ID"]?.includes("invoice-api"));
   assert.equal(state.back, back, "Arc selection starts a fresh path; list selection retains Back");
@@ -157,6 +87,17 @@ function expectInvoice(state: ArcState, back: boolean): void {
   for (const text of ["Create an invoice", "Invoice", "Invalid invoice", "One request"]) assert.ok(state.fields.Promises?.includes(text));
 }
 
+function expectAudit(state: InstalledArcState, back: boolean): void {
+  assert.equal(state.panelTitle, "Interface details");
+  assert.ok(state.fields["Interface ID"]?.includes("audit-api"));
+  assert.equal(state.back, back);
+  for (const field of ["Owner", "Allowed consumers"]) {
+    for (const text of ["commerce", "Proposed", "installed-fixture"]) assert.ok(state.fields[field]?.includes(text));
+  }
+  assert.ok(state.fields["Public access"]?.includes("recordAudit"));
+  assert.ok(state.fields.Promises?.includes("Unknown (null)"));
+}
+
 async function tabTo(browser: Browser, selector: string): Promise<void> {
   for (let count = 0; count < 64; count += 1) {
     if (await browser.execute((target) => document.activeElement === document.querySelector(target), selector)) return;
@@ -165,16 +106,13 @@ async function tabTo(browser: Browser, selector: string): Promise<void> {
   assert.fail(`Keyboard navigation must reach ${selector} in the installed drawing`);
 }
 
-async function invoiceReady(browser: Browser): Promise<void> {
-  await waitFor(async () => {
-    const state = await observe(browser);
-    return state.panelTitle === "Interface details" && state.fields["Interface ID"]?.includes("invoice-api") === true;
-  }, "The installed arc must open its recorded Invoice API details");
+async function pointerAway(browser: Browser): Promise<void> {
+  await browser.action("pointer").move({ origin: "viewport", x: 8, y: 8 }).perform();
 }
 
-async function clickInvoiceCurve(browser: Browser): Promise<void> {
-  const point = await browser.execute(() => {
-    const path = document.querySelector<SVGPathElement>('path[data-interface-arc][data-interface-id="invoice-api"][data-consumer-id="checkout"]');
+async function pointAtCurve(browser: Browser, selector: string): Promise<{ x: number; y: number }> {
+  const point = await browser.execute((target) => {
+    const path = document.querySelector<SVGPathElement>(target);
     const canvas = document.querySelector(".react-flow")?.getBoundingClientRect();
     const viewport = document.querySelector(".react-flow__viewport");
     if (!path || !canvas || !viewport) throw new Error("The installed curve needs a visible canvas");
@@ -189,130 +127,174 @@ async function clickInvoiceCurve(browser: Browser): Promise<void> {
         && !hit?.closest("button, .react-flow__node")
         && hit?.closest(".react-flow__edge")?.querySelector("[data-interface-arc]") === path) return { x, y };
     }
-    throw new Error("The installed Invoice API curve needs an unobscured pointer target");
-  });
-  await browser.action("pointer").move({ origin: "viewport", ...point }).down("left").up("left").perform();
+    throw new Error("The installed curve needs an unobscured pointer target");
+  }, selector);
+  await browser.action("pointer").move({ origin: "viewport", ...point }).perform();
+  return point;
+}
+
+async function interfaceReady(browser: Browser, id: string) {
+  return stateWhen(browser, (state) => state.panelTitle === "Interface details" && state.fields["Interface ID"]?.includes(id) === true,
+    `The installed panel must open the complete ${id} record`);
+}
+
+async function ownedInterface(browser: Browser, owner: string, id: string): Promise<void> {
+  await browser.$("#baseline-details-control").click();
+  await browser.$(`[role="region"][aria-label="Components"] button[data-record-id="${owner}"]`).click();
+  await browser.$(`[role="region"][aria-label="Owned interfaces"] button[data-record-id="${id}"]`).click();
+  await interfaceReady(browser, id);
+  await pointerAway(browser);
 }
 
 export async function inspectAndArrangeInstalledArcs(browser: Browser, world: World) {
-  const all = browser.$('input[name="connection-mode"][value="all"]');
-  assert.equal(await all.isExisting(), true, "The installed viewer must expose the All connection choice");
-  await all.click();
-  const self = browser.$('//label[normalize-space(.)="Show self-connections"]//input[@type="checkbox"]');
-  assert.equal(await self.isExisting(), true, "The installed viewer must expose Show self-connections");
-  assert.equal(await self.isSelected(), false, "Installed self-connections must start off");
-  await self.click();
-  assert.equal(await self.isFocused(), true, "The self-connection choice must keep focus after activation");
-  await waitFor(async () => {
-    const state = await observe(browser);
-    return state.nodes.length === 4 && state.arcs.length === 3 && state.labelCount === 3;
-  }, "The known-consumer baseline must show its four components and three recorded interface arcs");
-  const initial = await observe(browser);
+  const initial = await stateWhen(browser, (state) => state.nodes.length === 4 && state.arcs.length === 0
+    && state.labels.length === 0 && state.choices.mode === "selected" && state.choices.showSelf === false,
+  "The installed known-consumer baseline must open quietly in Selected with self-connections off");
   const text = (await browser.$("body").getText()).replace(/\s+/g, " ");
   assert.ok(text.includes("Arrow: consumer may use the owner's interface."));
   assert.equal(text.includes("unknown owners or allowed consumers"), false);
 
-  await clickInvoiceCurve(browser);
-  await invoiceReady(browser);
-  await browser.action("pointer").move({ origin: "viewport", x: 8, y: 8 }).perform();
-  const pointer = await observe(browser);
-  await browser.$('button[aria-label="Close details"]').click();
-  await waitFor(async () => (await observe(browser)).panelTitle === "", "The installed interface panel must close");
-  await tabTo(browser, invoiceArc("reporting"));
-  const beforeKeyboard = await observe(browser);
-  await browser.keys(Key.Enter);
-  await invoiceReady(browser);
-  const keyboard = await observe(browser);
+  await browser.$(component("checkout")).click();
+  await pointerAway(browser);
+  const checkout = await stateWhen(browser, (state) => state.panelTitle === "Component details" && state.arcs.length === 1,
+    "Checkout must show only its direct Invoice API connection");
+  const invoicePoint = await pointAtCurve(browser, 'path[data-interface-arc][data-interface-id="invoice-api"][data-consumer-id="checkout"]');
+  const hovered = await stateWhen(browser, (state) => state.labels.filter(({ painted }) => painted).length === 1,
+    "Hovering the installed curve must reveal its label");
+  await browser.action("pointer").move({ origin: "viewport", ...invoicePoint }).down("left").up("left").perform();
+  await interfaceReady(browser, "invoice-api");
+  await pointerAway(browser);
+  const pointer = await observeInstalledArcs(browser);
+  await tabTo(browser, 'button[aria-label="Close details"]');
   await browser.keys(Key.Escape);
-  await waitFor(async () => {
-    const state = await observe(browser);
-    return state.panelTitle === "" && state.focusedArc === "invoice-api/reporting/billing";
-  }, "Closing the installed panel must return keyboard focus to the exact initiating arc");
+  const selectedClosed = await stateWhen(browser, (state) => state.panelTitle === "" && state.arcs.length === 0 && state.focusedNode === "billing",
+    "Closing the selected installed interface must remove its arcs and focus Billing's header");
 
-  await browser.$("#baseline-details-control").click();
-  await browser.$('[role="region"][aria-label="Components"] button[data-record-id="billing"]').click();
-  await browser.$('[role="region"][aria-label="Owned interfaces"] button[data-record-id="invoice-api"]').click();
-  await invoiceReady(browser);
+  await browser.$(mode("all")).click();
+  await pointerAway(browser);
+  const all = await stateWhen(browser, (state) => state.arcs.length === 2 && state.choices.mode === "all",
+    "All must show the two known non-self Invoice API arcs");
+  await tabTo(browser, invoiceArc("reporting"));
+  const beforeKeyboard = await observeInstalledArcs(browser);
+  await browser.keys(Key.Enter);
+  const keyboard = await interfaceReady(browser, "invoice-api");
+  await browser.keys(Key.Escape);
+  const allClosed = await stateWhen(browser, (state) => state.panelTitle === "" && state.focusedArc === invoiceIds[1],
+    "Closing in All must restore the exact surviving keyboard arc");
+  await browser.$(selfChoice).click();
+  const selfOn = await stateWhen(browser, (state) => state.choices.showSelf === true && state.arcs.length === 3,
+    "Show self-connections must add Commerce's Audit API loop to All");
+  await browser.$(selfChoice).click();
+  const selfOff = await stateWhen(browser, (state) => state.choices.showSelf === false && state.arcs.length === 2,
+    "Turning self-connections off must remove only the Audit API loop");
+  await browser.$(selfChoice).click();
+  await browser.$(mode("selected")).click();
+  const emptySelected = await stateWhen(browser, (state) => state.choices.mode === "selected" && state.choices.showSelf === true && state.arcs.length === 0,
+    "Self-connections must not broaden Selected when no record is inspected");
+  await browser.$(mode("all")).click();
+  const restoredAll = await stateWhen(browser, (state) => state.arcs.length === 3,
+    "Returning to All must retain the self-connection choice");
+
+  await ownedInterface(browser, "billing", "invoice-api");
   await tabTo(browser, component("checkout"));
-  const beforeMove = await observe(browser);
+  const beforeMove = await observeInstalledArcs(browser);
   await browser.keys(Key.ArrowRight);
-  await waitFor(async () => {
-    const state = await observe(browser);
-    return node(state, "checkout").x === node(beforeMove, "checkout").x + 10
-      && state.arcs.find(({ consumerId }) => consumerId === "checkout")?.d
-        !== beforeMove.arcs.find(({ consumerId }) => consumerId === "checkout")?.d;
-  }, "The installed endpoint and its attached arc must move together after ArrowRight");
-  const afterMove = await observe(browser);
+  const afterMove = await stateWhen(browser, (state) => node(state, "checkout").x === node(beforeMove, "checkout").x + 10
+    && state.arcs.find(({ consumerId }) => consumerId === "checkout")?.d !== beforeMove.arcs.find(({ consumerId }) => consumerId === "checkout")?.d,
+  "The installed endpoint and its attached arc must move together after ArrowRight");
   await browser.$('button[aria-label="Fit View"]').click();
-  await waitFor(async () => fits(await observe(browser)), "Fit must contain installed components, curves, arrowheads, and labels beside the panel");
-  const afterFit = await observe(browser);
+  const afterFit = await stateWhen(browser, installedDrawingFits,
+    "Fit must contain components, shown curves, arrowheads, and only painted labels beside the panel");
+
+  const auditPoint = await pointAtCurve(browser, 'path[data-interface-arc][data-interface-id="audit-api"]');
+  await browser.action("pointer").move({ origin: "viewport", ...auditPoint }).down("left").up("left").perform();
+  await interfaceReady(browser, "audit-api");
+  await pointerAway(browser);
+  const selfInspection = await observeInstalledArcs(browser);
+  await ownedInterface(browser, "commerce", "audit-api");
+  const beforeReset = await observeInstalledArcs(browser);
   await browser.$('button[aria-label="Reset layout"]').click();
-  await waitFor(async () => {
-    const state = await observe(browser);
-    return state.camera.zoom === 1 && node(state, "checkout").x === node(initial, "checkout").x
-      && state.arcs.every((arc, index) => arc.d === initial.arcs[index]?.d);
-  }, "Reset must restore the installed component positions and interface arcs at 100 percent zoom");
-  const afterReset = await observe(browser);
-  for (const [title, entry] of [["Component details", "invoice-api"], ["Baseline details", "billing"]]) {
-    await browser.$('button[aria-label="Back"]').click();
-    await waitFor(async () => {
-      const state = await observe(browser);
-      return state.panelTitle === title && state.focusedRecord === entry;
-    }, "Back must preserve the installed owner and interface navigation after Fit and Reset");
-  }
-  const result = { initial, pointer, beforeKeyboard, keyboard, beforeMove, afterMove, afterFit, afterReset, afterBack: await observe(browser) };
+  const afterReset = await stateWhen(browser, (state) => state.camera.zoom === 1 && node(state, "checkout").x === node(initial, "checkout").x,
+    "Reset must restore the installed positions at 100 percent while retaining choices and Audit API details");
+  await browser.$('button[aria-label="Back"]').click();
+  const ownerBack = await stateWhen(browser, (state) => state.panelTitle === "Component details" && state.focusedRecord === "audit-api",
+    "Back after Reset must restore Commerce's owned-interface list and Audit API row focus");
+  await browser.$('button[aria-label="Back"]').click();
+  const catalogBack = await stateWhen(browser, (state) => state.panelTitle === "Baseline details" && state.focusedRecord === "commerce",
+    "Back after Reset must restore the baseline catalog and Commerce row focus");
+  await ownedInterface(browser, "commerce", "audit-api");
+  const result = { initial, checkout, hovered, pointer, selectedClosed, all, beforeKeyboard, keyboard, allClosed,
+    selfOn, selfOff, emptySelected, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack };
   await world.attach(JSON.stringify(result), "application/json");
   return result;
 }
 
-function expectLabelDemand(result: Awaited<ReturnType<typeof inspectAndArrangeInstalledArcs>>): void {
-  const painted = (state: ArcState) => state.arcs.filter(({ labelPainted }) => labelPainted).map(({ id }) => id);
-  assert.deepEqual(painted(result.initial), [], "All must retain three keyboard controls without painting their labels on open");
-  assert.deepEqual(painted(result.beforeKeyboard), ["invoice-api/reporting/billing"], "Tab must reveal only its focused arc label");
-  const focused = result.beforeKeyboard.arcs.find(({ id }) => id === "invoice-api/reporting/billing");
-  assert.ok(focused && focused.labelOutline.width > 0 && focused.labelOutline.style !== "none",
-    "The installed keyboard label must have a visible focus outline before activation");
-  for (const state of [result.pointer, result.keyboard]) {
-    assert.deepEqual(painted(state), ["invoice-api/checkout/billing", "invoice-api/reporting/billing"],
-      "Inspecting Invoice API must reveal both of its labels while leaving Audit API hidden");
-    for (const arc of state.arcs.filter(({ labelPainted }) => labelPainted)) {
-      assert.equal(arc.labelBackground, "rgba(0, 0, 0, 0)", "Revealed installed labels must have transparent backgrounds");
-    }
-  }
-}
+type InstalledArcJourney = Awaited<ReturnType<typeof inspectAndArrangeInstalledArcs>>;
 
-export function expectInstalledArcJourney(result: Awaited<ReturnType<typeof inspectAndArrangeInstalledArcs>>): void {
-  expectLabelDemand(result);
-  const { initial, pointer, beforeKeyboard, keyboard, beforeMove, afterMove, afterFit, afterReset, afterBack } = result;
-  const expected = ["invoice-api/checkout/billing", "invoice-api/reporting/billing", "audit-api/commerce/commerce"];
+export function expectInstalledArcJourney(result: InstalledArcJourney): void {
+  const { initial, checkout, hovered, pointer, selectedClosed, all, beforeKeyboard, keyboard, allClosed,
+    selfOn, selfOff, emptySelected, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack } = result;
   for (const state of Object.values(result)) {
     assert.deepEqual(state.nativeScroll, { canvasX: 0, canvasY: 0, viewportX: 0, viewportY: 0 },
-      "The installed canvas and viewport must not scroll outside the observed CSS camera");
-    assert.deepEqual(state.arcs.map(({ id }) => id), expected);
-    assert.equal(state.labelCount, 3);
+      "The installed canvas must not scroll outside its observed CSS camera");
+    assert.deepEqual(state.choices.modes, ["selected", "all"]);
+    for (const id of ["commerce", "billing"]) assert.ok(node(state, id).text.includes("1 interface"));
+    for (const id of ["checkout", "reporting"]) assert.ok(node(state, id).text.includes("0 interfaces"));
     expectAttached(state);
   }
-  const names: Record<string, string> = { "invoice-api": "Invoice API", "audit-api": "Audit API", commerce: "Commerce",
-    billing: "Billing", checkout: "Checkout", reporting: "Reporting" };
-  for (const arc of initial.arcs) {
-    for (const id of [arc.interfaceId, arc.consumerId, arc.ownerId]) {
-      assert.ok(id && arc.name?.includes(id) && arc.name.includes(names[id] ?? ""), "Each arc label must identify its interface and both endpoints");
-    }
+  for (const state of [initial, selectedClosed, emptySelected]) { expectArcSet(state, []); expectPainted(state, []); assert.equal(state.emptyMessage, true); }
+  for (const state of [checkout, hovered]) expectArcSet(state, [invoiceIds[0]]);
+  for (const state of [pointer, all, beforeKeyboard, keyboard, allClosed, selfOff]) expectArcSet(state, invoiceIds);
+  for (const state of [selfOn, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack]) expectArcSet(state, allIds);
+  for (const state of [checkout, all, selfOn, selfOff, restoredAll, ownerBack, catalogBack]) expectPainted(state, []);
+  expectPainted(hovered, [invoiceIds[0]]);
+  for (const state of [beforeKeyboard, allClosed]) expectPainted(state, [invoiceIds[1]]);
+  for (const state of [pointer, keyboard, beforeMove, afterMove, afterFit]) expectPainted(state, invoiceIds);
+  for (const state of [selfInspection, beforeReset, afterReset]) expectPainted(state, [auditId]);
+  assert.equal(initial.choices.mode, "selected");
+  assert.equal(initial.choices.showSelf, false);
+  for (const state of [selfOn, emptySelected, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack]) {
+    assert.equal(state.choices.showSelf, true);
+    if (state !== emptySelected) assert.equal(state.choices.mode, "all");
   }
-  for (const [before, after] of [[initial, pointer], [beforeKeyboard, keyboard], [afterMove, afterFit], [initial, afterReset], [afterReset, afterBack]] as const) {
-    sameGeometry(before, after);
-  }
-  assert.deepEqual(pointer.camera, initial.camera, "A pointer arc selection must preserve the camera");
-  assert.deepEqual(keyboard.camera, beforeKeyboard.camera, "Keyboard activation must preserve the camera after focus reveal");
-  assert.equal(pointer.focusedArc, expected[0]);
-  assert.equal(beforeKeyboard.panelTitle, "", "Keyboard focus alone must not select an interface");
+  assert.equal(selfOff.choices.showSelf, false);
+  assert.equal(emptySelected.choices.mode, "selected");
+  for (const state of [selfOn, selfOff]) assert.equal(state.focusedChoice, "self");
+  assert.equal(emptySelected.focusedChoice, "selected");
+  assert.equal(restoredAll.focusedChoice, "all");
+  expectAccessibleNames(restoredAll);
+  const focusedLabel = beforeKeyboard.labels.find(({ id }) => id === invoiceIds[1]);
+  assert.ok(focusedLabel && focusedLabel.outline.width > 0 && focusedLabel.outline.style !== "none",
+    "Actual Tab navigation must reveal the installed arc's focus outline before activation");
+  assert.equal(beforeKeyboard.panelTitle, "", "Keyboard focus alone must not inspect an interface");
   assert.equal(keyboard.focusedHeading, true);
-  expectInvoice(pointer, false);
-  expectInvoice(keyboard, false);
-  for (const state of [beforeMove, afterMove, afterFit, afterReset]) {
-    expectInvoice(state, true);
-    assert.equal(state.panelText, beforeMove.panelText, "Movement and layout controls must preserve complete interface details");
+  assert.equal(pointer.focusedArc, invoiceIds[0]);
+  assert.equal(selectedClosed.focusedNode, "billing");
+  assert.equal(allClosed.focusedArc, invoiceIds[1]);
+  for (const state of [pointer, keyboard]) expectInvoice(state, false);
+  for (const state of [beforeMove, afterMove, afterFit]) expectInvoice(state, true);
+  expectAudit(selfInspection, false);
+  for (const state of [beforeReset, afterReset]) expectAudit(state, true);
+}
+
+export function expectInstalledArcLayout(result: InstalledArcJourney): void {
+  const { initial, checkout, hovered, pointer, selectedClosed, all, beforeKeyboard, keyboard, allClosed,
+    selfOn, selfOff, emptySelected, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack } = result;
+  for (const [before, after] of [[initial, checkout], [checkout, hovered], [hovered, pointer], [pointer, selectedClosed],
+    [selectedClosed, all], [all, beforeKeyboard], [beforeKeyboard, keyboard], [keyboard, allClosed], [allClosed, selfOn],
+    [selfOn, selfOff], [selfOff, emptySelected], [emptySelected, restoredAll], [restoredAll, beforeMove],
+    [afterMove, afterFit], [afterFit, selfInspection], [selfInspection, beforeReset], [initial, afterReset],
+    [afterReset, ownerBack], [ownerBack, catalogBack]] as const) expectInstalledArcGeometry(before, after);
+  for (const [before, after] of [[initial, checkout], [checkout, hovered], [hovered, pointer],
+    [selectedClosed, all], [beforeKeyboard, keyboard], [allClosed, selfOn], [selfOn, selfOff],
+    [selfOff, emptySelected], [emptySelected, restoredAll], [afterFit, selfInspection], [selfInspection, beforeReset],
+    [afterReset, ownerBack], [ownerBack, catalogBack]] as const) {
+    assert.deepEqual(after.camera, before.camera, "Inspection and connection choices must preserve the installed camera");
   }
+  assert.equal(beforeKeyboard.camera.zoom, all.camera.zoom, "Tab focus may reveal a label without changing zoom");
+  assert.equal(selectedClosed.camera.zoom, pointer.camera.zoom, "Returning focus to the owner may reveal its header without changing zoom");
+  assert.equal(allClosed.camera.zoom, keyboard.camera.zoom, "Returning focus to the surviving arc must preserve zoom");
+  for (const state of [afterMove, afterFit]) assert.equal(state.panelText, beforeMove.panelText);
   near(node(afterMove, "checkout").x, node(beforeMove, "checkout").x + 10, "ArrowRight moves the consumer ten diagram units");
   near(node(afterMove, "checkout").y, node(beforeMove, "checkout").y, "ArrowRight preserves the consumer's vertical position");
   for (const previous of beforeMove.nodes.filter(({ id }) => id !== "checkout")) {
@@ -322,33 +304,38 @@ export function expectInstalledArcJourney(result: Awaited<ReturnType<typeof insp
   }
   assert.equal(afterMove.focusedNode, "checkout");
   assert.equal(afterMove.camera.zoom, beforeMove.camera.zoom);
-  assert.equal(fits(afterFit), true);
+  assert.equal(installedDrawingFits(afterFit), true);
+  assert.equal(afterFit.labels.length, 3, "Fit must retain every shown arc's keyboard control");
+  assert.equal(afterFit.labels.filter(({ painted }) => painted).length, 2, "The hidden Audit API label is excluded from Fit's observed rectangles");
   assert.deepEqual(afterFit.arcs.map(({ d }) => d), afterMove.arcs.map(({ d }) => d), "Fit must not reroute the manual arrangement");
-  assert.deepEqual(afterReset.arcs.map(({ d }) => d), initial.arcs.map(({ d }) => d));
+  assert.deepEqual(afterReset.arcs.map(({ d }) => d), restoredAll.arcs.map(({ d }) => d));
+  assert.equal(afterReset.panelText, beforeReset.panelText, "Reset must preserve complete Audit API details and Back navigation");
   const root = node(afterReset, "commerce");
   const { width, height } = afterReset.canvas;
   const centered = root.width + 48 <= width && root.height + 48 <= height;
   near(afterReset.camera.x + root.x, centered ? (width - root.width) / 2 : 24, "Reset uses the current horizontal starting view");
   near(afterReset.camera.y + root.y, centered ? (height - root.height) / 2 : 24, "Reset uses the current vertical starting view");
-  assert.deepEqual(afterBack.camera, afterReset.camera);
 }
 
 export async function expectInstalledUnknownConsumers(browser: Browser): Promise<void> {
   const note = "8 interfaces have unknown owners or allowed consumers. Open Baseline details to inspect them.";
-  await waitFor(async () => (await browser.$("body").getText()).replace(/\s+/g, " ").includes(note),
-    "The reviewed installed baseline must explain its eight unknown allowed-consumer lists");
-  const all = browser.$('input[name="connection-mode"][value="all"]');
-  assert.equal(await all.isExisting(), true, "The installed viewer must expose the All connection choice");
-  await all.click();
-  assert.equal((await browser.$$("path[data-interface-arc]")).length, 0);
-  assert.equal((await browser.$$("[data-interface-label]")).length, 0);
+  await browser.waitUntil(async () => (await browser.$("body").getText()).replace(/\s+/g, " ").includes(note),
+    { timeout: 10_000, timeoutMsg: "The installed baseline must explain its eight unknown allowed-consumer lists" });
+  const selected = await observeInstalledArcs(browser);
+  assert.equal(selected.choices.mode, "selected");
+  expectArcSet(selected, []);
+  await browser.$(mode("all")).click();
+  const all = await stateWhen(browser, (state) => state.choices.mode === "all", "The installed unknown-consumer view must support All");
+  expectArcSet(all, []);
+  assert.ok((await browser.$("body").getText()).replace(/\s+/g, " ").includes(note));
   await browser.$("#baseline-details-control").click();
   const records = await browser.$$('[role="region"][aria-label="Interfaces"] button');
   assert.equal(records.length, 8);
   assert.ok(records[0]);
   await records[0].click();
-  await waitFor(async () => (await browser.$('[role="dialog"]').getText()).includes("Allowed consumers are unknown."),
-    "An installed interface with null consumers must explain the missing arcs");
+  await browser.waitUntil(async () => (await browser.$('[role="dialog"]').getText()).includes("Allowed consumers are unknown."),
+    { timeout: 10_000, timeoutMsg: "An installed interface with null consumers must explain the missing arcs" });
   const consumers = await browser.$('[role="group"][aria-label="Allowed consumers"]').getText();
   assert.ok(consumers.includes("Unknown (null)"), "The unknown-consumer explanation must retain the recorded null value");
+  expectArcSet(await observeInstalledArcs(browser), []);
 }

@@ -1,4 +1,4 @@
-@baseline-viewer @baseline-readability @br-07 @br-07d @browser
+@baseline-viewer @baseline-readability @br-07 @br-07d @br-08 @br-08d @browser
 Feature: Fit and retain the complete interface drawing
   These scenarios use All with Show self-connections enabled when a drawing is available.
   Fit includes visible arcs and labels in the available canvas.
@@ -38,6 +38,7 @@ Feature: Fit and retain the complete interface drawing
     And its interface details are open
     When the user holds an arc label, resets the layout, and releases the label
     Then Reset retains the interface details and Back path without replacing the label
+    And All and enabled self-connections remain selected
 
   Scenario: Fit uses the measured size of a long label with enlarged text
     Given an interface drawing with a long name is open with enlarged text
@@ -73,20 +74,36 @@ Feature: Fit and retain the complete interface drawing
     When the user resets the interface drawing
     Then the initial component and arc geometry returns at one hundred percent
     And the interface details and Back path remain available
+    And All and enabled self-connections remain selected
 
   Scenario: Replace arcs when record IDs repeat
     Given an interface drawing is open with controlled file completion
     And its interface details are open
     And its consumer has been moved with the keyboard
     When a replacement with reused IDs and different endpoint facts opens
-    Then only the replacement's recorded arcs appear in a fresh view
+    Then the replacement started with Selected, self-connections off, and no inspection or arcs
+    And only the replacement's recorded arcs appear in a fresh view
 
   Scenario Outline: Ignore input started in a replaced interface view
     Given an interface drawing is open with controlled file completion
     And its interface details are open
     And a replacement is waiting while an old <input> is unfinished
     When the replacement opens and the old input moves and releases
-    Then the replacement's arcs, positions, camera, and inspection stay unchanged
+    Then the replacement started with Selected, self-connections off, and no inspection or arcs
+    And the replacement's arcs, positions, camera, and inspection stay unchanged
+
+    Examples:
+      | input          |
+      | component drag |
+      | arc press      |
+
+  Scenario Outline: Accept fresh input after rejecting input from a replaced view
+    Given an interface drawing is open with controlled file completion
+    And its interface details are open
+    And a replacement is waiting while an old <input> is unfinished
+    And the replacement has rejected the old input without changing its view
+    When a fresh pointer press selects the replacement's Invoice API arc
+    Then the replacement's Invoice API details open
 
     Examples:
       | input          |
@@ -99,6 +116,7 @@ Feature: Fit and retain the complete interface drawing
     And its consumer has been moved with the keyboard
     When another interface file open <outcome>
     Then the pre-drag geometry, arcs, panel, and camera are restored
+    And All and enabled self-connections remain selected
 
     Examples:
       | outcome                 |

@@ -19,7 +19,7 @@ export function FitDrawingControl({ geometry, arcs, setMinimumZoom }: {
     const availableHeight = canvas?.height || height;
     if (availableWidth <= 0 || availableHeight <= 0) return;
     const labels = new Map<string, { width: number; height: number }>();
-    for (const label of domNode?.querySelectorAll<HTMLElement>("[data-interface-label]") ?? []) {
+    for (const label of domNode?.querySelectorAll<HTMLElement>('[data-interface-label][data-label-visible="true"]') ?? []) {
       const id = JSON.stringify([label.dataset.interfaceId, label.dataset.consumerId, label.dataset.ownerId]);
       labels.set(id, { width: label.offsetWidth, height: label.offsetHeight });
     }

@@ -87,6 +87,8 @@ test.each([false, true])("Reset ends an arc press and preserves its exact label 
   fireEvent.click(label, { detail: 1 });
   expect(screen.getByRole("dialog")).toBe(panel);
   expect(screen.queryByRole("button", { name: "Back" })).not.toBeNull();
+  expect(screen.getByRole<HTMLInputElement>("radio", { name: "All" }).checked).toBe(true);
+  expect(screen.getByRole<HTMLInputElement>("checkbox", { name: "Show self-connections" }).checked).toBe(true);
   expect(document.querySelector('[data-interface-label][data-consumer-id="billing"]')).toBe(label);
   expect(canvas.getViewport().zoom).toBe(1);
   pointerClick(label);
