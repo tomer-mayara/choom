@@ -10,16 +10,28 @@ interface NativeBaselineOpening {
   expectInputError(message: RegExp): Promise<void>;
 }
 
+async function observeWithoutHover(browser: Browser): Promise<InstalledArcState> {
+  await browser.action("pointer").move({ origin: "viewport", x: 8, y: 8 }).perform();
+  let state = await observeInstalledArcs(browser);
+  await browser.waitUntil(async () => {
+    state = await observeInstalledArcs(browser);
+    const painted = state.labels.filter((label) => label.painted);
+    return painted.length === 1 && painted[0]?.id === "audit-api/commerce/commerce";
+  }, { timeout: 10_000, interval: 100,
+    timeoutMsg: "After the pointer leaves the drawing, only the inspected Audit API label must remain painted" });
+  return state;
+}
+
 /** Exercise the same native picker as the normal installed opening scenarios. */
 export async function inspectInstalledArcOpens(browser: Browser, opening: NativeBaselineOpening,
   files: { baseline: string; invalid: string }, world: World) {
-  const beforeOpen = await observeInstalledArcs(browser);
+  const beforeOpen = await observeWithoutHover(browser);
   await opening.openBaseline(null);
   await opening.expectCancellationComplete();
-  const cancelled = await observeInstalledArcs(browser);
+  const cancelled = await observeWithoutHover(browser);
   await opening.openBaseline(files.invalid);
   await opening.expectInputError(/YAML/i);
-  const invalid = await observeInstalledArcs(browser);
+  const invalid = await observeWithoutHover(browser);
   await opening.openBaseline(files.baseline);
   await browser.waitUntil(async () => {
     const state = await observeInstalledArcs(browser);
