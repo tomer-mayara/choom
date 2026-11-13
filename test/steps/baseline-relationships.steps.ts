@@ -1,3 +1,4 @@
+import { originalInterfaceRecord } from "../support/interface-record-browser.ts";
 import assert from "node:assert/strict";
 import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -95,6 +96,11 @@ async function openRecord(world: BaselineRelationshipWorld, kind: "Interfaces" |
 }
 
 async function expectStatement(panel: Locator, name: string, statement: Baseline["interfaces"][number]["owner"] | Baseline["interfaces"][number]["allowedConsumers"]): Promise<void> {
+  if (await panel.getByRole("tab", { name: "Sources", exact: true }).count()) {
+    const original = await originalInterfaceRecord(panel);
+    assert.deepEqual(original[name === "Owner" ? "owner" : "allowedConsumers"], statement);
+    return;
+  }
   const group = panel.getByRole("group", { name, exact: true });
   if (Array.isArray(statement.value)) {
     assert.deepEqual(JSON.parse(await group.locator(":scope > pre").textContent() ?? "null"), statement.value);
@@ -185,8 +191,9 @@ Then("the owner is also listed as an allowed consumer for each interface", async
   for (const item of this.relationshipBaseline.interfaces) {
     assert.ok(item.owner.value && item.allowedConsumers.value?.includes(item.owner.value));
     const panel = await openRecord(this, "Interfaces", item);
-    await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText(item.owner.value);
-    await expect(panel.getByRole("group", { name: "Allowed consumers", exact: true })).toContainText(item.owner.value);
+    const original = await originalInterfaceRecord(panel);
+    assert.deepEqual(original.owner, item.owner);
+    assert.deepEqual(original.allowedConsumers, item.allowedConsumers);
   }
 });
 

@@ -1,17 +1,26 @@
 import { Tabs } from "radix-ui";
-import { useState, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
 import type { Baseline, BaselineInterface } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import { InterfaceOverview, InterfaceProvider, InterfaceRecordedStatus } from "./interface-overview.tsx";
 import { InterfaceExamples } from "./interface-examples.tsx";
 import { useExampleCopy } from "./use-example-copy.ts";
 import { useInterfaceTabs } from "./use-interface-tabs.ts";
+import { useInterfaceDisclosures } from "./use-interface-disclosures.ts";
+import { InterfaceSources } from "./interface-sources.tsx";
 
-export function InterfaceDetails({ baseline, item, children, contentRef }: {
-  baseline: ReadonlyData<Baseline>; item: ReadonlyData<BaselineInterface>; children: ReactNode;
+// Radix mounts tab contents after its first commit; restore against that content's height.
+function TabBody({ restore, children }: { restore: () => void; children: ReactNode }) {
+  useLayoutEffect(restore, [restore]);
+  return children;
+}
+
+export function InterfaceDetails({ baseline, item, contentRef }: {
+  baseline: ReadonlyData<Baseline>; item: ReadonlyData<BaselineInterface>;
   contentRef?: RefObject<HTMLDivElement | null>;
 }) {
   const tabs = useInterfaceTabs(contentRef);
+  const disclosure = useInterfaceDisclosures(contentRef);
   const [entryId, setEntryId] = useState(item.documentation?.entries[0]?.id);
   const entry = item.documentation?.entries.find(({ id }) => id === entryId);
   const [exampleId, setExampleId] = useState(entry?.examples[0]?.id);
@@ -43,14 +52,16 @@ export function InterfaceDetails({ baseline, item, children, contentRef }: {
           className="min-w-0 flex-1 rounded-t px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:font-semibold">{name}</Tabs.Trigger>)}
       </Tabs.List>
       <Tabs.Content value="overview" className="focus-visible:outline-2 focus-visible:outline-ring">
-        <InterfaceOverview baseline={baseline} item={item} entry={entry} selectEntry={selectEntry} />
+        <TabBody restore={tabs.restore}><InterfaceOverview baseline={baseline} item={item} entry={entry} selectEntry={selectEntry} disclosure={disclosure} /></TabBody>
       </Tabs.Content>
       <Tabs.Content value="example" className="focus-visible:outline-2 focus-visible:outline-ring">
-        <InterfaceExamples entry={entry} example={example} selectExample={selectExample} resultOpen={resultOpen} setResultOpen={setResultOpen}
+        <TabBody restore={tabs.restore}><InterfaceExamples entry={entry} example={example} selectExample={selectExample} resultOpen={resultOpen} setResultOpen={setResultOpen}
           onCopy={() => { if (example) void copy.write(example.content.value.text); }} copyFeedback={copy.feedback}
-          showEntryId={Boolean(entry && item.documentation?.entries.some((other) => other.id !== entry.id && other.name === entry.name))} />
+          showEntryId={Boolean(entry && item.documentation?.entries.some((other) => other.id !== entry.id && other.name === entry.name))} /></TabBody>
       </Tabs.Content>
-      <Tabs.Content value="sources" className="space-y-4 focus-visible:outline-2 focus-visible:outline-ring">{children}</Tabs.Content>
+      <Tabs.Content value="sources" className="space-y-4 focus-visible:outline-2 focus-visible:outline-ring">
+        <TabBody restore={tabs.restore}><InterfaceSources item={item} disclosure={disclosure} /></TabBody>
+      </Tabs.Content>
     </Tabs.Root>
   </section>;
 }

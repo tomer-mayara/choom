@@ -145,9 +145,8 @@ the saved contract as readable text. Version 1 promises appear as **Behavior**,
 can add named entries and explicit interaction facts. Select an entry to read
 its own description. A type or data entry does not acquire invented call details.
 Unknown facts stay unknown. **Access rule** lists permitted components; it does
-not report actual calls or runtime authorization. **Sources** keeps the original
-fields, statuses, references, and expandable **Original record**. Use arrow keys,
-Home, or End to change tabs. A direct interface selection starts a fresh Overview.
+not report actual calls or runtime authorization. Use arrow keys, Home, or End
+to change tabs. A direct interface selection starts a fresh Overview.
 
 **Example** names the selected entry and lists its saved examples. Select a case
 to read its sample and, when supplied, its input and result summary. **Detailed
@@ -163,6 +162,16 @@ one reading position per tab. Tab controls remain reachable while scrolling.
 When a panel is short, restoring or resetting its position also keeps the
 focused control visible.
 
+**Sources** starts with saved source descriptions and the locations supplied by
+the baseline. It does not fetch or verify source files. Expand **Recorded
+statements** for field paths, statuses, and acceptance references. **Evidence
+references** lists each saved ID once with all the statements that cite it.
+Evidence content is not included. **Original record** retains every saved
+interface value; it does not preserve YAML comments or formatting. Overview and
+Sources disclosures keep their open state across tab and entry changes. Back
+returns to the opening list and row. A failed or cancelled baseline replacement
+keeps the current inspection; a successful replacement starts a new session.
+
 **Escape** first cancels an active drag and restores its starting positions and
 bounds. An interrupted drag does the same. Otherwise, Escape closes the expanded
 rule containing focus, then the panel on the next press. Closing the panel
@@ -177,8 +186,9 @@ zoom, even when a header or arc label is wider than the canvas.
 
 Details keep all recorded fields, including statement status, evidence references,
 and acceptance references. **Accepted (recorded)** describes the saved status;
-it is not a verified result. References remain plain text and say **Evidence not
-loaded**. Unknown values, omitted fields, and empty objects or lists stay distinct.
+it is not a verified result. References remain plain text. Component, resource,
+and rule records mark them **Evidence not loaded**. Unknown values, omitted
+fields, and empty objects or lists stay distinct.
 Choom does not load referenced files or execute recorded checks.
 
 ## Development commands

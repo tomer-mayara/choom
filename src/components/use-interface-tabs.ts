@@ -1,7 +1,6 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useRef, useState, type RefObject } from "react";
 
-function restorePosition(content: HTMLDivElement, position: number) {
-  content.scrollTop = position;
+export function revealInterfaceFocus(content: HTMLDivElement) {
   const active = content.ownerDocument.activeElement;
   if (!(active instanceof HTMLElement) || !content.contains(active)) return;
   const area = content.getBoundingClientRect();
@@ -17,18 +16,23 @@ function restorePosition(content: HTMLDivElement, position: number) {
 export function useInterfaceTabs(content?: RefObject<HTMLDivElement | null>) {
   const [tab, setTab] = useState("overview");
   const [reset, setReset] = useState(0);
+  const activeTab = useRef("overview");
   const positions = useRef<Record<string, number>>({});
   function changeTab(next: string) {
-    if (next === tab) return;
-    if (content?.current) positions.current[tab] = content.current.scrollTop;
+    // Focus and mouse-down can request the same tab before both handlers return.
+    if (next === activeTab.current) return;
+    if (content?.current) positions.current[activeTab.current] = content.current.scrollTop;
+    activeTab.current = next;
     setTab(next);
   }
   function resetExample() {
     positions.current.example = 0;
     if (tab === "example") setReset((previous) => previous + 1);
   }
-  useLayoutEffect(() => {
-    if (content?.current) restorePosition(content.current, positions.current[tab] ?? 0);
+  const restore = useCallback(() => {
+    if (!content?.current) return;
+    content.current.scrollTop = positions.current[tab] ?? 0;
+    revealInterfaceFocus(content.current);
   }, [content, tab, reset]);
-  return { tab, changeTab, resetExample };
+  return { tab, changeTab, resetExample, restore };
 }

@@ -6,7 +6,7 @@ import { fixtureItem } from "../../support/baseline-fixtures.ts";
 import { interfaceEndpointBaseline } from "../../support/interface-endpoint-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { showAllConnections } from "../../support/connection-controls.tsx";
-import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
+import { originalInterfaceRecord, selectInterfaceTab } from "../../support/interface-details-dom.ts";
 
 afterEach(cleanup);
 
@@ -16,12 +16,13 @@ test("unknown consumers have a clear explanation without losing the owner or sta
   render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
   selectInterfaceTab("Sources");
   expect(screen.getByText("Allowed consumers are unknown.")).toBeTruthy();
-  expect(within(screen.getByRole("group", { name: "Owner" })).getByText("billing")).toBeTruthy();
-  const consumers = within(screen.getByRole("group", { name: "Allowed consumers" }));
-  expect(consumers.getByText("Unknown (null)")).toBeTruthy();
-  expect(consumers.getByText("Accepted (recorded)")).toBeTruthy();
-  expect(consumers.getByRole("group", { name: "Evidence references" }).textContent).toContain("missing-evidence#/items/1");
-  expect(consumers.getByRole("group", { name: "Acceptance reference" }).textContent).toContain("missing-review#/decisions/4");
+  const original = originalInterfaceRecord();
+  expect(original.owner).toEqual(item.owner);
+  expect(original.allowedConsumers).toEqual(item.allowedConsumers);
+  expect(item.allowedConsumers.value).toBeNull();
+  expect(item.allowedConsumers.status).toBe("accepted");
+  expect(item.allowedConsumers.evidenceRefs).toEqual(["missing-evidence#/items/1"]);
+  expect("acceptanceRef" in item.allowedConsumers && item.allowedConsumers.acceptanceRef).toBe("missing-review#/decisions/4");
 });
 
 test.each([
@@ -33,13 +34,12 @@ test.each([
   render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
   selectInterfaceTab("Sources");
   expect(screen.getByText(message)).toBeTruthy();
-  const owner = within(screen.getByRole("group", { name: "Owner" }));
-  expect(owner.getByText("Unknown (null)")).toBeTruthy();
-  expect(owner.getByText("Proposed")).toBeTruthy();
-  const consumers = within(screen.getByRole("group", { name: "Allowed consumers" }));
-  expect(consumers.getByText("Accepted (recorded)")).toBeTruthy();
-  if (item.allowedConsumers.value === null) expect(consumers.getByText("Unknown (null)")).toBeTruthy();
-  else expect(JSON.parse(consumers.getByText(/checkout/).textContent ?? "null")).toEqual(["checkout"]);
+  const original = originalInterfaceRecord();
+  expect(original.owner).toEqual(item.owner);
+  expect(item.owner.value).toBeNull(); expect(item.owner.status).toBe("proposed");
+  expect(original.allowedConsumers).toEqual(item.allowedConsumers);
+  expect(item.allowedConsumers.status).toBe("accepted");
+  expect(item.allowedConsumers.value).toEqual(facts === "both unknown" ? null : ["checkout"]);
 });
 
 test("complete endpoints need no missing-facts explanation", () => {

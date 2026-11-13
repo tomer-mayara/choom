@@ -4,7 +4,7 @@ import { ArchitectureDetails } from "../../../src/components/architecture-detail
 import { baselineSchema } from "../../../src/domain/baseline.ts";
 import { baselineDetailsExample, baselineWithUnknownDetails, longAccessRules, recordedAcceptanceRef, recordedEvidenceRef, recordedMarkup } from "../../support/baseline-detail-fixtures.ts";
 import { accepted, fixtureItem, proposed, reviewedBaseline } from "../../support/baseline-fixtures.ts";
-import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
+import { originalInterfaceRecord, selectInterfaceTab } from "../../support/interface-details-dom.ts";
 
 afterEach(cleanup);
 
@@ -60,16 +60,12 @@ test("interface details retain owner, public access, consumers, and each promise
   render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
   selectInterfaceTab("Sources");
   expect(screen.getByRole("group", { name: "Interface ID" }).textContent).toContain(item.id);
-  expect(within(screen.getByRole("group", { name: "Owner" })).getByText("order-service")).toBeTruthy();
-  expect(JSON.parse(screen.getByRole("group", { name: "Public access" }).querySelector("pre")?.textContent ?? "null"))
-    .toEqual(["submitOrder", "readOrder"]);
-  expect(JSON.parse(screen.getByRole("group", { name: "Allowed consumers" }).querySelector("pre")?.textContent ?? "null"))
-    .toEqual(["order-system"]);
-  const promises = within(screen.getByRole("group", { name: "Promises" }));
-  for (const [name, value] of [
-    ["Behavior", "Submit one approved order."], ["Data", "Return the recorded order ID."],
-    ["Errors", "Reject an expired approval."], ["Lifecycle", "Keep an order until retention ends."],
-  ] as const) expect(promises.getByRole("group", { name }).textContent).toContain(value);
+  const original = originalInterfaceRecord();
+  expect<unknown>(original).toEqual(item);
+  expect(original.owner).toEqual(item.owner);
+  expect(original.publicAccess).toEqual(item.publicAccess);
+  expect(original.allowedConsumers).toEqual(item.allowedConsumers);
+  expect(original.promises).toEqual(item.promises);
 });
 
 test("unknown interface fields and unknown promise members remain distinct", () => {
@@ -77,18 +73,13 @@ test("unknown interface fields and unknown promise members remain distinct", () 
   const item = fixtureItem(baseline.interfaces);
   const { rerender } = render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
   selectInterfaceTab("Sources");
-  for (const name of ["Owner", "Public access", "Allowed consumers", "Promises"]) {
-    const field = within(screen.getByRole("group", { name }));
-    expect(field.getByText("Unknown (null)")).toBeTruthy();
-    expect(field.getByText("Proposed")).toBeTruthy();
-  }
-  expect(screen.queryByRole("group", { name: "Behavior" })).toBeNull();
+  expect<unknown>(originalInterfaceRecord()).toEqual(item);
+  expect(item.owner.value).toBeNull(); expect(item.publicAccess.value).toBeNull();
+  expect(item.allowedConsumers.value).toBeNull(); expect(item.promises.value).toBeNull();
   item.promises = proposed({ behavior: null, data: null, errors: null, lifecycle: null });
   rerender(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
-  const promises = within(screen.getByRole("group", { name: "Promises" }));
-  for (const name of ["Behavior", "Data", "Errors", "Lifecycle"]) {
-    expect(within(promises.getByRole("group", { name })).getByText("Unknown (null)")).toBeTruthy();
-  }
+  expect(originalInterfaceRecord().promises).toEqual(item.promises);
+  expect(item.promises.value).toEqual({ behavior: null, data: null, errors: null, lifecycle: null });
 });
 
 test("resource details retain long text and markup as inert values with each statement", () => {
@@ -200,7 +191,12 @@ test("each statement in every record kind keeps its own status and opaque refere
   for (const [panel, statements] of cases) {
     const { container } = render(<ArchitectureDetails baseline={baseline} panel={panel} />);
     if (panel.kind === "rules") fireEvent.click(screen.getByText(rule.name));
-    if (panel.kind === "interface") selectInterfaceTab("Sources");
+    if (panel.kind === "interface") {
+      expect<unknown>(originalInterfaceRecord()).toEqual(item);
+      expect(container.querySelector("a[href], img, script, iframe")).toBeNull();
+      cleanup();
+      continue;
+    }
     for (const [name, statement] of statements) {
       if (!statement) throw new Error(`The fixture needs a ${name} statement.`);
       const field = within(screen.getByRole("group", { name }));

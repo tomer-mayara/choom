@@ -1,6 +1,6 @@
 import { useState, type ReactNode, type RefObject } from "react";
 import type {
-  Baseline, BaselineComponent, BaselineInterface, BaselineResource, BaselineRule,
+  Baseline, BaselineComponent, BaselineResource, BaselineRule,
   BaselineAccessPointsStatement, BaselineComponentReferenceStatement, BaselineConsumersStatement,
   BaselineMembershipStatement, BaselineNullableTextStatement, BaselinePromisesStatement, BaselineRuleObjectStatement, BaselineTextStatement,
 } from "../domain/generated/contracts.ts";
@@ -49,34 +49,6 @@ function ComponentFields({ item }: { item: ReadonlyData<BaselineComponent> }) {
   </>;
 }
 
-function InterfaceFields({ item }: { item: ReadonlyData<BaselineInterface> }) {
-  const [showOriginal, setShowOriginal] = useState(false);
-  const promises = item.promises.value;
-  const unknownOwner = item.owner.value === null;
-  const unknownConsumers = item.allowedConsumers.value === null;
-  const explanation = unknownOwner && unknownConsumers ? "Owner and allowed consumers are unknown."
-    : unknownOwner ? "Owner is unknown."
-      : unknownConsumers ? "Allowed consumers are unknown." : null;
-  return <>
-    {explanation ? <p className="text-sm text-muted-foreground">{explanation}</p> : null}
-    <StatementDetails name="Owner" statement={item.owner} />
-    <StatementDetails name="Public access" statement={item.publicAccess} />
-    <StatementDetails name="Allowed consumers" statement={item.allowedConsumers} />
-    <StatementDetails name="Promises" statement={item.promises}>
-      {promises ? <>
-        <Field name="Behavior"><RecordedValue value={promises.behavior} /></Field>
-        <Field name="Data"><RecordedValue value={promises.data} /></Field>
-        <Field name="Errors"><RecordedValue value={promises.errors} /></Field>
-        <Field name="Lifecycle"><RecordedValue value={promises.lifecycle} /></Field>
-      </> : <RecordedValue value={null} />}
-    </StatementDetails>
-    <details data-section="original-interface-record" onToggle={(event) => setShowOriginal(event.currentTarget.open)}>
-      <summary className="cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-ring">Original record</summary>
-      {showOriginal ? <pre className="whitespace-pre-wrap wrap-anywhere text-xs">{JSON.stringify(item, null, 2)}</pre> : null}
-    </details>
-  </>;
-}
-
 function ResourceFields({ item }: { item: ReadonlyData<BaselineResource> }) {
   return <>
     <StatementDetails name="Identity" statement={item.identity} />
@@ -118,10 +90,7 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
     : panel.kind === "interface" ? baseline.interfaces.find(({ id }) => id === panel.interfaceId)
       : baseline.resources.find(({ id }) => id === panel.resourceId);
   if (!item) return null;
-  if ("allowedConsumers" in item) return <InterfaceDetails key={item.id} baseline={baseline} item={item} contentRef={contentRef}>
-    <Field name="Interface ID"><RecordedValue value={item.id} /></Field>
-    <InterfaceFields item={item} />
-  </InterfaceDetails>;
+  if ("allowedConsumers" in item) return <InterfaceDetails key={item.id} baseline={baseline} item={item} contentRef={contentRef} />;
   const kind = panel.kind === "component" ? "Component" : panel.kind === "interface" ? "Interface" : "Resource";
   return (
     <section className="space-y-4 wrap-anywhere">

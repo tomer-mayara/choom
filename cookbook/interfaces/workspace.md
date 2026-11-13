@@ -216,12 +216,27 @@ the unchanged general promises in Interface-wide contract. Access rule resolves
 component names, keeps self-use, and distinguishes permission from activity.
 
 Overview, Example, and Sources use standard keyboard tabs in the existing inspector width.
-Sources retains the original fields and a lazy Original record disclosure.
+Sources starts with saved note descriptions and exact supplied source locations.
+A missing location stays missing. Recorded statements retains each field path,
+status, and acceptance reference. Evidence references deduplicates IDs and keeps
+every citing path; it states once that evidence content is not included. These
+references are plain text, not source-file links. Original record renders all
+saved interface fields only when expanded, with no YAML byte-format claim.
 Recorded statuses remain separate from verification. No source reference is
 resolved or executed. Tab and entry choices belong to one mounted inspection
 frame. A fresh direct selection has a new frame key even when its ID is unchanged.
 Tab changes keep that frame mounted; interfaces add no deeper navigation path.
-This avoids a global cache or duplicate state in the inspection hook. Existing
+Repeated focus and pointer notifications for one tab change save the old reading
+position once, even when the new tab is shorter. Restoration runs when the new
+tab body mounts, so the old body's height cannot clamp its saved position.
+A disclosure commit also keeps the focused control visible if its new body
+moves that control. It does not restore a bookmark or react to copy feedback.
+One frame-owned set preserves Overview and Sources disclosure choices, including
+nested lifecycle details, while inactive tab content and closed source lists
+stay unmounted. Direct selection, close, and successful replacement discard
+these choices. Failed or cancelled replacement keeps them, including after a
+late completion. Back restores the opening row and list position without adding
+history for tab changes. This avoids a global cache or duplicate state in the inspection hook. Existing
 Back, focus return, successful replacement, and failed-load behavior still apply.
 
 Example uses the entry selected in Overview. It starts with that entry's first
@@ -279,6 +294,9 @@ bun test --preload ./test/preload.ts ./test/unit/components/interface-overview.t
 bun scripts/run-browser-behavior.ts --tags @br-10b
 bun test --preload ./test/preload.ts ./test/unit/components/interface-examples.test.tsx
 bun scripts/run-browser-behavior.ts --tags @br-10c
+bun test ./test/unit/lib/interface-provenance.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/interface-sources.test.tsx ./test/unit/components/workspace.test.tsx
+bun scripts/run-browser-behavior.ts --tags @br-10d
 ```
 
 Installed acceptance uses the actual app and picker; see the

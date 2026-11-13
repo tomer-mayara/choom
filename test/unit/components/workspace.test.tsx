@@ -4,6 +4,8 @@ import App from "../../../src/App.tsx";
 import { LoadWorkflow, type SelectedBaseline } from "../../../src/architecture/load-workflow.ts";
 import type { LoadWorkflowSnapshot, WorkflowView } from "../../../src/architecture/workspace-view.ts";
 import { baselineWorkflowDependencies, pending, selectedBaseline } from "../../support/baseline-workflow-fixtures.ts";
+import { interfaceSourceFixture } from "../../support/interface-source-fixtures.ts";
+import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
 import { selfConnectionBaseline } from "../../support/connection-scope-fixtures.ts";
 import { showAllConnections, showSelfConnections } from "../../support/connection-controls.tsx";
 
@@ -131,4 +133,38 @@ test.each(["failure", "picker cancellation", "cancelled then late result"])("a %
     await act(async () => { layout.resolve(); await loading; });
   }
   expect(publishedView()).toEqual(before);
+});
+
+
+test.each(["failure", "picker cancellation", "cancelled then late result"])("a %s replacement preserves a rich interface frame", async (outcome) => {
+  const dependencies = baselineWorkflowDependencies();
+  dependencies.selectBaseline = async () => selectedBaseline(interfaceSourceFixture("reading"));
+  const workflow = new LoadWorkflow(dependencies); await workflow.openBaseline();
+  render(<App workspace={{ workflow }} />);
+  fireEvent.click(screen.getByRole("button", { name: "Billing, billing" }));
+  fireEvent.click(within(screen.getByRole("region", { name: "Owned interfaces" })).getByRole("button", { name: "Invoice API, invoice-api" }));
+  selectInterfaceTab("Sources");
+  for (const name of ["Recorded statements", "Evidence references", "Original record"]) fireEvent.click(screen.getByText(name, { selector: "summary" }));
+  selectInterfaceTab("Example");
+  fireEvent.click(screen.getByRole("button", { name: "An empty order, empty-order" }));
+  fireEvent.click(screen.getByText("Detailed result", { selector: "summary" }));
+  const record = screen.getByLabelText("Record content"); record.scrollTop = 500;
+  const before = screen.getByRole("dialog");
+  if (outcome === "failure") dependencies.selectBaseline = async () => ({ read: async () => ({ status: "failure", stage: "storage", code: "not-found", message: "Missing baseline.", durationMs: 0 }) });
+  if (outcome === "picker cancellation") dependencies.selectBaseline = async () => null;
+  if (outcome === "cancelled then late result") {
+    const done = pending<void>(); const prepare = dependencies.layout;
+    dependencies.layout = async (baseline) => { await done.promise; return prepare(baseline); };
+    let opening: ReturnType<LoadWorkflow["openBaseline"]> | undefined;
+    act(() => { opening = workflow.openBaseline(); });
+    await waitFor(() => expect(screen.getByText("Arranging component cards…")).toBeTruthy());
+    await act(async () => { await workflow.cancel(); done.resolve(); await opening; });
+  } else await act(async () => { await workflow.openBaseline(); });
+  expect(screen.getByRole("dialog") === before).toBe(true);
+  expect(screen.getByRole("tab", { name: "Example" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("button", { name: "An empty order, empty-order" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("Detailed result", { selector: "summary" }).closest("details")?.open).toBe(true);
+  expect(record.scrollTop).toBe(500);
+  selectInterfaceTab("Sources");
+  for (const name of ["Recorded statements", "Evidence references", "Original record"]) expect(screen.getByText(name, { selector: "summary" }).closest("details")?.open).toBe(true);
 });

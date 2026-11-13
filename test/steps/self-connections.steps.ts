@@ -7,6 +7,7 @@ import { expect, type Page } from "@playwright/test";
 import { stringify } from "yaml";
 import { selfConnectionBaseline } from "../support/connection-scope-fixtures.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
+import { originalInterfaceRecord } from "../support/interface-record-browser.ts";
 import { unobscuredArcPoint } from "../support/interface-pointer.ts";
 
 interface SelfWorld extends World {
@@ -175,17 +176,12 @@ Then("the self-connection choice keeps focus", async function (this: SelfWorld) 
 Then("Billing still shows two owned interfaces", async function (this: SelfWorld) { await expect(page(this).getByRole("button", { name: "Billing, billing", exact: true })).toHaveText("Billing2 interfaces"); });
 Then("Invoice API records Billing as owner and Checkout, Reporting, and Billing as consumers", async function (this: SelfWorld) {
   const panel = page(this).getByRole("dialog", { name: "Interface details", exact: true });
-  await panel.getByRole("tab", { name: "Sources", exact: true }).click();
-  await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText("billing");
-  const consumers = panel.getByRole("group", { name: "Allowed consumers", exact: true });
-  for (const id of ["checkout", "reporting", "billing"]) await expect(consumers).toContainText(id);
+  assert.deepEqual(await originalInterfaceRecord(panel), selfConnectionBaseline().interfaces.find(({ id }) => id === "invoice-api"));
 });
 Then("Health records Billing as both owner and consumer", async function (this: SelfWorld) {
   const panel = page(this).getByRole("dialog", { name: "Interface details", exact: true });
-  await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   await expect(panel.getByRole("heading", { name: "Health", exact: true })).toBeVisible();
-  await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText("billing");
-  await expect(panel.getByRole("group", { name: "Allowed consumers", exact: true })).toContainText("billing");
+  assert.deepEqual(await originalInterfaceRecord(panel), selfConnectionBaseline().interfaces.find(({ id }) => id === "health"));
 });
 Then("the extended baseline has no unknown-interface note", async function (this: SelfWorld) { await expect(page(this).getByText(/unknown owners or allowed consumers/)).toHaveCount(0); });
 Then("no arc or arc keyboard control is shown", async function (this: SelfWorld) { await arcSet(this, []); });

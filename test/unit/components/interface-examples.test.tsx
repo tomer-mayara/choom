@@ -252,3 +252,17 @@ test("an entry choice keeps Overview reading position while clearing the Example
   expect(area.scrollTop).toBe(0);
   expect(sampleText()).toBe('{"id":"saved-invoice"}\n');
 });
+
+test("copy feedback and source disclosure updates preserve the live reading position", async () => {
+  const pending = Promise.withResolvers<void>(); clipboard(() => pending.promise);
+  const area = boundedView(); selectInterfaceTab("Example");
+  area.scrollTop = 600; copy();
+  expect(area.scrollTop).toBe(600);
+  area.scrollTop = 800;
+  await act(async () => { pending.resolve(); await pending.promise; });
+  expect(feedback()).toBe("Example copied."); expect(area.scrollTop).toBe(800);
+  selectInterfaceTab("Sources"); area.scrollTop = 180;
+  fireEvent.click(screen.getByText("Evidence references", { selector: "summary" }));
+  expect(area.scrollTop).toBe(180);
+  selectInterfaceTab("Example"); expect(area.scrollTop).toBe(800);
+});

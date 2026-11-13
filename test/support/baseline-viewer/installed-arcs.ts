@@ -1,3 +1,8 @@
+import { readFileSync } from "node:fs";
+import { parse } from "yaml";
+import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { parseInterfaceRecord } from "../interface-record.ts";
+import { readInstalledInterfaceRecord } from "./installed-interface-record.ts";
 import assert from "node:assert/strict";
 import type { World } from "@cucumber/cucumber";
 import { Key, type Browser } from "webdriverio";
@@ -75,27 +80,23 @@ function expectAccessibleNames(state: InstalledArcState): void {
   }
 }
 
-function expectInvoice(state: InstalledArcState, back: boolean, fields = state.fields): void {
-  assert.equal(state.panelTitle, "Interface details");
-  assert.ok(fields["Interface ID"]?.includes("invoice-api"));
-  assert.equal(state.back, back, "Arc selection starts a fresh path; list selection retains Back");
-  for (const text of ["billing", "Proposed", "fixture-owner"]) assert.ok(fields.Owner?.includes(text));
-  for (const text of ["checkout", "reporting", "Accepted (recorded)", "fixture-consumers", "fixture-review"]) {
-    assert.ok(fields["Allowed consumers"]?.includes(text));
-  }
-  assert.ok(fields["Public access"]?.includes("createInvoice"));
-  for (const text of ["Create an invoice", "Invoice", "Invalid invoice", "One request"]) assert.ok(fields.Promises?.includes(text));
+function recordedFixture(id: string) {
+  const baseline = baselineSchema.parse(parse(readFileSync(new URL("../../fixtures/baseline-viewer/installed-known-consumers.yaml", import.meta.url), "utf8")));
+  const record = baseline.interfaces.find((item) => item.id === id);
+  assert.ok(record);
+  return record;
 }
 
-function expectAudit(state: InstalledArcState, back: boolean, fields = state.fields): void {
+function expectInvoice(state: InstalledArcState, back: boolean, record = parseInterfaceRecord(state.originalRecord ?? "null")): void {
   assert.equal(state.panelTitle, "Interface details");
-  assert.ok(fields["Interface ID"]?.includes("audit-api"));
+  assert.equal(state.back, back, "Arc selection starts a fresh path; list selection retains Back");
+  assert.deepEqual(record, recordedFixture("invoice-api"));
+}
+
+function expectAudit(state: InstalledArcState, back: boolean, record = parseInterfaceRecord(state.originalRecord ?? "null")): void {
+  assert.equal(state.panelTitle, "Interface details");
   assert.equal(state.back, back);
-  for (const field of ["Owner", "Allowed consumers"]) {
-    for (const text of ["commerce", "Proposed", "installed-fixture"]) assert.ok(fields[field]?.includes(text));
-  }
-  assert.ok(fields["Public access"]?.includes("recordAudit"));
-  assert.ok(fields.Promises?.includes("Unknown (null)"));
+  assert.deepEqual(record, recordedFixture("audit-api"));
 }
 
 async function tabTo(browser: Browser, selector: string): Promise<void> {
@@ -140,9 +141,7 @@ async function interfaceReady(browser: Browser, id: string) {
 }
 
 async function readInterfaceSources(browser: Browser) {
-  await browser.$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
-  return (await stateWhen(browser, (state) => Boolean(state.fields["Interface ID"] && state.fields.Promises),
-    "Sources must show the original interface fields before they are read")).fields;
+  return readInstalledInterfaceRecord(browser);
 }
 
 async function ownedInterface(browser: Browser, owner: string, id: string): Promise<void> {
