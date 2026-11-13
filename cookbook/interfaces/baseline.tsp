@@ -1,4 +1,5 @@
 import "@typespec/json-schema";
+import "./baseline-documentation.tsp";
 
 using TypeSpec.JsonSchema;
 
@@ -260,6 +261,16 @@ model BaselineComponent {
 }
 
 @extension("additionalProperties", false)
+model BaselineInterfaceV1 {
+  id: baselineId;
+  name: baselineText;
+  owner: BaselineComponentReferenceStatement;
+  publicAccess: BaselineAccessPointsStatement;
+  allowedConsumers: BaselineConsumersStatement;
+  promises: BaselinePromisesStatement;
+}
+
+@extension("additionalProperties", false)
 model BaselineInterface {
   id: baselineId;
   name: baselineText;
@@ -267,6 +278,7 @@ model BaselineInterface {
   publicAccess: BaselineAccessPointsStatement;
   allowedConsumers: BaselineConsumersStatement;
   promises: BaselinePromisesStatement;
+  documentation?: BaselineDocumentation;
 }
 
 @extension("additionalProperties", false)
@@ -290,12 +302,28 @@ model BaselineRule {
 // Runtime validation enforces unique item IDs, component references and an
 // acyclic parent hierarchy. References to other records remain opaque.
 @extension("additionalProperties", false)
-model Baseline {
+model BaselineV1 {
   formatVersion: 1;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: BaselineComponent[];
+  interfaces: BaselineInterfaceV1[];
+  resources: BaselineResource[];
+  rules: BaselineRule[];
+}
+
+@extension("additionalProperties", false)
+model BaselineV2 {
+  formatVersion: 2;
   id: baselineId;
   parentId: baselineText | null;
   components: BaselineComponent[];
   interfaces: BaselineInterface[];
   resources: BaselineResource[];
   rules: BaselineRule[];
+}
+
+union Baseline {
+  BaselineV1,
+  BaselineV2,
 }

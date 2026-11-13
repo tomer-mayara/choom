@@ -50,8 +50,11 @@ Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri sy
 bun run desktop
 ```
 
-Use **Open Baseline** to select a supported `formatVersion: 1` baseline in
+Use **Open Baseline** to select a `formatVersion: 1` or `formatVersion: 2` baseline in
 the browser or desktop app. The input must be valid UTF-8 and at most 16 MiB.
+Version 2 can add saved interface documentation; version 1 keeps its original
+strict fields. An interface's **Original record** disclosure retains all saved
+values, including documentation and statement references.
 The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
 [input notes](cookbook/interfaces/baseline-codec.md) describe the file limits.
 An old `schemaVersion: 1` diagram is not a baseline.

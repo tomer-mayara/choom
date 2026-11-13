@@ -1,8 +1,7 @@
 import { z } from "zod";
+import { baselineDocumentationSchema, validateBaselineDocumentation } from "./baseline-documentation.ts";
+import { baselineId as itemId, baselineStatement as statement, baselineText as text } from "./baseline-statements.ts";
 import type { Baseline, BaselineRuleValue } from "./generated/contracts.ts";
-
-const text = z.string().regex(/\S/, "Expected nonblank text.");
-const itemId = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Expected a lowercase ID with optional hyphens.");
 
 function isSelector(value: string): boolean {
   const base = value.endsWith("/**") ? value.slice(0, -3) : value;
@@ -63,13 +62,6 @@ function isRuleObject(value: unknown): value is Record<string, BaselineRuleValue
     for (const child of children) pending.push({ value: child });
   }
   return true;
-}
-
-function statement<Value extends z.ZodType>(value: Value) {
-  return z.discriminatedUnion("status", [
-    z.strictObject({ value, status: z.literal("proposed"), evidenceRefs: z.array(text).min(1) }),
-    z.strictObject({ value, status: z.literal("accepted"), evidenceRefs: z.array(text).min(1), acceptanceRef: text }),
-  ]);
 }
 
 const componentReference = statement(itemId.nullable());
@@ -161,7 +153,13 @@ function validateReferences(baseline: Baseline, context: z.RefinementCtx): void 
   validateParents(baseline.components, context);
 }
 
-export const baselineSchema = z.strictObject({
+const baselineV1 = z.strictObject({
   formatVersion: z.literal(1), id: itemId, parentId: text.nullable(),
   components: z.array(component), interfaces: z.array(interfaceItem), resources: z.array(resource), rules: z.array(rule),
-}).superRefine(validateReferences) satisfies z.ZodType<Baseline>;
+});
+const baselineV2 = baselineV1.extend({
+  formatVersion: z.literal(2), interfaces: z.array(interfaceItem.extend({ documentation: baselineDocumentationSchema.optional() })),
+});
+
+export const baselineSchema = z.discriminatedUnion("formatVersion", [baselineV1, baselineV2])
+  .superRefine(validateReferences).superRefine(validateBaselineDocumentation) satisfies z.ZodType<Baseline>;

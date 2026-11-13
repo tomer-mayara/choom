@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { stringify } from "yaml";
 import { decodeBaselineYaml } from "../../../src/lib/baseline-yaml.ts";
 import { baselineExample, invalidBaseline, reviewedBaseline } from "../../support/baseline-fixtures.ts";
+import { excessiveDocumentation } from "../../support/interface-documentation-fixtures.ts";
 
 test.each(["empty", "full"] as const)("decodes the reviewed %s baseline without changing its records", (example) => {
   const text = readFileSync(`test/fixtures/baseline-viewer/${example}.yaml`, "utf8");
@@ -26,7 +27,7 @@ test("accepts a byte order mark, CRLF, and non-ASCII statement text", () => {
 });
 
 test("identifies an unsupported baseline format version", () => {
-  const text = stringify({ ...baselineExample(), formatVersion: 2 });
+  const text = stringify({ ...baselineExample(), formatVersion: 3 });
   expect(decodeBaselineYaml(text)).toMatchObject({
     status: "failure", stage: "decoding", code: "unsupported-version",
   });
@@ -45,7 +46,15 @@ test("rejects legacy diagram content", () => {
   expect(outcome.status).toBe("failure");
   expect(outcome).toMatchObject({
     status: "failure", stage: "decoding", code: "invalid-document",
-    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1.",
+    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1 or 2.",
+  });
+});
+
+test("documentation limits identify the field and limit without changing the failure code", () => {
+  const outcome = decodeBaselineYaml(stringify(excessiveDocumentation("entries per interface")));
+  expect(outcome).toMatchObject({
+    status: "failure", stage: "decoding", code: "invalid-document",
+    message: expect.stringMatching(/interfaces\.0\.documentation\.entries.*limit is 32 entries per interface/),
   });
 });
 
