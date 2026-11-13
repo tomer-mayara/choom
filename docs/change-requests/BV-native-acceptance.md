@@ -114,6 +114,17 @@ handler's `invalid-request` response fails the test, as does an external driver
 error. Run `@baseline-viewer` against one exact installed package to verify native
 opening, preservation, the complete view, and retirement together.
 
+The BR-08 connection journey uses the standalone known-consumer fixture. Check
+the initial Selected view with no arrows and self-connections off. Select a
+component, inspect its arrow, and close the panel; focus returns to the owner's
+header when the arrow disappears. All connections and Show self-connections
+reveal the remaining known arcs. Keyboard focus reveals a transparent label.
+Move an endpoint, Fit the shown drawing, and Reset while details remain open.
+Reset keeps the connection choices and inspection. Cancelled and invalid opens
+keep them too; a successful same-ID open restores fresh defaults. Check the
+unknown-consumer fixture in All mode as well, so a quiet Selected view cannot
+hide an endpoint-eligibility failure.
+
 The picker helper finds the X11 window owned by the requested executable and
 focuses its new native dialog. It types an absolute file path or presses Escape,
 then requires the dialog to close. The Ctrl+L and Ctrl+A sequence uses a
@@ -156,7 +167,8 @@ and signing identities. Open only a copied baseline with no source repository or
 companion files. Check the five-component overview without relationship lines,
 side-panel access to all eight interfaces and five resources, all 21 Rules
 entries, parent dragging, child movement with arrow keys, and continued
-inspection while arranging the drawing. Fit must keep manual positions; Reset
+inspection while arranging the drawing. Also check the BR-08 connection journey
+above with the separate known-consumer fixture. Fit must keep manual positions; Reset
 must restore the initial geometry at 100% zoom and keep inspection and Back
 navigation. Check the absence of old actions,
 unchanged file bytes, native picker cancellation, and invalid-file preservation. Record

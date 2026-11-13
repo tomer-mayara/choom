@@ -460,6 +460,8 @@ Given("the example has a manual arrangement and open inspection", async function
   await prepare(this, true);
   await page(this).getByRole("button", { name: "Explore example", exact: true }).click();
   await expect(header(this, "workspace")).toBeVisible();
+  await page(this).getByRole("radio", { name: "All", exact: true }).check();
+  await page(this).getByRole("checkbox", { name: "Show self-connections", exact: true }).check();
   await waitForPaint(this);
   await expect.poll(async () => (await camera(this)).zoom).toBe(1);
   this.movementInitial = await geometry(this);
@@ -472,6 +474,8 @@ Given("the example has a manual arrangement and open inspection", async function
 Then("the example's component details remain available", async function (this: MovementWorld) {
   await expect(page(this).getByRole("heading", { name: "example-baseline", exact: true })).toBeVisible();
   await expect(page(this).getByRole("dialog").getByRole("heading", { name: "Workspace", exact: true })).toBeVisible();
+  await expect(page(this).getByRole("radio", { name: "All", exact: true })).toBeChecked();
+  await expect(page(this).getByRole("checkbox", { name: "Show self-connections", exact: true })).toBeChecked();
 });
 When("the user closes and reopens the example", async function (this: MovementWorld) {
   await page(this).getByRole("button", { name: "Close example", exact: true }).click();
@@ -479,7 +483,9 @@ When("the user closes and reopens the example", async function (this: MovementWo
 });
 Then("the example has its initial geometry and no old inspection", async function (this: MovementWorld) {
   await expect.poll(() => geometry(this)).toEqual(this.movementInitial);
-  await expect(page(this).getByRole("dialog")).toHaveCount(0);
+  await expect(page(this).locator('[role="dialog"], path[data-interface-arc]')).toHaveCount(0);
+  await expect(page(this).getByRole("radio", { name: "Selected", exact: true })).toBeChecked();
+  await expect(page(this).getByRole("checkbox", { name: "Show self-connections", exact: true })).not.toBeChecked();
 });
 
 When(/^the user opens (the same movement baseline|another baseline with reused IDs) successfully$/, async function (this: MovementWorld, file: string) {

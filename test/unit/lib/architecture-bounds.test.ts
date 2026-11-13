@@ -4,6 +4,7 @@ import { routeInterfaceArcs } from "../../../src/lib/interface-arc-geometry.ts";
 import { interfaceArcs } from "../../../src/lib/interface-arcs.ts";
 import { interfaceViewBaseline } from "../../support/interface-view-fixtures.ts";
 import { fixtureItem } from "../../support/baseline-fixtures.ts";
+import { shownInterfaceArcs } from "../../../src/lib/interface-arc-visibility.ts";
 
 const geometry = { nodes: [
   { id: "checkout", position: { x: -280, y: -128 }, width: 240, height: 88 },
@@ -54,4 +55,14 @@ test("a highlighted arrowhead and stroke fit outside a flat path's bounds", () =
   expect(bounds.y + bounds.height).toBeGreaterThanOrEqual(9);
   expect(bounds.x).toBeLessThanOrEqual(-1.5);
   expect(bounds.x + bounds.width).toBeGreaterThanOrEqual(11.5);
+});
+
+test("excluded routes and their label measurements cannot enlarge the shown drawing bounds", () => {
+  const routes = routeInterfaceArcs(interfaceArcs(interfaceViewBaseline()), geometry);
+  const loop = fixtureItem(routes, 1);
+  const shown = shownInterfaceArcs(routes, { mode: "all", showSelfConnections: false });
+  const measurements = new Map([[loop.id, { width: 1_000_000, height: 1_000_000 }]]);
+  expect(shown).toHaveLength(1);
+  expect(drawingBounds(geometry, shown, measurements)).toEqual(drawingBounds(geometry, shown));
+  expect(drawingBounds(geometry, [], measurements)).toEqual(drawingBounds(geometry, []));
 });

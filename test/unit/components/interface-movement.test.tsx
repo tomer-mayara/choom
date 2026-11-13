@@ -69,3 +69,18 @@ test.each(["Escape", "blur", "Reset"])("%s restores grown ancestor bounds and ar
   expect(screen.getByRole("dialog")).toBe(panel);
   expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
 });
+
+test("an arc revealed after its parent and child move uses their current positions", async () => {
+  const canvas = await renderDiagramWithViewport(interfaceViewBaseline(true), layout, { width: 1200, height: 800 });
+  inspect();
+  const before = consumerStart();
+  fireEvent.click(screen.getByRole("button", { name: "Baseline details" }));
+  expect(document.querySelectorAll("path[data-interface-arc]")).toHaveLength(0);
+  const flow = document.querySelector<HTMLElement>(".react-flow");
+  if (!flow) throw new Error("The moving components need their canvas.");
+  for (const name of ["Commerce, commerce", "Checkout, checkout"]) fireEvent.keyDown(within(flow).getByRole("button", { name }), { key: "ArrowRight" });
+  const movedCamera = canvas.getViewport();
+  inspect();
+  expect(consumerStart()).toEqual({ x: before.x + 20, y: before.y });
+  expect(canvas.getViewport()).toEqual(movedCamera);
+});

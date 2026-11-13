@@ -1,7 +1,7 @@
 # Baseline viewer readability plan
 
 Status: **BR-01 to BR-04 and BR-07A to BR-07D are merged. BR-07 replaces BR-06.
-BR-08A to BR-08C are implemented. BR-05 and BR-08D remain planned.**
+BR-08A to BR-08D are implemented in the draft PR stack. BR-05 remains planned.**
 
 Reviewed: **2026-11-13**
 
@@ -32,7 +32,7 @@ merged; its draft-PR wording is historical. The status above is current.
 See the [BR-07 verification record](../change-requests/BR-interface-arcs-evidence.md)
 for interface-arc implementation checks.
 See the [BR-08 verification record](../change-requests/BR-connection-readability-evidence.md)
-for the completed connection scope, label, and self-connection checks.
+for connection visibility, label, and view-lifetime checks.
 
 ## Problem in the starting view
 
@@ -57,10 +57,7 @@ at once makes even this small model hard to read.
 | Follow-up | BR-05 | Expand and collapse component groups. |
 | Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
 | Merged | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
-| Implemented | BR-08A | Selected and All modes, stable arc controls, and safe focus when an arc disappears. |
-| Implemented | BR-08B | Labels on demand. |
-| Implemented | BR-08C | Self-connections start off and can be shown within the chosen scope. |
-| Planned | BR-08D | Fit and view lifetime checks. |
+| Implemented in the draft PR stack | BR-08A to BR-08D | Selected connections, labels on demand, optional self-connections, and Fit/lifetime checks for the filtered view. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
@@ -1128,17 +1125,17 @@ below for dense data, original bytes, full details, and supported limits.
 
 ### BR-08: Reduce connection clutter
 
-BR-08A implements selected connections and All mode. BR-08B adds labels on
-demand. BR-08C makes self-loops optional and starts with them hidden. Fit still includes
-label bounds for every shown arc. BR-08D will fit only labels that are revealed
-at activation. The side panel keeps complete recorded facts available.
+The draft PR stack implements selected connections, labels on demand, and
+self-connections that start hidden. Fit includes the shown arcs and revealed
+labels. The side panel and lists keep complete recorded facts available. See
+the [draft stack verification](../change-requests/BR-connection-readability-evidence.md#draft-stack-validation).
 
-| Ticket | Status | Result | Depends on |
-| --- | --- | --- | --- |
-| [BR-08A](#br-08a-show-connections-for-the-current-selection) | Implemented | Selected and All modes, stable inspection, and safe focus when an arc disappears. | BR-07D |
-| [BR-08B](#br-08b-reveal-labels-on-demand) | Implemented | Hover, keyboard focus, and inspection reveal transparent labels. | BR-08A |
-| [BR-08C](#br-08c-hide-self-connections-by-default) | Implemented | Self-loops start hidden and are available through one checkbox. | BR-08B |
-| [BR-08D](#br-08d-fit-the-shown-drawing-and-preserve-view-choices) | Planned | Fit uses shown content. Reset and file-open behavior follow the view lifetime. | BR-08C |
+| Ticket | Result | Depends on |
+| --- | --- | --- |
+| [BR-08A](#br-08a-show-connections-for-the-current-selection) | Selected/All scope, stable inspection, and safe focus when an arc disappears. | BR-07D |
+| [BR-08B](#br-08b-reveal-labels-on-demand) | Hover, keyboard focus, and inspection reveal transparent labels. | BR-08A |
+| [BR-08C](#br-08c-hide-self-connections-by-default) | Self-loops are hidden by default and available through one checkbox. | BR-08B |
+| [BR-08D](#br-08d-fit-the-shown-drawing-and-preserve-view-choices) | Fit uses shown content; Reset and file-open behavior respect view lifetime. | BR-08C |
 
 Each ticket starts with acceptance, then small TDD cycles. Use the working
 sequence above. Keep each predecessor green. Do not implement group collapse,
@@ -1184,10 +1181,6 @@ overview alone cannot prove that endpoint eligibility is correct. The mixed
 fixture must show exactly its known arcs in All, with the same unknown-facts note.
 
 #### BR-08A: Show connections for the current selection
-
-The [connection scope feature](../../cookbook/behavior/baseline-viewer/connection-scope.feature)
-and [verification record](../change-requests/BR-connection-readability-evidence.md#br-08a-selected-connections)
-cover the implementation.
 
 **Acceptance first — `@br-08 @br-08a @browser`:**
 
@@ -1278,10 +1271,6 @@ the shared checks. Record positions, zoom, expected arc tuples, and focus target
 
 #### BR-08B: Reveal labels on demand
 
-The [connection label feature](../../cookbook/behavior/baseline-viewer/connection-labels.feature)
-and [verification record](../change-requests/BR-connection-readability-evidence.md#br-08b-labels-on-demand)
-cover the implementation.
-
 **Acceptance first — `@br-08 @br-08b @browser`:**
 
 ```gherkin
@@ -1352,10 +1341,6 @@ backgrounds, touch, and keyboard focus at normal and enlarged text sizes. Run
 and the shared checks. Update old always-visible-label assertions in this ticket.
 
 #### BR-08C: Hide self-connections by default
-
-The [self-connection feature](../../cookbook/behavior/baseline-viewer/self-connections.feature)
-and [verification record](../change-requests/BR-connection-readability-evidence.md#br-08c-optional-self-connections)
-cover the implementation.
 
 **Acceptance first — `@br-08 @br-08c @browser`:**
 

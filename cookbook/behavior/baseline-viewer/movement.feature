@@ -90,6 +90,7 @@ Feature: Arrange the component overview
       | baseline validation failure  |
       | baseline load cancellation   |
 
+  @br-08 @br-08d
   Scenario Outline: Keep the example after an unsuccessful file open
     Given the example has a manual arrangement and open inspection
     When the arranged overview experiences <event>
@@ -101,6 +102,7 @@ Feature: Arrange the component overview
       | baseline validation failure |
       | baseline load cancellation  |
 
+  @br-08 @br-08d
   Scenario: Opening the example again starts a new arrangement
     Given the example has a manual arrangement and open inspection
     When the user closes and reopens the example

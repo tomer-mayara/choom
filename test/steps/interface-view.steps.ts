@@ -25,6 +25,8 @@ interface InterfaceViewWorld extends World {
   viewRelease?: () => void;
   viewCompleted?: number;
   viewPointer?: { x: number; y: number };
+  viewFresh?: InterfaceViewObservation;
+  viewFreshChoices?: { selected: boolean; self: boolean };
 }
 
 function page(world: InterfaceViewWorld) { assert.ok(world.page); return world.page; }
@@ -141,6 +143,9 @@ Then("the new view starts at one hundred percent and stops at the normal minimum
   assert.deepEqual(this.viewZooms, [1, 0.01]);
   await expect(page(this).getByRole("button", { name: "Zoom Out", exact: true })).toBeDisabled();
   await expect(page(this).getByRole("dialog")).toHaveCount(0);
+  await expect(page(this).getByRole("radio", { name: "Selected", exact: true })).toBeChecked();
+  await expect(page(this).getByRole("checkbox", { name: "Show self-connections", exact: true })).not.toBeChecked();
+  await expect(page(this).locator("path[data-interface-arc]")).toHaveCount(0);
 });
 
 Then("interface geometry, inspected details, and selected bytes are unchanged", async function (this: InterfaceViewWorld) {
@@ -331,12 +336,23 @@ async function holdReplacement(world: InterfaceViewWorld) {
   await expect.poll(() => Boolean(world.viewRelease), { timeout: 1000 }).toBe(true);
 }
 
-async function finishReplacement(world: InterfaceViewWorld) {
+async function finishReplacement(world: InterfaceViewWorld, selectCheckout = false) {
   assert.ok(world.viewRelease);
   world.viewRelease();
   await expect(page(world).getByRole("heading", { name: "replacement-interface-view", exact: true })).toBeVisible();
-  await page(world).getByRole("radio", { name: "All", exact: true }).focus();
-  await page(world).keyboard.press("Space");
+  await paint(world);
+  world.viewFresh = await observe(world);
+  world.viewFreshChoices = {
+    selected: await page(world).getByRole("radio", { name: "Selected", exact: true }).isChecked(),
+    self: await page(world).getByRole("checkbox", { name: "Show self-connections", exact: true }).isChecked(),
+  };
+  if (selectCheckout) {
+    await page(world).getByRole("button", { name: "Checkout, checkout", exact: true }).focus();
+    await page(world).keyboard.press("Enter");
+  } else {
+    await page(world).getByRole("radio", { name: "All", exact: true }).focus();
+    await page(world).keyboard.press("Space");
+  }
   await paint(world);
 }
 
@@ -360,20 +376,59 @@ Given(/^a replacement is waiting while an old (component drag|arc press) is unfi
   if (input === "component drag") await move(this, 30, 20);
 });
 
+async function releaseReplacedInput(world: InterfaceViewWorld) {
+  await finishReplacement(world, true);
+  world.viewBefore = await observe(world);
+  await move(world, 50, 35);
+  await page(world).mouse.up();
+  await paint(world);
+}
+
 When("the replacement opens and the old input moves and releases", async function (this: InterfaceViewWorld) {
-  await finishReplacement(this);
-  this.viewBefore = await observe(this);
-  await move(this, 50, 35);
-  await page(this).mouse.up();
-  await paint(this);
+  await releaseReplacedInput(this);
 });
 
-Then("the replacement's arcs, positions, camera, and inspection stay unchanged", async function (this: InterfaceViewWorld) {
-  assert.ok(this.viewBefore);
-  const after = await observe(this);
-  for (const key of ["nodes", "paths", "camera", "panel"] as const) assert.deepEqual(after[key], this.viewBefore[key]);
+async function unchangedReplacement(world: InterfaceViewWorld) {
+  assert.ok(world.viewBefore);
+  const after = await observe(world);
+  for (const key of ["nodes", "paths", "camera", "panel"] as const) assert.deepEqual(after[key], world.viewBefore[key]);
   assert.equal(after.paths.length, 1);
-  assert.equal(after.panel, null);
+  await expect(page(world).getByRole("dialog", { name: "Component details", exact: true }).getByRole("heading", { name: "Checkout", exact: true })).toBeVisible();
+  await expect(page(world).getByRole("radio", { name: "Selected", exact: true })).toBeChecked();
+  await expect(page(world).getByRole("checkbox", { name: "Show self-connections", exact: true })).not.toBeChecked();
+}
+
+Then("the replacement's arcs, positions, camera, and inspection stay unchanged", async function (this: InterfaceViewWorld) {
+  await unchangedReplacement(this);
+});
+
+Given("the replacement has rejected the old input without changing its view", async function (this: InterfaceViewWorld) {
+  await releaseReplacedInput(this);
+  await unchangedReplacement(this);
+});
+
+Then("the replacement started with Selected, self-connections off, and no inspection or arcs", function (this: InterfaceViewWorld) {
+  assert.ok(this.viewFresh && this.viewFreshChoices && this.viewInitial);
+  assert.deepEqual(this.viewFreshChoices, { selected: true, self: false });
+  assert.equal(this.viewFresh.paths.length, 0);
+  assert.equal(this.viewFresh.panel, null);
+  assert.equal(this.viewFresh.camera.zoom, 1);
+  assert.deepEqual(this.viewFresh.nodes, this.viewInitial.nodes);
+});
+
+Then("All and enabled self-connections remain selected", async function (this: InterfaceViewWorld) {
+  await expect(page(this).getByRole("radio", { name: "All", exact: true })).toBeChecked();
+  await expect(page(this).getByRole("checkbox", { name: "Show self-connections", exact: true })).toBeChecked();
+});
+
+When("a fresh pointer press selects the replacement's Invoice API arc", async function (this: InterfaceViewWorld) {
+  const control = page(this).locator('[data-interface-label][data-interface-id="invoice-api"][data-consumer-id="checkout"]');
+  await hoverArcLabel(page(this), control);
+  await control.click();
+});
+
+Then("the replacement's Invoice API details open", async function (this: InterfaceViewWorld) {
+  await expect(page(this).getByRole("dialog", { name: "Interface details", exact: true }).getByRole("heading", { name: "Invoice API", exact: true })).toBeVisible();
 });
 
 When(/^another interface file open (fails validation|is cancelled|returns after cancellation)$/, async function (this: InterfaceViewWorld, outcome: string) {
