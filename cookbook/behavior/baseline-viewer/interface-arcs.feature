@@ -1,5 +1,6 @@
 @baseline-viewer @baseline-readability @br-07 @br-07a @browser
 Feature: Draw recorded interface permissions
+  These scenarios use All connections when a drawing is available.
   Each named arc points from an allowed consumer to the interface owner.
   The arrow describes a recorded permission, not an observed call.
 

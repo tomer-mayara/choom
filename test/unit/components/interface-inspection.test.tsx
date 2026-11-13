@@ -4,6 +4,7 @@ import { ArchitectureDiagram } from "../../../src/components/architecture-diagra
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { interfaceInspectionBaseline } from "../../support/interface-inspection-fixtures.ts";
 import { pointerClick } from "../../support/pointer.ts";
+import { showAllConnections } from "../../support/connection-controls.tsx";
 
 afterEach(cleanup);
 
@@ -12,6 +13,7 @@ async function view(baseline = interfaceInspectionBaseline()) {
     id, position: { x: index * 300, y: 160 }, width: 240, height: 88,
   })) };
   const canvas = await renderDiagramWithViewport(baseline, layout, { width: 1000, height: 600 });
+  showAllConnections();
   return { baseline, layout, canvas };
 }
 
@@ -118,7 +120,9 @@ test.each(["close", "baseline", "rules", "resource"])("arcs have normal emphasis
     fireEvent.click(within(screen.getByRole("dialog")).getByText("Resources"));
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Invoices, invoice-store" }));
   }
-  for (const element of document.querySelectorAll<SVGPathElement>("path[data-interface-arc]")) {
+  const paths = document.querySelectorAll<SVGPathElement>("path[data-interface-arc]");
+  expect(paths).toHaveLength(3);
+  for (const element of paths) {
     expect(Number(element.style.strokeWidth)).toBe(1.5);
     expect(Number(element.style.opacity)).toBe(1);
   }
@@ -173,9 +177,11 @@ test("an arc press from an old view cannot open a replacement with the same IDs"
     id, position: { x: index * 300, y: 160 }, width: 240, height: 88,
   })) };
   const diagram = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
+  showAllConnections();
   await waitFor(() => expect(label()).toBeTruthy());
   fireEvent.pointerDown(label(), { pointerId: 1, isPrimary: true, button: 0 });
   diagram.rerender(<ArchitectureDiagram baseline={structuredClone(baseline)} layout={structuredClone(layout)} />);
+  showAllConnections();
   fireEvent.pointerUp(window, { pointerId: 1 });
   fireEvent.click(label(), { detail: 1 });
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -189,6 +195,7 @@ test("arc keyboard controls follow interface and consumer order after replacemen
     id, position: { x: index * 300, y: 160 }, width: 240, height: 88,
   })) };
   const diagram = render(<ArchitectureDiagram baseline={baseline} layout={layout} />);
+  showAllConnections();
   const order = () => [...document.querySelectorAll<HTMLElement>("button[data-interface-label]")]
     .map((element) => `${element.dataset.interfaceId}:${element.dataset.consumerId}`);
   await waitFor(() => expect(order()).toEqual(["invoice-api:checkout", "invoice-api:reporting", "order-api:billing"]));
@@ -196,6 +203,7 @@ test("arc keyboard controls follow interface and consumer order after replacemen
   replacement.interfaces.reverse();
   replacement.interfaces.find(({ id }) => id === "invoice-api")?.allowedConsumers.value?.reverse();
   diagram.rerender(<ArchitectureDiagram baseline={replacement} layout={structuredClone(layout)} />);
+  showAllConnections();
   await waitFor(() => expect(order()).toEqual(["order-api:billing", "invoice-api:reporting", "invoice-api:checkout"]));
 });
 

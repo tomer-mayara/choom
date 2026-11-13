@@ -100,7 +100,7 @@ Then("the canvas remains available for pan and zoom", async function (this: Insp
   await browser.getByRole("button", { name: "Zoom In", exact: true }).click();
   await expect.poll(async () => (await camera(browser))[0]).toBeGreaterThan(before[0] ?? 0);
   const zoomed = await camera(browser);
-  const canvas = await browser.getByLabel("Architecture diagram", { exact: true }).boundingBox();
+  const canvas = await browser.locator(".react-flow").boundingBox();
   assert.ok(canvas);
   const start = { x: canvas.x + canvas.width - 100, y: canvas.y + 20 };
   assert.equal(await browser.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest("button, .react-flow__edge")), start), false,
@@ -188,7 +188,7 @@ When("the user inspects Workspace in a narrow window", async function (this: Ins
 });
 Then("the panel is below the usable canvas without horizontal page scrolling", async function (this: InspectionWorld) {
   const browser = page(this);
-  const canvas = await browser.getByLabel("Architecture diagram", { exact: true }).boundingBox();
+  const canvas = await browser.locator(".react-flow").boundingBox();
   const panel = await browser.getByRole("dialog").boundingBox();
   assert.ok(canvas && panel);
   assert.ok(canvas.height >= 100 && panel.height >= 100);

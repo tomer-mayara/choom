@@ -30,7 +30,7 @@ Then("all five component names are readable at 100 percent in a 1280 by 800 wind
     return { ...bounds.toJSON(), textFits: !!name && name.scrollHeight <= name.clientHeight
       && name.scrollWidth <= name.clientWidth, fontSize: name ? Number.parseFloat(getComputedStyle(name).fontSize) : 0 };
   }));
-  const canvas = await browser.getByLabel("Architecture diagram", { exact: true }).boundingBox();
+  const canvas = await browser.locator(".react-flow").boundingBox();
   assert.ok(canvas);
   assert.equal(headers.length, 5);
   for (const [index, header] of headers.entries()) {

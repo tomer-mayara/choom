@@ -40,6 +40,7 @@ async function open(world: EndpointWorld): Promise<void> {
   assert.ok(world.endpointViewer && world.endpointPath && world.endpointBaseline && world.page);
   await world.endpointViewer.openBaseline(world.endpointPath);
   await expect(world.page.getByRole("heading", { name: world.endpointBaseline.id, exact: true })).toBeVisible();
+  if (world.endpointBaseline.components.length) await world.page.getByRole("radio", { name: "All", exact: true }).check();
 }
 
 Given("the {string} endpoint baseline is ready to open", async function (this: EndpointWorld, facts: string) {

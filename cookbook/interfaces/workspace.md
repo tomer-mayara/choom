@@ -55,7 +55,7 @@ interfaces they directly own. Counts exclude descendant and unknown owners.
 A parent has a border around its children and one small inspection header.
 Names can wrap to two lines in a bounded header. Accessible names and panel
 details keep the full text. ELK rectangle packing prepares the component overview.
-Interfaces and resources have no separate nodes. Labelled interface arcs run
+Interfaces and resources have no separate nodes. Interface arcs run
 from each recorded allowed consumer to the recorded owner. They show permission
 to use the interface, not observed calls. Each arc has the identity
 `(interface ID, consumer ID, owner ID)`. Repeated names, parallel permissions,
@@ -63,12 +63,30 @@ opposite directions, and an owner that is also a consumer remain distinct.
 Arcs attach to the actual component headers, including within nested groups.
 They follow the current arrangement without changing the prepared layout.
 
+The view starts with **Connections: Selected** and no inspection, so it shows
+components without arcs. Selected shows arcs whose consumer or owner is the
+component in the inspection path. An owned interface or resource
+keeps that scope. A standalone inspected interface, including direct arc input,
+shows its known arcs. Other panels and a closed panel show none. Selecting a
+parent does not include descendant-only links. **All** shows the complete known
+arc set. Both modes show eligible loops from a component to itself. Future
+collapse excludes an arc when an actual endpoint header is hidden and keeps the
+recorded endpoints for when the arc is shown again.
+
+These are view filters, not changes to recorded knowledge. Keep complete
+interface counts, unknown-fact summaries, and validation limits. An empty shown
+set says **No connections shown.** without claiming unknown or empty consumer
+facts. Keep the connection controls, legend, and empty-message space stable when
+the set changes. With no components, omit these controls and retain the lists.
+
 An interface with a null owner or null consumer list produces no arc. A note
 counts these interfaces once each and directs the user to Baseline details.
 The note also appears when there are no components. Interface details explain
 which endpoint facts are unknown and retain any known values. Labels use at
 most two lines and the width of a component header; their accessible names
-include full interface and endpoint names and IDs.
+include full interface and endpoint names and IDs. Each shown arc has a visible
+label and a keyboard control. A filtered arc has no pointer target or keyboard
+stop.
 
 The side panel preserves ownership and allowed-consumer statements separately,
 including unknown owners, repeated names, and an owner that is also a consumer.
@@ -112,20 +130,23 @@ details also lists every component, interface, and resource, including unknown
 owners and records in models with no components. Back restores the originating
 list position and row focus. A direct canvas selection starts a new inspection
 path; inspecting an owned record keeps its component highlighted. Selecting an
-arc or its label opens that interface in a fresh path. Component inspection
-emphasizes incoming and outgoing arcs. Interface inspection emphasizes all
-arcs for that interface. Other panel kinds and a closed panel show normal arcs.
+arc or its label opens that interface in a fresh path. Within the shown set,
+component inspection emphasizes incoming and outgoing arcs. Interface inspection
+emphasizes its arcs. Other panel kinds and a closed panel show normal arcs in All.
 
 Keyboard activation focuses the panel heading; pointer selection keeps focus on
 the canvas. The panel has no overlay or focus trap. Escape and the close button
-return focus to the opener only when focus was inside the panel; external focus
-stays in place. In the Rules list,
+return focus to the opener when focus was inside the panel and it will remain
+shown. If the arc opener is filtered out, use its owner's header, then its nearest
+visible ancestor, then Baseline details. If closing removes a focused arc outside
+the panel, use that focused arc's owner instead. Keep focus on an outside control
+that survives. Do not keep hidden arcs just to restore focus. In the Rules list,
 Escape from an expanded rule first closes that rule and focuses its summary.
 The next Escape closes the list and focuses **Rules**. Keyboard focus brings an
 offscreen inspection header or arc label into view without changing zoom.
 An oversized control keeps its leading name and focus edge visible. Pointer
 selection does not pan the canvas. Arc inspection keeps the exact initiating
-label as its focus-return target. A successful replacement closes
+label as its preferred focus-return target when it survives. A successful replacement closes
 the old details and starts a fresh view, even when baseline and record IDs match.
 If focus was in the old canvas or panel, it moves to the new baseline heading;
 focus outside that view stays in place.
@@ -145,19 +166,24 @@ cancelled gesture or replaced view cannot change the current view.
 **Reset layout** ends any held press or drag, restores the prepared initial
 positions and bounds, and applies the normal 100% starting view using the current
 canvas size. Late pointer events cannot undo the reset or select another record.
-Reset keeps the same view owner, inspected record, Back path, and panel scroll
-position. Its announcement replaces any old keyboard movement coordinates with
-**Layout reset.** It does not reread the file or run layout. Repeated resets have the
-same result. **Fit view** changes only the camera to include all shown component
-bounds, arc curves, arrowheads, and labels, including items outside the viewport.
+Reset keeps the same view owner, inspected record, Back path, panel scroll,
+and connection mode. Reset's announcement replaces any old keyboard movement
+coordinates with **Layout reset.** It does not reread the file or run layout.
+Repeated resets have the same result. **Fit view** changes only the camera to
+include all shown component bounds and shown arc curves, arrowheads, and labels,
+including items outside the viewport.
 It can zoom below 1% for a widely spread arrangement. Zoom controls remain
 consistent with the fitted scale. It uses the canvas beside
 or above the panel and preserves manual geometry. Neither action runs on resize.
 
 The published baseline/layout pair stays immutable. Its viewer-owned arrangement
 survives inspection, resize, pan, zoom, loading progress, and unsuccessful loads.
-Each successful open gets a new arrangement; closing the example ends its view.
-Movement adds no file writes, storage permission, or persistent cache.
+Each successful open gets a new arrangement and starts in Selected mode.
+Closing the example ends its view. Failed, cancelled, and ignored late loads
+keep the connection mode. Arc presses belong to their published view and are
+cancelled when their arc disappears. A reappearing tuple or a same-ID
+replacement cannot revive the old press. Movement and connection mode changes
+add no file writes, storage permission, or persistent cache.
 
 The heading is the baseline ID. An entirely empty model says **No architecture
 items modeled**. A baseline with other record kinds but no components says
@@ -193,6 +219,7 @@ bun test ./test/unit/lib/component-arrangement.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/component-layout-controls.test.tsx
 bun scripts/run-browser-behavior.ts --tags @br-04
 bun scripts/run-browser-behavior.ts --tags @br-07
+bun scripts/run-browser-behavior.ts --tags @br-08
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
 ```

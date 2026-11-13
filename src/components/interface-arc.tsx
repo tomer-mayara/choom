@@ -1,5 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, useReactFlow, useStoreApi, type Edge, type EdgeProps } from "@xyflow/react";
-import { useRef, type FocusEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
+import { useLayoutEffect, useRef, type FocusEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { interfaceArcHighlightedStroke, type InterfaceArcRoute } from "../lib/interface-arc-geometry.ts";
 import { componentControlWidth } from "../lib/component-geometry.ts";
 import type { ComponentArrangement } from "../lib/component-arrangement.ts";
@@ -11,7 +11,7 @@ export type InterfaceEdge = Edge<{
   inspect: ArchitectureInspection["open"]; view: ComponentArrangement;
   pressGeneration: RefObject<number>;
   emphasis: "normal" | "highlighted" | "dimmed";
-  labelOrder: string;
+  labelOrder: number;
 }, "interface">;
 
 export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) {
@@ -20,8 +20,23 @@ export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) 
   const pointerSelection = useRef(false);
   const { getViewport, setViewport } = useReactFlow();
   const store = useStoreApi();
+  const labelOrder = data?.labelOrder;
+  useLayoutEffect(() => {
+    const control = label.current;
+    const container = control?.parentElement;
+    if (!control || !container || labelOrder === undefined) return;
+    const before = control.previousElementSibling;
+    const after = control.nextElementSibling;
+    const beforeOrder = before instanceof HTMLElement ? Number(before.dataset.interfaceOrder) : -Infinity;
+    const afterOrder = after instanceof HTMLElement ? Number(after.dataset.interfaceOrder) : Infinity;
+    if (beforeOrder <= labelOrder && labelOrder <= afterOrder) return;
+    // React Flow portals retain insertion order. Move the existing control, not its focus or press state.
+    const next = [...container.children].find((element) => element instanceof HTMLElement
+      && element !== control && Number(element.dataset.interfaceOrder) > labelOrder);
+    container.insertBefore(control, next ?? null);
+  }, [labelOrder]);
   if (!data) return null;
-  const { route, name, accessibleName, inspect, view, pressGeneration, emphasis, labelOrder } = data;
+  const { route, name, accessibleName, inspect, view, pressGeneration, emphasis } = data;
   const identity = { "data-interface-id": route.interfaceId, "data-consumer-id": route.consumerId, "data-owner-id": route.ownerId };
 
   function revealFocusedLabel(event: FocusEvent<HTMLButtonElement>) {
@@ -71,9 +86,8 @@ export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) 
         style={{ stroke: "var(--foreground)", strokeWidth: emphasis === "highlighted" ? interfaceArcHighlightedStroke : 1.5, opacity: emphasis === "dimmed" ? 0.35 : 1 }}
         data-interface-arc="" {...identity} />
     </g>
-    {/* Moving SVG edges does not reorder their HTML portals. */}
-    <EdgeLabelRenderer key={labelOrder}>
-      <button ref={label} type="button" data-interface-label="" {...identity} aria-label={accessibleName} title={name}
+    <EdgeLabelRenderer>
+      <button ref={label} type="button" data-interface-label="" data-interface-order={labelOrder} {...identity} aria-label={accessibleName} title={name}
         aria-haspopup="dialog"
         className="nodrag nopan pointer-events-auto absolute cursor-pointer rounded bg-card px-2 py-1 text-center text-xs text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         style={{ width: "max-content", maxWidth: componentControlWidth, transform: `translate(-50%, -50%) translate(${route.label.x}px, ${route.label.y}px)` }}

@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { interfaceViewBaseline } from "../../support/interface-view-fixtures.ts";
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { pointerClick } from "../../support/pointer.ts";
+import { showAllConnections } from "../../support/connection-controls.tsx";
 
 afterEach(cleanup);
 
@@ -15,6 +16,7 @@ test("Fit includes measured arc labels in the actual canvas while keeping geomet
   const baseline = interfaceViewBaseline();
   const original = structuredClone(baseline);
   const canvas = await renderDiagramWithViewport(baseline, layout);
+  showAllConnections();
   const label = document.querySelector<HTMLElement>('[data-interface-label][data-consumer-id="billing"]');
   if (!label) throw new Error("The self-loop must have its HTML label.");
   fireEvent.click(label, { detail: 0 });
@@ -46,6 +48,7 @@ test("Fit includes measured arc labels in the actual canvas while keeping geomet
 test("Fit below one percent shares its minimum with zoom controls, and Reset restores the normal range", async () => {
   const spread = { nodes: layout.nodes.map((node) => ({ ...node, position: { ...node.position, x: node.id === "billing" ? 100_000 : 0 } })) };
   const canvas = await renderDiagramWithViewport(interfaceViewBaseline(), spread, { width: 320, height: 180 });
+  showAllConnections();
   const nodes = canvas.getNodes().map(({ id, position }) => ({ id, position }));
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Fit View" })); });
   const fitted = canvas.getViewport().zoom;
@@ -68,6 +71,7 @@ test("Fit below one percent shares its minimum with zoom controls, and Reset res
 
 test.each([false, true])("Reset ends an arc press and preserves its exact label and inspection path: moved=%s", async (moved) => {
   const canvas = await renderDiagramWithViewport(interfaceViewBaseline(), layout);
+  showAllConnections();
   if (moved) fireEvent.keyDown(screen.getByRole("button", { name: "Billing, billing" }), { key: "ArrowRight" });
   fireEvent.click(screen.getByRole("button", { name: "Baseline details" }), { detail: 0 });
   fireEvent.click(within(screen.getByRole("region", { name: "Interfaces" })).getByRole("button", { name: "Invoice API, invoice-api" }));

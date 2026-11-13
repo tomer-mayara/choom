@@ -10,6 +10,7 @@ import { maximumDiagramZoom, normalMinimumZoom, revealHeader, startingViewport }
 import { componentControlHeight, componentControlWidth, componentGroupBorderWidth } from "../lib/component-geometry.ts";
 import { ComponentArrangement } from "../lib/component-arrangement.ts";
 import { incompleteInterfaceCount, interfaceArcs } from "../lib/interface-arcs.ts";
+import { shownInterfaceArcs, type ConnectionMode } from "../lib/interface-arc-visibility.ts";
 import { interfaceArcMarkerSize, routeInterfaceArcs } from "../lib/interface-arc-geometry.ts";
 import { InterfaceArc, type InterfaceEdge } from "./interface-arc.tsx";
 import { FitDrawingControl } from "./fit-drawing-control.tsx";
@@ -66,6 +67,7 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, inspect, selec
       <Handle type="target" position={Position.Bottom} style={{ visibility: "hidden" }} />
       <button
         type="button" aria-label={`${item.name}, ${item.id}`} aria-haspopup="dialog"
+        data-component-id={item.id}
         aria-describedby="item-inspection-hint" aria-pressed={selected}
         className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center gap-0.5 border-border px-3 py-1 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
         style={{ width: componentControlWidth, height: componentControlHeight, touchAction: "none" }}
@@ -142,9 +144,10 @@ function ResetLayoutControl({ layout, firstRootId, arrangement, gestures, announ
   }}><RotateCcw aria-hidden="true" style={{ fill: "none" }} /></ControlButton>;
 }
 
-function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
+function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; arrangement: ComponentArrangement;
   inspection: ReturnType<typeof useArchitectureInspection>;
+  connectionMode: ConnectionMode; setConnectionMode: (mode: ConnectionMode) => void;
 }) {
   const geometry = useSyncExternalStore(arrangement.subscribe, arrangement.getSnapshot);
   const gestures = useComponentGestures(arrangement);
@@ -159,8 +162,9 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
   const firstRootId = baseline.components.find(({ parent }) => !parent?.value)?.id;
   const connections = useMemo(() => {
     const arcs = interfaceArcs(baseline);
-    return { arcs, labelOrder: JSON.stringify(arcs.map(({ id }) => id)) };
+    return { arcs, order: new Map(arcs.map(({ id }, index) => [id, index])) };
   }, [baseline]);
+  const routes = useMemo(() => routeInterfaceArcs(connections.arcs, geometry), [connections, geometry]);
   const items = useMemo(() => {
     const parents = new Set(baseline.components.flatMap((component) => component.parent?.value ? [component.parent.value] : []));
     const items = new Map<string, ArchitectureNode["data"]>();
@@ -193,7 +197,9 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
   const edges = useMemo<InterfaceEdge[]>(() => {
     const names = new Map(baseline.interfaces.map(({ id, name }) => [id, name]));
     const components = new Map(baseline.components.map(({ id, name }) => [id, name]));
-    return routeInterfaceArcs(connections.arcs, geometry).map((route) => {
+    const visible = shownInterfaceArcs(routes, { mode: connectionMode,
+      componentId: inspection.componentId, interfaceId: inspection.panel?.kind === "interface" ? inspection.panel.interfaceId : undefined });
+    return visible.map((route) => {
       const name = names.get(route.interfaceId) ?? route.interfaceId;
       const consumer = `${components.get(route.consumerId)}, ${route.consumerId}`;
       const owner = `${components.get(route.ownerId)}, ${route.ownerId}`;
@@ -205,13 +211,26 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
         domAttributes: { "aria-hidden": true },
         markerEnd: { type: MarkerType.ArrowClosed, color: "var(--foreground)", width: interfaceArcMarkerSize, height: interfaceArcMarkerSize },
         data: { route, name, accessibleName: `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}`,
-          inspect: inspection.open, view: arrangement, pressGeneration, emphasis, labelOrder: connections.labelOrder },
+          inspect: inspection.open, view: arrangement, pressGeneration, emphasis, labelOrder: connections.order.get(route.id) ?? 0 },
       };
     });
-  }, [baseline, connections, geometry, inspection.open, inspection.panel, arrangement]);
+  }, [baseline, connections, routes, inspection.open, inspection.panel, inspection.componentId, arrangement, connectionMode]);
 
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card" aria-label="Architecture diagram">
-    {edges.length > 0 ? <p className="shrink-0 border-b border-border px-3 py-1 text-xs text-muted-foreground">Arrow: consumer may use the owner's interface.</p> : null}
+    <div className="flex shrink-0 flex-wrap items-center gap-x-4 border-b border-border px-3 py-1 text-xs text-muted-foreground">
+      <fieldset className="flex min-w-0 flex-wrap items-center gap-x-3">
+        <legend className="float-left mr-3 font-medium">Connections</legend>
+        {(["selected", "all"] as const).map((mode) => <label key={mode} className="flex cursor-pointer items-center gap-1">
+          <input type="radio" name="connection-mode" value={mode} checked={connectionMode === mode} onChange={(event) => {
+            event.currentTarget.focus({ preventScroll: true });
+            setConnectionMode(mode);
+          }} />
+          {mode === "selected" ? "Selected" : "All"}
+        </label>)}
+      </fieldset>
+      <p>Arrow: consumer may use the owner's interface.</p>
+      <p style={{ visibility: edges.length ? "hidden" : "visible" }}>No connections shown.</p>
+    </div>
     <div className="min-h-0 flex-1">
     <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} minZoom={minimumZoom} maxZoom={maximumDiagramZoom}
       nodesDraggable={false} nodesConnectable={false} nodesFocusable={false} zIndexMode="manual"
@@ -235,7 +254,13 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection }: {
 export function ArchitectureDiagram({ baseline, layout }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
 }) {
-  const inspection = useArchitectureInspection(baseline, layout);
+  const [connectionChoice, setConnectionChoice] = useState<{
+    baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; mode: ConnectionMode;
+  } | null>(null);
+  if (connectionChoice && (connectionChoice.baseline !== baseline || connectionChoice.layout !== layout)) setConnectionChoice(null);
+  const connectionMode = connectionChoice?.baseline === baseline && connectionChoice.layout === layout ? connectionChoice.mode : "selected";
+  const setConnectionMode = useCallback((mode: ConnectionMode) => setConnectionChoice({ baseline, layout, mode }), [baseline, layout]);
+  const inspection = useArchitectureInspection(baseline, layout, connectionMode);
   const arrangement = useMemo(() => new ComponentArrangement(layout), [baseline, layout]);
   const openPanel = inspection.open;
   const incompleteInterfaces = incompleteInterfaceCount(baseline);
@@ -255,7 +280,8 @@ export function ArchitectureDiagram({ baseline, layout }: {
         <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      {layout.nodes.length > 0 ? <ArchitectureCanvas baseline={baseline} layout={layout} arrangement={arrangement} inspection={inspection} /> : null}
+      {layout.nodes.length > 0 ? <ArchitectureCanvas baseline={baseline} layout={layout} arrangement={arrangement} inspection={inspection}
+        connectionMode={connectionMode} setConnectionMode={setConnectionMode} /> : null}
       <ArchitectureDetailsPanel baseline={baseline} inspection={inspection} />
       </div>
     </section>
