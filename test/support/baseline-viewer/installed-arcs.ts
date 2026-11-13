@@ -198,6 +198,11 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
   const all = browser.$('input[name="connection-mode"][value="all"]');
   assert.equal(await all.isExisting(), true, "The installed viewer must expose the All connection choice");
   await all.click();
+  const self = browser.$('//label[normalize-space(.)="Show self-connections"]//input[@type="checkbox"]');
+  assert.equal(await self.isExisting(), true, "The installed viewer must expose Show self-connections");
+  assert.equal(await self.isSelected(), false, "Installed self-connections must start off");
+  await self.click();
+  assert.equal(await self.isFocused(), true, "The self-connection choice must keep focus after activation");
   await waitFor(async () => {
     const state = await observe(browser);
     return state.nodes.length === 4 && state.arcs.length === 3 && state.labelCount === 3;

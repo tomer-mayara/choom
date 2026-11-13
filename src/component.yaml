@@ -21,6 +21,7 @@ artifacts:
     - path: ../cookbook/behavior/baseline-viewer/interface-inspection.feature
     - path: ../cookbook/behavior/baseline-viewer/connection-scope.feature
     - path: ../cookbook/behavior/baseline-viewer/connection-labels.feature
+    - path: ../cookbook/behavior/baseline-viewer/self-connections.feature
     - path: ../cookbook/behavior/baseline-viewer/installed.feature
   observability:
     - path: ../cookbook/observability/service.yaml

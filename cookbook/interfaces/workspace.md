@@ -63,14 +63,15 @@ opposite directions, and an owner that is also a consumer remain distinct.
 Arcs attach to the actual component headers, including within nested groups.
 They follow the current arrangement without changing the prepared layout.
 
-The view starts with **Connections: Selected** and no inspection, so it shows
-components without arcs. Selected shows arcs whose consumer or owner is the
+The view starts with **Connections: Selected**, self-connections off, and no
+inspection, so it shows components without arcs. Selected shows arcs whose consumer or owner is the
 component in the inspection path. An owned interface or resource
 keeps that scope. A standalone inspected interface, including direct arc input,
 shows its known arcs. Other panels and a closed panel show none. Selecting a
 parent does not include descendant-only links. **All** shows the complete known
-arc set. Both modes show eligible loops from a component to itself. Future
-collapse excludes an arc when an actual endpoint header is hidden and keeps the
+arc set apart from any loops hidden by the self-connection choice. **Show
+self-connections** permits loops within the current scope. Future collapse
+excludes an arc when an actual endpoint header is hidden and keeps the
 recorded endpoints for when the arc is shown again.
 
 These are view filters, not changes to recorded knowledge. Keep complete
@@ -142,8 +143,9 @@ normal arcs in All.
 Keyboard activation focuses the panel heading; pointer selection keeps focus on
 the canvas. The panel has no overlay or focus trap. Escape and the close button
 return focus to the opener when focus was inside the panel and it will remain
-shown. If the arc opener is filtered out, use its owner's header, then its nearest
-visible ancestor, then Baseline details. If closing removes a focused arc outside
+shown. In All mode, a restored arc can receive focus when its interface,
+consumer, and owner IDs match the initiating arc. If the arc opener is absent,
+use its owner’s header, then its nearest visible ancestor, then Baseline details. If closing removes a focused arc outside
 the panel, use that focused arc's owner instead. Keep focus on an outside control
 that survives. Do not keep hidden arcs just to restore focus. In the Rules list,
 Escape from an expanded rule first closes that rule and focuses its summary.
@@ -172,7 +174,7 @@ cancelled gesture or replaced view cannot change the current view.
 positions and bounds, and applies the normal 100% starting view using the current
 canvas size. Late pointer events cannot undo the reset or select another record.
 Reset keeps the same view owner, inspected record, Back path, panel scroll,
-and connection mode. Labels follow current hover, keyboard focus, and
+and connection choices. Labels follow current hover, keyboard focus, and
 inspection after Reset. Reset’s announcement replaces any old keyboard
 movement coordinates with **Layout reset.** Repeated resets have the same
 result and use the prepared layout. **Fit view** changes only the camera to
@@ -185,12 +187,12 @@ or above the panel and preserves manual geometry. Neither action runs on resize.
 
 The published baseline/layout pair stays immutable. Its viewer-owned arrangement
 survives inspection, resize, pan, zoom, loading progress, and unsuccessful loads.
-Each successful open gets a new arrangement and starts in Selected mode.
-Closing the example ends its view. Failed, cancelled, and ignored late loads
-keep the connection mode. Arc presses belong to their published view and are
+Each successful open gets a new arrangement and starts in Selected mode with
+self-connections off. Closing the example ends its view. Failed, cancelled,
+and ignored late loads keep both connection choices. Arc presses belong to their published view and are
 cancelled when their arc disappears. A reappearing tuple or a same-ID
-replacement cannot revive the old press. Movement and connection mode changes
-add no file writes, storage permission, or persistent cache.
+replacement cannot revive the old press. Movement and connection choices add
+no file writes, storage permission, or persistent cache.
 
 The heading is the baseline ID. An entirely empty model says **No architecture
 items modeled**. A baseline with other record kinds but no components says

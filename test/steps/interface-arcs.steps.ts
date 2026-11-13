@@ -34,11 +34,12 @@ Given("the {string} interface baseline is ready to open", async function (this: 
   await this.arcViewer.open();
 });
 
-When("the user opens the prepared interface baseline with All connections", async function (this: InterfaceArcWorld) {
+When("the user opens the prepared interface baseline with All connections and self-connections shown", async function (this: InterfaceArcWorld) {
   assert.ok(this.arcViewer && this.arcPath && this.page && this.arcBaseline);
   await this.arcViewer.openBaseline(this.arcPath);
   await expect(this.page.getByRole("heading", { name: this.arcBaseline.id, exact: true })).toBeVisible();
   await this.page.getByRole("radio", { name: "All", exact: true }).check();
+  await this.page.getByRole("checkbox", { name: "Show self-connections", exact: true }).check();
 });
 
 When("the user inspects the first interface from its curve", async function (this: InterfaceArcWorld) {

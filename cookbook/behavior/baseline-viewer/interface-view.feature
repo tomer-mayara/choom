@@ -1,6 +1,6 @@
 @baseline-viewer @baseline-readability @br-07 @br-07d @browser
 Feature: Fit and retain the complete interface drawing
-  These scenarios use All connections when a drawing is available.
+  These scenarios use All with Show self-connections enabled when a drawing is available.
   Fit includes visible arcs and labels in the available canvas.
   View controls preserve the saved baseline and current inspection.
 
