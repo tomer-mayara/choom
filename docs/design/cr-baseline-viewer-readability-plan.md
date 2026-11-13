@@ -1,7 +1,7 @@
 # Baseline viewer readability plan
 
 Status: **BR-01 to BR-04, BR-07A to BR-07D, and BR-08A to BR-08D are merged.
-BR-10A to BR-10F are approved for implementation as a draft PR stack.
+BR-10A to BR-10F are implemented in a draft PR stack; they are not merged.
 BR-05 is superseded by the separate BR-09 graph design; BR-07 replaced BR-06.**
 
 Reviewed: **2026-11-13**
@@ -35,6 +35,8 @@ See the [BR-07 verification record](../change-requests/BR-interface-arcs-evidenc
 for interface-arc implementation checks.
 See the [BR-08 verification record](../change-requests/BR-connection-readability-evidence.md)
 for connection visibility, label, and view-lifetime checks.
+See the [BR-10 verification record](../change-requests/BR-interface-details-evidence.md)
+for interface documentation, signature, publication, and reading checks.
 
 ## Problem in the starting view
 
@@ -60,6 +62,7 @@ at once makes even this small model hard to read.
 | Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
 | Merged | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
 | Merged | BR-08A to BR-08D | Selected connections, labels on demand, optional self-connections, and Fit/lifetime checks for the filtered view. |
+| Draft PR stack | BR-10A to BR-10F | Versioned interface documentation, saved signatures, examples, sources, and publication checks. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
@@ -1925,7 +1928,7 @@ panel as a substitute for a readable information order.
 
 ### BR-10: Make interface details useful
 
-**Approved for implementation; delivery results are recorded per ticket.** Use the approved mock as an information-design reference, not as
+**Implemented in a draft PR stack; delivery results are in the verification record.** Use the approved mock as an information-design reference, not as
 production code or as a hidden source of descriptions. BR-10 can follow the
 merged viewer without waiting for the separate BR-09 graph experiment. It does
 not waive that experiment's gate or change its layout requirements.
@@ -2281,8 +2284,15 @@ Scenario: Start fresh on a successful same-ID replacement
 
 Scenario: Reach details without a pointer
   Given a long interface is open in a narrow or short window
-  When the user moves through the tabs and disclosures with the keyboard
+  When the user moves through tabs, examples, and disclosures with Tab and Shift Tab
   Then all controls and text remain reachable with visible focus and no page-wide horizontal scroll
+  And the sticky tabs do not cover the focused control
+
+Scenario: Select a partly visible control with the pointer
+  Given an example choice is partly visible below the sticky tabs
+  When the user presses and releases its visible part
+  Then the press does not move the choice before release
+  And that example becomes selected
 ```
 
 **First red:** Assert that Sources renders a supplied human-readable note and
@@ -2299,7 +2309,7 @@ journey through its connection member list too.
 | 2 — Source reading | DOM tests: render useful notes, label unloaded evidence, and preserve every original value behind a disclosure. | Format Sources with readable labels and plain source locations. | Reuse record serialization only for full-field access, not as the main UI. |
 | 3 — Inspection frame | DOM tests: Back, direct selection, tab/entry changes, close, and same-ID replacement apply the specified frame lifetime. | Extend the existing inspection state with only the new UI choices. | Reuse existing history and session identity; remove duplicate state owners. |
 | 4 — Asynchronous feedback | Controlled-completion tests: late loads and old copy feedback cannot update a replacement frame. | Add any missing guard at the existing owner. | Keep passing load-race behavior as characterization. |
-| 5 — Real input and layout | Browser tests: tab keys, Back row focus, touch, code-region scrolling, narrow width, short height, and larger text remain usable. | Fix wrapping, scroll regions, or focus routing at the responsible UI control. | Preserve panel width and graph navigation; do not use font reduction to fit content. |
+| 5 — Real input and layout | Browser tests: forward and reverse tab keys, pointer presses, Back row focus, touch, code-region scrolling, narrow width, short height, and larger text remain usable. | Reveal keyboard-focused controls below sticky tabs without moving a pressed control or resetting tab bookmarks. Fix wrapping or focus routing at its UI owner. | Preserve panel width and graph navigation; do not use font reduction to fit content. |
 | 6 — Method reading | After A accepts signatures, first fail a browser assertion on the absent Signature view. Add focused DOM/projection tests for exact multiline text, missing/null values, kind restrictions, independent status, and all citing paths. | Render the saved function declaration near the entry name and include it in the common statement traversal. | Keep signatures literal and separate from examples. Preserve legacy files and current panel width. |
 
 **Complete when:** `@br-10d`, affected inspection and lifetime acceptance, new
@@ -2456,6 +2466,12 @@ reader proceed/revise decision. Passing CI or identifying a control does not
 prove understanding. Record unresolved platform or performance limits, update
 affected README/boundary/contract documents, and keep BR-09's separate graph
 validation status accurate.
+
+**Reader-check delivery note:** The user gave positive visual feedback and
+asked the manager to check the view too. The manager completed the reading
+questions and inspected wide, narrow, and short windows. The evidence keeps
+that self-check separate from user feedback. It does not claim an independent
+human comprehension study or record answers the user did not give.
 
 
 BR-10 uses acceptance-first Cucumber scenarios for production behavior and the

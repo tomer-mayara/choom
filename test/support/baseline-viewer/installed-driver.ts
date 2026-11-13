@@ -10,6 +10,8 @@ import type { World } from "@cucumber/cucumber";
 import { Key, remote, type Browser } from "webdriverio";
 import { expectInstalledUnknownConsumers, inspectAndArrangeInstalledArcs } from "./installed-arcs.ts";
 import { inspectInstalledArcOpens } from "./installed-arc-files.ts";
+import type { Baseline } from "../../../src/domain/generated/contracts.ts";
+import { inspectInstalledDocumentation, type InstalledDocumentationTask } from "./published-interface-installed.ts";
 
 const run = promisify(execFile);
 
@@ -481,6 +483,10 @@ export class InstalledBaselineDriver {
 
   async inspectArcOpens(files: { baseline: string; invalid: string }) {
     return inspectInstalledArcOpens(this.session(), this, files, this.world);
+  }
+
+  async inspectInterfaceDocumentation(baseline: Baseline, task: InstalledDocumentationTask) {
+    return inspectInstalledDocumentation(this.session(), baseline, task, (path) => this.openBaseline(path));
   }
 
   async expectUnknownConsumers(): Promise<void> { await expectInstalledUnknownConsumers(this.session()); }

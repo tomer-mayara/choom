@@ -1,0 +1,19 @@
+{
+  "published": {
+    "file": "interface-documentation-published.yaml",
+    "bytes": 46990,
+    "sha256": "cc16625927985c9cc05e85ed9152ad5d0d24ffaa040663cbb9a7007eaf34adda",
+    "sourceRun": "choom-br10e-flow-006",
+    "sourceArtifact": "baselines/baseline-003/baseline.yaml",
+    "productionRoute": "External Stage 4, Stage 5, and Stage 6 commands, ending in verified publication.",
+    "note": "Copied byte-for-byte from the actual published file. Prior runs remain unchanged."
+  },
+  "readerExercise": {
+    "file": "interface-reader-trial.yaml",
+    "bytes": 7393,
+    "sha256": "454d64d84c4a9178248743060d6905377a19e5e43e9da3015bbb5a15d2892568",
+    "basis": "Fictional contract authored for the interface reading exercise; not a published codebase analysis.",
+    "originalTrialSha256": "a82cc0dc36ce25e518e3f485bf1b7ee6cc6eb3a19ee7692c32efd3d2df816855",
+    "change": "Added an explicitly authored proposed method signature and its own note in a separate copy."
+  }
+}

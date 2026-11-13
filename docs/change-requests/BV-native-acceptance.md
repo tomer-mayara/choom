@@ -20,7 +20,7 @@ the [README](../../README.md#set-up), then the acceptance tools:
 ```sh
 bun install --frozen-lockfile
 cargo install tauri-driver --version 2.1.0 --locked
-sudo apt-get install dbus webkit2gtk-driver xvfb xauth xdotool
+sudo apt-get install dbus webkit2gtk-driver xvfb xauth xdotool xclip
 ```
 
 The harness uses Node to run Cucumber and WebdriverIO. The installed app starts
@@ -133,6 +133,16 @@ End and Return use the same cadence. The runner sets `GTK_USE_PORTAL=0` for the
 application's GTK3 dialog backend and owns its D-Bus/X11 session. It does not
 claim desktop portal or launcher behavior. Fixtures and child processes are
 cleaned up after completion, failure, or interruption.
+
+The BR-10 reading journey opens the actual version 2 publisher fixture through
+this same native picker. It reads the saved function signature, examples,
+result excerpt, source notes, access rule, and complete original records. Type
+and data entries stay distinct. Malformed and excessive files, then picker
+cancellation, must preserve the selected example and drawing. The real Copy
+example control reports the host outcome. On success, the external harness uses
+`xclip` to verify the exact clipboard bytes. On refusal, it checks manual-copy
+guidance and selectable text. The evidence states which outcome was observed;
+the installed app's clipboard is not mocked.
 
 ## Review the evidence
 

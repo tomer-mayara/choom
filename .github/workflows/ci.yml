@@ -82,7 +82,7 @@ jobs:
       - name: Install Linux packaged acceptance drivers
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get install -y webkit2gtk-driver xvfb xdotool dbus
+          sudo apt-get install -y webkit2gtk-driver xvfb xdotool dbus xclip
           cargo install tauri-driver --version 2.1.0 --locked
       - name: Build and install the Linux release package
         if: runner.os == 'Linux'

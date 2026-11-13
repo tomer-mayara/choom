@@ -242,6 +242,7 @@ bun test ./test/unit/architecture
 bun test ./test/unit/lib/architecture-layout.test.ts
 bun run test:dom
 bun run test:e2e --tags @baseline-viewer
+bun run test:e2e --tags @br-10
 bun run check:contracts
 ```
 
@@ -322,6 +323,13 @@ The [CR-001 records](docs/change-requests/CR-001-architecture-import.md) and
 [architecture review](docs/architecture-reviews/2026-11-07-agreed-refactoring-plan.md)
 describe the former repository-analysis app. Their commands and results are
 historical, not current baseline-viewer evidence.
+
+BR-10's assembled reading checks use the same published version 2 fixture in
+the browser and installed app. See the [fixture provenance](test/fixtures/baseline-viewer/interface-reading-fixtures.json)
+for its hash and the separate fictional reader exercise. The Linux harness needs
+`xclip` to verify real clipboard writes. Run `--tags @br-10f` for these focused
+journeys, or `--tags @baseline-viewer` for the complete installed baseline suite.
+Automated checks and manager review do not establish human comprehension.
 
 TypeSpec sources in [`cookbook/interfaces/`](cookbook/interfaces/main.tsp) define
 Choom-owned component data and operations for internal and external callers.
