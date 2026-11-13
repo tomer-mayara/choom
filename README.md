@@ -23,8 +23,8 @@ component overview, side panel, interface arcs, movement, and layout controls.
 The [interface-arc checks](docs/change-requests/BR-interface-arcs-evidence.md)
 record BR-07 acceptance and its platform limits.
 The [connection-readability checks](docs/change-requests/BR-connection-readability-evidence.md)
-record BR-08A and BR-08B acceptance for selected connections and labels on
-demand.
+record BR-08A to BR-08C acceptance for selected connections, labels on demand,
+and optional self-connections.
 
 The [manual analysis design](docs/design/llm-led-architecture-analysis.md) and
 [producer cookbook](docs/design/app-a/start-here.md) describe a separate workflow
@@ -81,8 +81,8 @@ produce several arrows without increasing the owner's interface count.
 **Connections: Selected** is the default. The initial view has no arrows.
 Select a component to show only arrows where it is the consumer or owner.
 Selecting a parent does not include connections only between its children.
-Choose **All** to see all known connections. A component that also consumes
-its own interface has a loop when that connection is in scope.
+Choose **All** to see all known connections. **Show self-connections** starts
+off. Turn it on to show loops from a component to itself when they are in scope.
 The drawing says **No connections shown.** when the current scope has no
 arrows. Interface counts always reflect ownership.
 
@@ -116,17 +116,17 @@ to the right or bottom when needed. Arrow keys on a focused header move it by
 10 diagram units. Drag unused group space to pan. Movement does not select a
 record or change the saved baseline. A drag release does not open inspection.
 
-The arrangement and connection mode last while this view remains open.
+The arrangement and connection choices last while this view remains open.
 Inspection, pan, zoom, resize, failed opens, and cancelled opens keep them.
-Each successful file open starts a fresh arrangement in Selected mode with no
-inspection, including when reopening the same file. Closing and reopening the
-example also starts fresh.
+Each successful file open starts a fresh arrangement in Selected mode with
+self-connections off and no inspection, including when reopening the same file.
+Closing and reopening the example also starts fresh.
 
 **Fit view** changes only pan and zoom to show the current arrangement, including
 components and shown arcs with their arrowheads and labels, even outside the
 viewport. Fit also reserves room for hidden labels of shown arrows.
 **Reset layout** restores the initial positions and group bounds at 100% zoom.
-It keeps the current inspection, Back path, and connection mode.
+It keeps the current inspection, Back path, and connection choices.
 Reset also ends a held press or drag. Both controls use the available canvas
 beside or above the panel; they are absent when there are no components.
 
@@ -140,8 +140,9 @@ components, interfaces, and resources, including items with unknown owners.
 **Escape** first cancels an active drag and restores its starting positions and
 bounds. An interrupted drag does the same. Otherwise, Escape closes the expanded
 rule containing focus, then the panel on the next press. Closing the panel
-returns focus to its opener if focus was inside the panel and the opener remains
-shown. If an arc opener disappears, focus returns to its owner's header. The
+returns focus to its opener if focus was inside the panel and the opener is
+shown. In All mode, a loop hidden and shown again can receive focus as the same
+connection. If the arc opener is absent, focus returns to its owner’s header. The
 same fallback applies when closing removes a focused arc outside the panel;
 focus on other surviving controls stays there. A new baseline closes the old
 inspection path. If focus was in the replaced view, it moves to the new baseline
@@ -249,8 +250,10 @@ Run the focused connection-readability checks with:
 bun test ./test/unit/lib/interface-arc-visibility.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/connection-scope.test.tsx
 bun test --preload ./test/preload.ts ./test/unit/components/connection-labels.test.tsx
+bun test --preload ./test/preload.ts ./test/unit/components/self-connections.test.tsx
 bun run test:e2e --tags @br-08a
 bun run test:e2e --tags @br-08b
+bun run test:e2e --tags @br-08c
 ```
 
 `bun run test:native` scans `test/unit` for native TypeScript suites.

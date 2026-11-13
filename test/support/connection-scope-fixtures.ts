@@ -14,3 +14,14 @@ export function connectionScopeBaseline() {
   fixtureItem(baseline.resources).owner = proposed("billing");
   return baseline;
 }
+
+export function selfConnectionBaseline() {
+  const baseline = connectionScopeBaseline();
+  baseline.id = "self-connections";
+  const invoice = fixtureItem(baseline.interfaces);
+  invoice.allowedConsumers = proposed(["checkout", "reporting", "billing"]);
+  baseline.interfaces.push({ ...structuredClone(invoice), id: "health", name: "Health",
+    allowedConsumers: proposed(["billing"]),
+  });
+  return baseline;
+}

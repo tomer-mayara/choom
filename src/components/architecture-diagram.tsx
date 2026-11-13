@@ -144,10 +144,11 @@ function ResetLayoutControl({ layout, firstRootId, arrangement, gestures, announ
   }}><RotateCcw aria-hidden="true" style={{ fill: "none" }} /></ControlButton>;
 }
 
-function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode }: {
+function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode, showSelfConnections, setShowSelfConnections }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; arrangement: ComponentArrangement;
   inspection: ReturnType<typeof useArchitectureInspection>;
   connectionMode: ConnectionMode; setConnectionMode: (mode: ConnectionMode) => void;
+  showSelfConnections: boolean; setShowSelfConnections: (show: boolean) => void;
 }) {
   const geometry = useSyncExternalStore(arrangement.subscribe, arrangement.getSnapshot);
   const gestures = useComponentGestures(arrangement);
@@ -197,7 +198,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
   const edges = useMemo<InterfaceEdge[]>(() => {
     const names = new Map(baseline.interfaces.map(({ id, name }) => [id, name]));
     const components = new Map(baseline.components.map(({ id, name }) => [id, name]));
-    const visible = shownInterfaceArcs(routes, { mode: connectionMode,
+    const visible = shownInterfaceArcs(routes, { mode: connectionMode, showSelfConnections,
       componentId: inspection.componentId, interfaceId: inspection.panel?.kind === "interface" ? inspection.panel.interfaceId : undefined });
     return visible.map((route) => {
       const name = names.get(route.interfaceId) ?? route.interfaceId;
@@ -215,7 +216,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           inspect: inspection.open, view: arrangement, pressGeneration, emphasis, labelOrder: connections.order.get(route.id) ?? 0 },
       };
     });
-  }, [baseline, connections, routes, inspection.open, inspection.panel, inspection.componentId, arrangement, connectionMode]);
+  }, [baseline, connections, routes, inspection.open, inspection.panel, inspection.componentId, arrangement, connectionMode, showSelfConnections]);
 
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card" aria-label="Architecture diagram">
     <div className="flex shrink-0 flex-wrap items-center gap-x-4 border-b border-border px-3 py-1 text-xs text-muted-foreground">
@@ -228,6 +229,13 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           }} />
           {mode === "selected" ? "Selected" : "All"}
         </label>)}
+        <label className="flex cursor-pointer items-center gap-1">
+          <input type="checkbox" checked={showSelfConnections} onChange={(event) => {
+            event.currentTarget.focus({ preventScroll: true });
+            setShowSelfConnections(event.currentTarget.checked);
+          }} />
+          Show self-connections
+        </label>
       </fieldset>
       <p>Arrow: consumer may use the owner's interface.</p>
       <p style={{ visibility: edges.length ? "hidden" : "visible" }}>No connections shown.</p>
@@ -256,11 +264,17 @@ export function ArchitectureDiagram({ baseline, layout }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
 }) {
   const [connectionChoice, setConnectionChoice] = useState<{
-    baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; mode: ConnectionMode;
+    baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; mode: ConnectionMode; showSelfConnections: boolean;
   } | null>(null);
   if (connectionChoice && (connectionChoice.baseline !== baseline || connectionChoice.layout !== layout)) setConnectionChoice(null);
   const connectionMode = connectionChoice?.baseline === baseline && connectionChoice.layout === layout ? connectionChoice.mode : "selected";
-  const setConnectionMode = useCallback((mode: ConnectionMode) => setConnectionChoice({ baseline, layout, mode }), [baseline, layout]);
+  const showSelfConnections = connectionChoice?.baseline === baseline && connectionChoice.layout === layout ? connectionChoice.showSelfConnections : false;
+  const setConnectionMode = useCallback((mode: ConnectionMode) => setConnectionChoice((current) => ({ baseline, layout, mode,
+    showSelfConnections: current?.baseline === baseline && current.layout === layout ? current.showSelfConnections : false,
+  })), [baseline, layout]);
+  const setShowSelfConnections = useCallback((showSelfConnections: boolean) => setConnectionChoice((current) => ({ baseline, layout, showSelfConnections,
+    mode: current?.baseline === baseline && current.layout === layout ? current.mode : "selected",
+  })), [baseline, layout]);
   const inspection = useArchitectureInspection(baseline, layout, connectionMode);
   const arrangement = useMemo(() => new ComponentArrangement(layout), [baseline, layout]);
   const openPanel = inspection.open;
@@ -282,7 +296,8 @@ export function ArchitectureDiagram({ baseline, layout }: {
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       {layout.nodes.length > 0 ? <ArchitectureCanvas baseline={baseline} layout={layout} arrangement={arrangement} inspection={inspection}
-        connectionMode={connectionMode} setConnectionMode={setConnectionMode} /> : null}
+        connectionMode={connectionMode} setConnectionMode={setConnectionMode}
+        showSelfConnections={showSelfConnections} setShowSelfConnections={setShowSelfConnections} /> : null}
       <ArchitectureDetailsPanel baseline={baseline} inspection={inspection} />
       </div>
     </section>

@@ -1,8 +1,8 @@
 # Connection readability verification
 
-This record covers BR-08A and BR-08B in the
-[readability plan](../design/cr-baseline-viewer-readability-plan.md). BR-08C
-and BR-08D remain planned at this layer of the stack.
+This record covers BR-08A to BR-08C in the
+[readability plan](../design/cr-baseline-viewer-readability-plan.md). BR-08D
+remains planned at this layer of the stack.
 
 ## Scope and constraints
 
@@ -84,6 +84,40 @@ Cycle details are in `/tmp/choom-br08b-evidence.md`. The browser acceptance log 
 `/tmp/choom-br08b-acceptance-green.log`. Fit still measured hidden labels at this
 stage; BR-08D owns that change.
 
+## BR-08C: Optional self-connections
+
+The first browser assertion selected Billing in a six-arc fixture. It expected
+three non-self arcs but found five arcs, including two loops. Native filter
+tests then failed on the same distinction. The filter now excludes equal
+consumer and owner IDs unless Show self-connections is on. Complete baseline
+facts, interface counts, and surviving route objects remain unchanged.
+
+Focused DOM tests covered the default, independent control values, truthful
+mixed and self-only interface details, and checkbox focus. Focus assertions
+failed before the checkbox explicitly retained focus on change. Existing
+hidden-opener fallback and held-press cancellation passed characterization.
+A surviving loop also keeps its route and control when another loop is hidden.
+
+During the initial BR-08C implementation, combined BR-07 and BR-08A to
+BR-08C browser acceptance passed 88 scenarios and 676 steps. The complete Bun
+suite passed 232 native tests and 143 DOM tests. The full check stopped after
+dependency checks while the separate installed test helper was still being
+connected.
+
+Cycle details are in `/tmp/choom-br08c-evidence.md`; the first failure is in
+`/tmp/choom-br08c-red.log` and the browser acceptance log is
+`/tmp/choom-br08c-acceptance.log`. The browser scenarios also check unchanged
+selected file bytes.
+
+Final review found one additional focus case: in All mode, inspect a loop, hide
+it, show it again, then close its panel. Browser and DOM assertions expected the
+restored arc but received its owner header. The original DOM opener had been
+removed. Focus return now finds the currently shown control by the full
+interface/consumer/owner tuple within this drawing. It uses the owner fallback
+if that arc is still absent. The fix passed 55 affected browser scenarios and
+47 focused DOM tests, plus type checking and focused lint. Local red/green
+details are in `/tmp/choom-br08-focus-review-evidence.md`.
+
 ## Draft stack validation
 
 ### BR-08A
@@ -120,5 +154,21 @@ The complete `bun run check` passed after the installed helper update:
 A fresh Linux ARM64 release passed all 21 installed scenarios / 119 steps.
 The package and installed executable hashes matched. Its source snapshot is
 `b12b83d4c33585221d6f7298391fa1b525957b80`; build, identity, and acceptance logs
+are retained with that tree in the local package evidence directory. Only
+verification text changed after the snapshot. Remote CI runs on the draft PR.
+
+### BR-08C
+
+The complete `bun run check` passed after the installed helper update:
+232 native tests, 144 DOM tests, 25 interface tests, and 18 constraint scenarios /
+57 steps, plus the static and contract checks. The full browser suite passed
+200 scenarios / 1,469 steps with a fresh frontend build. Habit Hooks reported
+no findings; the snooze file remains empty. Logs are
+`/tmp/choom-br08c-stack-check-final.log`, `/tmp/choom-br08c-stack-browser.log`,
+and `/tmp/choom-br08c-stack-habit.log`.
+
+A fresh Linux ARM64 release passed all 21 installed scenarios / 119 steps.
+The package and installed executable hashes matched. Its source snapshot is
+`54ec52d86be42a03b2d3040677159b1a2fd829cd`; build, identity, and acceptance logs
 are retained with that tree in the local package evidence directory. Only
 verification text changed after the snapshot. Remote CI runs on the draft PR.

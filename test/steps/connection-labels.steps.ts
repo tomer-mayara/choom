@@ -95,6 +95,8 @@ Given("Checkout's Invoice API arc has keyboard focus in All mode", async functio
   await open(this, "Checkout");
   await page(this).getByRole("radio", { name: "All", exact: true }).check();
   await page(this).keyboard.press("Tab");
+  await expect(page(this).getByRole("checkbox", { name: "Show self-connections", exact: true })).toBeFocused();
+  await page(this).keyboard.press("Tab");
   await expect(invoice(this)).toBeFocused();
 });
 When("the pointer inspects that focused arc and closes the panel before leaving", async function (this: LabelWorld) {

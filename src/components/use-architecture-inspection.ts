@@ -39,6 +39,14 @@ function ownerHeader(opener: HTMLElement, baseline: ReadonlyData<Baseline>): HTM
   }
 }
 
+function restoredArcControl(opener: HTMLElement, container: HTMLElement | null): HTMLElement | undefined {
+  const view = container?.closest("section");
+  const { interfaceId, consumerId, ownerId } = opener.dataset;
+  return Array.from(view?.querySelectorAll<HTMLElement>("[data-interface-label]") ?? []).find((control) =>
+    control.dataset.interfaceId === interfaceId && control.dataset.consumerId === consumerId
+    && control.dataset.ownerId === ownerId && visibleControl(control));
+}
+
 function restoreInspectionFocus(current: InspectionState | null, container: HTMLElement | null, mode: ConnectionMode) {
   const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const fromPanel = Boolean(container?.contains(active));
@@ -46,7 +54,8 @@ function restoreInspectionFocus(current: InspectionState | null, container: HTML
   const arc = opener?.hasAttribute("data-interface-label");
   const survives = visibleControl(opener) && (!arc || mode === "all");
   if (!fromPanel && (!arc || survives)) return;
-  const target = survives ? opener : arc && opener && current ? ownerHeader(opener, current.baseline) : undefined;
+  const restored = arc && opener && !opener.isConnected && mode === "all" ? restoredArcControl(opener, container) : undefined;
+  const target = survives ? opener : restored ?? (arc && opener && current ? ownerHeader(opener, current.baseline) : undefined);
   (target ?? document.getElementById("baseline-details-control"))?.focus({ preventScroll: true });
 }
 

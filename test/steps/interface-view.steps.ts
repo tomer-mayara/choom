@@ -55,6 +55,7 @@ async function openView(world: InterfaceViewWorld, width: number, height: number
   await world.viewDriver.openBaseline(world.viewFile);
   await expect(browser.getByRole("heading", { name: baseline.id, exact: true })).toBeVisible();
   await browser.getByRole("radio", { name: "All", exact: true }).check();
+  await browser.getByRole("checkbox", { name: "Show self-connections", exact: true }).check();
   await expect(browser.locator("path[data-interface-arc]")).toHaveCount(2);
   await paint(world);
   world.viewInitial = await observe(world);

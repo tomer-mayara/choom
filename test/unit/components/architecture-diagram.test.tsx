@@ -9,7 +9,7 @@ import { baselineWithDistinctInterfaceLinks, baselineWithoutComponents } from ".
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { baselineWithOnlyRules } from "../../support/baseline-detail-fixtures.ts";
 import { pointerClick } from "../../support/pointer.ts";
-import { showAllConnections } from "../../support/connection-controls.tsx";
+import { showAllConnections, showSelfConnections } from "../../support/connection-controls.tsx";
 
 afterEach(cleanup);
 function diagramFixture(baseline: Baseline = baselineExample()) {
@@ -76,6 +76,7 @@ test("component counts exclude descendant and unknown owners", async () => {
   const original = structuredClone(baseline);
   const canvas = await renderDiagramWithViewport(baseline, diagramFixture(baseline).layout);
   showAllConnections();
+  showSelfConnections();
   expect(screen.getByRole("button", { name: "Checkout, checkout" }).textContent).toBe("Checkout0 interfaces");
   expect(screen.getByRole("button", { name: "Billing, billing" }).textContent).toBe("Billing2 interfaces");
   expect(canvas.getEdges()).toHaveLength(4);

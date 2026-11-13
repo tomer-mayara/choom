@@ -1,7 +1,7 @@
 # Baseline viewer readability plan
 
 Status: **BR-01 to BR-04 and BR-07A to BR-07D are merged. BR-07 replaces BR-06.
-BR-08A and BR-08B are implemented. BR-05, BR-08C, and BR-08D remain planned.**
+BR-08A to BR-08C are implemented. BR-05 and BR-08D remain planned.**
 
 Reviewed: **2026-11-13**
 
@@ -32,7 +32,7 @@ merged; its draft-PR wording is historical. The status above is current.
 See the [BR-07 verification record](../change-requests/BR-interface-arcs-evidence.md)
 for interface-arc implementation checks.
 See the [BR-08 verification record](../change-requests/BR-connection-readability-evidence.md)
-for the completed connection scope and label checks.
+for the completed connection scope, label, and self-connection checks.
 
 ## Problem in the starting view
 
@@ -59,7 +59,8 @@ at once makes even this small model hard to read.
 | Merged | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
 | Implemented | BR-08A | Selected and All modes, stable arc controls, and safe focus when an arc disappears. |
 | Implemented | BR-08B | Labels on demand. |
-| Planned | BR-08C and BR-08D | Optional self-connections, Fit, and view lifetime checks. |
+| Implemented | BR-08C | Self-connections start off and can be shown within the chosen scope. |
+| Planned | BR-08D | Fit and view lifetime checks. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
@@ -1128,7 +1129,7 @@ below for dense data, original bytes, full details, and supported limits.
 ### BR-08: Reduce connection clutter
 
 BR-08A implements selected connections and All mode. BR-08B adds labels on
-demand. Self-loops remain eligible in both modes until BR-08C. Fit still includes
+demand. BR-08C makes self-loops optional and starts with them hidden. Fit still includes
 label bounds for every shown arc. BR-08D will fit only labels that are revealed
 at activation. The side panel keeps complete recorded facts available.
 
@@ -1136,7 +1137,7 @@ at activation. The side panel keeps complete recorded facts available.
 | --- | --- | --- | --- |
 | [BR-08A](#br-08a-show-connections-for-the-current-selection) | Implemented | Selected and All modes, stable inspection, and safe focus when an arc disappears. | BR-07D |
 | [BR-08B](#br-08b-reveal-labels-on-demand) | Implemented | Hover, keyboard focus, and inspection reveal transparent labels. | BR-08A |
-| [BR-08C](#br-08c-hide-self-connections-by-default) | Planned | Self-loops start hidden and are available through one checkbox. | BR-08B |
+| [BR-08C](#br-08c-hide-self-connections-by-default) | Implemented | Self-loops start hidden and are available through one checkbox. | BR-08B |
 | [BR-08D](#br-08d-fit-the-shown-drawing-and-preserve-view-choices) | Planned | Fit uses shown content. Reset and file-open behavior follow the view lifetime. | BR-08C |
 
 Each ticket starts with acceptance, then small TDD cycles. Use the working
@@ -1351,6 +1352,10 @@ backgrounds, touch, and keyboard focus at normal and enlarged text sizes. Run
 and the shared checks. Update old always-visible-label assertions in this ticket.
 
 #### BR-08C: Hide self-connections by default
+
+The [self-connection feature](../../cookbook/behavior/baseline-viewer/self-connections.feature)
+and [verification record](../change-requests/BR-connection-readability-evidence.md#br-08c-optional-self-connections)
+cover the implementation.
 
 **Acceptance first — `@br-08 @br-08c @browser`:**
 
