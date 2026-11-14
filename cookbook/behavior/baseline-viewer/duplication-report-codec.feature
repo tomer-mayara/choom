@@ -2,7 +2,7 @@
 Feature: Read a saved duplication assessment
   The reader checks the saved report against the exact baseline without reading source files.
 
-  @br-11-duplication
+  @br-11 @br-11a @br-11-duplication
   Scenario: Read documented findings bound to a version 3 baseline with source uses
     Given a duplication report bound to documented entries in a version 3 baseline with source uses
     When the report reader decodes the duplication assessment

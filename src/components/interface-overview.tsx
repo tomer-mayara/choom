@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import type { Baseline, BaselineDocumentedEntry, BaselineInterface } from "../domain/generated/contracts.ts";
+import type { Baseline, BaselineDocumentedEntry, BaselineInterface, BaselineSourceAssessment } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
+import { componentName } from "../lib/component-name.ts";
+import { InterfaceUsedBy } from "./interface-used-by.tsx";
 import { Button } from "./ui/button.tsx";
 import { interfaceSourceStatements } from "../lib/interface-provenance.ts";
 import type { InterfaceDisclosure } from "./use-interface-disclosures.ts";
@@ -20,13 +22,6 @@ function Fact({ name, children }: { name: string; children: ReactNode }) {
 
 function SavedText({ value }: { value: string | null }) {
   return <p className="whitespace-pre-wrap wrap-anywhere">{value ?? "Unknown"}</p>;
-}
-
-function componentName(baseline: ReadonlyData<Baseline>, id: string): string {
-  const component = baseline.components.find((item) => item.id === id);
-  if (!component) return id;
-  return baseline.components.some((item) => item.id !== id && item.name === component.name)
-    ? `${component.name} (${id})` : component.name;
 }
 
 export function InterfaceProvider({ baseline, item }: { baseline: ReadonlyData<Baseline>; item: Interface }) {
@@ -100,8 +95,9 @@ function EntryDetails({ entry, duplicateName }: { entry: Entry; duplicateName: b
   </section>;
 }
 
-export function InterfaceOverview({ baseline, item, entry, selectEntry, disclosure }: {
+export function InterfaceOverview({ baseline, item, entry, selectEntry, disclosure, assessment }: {
   baseline: ReadonlyData<Baseline>; item: Interface; entry?: Entry; selectEntry: (id: string) => void; disclosure: InterfaceDisclosure;
+  assessment?: ReadonlyData<BaselineSourceAssessment>;
 }) {
   const entries = item.documentation?.entries ?? [];
   const unmatched = item.publicAccess.value?.filter((value) => !entries.some(({ accessPoint }) => accessPoint === value));
@@ -109,6 +105,7 @@ export function InterfaceOverview({ baseline, item, entry, selectEntry, disclosu
     || (entry.interaction && Object.values(entry.interaction.value).some((value) => value !== null)));
   return <div className="space-y-5">
     {item.documentation ? <Fact name="Purpose"><SavedText value={item.documentation.summary.value} /><RecordedStatus status={item.documentation.summary.status} /></Fact> : null}
+    <InterfaceUsedBy baseline={baseline} item={item} assessment={assessment} disclosure={disclosure} />
     {!entry ? <LegacyContract item={item} disclosure={disclosure} /> : null}
     <section aria-label="Entry points" className="space-y-3">
       <h3 className="font-semibold">Entry points</h3>
@@ -133,7 +130,7 @@ export function InterfaceOverview({ baseline, item, entry, selectEntry, disclosu
       <div className="space-y-2 pt-2 text-sm">
         {item.allowedConsumers.value === null ? <p>Permitted components are not recorded.</p>
           : <><p>Permitted components:</p><ul className="list-disc space-y-1 pl-5">{item.allowedConsumers.value.map((id) => <li key={id}>{componentName(baseline, id)}</li>)}</ul></>}
-        <p>Call activity is not recorded. This rule states permission in the baseline, not runtime authorization.</p>
+        <p>{baseline.formatVersion === 3 ? "Runtime execution is not recorded." : "Call activity is not recorded."} This rule states permission in the baseline, not runtime authorization.</p>
         <RecordedStatus status={item.allowedConsumers.status} />
       </div>
     </details>
