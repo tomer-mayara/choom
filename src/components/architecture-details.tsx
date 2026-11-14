@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import type {
   Baseline, BaselineComponent, BaselineInterface, BaselineResource, BaselineRule,
   BaselineAccessPointsStatement, BaselineComponentReferenceStatement, BaselineConsumersStatement,
@@ -101,7 +101,9 @@ function RuleRow({ rule }: { rule: ReadonlyData<BaselineRule> }) {
   </details>;
 }
 
-export function ArchitectureDetails({ baseline, panel, showHeading = true }: { baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel; showHeading?: boolean }) {
+export function ArchitectureDetails({ baseline, panel, showHeading = true, contentRef }: {
+  baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel; showHeading?: boolean; contentRef?: RefObject<HTMLDivElement | null>;
+}) {
   if (panel.kind === "baseline") return <section className="space-y-4 wrap-anywhere">
     <Field name="Format version"><RecordedValue value={baseline.formatVersion} /></Field>
     <Field name="Baseline ID"><RecordedValue value={baseline.id} /></Field>
@@ -116,7 +118,7 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true }: { b
     : panel.kind === "interface" ? baseline.interfaces.find(({ id }) => id === panel.interfaceId)
       : baseline.resources.find(({ id }) => id === panel.resourceId);
   if (!item) return null;
-  if ("allowedConsumers" in item) return <InterfaceDetails key={item.id} baseline={baseline} item={item}>
+  if ("allowedConsumers" in item) return <InterfaceDetails key={item.id} baseline={baseline} item={item} contentRef={contentRef}>
     <Field name="Interface ID"><RecordedValue value={item.id} /></Field>
     <InterfaceFields item={item} />
   </InterfaceDetails>;

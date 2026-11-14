@@ -6,7 +6,7 @@ import { Button } from "./ui/button.tsx";
 type Interface = ReadonlyData<BaselineInterface>;
 type Entry = ReadonlyData<BaselineDocumentedEntry>;
 
-function RecordedStatus({ status }: { status: "proposed" | "accepted" }) {
+export function RecordedStatus({ status }: { status: "proposed" | "accepted" }) {
   return <p className="text-xs text-muted-foreground">{status === "accepted" ? "Accepted (recorded)" : "Proposed"}</p>;
 }
 
