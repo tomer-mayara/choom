@@ -34,6 +34,20 @@ function boundedText(value, bytes = 8192) {
   return text(value) && Buffer.byteLength(value, 'utf8') <= bytes;
 }
 
+function validateSourceLocation(note, source) {
+  const location = note.location;
+  const record = source.records.get(note.evidenceRef);
+  assert(!note.evidenceRef.includes('#') && exact(location, ['snapshotRef', 'path', 'sha256', 'lines']) &&
+    boundedText(location.snapshotRef, 4096) &&
+    boundedText(location.path, 4096) && safe(location.path) && !/^[A-Za-z]:/.test(location.path) &&
+    /^[a-fA-F0-9]{64}$/.test(location.sha256) &&
+    Array.isArray(location.lines) && location.lines.length === 2 && location.lines.every(Number.isSafeInteger) &&
+    location.lines[0] > 0 && location.lines[1] >= location.lines[0] && record &&
+    same(location, { snapshotRef: record.snapshotRef, path: record.path, sha256: record.sha256, lines: record.lines }),
+  'Source note differs from its saved source record: ' + note.evidenceRef);
+  source.verify(record);
+}
+
 // The saved tools run outside the viewer. Keep its bounded YAML profile here too.
 // The caller supplies the trusted, pinned YAML module; no saved run code is loaded.
 export function readBaselineYaml(bytes, yaml) {
@@ -189,22 +203,94 @@ function validateDocumentation({ baseline, discovery, evidence, source, reviewed
       'Invalid source note: ' + item.id);
       notes.add(note.evidenceRef);
       if (!Object.hasOwn(note, 'location')) continue;
-      const location = note.location;
-      const record = source.records.get(note.evidenceRef);
-      assert(!note.evidenceRef.includes('#') && exact(location, ['snapshotRef', 'path', 'sha256', 'lines']) &&
-        boundedText(location.snapshotRef, 4096) &&
-        boundedText(location.path, 4096) && safe(location.path) && !/^[A-Za-z]:/.test(location.path) &&
-        /^[a-fA-F0-9]{64}$/.test(location.sha256) &&
-        Array.isArray(location.lines) && location.lines.length === 2 && location.lines.every(Number.isSafeInteger) &&
-        location.lines[0] > 0 && location.lines[1] >= location.lines[0] && record &&
-        same(location, { snapshotRef: record.snapshotRef, path: record.path, sha256: record.sha256, lines: record.lines }),
-      'Source note differs from its saved source record: ' + note.evidenceRef);
-      source.verify(record);
+      validateSourceLocation(note, source);
       located.add(note.evidenceRef);
     }
     for (const { example, subject } of reviewedExamples)
       assert(example.content.evidenceRefs.some(ref => reviewed.has(ref) && located.has(ref)),
         'Source-reviewed example needs its own reviewed range and location note: ' + subject);
+  }
+}
+
+function validateSourceUsage({ baseline, discovery, snapshotRef, componentIds, mapped, evidence, source, reviewedRanges }) {
+  if (!Object.hasOwn(baseline, 'sourceUsage')) return;
+  const usage = baseline.sourceUsage;
+  assert(baseline.formatVersion === 3 && exact(usage, ['snapshotRef', 'mappingRef', 'assessments']) &&
+    boundedText(usage.snapshotRef, 4096) && boundedText(usage.mappingRef, 4096) && Array.isArray(usage.assessments),
+  'Invalid sourceUsage record.');
+  assert(usage.snapshotRef === snapshotRef, 'sourceUsage.snapshotRef differs from the run snapshot.');
+  assert(usage.mappingRef === discovery.codeMappingRef, 'sourceUsage.mappingRef differs from the selected candidate mapping.');
+  assert(Buffer.byteLength(JSON.stringify(usage), 'utf8') <= 2 * 1024 * 1024,
+    'sourceUsage exceeds the 2 MiB byte limit.');
+  const interfaces = new Map(baseline.interfaces.map(item => [item.id, item]));
+  const assessed = new Set();
+  const reviewed = new Set(reviewedRanges.map(record => record.id));
+  const unknowns = new Set([...discovery.questions, ...discovery.gaps].flatMap(issue => issue.subjectRefs));
+  const id = value => plainId(value) && boundedText(value, 4096);
+  const references = value => strings(value) && new Set(value).size === value.length &&
+    value.every(ref => boundedText(ref, 4096));
+  let uses = 0;
+  let notes = 0;
+  for (const assessment of usage.assessments) {
+    assert(exact(assessment, ['interfaceId', 'scope', 'evidenceRefs', 'limitations', 'uses', 'sourceNotes']) &&
+      id(assessment.interfaceId) && interfaces.has(assessment.interfaceId) && !assessed.has(assessment.interfaceId) &&
+      boundedText(assessment.scope) && references(assessment.evidenceRefs) && Array.isArray(assessment.limitations) &&
+      assessment.limitations.every(value => boundedText(value)) && Array.isArray(assessment.uses) && Array.isArray(assessment.sourceNotes),
+    'Invalid or duplicate source-use assessment: ' + assessment?.interfaceId);
+    assessed.add(assessment.interfaceId);
+    uses += assessment.uses.length;
+    notes += assessment.sourceNotes.length;
+    assert(uses <= 2000, 'sourceUsage exceeds the 2,000-use limit.');
+    assert(notes <= 4000, 'sourceUsage exceeds the 4,000-source-note limit.');
+    evidence(assessment);
+    const item = interfaces.get(assessment.interfaceId);
+    const entries = new Map((item.documentation?.entries ?? []).map(entry => [entry.id, entry]));
+    const useIds = new Set();
+    const citations = new Set(assessment.evidenceRefs);
+    for (const use of assessment.uses) {
+      const path = assessment.interfaceId + '.sourceUsage.uses.' + use?.id;
+      assert(fields(use, ['id', 'consumerId', 'kind', 'context', 'description', 'callerRef', 'evidenceRefs'], ['accessPoint', 'entryId']) &&
+        id(use.id) && !useIds.has(use.id) && (use.consumerId === null || (id(use.consumerId) && componentIds.has(use.consumerId))) &&
+        ['value', 'type'].includes(use.kind) && ['application', 'tooling', 'test', 'unknown'].includes(use.context) &&
+        boundedText(use.description) && boundedText(use.callerRef, 4096) && references(use.evidenceRefs) &&
+        use.evidenceRefs.includes(use.callerRef), 'Invalid source use: ' + path);
+      useIds.add(use.id);
+      for (const ref of use.evidenceRefs) {
+        assert(!ref.includes('#') && source.records.has(ref), 'Source use requires a direct source record: ' + path + ': ' + ref);
+        assert(reviewed.has(ref), 'Source use is outside the selected source review history: ' + path + ': ' + ref);
+        citations.add(ref);
+      }
+      evidence(use);
+      assert(mapped.get(source.records.get(use.callerRef).path) === use.consumerId,
+        'Source consumer differs from the direct mapped caller owner: ' + path);
+      for (const field of ['consumerId', 'context']) {
+        if (field === 'consumerId' ? use.consumerId === null : use.context === 'unknown')
+          assert(unknowns.has(path + '.' + field), 'Missing exact discovery subject for unresolved source use: ' + path + '.' + field);
+      }
+      if (Object.hasOwn(use, 'accessPoint'))
+        assert(boundedText(use.accessPoint, 4096) && item.publicAccess.value?.includes(use.accessPoint),
+          'Unknown source-use access point: ' + path);
+      if (Object.hasOwn(use, 'entryId'))
+        assert(id(use.entryId) && entries.has(use.entryId), 'Unknown source-use documentation entry: ' + path);
+      if (Object.hasOwn(use, 'accessPoint') && Object.hasOwn(use, 'entryId'))
+        assert(entries.get(use.entryId).accessPoint === use.accessPoint, 'Conflicting source-use entry binding: ' + path);
+    }
+    const located = new Set();
+    const noteRefs = new Set();
+    for (const note of assessment.sourceNotes) {
+      assert(fields(note, ['evidenceRef', 'description'], ['location']) && boundedText(note.evidenceRef, 4096) &&
+        citations.has(note.evidenceRef) && !noteRefs.has(note.evidenceRef) && boundedText(note.description),
+      'Invalid source-use note: ' + assessment.interfaceId);
+      noteRefs.add(note.evidenceRef);
+      if (!Object.hasOwn(note, 'location')) continue;
+      validateSourceLocation(note, source);
+      assert(note.location.snapshotRef === usage.snapshotRef,
+        'Source-use note belongs to a different snapshot: ' + note.evidenceRef);
+      located.add(note.evidenceRef);
+    }
+    for (const use of assessment.uses)
+      for (const ref of use.evidenceRefs)
+        assert(located.has(ref), 'Source use needs a located note for every evidence reference: ' + use.id + ': ' + ref);
   }
 }
 
@@ -292,7 +378,9 @@ function sourcesFor({ artifacts, document, snapshotRef, inventory, readSource })
 }
 
 function validateBaseline({ baseline, discovery, claim, evidence }) {
-  assert(exact(baseline, ['formatVersion', 'id', 'parentId', ...collectionKeys]) && [1, 2].includes(baseline.formatVersion) &&
+  const keys = ['formatVersion', 'id', 'parentId', ...collectionKeys,
+    ...(baseline?.formatVersion === 3 && Object.hasOwn(baseline, 'sourceUsage') ? ['sourceUsage'] : [])];
+  assert(exact(baseline, keys) && [1, 2, 3].includes(baseline.formatVersion) &&
     plainId(baseline.id) && baseline.parentId === null, 'Expected a first proposed baseline.');
   validateDisplayLimits(baseline);
   const componentIds = new Set(list(baseline.components, 'components').map(item => item.id));
@@ -315,7 +403,7 @@ function validateBaseline({ baseline, discovery, claim, evidence }) {
     for (const item of list(baseline[key], key)) {
       const keys = [...required,
         ...(key === 'components' && Object.hasOwn(item, 'parent') ? ['parent'] : []),
-        ...(key === 'interfaces' && baseline.formatVersion === 2 && Object.hasOwn(item, 'documentation') ? ['documentation'] : [])];
+        ...(key === 'interfaces' && [2, 3].includes(baseline.formatVersion) && Object.hasOwn(item, 'documentation') ? ['documentation'] : [])];
       assert(exact(item, keys) && plainId(item.id) && text(item.name), 'Invalid baseline item: ' + item?.id);
       claim(item.id);
       for (const [name, statement] of Object.entries(item)) {
@@ -547,6 +635,7 @@ export function validateRecords({ run, discovery, baseline, inventory, artifacts
     evidence(unit);
     mapped.set(unit.path, unit.owner);
   }
+  validateSourceUsage({ baseline, discovery, snapshotRef, componentIds, mapped, evidence, source, reviewedRanges });
 
   const plan = document(entry.planRef);
   const runs = document(entry.knipRunsRef);

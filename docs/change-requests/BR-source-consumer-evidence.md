@@ -156,3 +156,46 @@ the Stage 5 prompt hash is
 The disposable checks used saved run 004 inputs and left its 1,111 registered
 artifact hashes and manifest unchanged. They are prompt rehearsals, not new
 completed architecture analyses. F records the complete successor publication.
+
+## BR-11E — Publisher validation
+
+Before the change, the shared validator and the normal nine-file publisher
+accepted a v2 candidate but rejected the corresponding valid v3 candidate at
+the version gate. The changed shared validator and Stage 5 gate now accept the
+strict v3 profile. They verify the run snapshot, current candidate mapping,
+reviewed caller/binding records, direct caller ownership, exact unknown-field
+subjects, local entry bindings and all reader budgets before replacing drafts.
+Source locations reuse the documentation validator. The existing packet,
+registry, frozen tools and manifest-last publication remain in place.
+
+Completed E checks:
+
+- 61 command/artifact cases passed, including empty assessments, direct source
+  records, selected review history, wrong snapshots/mappings/owners, exact gaps,
+  binding conflicts, inherited documentation limits and exact/over source bounds.
+- 17 normal publisher CLI cases matched. Rejected packets left all three working
+  draft hashes unchanged.
+- Five public reader/display comparisons matched the publisher, including both
+  independent 2,000-link/use caps and exactly 2 MiB of source data.
+- Changed tools rejected an earlier pinned disposable attempt. Syntax and
+  whitespace checks passed. No script behavior-test wrapper was introduced.
+- Manager and independent review passed. Review found and fixed a valid-ID case:
+  the component ID `unknown` is known; only a null consumer needs its ownership
+  gap. The failing artifact probe passed after that correction.
+
+A deliberate unpublished probe labeled a Baseline type import as a value use.
+Structural validation accepted its shape. Manager source review corrected it to
+a type reference with no arrow, demonstrating the need for semantic review.
+The unsupported claim was not published.
+
+Original run 004 verification passed with matching trusted tool bytes: 1,111
+registered artifacts, 349 files, 5,737 references and 263 source records; no
+writes. Its 1,114 checked registered/draft file hashes stayed equal. Its manifest
+remains `d158566d677339e25a2f7cdd56488c125b45cf2eedd594ae6e21e777514c87e2`.
+The pinned old tool path required a coordinated temporary restoration of four
+trusted inputs. A finally block restored the current bytes and checked hashes;
+no frozen run file or pin changed.
+
+The complete normal v3 Stage 4 → 5 → 6 positive flow is shared with F's fresh
+run 005. Its final publication, digests and reader checks are recorded in F;
+the checks above do not claim that this full flow has already completed.
