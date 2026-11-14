@@ -6,6 +6,29 @@ import {
   comparePublishedFinding, openPublishedAssessment, prepareDuplicationFiles, publishedFinding,
   type DuplicationWorld,
 } from "../support/duplication-browser.ts";
+import { duplicationV3Fixture } from "../support/interface-duplication-fixtures.ts";
+
+Given("a version 3 baseline and its matching duplication assessment are available offline", async function (this: DuplicationWorld) {
+  await prepareDuplicationFiles(this);
+  assert.ok(this.duplicationBaseline && this.duplicationReport);
+  const fixture = duplicationV3Fixture();
+  this.duplicationData = fixture;
+  this.duplicationOriginals = [Buffer.from(fixture.baselineText), Buffer.from(JSON.stringify(fixture.report))];
+  await writeFile(this.duplicationBaseline, this.duplicationOriginals[0]);
+  await writeFile(this.duplicationReport, this.duplicationOriginals[1]);
+});
+
+Then("the comparison shows the version 3 entry names and saved contract facts", async function (this: DuplicationWorld) {
+  assert.ok(this.page);
+  const panel = this.page.getByRole("dialog", { name: "Duplicate comparison", exact: true });
+  await expect(panel.getByRole("button", { name: "Inspect A observation 1", exact: true })).toContainText("Invoice API / Invoice type");
+  await expect(panel.getByRole("button", { name: "Inspect B observation 1", exact: true })).toContainText("Invoice lookup / Create invoice");
+  for (const text of [
+    "Create an invoice from a supported order.", "createInvoice(order: Order): Promise<Invoice>",
+    "An order with at least one item.", "Accepted (recorded)", "Acceptance reference: review-42#decision-1",
+  ]) await expect(panel.getByText(text, { exact: true })).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Invoice API / Invoice type · success", exact: true })).toBeVisible();
+});
 
 Given("a baseline and its published duplication assessment are available offline", async function (this: DuplicationWorld) {
   await prepareDuplicationFiles(this);

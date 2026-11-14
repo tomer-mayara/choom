@@ -26,7 +26,7 @@ function duplicationInterface(baseline: ReadonlyData<Baseline>, id: string): Rea
 
 function endpointExists(endpoint: ReadonlyData<DuplicationEndpointReference>, baseline: ReadonlyData<Baseline>): boolean {
   const item = duplicationInterface(baseline, endpoint.interfaceId);
-  return Boolean(item && (endpoint.entryId === undefined || (baseline.formatVersion === 2
+  return Boolean(item && (endpoint.entryId === undefined || (baseline.formatVersion !== 1
     && item.documentation?.entries.some((entry) => entry.id === endpoint.entryId))));
 }
 

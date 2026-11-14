@@ -4,7 +4,7 @@ The architecture-model component owns the baseline viewer profile in
 [baseline.tsp](baseline.tsp). `baselineSchema` in
 [`src/domain/baseline.ts`](../../src/domain/baseline.ts) validates an unknown value
 and returns the generated `Baseline` data type. Use `safeParse` to get field paths
-for invalid input. The viewer accepts `formatVersion: 1` and `formatVersion: 2`.
+for invalid input. The viewer accepts `formatVersion: 1`, `formatVersion: 2`, and `formatVersion: 3`.
 Version 1 keeps its original strict fields. Version 2 adds optional interface
 documentation, defined in [baseline-documentation.tsp](baseline-documentation.tsp).
 The viewer does not upgrade a file or accept the legacy diagram format.
@@ -54,6 +54,30 @@ matching location note. This checks the saved link only. External publication
 must verify the source review; the viewer does not open source files or verify
 the claim. An `illustrative` example does not claim source review.
 
+Version 3 retains all version 2 fields and validation. It can add optional
+`sourceUsage`, defined in [baseline-source-usage.tsp](baseline-source-usage.tsp).
+Versions 1/2 reject that field. A source-use object names one saved snapshot and
+one code mapping. Its assessments describe reviewed scope, evidence, limitations,
+and uses for individual interfaces. An absent object, missing assessment, and
+assessed empty use list remain different states. No state proves completeness.
+
+Use IDs are unique within their assessment. Assessments name distinct existing
+interfaces. A known consumer names an existing component; null means that its
+caller file has no resolved component owner. Kind distinguishes value from type
+references; context distinguishes application, tooling, test, and unknown use.
+Optional entry and access-point bindings must belong to that interface and agree.
+A missing binding does not mean that every entry is used.
+
+Use evidence contains distinct direct source-record IDs without fragments.
+`callerRef` must be one of them. Every use reference needs a matching located
+source note in its assessment. Notes cite assessment or use evidence and have
+unique references within that assessment. All supplied locations use the common
+snapshot. Scope-only notes can omit locations. The publisher verifies source
+identity and review history; Choom validates the supplied shape and local links.
+It does not fetch files, verify digests, infer consumers, or prove execution.
+Source observations never replace `allowedConsumers`, which remains a permission
+statement. Baseline details exposes the complete **Original source-use data**.
+
 Rule values are JSON objects or null. Keep nested values and all own keys,
 including `__proto__`, without running expressions. Reject non-JSON values and
 cycles. No field is silently discarded. Byte and YAML limits belong to the
@@ -74,6 +98,10 @@ Run the focused checks:
 ```sh
 bun run test:behavior --tags @bv-01
 bun run test:behavior --tags @br-10a
+bun run test:behavior --tags @br-11a
+bun run test:e2e --tags @br-11a
+bun test ./test/unit/domain/source-usage.test.ts ./test/unit/domain/source-usage-limits.test.ts
+bun test ./test/interface/domain/source-usage.test.ts
 bun run test:e2e --tags @br-10a
 bun test ./test/unit/domain/baseline.test.ts
 bun test ./test/unit/domain/interface-documentation.test.ts ./test/unit/domain/interface-documentation-limits.test.ts

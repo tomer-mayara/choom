@@ -38,7 +38,7 @@ Given(/^a selected file contains (.+)$/, function (this: BaselineInputWorld, pro
       this.expectedInputCode = "invalid-encoding";
       break;
     case "an unsupported format version":
-      content = stringify({ ...baselineExample(), formatVersion: 3 });
+      content = stringify({ ...baselineExample(), formatVersion: 4 });
       this.expectedInputCode = "unsupported-version";
       break;
     case "legacy diagram content":

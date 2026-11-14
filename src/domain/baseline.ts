@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { baselineDocumentationSchema, validateBaselineDocumentation } from "./baseline-documentation.ts";
 import { baselineId as itemId, baselineStatement as statement, baselineText as text } from "./baseline-statements.ts";
+import { baselineSourceUsageSchema, validateBaselineSourceUsage } from "./baseline-source-usage.ts";
 import type { Baseline, BaselineRuleValue } from "./generated/contracts.ts";
 
 function isSelector(value: string): boolean {
@@ -160,6 +161,7 @@ const baselineV1 = z.strictObject({
 const baselineV2 = baselineV1.extend({
   formatVersion: z.literal(2), interfaces: z.array(interfaceItem.extend({ documentation: baselineDocumentationSchema.optional() })),
 });
+const baselineV3 = baselineV2.extend({ formatVersion: z.literal(3), sourceUsage: baselineSourceUsageSchema.optional() });
 
-export const baselineSchema = z.discriminatedUnion("formatVersion", [baselineV1, baselineV2])
-  .superRefine(validateReferences).superRefine(validateBaselineDocumentation) satisfies z.ZodType<Baseline>;
+export const baselineSchema = z.discriminatedUnion("formatVersion", [baselineV1, baselineV2, baselineV3])
+  .superRefine(validateReferences).superRefine(validateBaselineDocumentation).superRefine(validateBaselineSourceUsage) satisfies z.ZodType<Baseline>;

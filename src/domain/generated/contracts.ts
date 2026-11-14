@@ -77,7 +77,7 @@ export interface AcceptedTextStatement {
   acceptanceRef: baselineText;
 }
 
-export type Baseline = BaselineV1 | BaselineV2;
+export type Baseline = BaselineV1 | BaselineV2 | BaselineV3;
 
 export type BaselineAccessPoints = Array<baselineText>;
 
@@ -210,6 +210,15 @@ export type BaselineRuleObjectStatement = ProposedRuleObjectStatement | Accepted
 
 export type BaselineRuleValue = string | boolean | number | null | BaselineRuleObject | Array<BaselineRuleValue>;
 
+export interface BaselineSourceAssessment {
+  interfaceId: baselineId;
+  scope: baselineText;
+  evidenceRefs: Array<baselineText>;
+  limitations: Array<baselineText>;
+  uses: Array<BaselineSourceUse>;
+  sourceNotes: Array<BaselineSourceNote>;
+}
+
 export interface BaselineSourceLocation {
   snapshotRef: baselineText;
   path: baselineText;
@@ -221,6 +230,24 @@ export interface BaselineSourceNote {
   evidenceRef: baselineText;
   description: baselineText;
   location?: BaselineSourceLocation;
+}
+
+export interface BaselineSourceUsage {
+  snapshotRef: baselineText;
+  mappingRef: baselineText;
+  assessments: Array<BaselineSourceAssessment>;
+}
+
+export interface BaselineSourceUse {
+  id: baselineId;
+  consumerId: baselineId | null;
+  kind: "value" | "type";
+  context: "application" | "tooling" | "test" | "unknown";
+  description: baselineText;
+  callerRef: baselineText;
+  evidenceRefs: Array<baselineText>;
+  accessPoint?: baselineText;
+  entryId?: baselineId;
 }
 
 export type BaselineTextStatement = ProposedTextStatement | AcceptedTextStatement;
@@ -245,9 +272,20 @@ export interface BaselineV2 {
   rules: Array<BaselineRule>;
 }
 
+export interface BaselineV3 {
+  formatVersion: 3;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: Array<BaselineComponent>;
+  interfaces: Array<BaselineInterface>;
+  resources: Array<BaselineResource>;
+  rules: Array<BaselineRule>;
+  sourceUsage?: BaselineSourceUsage;
+}
+
 export interface DuplicationBaselineBinding {
   id: duplicationReference;
-  formatVersion: 1 | 2;
+  formatVersion: 1 | 2 | 3;
   sha256: duplicationDigest;
 }
 

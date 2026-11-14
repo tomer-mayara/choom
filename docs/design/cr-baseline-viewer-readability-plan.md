@@ -1,10 +1,11 @@
 # Baseline viewer readability plan
 
-Status: **BR-01 to BR-04, BR-07A to BR-07D, and BR-08A to BR-08D are merged.
-BR-10A to BR-10F are implemented in a draft PR stack; they are not merged.
-BR-05 is superseded by the separate BR-09 graph design; BR-07 replaced BR-06.**
+Status: **BR-01 to BR-04, BR-07A to BR-07D, BR-08A to BR-08D, and
+BR-10A to BR-10F are merged. BR-11A to BR-11F are in implementation as a draft
+PR stack. BR-05 is superseded by the separate BR-09 graph design;
+BR-07 replaced BR-06.**
 
-Reviewed: **2026-11-13**
+Reviewed: **2026-11-14 UTC**
 
 ## Decision and goal
 
@@ -20,11 +21,18 @@ always-visible arcs and labels, default self-loops, and focus rules for controls
 that a filter removes. The completed BR-07 tickets remain a delivery history;
 their superseded assertions are identified in BR-08.
 
+[BR-11](#source-consumer-connections) adds connections found in reviewed source.
+It keeps permission policy separate from source use. Its version 3 rules replace
+the arc data source, legend, and missing-data messages for that version only.
+Version 1/2 files retain permission arrows. Selection, movement, labels on demand,
+and hidden self-connections keep the BR-08 behavior.
+
 This plan follows the [baseline viewer plan](cr-baseline-viewer-plan.md).
 BR-01 to BR-04 replaced that plan's rules for showing every record on the canvas,
 double-click inspection, and automatic fitting on resize. Read-only file access,
 statement meanings, and load protections stay in force. BR-10 adds the explicit
-version 2 extension below while retaining strict version 1 support.
+version 2 extension below while retaining strict version 1 support. BR-11 adds
+an explicit version 3 extension; it does not reinterpret either older format.
 
 This document defines the intended behavior and ticket sequence. Its scenarios
 are requirements, not test results. See the
@@ -36,7 +44,10 @@ for interface-arc implementation checks.
 See the [BR-08 verification record](../change-requests/BR-connection-readability-evidence.md)
 for connection visibility, label, and view-lifetime checks.
 See the [BR-10 verification record](../change-requests/BR-interface-details-evidence.md)
-for interface documentation, signature, publication, and reading checks.
+for interface documentation, signature, publication, and reading checks. Its
+draft-stack wording describes the checks before merge.
+See the [BR-11 verification record](../change-requests/BR-source-consumer-evidence.md)
+for source-consumer implementation checks and publication evidence.
 
 ## Problem in the starting view
 
@@ -62,18 +73,23 @@ at once makes even this small model hard to read.
 | Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
 | Merged | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
 | Merged | BR-08A to BR-08D | Selected connections, labels on demand, optional self-connections, and Fit/lifetime checks for the filtered view. |
-| Draft PR stack | BR-10A to BR-10F | Versioned interface documentation, saved signatures, examples, sources, and publication checks. |
+| Merged | BR-10A to BR-10F | Versioned interface documentation, saved signatures, examples, sources, and publication checks. |
+| In implementation | BR-11A to BR-11F | Source-consumer records, usage arrows, readable caller details, and supported external analysis/publication. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
 exist. BR-05 is retained below as history. BR-08 builds on BR-07D and does not
 require BR-05. BR-10 keeps the merged graph behavior while improving interface details.
 The separate BR-09 graph prototype still needs reader validation.
+BR-11 builds on BR-10 and does not require BR-09B to BR-09F. It does not approve
+or implement the pending graph redesign.
 
 Remember the arrangement while the current baseline remains open. Saving it
 across app restarts or successful file opens remains out of scope, as do
 multi-selection, comparison panels, general record filters, interface editing,
-model editing, export, and automatic dependency inference. BR-08 adds only the
+model editing, export, and automatic dependency inference inside Choom. BR-11
+updates the separate analysis workflow to supply reviewed source-use records.
+BR-08 adds only the
 two connection controls defined below. New routing algorithms, connection
 bundling, and group collapse are outside this change.
 
@@ -233,6 +249,11 @@ header at the current zoom. Keep other collapse choices. If collapse hides a
 focused canvas control, move focus to the collapsed parent's control.
 
 ### Interface arcs: BR-07 facts and BR-08 view rules
+
+The permission rules in this section remain the version 1/2 behavior.
+[BR-11](#source-consumer-connections) defines version 3 source-use arrows and
+their messages. It keeps the scope, drawing, inspection, and movement rules
+below unless it explicitly replaces them.
 
 The arc represents the interface. Show a curved arrow from each recorded allowed
 consumer to the recorded owner. Reveal the interface name on demand:
@@ -491,7 +512,8 @@ same ticket. Record unchanged architecture/OpenSLO constraints as unchanged.
 
 ### Working sequence for planned tickets
 
-1. After the predecessor passes, write the Cucumber acceptance scenarios first.
+1. For production behavior, after the predecessor passes, write the Cucumber
+   acceptance scenarios first.
    Connect them to the real app or an existing public boundary. Each scenario
    has one When–Then pair. Record an assertion failure caused by missing behavior.
    For an absent arc or control, assert the expected presence or count after
@@ -527,6 +549,9 @@ Put features under `cookbook/behavior/baseline-viewer/`, tagged
 through `@br-08d`. Use `@browser` or `@packaged` for the
 execution environment. Register changed artifacts with the real runners and
 owning manifests. Do not add the superseded BR-06 cases or tests for this plan.
+BR-11 production scenarios use `@br-11` and the ticket tag. Its prompt and
+publication tickets use real command/artifact checks, as BR-10E does; do not
+add behavior tests solely for scripts or documents.
 
 The scenarios and TDD steps are requirements, not evidence that tests have run.
 The verification records above contain actual implementation and test results.
@@ -541,6 +566,7 @@ The verification records above contain actual implementation and test results.
 | [BR-06](#br-06-show-one-interfaces-recorded-connections) | Superseded by BR-07. | Not scheduled |
 | [BR-07](#br-07-use-interface-arcs-between-components) | Recorded interface arcs, unknown-endpoint explanations, inspection, and stable geometry. | BR-04 |
 | [BR-08](#br-08-reduce-connection-clutter) | Selected connections, labels on demand, optional self-connections, and view-state checks. | BR-07D |
+| [BR-11](#br-11-record-and-show-source-consumer-connections) | Source-use contract, viewer, analysis prompts, and publication. | Merged BR-10 |
 
 BR-01 preceded hiding nodes in BR-02 so each record retained a route to its
 details. BR-01 to BR-04 landed as a PR stack. Keep future tickets reviewable on
@@ -1756,7 +1782,8 @@ Use these missing-data rules consistently:
 
 The complete positive consumer policy remains a nonempty distinct list or null.
 Do not add empty consumer lists, partial permissions, or observed-caller fields
-as part of this extension.
+as part of this version 2 extension. BR-11 introduces separate source-use data
+in version 3; it leaves this policy rule unchanged.
 
 ### Bounds and provenance
 
@@ -2482,3 +2509,768 @@ with their component manifests. Run focused native/browser acceptance, full
 closing each production ticket. Use native `@br-10a`, browser `@br-10`, and the
 installed BR-10F journey. Record actual failures, fixes, and platform limits in
 [the BR-10 evidence record](../change-requests/BR-interface-details-evidence.md).
+
+## Source-consumer connections
+
+BR-11 answers **Which components use this interface in the saved source?**
+The existing `allowedConsumers` field answers **Which components may use it?**
+Keep these questions and records separate. Source inspection can establish a
+caller without establishing a full permission list or proving execution.
+
+The baseline-004 review found consumers for nine of its ten interfaces, while
+all ten permission policies remained unknown. The current app therefore draws
+no arrows. Changing those null policies to the caller lists would give the
+arrows a false meaning. Change the contract, viewer, and external producer
+together. Keep Choom a read-only, single-file viewer.
+
+### Version 3 contract
+
+Add strict `formatVersion: 3`. Retain all version 2 architecture and documentation
+fields, statement meanings, signatures, reference checks, and limits. Versions
+1/2 remain strict and supported. They reject the new field. Older readers reject
+version 3 as unsupported. Ship the reader before publishing version 3 for users.
+
+A version 3 baseline may add one top-level `sourceUsage` object. Its absence
+means source use was not recorded. It does not enable a fallback to permission
+arrows. Use one saved snapshot per object; this change does not compare snapshots.
+
+| Location | Fields and rules |
+| --- | --- |
+| `sourceUsage` | Required `snapshotRef`, `mappingRef`, and `assessments`. All uses share this snapshot and code mapping. Assessments may be empty. |
+| Assessment | Required `interfaceId`, `scope`, `evidenceRefs`, `limitations`, `uses`, and `sourceNotes`. Each interface has at most one assessment. The ID must name an existing interface. |
+| Assessment scope | `scope` is nonempty text describing which callers and files were reviewed. `evidenceRefs` is a nonempty distinct list supporting that scope. `limitations` is an array of nonempty text; it may be empty. Every assessment may omit other uses, even when no additional limitation is supplied. |
+| Use | Required local `id`, nullable `consumerId`, `kind`, `context`, `description`, `callerRef`, and nonempty distinct `evidenceRefs`. Optional `accessPoint` and `entryId` identify the entry used. IDs are unique within the assessment. |
+| Consumer | A known `consumerId` names an existing component. Null means the caller file has no resolved component owner. The description must explain an unresolved owner or context. A null consumer is not an external actor ID. |
+| Kind and context | `kind` is `value` or `type`. Value use includes a reviewed call, data/value reference, callback/JSX binding, or resolved IPC binding. `context` is `application`, `tooling`, `test`, or `unknown`. These are saved classifications; the viewer does not infer them from paths. |
+| Entry binding | A supplied `accessPoint` must equal an item in this interface's `publicAccess.value`. A supplied `entryId` must name this interface's documented entry. If both exist, they must agree. Neither is required when source review establishes interface use without a more precise entry binding. |
+| Common mapping | `sourceUsage.mappingRef` names the one selected code-mapping artifact. It assigns each caller file to its direct component owner, including an explicit null owner. It is separate from each use's source evidence. |
+| Use evidence | Each `evidenceRefs` entry names a direct saved source record, without a fragment. `callerRef` must be one of these entries and identifies the caller site. Other entries support declarations and binding chains. General graph/query evidence belongs in assessment scope, not use evidence. |
+| Source notes | Reuse the BR-10 source-note and source-location shapes, scoped to this assessment. Each note describes a cited assessment/use reference; duplicate notes for one reference are invalid. Every use evidence reference requires a note with a location. All supplied locations must use `sourceUsage.snapshotRef`. Scope-only notes may omit a location. |
+
+All objects have explicit allowed keys. Apply existing model-ID syntax to local
+use IDs and component/interface/entry IDs. Required text and references,
+including `snapshotRef` and descriptions, must be nonblank. Optional fields
+must satisfy their full rule when supplied; do not accept blank placeholders.
+
+Use records describe source observations. They have no proposed/accepted wrapper,
+permission status, or execution flag. Their component assignment depends on the
+recorded mapping, which can remain proposed. Existing owner and permission
+statements keep their own statuses. Never give a combined arc one acceptance
+status. The publisher checks evidence identity and mapping consistency; a
+reviewer checks that the cited code supports the use. Choom displays the saved
+record and does not fetch source, execute a call, or verify a digest. In version
+3, label the existing combined status as **Interface statement status**, or keep
+statuses beside those statements. A status above the panel must not appear to
+certify source uses or execution.
+
+The offline reader checks the supplied fields and links. The publisher checks
+that each use reference resolves to reviewed source. Saved declaration and
+configuration text can support a binding; source records are not limited to
+TypeScript or Rust files.
+
+Do not turn an import match into a resolved interface use. Follow aliases,
+injected callbacks, and IPC registration where needed. If the interface itself
+cannot be resolved, retain the finding in discovery; do not attach it to a
+guessed interface. A documented operator command belongs in the assessment's
+limitations, with supporting scope evidence. It does not create a component
+caller. Keep declarations, configuration, and examples separate from actual
+source references to an interface.
+
+| Recorded state | Meaning and display |
+| --- | --- |
+| No `sourceUsage` | **Source use not recorded.** No source arrows. |
+| No assessment for this interface | **Source use not assessed for this interface.** |
+| Assessment with `uses: []` | **No uses found in the reviewed scope.** Show that scope and its limits; do not say “unused.” |
+| One or more uses | Show every saved use, even when coverage is partial. Known uses do not need a complete caller list. |
+| Null consumer, unknown context, or unknown interface owner | Explain the missing fact. Suppress only the affected arrow; retain other supported connections and all details. |
+
+Keep the 16 MiB file, YAML, 500-record, and 16-parent-level limits. Keep the
+separate BR-10 documentation budget. Add these source-use limits before layout:
+
+- At most 2,000 use records and 4,000 source notes across all assessments. Count
+  all records before combining repeated sites or filtering. The assessment count
+  cannot exceed the interface count because assessment interface IDs are unique.
+- At most 4 KiB of UTF-8 per new ID, reference, access point, or path; at most
+  8 KiB per description, scope, or limitation text. Retain the existing exact
+  SHA-256 form and safe relative path/positive line-range rules.
+- At most 2 MiB of UTF-8 for compact JSON serialization of the complete
+  `sourceUsage` object, including metadata, notes, and repeated strings.
+- Keep the existing 2,000-explicit-link limit for owners and allowed consumers.
+  Enforce it separately from the source-use limits. Each source arrow needs at
+  least one use record, so the 2,000-use cap also bounds source arrows. Do not add
+  source uses to the permission-link total; the two meanings are never drawn
+  together. Both data sets remain bounded before filtering.
+
+Source-use shape, reference, count, or byte failures return `invalid-document`
+with the affected path and useful reason. The existing architecture display
+limit failure remains **Too large to display**. Validate the full candidate
+before replacing a view. Hidden data cannot bypass a limit. Version 3 must run
+all version 2 documentation refinements, not only accept its structural shape.
+
+### Viewer rules and compatibility
+
+Use the file version to select one relationship meaning. Add no new relationship
+mode switch and never mix policy and source use into one arrow.
+
+| File | Eligible connections and explanation |
+| --- | --- |
+| Version 1/2 | Keep recorded `allowedConsumers → owner` arcs and the permission legend. Preserve existing unknown-policy behavior without calling it observed use. |
+| Version 3 | Use source records only. Draw `consumerId → owner.value` for `value` uses in `application` or `tooling` context with both endpoints known. Unknown permission never hides a source arrow. |
+
+For version 3, use **Arrow: component uses the interface in saved source.**
+State that the canvas includes application/tooling value references; type and
+test references stay in details. Source inspection does not establish runtime
+execution. This explanation must remain available when no arrows qualify.
+
+Combine eligible sites into one arc per `(interfaceId, consumerId, ownerId)`.
+Keep this existing arc identity. The file version selects one meaning, and a
+successful file open resets the view; no relationship namespace is needed.
+Preserve every use record in details, separate interfaces between the same
+components, opposite directions, and multiple consumers. Owned-interface counts
+still count each directly owned interface once.
+
+Keep BR-08 Selected/All scope, label reveal, movement, Fit, focus recovery, and
+the current inspection path. No arrows appear on initial open in Selected mode.
+Do not roll a child's use up to its parent. Keep all self-use records; hide their
+loops by default and show eligible loops with **Show self-connections**. Changing
+scope, opening details, or reading sources must not rearrange the diagram.
+
+In version 3, replace the permission-based unknown-consumer banner with one
+source notice. Omit it when the baseline has no interfaces. Use these states:
+
+| Source-use data | Notice |
+| --- | --- |
+| Object absent | **Source use not recorded.** |
+| Object present with no assessments | **No interface source assessments recorded.** |
+| One or more assessments | **Source review is partial. See interface details for scope and gaps.** |
+
+Keep precise unassessed, unmapped, unknown-context, and unknown-provider reasons
+in interface details. Add no global issue counters. An assessed empty list is
+not unknown. Permission gaps stay in Access rule and Baseline details; they
+must not create a “10 unknown consumers” notice beside known source connections.
+
+Place **Used by** in interface Overview after the provider and short purpose.
+Group known consumers by component ID and display their names. Order groups by
+first appearance and rows by saved order. If names repeat, also show their IDs;
+do not merge the components. Mark internal use only when the known consumer and
+provider IDs match. Show application/tooling value uses first. Put type, test,
+unknown-context, and unmapped records in a clearly named
+**Other source references** disclosure within Used by. Show its count even when
+the primary list is empty, and explain why these records have no canvas arrow.
+Group that section by the same rules. Every row retains its kind, context,
+description, and recorded entry binding. Label Used by as interface-wide use.
+Changing the selected method does not filter it. A missing entry binding does
+not mean that a consumer uses every method.
+
+Keep **Access rule** below this section, with its existing permission wording.
+Show permission and source use as separate facts. Permission-violation checking
+is outside this change. Unknown owner does not prevent reading the known consumer
+list. Manual/operator limitations remain readable even with no uses.
+For version 3, clarify that **Runtime execution is not recorded**; do not use
+wording that suggests its saved source references are absent.
+
+Each use row has an inline **Caller source** disclosure for its saved caller
+note and location. Reuse the existing disclosure state and location rendering.
+Do not add a jump between tabs or a new selected-source state.
+
+The existing Sources tab shows the common snapshot/mapping reference, scope,
+limitations, and all caller/binding evidence. Group repeated evidence IDs while
+retaining every use that cites them. Label source uses separately from intent
+statements. Keep the current assessment plus common provenance in a disclosure
+there and the full `sourceUsage` object in Baseline details. The interface's
+Original record remains the interface record. Source locations stay plain text.
+Normal tab focus, saved scroll, and disclosure state follow BR-10. This ticket
+adds no new component-navigation path from Used by.
+
+Legacy interfaces say **Source use not recorded.** and retain their permission
+list and existing details. A successful file replacement resets version-specific
+legend, use inspection, and view choices, including when saved IDs repeat. A
+failed, cancelled, or superseded load preserves the complete current view.
+
+### Analysis and publication rules
+
+Update the actual Stage 4 emitted prompt in `app-a/stage-4-inspect.mjs` and the
+Stage 5 prompt block in `app-a/step-5-cookbook.md`, which
+`app-a/stage-5-commands.mjs` expands. Updating guidance alone is insufficient.
+Keep one producer workflow and the existing nine-file review packet.
+
+For each interface, request a source assessment or leave it explicitly
+unassessed. Review public entries, caller sites, concrete callback bindings,
+and native command registration as applicable. Map caller files to their direct
+owners in the selected mapping. Keep test/type/tooling distinctions, self-use,
+multiple sites, and partial scope. Stage 5 updates the one `sourceUsage.mappingRef`
+to its candidate mapping and rechecks every carried assignment and interface
+binding. Reuse unchanged caller evidence. Changed owners or interfaces must not
+leave stale consumer IDs or entry references.
+
+Do not require a consumer for every interface. Do not change `allowedConsumers`
+without separate permission evidence. Preserve source-reviewed signatures,
+unknown facts, descriptions, examples, and the evidence supporting them.
+For an unresolved consumer or context, require an exact discovery question/gap
+subject: `interface-id.sourceUsage.uses.use-id.consumerId` or
+`interface-id.sourceUsage.uses.use-id.context`. These use stable IDs, not array
+positions. An absent assessment or scoped empty list needs no fabricated gap.
+The assessment's scope and limitations must still explain what was reviewed.
+
+Shared Stage 4/5/6 validation checks the new structure, references, limits,
+source identity, and mapping. Require `sourceUsage.snapshotRef === run.snapshot.id`
+even when assessments are empty. Require `sourceUsage.mappingRef` to equal the
+candidate's `discovery.codeMappingRef`; that mapping must use the same snapshot.
+Check each caller file's direct owner against `consumerId`, including null.
+
+During Stage 4/5 checks, use the candidate mapping, not the previous working
+draft's mapping. The normal candidate artifact map
+already admits that packet's planned mapping reference before registration.
+Keep that specific path; do not allow arbitrary unregistered or foreign refs.
+Stage 6 retains the published Stage 5 mapping selection.
+
+Every use evidence reference must resolve to a direct source record in the
+selected reviewed-file chain. This includes caller, declaration, configuration,
+and binding support. Match each located note to that exact saved source record.
+An unreviewed excerpt or a graph/query result cannot replace this evidence.
+Graph/query artifacts can still describe assessment scope. Validate entry/access
+bindings without claiming a tool proved the code's meaning.
+
+Keep semantic review in the existing `llm/analysis-response.md`. Check the
+complete candidate and representative binding chains. A validator can detect a
+wrong hash or owner assignment; it cannot prove that a type import is a value
+use. Preserve exposed prompt/model metadata and exact reviewed ranges.
+
+Update `app-a/start-here.md`, `record-format.md`, Stage 4/5/6 guidance, the
+Stage 5 working-baseline gate, shared validators, and the analysis design's
+intent/observation description. Run evidence stays authoritative; version 3
+embeds an explicitly scoped copy of reviewed source-use facts for offline viewing.
+Keep run/discovery/packet versions unchanged unless their contracts actually
+change. Keep the Stage 1 empty seed and existing immutable publication order.
+
+Completed run 004 remains unchanged. A material correction requires a new run,
+snapshot identity, baseline ID, and publication under the updated tools. A new
+capture may use its saved snapshot as input, carrying forward all original
+exclusions and capture limits. Do not mix in the live checkout or claim omitted
+inputs were recovered. Never patch old frozen helpers, reset progress, replace
+fixed files, or weaken digest checks to retrofit source use into run 004.
+
+## BR-11 delivery tickets
+
+### BR-11: Record and show source-consumer connections
+
+**Planned.** This series adds the version 3 contract, viewer, analysis prompts,
+and a supported successor to baseline 004. It does not change the graph layout
+design or start a repository-analysis service inside Choom.
+
+| Ticket | Deliverable | Depends on |
+| --- | --- | --- |
+| [BR-11A](#br-11a-read-and-validate-source-use-records) | Strict version 3 contract, complete validation, and original-record access. | Merged BR-10 |
+| [BR-11B](#br-11b-draw-source-consumer-connections) | Source-use arrows with legacy policy compatibility and BR-08 controls. | BR-11A |
+| [BR-11C](#br-11c-explain-consumers-and-review-scope) | Used by, source evidence, and clear missing/partial states. | BR-11B |
+| [BR-11D](#br-11d-request-source-consumers-in-analysis-prompts) | Actual emitted prompts and a reviewed source-use packet. | BR-11A contract |
+| [BR-11E](#br-11e-validate-and-publish-source-use-data) | Producer validation and normal Stage 4 → 5 → 6 publication. | BR-11C and BR-11D |
+| [BR-11F](#br-11f-verify-the-published-connections) | Browser/installed validation and a new published successor to baseline 004. | BR-11E |
+
+Use A → B → C → D → E → F as the reviewable delivery order. For production work,
+write failing Cucumber acceptance first, then follow each small red/green/refactor
+step. Keep passing legacy behavior as characterization. Expected failures below
+are predictions, not claims that tests have run. If an earlier ticket already
+makes a scenario pass, retain it; never create an artificial failure.
+
+D/E change prompts and external tooling. Their Given-When-Then specifications
+drive recorded document/command/artifact checks. They do not require unit tests
+or Cucumber wrappers for scripts. If they expose a production defect, first add
+a failing test at the affected reader/viewer boundary. This follows the same
+repository rule as BR-10E.
+
+#### Shared fixtures and the run 004 check
+
+Use small synthetic fixtures for individual contract and UI cases. Include an
+interface with known source callers and unknown permission; different known
+permission and source lists; several sites for one connection; opposite directions;
+several interfaces between one pair; self-use; type/test/tooling/unknown contexts;
+unknown consumer and owner; repeated component names; unassessed and scoped-empty
+assessments; and bindings to named entries. Preserve unchanged version 1/2
+fixtures. Do not make legacy
+fixtures appear to contain source observations by relabeling permission lists.
+
+Unless a scenario says otherwise, source-use fixtures have known endpoints,
+`kind: value`, `context: application`, and valid caller/binding evidence. Use
+both legacy versions for compatibility cases. Keep an empty baseline and a v3
+file without `sourceUsage` as valid inputs. Malformed fixtures change one rule
+at a time so each rejection has a clear cause.
+
+Build a separate reviewed fixture from the run 004 saved source and mapping.
+The following interface IDs have prefix `s4-001-`. These relations are the
+expected set for this bounded fixture, not a complete-repository absence claim.
+
+| Consumer | Interface suffix | Provider | Relation |
+| --- | --- | --- | --- |
+| Workspace | `baseline-model` | Architecture model | Cross-component |
+| Workspace | `browser-file-input` | Desktop adapter | Cross-component |
+| Workspace | `desktop-selection` | Desktop adapter | Cross-component |
+| Workspace | `desktop-file-read` | Desktop adapter | Cross-component |
+| Desktop adapter | `native-file-read` | Native shell | Cross-component |
+| Workspace | `load-workflow` | Workspace | Self |
+| Workspace | `baseline-decoder` | Workspace | Self |
+| Workspace | `prepared-layout` | Workspace | Self |
+| Workspace | `interface-inspection` | Workspace | Self |
+| Desktop adapter | `desktop-selection` | Desktop adapter | Self |
+| Native shell | `native-file-read` | Native shell | Self |
+
+The cross-component evidence is `src/lib/baseline-yaml.ts:19`,
+`src/architecture/workspace.ts:11–21`, and the IPC chain in
+`src/platform/documents.ts:33–46` → `src-tauri/src/lib.rs:13–15`.
+Preserve exact registered source locations and mapping references when authoring
+the new packet; line numbers alone are not evidence identity.
+
+Keep all ten original permission values null. Do not add a Choom-root caller.
+The manual publication interface, `s5-001-producer-publication`, has no modeled
+caller established in this review. Retain its operator-command limitation.
+The fixture has five cross-component and six self connections. Additional
+test/type records remain separately classified and do not add canvas arrows.
+
+Carry all 28 documented entries, 20 known signatures, one explicitly unknown
+function signature, and seven entries that do not require a signature. The new
+publication must review and rebind evidence to its own selected snapshot and
+record chain; do not paste foreign evidence IDs into a new run.
+
+#### BR-11A: Read and validate source-use records
+
+**Acceptance first — `@br-11a`; decoder cases use the native profile,
+file replacement and record access use `@browser`:**
+
+```gherkin
+Scenario: Read source use independently from permission
+  Given a valid version 3 baseline records a source consumer and an unknown permission policy
+  When the public decoder reads the baseline
+  Then it retains the use, its evidence, and the unchanged null permission
+
+Scenario Outline: Keep old formats strict
+  Given a version <version> baseline contains sourceUsage
+  When the public decoder reads the baseline
+  Then it rejects the unsupported field without upgrading the file
+
+  Examples:
+    | version |
+    | 1 |
+    | 2 |
+
+Scenario: Read a version 3 file without source-use data
+  Given a valid version 3 baseline has no sourceUsage object
+  When the public decoder reads the baseline
+  Then it retains the architecture and documentation without inventing source-use records
+
+Scenario Outline: Reject invalid source-use records
+  Given a version 3 candidate contains <defect>
+  When the public decoder reads the candidate
+  Then it reports invalid-document at the affected field
+
+  Examples:
+    | defect |
+    | duplicate interface assessments |
+    | duplicate use IDs within one assessment |
+    | a missing component reference |
+    | a missing interface reference |
+    | a blank shared mapping reference |
+    | a callerRef with no matching located source note |
+    | binding evidence with no matching located source note |
+    | a use evidence reference containing a fragment |
+    | a source note from a different snapshot |
+    | conflicting entry and access-point bindings |
+    | an unsupported kind or context |
+    | a source-use count or byte limit exceeded |
+    | invalid version 2 documentation inside version 3 |
+
+Scenario: Retain the current view on an invalid replacement
+  Given a readable baseline is open with an interface and example selected
+  When the user opens malformed or excessive version 3 data
+  Then the failure leaves the current drawing, legend, inspection, and choices intact
+
+Scenario: Keep source records accessible before the formatted panel lands
+  Given a version 3 baseline is open
+  When the user opens its original source-use data in Baseline details
+  Then every saved assessment and use value is available
+
+Scenario: Do not apply permission projection to the new format
+  Given a version 3 interface permits Admin and records Client as its only source consumer
+  When the user selects All connections
+  Then no permission arrow or permission-based unknown-consumer message is shown
+```
+
+**First red:** A valid version 3 fixture currently returns unsupported-version.
+Assert decoded success and retained data after setup succeeds. Keep valid
+version 1/2 and unsupported-future-version cases as characterization.
+
+**TDD steps:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Versioned boundary | Public decoder/interface test accepts v3, retains all fields, and keeps v1/2 strict. | Add TypeSpec v3 and generated outputs; update decoder dispatch and strict runtime validation. | Share unchanged architecture/documentation shapes without widening older versions. |
+| 2 — Local integrity | Domain tests reject duplicate IDs, bad kinds/contexts, dangling references, and conflicting entry bindings. | Add the declared reference and local-ID rules. | Use validated indexes; avoid a second mutable model. |
+| 3 — Evidence shape | Interface tests require a shared mapping reference, callerRef in its use evidence, direct reference syntax, a located note for every use reference, matching snapshot, and safe locations. Include caller and binding-note failures. | Validate in-file evidence structure. | Reuse BR-10 location checks; leave artifact-kind and review-chain checks to the producer. |
+| 4 — Bounds | Exact and one-over count/UTF-8/total limits, including multibyte text and filtered records, produce the specified outcomes. A file within the separate source and legacy-link budgets passes even when their sum exceeds 2,000. | Enforce source-use budgets before layout and retain the existing architecture limits. | Keep documentation, source-use, and architecture budgets independent; do not count source records twice. |
+| 5 — Documentation inheritance | V3 rejects the same invalid signature, local reference, and source-reviewed example cases as v2. | Extend every v2-only refinement to v3, including the total documentation budget. | Share the semantic checks rather than copying them. |
+| 6 — Version guard | DOM/browser tests exclude permission arrows, legend, and missing-policy banners for v3 even when it contains known permissions. | Guard the old projection and explanations now; B adds source rendering and C adds its detailed summary. | Derive meaning from the file version at one boundary. |
+| 7 — Complete load | Browser acceptance rejects bad replacements atomically and exposes valid original source-use data. | Connect the new union to existing load publication and Baseline details. | Retain cancellation, late-result, and same-ID session rules. |
+
+**Complete when:** The native/browser scenarios and affected contract/load tests
+pass; TypeSpec, generated outputs, decoder notes, and limits agree. No source
+fetching, native command, permission migration, or producer publication is added.
+
+#### BR-11B: Draw source-consumer connections
+
+**Acceptance first — `@br-11b @browser`:**
+
+```gherkin
+Scenario: Show known source use with unknown permission
+  Given a version 3 interface has two reviewed application value-use sites from Client to Provider and null allowedConsumers
+  When the user selects Client
+  Then one source-use arrow connects Client to Provider for that interface
+  And the legend describes saved source use
+
+Scenario: Keep different relationship meanings separate
+  Given a version 3 interface permits Admin but records only Client as a source consumer
+  When the user selects All connections
+  Then only the Client source-use arrow is shown
+  And Admin remains in Access rule
+
+Scenario: Explain an excluded source reference
+  Given a version 3 interface has only type or test uses
+  When the user selects its provider
+  Then no canvas arrow appears and the explanation directs those references to details
+
+Scenario Outline: Preserve legacy permission arrows
+  Given an unchanged version <version> file records a permitted consumer
+  When the user selects that consumer
+  Then its existing arrow is shown with the permission legend
+
+  Examples:
+    | version |
+    | 1 |
+    | 2 |
+
+Scenario: Draw a tool's recorded value use
+  Given a version 3 tool component has a reviewed value use of another component's interface
+  When the user selects the tool component
+  Then its source-use arrow is shown with the same direction as application use
+
+Scenario: Keep unknown endpoints local to their records
+  Given an interface has one known source consumer and a different use with no mapped consumer
+  When the user selects its known provider
+  Then the known connection is shown without an arrow or placeholder for the unmapped use
+
+Scenario: Do not infer a source connection from permission
+  Given a version 3 file records a permitted consumer but no sourceUsage
+  When the user selects All connections
+  Then no arrow is inferred from that permission
+
+Scenario: Keep self-use optional
+  Given a version 3 file has a self-use and a cross-component use in All mode
+  When the user enables Show self-connections
+  Then the self-loop joins the cross-component arrow without moving components
+```
+
+**First red:** After A, the new file opens but the current arc calculation cannot
+show its source-use arrow when permission is null. Assert the expected arrow
+count; a failed click on an absent curve is not the red assertion.
+
+**TDD steps:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Arc calculation | Native unit cases derive application/tooling value connections despite null permission; v3 absence produces no fallback. | Derive source arcs for v3 and legacy permission arcs for v1/2. | Keep the calculation read-only and select its meaning by file version. |
+| 2 — Eligibility | Unit cases exclude type/test/unknown-context and unresolved endpoints while retaining other valid connections. | Apply the fixed eligibility rules per use. | Keep missing data separate from canvas filtering. |
+| 3 — Identity | Several sites become one connection; interfaces, opposite directions, and distinct consumers remain distinct. | Reuse the existing endpoint identity and preserve each saved use record. | Avoid new namespaces or one arc per method/evidence site. |
+| 4 — Rendering | DOM tests expose the correct legend and complete accessible names for each version. | Connect source arcs to current handles, routing, labels, and inspection. | Reuse arc rendering rather than adding a second diagram. |
+| 5 — View rules | Browser cases cover Selected/All, direct interface inspection, hidden/enabled self-use, movement, and Fit. | Apply BR-08 filters and geometry to the new connections. | Keep passing gesture/focus behavior as characterization. |
+| 6 — Replacement | Browser cases replace v3 with v2 and back, including repeated IDs and a failed open. | Derive meaning from the published baseline and retain existing session lifetime. | Remove stale kind-specific state rather than keying it by saved IDs. |
+
+**Complete when:** B acceptance and affected BR-07/08 geometry, focus, label,
+filter, and load checks pass. Derive all five reviewed cross-component
+connections; the visible subset depends on the existing selection rules.
+
+#### BR-11C: Explain consumers and review scope
+
+**Acceptance first — `@br-11c @browser`:**
+
+```gherkin
+Scenario: Read usage separately from permission
+  Given an interface records Client as a source consumer and Admin as a permitted consumer
+  When the user opens its Overview
+  Then Used by names Client and Access rule names Admin with their separate meanings
+
+Scenario Outline: Explain the assessed state
+  Given the interface has <state>
+  When the user opens Used by
+  Then it shows <explanation> without inventing a consumer
+
+  Examples:
+    | state | explanation |
+    | no sourceUsage object | Source use not recorded |
+    | no interface assessment | Source use not assessed for this interface |
+    | an assessed empty list | No uses found in the reviewed scope |
+    | a known consumer with partial coverage | the known consumer and the review limits |
+    | a known consumer and unknown provider | the known consumer and Provider unknown |
+    | a use with no component owner | the caller location and unresolved mapping reason |
+    | only type or test references | the Other source references count and why no arrow is shown |
+
+Scenario: Inspect a caller's support
+  Given an interface has several sites supporting the same consumer
+  When the user expands Caller source on one use row
+  Then that row shows its saved caller note and location without changing tabs
+  And no source file or command is opened or executed
+
+Scenario: Keep common mapping and binding evidence available
+  Given an interface has several sites and a resolved callback binding
+  When the user opens Sources
+  Then the common snapshot and mapping and each site's supporting evidence remain available
+
+Scenario: Do not apply interface approval to source use
+  Given the interface's intent statements are accepted and it has source uses
+  When the user opens its details
+  Then the accepted status is labeled for interface statements and does not certify source use or execution
+
+Scenario: Keep interface-wide use clear during method inspection
+  Given different uses name different entries of one interface
+  When the user selects another entry
+  Then Used by retains the interface-wide list with the recorded entry bindings
+
+Scenario: Explain policy gaps without hiding source use
+  Given a version 3 file has assessed uses and all ten permission policies are unknown
+  When the user inspects its connections
+  Then the source notice says the review is partial without counting permission gaps as unknown consumers
+```
+
+**First red:** After B, arrows work but Overview has no readable Used by section.
+Assert the consumer name and distinct permission text after the panel opens.
+
+**TDD steps:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Assessment states | DOM tests distinguish absent object, absent assessment, scoped empty list, and known uses from partial review. | Render the defined state text and scope. | Derive state from records; add no completeness flag. |
+| 2 — Consumer groups | DOM tests keep same-name components distinct, retain all sites and entry bindings, and show known consumers when the provider is unknown. Entry changes do not imply method-wide use. | Group by consumer ID, label interface-wide use, show IDs when names repeat, and retain unresolved rows. | Reuse existing name and entry rendering; do not add a navigation stack. |
+| 3 — Source inspection | DOM/browser tests expand caller details without changing tabs; Sources retains the common mapping, binding evidence, and complete record. Normal tab changes keep scroll and disclosure state. | Reuse inline disclosures and extend Sources to the assessment. | Share location rendering; add no cross-tab jump or selected-source state. |
+| 4 — Notice and statuses | DOM cases cover absent data, no assessments, partial assessments, and zero interfaces. Accepted intent and unknown permission do not alter source-use meaning. | Use the three source notices and label intent status separately; retain the legacy policy explanation. | Keep exact missing-data reasons in details and remove global issue counters. |
+| 5 — Input and layout | Browser cases cover keyboard/touch, narrow and short panels, long names/locations, Back, and cancelled/replaced loads. | Correct any new focus, overflow, or stale-selection gaps at their owner. | Retain selected-content rendering and existing inspection lifetime. |
+
+**Complete when:** C acceptance and affected BR-10 reading/navigation checks pass.
+Every recorded use remains reachable, including those omitted from the canvas.
+Source review, proposed component mapping, permission, and execution are not
+presented as interchangeable claims.
+
+#### BR-11D: Request source consumers in analysis prompts
+
+**Acceptance specification first — document and emitted-prompt review:**
+
+```gherkin
+Scenario: Request source use in the prompts the analyst receives
+  Given disposable Stage 4 and Stage 5 attempts use the new trusted tools
+  When the normal preparation commands emit their review prompts
+  Then both prompts request source uses, exact caller evidence, selected ownership, and partial scope
+  And they keep permission policy and execution claims separate
+
+Scenario: Recover a concrete binding
+  Given reviewed source constructs a reader, injects its callback, and invokes it through a workflow
+  When the analyst prepares the source-use assessment
+  Then the record cites the caller and binding chain with the direct consumer owner
+
+Scenario: Retain useful results from partial review
+  Given the reviewed scope contains value use, self-use, type/test references, and a manual command
+  When the analyst prepares the packet
+  Then the packet preserves each category without guessing a manual component caller or complete permission policy
+
+Scenario: Recheck uses when ownership changes
+  Given Stage 5 changes the direct owner of a caller file
+  When the analyst prepares the complete Stage 5 packet
+  Then sourceUsage names the candidate mapping and every carried consumer matches that mapping
+
+Scenario: Carry unchanged uses to the next selected mapping
+  Given Stage 5 emits a new mapping with unchanged caller assignments
+  When the analyst prepares the complete Stage 5 packet
+  Then the one shared mapping reference changes and valid caller evidence is retained
+```
+
+**First failing review:** Inspect the actual current emitted prompts. Record
+that they request permission/documentation but do not require this structured
+source-use assessment. Do not label an absent tool or failed setup as a feature
+failure, and do not test prompts by requiring exact prose.
+
+**Small check–change–simplify cycles:**
+
+| Step | Failing check or review first | Smallest passing change | Simplify after success |
+| --- | --- | --- | --- |
+| 1 — Meaning | Compare current authoring guidance with a caller whose permission is unknown. | Document the v3 record and independent source/policy questions. | Reuse existing evidence and mapping concepts; no new analysis mode. |
+| 2 — Emitted prompts | Prepare fresh attempts and read the actual Stage 4/5 prompt artifacts. | Update Stage 4's prompt owner and Stage 5's marked block, with concrete call/binding/type/test/self cases. | Keep one authoritative prompt source for each stage. |
+| 3 — Reviewed packet | Review a bounded packet against the synthetic and run 004 source cases. | Require direct caller mapping, reviewed caller/binding ranges, scoped empty results, and unresolved reasons. | Remove guessed consumers and redundant claims; retain known uses. |
+| 4 — Carry-forward | Review Stage 5 candidates with unchanged and changed owners but a stale shared mapping reference. | Update the shared mapping reference once and recheck every carried assignment and binding. | Reuse unchanged caller evidence; add no per-use mapping copies or patch protocol. |
+| 5 — Guidance consistency | Trace start-here → stage prompts → record format → analysis design; inspect a worked record and unknown case. | Update the affected Markdown guidance and source/intent explanation. | Keep one contract definition and short examples, preserving signature instructions. |
+
+**Complete when:** The emitted prompts and a reviewed packet cover the specified
+cases; their saved metadata and source ranges are truthful. No production code
+or completed user run is changed by this ticket. E owns executable publication
+support; D does not claim an unpublished packet already passes it.
+For D's Stage 5 prompt check, use a valid version 1/2 predecessor. This lets D
+verify the emitted prompt before E adds version 3 publication. Save the v3
+candidate for E's command checks.
+
+#### BR-11E: Validate and publish source-use data
+
+**Acceptance specification first — real command and artifact checks:**
+
+```gherkin
+Scenario: Publish a reviewed source-use candidate through all stages
+  Given a disposable packet has valid v3 uses, one selected mapping, and reviewed source records
+  When normal Stage 4 publication, Stage 5 collection/publication, and Stage 6 readiness/save complete
+  Then the fixed baseline matches the reviewed Stage 5 bytes and opens in the new reader
+
+Scenario Outline: Reject unsupported source use before replacing drafts
+  Given a disposable review packet has <defect>
+  When the normal publication check validates it
+  Then it reports the defect without replacing drafts or completed artifacts
+
+  Examples:
+    | defect |
+    | a caller hash, snapshot, path, or range mismatch |
+    | sourceUsage with an empty assessments list naming a different run snapshot |
+    | a collected caller excerpt absent from the selected reviewed-file chain |
+    | a reviewed caller whose binding evidence was collected but not reviewed |
+    | a graph artifact supplied as use evidence instead of reviewed source |
+    | a caller assigned to a different component in the selected mapping |
+    | a shared mapping reference from an earlier selection |
+    | an unresolved consumer explained only by a permission gap |
+    | a source-use or inherited documentation limit exceeded |
+    | a decodable file that exceeds the complete display-link limit |
+
+Scenario: Reject a semantically false use
+  Given a candidate labels a type-only import as an application value use
+  When the manager reviews the cited source and complete candidate
+  Then the claim is corrected or rejected before publication
+
+Scenario: Preserve historical runs
+  Given a completed version 1 or 2 run and its matching trusted tools
+  When the normal verification command checks it
+  Then verification passes without changing the run's registered files or pins
+
+Scenario: Reject changed tools within an attempt
+  Given a disposable new attempt has pinned tools
+  When the attempt is checked with changed tool bytes
+  Then it is rejected without replacing its frozen files
+```
+
+**First failing check:** Submit a valid v3 packet to the current publisher. It
+rejects the format. Record that outcome before the change and the later success.
+Use fresh attempts when helper bytes change; never patch frozen tools to keep
+using an earlier disposable attempt.
+
+**Small check–change–simplify cycles:**
+
+| Step | Failing check or review first | Smallest passing change | Simplify after success |
+| --- | --- | --- | --- |
+| 1 — Version gates | Run v3 through the Stage 5 working-baseline gate and shared Stage 4/5/6 validator. | Accept the agreed v3 profile while preserving v1/2 and the seed path. | Keep one shared record-validation path. |
+| 2 — Evidence and ownership | Submit a wrong common snapshot or mapping, unreviewed caller/binding ranges, and wrong/null owner assignments. Include empty assessments so checks cannot depend on a caller's existence. | Check the run snapshot and candidate mapping once; check every cited source use and caller assignment before replacement. | Reuse evidence resolution and immutable snapshots; no second registry or per-use mapping copies. |
+| 3 — Binding and unknowns | Check conflicting entry/access bindings and exact discovery subjects for null consumer/unknown context. | Enforce local bindings and existing gap rules extended to the new subjects. | Keep manual limitations and assessed empty lists out of fabricated unknown gaps. |
+| 4 — Reader agreement | Compare exact/over bounds, a file within the separate source/legacy-link budgets, and a decode-success/display-failure candidate with the public reader boundary. | Enforce the same separate source, documentation, file, and architecture limits. | Do not sum independent link budgets or treat packet size as viewer compatibility. |
+| 5 — Publication lifecycle | Rehearse Stage 4 → 5 → 6, old-run verification, changed-tool rejection, and failed publication recovery. | Update format-specific gates while retaining byte preservation and manifest-last publication. | Keep nine-file packets, run/discovery formats, pins, and receipts intact. |
+| 6 — Semantic review | Review callback/IPC resolution, type/test context, manual scope, and unchanged permission against saved source. | Correct unsupported claims and retain actual limits before approval. | Keep the semantic result in the existing analysis response rather than inventing a runtime-proof flag. |
+
+**Complete when:** Valid/invalid command outcomes and selected artifact digests
+are recorded, and the normal reader opens a disposable published v3 baseline.
+Primary tooling owners are `app-a/stage-6-records.mjs`,
+`app-a/stage-4-5-publish.mjs`, and the Stage 5/6 command gates. Use syntax,
+contract, command, artifact, and manual checks for these scripts. Fix a production
+reader defect with a failing production test first. Historical files stay intact.
+
+#### BR-11F: Verify the published connections
+
+**Acceptance and characterization first — `@br-11f @browser` and the normal
+installed opening journey with `@packaged`:**
+
+```gherkin
+Scenario: Read the reviewed Choom connections
+  Given the normal file control opens the published v3 review fixture
+  When the user selects All connections with self-connections off
+  Then five interface arrows represent the reviewed cross-component uses
+  And all ten permission policies remain unknown
+
+Scenario: Inspect a focused component
+  Given the published review fixture is open in Selected mode
+  When the user selects Workspace
+  Then four cross-component interface arrows are shown without moving components
+  And no descendant-only or Choom-parent use is invented
+
+Scenario: Include recorded internal use
+  Given the published review fixture is open in All mode
+  When the user enables Show self-connections
+  Then its five cross-component and six self connections are shown
+
+Scenario: Read callers and signatures from the same published bytes
+  Given the published fixture has source uses and all retained BR-10 documentation
+  When the user completes the interface reading journey
+  Then callers, evidence, scope, entry signatures, examples, and permission agree with the file
+
+Scenario: Preserve the old run when publishing its successor
+  Given the completed run 004 and its saved source are retained
+  When the normal new-run workflow publishes the reviewed source-use successor
+  Then it has new run, snapshot, and baseline identities and the original run's registered files are unchanged
+```
+
+The last scenario is a real publication/artifact check, not a Cucumber wrapper
+for a script. The UI scenarios use the same published bytes in browser and
+installed app. Exact relation counts apply to the bounded fixture above. A later
+broader analysis can find additional supported callers; it must not delete them
+to satisfy this fixture's count.
+
+**First check:** Run the complete published-file journey after A–E. Keep passing
+outcomes as characterization. If an assertion exposes a real gap, write the
+small failing test at its production owner, fix it, and refactor while green.
+This ticket can complete with verification and publication evidence when the
+production behavior already passes.
+
+**Verification and TDD for discovered gaps:**
+
+| Step | Check first | If it fails: smallest correction | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Published artifact | Open identical published bytes in browser and installed app; compare the five cross/six self connections and all original permissions. | Fix the responsible reader, arc calculation, or publisher with its appropriate red test/check. | Keep the normal file route and one supported contract. |
+| 2 — Full reading journey | Read Used by, inline caller details, other references, scope, common mapping/binding evidence, entry signatures, Example, and Access rule; return with Back. | Fix missing or misleading content, focus, or navigation at its owner. | Reuse BR-10 reading frames and BR-08 graph state. |
+| 3 — Lifecycle and limits | Exercise v1/v2/v3 transitions, repeated IDs, failed/cancelled opens, late work, exact bounds, long text, and narrow/short windows. | Add a focused failing regression for any newly exposed behavior. | Retain old protections; do not raise limits or silently drop data to pass. |
+| 4 — Reader meaning | Ask a reader to distinguish source use, permission, partial coverage, hidden self-use, and executed calls. Record actual answers or a manager self-check and its limits. | Revise misleading labels or reading order and test changed UI behavior. | Remove redundant explanations before adding new permanent controls. |
+| 5 — Successor publication | Publish under new tools from a new capture of the saved run 004 snapshot, carrying original exclusions/limits; compare old registered hashes. | Correct the new candidate or stop a failed publication through normal recovery. | Never edit the old run or use an in-place finalizer. |
+
+**Complete when:** The browser and installed checks identify the tested build,
+platform, file hash, and any remaining environment limits. A new published
+successor is available to open in Choom, and run 004 is unchanged. Confirm that
+the source snapshot used for the successor is the saved input, not the changed
+live viewer. At supported upper limits, record file-open and interface-open
+times on named hardware and check that the last use and its source are reachable.
+Do not claim a performance threshold without measurement. The result is a source
+review, not runtime verification.
+
+### BR-11 verification and implementation boundaries
+
+The [BR-11 verification record](../change-requests/BR-source-consumer-evidence.md)
+records actual red/green assertions, producer checks, artifact hashes, manual
+review, and platform limits as implementation proceeds. The requirements above
+do not establish that those checks passed.
+
+Expected production owners are TypeSpec/generated domain contracts,
+`src/domain/baseline.ts`, documentation refinements, the public YAML decoder,
+display limits, interface arc projection, and the existing diagram/inspector.
+Keep platform file APIs and native commands unchanged unless a demonstrated gap
+requires a separate contract change. Keep TypeSpec as the contract source; do
+not hand-edit generated output or use a second ad hoc schema in the viewer.
+
+Register A–C and F's browser/installed Cucumber journeys with existing runners
+and component manifests, even if F finds no production defect. Add focused TDD
+suites for production changes and any discovered gaps. Use native `@br-11a`, browser
+`@br-11`, and installed `@br-11f`; classify focused tests by the repository's
+unit/interface/integration definitions. Run changed tests, affected BR-07/08/10
+acceptance, `bun run check`, `bun run check-types`, `bun run build`, and
+`bun run habit-hooks --all`. Generate and check TypeSpec when contracts change.
+The assembled desktop journey needs a freshly built installed app; browser
+tests and IPC doubles do not establish that route. Record unavailable platforms
+as limits, not passing evidence.
+
+D/E use syntax, link, emitted-prompt, real command, and artifact checks rather
+than new behavior tests for scripts. Run Habit Hooks on the complete candidate
+and keep the snooze file empty. Review all four constraint categories; update
+only changed artifacts and leave unrelated architecture/OpenSLO rules alone.
+If PRs are later requested, keep the tickets in a draft stack and follow the
+existing review and merge rules. Approval of this plan is not a test result.

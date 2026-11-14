@@ -9,6 +9,7 @@ export interface InterfaceArc {
 }
 
 export function interfaceArcs(baseline: ReadonlyData<Baseline>): InterfaceArc[] {
+  if (baseline.formatVersion === 3) return [];
   return baseline.interfaces.flatMap((item) => {
     const ownerId = item.owner.value;
     if (ownerId === null || item.allowedConsumers.value === null) return [];
@@ -19,5 +20,6 @@ export function interfaceArcs(baseline: ReadonlyData<Baseline>): InterfaceArc[] 
 }
 
 export function incompleteInterfaceCount(baseline: ReadonlyData<Baseline>): number {
+  if (baseline.formatVersion === 3) return 0;
   return baseline.interfaces.filter(({ owner, allowedConsumers }) => owner.value === null || allowedConsumers.value === null).length;
 }

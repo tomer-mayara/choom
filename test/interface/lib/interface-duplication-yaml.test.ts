@@ -8,6 +8,33 @@ import contracts from "../../../cookbook/interfaces/generated/contracts.schema.j
 import type { DuplicationReportCodec } from "../../../src/lib/generated/contracts.ts";
 import { decodeDuplicationReportYaml, duplicationReportCodec } from "../../../src/lib/interface-duplication-yaml.ts";
 import { duplicationFixture } from "../../support/duplication-fixtures.ts";
+import { duplicationV3Fixture } from "../../support/interface-duplication-fixtures.ts";
+
+test("generated and runtime report contracts accept a version 3 baseline binding", () => {
+  const { baseline, report, sha256 } = duplicationV3Fixture();
+  const schemas = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }));
+  const validate = schemas.compile({ $ref: "DuplicationReport.json" });
+  expect(validate(report)).toBe(true);
+  expect(duplicationReportCodec.decode(JSON.stringify(report), baseline, sha256)).toMatchObject({ status: "success", report });
+});
+
+test("version 3 reports still require supported versions, exact bytes and resolvable facts", () => {
+  const { baseline, report, sha256 } = duplicationV3Fixture();
+  for (const changed of [
+    { ...report, baseline: { ...report.baseline, formatVersion: 4 } },
+    { ...report, findings: report.findings.map((finding) => ({ ...finding, facts: [{
+      endpoint: { interfaceId: "invoice-api", entryId: "invoice-type" },
+      topic: "input", basis: "recorded-contract", field: "interaction.input",
+    }] })) },
+  ]) {
+    expect(duplicationReportCodec.decode(JSON.stringify(changed), baseline, sha256))
+      .toMatchObject({ status: "failure", code: "invalid-document" });
+  }
+  for (const binding of [{ ...report.baseline, formatVersion: 2 }, { ...report.baseline, sha256: "0".repeat(64) }]) {
+    expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: binding }), baseline, sha256))
+      .toMatchObject({ status: "failure", code: "baseline-mismatch" });
+  }
+});
 
 test("a matching saved report exposes findings without a source checkout", () => {
   const bytes = readFileSync("test/fixtures/baseline-viewer/full.yaml");

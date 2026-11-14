@@ -4,6 +4,48 @@ import { decodeDuplicationReportYaml } from "../../../src/lib/interface-duplicat
 import { duplicationFixture } from "../../support/duplication-fixtures.ts";
 import type { DuplicationReport } from "../../../src/domain/generated/contracts.ts";
 import { duplicationFindingKey, resolveDuplicationRecordedFact } from "../../../src/domain/interface-duplication.ts";
+import { validateDuplicationBinding } from "../../../src/domain/duplication-binding.ts";
+import { duplicationV3Fixture } from "../../support/interface-duplication-fixtures.ts";
+
+test("version 3 resolves inherited interface and entry facts with their recorded provenance", () => {
+  const { baseline } = duplicationV3Fixture();
+  const item = fixtureItem(baseline.interfaces, 1);
+  const documentation = item.documentation;
+  const entry = documentation?.entries[0];
+  if (!documentation || !entry?.signature || !entry.interaction) throw new Error("Missing documented fixture entry.");
+  const cases = [
+    ["summary", documentation.summary, documentation.summary.value],
+    ["description", entry.description, entry.description.value],
+    ["kind", entry.kind, entry.kind.value],
+    ["signature", entry.signature, entry.signature.value],
+    ["interaction.input", entry.interaction, entry.interaction.value.input],
+    ["interaction.success", entry.interaction, entry.interaction.value.success],
+    ["interaction.failures", entry.interaction, entry.interaction.value.failures],
+    ["interaction.effects", entry.interaction, entry.interaction.value.effects],
+  ] as const;
+  for (const [field, statement, value] of cases) {
+    const resolved = resolveDuplicationRecordedFact(baseline, {
+      endpoint: { interfaceId: item.id, ...(field === "summary" ? {} : { entryId: entry.id }) },
+      basis: "recorded-contract", topic: "success", field,
+    });
+    expect(resolved).toEqual({ ...statement, value });
+    resolved?.evidenceRefs.push("new-reference");
+    expect(statement.evidenceRefs).not.toContain("new-reference");
+  }
+});
+
+test("version 3 binds distinct documented entries and still rejects a missing local entry", () => {
+  const { baseline, report, finding, sha256 } = duplicationV3Fixture();
+  finding.kind = "entry-pair";
+  finding.endpoints = ["create-invoice", "invoice-type"].map((entryId) => ({
+    interfaceId: "invoice-api", entryId, evidenceRefs: ["fixture-mapping"],
+  }));
+  fixtureItem(finding.observations).endpoints = structuredClone(finding.endpoints);
+  finding.facts = [];
+  expect(validateDuplicationBinding(report, baseline, sha256)).toEqual([]);
+  fixtureItem(finding.endpoints).entryId = "absent-entry";
+  expect(validateDuplicationBinding(report, baseline, sha256)).toContain("A finding names an unknown interface or entry.");
+});
 
 test("recorded comparison facts must resolve a statement on their endpoint", () => {
   const { baseline, report, sha256 } = duplicationFixture();

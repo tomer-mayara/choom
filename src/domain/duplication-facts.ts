@@ -47,7 +47,7 @@ function entryFact(entry: ReadonlyData<BaselineDocumentedEntry>, field: Duplicat
 export function resolveDuplicationRecordedFact(baseline: ReadonlyData<Baseline>, fact: ReadonlyData<DuplicationRecordedFact>): DuplicationResolvedFact | undefined {
   const item: ReadonlyData<BaselineInterface> | undefined = baseline.interfaces.find((record) => record.id === fact.endpoint.interfaceId);
   if (!item) return undefined;
-  const documentation = baseline.formatVersion === 2 ? item.documentation : undefined;
+  const documentation = baseline.formatVersion !== 1 ? item.documentation : undefined;
   const entry = documentation?.entries.find((record) => record.id === fact.endpoint.entryId);
   if (fact.endpoint.entryId !== undefined && !entry) return undefined;
   if (fact.field === "summary") return documentation ? savedFact(documentation.summary, documentation.summary.value) : undefined;

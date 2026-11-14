@@ -177,7 +177,7 @@ model DuplicationFinding {
 @extension("additionalProperties", false)
 model DuplicationBaselineBinding {
   id: duplicationReference;
-  formatVersion: 1 | 2;
+  formatVersion: 1 | 2 | 3;
   sha256: duplicationDigest;
 }
 

@@ -1599,6 +1599,222 @@
             ],
             "additionalProperties": false
         },
+        "BaselineV3": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineV3.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 3
+                },
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "parentId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineComponent.json"
+                    }
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineInterface.json"
+                    }
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineResource.json"
+                    }
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineRule.json"
+                    }
+                },
+                "sourceUsage": {
+                    "$ref": "BaselineSourceUsage.json"
+                }
+            },
+            "required": [
+                "formatVersion",
+                "id",
+                "parentId",
+                "components",
+                "interfaces",
+                "resources",
+                "rules"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineSourceUsage": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineSourceUsage.json",
+            "type": "object",
+            "properties": {
+                "snapshotRef": {
+                    "$ref": "baselineText.json"
+                },
+                "mappingRef": {
+                    "$ref": "baselineText.json"
+                },
+                "assessments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineSourceAssessment.json"
+                    }
+                }
+            },
+            "required": [
+                "snapshotRef",
+                "mappingRef",
+                "assessments"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineSourceAssessment": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineSourceAssessment.json",
+            "type": "object",
+            "properties": {
+                "interfaceId": {
+                    "$ref": "baselineId.json"
+                },
+                "scope": {
+                    "$ref": "baselineText.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "uses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineSourceUse.json"
+                    }
+                },
+                "sourceNotes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineSourceNote.json"
+                    }
+                }
+            },
+            "required": [
+                "interfaceId",
+                "scope",
+                "evidenceRefs",
+                "limitations",
+                "uses",
+                "sourceNotes"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineSourceUse": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineSourceUse.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "consumerId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "kind": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "value"
+                        },
+                        {
+                            "type": "string",
+                            "const": "type"
+                        }
+                    ]
+                },
+                "context": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "application"
+                        },
+                        {
+                            "type": "string",
+                            "const": "tooling"
+                        },
+                        {
+                            "type": "string",
+                            "const": "test"
+                        },
+                        {
+                            "type": "string",
+                            "const": "unknown"
+                        }
+                    ]
+                },
+                "description": {
+                    "$ref": "baselineText.json"
+                },
+                "callerRef": {
+                    "$ref": "baselineText.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
+                "accessPoint": {
+                    "$ref": "baselineText.json"
+                },
+                "entryId": {
+                    "$ref": "baselineId.json"
+                }
+            },
+            "required": [
+                "id",
+                "consumerId",
+                "kind",
+                "context",
+                "description",
+                "callerRef",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
         "DuplicationEndpointReference": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DuplicationEndpointReference.json",
@@ -2211,6 +2427,10 @@
                         {
                             "type": "number",
                             "const": 2
+                        },
+                        {
+                            "type": "number",
+                            "const": 3
                         }
                     ]
                 },
@@ -2522,6 +2742,9 @@
                 },
                 {
                     "$ref": "BaselineV2.json"
+                },
+                {
+                    "$ref": "BaselineV3.json"
                 }
             ]
         },

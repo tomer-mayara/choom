@@ -87,6 +87,10 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
     <Field name="Parent baseline ID">
       {baseline.parentId === null ? <p className="text-muted-foreground">No parent baseline (null)</p> : <RecordedValue value={baseline.parentId} />}
     </Field>
+    {baseline.formatVersion === 3 && baseline.sourceUsage ? <details data-section="original-source-usage" className="rounded-lg border border-border p-3">
+      <summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-ring">Original source-use data</summary>
+      <RecordedValue value={baseline.sourceUsage} />
+    </details> : null}
   </section>;
   if (panel.kind === "rules") return <div className="space-y-3 wrap-anywhere">
     {baseline.rules.length === 0 ? <p>No rules modeled</p> : baseline.rules.map((rule) => <RuleRow key={rule.id} rule={rule} />)}

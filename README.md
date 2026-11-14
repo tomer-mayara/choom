@@ -50,11 +50,14 @@ Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri sy
 bun run desktop
 ```
 
-Use **Open Baseline** to select a `formatVersion: 1` or `formatVersion: 2` baseline in
+Use **Open Baseline** to select a `formatVersion: 1`, `2`, or `3` baseline in
 the browser or desktop app. The input must be valid UTF-8 and at most 16 MiB.
-Version 2 can add saved interface documentation; version 1 keeps its original
-strict fields. An interface's **Original record** disclosure retains all saved
+Version 2 can add saved interface documentation. Version 3 retains those fields
+and can add source-use records with a shared snapshot and code mapping.
+Versions 1 and 2 keep their strict fields. An interface's **Original record** disclosure retains all saved
 values, including documentation and statement references.
+**Baseline details → Original source-use data** retains the complete source-use
+object when supplied. Reading it does not fetch source files or verify their hashes.
 The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
 [input notes](cookbook/interfaces/baseline-codec.md) describe the file limits.
 An old `schemaVersion: 1` diagram is not a baseline.
@@ -71,11 +74,15 @@ explicit owner and consumer links, and 16 component levels. Larger inputs show
 **Too large to display** and keep the current view. The
 [complete viewer measurements](docs/change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements)
 record the tested workloads, timings, and limits.
+Version 3 also accepts at most 2,000 source-use records, 4,000 source notes, and
+2 MiB of compact JSON for the complete source-use object. These limits are
+separate from the documentation and explicit permission-link limits. Invalid
+source data leaves the current view intact.
 
 The drawing starts at 100% zoom. If all components fit, it centers them. Otherwise,
 it starts with the first root component in view. Pan to reach the rest, or use
 **Fit view** to see the whole drawing at a smaller scale. Interface and resource
-records stay in the panel. An arrow connects each recorded allowed
+records stay in the panel. In versions 1 and 2, an arrow connects each recorded allowed
 consumer to the component that owns the interface. It means the consumer may
 use that interface; it does not claim that a call occurs. Several consumers
 produce several arrows without increasing the owner's interface count.
@@ -93,7 +100,7 @@ transparent. Tab to an arrow to reveal its name; Enter or Space opens its detail
 Pointer and touch input can activate a curve directly without revealing a label
 first. Complete names and recorded details remain available through the lists.
 
-Choom draws an arc only when both its owner and allowed consumers are known.
+For versions 1 and 2, Choom draws an arc only when both its owner and allowed consumers are known.
 It does not infer consumers. A note identifies interfaces with missing endpoint
 facts; their full records remain in **Baseline details**. The reviewed
 `full.yaml` fixture has eight unknown consumer lists, so it shows the note and
