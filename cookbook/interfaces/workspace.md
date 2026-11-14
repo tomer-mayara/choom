@@ -85,10 +85,21 @@ interfaces they directly own. Counts exclude descendant and unknown owners.
 A parent has a border around its children and one small inspection header.
 Names can wrap to two lines in a bounded header. Accessible names and panel
 details keep the full text. ELK rectangle packing prepares the component overview.
-Interfaces and resources have no separate nodes. Interface arcs run
-from each recorded allowed consumer to the recorded owner. They show permission
-to use the interface, not observed calls. Each arc has the identity
-`(interface ID, consumer ID, owner ID)`. Repeated names, parallel permissions,
+Interfaces and resources have no separate nodes. In versions 1 and 2, interface
+arcs run from each recorded allowed consumer to the recorded owner. They show
+permission to use the interface, not observed calls.
+
+Version 3 uses only its saved source-use records. Application and tooling value
+references connect the directly mapped consumer to the interface owner when
+both are known. Type, test, unknown-context, and unmapped references create no
+canvas arrow. Several sites combine into one arc per interface and endpoints;
+all use records remain intact. Unknown permission does not hide a source arc.
+Missing source-use data produces no fallback to permission. The legend explains
+the file's one relationship meaning, including when no arrows are shown. Source
+inspection does not prove runtime execution.
+
+Each arc has the identity
+`(interface ID, consumer ID, owner ID)`. Repeated names, parallel interfaces,
 opposite directions, and an owner that is also a consumer remain distinct.
 Arcs attach to the actual component headers, including within nested groups.
 They follow the current arrangement without changing the prepared layout.
@@ -109,7 +120,7 @@ set says **No connections shown.** without claiming unknown or empty consumer
 facts. Keep the connection controls, legend, and empty-message space stable when
 the set changes. With no components, omit these controls and retain the lists.
 
-An interface with a null owner or null consumer list produces no arc. A note
+In versions 1 and 2, an interface with a null owner or null consumer list produces no arc. A note
 counts these interfaces once each and directs the user to Baseline details.
 The note also appears when there are no components. Interface details explain
 which endpoint facts are unknown and retain any known values. Labels use at

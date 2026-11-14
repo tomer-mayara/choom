@@ -242,7 +242,10 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           Show self-connections
         </label>
       </fieldset>
-      {baseline.formatVersion !== 3 ? <p>Arrow: consumer may use the owner's interface.</p> : null}
+      {baseline.formatVersion === 3 ? <div>
+        <p>Arrow: component uses the interface in saved source.</p>
+        <p>The canvas shows application and tooling value references. Type and test references stay in details. Source use does not prove runtime execution.</p>
+      </div> : <p>Arrow: consumer may use the owner's interface.</p>}
       <p style={{ visibility: edges.length ? "hidden" : "visible" }}>No connections shown.</p>
     </div>
     <div className="min-h-0 flex-1">

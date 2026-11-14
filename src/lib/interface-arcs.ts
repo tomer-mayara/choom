@@ -9,7 +9,21 @@ export interface InterfaceArc {
 }
 
 export function interfaceArcs(baseline: ReadonlyData<Baseline>): InterfaceArc[] {
-  if (baseline.formatVersion === 3) return [];
+  if (baseline.formatVersion === 3) {
+    const owners = new Map(baseline.interfaces.map((item) => [item.id, item.owner.value]));
+    const arcs = new Map<string, InterfaceArc>();
+    for (const assessment of baseline.sourceUsage?.assessments ?? []) {
+      const ownerId = owners.get(assessment.interfaceId);
+      if (ownerId === undefined || ownerId === null) continue;
+      for (const use of assessment.uses) {
+        if (use.consumerId === null || use.kind !== "value"
+          || (use.context !== "application" && use.context !== "tooling")) continue;
+        const id = JSON.stringify([assessment.interfaceId, use.consumerId, ownerId]);
+        if (!arcs.has(id)) arcs.set(id, { id, interfaceId: assessment.interfaceId, consumerId: use.consumerId, ownerId });
+      }
+    }
+    return [...arcs.values()];
+  }
   return baseline.interfaces.flatMap((item) => {
     const ownerId = item.owner.value;
     if (ownerId === null || item.allowedConsumers.value === null) return [];
