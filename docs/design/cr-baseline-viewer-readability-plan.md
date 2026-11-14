@@ -1,7 +1,7 @@
 # Baseline viewer readability plan
 
 Status: **BR-01 to BR-04, BR-07A to BR-07D, BR-08A to BR-08D, and
-BR-10A to BR-10F are merged. BR-11A to BR-11F are in implementation as a draft
+BR-10A to BR-10F are merged. BR-11A to BR-11F are implemented as a draft
 PR stack. BR-05 is superseded by the separate BR-09 graph design;
 BR-07 replaced BR-06.**
 
@@ -74,7 +74,7 @@ at once makes even this small model hard to read.
 | Merged | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
 | Merged | BR-08A to BR-08D | Selected connections, labels on demand, optional self-connections, and Fit/lifetime checks for the filtered view. |
 | Merged | BR-10A to BR-10F | Versioned interface documentation, saved signatures, examples, sources, and publication checks. |
-| In implementation | BR-11A to BR-11F | Source-consumer records, usage arrows, readable caller details, and supported external analysis/publication. |
+| Implemented; draft stack | BR-11A to BR-11F | Source-consumer records, usage arrows, readable caller details, and supported external analysis/publication. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
@@ -2518,10 +2518,11 @@ Keep these questions and records separate. Source inspection can establish a
 caller without establishing a full permission list or proving execution.
 
 The baseline-004 review found consumers for nine of its ten interfaces, while
-all ten permission policies remained unknown. The current app therefore draws
-no arrows. Changing those null policies to the caller lists would give the
-arrows a false meaning. Change the contract, viewer, and external producer
-together. Keep Choom a read-only, single-file viewer.
+all ten permission policies remained unknown. Before BR-11, the viewer used
+those policies for arrows, so this file showed no connections. Changing the
+null policies to caller lists would give the arrows a false meaning. BR-11
+changes the contract, viewer, and external producer together. Choom remains a
+read-only, single-file viewer.
 
 ### Version 3 contract
 
