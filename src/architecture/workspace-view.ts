@@ -1,11 +1,12 @@
-import type { Baseline } from "../domain/generated/contracts.ts";
+import type { Baseline, DuplicationReport } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { WorkflowOperations, WorkflowState } from "./generated/workflow.ts";
 
 export type LoadWorkflowSnapshot = ReadonlyData<{
   state: WorkflowState;
-  current: { baseline: Baseline; layout: ArchitectureLayout } | null;
+  current: { baseline: Baseline; layout: ArchitectureLayout; sha256: string } | null;
+  duplication: { report: DuplicationReport; session: number } | null;
 }>;
 
 type ViewOperations = {

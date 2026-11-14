@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState, type RefObject } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import type { InterfaceReadingState } from "./interface-reading-state.ts";
 
 export function revealInterfaceFocus(content: HTMLDivElement) {
   const active = content.ownerDocument.activeElement;
@@ -13,16 +14,20 @@ export function revealInterfaceFocus(content: HTMLDivElement) {
 }
 
 /** Each tab has one reading position for this mounted inspection frame. */
-export function useInterfaceTabs(content?: RefObject<HTMLDivElement | null>) {
-  const [tab, setTab] = useState("overview");
+export function useInterfaceTabs(content?: RefObject<HTMLDivElement | null>, reading?: InterfaceReadingState) {
+  const [tab, setTab] = useState(reading?.tab ?? "overview");
   const [reset, setReset] = useState(0);
-  const activeTab = useRef("overview");
-  const positions = useRef<Record<string, number>>({});
+  const activeTab = useRef(reading?.tab ?? "overview");
+  const positions = useRef<Record<string, number>>(reading?.positions ?? {});
+  useLayoutEffect(() => () => {
+    if (content?.current) positions.current[activeTab.current] = content.current.scrollTop;
+  }, [content]);
   function changeTab(next: string) {
     // Focus and mouse-down can request the same tab before both handlers return.
     if (next === activeTab.current) return;
     if (content?.current) positions.current[activeTab.current] = content.current.scrollTop;
     activeTab.current = next;
+    if (reading) reading.tab = next;
     setTab(next);
   }
   function resetExample() {

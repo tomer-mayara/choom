@@ -1,0 +1,10 @@
+[
+  {
+    "text": "\ufeffformatVersion: 1\r\nid: baseline-001\r\nparentId: null\r\ncomponents: []\r\ninterfaces: []\r\nresources: []\r\nrules: []\r\n",
+    "sha256": "fecce34957791401acb1f58390bc11ebf59e65f8a2b81a1173320aa1ebb9d475"
+  },
+  {
+    "text": "formatVersion: 1\nid: baseline-001\nparentId: null\ncomponents: []\ninterfaces: []\nresources: []\nrules: []\n",
+    "sha256": "2612597a1ddd2a1a01fcc9b3ca18ed3bffec6b5dce9cc5c6d5ed6284e68fb500"
+  }
+]

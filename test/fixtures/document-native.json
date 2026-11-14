@@ -7,6 +7,7 @@
     "outcome": {
       "status": "success",
       "text": "title: Atlas\n",
+      "sha256": "c5fdbf2bbaf908727733ba43d4194148993a9a65d93ab169b415b0fc139d7b37",
       "durationMs": 0
     }
   },

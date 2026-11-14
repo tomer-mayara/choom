@@ -1,5 +1,6 @@
-use super::model::{Code, MAX_PATH_BYTES, MAX_TEXT_BYTES};
+use super::model::{Code, MAX_PATH_BYTES, MAX_TEXT_BYTES, Text};
 use same_file::Handle;
+use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Read, Seek, SeekFrom},
@@ -140,15 +141,15 @@ impl OwnedFile {
         }
         Ok(())
     }
-    pub fn read(&mut self) -> Result<String, Code> {
+    pub fn read(&mut self) -> Result<Text, Code> {
         self.check()?;
-        let text = read_bounded(&mut self.file)?;
+        let document = read_bounded(&mut self.file)?;
         self.check()?;
-        Ok(text)
+        Ok(document)
     }
 }
 
-pub(crate) fn read_bounded(file: &mut File) -> Result<String, Code> {
+fn read_bounded(file: &mut File) -> Result<Text, Code> {
     let before = Stamp::read(file)?;
     if before.length > MAX_TEXT_BYTES as u64 {
         return Err(Code::LimitExceeded);
@@ -164,5 +165,7 @@ pub(crate) fn read_bounded(file: &mut File) -> Result<String, Code> {
     if Stamp::read(file)? != before || bytes.len() as u64 != before.length {
         return Err(Code::SourceChanged);
     }
-    String::from_utf8(bytes).map_err(|_| Code::InvalidUtf8)
+    let sha256 = format!("{:x}", Sha256::digest(&bytes));
+    let text = String::from_utf8(bytes).map_err(|_| Code::InvalidUtf8)?;
+    Ok(Text { text, sha256 })
 }

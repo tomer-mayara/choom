@@ -1,10 +1,11 @@
 name: architecture-model
-description: Validates saved baselines and supplies a starter baseline.
+description: Validates saved baselines and duplication assessments, and supplies a starter baseline.
 
 artifacts:
   behavior:
     - path: ../../cookbook/behavior/baseline-viewer/validation.feature
     - path: ../../cookbook/behavior/baseline-viewer/interface-documentation.feature
+    - path: ../../cookbook/behavior/baseline-viewer/duplication-report-codec.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
@@ -13,4 +14,6 @@ artifacts:
     # TypeSpec owns the structure; the runtime schema also checks IDs and references.
     - path: ../../cookbook/interfaces/baseline.tsp
     - path: ../../cookbook/interfaces/baseline-documentation.tsp
+    - path: ../../cookbook/interfaces/interface-duplication.tsp
+    - path: ../../cookbook/interfaces/interface-duplication.md
     - path: ../../cookbook/interfaces/baseline.md

@@ -195,6 +195,32 @@ and rule records mark them **Evidence not loaded**. Unknown values, omitted
 fields, and empty objects or lists stay distinct.
 Choom does not load referenced files or execute recorded checks.
 
+## Duplication review
+
+After opening a saved baseline, choose **Duplicates**, then **Open duplication
+report** (**Open report** in narrow windows). Select the report published by the external assessment. Its baseline
+ID, format version and SHA-256 must match the original baseline file bytes.
+Reformatting a baseline requires a new bound report. Browser file reading needs
+HTTPS or loopback for SHA-256; the desktop reader hashes the bytes locally.
+
+The list shows saved review status and coverage. Component and interface counts
+include directly related findings; **Show reviewed distinctions** also shows
+pairs whose differences justify keeping them separate. A comparison shows the
+overlap, differences, supported facts and evidence references. Structural
+similarity is not a measure of behavioral equivalence. **Inspect A/B** opens the
+interface, and entry-observation actions open the exact recorded entry. **Back**
+restores the previous reading position and filter.
+
+An invalid report leaves the current view and attachment intact. **Remove
+report** clears the attachment; it does not change either file. A successful
+baseline open starts a new session without a report. The example needs to be
+replaced by a saved baseline before a report can attach. The viewer does not run
+jscpd, fetch evidence or decide whether to consolidate interfaces.
+
+See the [report contract](cookbook/interfaces/interface-duplication.md),
+[assessment commands](docs/design/app-a/duplication-assessment.md), and
+[CR-002](docs/change-requests/CR-002-duplicated-interface-detection.md).
+
 ## Development commands
 
 | Command | Purpose |
@@ -302,6 +328,23 @@ Cucumber loads `test/steps`; its default/native profile excludes `@browser` and
 `@packaged`. `test:e2e` runs browser acceptance against a fresh production build.
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Failed browser scenarios retain screenshots and traces under `test-results/`.
+
+Run the duplication checks with:
+
+```sh
+node --test test/interface/duplication/*.test.mjs
+bun run test:behavior --tags '@interface-duplication or @duplication-report-codec or @di-02-03'
+bun test ./test/unit/architecture/duplication-workflow.test.ts ./test/unit/domain/interface-duplication.test.ts
+bun test ./test/interface/lib/interface-duplication-yaml.test.ts ./test/interface/lib/duplication-report-limits.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/interface-duplication.test.tsx ./test/unit/components/duplication-comparison.test.tsx ./test/unit/components/duplication-navigation.test.tsx
+bun run test:e2e --tags @interface-duplication
+bun run test:behavior:packaged --tags @interface-duplication
+```
+
+The producer interface tests also run in `check:contracts`. They execute the
+pinned detector on saved fixtures and use recorded review inputs; they do not
+call a model or prove the truth of a semantic judgment. Packaged checks require
+the native driver setup described below.
 
 The normal browser opening test uses the real app, file reader, decoder, layout,
 and component view. Controlled workflow tests cover failures, cancellation,

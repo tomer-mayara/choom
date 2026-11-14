@@ -1,0 +1,55 @@
+{
+  "formatVersion": 1,
+  "kind": "synthetic-source-producer-fixture",
+  "assessmentId": "producer-fixture-001",
+  "baseline": {
+    "path": "producer-baseline.yaml",
+    "sha256": "76deb8a8fc7cc3afce97a61ea9e2001e1bbb8497052e082f4baa512a954d9254"
+  },
+  "report": {
+    "path": "producer-review.yaml",
+    "sha256": "e44c4f8ac779ec62b6a5c71d82c6af8979b2691ebd34bd29047228e1aa65886c"
+  },
+  "fixtureBuilder": "../duplication-producer/fixture.mjs",
+  "reviewInputs": "../duplication-producer/review.mjs",
+  "snapshotInventorySha256": "e368fc736e2b4382f977f04bc27cd1c0522733d7c728ac9737caf165c9dad3a9",
+  "detector": {
+    "name": "jscpd",
+    "version": "5.4.2",
+    "binarySha256": "bfbed2a5f2d9846bb578c61c7a6edae5e35010aa7064194eea5f2315d69d05bc",
+    "profile": "javascript-typescript-ast-v1",
+    "status": "partial",
+    "counts": {
+      "examined": 7,
+      "excluded": null,
+      "unsupported": 1,
+      "helperOnly": 1,
+      "unmapped": 0
+    },
+    "accounting": {
+      "astCandidates": 3,
+      "tokenClones": 0,
+      "jsonAstLinks": 3,
+      "jsonTokenLinks": 0,
+      "examined": 7
+    }
+  },
+  "observed": {
+    "publicEndpoints": 21,
+    "comparisonGroups": 4,
+    "findings": 5,
+    "potentialRedundancy": 3,
+    "justifiedDistinction": 1,
+    "insufficientEvidence": 1,
+    "helperOnly": 1,
+    "unmapped": 0
+  },
+  "notes": [
+    "Constructed Step 1 input fixture, not evidence of baseline recovery accuracy.",
+    "Literal CLI start, collect, review and publish commands performed a real pinned scan and validated the saved report through the shared portable codec.",
+    "Worker and manager names inside the report label recorded synthetic review inputs; no live model was invoked.",
+    "Source review covers the five named comparisons. No remaining invoice pairs are inferred by transitivity.",
+    "The lookup target entry is entry on interface find; list is its earlier, separate List invoices entry.",
+    "The tool reported seven examined files from nine supported inventory files; unexplained exclusions remain unknown, so scan and publication are partial while recorded capability review is completed."
+  ]
+}

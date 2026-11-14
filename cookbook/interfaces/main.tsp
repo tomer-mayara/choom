@@ -4,3 +4,5 @@ import "./desktop.tsp";
 import "./workflow.tsp";
 import "./document-dialogs.tsp";
 import "./desktop-documents.tsp";
+import "./interface-duplication.tsp";
+import "./interface-duplication-codec.tsp";

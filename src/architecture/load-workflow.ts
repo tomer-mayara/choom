@@ -2,9 +2,10 @@ import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { BaselineDisplayLimitError, displayLimitMessage } from "../lib/baseline-display-limits.ts";
 import { decodeBaselineYaml } from "../lib/baseline-yaml.ts";
+import { decodeDuplicationReportYaml } from "../lib/interface-duplication-yaml.ts";
 import type { ReadDocumentTextOutcome } from "../platform/generated/contracts.ts";
 import type { WorkflowFailure, WorkflowOperations, WorkflowOutcome, WorkflowStage, WorkflowState } from "./generated/workflow.ts";
-import { ownCurrentView, ownOutcome, publishedSnapshot } from "./load-publication.ts";
+import { ownCurrentView, ownDuplication, ownOutcome, publishedSnapshot } from "./load-publication.ts";
 import type { LoadWorkflowSnapshot } from "./workspace-view.ts";
 
 /** A selected file remains readable for Retry; selection does not copy or write it. */
@@ -14,6 +15,7 @@ export interface SelectedBaseline {
 
 export interface LoadWorkflowDependencies {
   selectBaseline(signal: AbortSignal): Promise<SelectedBaseline | null>;
+  selectDuplicationReport?(signal: AbortSignal): Promise<SelectedBaseline | null>;
   layout(baseline: Baseline): Promise<ArchitectureLayout>;
 }
 
@@ -22,6 +24,8 @@ type WorkflowBindings = {
 };
 
 interface LoadOperation {
+  kind: WorkflowState["operation"];
+  baseline: LoadWorkflowSnapshot["current"];
   controller: AbortController;
   started: number;
   stage: WorkflowStage;
@@ -59,9 +63,11 @@ function cancellable<Value>(work: Promise<Value>, operation: LoadOperation): Pro
 /** Owns one load slot and atomically publishes a baseline with its prepared layout. */
 export class LoadWorkflow implements WorkflowBindings {
   private readonly listeners = new Set<() => void>();
-  private snapshot = publishedSnapshot({ phase: "idle", stage: null, lastOutcome: null });
+  private snapshot = publishedSnapshot({ operation: "baseline", phase: "idle", stage: null, lastOutcome: null });
   private active?: LoadOperation;
   private previousSelection?: SelectedBaseline;
+  private previousKind: WorkflowState["operation"] = "baseline";
+  private reportSession = 0;
   private attempted = false;
   private disposed = false;
 
@@ -73,10 +79,17 @@ export class LoadWorkflow implements WorkflowBindings {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
   };
-  readonly openBaseline = (): Promise<WorkflowOutcome> => this.start();
+  readonly openBaseline = (): Promise<WorkflowOutcome> => this.start("baseline");
+  readonly openDuplicationReport = (): Promise<WorkflowOutcome> => this.start("report");
+  readonly removeDuplicationReport = async (): Promise<WorkflowOutcome> => {
+    if (this.active?.kind === "report" && !this.active.committed) void this.cancel();
+    if (this.previousKind === "report") { this.previousSelection = undefined; this.attempted = false; }
+    this.publish({ ...this.snapshot.state, lastOutcome: null }, this.snapshot.current, null);
+    return ownOutcome({ status: "success", durationMs: 0 });
+  };
   readonly retry = (): Promise<WorkflowOutcome> => {
     if (!this.attempted) return Promise.resolve(ownOutcome(failed("selection", "no-previous-load", "There is no previous load to retry.", performance.now())));
-    return this.start(this.previousSelection);
+    return this.start(this.previousKind, this.previousSelection);
   };
   readonly cancel = (): Promise<WorkflowOutcome | null> => {
     const operation = this.active;
@@ -93,18 +106,20 @@ export class LoadWorkflow implements WorkflowBindings {
     await this.cancel();
   };
 
-  private start(selection?: SelectedBaseline): Promise<WorkflowOutcome> {
+  private start(kind: WorkflowState["operation"], selection?: SelectedBaseline): Promise<WorkflowOutcome> {
     if (this.disposed) return Promise.resolve(ownOutcome(failed("selection", "disposed", "This workspace has been closed.", performance.now())));
     if (this.active) return Promise.resolve(ownOutcome({ status: "busy", durationMs: 0 }));
     this.attempted = true;
     this.previousSelection = selection;
+    this.previousKind = kind;
     let complete: (outcome: WorkflowOutcome) => void = () => {};
     const completion = new Promise<WorkflowOutcome>((resolve) => { complete = resolve; });
     const operation: LoadOperation = {
+      kind, baseline: this.snapshot.current,
       controller: new AbortController(), started: performance.now(), stage: "selection", committed: false, completion, complete,
     };
     this.active = operation;
-    this.publish({ phase: "loading", stage: "selection", lastOutcome: null });
+    this.publish({ operation: kind, phase: "loading", stage: "selection", lastOutcome: null });
     void this.run(operation, selection).then((outcome) => this.finish(operation, outcome));
     return completion;
   }
@@ -112,8 +127,13 @@ export class LoadWorkflow implements WorkflowBindings {
   private async run(operation: LoadOperation, selection?: SelectedBaseline): Promise<WorkflowOutcome> {
     try {
       this.check(operation);
+      if (operation.kind === "report" && !operation.baseline) {
+        throw new LoadStopped(failed("selection", "no-baseline", "Open a saved baseline before opening a duplication report.", operation.started));
+      }
       // A native picker cannot be closed by an AbortSignal. Keep the slot until it returns.
-      const selected = selection ?? await this.dependencies.selectBaseline(operation.controller.signal);
+      const select = operation.kind === "baseline" ? this.dependencies.selectBaseline : this.dependencies.selectDuplicationReport;
+      if (!select) throw new LoadStopped(failed("selection", "unavailable", "Report file selection is unavailable.", operation.started));
+      const selected = selection ?? await select(operation.controller.signal);
       this.check(operation);
       if (!selected) throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
       this.previousSelection = selected;
@@ -122,23 +142,46 @@ export class LoadWorkflow implements WorkflowBindings {
       this.check(operation);
       if (read.status === "failure") throw new LoadStopped(failed("reading", read.code, read.message, operation.started));
       this.stage(operation, "validation");
-      const decoded = decodeBaselineYaml(read.text);
-      if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
-      this.stage(operation, "layout");
-      const layout = await cancellable(this.dependencies.layout(decoded.baseline), operation);
-      this.check(operation);
-      const current = ownCurrentView(decoded.baseline, layout);
-      this.check(operation);
-      operation.committed = true;
-      operation.outcome = ownOutcome({ status: "success", durationMs: elapsed(operation.started) });
-      this.publish({ ...this.snapshot.state, lastOutcome: operation.outcome }, current);
-      return operation.outcome;
+      return operation.kind === "baseline"
+        ? await this.loadBaseline(operation, read.text, read.sha256)
+        : this.loadReport(operation, read.text);
     } catch (error) {
       return error instanceof LoadStopped ? error.outcome
         : operation.controller.signal.aborted ? { status: "cancelled", durationMs: elapsed(operation.started) }
           : error instanceof BaselineDisplayLimitError ? failed(operation.stage, "display-limit", displayLimitMessage, operation.started)
-            : failed(operation.stage, "operation-failed", `The baseline ${operation.stage} operation could not complete.`, operation.started);
+            : failed(operation.stage, "operation-failed", `The ${operation.kind} ${operation.stage} operation could not complete.`, operation.started);
     }
+  }
+
+  private async loadBaseline(operation: LoadOperation, text: string, sha256: string): Promise<WorkflowOutcome> {
+    const decoded = decodeBaselineYaml(text);
+    if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
+    this.stage(operation, "layout");
+    const layout = await cancellable(this.dependencies.layout(decoded.baseline), operation);
+    this.check(operation);
+    const current = ownCurrentView(decoded.baseline, layout, sha256);
+    this.check(operation);
+    const outcome = this.commit(operation);
+    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, current, null);
+    return outcome;
+  }
+
+  private loadReport(operation: LoadOperation, text: string): WorkflowOutcome {
+    const current = operation.baseline;
+    if (!current || current !== this.snapshot.current) throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
+    const decoded = decodeDuplicationReportYaml(text, current.baseline, current.sha256);
+    if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
+    const duplication = ownDuplication(decoded.report, ++this.reportSession);
+    this.check(operation);
+    const outcome = this.commit(operation);
+    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, current, duplication);
+    return outcome;
+  }
+
+  private commit(operation: LoadOperation): WorkflowOutcome {
+    operation.committed = true;
+    operation.outcome = ownOutcome({ status: "success", durationMs: elapsed(operation.started) });
+    return operation.outcome;
   }
 
   private check(operation: LoadOperation): void {
@@ -158,13 +201,13 @@ export class LoadWorkflow implements WorkflowBindings {
     const owned = ownOutcome(outcome);
     if (this.active === operation) {
       this.active = undefined;
-      this.publish({ phase: "idle", stage: null, lastOutcome: owned });
+      this.publish({ operation: operation.kind, phase: "idle", stage: null, lastOutcome: owned });
     }
     operation.complete(owned);
   }
 
-  private publish(state: WorkflowState, current = this.snapshot.current): void {
-    this.snapshot = publishedSnapshot(state, current);
+  private publish(state: WorkflowState, current = this.snapshot.current, duplication = this.snapshot.duplication): void {
+    this.snapshot = publishedSnapshot(state, current, duplication);
     for (const listener of [...this.listeners]) {
       try { listener(); } catch {
         // A view observer cannot interrupt the load or take ownership of its result.

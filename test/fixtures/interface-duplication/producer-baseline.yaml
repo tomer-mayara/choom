@@ -1,0 +1,536 @@
+formatVersion: 2
+id: fixture-baseline
+parentId: null
+components:
+  - id: billing
+    name: Billing
+    purpose:
+      value: Invoice capabilities
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    membership:
+      value:
+        paths:
+          - lookup.ts
+          - alternative.ts
+          - safe-name.ts
+          - safe-path.ts
+          - private.ts
+          - types.ts
+          - unsupported.rs
+          - .jscpd.cjs
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    groupingReason:
+      value: Fixture
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+  - id: load-state
+    name: Load state
+    purpose:
+      value: Notify load state observers; isolate observer exceptions
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    membership:
+      value:
+        paths:
+          - observer.ts
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    groupingReason:
+      value: Independent load state owner
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+  - id: geometry-state
+    name: Geometry state
+    purpose:
+      value: Notify position observers; propagate failures
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    membership:
+      value:
+        paths:
+          - geometry.ts
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    groupingReason:
+      value: Independent position state owner
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+interfaces:
+  - id: find
+    name: find
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - lookup.ts#listInvoices
+        - lookup.ts#findInvoice
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: list
+          name: List invoices
+          accessPoint: lookup.ts#listInvoices
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: Return all fixture invoices.
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+        - id: entry
+          name: find
+          accessPoint: lookup.ts#findInvoice
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: alias
+    name: alias
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - lookup.ts#lookupInvoice
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: alias
+          accessPoint: lookup.ts#lookupInvoice
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: wrapper
+    name: wrapper
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - lookup.ts#getInvoice
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: wrapper
+          accessPoint: lookup.ts#getInvoice
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: alternative
+    name: alternative
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - alternative.ts#lookup
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: alternative
+          accessPoint: alternative.ts#lookup
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: observer
+    name: observer
+    owner:
+      value: load-state
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - observer.ts#subscribe
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: observer
+          accessPoint: observer.ts#subscribe
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: geometry
+    name: geometry
+    owner:
+      value: geometry-state
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - geometry.ts#subscribe
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: geometry
+          accessPoint: geometry.ts#subscribe
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: safe-name
+    name: safe-name
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - safe-name.ts#safeName
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: safe-name
+          accessPoint: safe-name.ts#safeName
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: safe-path
+    name: safe-path
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - safe-path.ts#safePath
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: safe-path
+          accessPoint: safe-path.ts#safePath
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: invoice-type
+    name: invoice-type
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - types.ts#Invoice
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: invoice-type
+          accessPoint: types.ts#Invoice
+          kind:
+            value: type
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+  - id: fields
+    name: fields
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    publicAccess:
+      value:
+        - types.ts#fieldNames
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - fixture-source
+    documentation:
+      summary:
+        value: null
+        status: proposed
+        evidenceRefs:
+          - fixture-source
+      sourceNotes: []
+      entries:
+        - id: entry
+          name: fields
+          accessPoint: types.ts#fieldNames
+          kind:
+            value: data
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          description:
+            value: null
+            status: proposed
+            evidenceRefs:
+              - fixture-source
+          examples: []
+resources: []
+rules: []

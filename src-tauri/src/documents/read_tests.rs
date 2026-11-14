@@ -45,6 +45,23 @@ fn selected_reads_preserve_empty_unicode_and_maximum_utf8_bytes() {
 }
 
 #[test]
+fn selected_reads_count_the_utf8_bom_against_the_byte_limit() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("baseline.yaml");
+    let text = format!("\u{feff}{}", "a".repeat(MAX_TEXT_BYTES - 3));
+    fs::write(&path, &text).unwrap();
+    let outcome = fixture.read(json!({"path":path}));
+    assert_eq!(outcome["status"], "success");
+    assert_eq!(outcome["text"].as_str().unwrap().len(), MAX_TEXT_BYTES);
+    assert_eq!(
+        outcome["sha256"],
+        "437d127cb8797f8b7132e79138729a1f1d10b1b95dbd86fb29395d4c92229f3e"
+    );
+    fs::write(&path, text + "a").unwrap();
+    assert_eq!(fixture.read(json!({"path":path}))["code"], "limit-exceeded");
+}
+
+#[test]
 fn selected_read_failures_keep_their_safe_wire_contract() {
     let fixture = Fixture::new();
     let path = fixture.0.join("baseline.yaml");
@@ -102,7 +119,7 @@ fn selected_reads_reject_replaced_file_identity_without_changing_either_file() {
     let mut file = OwnedFile::existing(Directory::open(&fixture.0).unwrap(), path.clone()).unwrap();
     fs::rename(&path, &moved).unwrap();
     fs::write(&path, "replacement").unwrap();
-    assert_eq!(file.read(), Err(Code::SourceChanged));
+    assert!(matches!(file.read(), Err(Code::SourceChanged)));
     assert_eq!(fs::read_to_string(&path).unwrap(), "replacement");
     assert_eq!(fs::read_to_string(&moved).unwrap(), "original");
 }
@@ -121,7 +138,7 @@ fn selected_reads_reject_replaced_directory_identity_with_the_same_file() {
     fs::rename(&directory, fixture.0.join("moved")).unwrap();
     fs::create_dir(&directory).unwrap();
     fs::rename(&held, &path).unwrap();
-    assert_eq!(file.read(), Err(Code::SourceChanged));
+    assert!(matches!(file.read(), Err(Code::SourceChanged)));
     assert_eq!(fs::read_to_string(&path).unwrap(), "original");
 }
 

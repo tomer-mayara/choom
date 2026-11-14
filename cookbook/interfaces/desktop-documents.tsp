@@ -10,6 +10,11 @@ namespace Choom.Desktop;
 @maxLength(16777216)
 scalar documentFileText extends string;
 
+@minLength(64)
+@maxLength(64)
+@pattern("^[a-f0-9]{64}$")
+scalar documentFileDigest extends string;
+
 @minLength(1)
 @maxLength(4096)
 scalar documentFilePath extends string;
@@ -54,6 +59,9 @@ model DocumentNativeFailure {
 model ReadDocumentText {
   status: "success";
   text: documentFileText;
+
+  // SHA-256 of the bounded file bytes before UTF-8 decoding.
+  sha256: documentFileDigest;
 
   @minValue(0)
   durationMs: float64;

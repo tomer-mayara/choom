@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { stringify } from "yaml";
 import { componentControlHeight } from "../../src/lib/component-geometry.ts";
 import type { Baseline } from "../../src/domain/generated/contracts.ts";
@@ -12,7 +13,12 @@ export function pending<Value>() {
 }
 
 export function selectedBaseline(baseline: Baseline = baselineExample()): SelectedBaseline {
-  return { read: async () => ({ status: "success", text: stringify(baseline), durationMs: 0 }) };
+  return selectedBaselineText(stringify(baseline));
+}
+
+export function selectedBaselineText(text: string): SelectedBaseline {
+  const sha256 = createHash("sha256").update(text).digest("hex");
+  return { read: async () => ({ status: "success", text, sha256, durationMs: 0 }) };
 }
 
 export function baselineWorkflowDependencies(): LoadWorkflowDependencies {

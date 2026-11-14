@@ -1,7 +1,6 @@
 import { expectInstalledInterfaceRecord, readInstalledInterfaceRecord } from "./installed-interface-record.ts";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import { readdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -12,6 +11,7 @@ import { expectInstalledUnknownConsumers, inspectAndArrangeInstalledArcs } from 
 import { inspectInstalledArcOpens } from "./installed-arc-files.ts";
 import type { Baseline } from "../../../src/domain/generated/contracts.ts";
 import { inspectInstalledDocumentation, type InstalledDocumentationTask } from "./published-interface-installed.ts";
+import { captureInstalledView, readInstalledView } from "./installed-view.ts";
 
 const run = promisify(execFile);
 
@@ -59,7 +59,7 @@ function environment(name: string): string {
   return value;
 }
 
-async function waitFor(check: () => Promise<boolean>, message: string, timeout = 10_000): Promise<void> {
+export async function waitFor(check: () => Promise<boolean>, message: string, timeout = 10_000): Promise<void> {
   const deadline = Date.now() + timeout;
   do {
     if (await check()) return;
@@ -158,11 +158,15 @@ export class InstalledBaselineDriver {
   }
 
   async openBaseline(path: string | null): Promise<void> {
-    const action = this.session().$("//button[normalize-space(.)='Open Baseline']");
+    await this.selectFile("Open Baseline", path);
+  }
+
+  async selectFile(label: "Open Baseline" | "Open duplication report", path: string | null): Promise<void> {
+    const action = this.session().$(`//button[@aria-label='${label}' or (not(@aria-label) and normalize-space(.)='${label}')]`);
     assert.equal(await action.isExisting(), true,
-      "The loaded installed application must expose Open Baseline before the user can select a baseline file.");
-    assert.equal(await action.isDisplayed(), true, "Open Baseline must be visible");
-    assert.equal(await action.isEnabled(), true, "Open Baseline must be enabled");
+      `The loaded installed application must expose ${label} before the user can select a file.`);
+    assert.equal(await action.isDisplayed(), true, `${label} must be visible`);
+    assert.equal(await action.isEnabled(), true, `${label} must be enabled`);
     const previous = new Set(await this.applicationWindows());
     await action.click();
     let dialog = "";
@@ -171,7 +175,7 @@ export class InstalledBaselineDriver {
       assert.ok(candidates.length <= 1, "More than one native dialog appeared for the installed app");
       dialog = candidates[0] ?? "";
       return Boolean(dialog);
-    }, "Open Baseline did not open a native GTK picker");
+    }, `${label} did not open a native GTK picker`);
     await xdo(["windowfocus", "--sync", dialog]);
     if (path === null) {
       await xdo(["key", "--clearmodifiers", "Escape"]);
@@ -184,6 +188,25 @@ export class InstalledBaselineDriver {
     }
     await waitFor(async () => !(await this.applicationWindows()).includes(dialog),
       "The native GTK picker did not close after selection or cancellation");
+  }
+
+  async clickControl(selector: string, label: string): Promise<void> {
+    const control = this.session().$(selector);
+    assert.equal(await control.isDisplayed(), true, `${label} must be visible in the installed viewer`);
+    await control.click();
+  }
+
+  async panel() {
+    return this.diagramState();
+  }
+
+  async selectedEntry(): Promise<string | null> {
+    const entry = this.session().$('[role="dialog"] [aria-label="Entry points"] button[aria-pressed="true"]');
+    return entry.getAttribute("aria-label");
+  }
+
+  async capture(label: string): Promise<void> {
+    await captureInstalledView(this.session(), this.world, environment("CHOOM_PACKAGED_EVIDENCE_DIR"), label);
   }
 
   async expectBaseline(id: string, components: ReadonlyArray<readonly [string, string]>): Promise<void> {
@@ -277,7 +300,7 @@ export class InstalledBaselineDriver {
         panelText: panel?.innerText.trim() ?? "",
         panelModal: panel?.getAttribute("aria-modal") ?? null,
         focusedNode: document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id") ?? null,
-        focusedRecord: document.activeElement?.getAttribute("data-record-id") ?? null,
+        focusedRecord: document.activeElement?.getAttribute("data-record-id") ?? document.activeElement?.getAttribute("data-finding-id") ?? null,
       };
     });
   }
@@ -491,23 +514,7 @@ export class InstalledBaselineDriver {
 
   async expectUnknownConsumers(): Promise<void> { await expectInstalledUnknownConsumers(this.session()); }
 
-  async view() {
-    return this.session().execute(() => {
-      const visibleText = (node: HTMLElement) => node.getClientRects().length > 0 && getComputedStyle(node).visibility === "visible"
-        ? node.innerText.trim() : "";
-      return {
-        headings: Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3"), visibleText),
-        nodes: Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]"),
-          (node) => ({ id: node.getAttribute("data-id") ?? "", text: visibleText(node) })),
-        edges: Array.from(document.querySelectorAll(".react-flow__edge"), (edge) => ({
-          label: edge.getAttribute("aria-label"), arrow: Boolean(edge.querySelector(".react-flow__edge-path[marker-end]")),
-        })),
-        buttons: Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (node) => node.innerText.trim()),
-        alerts: Array.from(document.querySelectorAll<HTMLElement>('[role="alert"]'), visibleText),
-        statuses: Array.from(document.querySelectorAll<HTMLElement>('[role="status"]'), visibleText),
-      };
-    });
-  }
+  async view() { return readInstalledView(this.session()); }
 
   async requestRetiredCommand(command: string): Promise<
     { status: "resolved"; value: unknown } | { status: "rejected"; message: string }
@@ -529,11 +536,7 @@ export class InstalledBaselineDriver {
     const browser = this.browser;
     if (!browser) return;
     try {
-      const prefix = join(environment("CHOOM_PACKAGED_EVIDENCE_DIR"), randomUUID());
-      const image = Buffer.from(await browser.takeScreenshot(), "base64");
-      await writeFile(`${prefix}.png`, image);
-      await writeFile(`${prefix}.html`, await browser.getPageSource());
-      await this.world.attach(image, "image/png");
+      await this.capture("final-view");
     } finally {
       this.browser = undefined;
       this.processId = undefined;

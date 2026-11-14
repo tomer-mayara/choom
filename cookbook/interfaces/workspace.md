@@ -26,21 +26,51 @@ picker. A cancelled read or layout may finish later. Its handlers remain
 attached, and its result cannot replace a newer baseline. Cancellation after a
 commit does not reverse that commit.
 
+**Open duplication report** uses the same load slot after a saved baseline is
+open. The reader returns SHA-256 of the original bytes before UTF-8 decoding.
+The workspace retains the baseline digest and binds the report to its ID,
+format version, digest and current view session. Successful attachment changes
+only the separate report value; the baseline/layout object and manual canvas
+arrangement retain their identity. The built-in example has no selected-file
+digest and cannot attach a report.
+
+Invalid reports, cancelled loads and late results cannot replace the current
+attachment. A successful report replacement starts a new report-navigation
+session. A successful baseline open clears the attachment, even when IDs repeat;
+a failed baseline open preserves it. **Remove report** clears the attachment,
+invalidates pending report results and clears report-specific retry state. It
+does not write either file or cancel a baseline load.
+
 **Retry** rereads the resolved selection when available. If selection itself
 failed, Retry opens the picker again. A browser File that is no longer readable
-produces safe guidance to use Open Baseline and select the file again. Native
+produces safe guidance to select the corresponding baseline or report again.
+Retry keeps the selected operation kind; a report retry cannot open a baseline. Native
 and browser input errors retain useful codes and safe messages. Unexpected
 exceptions produce a bounded stage-specific error without raw paths or text.
 
 ## Publication and rendering
 
 [workspace-view.ts](../../src/architecture/workspace-view.ts) exposes Open
-Baseline, Cancel, Retry, subscriptions, and snapshot queries. Disposal stays
+Baseline, Open duplication report, Remove report, Cancel, Retry, subscriptions,
+and snapshot queries. Disposal stays
 with the owner. The workflow copies and deeply freezes each baseline and layout
 before publication, including recursive rule JSON, statement lists, and positions.
 It does not freeze references held by collaborators. Repeated snapshot reads
 are stable; later progress reuses the current baseline and layout.
 Subscription changes during notification do not repeat the same notification.
+Reports are also copied and deeply frozen before publication. The
+[report contract](interface-duplication.md) defines bounds and binding rules.
+
+Duplicates uses the existing inspector. Finding counts include directly owned
+interfaces and exclude justified distinctions. Unknown-owner findings remain
+available in the global list. A comparison opens normal interface details;
+entry observations select their exact recorded entry. Each navigation frame
+owns its filter, tab, entry, disclosures, scroll and return focus. Back restores
+that frame and its connection scope. Direct canvas selection starts a new path.
+Removing a report while on its path opens the empty Duplicates panel and focuses
+Open duplication report. An unrelated interface inspection keeps its position.
+Report attachment and inspection do not run layout, move components, fit the
+camera or add connection arcs.
 
 [layoutBaseline](../../src/lib/architecture-layout.ts) prepares a flat component
 node list for React Flow, with all recorded groups expanded. Each node has its saved ID,

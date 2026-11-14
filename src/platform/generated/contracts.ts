@@ -2,6 +2,7 @@
 
 export interface BaselineDialogOperations {
   selectBaselineFile(): BaselineFileSelection;
+  selectDuplicationReportFile(): BaselineFileSelection;
 }
 
 export type BaselineFileSelection = string | null;
@@ -35,10 +36,13 @@ export interface ReadDocumentFileRequest {
 export interface ReadDocumentText {
   status: "success";
   text: documentFileText;
+  sha256: documentFileDigest;
   durationMs: number;
 }
 
 export type ReadDocumentTextOutcome = ReadDocumentText | DocumentNativeFailure;
+
+export type documentFileDigest = string;
 
 export type documentFilePath = string;
 

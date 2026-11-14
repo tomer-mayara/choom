@@ -12,6 +12,7 @@ const workflow = "src/architecture/load-workflow.ts";
 const workspace = "src/architecture/workspace.ts";
 const publication = "src/architecture/load-publication.ts";
 const codec = "src/lib/baseline-yaml.ts";
+const reportCodec = "src/lib/interface-duplication-yaml.ts";
 const parser = "src/lib/architecture-yaml/parse.ts";
 const layout = "src/lib/architecture-layout.ts";
 const domain = "src/domain/baseline.ts";
@@ -38,6 +39,7 @@ const allowed: readonly Probe[] = [
   [view, "src/domain/readonly-data.ts", "type"],
   [workflow, platformContracts, "type"],
   [workflow, codec, "runtime"],
+  [workflow, reportCodec, "runtime"],
   [workflow, layout, "type"],
   [workflow, publication, "runtime"],
   [publication, "src/domain/generated/contracts.ts", "type"],
@@ -45,6 +47,8 @@ const allowed: readonly Probe[] = [
   [layout, "node_modules/elkjs/index.js", "runtime"],
   [diagram, layout, "type"],
   [codec, parser, "runtime"],
+  [reportCodec, parser, "runtime"],
+  [reportCodec, "src/domain/interface-duplication.ts", "runtime"],
   [codec, domain, "runtime"],
   [codec, "src/lib/generated/contracts.ts", "type"],
   [parser, "node_modules/yaml/index.js", "runtime"],
@@ -79,11 +83,14 @@ const forbidden: readonly Probe[] = [
   [codec, "src/platform/documents.ts", "runtime", codecBoundary],
   [codec, workspace, "type", codecBoundary],
   [codec, "node:fs", "runtime", codecBoundary],
+  [reportCodec, "node:fs", "runtime", codecBoundary],
+  [reportCodec, "src/platform/documents.ts", "runtime", codecBoundary],
   [parser, layout, "type", codecBoundary],
   [parser, "node_modules/elkjs/index.js", "runtime", codecBoundary],
   ["src/lib/generated/contracts.ts", "src/platform/documents.ts", "type", codecBoundary],
   [domain, "node_modules/yaml/index.js", "runtime", "domain-is-platform-independent"],
   [workspace, "node_modules/dependency-cruiser/index.js", "runtime", analyzerBoundary],
+  [workspace, "node_modules/jscpd/index.js", "runtime", analyzerBoundary],
   [workflow, "node_modules/ts-morph/index.js", "type", analyzerBoundary],
   [layout, "src/App.tsx", "type", "libraries-do-not-depend-on-ui-or-platform"],
   [controls, "src/App.tsx", "runtime", "components-do-not-import-app-entrypoints"],

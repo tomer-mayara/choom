@@ -6,17 +6,17 @@ import { LoadWorkflow, type SelectedBaseline } from "../../../src/architecture/l
 import type { LoadWorkflowSnapshot, WorkflowView } from "../../../src/architecture/workspace-view.ts";
 import type { Baseline } from "../../../src/domain/generated/contracts.ts";
 import type { ReadonlyData } from "../../../src/domain/readonly-data.ts";
-import { baselineWorkflowDependencies, pending, selectedBaseline } from "../../support/baseline-workflow-fixtures.ts";
+import { baselineWorkflowDependencies, pending, selectedBaseline, selectedBaselineText } from "../../support/baseline-workflow-fixtures.ts";
 
 const schema = new Ajv2020({ schemas: [contracts] });
 const validateState = schema.compile({ $ref: "WorkflowState.json" });
 const validateOutcome = schema.compile({ $ref: "WorkflowOutcome.json" });
 type AsyncOperations = { [Name in keyof WorkflowOperations]: () => Promise<ReturnType<WorkflowOperations[Name]>> };
 
-test("the view binds only the baseline commands and deeply read-only observations", () => {
+test("the view binds read-only baseline and report commands with immutable observations", () => {
   expectTypeOf<LoadWorkflow>().toExtend<AsyncOperations>();
   expectTypeOf<LoadWorkflow>().toExtend<WorkflowView>();
-  expectTypeOf<keyof WorkflowView>().toEqualTypeOf<"openBaseline" | "cancel" | "retry" | "getSnapshot" | "subscribe">();
+  expectTypeOf<keyof WorkflowView>().toEqualTypeOf<"openBaseline" | "openDuplicationReport" | "removeDuplicationReport" | "cancel" | "retry" | "getSnapshot" | "subscribe">();
   type Current = NonNullable<LoadWorkflowSnapshot["current"]>;
   expectTypeOf<Current["baseline"]>().toEqualTypeOf<ReadonlyData<Baseline>>();
   expectTypeOf<Current["layout"]["nodes"][number]["position"]>().toEqualTypeOf<{ readonly x: number; readonly y: number }>();
@@ -37,7 +37,7 @@ test("emitted states and success, busy, cancellation, and failure follow the gen
   await cancel;
   dependencies.selectBaseline = async () => selectedBaseline();
   const success = await workflow.openBaseline();
-  dependencies.selectBaseline = async () => ({ read: async () => ({ status: "success", text: "formatVersion: 2", durationMs: 0 }) });
+  dependencies.selectBaseline = async () => selectedBaselineText("formatVersion: 2");
   const failure = await workflow.openBaseline();
   for (const outcome of [busy, cancelled, success, failure]) expect(validateOutcome(outcome)).toBe(true);
   for (const state of states) expect(validateState(state)).toBe(true);
