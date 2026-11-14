@@ -87,6 +87,13 @@ consumer to the component that owns the interface. It means the consumer may
 use that interface; it does not claim that a call occurs. Several consumers
 produce several arrows without increasing the owner's interface count.
 
+Version 3 instead draws saved source use from each consumer to the interface's
+provider. It includes value references in application and tooling code when
+both components are known. Several sites for the same interface and endpoints
+produce one arrow. Type, test, unknown-context, and unmapped references remain
+in the saved data. A source arrow does not establish permission or execution.
+Without source-use data, version 3 shows no arrows inferred from permission.
+
 **Connections: Selected** is the default. The initial view has no arrows.
 Select a component to show only arrows where it is the consumer or owner.
 Selecting a parent does not include connections only between its children.

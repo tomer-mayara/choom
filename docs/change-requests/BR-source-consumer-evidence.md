@@ -31,6 +31,10 @@ Completed A checks:
   scenarios / 150 steps, and 51 interface tests passed. Lint, cookbook links,
   generated contracts, types, dependency rules, unused-code and duplication
   checks also passed.
+- A plus the affected BR-07/08/10 browser regressions: 190 scenarios / 1,393
+  steps passed.
+- PR #43 CI passed web and all three desktop jobs, including installed Linux
+  acceptance, at commit `60ae8c402c876d5cfffa4660cd6891d8caac4f6b`.
 - Contract generation, `bun run check-types`, frontend build, whitespace, and
   `bun run habit-hooks --all` passed. The snooze file remains empty.
 - Manager review checked the complete A production and test diff, including
@@ -42,3 +46,35 @@ OpenSLO definitions unchanged. Contract and feature artifacts are linked from
 the existing component manifests. Human approval of changed constraints remains
 part of review before merge. These checks do not establish an installed-app
 journey; F records that assembled route.
+
+
+## BR-11B — Source connections
+
+The first browser acceptance failed at the new source arrow: expected one,
+received zero. Focused unit and DOM tests then failed for the missing projection
+and legend. Legacy permission cases already passed and remain characterization.
+
+Version 3 now draws only application and tooling value references whose consumer
+and provider are known. Repeated sites combine by interface and direct endpoints.
+Other records stay intact. Unknown permission does not suppress source use, and
+missing source data does not cause a fallback to permission. Versions 1/2 keep
+their earlier arrow meaning. The legend states the meaning for the open version.
+
+Completed B checks:
+
+- Focused native tests: 18 passed, including existing arc tests. Focused DOM
+  tests: three passed, including the existing reading behavior.
+- Browser Cucumber: 10 scenarios / 89 steps passed through Open Baseline.
+  Coverage includes repeated sites, different permission, omitted references,
+  legacy versions, unknown callers, self-use, movement, Fit, and replacement.
+- B plus the affected BR-07/08 browser regressions: 117 scenarios / 915 steps
+  passed.
+- Full `bun run check`: 332 native tests, 215 DOM tests, 49 native Cucumber
+  scenarios / 150 steps, and 51 interface tests passed. Types, generated
+  contracts, lint, dependency rules, links, unused code, and duplication passed.
+- The frontend/browser build and `bun run habit-hooks --all` passed. No finding
+  was snoozed. Manager review checked the complete B production and test diff.
+
+The first green browser attempt exposed an incorrect test locator (`Fit view`).
+It was corrected to the existing accessible label (`Fit View`); no application
+change was needed. Later acceptance runs use the corrected locator.
