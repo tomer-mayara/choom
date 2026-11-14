@@ -1,0 +1,126 @@
+{
+  "kind": "interface-duplication-review",
+  "formatVersion": 1,
+  "id": "illustrative-duplication-review",
+  "runRef": "illustrative-assessment-run",
+  "createdAt": "2026-11-13T00:00:00Z",
+  "producer": {
+    "name": "illustrative-fixture",
+    "version": "1"
+  },
+  "baseline": {
+    "id": "baseline-002",
+    "formatVersion": 1,
+    "sha256": "da2c0800e21354f5e161ee0eeeff3fb418a50b6b4d36e546272cc2e2333bfe32"
+  },
+  "snapshot": {
+    "id": "illustrative-snapshot",
+    "inventorySha256": "0680a8ba033adf96a4cf0603b50f6851f9d895e446b733d40f10552bcdc3d861"
+  },
+  "scan": {
+    "status": "skipped",
+    "profile": "illustrative-source-review",
+    "tool": {
+      "name": "jscpd",
+      "version": "5.4.2"
+    },
+    "counts": {
+      "examined": null,
+      "excluded": null,
+      "unsupported": null,
+      "helperOnly": 0,
+      "unmapped": 0
+    },
+    "scopeRefs": [
+      "illustrative-scope"
+    ],
+    "diagnostics": [
+      "Illustrative viewer fixture: no source scan was executed."
+    ],
+    "mappingGaps": [],
+    "evidenceRefs": [
+      "illustrative-scope"
+    ]
+  },
+  "review": {
+    "status": "completed",
+    "inspected": 1,
+    "pending": 0,
+    "scopeRefs": [
+      "illustrative-scope"
+    ],
+    "gaps": [
+      "This fixture illustrates presentation only and establishes no redundancy in Choom."
+    ]
+  },
+  "findings": [
+    {
+      "id": "illustrative-file-access",
+      "kind": "interface-pair",
+      "endpoints": [
+        {
+          "interfaceId": "interface-document-files",
+          "evidenceRefs": [
+            "illustrative-mapping-document-files"
+          ]
+        },
+        {
+          "interfaceId": "interface-platform",
+          "evidenceRefs": [
+            "illustrative-mapping-platform"
+          ]
+        }
+      ],
+      "observations": [
+        {
+          "origin": "source-review",
+          "endpoints": [
+            {
+              "interfaceId": "interface-document-files",
+              "evidenceRefs": [
+                "illustrative-mapping-document-files"
+              ]
+            },
+            {
+              "interfaceId": "interface-platform",
+              "evidenceRefs": [
+                "illustrative-mapping-platform"
+              ]
+            }
+          ],
+          "score": null,
+          "method": "illustrative-source-review",
+          "toolVersion": null,
+          "evidenceRefs": [
+            "illustrative-overlap-evidence"
+          ]
+        }
+      ],
+      "status": "potential-redundancy",
+      "overlap": "Illustrative overlap: two public operations read a selected document.",
+      "differences": [
+        "Illustrative difference: the operations expose different transport boundaries."
+      ],
+      "rationale": "Illustrative review only. This fixture does not claim that these Choom interfaces are redundant.",
+      "gaps": [],
+      "facts": [],
+      "evidenceRefs": [
+        "illustrative-overlap-evidence"
+      ],
+      "counterevidenceRefs": [
+        "illustrative-difference-evidence"
+      ],
+      "sources": [],
+      "review": {
+        "worker": "illustrative-worker",
+        "model": "fixture",
+        "settingsRef": "illustrative-settings",
+        "manager": "illustrative-manager",
+        "reviewedAt": "2026-11-13T00:00:00Z",
+        "decisionRefs": [
+          "illustrative-decision"
+        ]
+      }
+    }
+  ]
+}

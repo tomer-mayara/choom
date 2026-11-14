@@ -19,6 +19,7 @@ import { ArchitectureDetailsPanel } from "./architecture-inspector.tsx";
 import { useArchitectureInspection } from "./use-architecture-inspection.ts";
 import { useComponentGestures, type ComponentGestures } from "./use-component-gestures.ts";
 import { Button } from "./ui/button.tsx";
+import { duplicationCounts, type DuplicationControls } from "./duplication-view.ts";
 import "@xyflow/react/dist/style.css";
 
 type ArchitectureNode = Node<{
@@ -26,6 +27,7 @@ type ArchitectureNode = Node<{
   panel: ArchitecturePanel;
   isGroup: boolean;
   interfaceCount: number;
+  duplicateCount: number;
   selected: boolean;
   gestures: ComponentGestures;
   announce: (message: string) => void;
@@ -36,7 +38,7 @@ const arrowSteps: Record<string, { x: number; y: number }> = {
   ArrowLeft: { x: -10, y: 0 }, ArrowRight: { x: 10, y: 0 }, ArrowUp: { x: 0, y: -10 }, ArrowDown: { x: 0, y: 10 },
 };
 
-function ItemCard({ data: { item, panel, isGroup, interfaceCount, inspect, selected, gestures, announce } }: NodeProps<ArchitectureNode>) {
+function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount, inspect, selected, gestures, announce } }: NodeProps<ArchitectureNode>) {
   const { getNodesBounds, getViewport, setViewport, screenToFlowPosition } = useReactFlow();
   const store = useStoreApi();
   const pointerSelection = useRef(false);
@@ -98,6 +100,7 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, inspect, selec
       >
         <span className="line-clamp-2 max-w-full font-semibold leading-5 wrap-anywhere" title={item.name}>{item.name}</span>
         <span className="text-xs text-muted-foreground">{interfaceCount} {interfaceCount === 1 ? "interface" : "interfaces"}</span>
+        {duplicateCount > 0 ? <span className="text-xs">{duplicateCount} possible {duplicateCount === 1 ? "duplicate" : "duplicates"}</span> : null}
       </button>
     </div>
   );
@@ -144,11 +147,12 @@ function ResetLayoutControl({ layout, firstRootId, arrangement, gestures, announ
   }}><RotateCcw aria-hidden="true" style={{ fill: "none" }} /></ControlButton>;
 }
 
-function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode, showSelfConnections, setShowSelfConnections }: {
+function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode, showSelfConnections, setShowSelfConnections, duplicateCounts }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; arrangement: ComponentArrangement;
   inspection: ReturnType<typeof useArchitectureInspection>;
   connectionMode: ConnectionMode; setConnectionMode: (mode: ConnectionMode) => void;
   showSelfConnections: boolean; setShowSelfConnections: (show: boolean) => void;
+  duplicateCounts: ReadonlyMap<string, number>;
 }) {
   const geometry = useSyncExternalStore(arrangement.subscribe, arrangement.getSnapshot);
   const gestures = useComponentGestures(arrangement);
@@ -176,10 +180,11 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
     for (const item of baseline.components) items.set(item.id, {
       item, panel: { kind: "component", componentId: item.id }, isGroup: parents.has(item.id),
       interfaceCount: interfaceCounts.get(item.id) ?? 0, inspect: inspection.open, selected: inspection.componentId === item.id,
+      duplicateCount: duplicateCounts.get(item.id) ?? 0,
       gestures, announce,
     });
     return items;
-  }, [baseline, inspection.open, inspection.componentId, gestures, announce]);
+  }, [baseline, inspection.open, inspection.componentId, gestures, announce, duplicateCounts]);
   const nodes = useMemo<ArchitectureNode[]>(() => {
     return geometry.nodes.map(({ id, position, width, height, parentId }) => {
       const data = items.get(id);
@@ -199,12 +204,12 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
     const names = new Map(baseline.interfaces.map(({ id, name }) => [id, name]));
     const components = new Map(baseline.components.map(({ id, name }) => [id, name]));
     const visible = shownInterfaceArcs(routes, { mode: connectionMode, showSelfConnections,
-      componentId: inspection.componentId, interfaceId: inspection.panel?.kind === "interface" ? inspection.panel.interfaceId : undefined });
+      componentId: inspection.componentId, interfaceId: inspection.connectionPanel?.kind === "interface" ? inspection.connectionPanel.interfaceId : undefined });
     return visible.map((route) => {
       const name = names.get(route.interfaceId) ?? route.interfaceId;
       const consumer = `${components.get(route.consumerId)}, ${route.consumerId}`;
       const owner = `${components.get(route.ownerId)}, ${route.ownerId}`;
-      const panel = inspection.panel;
+      const panel = inspection.connectionPanel;
       const relevant = panel?.kind === "interface" ? route.interfaceId === panel.interfaceId
         : panel?.kind === "component" ? route.consumerId === panel.componentId || route.ownerId === panel.componentId : null;
       const emphasis = relevant === null ? "normal" : relevant ? "highlighted" : "dimmed";
@@ -216,7 +221,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           inspect: inspection.open, view: arrangement, pressGeneration, emphasis, labelOrder: connections.order.get(route.id) ?? 0 },
       };
     });
-  }, [baseline, connections, routes, inspection.open, inspection.panel, inspection.componentId, arrangement, connectionMode, showSelfConnections]);
+  }, [baseline, connections, routes, inspection.open, inspection.connectionPanel, inspection.componentId, arrangement, connectionMode, showSelfConnections]);
 
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card" aria-label="Architecture diagram">
     <div className="flex shrink-0 flex-wrap items-center gap-x-4 border-b border-border px-3 py-1 text-xs text-muted-foreground">
@@ -260,9 +265,9 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
 }
 
 /** The published pair defines one view; pointer frames only update its canvas. */
-export function ArchitectureDiagram({ baseline, layout }: {
+export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
-}) {
+} & DuplicationControls) {
   const [connectionChoice, setConnectionChoice] = useState<{
     baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; mode: ConnectionMode; showSelfConnections: boolean;
   } | null>(null);
@@ -275,18 +280,22 @@ export function ArchitectureDiagram({ baseline, layout }: {
   const setShowSelfConnections = useCallback((showSelfConnections: boolean) => setConnectionChoice((current) => ({ baseline, layout, showSelfConnections,
     mode: current?.baseline === baseline && current.layout === layout ? current.mode : "selected",
   })), [baseline, layout]);
-  const inspection = useArchitectureInspection(baseline, layout, connectionMode);
+  const inspection = useArchitectureInspection(baseline, layout, connectionMode, duplication?.session ?? null);
   const arrangement = useMemo(() => new ComponentArrangement(layout), [baseline, layout]);
   const openPanel = inspection.open;
   const incompleteInterfaces = incompleteInterfaceCount(baseline);
+  const counts = useMemo(() => duplicationCounts(baseline, duplication?.report), [baseline, duplication?.report]);
 
   return (
     <section aria-labelledby="current-diagram-heading" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
-        <h1 id="current-diagram-heading" tabIndex={-1} className="min-w-0 flex-1 truncate text-base font-semibold" title={baseline.id}>{baseline.id}</h1>
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border px-4 py-2 sm:flex-nowrap">
+        <h1 id="current-diagram-heading" tabIndex={-1} className="w-full min-w-0 truncate text-base font-semibold sm:w-auto sm:flex-1" title={baseline.id}>{baseline.id}</h1>
         <p id="item-inspection-hint" className="sr-only lg:not-sr-only lg:text-xs lg:text-muted-foreground">Select to inspect. Drag a header or use arrow keys to move it.</p>
-        <Button id="baseline-details-control" variant="outline" onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>Baseline details</Button>
-        <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget, event.detail === 0)}>Rules ({baseline.rules.length})</Button>
+        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-4 sm:[&>button]:text-sm">
+          <Button id="baseline-details-control" variant="outline" onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>Baseline details</Button>
+          <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget, event.detail === 0)}>Rules ({baseline.rules.length})</Button>
+          <Button variant="outline" onClick={(event) => openPanel({ kind: "duplicates" }, event.currentTarget, event.detail === 0)}>Duplicates</Button>
+        </div>
       </div>
       {incompleteInterfaces > 0 ? <p className="shrink-0 border-b border-border px-4 py-2 text-xs text-muted-foreground">
         {incompleteInterfaces} {incompleteInterfaces === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.
@@ -297,8 +306,9 @@ export function ArchitectureDiagram({ baseline, layout }: {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       {layout.nodes.length > 0 ? <ArchitectureCanvas baseline={baseline} layout={layout} arrangement={arrangement} inspection={inspection}
         connectionMode={connectionMode} setConnectionMode={setConnectionMode}
-        showSelfConnections={showSelfConnections} setShowSelfConnections={setShowSelfConnections} /> : null}
-      <ArchitectureDetailsPanel baseline={baseline} inspection={inspection} />
+        showSelfConnections={showSelfConnections} setShowSelfConnections={setShowSelfConnections} duplicateCounts={counts.components} /> : null}
+      <ArchitectureDetailsPanel baseline={baseline} inspection={inspection} duplication={duplication} counts={counts}
+        onOpenDuplicationReport={onOpenDuplicationReport} onRemoveDuplicationReport={onRemoveDuplicationReport} reportBusy={reportBusy} />
       </div>
     </section>
   );

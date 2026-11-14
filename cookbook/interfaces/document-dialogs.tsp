@@ -14,4 +14,5 @@ union BaselineFileSelection {
 // Promise bindings preserve picker rejection. Browser absence returns null.
 interface BaselineDialogOperations {
   selectBaselineFile(): BaselineFileSelection;
+  selectDuplicationReportFile(): BaselineFileSelection;
 }

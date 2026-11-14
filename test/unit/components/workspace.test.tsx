@@ -3,26 +3,40 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import App from "../../../src/App.tsx";
 import { LoadWorkflow, type SelectedBaseline } from "../../../src/architecture/load-workflow.ts";
 import type { LoadWorkflowSnapshot, WorkflowView } from "../../../src/architecture/workspace-view.ts";
-import { baselineWorkflowDependencies, pending, selectedBaseline } from "../../support/baseline-workflow-fixtures.ts";
+import { baselineWorkflowDependencies, pending, selectedBaseline, selectedBaselineText } from "../../support/baseline-workflow-fixtures.ts";
 import { interfaceSourceFixture } from "../../support/interface-source-fixtures.ts";
 import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
 import { selfConnectionBaseline } from "../../support/connection-scope-fixtures.ts";
 import { showAllConnections, showSelfConnections } from "../../support/connection-controls.tsx";
+import { duplicationWorkflow, duplicationReportText, selectedText } from "../../support/duplication-workflow-fixtures.ts";
+import { parse } from "yaml";
 
 afterEach(() => { cleanup(); Reflect.deleteProperty(globalThis, "isTauri"); });
 
 test("controls use the view role without lifecycle or write commands", async () => {
-  const snapshot: LoadWorkflowSnapshot = { state: { phase: "idle", stage: null, lastOutcome: null }, current: null };
+  const snapshot: LoadWorkflowSnapshot = { state: { operation: "baseline", phase: "idle", stage: null, lastOutcome: null }, current: null, duplication: null };
   const opened: string[] = [];
   const cancelled = async () => ({ status: "cancelled" as const, durationMs: 0 });
   const workflow: WorkflowView = {
     getSnapshot: () => snapshot, subscribe: () => () => {},
     openBaseline: async () => { opened.push("baseline"); return cancelled(); }, cancel: cancelled, retry: cancelled,
+    openDuplicationReport: cancelled, removeDuplicationReport: cancelled,
   };
   render(<App workspace={{ workflow }} />);
   fireEvent.click(screen.getByRole("button", { name: "Open Baseline" }));
   await waitFor(() => expect(opened).toEqual(["baseline"]));
   for (const name of ["Load Repo", "Choose directory", "Export Diagram"]) expect(screen.queryByRole("button", { name })).toBeNull();
+});
+
+test("a long saved report ID does not expand the workspace announcement", async () => {
+  const { workflow, dependencies } = duplicationWorkflow();
+  const report = { ...parse(duplicationReportText), id: "r".repeat(4096) };
+  dependencies.selectDuplicationReport = async () => selectedText(JSON.stringify(report));
+  expect((await workflow.openBaseline()).status).toBe("success");
+  expect((await workflow.openDuplicationReport()).status).toBe("success");
+  expect(workflow.getSnapshot().duplication?.report.id).toBe(report.id);
+  render(<App workspace={{ workflow }} />);
+  expect(screen.getByRole("status").textContent).toBe("Duplication report ready.");
 });
 
 test("opening publishes the prepared baseline only after layout finishes", async () => {
@@ -65,9 +79,10 @@ test("a failed replacement keeps the current view and Retry uses the same select
   await workflow.openBaseline();
   render(<App workspace={{ workflow }} />);
   let fail = true;
-  dependencies.selectBaseline = async () => ({ read: async () => fail
+  const replacement = selectedBaselineText("formatVersion: 1\nid: replacement\nparentId: null\ncomponents: []\ninterfaces: []\nresources: []\nrules: []\n");
+  dependencies.selectBaseline = async () => ({ read: async (signal) => fail
     ? { status: "failure", stage: "storage", code: "not-found", message: "The selected baseline was not found.", durationMs: 0 }
-    : { status: "success", text: "formatVersion: 1\nid: replacement\nparentId: null\ncomponents: []\ninterfaces: []\nresources: []\nrules: []\n", durationMs: 0 } });
+    : replacement.read(signal) });
   fireEvent.click(screen.getByRole("button", { name: "Open Baseline" }));
   await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("was not found"));
   expect(screen.getByRole("heading", { name: "baseline-example" })).toBeTruthy();

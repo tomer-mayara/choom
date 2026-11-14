@@ -10,11 +10,12 @@ test("browser file access is unavailable without native calls", async () => {
 
 test("selected-file reads use validated envelopes and preserve successful data", async () => {
   const requests: unknown[] = [];
+  const response = { status: "success", text: "saved 中文", sha256: "e6543fc684bea77b65c61674fde8cbdbc184672186f45ffa965d8a0cba3d37c7", durationMs: 4 } as const;
   const access = new DesktopDocumentAccess(async (command, args) => {
     requests.push({ command, args });
-    return { status: "success", text: "saved 中文", durationMs: 4 };
+    return response;
   }, () => true);
-  expect(await access.readDocumentFile({ path: "/saved baseline.choom.yaml" })).toEqual({ status: "success", text: "saved 中文", durationMs: 4 });
+  expect(await access.readDocumentFile({ path: "/saved baseline.choom.yaml" })).toEqual(response);
   expect(requests).toEqual([{ command: "document_file_read", args: { request: { path: "/saved baseline.choom.yaml" } } }]);
 });
 
@@ -29,14 +30,15 @@ test("invalid paths, Unicode, and extra fields never reach native file access", 
 });
 
 test("malformed or oversized responses cannot become successful reads", async () => {
+  const success = { status: "success", text: "data", sha256: "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7", durationMs: 0 };
   for (const reply of [
-    null, { status: "success", text: "data" },
-    { status: "success", text: "data", durationMs: -1 },
-    { status: "success", text: "data", durationMs: Number.NaN },
-    { status: "success", text: "data", durationMs: Infinity },
-    { status: "success", text: "data", durationMs: 0, path: "/private/secret" },
-    { status: "success", text: "\ud800", durationMs: 0 },
-    { status: "success", text: "é".repeat(8 * 1024 * 1024 + 1), durationMs: 0 },
+    null, { ...success, durationMs: undefined },
+    { ...success, durationMs: -1 },
+    { ...success, durationMs: Number.NaN },
+    { ...success, durationMs: Infinity },
+    { ...success, path: "/private/secret" },
+    { ...success, text: "\ud800" },
+    { ...success, text: "é".repeat(8 * 1024 * 1024 + 1) },
     { status: "failure", stage: "storage", code: "unknown", message: "data", durationMs: 0 },
   ]) {
     const access = new DesktopDocumentAccess(async () => reply, () => true);

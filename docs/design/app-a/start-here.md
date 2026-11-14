@@ -9,7 +9,9 @@ assignment and do not take the manager role.
 
 The result is a proposed architecture model and a record of its evidence and
 limits. Component health, redesign and independent replaceability belong to the
-next design steps.
+next design steps. After Step 1, use the separate
+[duplicated-interface assessment](duplication-assessment.md) for public capability
+review. Its new artifacts do not change the six-stage baseline recovery process.
 
 ## Contents
 
@@ -459,6 +461,12 @@ discovery path.
 The discovery record is the entry point into the result. A diagram or prose
 summary is a view of those records, not a substitute for them.
 Include any `run-notes.md` corrections and the tool revision used for the run.
+State that duplicated interfaces are **not checked**, with the reason, unless a
+separate assessment already exists. Hand off the fixed baseline, snapshot and
+public interface inventory to the [assessment workflow](duplication-assessment.md).
+That workflow saves a new manifest and report outside this completed run. Link
+its outcome in the new assessment handoff; do not reopen Step 1 or change its
+artifact registry. A detector's empty result does not replace capability review.
 Keep that trusted revision and its dependencies available for later verification;
 new helper bytes do not update an old attempt's checks. If the checkout has local
 or uncommitted tool files, Git HEAD alone does not identify the version used.
@@ -489,6 +497,7 @@ or changing the workflow; the cookbooks identify which helper to invoke.
 | `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence |
 | `stage-5-query.mjs` | Remaining-code and inspection-coverage queries |
 | `stage-6-records.mjs` | Shared validation of the architecture records |
+| [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |
 | `check-knip-image.mjs` | Validate the controlled Knip tool image |
 | `inventory-view.py` | Prepare and verify inventory-only tool input copies |
 | `recover-capture.mjs` | Recovery helper for a damaged earlier capture; not the normal starting command |

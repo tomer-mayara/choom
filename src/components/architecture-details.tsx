@@ -6,10 +6,13 @@ import type {
 } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import { InterfaceDetails } from "./interface-details.tsx";
+import type { InterfaceReadingState } from "./interface-reading-state.ts";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
-  | { kind: "interface"; interfaceId: string }
-  | { kind: "resource"; resourceId: string } | { kind: "baseline" } | { kind: "rules" };
+  | { kind: "interface"; interfaceId: string; entryId?: string }
+  | { kind: "resource"; resourceId: string } | { kind: "baseline" } | { kind: "rules" }
+  | { kind: "duplicates"; componentId?: string; interfaceId?: string }
+  | { kind: "duplicate"; findingId: string };
 
 type Statement = ReadonlyData<BaselineTextStatement | BaselineMembershipStatement | BaselineComponentReferenceStatement
   | BaselineAccessPointsStatement | BaselineConsumersStatement | BaselineNullableTextStatement | BaselinePromisesStatement | BaselineRuleObjectStatement>;
@@ -73,9 +76,11 @@ function RuleRow({ rule }: { rule: ReadonlyData<BaselineRule> }) {
   </details>;
 }
 
-export function ArchitectureDetails({ baseline, panel, showHeading = true, contentRef }: {
+export function ArchitectureDetails({ baseline, panel, showHeading = true, contentRef, reading }: {
   baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel; showHeading?: boolean; contentRef?: RefObject<HTMLDivElement | null>;
+  reading?: InterfaceReadingState;
 }) {
+  if (panel.kind === "duplicates" || panel.kind === "duplicate") return null;
   if (panel.kind === "baseline") return <section className="space-y-4 wrap-anywhere">
     <Field name="Format version"><RecordedValue value={baseline.formatVersion} /></Field>
     <Field name="Baseline ID"><RecordedValue value={baseline.id} /></Field>
@@ -90,7 +95,8 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
     : panel.kind === "interface" ? baseline.interfaces.find(({ id }) => id === panel.interfaceId)
       : baseline.resources.find(({ id }) => id === panel.resourceId);
   if (!item) return null;
-  if ("allowedConsumers" in item) return <InterfaceDetails key={item.id} baseline={baseline} item={item} contentRef={contentRef} />;
+  if ("allowedConsumers" in item) return <InterfaceDetails key={item.id} baseline={baseline} item={item} contentRef={contentRef}
+    initialEntryId={panel.kind === "interface" ? panel.entryId : undefined} reading={reading} />;
   const kind = panel.kind === "component" ? "Component" : panel.kind === "interface" ? "Interface" : "Resource";
   return (
     <section className="space-y-4 wrap-anywhere">

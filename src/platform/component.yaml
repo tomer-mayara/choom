@@ -5,6 +5,7 @@ artifacts:
   behavior:
     - path: ../../cookbook/behavior/baseline-viewer/open.feature
     - path: ../../cookbook/behavior/baseline-viewer/installed.feature
+    - path: ../../cookbook/behavior/baseline-viewer/document-byte-identity.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:

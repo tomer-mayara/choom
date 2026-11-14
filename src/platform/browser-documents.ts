@@ -30,24 +30,39 @@ export function selectBrowserBaseline(signal: AbortSignal): Promise<File | null>
   });
 }
 
-export async function readBrowserBaseline(file: Pick<File, "size" | "arrayBuffer">, signal: AbortSignal): Promise<ReadDocumentTextOutcome> {
+export async function readBrowserBaseline(
+  file: Pick<File, "size" | "arrayBuffer">,
+  signal: AbortSignal,
+  purpose: "baseline" | "duplication report" = "baseline",
+): Promise<ReadDocumentTextOutcome> {
   const started = performance.now();
   const failure = (code: "limit-exceeded" | "invalid-utf8" | "io-error", message: string): ReadDocumentTextOutcome => ({
     status: "failure", stage: "storage", code, message, durationMs: Math.max(0, performance.now() - started),
   });
+  const tooLarge = `The ${purpose} exceeds 16 MiB.`;
   signal.throwIfAborted();
-  if (file.size > MAX_DOCUMENT_BYTES) return failure("limit-exceeded", "The baseline exceeds 16 MiB.");
+  if (file.size > MAX_DOCUMENT_BYTES) return failure("limit-exceeded", tooLarge);
   let bytes: ArrayBuffer;
   try { bytes = await file.arrayBuffer(); }
   catch {
     signal.throwIfAborted();
-    return failure("io-error", "The selected baseline is no longer readable. Open Baseline and select the file again.");
+    const action = purpose === "baseline" ? "Open Baseline" : "Open duplication report";
+    return failure("io-error", `The selected ${purpose} is no longer readable. ${action} and select the file again.`);
   }
   signal.throwIfAborted();
-  if (bytes.byteLength > MAX_DOCUMENT_BYTES) return failure("limit-exceeded", "The baseline exceeds 16 MiB.");
+  if (bytes.byteLength > MAX_DOCUMENT_BYTES) return failure("limit-exceeded", tooLarge);
+  let digest: ArrayBuffer;
+  try { digest = await crypto.subtle.digest("SHA-256", bytes); }
+  catch {
+    signal.throwIfAborted();
+    return failure("io-error", `The selected ${purpose} could not be verified.`);
+  }
+  signal.throwIfAborted();
+  const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
   try {
-    return { status: "success", text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), durationMs: Math.max(0, performance.now() - started) };
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return { status: "success", text, sha256, durationMs: Math.max(0, performance.now() - started) };
   } catch {
-    return failure("invalid-utf8", "The baseline is not valid UTF-8 text.");
+    return failure("invalid-utf8", `The ${purpose} is not valid UTF-8 text.`);
   }
 }

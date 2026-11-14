@@ -1,5 +1,5 @@
 const domain = "^src/domain/";
-const codec = "^src/lib/(baseline-yaml\\.ts$|architecture-yaml/)";
+const codec = "^src/lib/((baseline|interface-duplication)-yaml\\.ts$|architecture-yaml/)";
 const codecContracts = "^src/lib/generated/contracts\\.ts$";
 const platform = "^src/platform/";
 const platformContracts = "^src/platform/generated/contracts\\.ts$";
@@ -62,7 +62,7 @@ module.exports = {
       name: "development-analyzers-stay-out-of-app",
       severity: "error",
       from: { path: "^src/" },
-      to: { path: "^node_modules/(dependency-cruiser|ts-morph)/" },
+      to: { path: "^node_modules/(dependency-cruiser|ts-morph|jscpd)[/-]" },
     },
     {
       name: "application-does-not-import-ui-or-composition",

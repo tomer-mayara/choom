@@ -4,7 +4,7 @@ import { layoutBaseline, type ArchitectureLayout } from "../../../src/lib/archit
 import { BaselineDisplayLimitError } from "../../../src/lib/baseline-display-limits.ts";
 import { baselineExample, fixtureItem } from "../../support/baseline-fixtures.ts";
 import { baselineWithRules } from "../../support/baseline-layout-fixtures.ts";
-import { baselineWorkflowDependencies, pending, selectedBaseline } from "../../support/baseline-workflow-fixtures.ts";
+import { baselineWorkflowDependencies, pending, selectedBaseline, selectedBaselineText } from "../../support/baseline-workflow-fixtures.ts";
 
 test("a saved baseline passes through the load workflow", async () => {
   const workflow = new LoadWorkflow(baselineWorkflowDependencies());
@@ -35,7 +35,7 @@ test.each(["selection", "reading", "validation", "layout"] as const)("%s failure
   const current = workflow.getSnapshot().current;
   if (stage === "selection") dependencies.selectBaseline = async () => { throw new Error("/private/picker"); };
   if (stage === "reading") dependencies.selectBaseline = async () => ({ read: async () => { throw new Error("/private/read"); } });
-  if (stage === "validation") dependencies.selectBaseline = async () => ({ read: async () => ({ status: "success", text: "schemaVersion: 1", durationMs: 0 }) });
+  if (stage === "validation") dependencies.selectBaseline = async () => selectedBaselineText("schemaVersion: 1");
   if (stage === "layout") dependencies.layout = async () => { throw new Error("/private/layout"); };
   const outcome = await workflow.openBaseline();
   expect(outcome).toMatchObject({ status: "failure", stage });

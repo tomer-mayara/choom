@@ -1,0 +1,411 @@
+kind: interface-duplication-review
+formatVersion: 1
+id: producer-fixture-001-report
+runRef: producer-fixture-001
+createdAt: 2026-11-14T04:04:19.849Z
+producer:
+  name: choom-interface-duplication
+  version: "1"
+baseline:
+  id: fixture-baseline
+  formatVersion: 2
+  sha256: 76deb8a8fc7cc3afce97a61ea9e2001e1bbb8497052e082f4baa512a954d9254
+snapshot:
+  id: fixture-snapshot
+  inventorySha256: e368fc736e2b4382f977f04bc27cd1c0522733d7c728ac9737caf165c9dad3a9
+scan:
+  status: partial
+  profile: javascript-typescript-ast-v1
+  tool:
+    name: jscpd
+    version: 5.4.2
+  counts:
+    examined: 7
+    excluded: null
+    unsupported: 1
+    helperOnly: 1
+    unmapped: 0
+  scopeRefs:
+    - endpoints
+    - profile
+  diagnostics:
+    - AST excludes test files, bodyless declarations and small functions.
+      Eligible-function counts are unknown.
+    - The detector counted fewer files than the selected source inventory. It
+      does not identify every omitted file or reason; total exclusions are
+      unknown.
+  mappingGaps: []
+  evidenceRefs:
+    - collection
+review:
+  status: completed
+  inspected: 5
+  pending: 0
+  scopeRefs:
+    - review-input
+  gaps: []
+findings:
+  - id: dup-95fe0081340027be56313e435ccde5a78d02739f5604af665b767fa26a5c657d
+    kind: interface-pair
+    endpoints:
+      - interfaceId: find
+        evidenceRefs:
+          - source-find
+      - interfaceId: alias
+        evidenceRefs:
+          - source-alias
+    observations:
+      - origin: source-review
+        endpoints:
+          - interfaceId: find
+            entryId: entry
+            evidenceRefs:
+              - source-find
+          - interfaceId: alias
+            entryId: entry
+            evidenceRefs:
+              - source-alias
+        score: null
+        method: bounded-source-review
+        toolVersion: null
+        evidenceRefs:
+          - source-find
+          - source-alias
+    status: potential-redundancy
+    overlap: Both public entry points return the fixture invoice for its ID, or
+      undefined when it is absent.
+    rationale: These fictional fixture lookup entries offer the same supported
+      capability. This does not judge the separate List invoices entry. Review
+      consolidation and compatibility before changing them.
+    differences:
+      - The second entry is an alias or a thin forwarder.
+    gaps: []
+    facts: []
+    evidenceRefs:
+      - source-find
+      - source-alias
+    counterevidenceRefs: []
+    sources:
+      - snapshotId: fixture-snapshot
+        path: lookup.ts
+        sha256: 4bb4a8f198190546ae36f117b4e9bbc1a1ea3a64eb37fd69d99fa0652368a58b
+        lines:
+          - 1
+          - 4
+        evidenceRef: source-find
+      - snapshotId: fixture-snapshot
+        path: lookup.ts
+        sha256: 4bb4a8f198190546ae36f117b4e9bbc1a1ea3a64eb37fd69d99fa0652368a58b
+        lines:
+          - 5
+          - 5
+        evidenceRef: source-alias
+    review:
+      worker: recorded-fixture-worker
+      model: recorded-fixture
+      settingsRef: review-input
+      manager: recorded-fixture-manager
+      reviewedAt: 2026-11-13T00:00:00Z
+      decisionRefs:
+        - review-input
+  - id: dup-99c3b3154b27011fe0bfe433fa6a5b4325d0dd984ad60dc51e579bd84f0ed1e0
+    kind: interface-pair
+    endpoints:
+      - interfaceId: find
+        evidenceRefs:
+          - source-find
+      - interfaceId: wrapper
+        evidenceRefs:
+          - source-wrapper
+    observations:
+      - origin: source-review
+        endpoints:
+          - interfaceId: find
+            entryId: entry
+            evidenceRefs:
+              - source-find
+          - interfaceId: wrapper
+            entryId: entry
+            evidenceRefs:
+              - source-wrapper
+        score: null
+        method: bounded-source-review
+        toolVersion: null
+        evidenceRefs:
+          - source-find
+          - source-wrapper
+    status: potential-redundancy
+    overlap: Both public entry points return the fixture invoice for its ID, or
+      undefined when it is absent.
+    rationale: These fictional fixture lookup entries offer the same supported
+      capability. This does not judge the separate List invoices entry. Review
+      consolidation and compatibility before changing them.
+    differences:
+      - The second entry is an alias or a thin forwarder.
+    gaps: []
+    facts: []
+    evidenceRefs:
+      - source-find
+      - source-wrapper
+    counterevidenceRefs: []
+    sources:
+      - snapshotId: fixture-snapshot
+        path: lookup.ts
+        sha256: 4bb4a8f198190546ae36f117b4e9bbc1a1ea3a64eb37fd69d99fa0652368a58b
+        lines:
+          - 1
+          - 4
+        evidenceRef: source-find
+      - snapshotId: fixture-snapshot
+        path: lookup.ts
+        sha256: 4bb4a8f198190546ae36f117b4e9bbc1a1ea3a64eb37fd69d99fa0652368a58b
+        lines:
+          - 6
+          - 6
+        evidenceRef: source-wrapper
+    review:
+      worker: recorded-fixture-worker
+      model: recorded-fixture
+      settingsRef: review-input
+      manager: recorded-fixture-manager
+      reviewedAt: 2026-11-13T00:00:00Z
+      decisionRefs:
+        - review-input
+  - id: dup-5b0c4bff901d819d9f65b1e5a33f19cb25a7208374633e9976cdca89503ff5ab
+    kind: interface-pair
+    endpoints:
+      - interfaceId: find
+        evidenceRefs:
+          - source-find
+      - interfaceId: alternative
+        evidenceRefs:
+          - source-alternative
+    observations:
+      - origin: source-review
+        endpoints:
+          - interfaceId: find
+            entryId: entry
+            evidenceRefs:
+              - source-find
+          - interfaceId: alternative
+            entryId: entry
+            evidenceRefs:
+              - source-alternative
+        score: null
+        method: bounded-source-review
+        toolVersion: null
+        evidenceRefs:
+          - source-find
+          - source-alternative
+    status: potential-redundancy
+    overlap: Both public entry points return the fixture invoice for its ID, or
+      undefined when it is absent.
+    rationale: These fictional fixture lookup entries offer the same supported
+      capability. This does not judge the separate List invoices entry. Review
+      consolidation and compatibility before changing them.
+    differences:
+      - The alternative creates a Map; findInvoice searches an array.
+    gaps: []
+    facts: []
+    evidenceRefs:
+      - source-find
+      - source-alternative
+    counterevidenceRefs: []
+    sources:
+      - snapshotId: fixture-snapshot
+        path: lookup.ts
+        sha256: 4bb4a8f198190546ae36f117b4e9bbc1a1ea3a64eb37fd69d99fa0652368a58b
+        lines:
+          - 1
+          - 4
+        evidenceRef: source-find
+      - snapshotId: fixture-snapshot
+        path: alternative.ts
+        sha256: cbf7180b91ac9a9c381a13736767b4dfd41b80054d4b20c4e3358624a6f124ed
+        lines:
+          - 1
+          - 4
+        evidenceRef: source-alternative
+    review:
+      worker: recorded-fixture-worker
+      model: recorded-fixture
+      settingsRef: review-input
+      manager: recorded-fixture-manager
+      reviewedAt: 2026-11-13T00:00:00Z
+      decisionRefs:
+        - review-input
+  - id: dup-b0549a226a56739d509d719fefed39db87ed4c1b50d048e68eb1499f898d2d6d
+    kind: interface-pair
+    endpoints:
+      - interfaceId: observer
+        evidenceRefs:
+          - source-observer
+      - interfaceId: geometry
+        evidenceRefs:
+          - source-geometry
+    observations:
+      - origin: source-review
+        endpoints:
+          - interfaceId: observer
+            entryId: entry
+            evidenceRefs:
+              - source-observer
+          - interfaceId: geometry
+            entryId: entry
+            evidenceRefs:
+              - source-geometry
+        score: null
+        method: bounded-source-review
+        toolVersion: null
+        evidenceRefs:
+          - source-observer
+          - source-geometry
+          - source-observer-context
+          - source-geometry-context
+      - origin: jscpd-ast
+        endpoints:
+          - interfaceId: geometry
+            entryId: entry
+            evidenceRefs:
+              - source-geometry
+          - interfaceId: observer
+            entryId: entry
+            evidenceRefs:
+              - source-observer
+        score: 1
+        method: normalized-ast
+        toolVersion: 5.4.2
+        evidenceRefs:
+          - collection
+    status: justified-distinction
+    overlap: Both register callbacks and return an unsubscribe action.
+    rationale: The interfaces own separate load and position observer sets. Keep the
+      independent state owners and event policies.
+    differences:
+      - Load publication snapshots listeners and catches their exceptions.
+        Position publication iterates its live set and propagates exceptions.
+    gaps: []
+    facts: []
+    evidenceRefs:
+      - source-observer
+      - source-geometry
+      - source-observer-context
+      - source-geometry-context
+    counterevidenceRefs:
+      - source-observer-context
+      - source-geometry-context
+    sources:
+      - snapshotId: fixture-snapshot
+        path: observer.ts
+        sha256: d3e9f2755255be6b5f8e876e90aa2c2abb636682e3e4c4cd525d5afb764c086a
+        lines:
+          - 2
+          - 5
+        evidenceRef: source-observer
+      - snapshotId: fixture-snapshot
+        path: geometry.ts
+        sha256: a8d0d73615e8ef7a4e2ae9ab880b4616de2b9bceaf951f70059b27740fa3980c
+        lines:
+          - 2
+          - 5
+        evidenceRef: source-geometry
+      - snapshotId: fixture-snapshot
+        path: observer.ts
+        sha256: d3e9f2755255be6b5f8e876e90aa2c2abb636682e3e4c4cd525d5afb764c086a
+        lines:
+          - 1
+          - 8
+        evidenceRef: source-observer-context
+      - snapshotId: fixture-snapshot
+        path: geometry.ts
+        sha256: a8d0d73615e8ef7a4e2ae9ab880b4616de2b9bceaf951f70059b27740fa3980c
+        lines:
+          - 1
+          - 8
+        evidenceRef: source-geometry-context
+    review:
+      worker: recorded-fixture-worker
+      model: recorded-fixture
+      settingsRef: review-input
+      manager: recorded-fixture-manager
+      reviewedAt: 2026-11-13T00:00:00Z
+      decisionRefs:
+        - review-input
+  - id: dup-413f7757951a4210ac2d70445c7cc8c7b03e340fddec68aceff5a7e82111c754
+    kind: interface-pair
+    endpoints:
+      - interfaceId: safe-name
+        evidenceRefs:
+          - source-safe-name
+      - interfaceId: safe-path
+        evidenceRefs:
+          - source-safe-path
+    observations:
+      - origin: source-review
+        endpoints:
+          - interfaceId: safe-name
+            entryId: entry
+            evidenceRefs:
+              - source-safe-name
+          - interfaceId: safe-path
+            entryId: entry
+            evidenceRefs:
+              - source-safe-path
+        score: null
+        method: bounded-source-review
+        toolVersion: null
+        evidenceRefs:
+          - source-safe-name
+          - source-safe-path
+      - origin: jscpd-ast
+        endpoints:
+          - interfaceId: safe-name
+            entryId: entry
+            evidenceRefs:
+              - source-safe-name
+          - interfaceId: safe-path
+            entryId: entry
+            evidenceRefs:
+              - source-safe-path
+        score: 1
+        method: normalized-ast
+        toolVersion: 5.4.2
+        evidenceRefs:
+          - collection
+    status: insufficient-evidence
+    overlap: Both reject empty input and selected forbidden characters.
+    rationale: The accepted character sets differ. The fixture does not establish
+      whether their policies should agree.
+    differences:
+      - safeName rejects backslash, NUL, CR and LF. safePath also rejects the
+        remaining ASCII controls and DEL.
+    gaps:
+      - The intended validation policy is not recorded.
+    facts: []
+    evidenceRefs:
+      - source-safe-name
+      - source-safe-path
+    counterevidenceRefs: []
+    sources:
+      - snapshotId: fixture-snapshot
+        path: safe-name.ts
+        sha256: cccae4522e9db206a2c7988f054e8fa19c684c4249a9901b2cd2517c9270c3fc
+        lines:
+          - 1
+          - 5
+        evidenceRef: source-safe-name
+      - snapshotId: fixture-snapshot
+        path: safe-path.ts
+        sha256: 55038665423bda0d8f68ab91fcb0f6e193b55daf68a8de0e93aae27c239aadb8
+        lines:
+          - 1
+          - 5
+        evidenceRef: source-safe-path
+    review:
+      worker: recorded-fixture-worker
+      model: recorded-fixture
+      settingsRef: review-input
+      manager: recorded-fixture-manager
+      reviewedAt: 2026-11-13T00:00:00Z
+      decisionRefs:
+        - review-input

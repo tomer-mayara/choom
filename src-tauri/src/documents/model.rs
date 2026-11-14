@@ -85,6 +85,7 @@ impl<T> Outcome<T> {
 #[derive(Serialize, Debug)]
 pub struct Text {
     pub text: String,
+    pub sha256: String,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

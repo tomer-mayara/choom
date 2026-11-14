@@ -169,6 +169,60 @@ returned typed request errors. Keep that product identity separate from the
 new harness hashes and final BV-07 package identity.
 The complete identities belong in the [verification record](BV-baseline-viewer-evidence.md).
 
+## Installed duplication assessment
+
+Use the same installed executable and Linux/X11 setup for the duplication
+assessment. The harness copies the producer's saved version 2 baseline and
+report into a temporary directory, then selects each through its native picker.
+It checks the saved comparison, the recorded entry, Back focus, invalid report
+replacement, removal, and the unchanged selected files. The executable runs
+with the empty product `PATH` used by the installed baseline scenarios.
+
+```sh
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @interface-duplication
+```
+
+The `@baseline-viewer` suite includes this journey. See the
+[producer fixture record](../../test/fixtures/interface-duplication/producer-provenance.json)
+for the selected files and their hashes.
+
+### CR-002 Linux package identity
+
+The release build from frozen Git tree `67d31b7a6d93d97fee57922dbb2156cc6c98e8cd`
+used Bun 1.4.4, Node 26.13.0, and Rust 1.99.1. It included the final producer
+fixture identified in the [CR-002 evidence record](CR-002-evidence.md). The
+installed executable matched the bytes extracted from the unsigned local `.deb`.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Frozen source archive | `618e71d4621d1c2379410770c1ab9e51fa01c780cb96d51e070ebc4c8d63a763` |
+| Candidate patch | `d4f57be1172f493cd516ccc2c66096a02b041d661c0047fce77fc066656b1ac2` |
+| `Choom_0.1.0_arm64.deb` | `e891a3aee098cabf76d05e458973190fa335e9b8b4be539d5823f86c82f5f9aa` |
+| `/usr/bin/choom-desktop` | `be3e460bdbee9767887e1daffe7885617fe29a36d135d31b81b23be7a5a897ff` |
+| Installed test selector patch | `039bc8fc42f85d4e94e809a2f206c6cefff7c0f05273f9079e6022fd7219ea6b` |
+
+Run `run-2bmVdT` passed 23 scenarios and failed the report-opening assertion.
+The original locator concatenated both responsive text spans, so it could not
+find the report button by one label. The corrected test locator matches the
+explicit ARIA label and falls back to button text for **Open Baseline**. The
+focused rerun `run-Y907xY` passed all eight steps on the same installed binary.
+
+The next full run, `run-C8ZsAL`, passed the duplication scenario and timed out
+waiting for the GTK picker to close in the standalone baseline scenario.
+The run used a fresh working directory and started after the prior runs had
+exited. The prior overlapping runs used separate X11 displays. The cause of
+the timeout was undetermined.
+
+Serial rerun `run-WljTns` passed all 24 scenarios and 143 steps with the final
+report fixture and the same installed executable. Both harness processes
+exited successfully. The run retains the comparison screenshot, installed
+process environment, and hashes of its test harness inputs.
+
+Installed testing here covers Ubuntu 24.04.5 ARM64 with X11, GTK 3.24.41, and
+WebKitGTK 2.52.6. macOS and Windows installed behavior, Wayland, and desktop
+portal behavior remain unverified. The local package and test evidence are in
+`~/.cache/choom-cr002-validation/work/evidence/products/tree-67d31b7a6d93d97fee57922dbb2156cc6c98e8cd/`.
+
 ## Manual installed checks on other platforms
 
 Build and install the ordinary candidate bundle outside the checkout. Preserve

@@ -56,3 +56,11 @@ test("dialog rejection and malformed selections preserve a safe picker failure",
   mockIPC(() => { throw new Error("/private/picker"); });
   await expect(dialogs.selectBaselineFile()).rejects.toThrow("The native baseline picker is unavailable.");
 });
+
+test("report selection names the report and keeps the single read-only file picker", async () => {
+  await dialogs.selectDuplicationReportFile();
+  expect(requests).toEqual([{ command: "plugin:dialog|open", payload: { options: {
+    directory: false, multiple: false, title: "Open duplication report",
+    filters: [{ name: "Duplication report", extensions: ["yaml", "yml"] }],
+  } } }]);
+});

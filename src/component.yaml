@@ -6,6 +6,7 @@ artifacts:
     - path: ../cookbook/behavior/workspace.feature
     - path: ../cookbook/behavior/diagram-workspace.feature
     - path: ../cookbook/behavior/baseline-viewer/input.feature
+    - path: ../cookbook/behavior/baseline-viewer/duplication-report-codec.feature
     - path: ../cookbook/behavior/baseline-viewer/open.feature
     - path: ../cookbook/behavior/baseline-viewer/workflow.feature
     - path: ../cookbook/behavior/baseline-viewer/hierarchy.feature
@@ -30,6 +31,9 @@ artifacts:
     - path: ../cookbook/behavior/baseline-viewer/self-connections.feature
     - path: ../cookbook/behavior/baseline-viewer/connection-fit.feature
     - path: ../cookbook/behavior/baseline-viewer/installed.feature
+    - path: ../cookbook/behavior/baseline-viewer/interface-duplication.feature
+    - path: ../cookbook/behavior/baseline-viewer/duplication-installed.feature
+    - path: ../cookbook/behavior/baseline-viewer/duplication-workflow.feature
   observability:
     - path: ../cookbook/observability/service.yaml
   architecture:
@@ -37,6 +41,7 @@ artifacts:
   contracts:
     - path: ../cookbook/interfaces/desktop.tsp
     - path: ../cookbook/interfaces/baseline-codec.tsp
+    - path: ../cookbook/interfaces/interface-duplication-codec.tsp
     - path: ../cookbook/interfaces/baseline-codec.md
     - path: ../cookbook/interfaces/workflow.tsp
     - path: ../cookbook/interfaces/document-dialogs.tsp

@@ -12,9 +12,13 @@ const stageProgress: Record<WorkflowStage, string> = {
 
 function progressText({ state }: WorkspaceSnapshot): string | null {
   if (state.phase === "cancelling") return state.stage === "selection" ? "Cancelling the load. Waiting for the file picker to close…" : "Cancelling the load…";
-  if (state.phase === "loading") return state.stage ? stageProgress[state.stage] : "Loading the baseline…";
-  if (state.lastOutcome?.status === "cancelled") return "Load cancelled.";
-  if (state.lastOutcome?.status === "success") return "Baseline ready.";
+  if (state.phase === "loading") {
+    const text = state.stage ? stageProgress[state.stage] : "Loading the baseline…";
+    return state.operation === "report" ? text.replace("baseline", "duplication report") : text;
+  }
+  if (state.lastOutcome?.status === "cancelled") return state.operation === "report" ? "Report load cancelled." : "Load cancelled.";
+  if (state.lastOutcome?.status === "success") return state.operation === "report"
+    ? "Duplication report ready." : "Baseline ready.";
   return null;
 }
 
@@ -42,7 +46,7 @@ export function WorkspaceControls({ workspace, snapshot, desktop, children }: {
       </nav>
       <div className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 wrap-anywhere text-xs text-muted-foreground empty:hidden">
         {progress ? <p role="status">{progress}</p> : null}
-        {failure ? <p role="alert" className="text-destructive">The baseline {failure.stage} failed: {failure.message}</p> : null}
+        {failure ? <p role="alert" className="text-destructive">The {state.operation === "report" ? "duplication report" : "baseline"} {failure.stage} failed: {failure.message}</p> : null}
       </div>
     </header>
   );

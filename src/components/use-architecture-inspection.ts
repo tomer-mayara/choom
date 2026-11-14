@@ -4,6 +4,7 @@ import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { ConnectionMode } from "../lib/interface-arc-visibility.ts";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
+import { interfaceReadingState, type InterfaceReadingState } from "./interface-reading-state.ts";
 
 interface InspectionFrame {
   key: number;
@@ -11,6 +12,10 @@ interface InspectionFrame {
   scrollTop: number;
   sections: string[];
   returnId?: string;
+  componentId?: string;
+  connectionPanel?: Extract<ArchitecturePanel, { kind: "component" | "interface" }>;
+  reading?: InterfaceReadingState;
+  listState: { showDistinctions: boolean };
 }
 
 interface InspectionState {
@@ -20,10 +25,24 @@ interface InspectionState {
   opener: HTMLElement;
   focusHeading: boolean;
   returning: boolean;
+  reportSession: number | null;
+  focusReportAction?: boolean;
 }
 
-function frame(panel: ArchitecturePanel, key: number): InspectionFrame {
-  return { key, panel, scrollTop: 0, sections: [] };
+function frame(panel: ArchitecturePanel, key: number, previous?: InspectionFrame): InspectionFrame {
+  const next: InspectionFrame = { key, panel, scrollTop: 0, sections: [], listState: { showDistinctions: false } };
+  if (panel.kind === "component") { next.componentId = panel.componentId; next.connectionPanel = panel; }
+  if (panel.kind === "interface") {
+    next.componentId = previous?.panel.kind === "duplicate" ? undefined : previous?.componentId;
+    next.connectionPanel = panel;
+    next.reading = interfaceReadingState(panel.entryId);
+  }
+  if (panel.kind === "duplicates" || panel.kind === "duplicate") {
+    next.componentId = previous?.componentId;
+    next.connectionPanel = previous?.connectionPanel;
+  }
+  if (panel.kind === "resource") next.componentId = previous?.componentId;
+  return next;
 }
 
 function visibleControl(control: HTMLElement | null | undefined): control is HTMLElement {
@@ -68,22 +87,28 @@ function hidesFocusedArc(panel: ArchitecturePanel, mode: ConnectionMode): boolea
 }
 
 /** One inspection path belongs to one published baseline/layout pair. */
-export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>, connectionMode: ConnectionMode = "selected") {
+export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>, connectionMode: ConnectionMode = "selected", reportSession: number | null = null) {
   const [state, setState] = useState<InspectionState | null>(null);
   const nextFrameKey = useRef(0);
   const container = useRef<HTMLElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
   if (state && (state.baseline !== baseline || state.layout !== layout)) setState(null);
+  else if (state && state.reportSession !== reportSession) {
+    const reportPath = state.frames.some(({ panel }) => panel.kind === "duplicates" || panel.kind === "duplicate");
+    setState({ ...state, reportSession,
+      ...(reportPath ? { frames: [frame({ kind: "duplicates" }, ++nextFrameKey.current)],
+        focusHeading: true, focusReportAction: reportSession === null, returning: false } : {}),
+    });
+  }
   const current = state?.baseline === baseline && state.layout === layout ? state : null;
   const entry = current?.frames.at(-1);
   const panel = entry?.panel ?? null;
-  const component = current?.frames.findLast(({ panel }) => panel.kind === "component")?.panel;
 
   const open = useCallback((panel: ArchitecturePanel, opener: HTMLElement, keyboard: boolean) => {
     const focusHeading = keyboard || Boolean(container.current?.contains(document.activeElement)) || hidesFocusedArc(panel, connectionMode);
-    setState({ baseline, layout, frames: [frame(panel, ++nextFrameKey.current)], opener, focusHeading, returning: false });
-  }, [baseline, layout, connectionMode]);
+    setState({ baseline, layout, frames: [frame(panel, ++nextFrameKey.current)], opener, focusHeading, returning: false, reportSession });
+  }, [baseline, layout, connectionMode, reportSession]);
 
   function navigate(panel: ArchitecturePanel, trigger: HTMLElement) {
     if (!current || !entry) return;
@@ -92,7 +117,7 @@ export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layo
       sections: Array.from(content.current?.querySelectorAll<HTMLDetailsElement>("details[open][data-section]") ?? [],
         (section) => section.dataset.section ?? ""),
     };
-    setState({ ...current, frames: [...current.frames.slice(0, -1), saved, frame(panel, ++nextFrameKey.current)], focusHeading: true, returning: false });
+    setState({ ...current, frames: [...current.frames.slice(0, -1), saved, frame(panel, ++nextFrameKey.current, entry)], focusHeading: true, returning: false, focusReportAction: false });
   }
 
   function back() {
@@ -110,7 +135,8 @@ export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layo
   return {
     panel, open, navigate, back, close, container, content, heading, frameKey: entry?.key,
     sections: entry?.sections ?? [], canGoBack: (current?.frames.length ?? 0) > 1,
-    componentId: component?.kind === "component" ? component.componentId : undefined,
+    componentId: entry?.componentId, connectionPanel: entry?.connectionPanel,
+    reading: entry?.reading, listState: entry?.listState,
   };
 }
 
@@ -122,18 +148,22 @@ function useInspectionFocus(current: InspectionState | null, refs: {
   const { container, content, heading } = refs;
   const entry = current?.frames.at(-1);
   const panel = entry?.panel;
+  const returning = current?.returning;
+  const focusHeading = current?.focusHeading;
+  const focusReportAction = current?.focusReportAction;
   useLayoutEffect(() => {
-    if (!entry || !current) return;
-    if (current.returning && entry.returnId) {
+    if (!entry) return;
+    if (returning && entry.returnId) {
       const row = Array.from(content.current?.querySelectorAll<HTMLElement>("[data-record-id]") ?? [])
         .find((element) => element.dataset.recordId === entry.returnId);
-      row?.focus({ preventScroll: true });
+      (row ?? heading.current)?.focus({ preventScroll: true });
       if (content.current) content.current.scrollTop = entry.scrollTop;
     } else {
       if (content.current) content.current.scrollTop = 0;
-      if (current.focusHeading) heading.current?.focus({ preventScroll: true });
+      if (focusReportAction) (document.getElementById("open-duplication-report") ?? heading.current)?.focus({ preventScroll: true });
+      else if (focusHeading) heading.current?.focus({ preventScroll: true });
     }
-  }, [entry, current]);
+  }, [entry, returning, focusHeading, focusReportAction]);
 
   useEffect(() => {
     if (!panel) return;

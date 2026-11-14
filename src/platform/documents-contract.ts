@@ -13,6 +13,7 @@ const path = z.string().min(1).max(MAX_PATH_BYTES).refine(
   "Expected a bounded absolute document path",
 );
 const duration = z.number().finite().nonnegative();
+const sha256 = z.string().length(64).regex(/^[a-f0-9]{64}$/);
 const failure = z.strictObject({
   status: z.literal("failure"),
   stage: z.literal("storage"),
@@ -23,7 +24,7 @@ const failure = z.strictObject({
   message: z.string().min(1).max(2048),
   durationMs: duration,
 });
-const readOutcome = z.union([z.strictObject({ status: z.literal("success"), text, durationMs: duration }), failure]);
+const readOutcome = z.union([z.strictObject({ status: z.literal("success"), text, sha256, durationMs: duration }), failure]);
 
 export const documentContracts = {
   readDocumentFile: { request: z.strictObject({ path }), outcome: readOutcome },

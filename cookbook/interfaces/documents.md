@@ -17,10 +17,14 @@ expression, or analyzer-related record is executed or resolved while reading.
 
 ## Selected-file boundary
 
-Both hosts require valid UTF-8 and at most 16 MiB. Browser reading checks the
-File size before reading and the actual byte length afterward. It supports a
-UTF-8 byte order mark, CRLF, and non-ASCII content. An unreadable selected File
-returns a safe error that tells the user to select it again.
+Both hosts require valid UTF-8 and at most 16 MiB. A successful read returns
+the decoded text and `sha256`, a lowercase 64-character hexadecimal digest
+of the original bytes. Both hosts compute the digest before decoding. A UTF-8
+byte order mark and CRLF bytes count toward the limit and the digest. Browser
+reading checks the File size before reading and the actual byte length afterward.
+It supports non-ASCII content and uses Web Crypto in secure contexts, including
+the local loopback development origin. An unreadable selected File returns a
+safe error that tells the user to select it again.
 
 The desktop adapter invokes only `document_file_read`. It requires an absolute
 path of at most 4096 UTF-8 bytes, without controls or unpaired UTF-16 surrogates.
@@ -29,9 +33,9 @@ limit, and the absence of NUL. Rust strings already contain valid Unicode.
 Native reading refuses non-regular files and final file or directory symlinks.
 It opens files without write access and checks held file and directory identities
 before and after reading. The read also checks size and modification metadata,
-limits the bytes actually read, and rejects invalid UTF-8. Requests and responses are
-validated. Unknown fields, invalid text, or malformed responses cannot become
-successful reads. Native codes such as `not-found`, `not-file`, `source-changed`,
+limits the bytes actually read, and rejects invalid UTF-8. The desktop adapter
+validates the request and response, including the digest format. Native codes
+such as `not-found`, `not-file`, `source-changed`,
 `limit-exceeded`, and `invalid-utf8` retain useful fixed messages. Transport
 rejections become `unavailable`; raw host errors and paths are not shown.
 
@@ -50,9 +54,15 @@ See the [viewer plan](../../docs/design/cr-baseline-viewer-plan.md) and the
 [historical document record](../../docs/change-requests/CR-001-T06-evidence.md)
 for the former app behavior.
 
-The [shared native wire cases](../../test/fixtures/document-native.json) remain
-checked against generated schemas and by Rust. Rust creates the selected fixture
-directly; the test does not need an export operation. Frontend conformance checks
-only the read operation. Installed baseline acceptance is separate from these
-boundary tests. Local stage, code, and duration values do not establish a
-production reliability or latency claim.
+The [shared native wire cases](../../test/fixtures/document-native.json) are
+checked against generated schemas and by Rust. Both read paths run the same
+[byte identity cases](../../test/fixtures/baseline-viewer/document-byte-identity.json)
+with fixed hashes. Rust exercises the registered command and serialization
+through Tauri's mock runtime. Installed acceptance exercises the native picker
+and webview separately.
+
+```sh
+bun run test:behavior --tags @di-02-03
+bun test ./test/interface/platform/documents.test.ts
+bun run test:rust
+```

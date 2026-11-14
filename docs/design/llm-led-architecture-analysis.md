@@ -201,7 +201,7 @@ establish a defect.
 
 ### Starting smell catalog
 
-These seven families are investigation prompts. Several can describe one problem.
+These eight families are investigation prompts. Several can describe one problem.
 They do not limit Choom to known categories. See the [research basis](#research-basis).
 
 | Family | Starting evidence | Required explanation |
@@ -213,6 +213,7 @@ They do not limit Choom to known categories. See the [research basis](#research-
 | Components depend on each other in a cycle | A directed cycle at a stated graph level. | How the cycle obstructs change or testing, and which dependencies cause the problem. |
 | A central component connects unrelated decisions | Many incoming and outgoing dependencies plus knowledge of other implementations. | How it spreads changes; shared utilities and intentional coordination can be valid. |
 | Interfaces hide too little | Pass-through calls, internal options exposed to callers, callers coordinating internal steps. | What callers still need to know, and whether a better interface or fewer fragments would help. |
+| Interfaces offer overlapping capabilities | Public inventory, aliases, wrappers, source review and advisory clone matches. | What supported capability overlaps, which differences matter, and whether evidence supports consolidation or keeping both. |
 
 ### Tools and algorithms
 
@@ -225,6 +226,7 @@ Add these analyses when a question needs them:
 | Set and graph queries | Incoming/outgoing dependencies, edges across a proposed boundary, and consumer groups for exports. | Counts and consumer overlap suggest questions, not correct ownership. |
 | [Git log and diff](https://git-scm.com/docs/git-log), when available | Commits, files changed together, counts, and change rates. | Commit habits can look like architectural coupling. |
 | Choom rule checks | Pass, violation with evidence, or not checked. | A check covers only the rules and source forms it supports. |
+| Pinned jscpd 5.4.2 AST and token collection | Complete saved candidate pairs, source locations, profile and coverage. | Code similarity is advisory; bodyless entries, small wrappers and different implementations need public capability review. |
 
 Each graph query states its scope, dependency kinds, and project settings.
 A graph that combines several configurations shows their possible dependencies;
@@ -251,6 +253,29 @@ for each component edge and make no stronger claim than the selected graph suppo
 Graph clustering is optional. It can suggest groups when the LLM needs help.
 Record the algorithm, graph, weights, settings, and random seed. The resulting
 groups still need a reason to exist as software components.
+
+### Duplicated public capabilities
+
+Follow the [separate assessment workflow](app-a/duplication-assessment.md) after
+Step 1. Bind a new assessment to the exact completed baseline and source
+inventory; preserve the original run. Inventory every interface and v2 entry,
+collect pinned detector evidence, and perform a bounded worker review with
+independent manager inspection. Review the inventory even when the detector
+returns no matches. Names and clone scores cannot establish semantic overlap.
+
+Compare supported inputs, outputs, failures, effects, state ownership and
+lifecycle. Include aliases, wrappers and different implementations. Map source
+ranges to public endpoints with evidence, retain helper-only exclusions and
+unresolved mappings, and inspect literal differences before deciding. Preserve
+unknown and inapplicable facts with their reasons.
+
+Group observations once per cross-interface pair, or per pair of distinct
+entries within one interface. Each group is `needs-review`,
+`potential-redundancy`, `justified-distinction` or `insufficient-evidence`.
+Save the overlap, decisive differences, rationale, gaps and reviewer provenance.
+Do not infer additional pair findings from a chain of matches. Record examined
+endpoints and comparison groups so bounded coverage and pending review remain
+visible. Failed, skipped or partial collection is not a clean result.
 
 ### Investigation and recommendations
 
@@ -315,6 +340,25 @@ alone do not confirm an LLM interpretation.
 One observed forbidden import can establish a violation despite gaps elsewhere.
 A passing result needs enough coverage to check that rule across its stated scope.
 Unsupported checks report "not checked."
+
+### Duplicated-interface report
+
+Choom can attach the optional saved duplication report to its exact baseline.
+The viewer performs no analysis. **Duplicates** opens a list with separate scan
+and review coverage, status filters and pair comparisons. The default
+list includes potential redundancy and unresolved cases; justified distinctions
+remain available through the filter. Component badges count distinct findings
+involving directly owned interfaces, excluding justified distinctions regardless
+of the list filter. Count a pair within one component once. Do not draw duplicate
+findings as dependency edges.
+
+Comparison links open the recorded interface and exact v2 entry. Show supported
+overlap, contract facts, source-review facts, differences, gaps, provenance and
+evidence references without converting proposed baseline statements into
+accepted facts. No attached report means **not checked**, rather than zero
+duplicates. Scan failure, skipped coverage and pending review remain explicit.
+Findings remain advisory and do not modify the baseline or establish a rule
+violation.
 
 ### Proposals and the component diff
 

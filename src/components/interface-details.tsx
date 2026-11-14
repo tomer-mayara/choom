@@ -8,6 +8,7 @@ import { useExampleCopy } from "./use-example-copy.ts";
 import { revealInterfaceFocus, useInterfaceTabs } from "./use-interface-tabs.ts";
 import { useInterfaceDisclosures } from "./use-interface-disclosures.ts";
 import { InterfaceSources } from "./interface-sources.tsx";
+import type { InterfaceReadingState } from "./interface-reading-state.ts";
 
 // Radix mounts tab contents after its first commit; restore against that content's height.
 function TabBody({ restore, children }: { restore: () => void; children: ReactNode }) {
@@ -15,16 +16,18 @@ function TabBody({ restore, children }: { restore: () => void; children: ReactNo
   return children;
 }
 
-export function InterfaceDetails({ baseline, item, contentRef }: {
+export function InterfaceDetails({ baseline, item, contentRef, initialEntryId, reading }: {
   baseline: ReadonlyData<Baseline>; item: ReadonlyData<BaselineInterface>;
   contentRef?: RefObject<HTMLDivElement | null>;
+  initialEntryId?: string;
+  reading?: InterfaceReadingState;
 }) {
-  const tabs = useInterfaceTabs(contentRef);
-  const disclosure = useInterfaceDisclosures(contentRef);
-  const [entryId, setEntryId] = useState(item.documentation?.entries[0]?.id);
+  const tabs = useInterfaceTabs(contentRef, reading);
+  const disclosure = useInterfaceDisclosures(contentRef, reading);
+  const [entryId, setEntryId] = useState(reading?.entryId ?? initialEntryId ?? item.documentation?.entries[0]?.id);
   const entry = item.documentation?.entries.find(({ id }) => id === entryId);
-  const [exampleId, setExampleId] = useState(entry?.examples[0]?.id);
-  const [resultOpen, setResultOpen] = useState(false);
+  const [exampleId, setExampleId] = useState(reading?.exampleId ?? entry?.examples[0]?.id);
+  const [resultOpen, setResultOpen] = useState(reading?.resultOpen ?? false);
   const example = entry?.examples.find(({ id }) => id === exampleId);
   const copy = useExampleCopy();
   function revealFocusedControl(event: FocusEvent<HTMLDivElement>) {
@@ -36,8 +39,10 @@ export function InterfaceDetails({ baseline, item, contentRef }: {
   function selectEntry(id: string) {
     if (id === entryId) return;
     setEntryId(id);
-    setExampleId(item.documentation?.entries.find((candidate) => candidate.id === id)?.examples[0]?.id);
+    const example = item.documentation?.entries.find((candidate) => candidate.id === id)?.examples[0]?.id;
+    setExampleId(example);
     setResultOpen(false);
+    if (reading) { reading.entryId = id; reading.exampleId = example; reading.resultOpen = false; }
     copy.reset();
     tabs.resetExample();
   }
@@ -45,6 +50,7 @@ export function InterfaceDetails({ baseline, item, contentRef }: {
     if (id === exampleId) return;
     setExampleId(id);
     setResultOpen(false);
+    if (reading) { reading.exampleId = id; reading.resultOpen = false; }
     copy.reset();
     tabs.resetExample();
   }
@@ -61,7 +67,9 @@ export function InterfaceDetails({ baseline, item, contentRef }: {
         <TabBody restore={tabs.restore}><InterfaceOverview baseline={baseline} item={item} entry={entry} selectEntry={selectEntry} disclosure={disclosure} /></TabBody>
       </Tabs.Content>
       <Tabs.Content value="example" onFocus={revealFocusedControl} className="focus-visible:outline-2 focus-visible:outline-ring">
-        <TabBody restore={tabs.restore}><InterfaceExamples entry={entry} example={example} selectExample={selectExample} resultOpen={resultOpen} setResultOpen={setResultOpen}
+        <TabBody restore={tabs.restore}><InterfaceExamples entry={entry} example={example} selectExample={selectExample} resultOpen={resultOpen} setResultOpen={(open) => {
+          setResultOpen(open); if (reading) reading.resultOpen = open;
+        }}
           onCopy={() => { if (example) void copy.write(example.content.value.text); }} copyFeedback={copy.feedback}
           showEntryId={Boolean(entry && item.documentation?.entries.some((other) => other.id !== entry.id && other.name === entry.name))} /></TabBody>
       </Tabs.Content>

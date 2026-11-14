@@ -67,6 +67,36 @@ fn document_commands_match_the_shared_typescript_wire_fixture() {
 }
 
 #[test]
+fn document_read_identifies_the_original_bytes_through_ipc() {
+    let directory =
+        std::env::temp_dir().join(format!("choom-byte-identity-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir(&directory).unwrap();
+    let app = application();
+    let main = app.get_webview_window("main").unwrap();
+    let fixtures: Vec<Value> = serde_json::from_str(include_str!(
+        "../../test/fixtures/baseline-viewer/document-byte-identity.json"
+    ))
+    .unwrap();
+    let path = directory.join("baseline.yaml");
+    for case in fixtures {
+        let text = case["text"].as_str().unwrap();
+        std::fs::write(&path, text.as_bytes()).unwrap();
+        let outcome = invoke(
+            &main,
+            "document_file_read",
+            json!({"path":path}),
+            LOCAL_ORIGIN,
+        );
+        std::fs::remove_file(&path).unwrap();
+        let outcome = outcome.unwrap();
+        assert_eq!(outcome["status"], "success");
+        assert_eq!(outcome["text"], text);
+        assert_eq!(outcome["sha256"], case["sha256"]);
+    }
+    std::fs::remove_dir(&directory).unwrap();
+}
+
+#[test]
 fn document_commands_allow_only_the_local_main_window() {
     let app = application();
     let main = app.get_webview_window("main").unwrap();

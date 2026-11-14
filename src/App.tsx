@@ -49,7 +49,11 @@ export default function App({ workspace = defaultWorkspace }: { workspace?: Work
           if (event.relatedTarget instanceof Node) focusInView.current = event.currentTarget.contains(event.relatedTarget);
           else if (event.target instanceof Node && event.target.isConnected) focusInView.current = false;
         }}>
-        {current ? <ArchitectureDiagram baseline={current.baseline} layout={current.layout} /> : (
+        {current ? <ArchitectureDiagram baseline={current.baseline} layout={current.layout}
+          duplication={snapshot.duplication}
+          onOpenDuplicationReport={() => { void workspace.workflow.openDuplicationReport(); }}
+          onRemoveDuplicationReport={() => { void workspace.workflow.removeDuplicationReport(); }}
+          reportBusy={snapshot.state.phase !== "idle"} /> : (
           <>
             {!showExample ? (
               <section aria-labelledby="welcome-heading" className="mx-auto w-full max-w-5xl space-y-4 overflow-auto px-4 py-8 sm:px-6 sm:py-12">

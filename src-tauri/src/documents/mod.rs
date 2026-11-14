@@ -13,7 +13,7 @@ pub fn read_file(request: Value) -> Outcome<Text> {
         let path = files::selected_path(&request.path)?;
         let directory = Directory::open(path.parent().ok_or(Code::InvalidRequest)?)?;
         let mut file = OwnedFile::existing(directory, path)?;
-        Ok(Text { text: file.read()? })
+        file.read()
     });
     Outcome::result(result, Stage::Storage, start)
 }
