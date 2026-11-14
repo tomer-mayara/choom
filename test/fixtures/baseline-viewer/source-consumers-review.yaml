@@ -1,0 +1,4495 @@
+formatVersion: 3
+id: baseline-005
+parentId: null
+components:
+- id: s4-001-choom
+  name: Choom
+  purpose:
+    value: Compose a local architecture workspace for browser and Tauri desktop hosts.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-039
+    - s4-001-source-src%2Fmain.tsx
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+  membership:
+    value:
+      paths:
+      - component.yaml
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-039
+  groupingReason:
+    value: The root declaration names workspace and native-shell children. Their inspected starts host the saved-baseline
+      reader. This parent owns its composition declaration; child source belongs to direct child owners.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-039
+    - s4-001-source-src%2Fmain.tsx
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+- id: s4-001-workspace
+  name: Baseline workspace
+  parent:
+    value: s4-001-choom
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-039
+    - s4-001-source-excerpt-040
+  purpose:
+    value: Open a saved baseline, publish it with prepared geometry, and present a read-only canvas and record inspection
+      view.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-040
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-018
+  membership:
+    value:
+      paths:
+      - src/**
+      - test/unit/components/**
+      - test/unit/lib/**
+      - test/unit/architecture/**
+      - test/unit/app.test.tsx
+      - test/interface/architecture/**
+      - test/interface/lib/**
+      - test/browser/**
+      - scripts/run-browser-behavior.ts
+      - test/steps/browser-hooks.steps.ts
+      - index.html
+      - public/icon.svg
+      - vite.config.ts
+      excludePaths:
+      - src/domain/**
+      - src/platform/**
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-040
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2FApp.tsx
+    - s4-001-source-test%2Fbrowser%2Fmain.tsx
+    - s4-001-source-excerpt-005
+    - s4-001-source-excerpt-014
+    - s5-001-source-excerpt-005
+    - s5-001-source-excerpt-006
+    - s5-001-source-excerpt-007
+    - s5-001-source-excerpt-008
+    - s5-001-source-excerpt-009
+    - s5-001-source-excerpt-010
+    - s3-001-source-scripts%2Frun-browser-behavior.ts
+    - s4-001-file@graph-results.json
+  groupingReason:
+    value: Loading, decoding, layout and inspection serve one saved-baseline workspace. Saved ownership guidance
+      places tests with the behavior owner; their graph associations agree with these workspace test groups, including
+      tests that also reference model types or fixtures. Browser harness, hook, runner, HTML and Vite inputs assemble
+      or check this workspace. A test assignment does not assert that its body was inspected or run. Domain validation
+      and host access remain direct child owners.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-040
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2FApp.tsx
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-test%2Fbrowser%2Fmain.tsx
+    - s4-001-source-excerpt-005
+    - s4-001-source-excerpt-014
+    - s5-001-source-excerpt-005
+    - s5-001-source-excerpt-006
+    - s5-001-source-excerpt-007
+    - s5-001-source-excerpt-008
+    - s5-001-source-excerpt-009
+    - s5-001-source-excerpt-010
+    - s3-001-source-scripts%2Frun-browser-behavior.ts
+    - s4-001-file@graph-results.json
+- id: s4-001-architecture-model
+  name: Architecture model
+  parent:
+    value: s4-001-workspace
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-040
+    - s4-001-source-excerpt-030
+  purpose:
+    value: Define and validate the saved version 1 and version 2 baseline records, including interface documentation,
+      and supply starter data.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-030
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+  membership:
+    value:
+      paths:
+      - src/domain/**
+      - test/unit/domain/**
+      - test/interface/domain/**
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-030
+    - s4-001-source-excerpt-012
+    - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+    - s5-001-source-excerpt-006
+    - s5-001-source-cookbook%2FREADME.md
+    - s4-001-file@graph-results.json
+  groupingReason:
+    value: The declaration and baseline contract assign the viewer model to this component. Runtime schemas check
+      shape and references before workspace publication. Generated declarations describe the same boundary; their
+      presence does not establish generator freshness or runtime behavior. Saved test-ownership guidance and the
+      selected graph associations support the corresponding unit/interface test groups. Their complete bodies remain
+      uninspected and no test execution is claimed.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-030
+    - s4-001-source-excerpt-031
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+    - s5-001-source-excerpt-006
+    - s5-001-source-cookbook%2FREADME.md
+    - s4-001-file@graph-results.json
+- id: s4-001-desktop-adapter
+  name: Desktop and browser document adapter
+  parent:
+    value: s4-001-workspace
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-040
+    - s4-001-source-excerpt-041
+  purpose:
+    value: Select and read bounded baseline files through browser File access or the desktop picker and native read
+      command.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-041
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+  membership:
+    value:
+      paths:
+      - src/platform/**
+      - test/unit/platform/**
+      - test/interface/platform/**
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-041
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    - s5-001-source-excerpt-006
+    - s5-001-source-cookbook%2FREADME.md
+    - s4-001-file@graph-results.json
+  groupingReason:
+    value: The declaration and concrete composition cover both hosts. These bindings normalize selected-file outcomes
+      and validate the native request and response. Baseline meaning and layout remain in the workspace. Saved test-ownership
+      guidance and the selected graph associations support the corresponding unit/interface test groups. Their complete
+      bodies remain uninspected and no test execution is claimed.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-041
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-035
+    - s4-001-source-excerpt-033
+    - s5-001-source-excerpt-006
+    - s5-001-source-cookbook%2FREADME.md
+    - s4-001-file@graph-results.json
+- id: s4-001-native-shell
+  name: Native shell and selected-file reader
+  parent:
+    value: s4-001-choom
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-039
+    - s4-001-source-excerpt-042
+  purpose:
+    value: Host the frontend in Tauri and read a bounded selected regular file without write access.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-042
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+  membership:
+    value:
+      paths:
+      - src-tauri/**
+      - rust-toolchain.toml
+      - scripts/run-packaged-behavior.ts
+      excludePaths:
+      - src-tauri/icons/icon.png
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-042
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s5-001-source-src-tauri%2Fcomponent.yaml
+    - s5-001-source-excerpt-011
+    - s5-001-source-excerpt-012
+    - s5-001-source-excerpt-013
+    - s5-001-source-excerpt-014
+    - s5-001-source-excerpt-015
+    - s5-001-source-excerpt-016
+    - s2-001-source-excerpt-006
+    - s5-001-source-package.json
+  groupingReason:
+    value: The native entry registers the bounded read command. Its manifest, Cargo package, build script, Tauri
+      settings, listed bundle icons, lockfile and pinned Rust toolchain support one native host. The saved packaged-test
+      runner checks this host. The unlisted icon.png retains unknown ownership. Native test bodies, lockfile contents
+      and image contents are not claimed as inspected; no native build or packaged test ran.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-042
+    - s4-001-source-src-tauri%2Fsrc%2Fmain.rs
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-038
+    - s5-001-source-src-tauri%2Fcomponent.yaml
+    - s5-001-source-excerpt-011
+    - s5-001-source-excerpt-012
+    - s5-001-source-excerpt-013
+    - s5-001-source-excerpt-014
+    - s5-001-source-excerpt-015
+    - s5-001-source-excerpt-016
+    - s2-001-source-excerpt-006
+    - s5-001-source-package.json
+- id: s5-001-manual-producer
+  name: Manual analysis producer
+  purpose:
+    value: Capture selected repository inputs, collect bounded evidence, and publish a reviewed proposed architecture
+      through the separate manual Appendix A workflow.
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+    - s5-001-source-excerpt-003
+    - s5-001-source-excerpt-004
+    - s5-001-source-cookbook%2FREADME.md
+  membership:
+    value:
+      paths:
+      - docs/design/app-a/**
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+    - s5-001-source-excerpt-003
+    - s5-001-source-excerpt-004
+    - s5-001-source-cookbook%2FREADME.md
+  groupingReason:
+    value: The saved file guide names the cookbooks, capture, query, validation and publication helpers as one manual
+      workflow. The reviewed publisher checks a nine-file packet and controls its saved-record handoff. This is
+      a separate tool boundary, not a runtime child invoked by the viewer. Membership of other named helpers is
+      proposed from this documented role; their complete implementations remain uninspected.
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+    - s5-001-source-excerpt-003
+    - s5-001-source-excerpt-004
+    - s5-001-source-cookbook%2FREADME.md
+interfaces:
+- id: s4-001-load-workflow
+  name: Workspace loading and observation
+  owner:
+    value: s4-001-workspace
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-excerpt-002
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+  publicAccess:
+    value:
+    - src/architecture/workspace.ts#createWorkspace
+    - src/architecture/generated/workflow.ts#WorkflowOperations.openBaseline
+    - src/architecture/load-workflow.ts#LoadWorkflow.openBaseline
+    - src/architecture/load-workflow.ts#LoadWorkflow.retry
+    - src/architecture/load-workflow.ts#LoadWorkflow.cancel
+    - src/architecture/workspace-view.ts#WorkflowView.getSnapshot
+    - src/architecture/workspace-view.ts#WorkflowView.subscribe
+    - src/architecture/load-workflow.ts#LoadWorkflow.dispose
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-excerpt-002
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-excerpt-002
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+  promises:
+    value:
+      behavior: Open, retry and cancel share one load slot; only a successful validated and laid-out result replaces
+        the view.
+      data: Generated WorkflowOutcome and WorkflowState describe logical results; concrete command bindings return
+        Promises, and LoadWorkflowSnapshot holds a read-only baseline/layout pair.
+      errors: Busy, cancelled and stage-specific failure outcomes are bounded. Unexpected errors use safe fixed
+        stage messages.
+      lifecycle: The owner manages disposal. Subscriptions observe state; cancelled work cannot later publish, and
+        cancellation after commit does not reverse it.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-excerpt-002
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+  documentation:
+    summary:
+      value: Load a selected baseline through one workspace-owned operation and expose stable view snapshots.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-excerpt-002
+      - s4-001-source-excerpt-003
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+    entries:
+    - id: create-workspace
+      name: Create a host-bound workspace
+      accessPoint: src/architecture/workspace.ts#createWorkspace
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-003
+      description:
+        value: Create the shared load workflow and choose browser or desktop selection when a load starts. Construction
+          itself performs no I/O.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-003
+      signature:
+        value: 'export function createWorkspace(options: { layout?: typeof layoutBaseline } = {}): WorkspaceBinding'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-003
+      interaction:
+        value:
+          input: An optional layout dependency; the declared default is an empty options object.
+          success: A WorkspaceBinding with a LoadWorkflow instance.
+          failures: null
+          effects: Allocates a workflow and desktop adapter. Selection and lazy layout occur later during a load.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-excerpt-003
+      examples: []
+    - id: open-logical
+      name: Open baseline logical operation
+      accessPoint: src/architecture/generated/workflow.ts#WorkflowOperations.openBaseline
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description:
+        value: Generated operation contract for starting a load. Its synchronous result declaration is distinct
+          from the Promise-based implementation binding.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      signature:
+        value: 'openBaseline(): WorkflowOutcome;'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      interaction:
+        value:
+          input: No parameters in the generated operation declaration.
+          success: A WorkflowOutcome contract describes success, cancellation, busy or stage failure.
+          failures: WorkflowFailure carries the selection, reading, validation or layout stage, code, message and
+            duration.
+          effects: The implementation selects, reads, validates and prepares layout, then publishes a baseline/layout
+            pair. The generated declaration alone performs no work.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      examples: []
+    - id: open-binding
+      name: Open baseline asynchronous binding
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.openBaseline
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-005
+      description:
+        value: Start the single active load slot and settle a Promise with its outcome.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-005
+      signature:
+        value: 'readonly openBaseline = (): Promise<WorkflowOutcome> =>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      interaction:
+        value:
+          input: No call parameters; the instance uses its injected selection and layout dependencies.
+          success: Publishes the copied and frozen baseline and layout together, then returns a success outcome.
+          failures: Returns busy for an occupied slot; cancellation and stage failures preserve the prior current
+            view. A disposed workflow returns a disposed failure.
+          effects: Notifies subscribers during progress and publication. Reads the selected file through a host
+            dependency; the workflow does not write files.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-005
+      examples:
+      - id: overlap
+        name: Reviewed overlapping-load call sequence
+        basis: source-reviewed
+        content:
+          value:
+            text: 'const first = workflow.openBaseline();
+
+              const busy = await workflow.openBaseline();
+
+              const cancel = workflow.cancel();'
+          status: proposed
+          evidenceRefs:
+          - s4-001-source-excerpt-005
+    - id: retry-binding
+      name: Retry the previous attempt
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.retry
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+      description:
+        value: Reread the resolved selection, or select again when the earlier attempt did not resolve one.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+      signature:
+        value: 'readonly retry = (): Promise<WorkflowOutcome> =>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      interaction:
+        value:
+          input: No parameters. The instance retains the previous resolved selection.
+          success: Runs the same read, validation, layout and publication path.
+          failures: Returns no-previous-load before an attempt; other outcomes use the same busy, cancellation and
+            stage-failure handling as open.
+          effects: Rereads the selected source rather than reusing original file bytes.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+      examples: []
+    - id: cancel-binding
+      name: Cancel a pending load
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.cancel
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+      description:
+        value: Abort an uncommitted active load and wait for its completion. A committed view remains published.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+      signature:
+        value: 'readonly cancel = (): Promise<WorkflowOutcome | null> =>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      interaction:
+        value:
+          input: No parameters.
+          success: Returns the active completion or the last outcome when there is no active operation.
+          failures: The operation can settle with its existing outcome; cancellation cannot close a pending native
+            picker or reverse a committed publication.
+          effects: Aborts the active controller and publishes cancelling progress. Read/layout rejection handlers
+            remain attached.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-003
+      examples: []
+    - id: snapshot
+      name: Read the view snapshot
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.getSnapshot
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-003
+      description:
+        value: Expose the stable current state and deeply read-only baseline/layout pair to a view.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-003
+      signature:
+        value: 'getSnapshot(): LoadWorkflowSnapshot;'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+      interaction:
+        value:
+          input: No parameters.
+          success: The current LoadWorkflowSnapshot; progress updates retain the current published pair.
+          failures: null
+          effects: The inspected implementation returns its snapshot without I/O.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-003
+      examples: []
+    - id: subscribe
+      name: Subscribe to view changes
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.subscribe
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2FApp.tsx
+      description:
+        value: Register a listener for publication and state changes and return its unsubscribe callback.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2FApp.tsx
+      signature:
+        value: 'subscribe(listener: () => void): () => void;'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+      interaction:
+        value:
+          input: A zero-argument listener.
+          success: Returns a callback that removes that listener.
+          failures: Listener exceptions during notification are caught so an observer cannot interrupt the load.
+          effects: Adds the listener to the workflow-owned Set; removal changes that Set.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2FApp.tsx
+      examples: []
+    - id: dispose
+      name: Dispose the workflow owner
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.dispose
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-003
+      description:
+        value: Close the workflow owner and await cancellation. Disposal is not part of WorkflowView.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-003
+      signature:
+        value: 'readonly dispose = async (): Promise<void> =>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      interaction:
+        value:
+          input: No parameters.
+          success: Marks the workflow disposed and awaits cancel.
+          failures: A pending native picker can delay cancellation until it returns.
+          effects: Later load attempts return a disposed failure. The current committed view is not rolled back.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-003
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Concrete asynchronous arrow-function declarations and single-slot load state machine. Signature
+        text ends before each omitted implementation body.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Host composition and the complete createWorkspace declaration, including its default.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-excerpt-001
+      description: View methods and Promise-mapped operations; disposal stays with the owner.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace-view.ts
+        sha256: e01a1643e95763f2c8ba3d4a7e60fe6851719a3896321201e98cc9a2446d286a
+        lines:
+        - 1
+        - 25
+    - evidenceRef: s4-001-source-excerpt-002
+      description: Copying and freezing at publication.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-publication.ts
+        sha256: 43bfb0adfacf74611663b921092494a02cd450aee1a876416f80bc95ce462fce
+        lines:
+        - 1
+        - 37
+    - evidenceRef: s4-001-source-excerpt-003
+      description: Workspace loading and publication contract.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/workspace.md
+        sha256: c8398ad9384340e2042db4a931beca55d48e33c7f96c937c0695ca737002b531
+        lines:
+        - 1
+        - 180
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      description: Generated logical operations; these result declarations are not the async implementation signatures.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/generated/workflow.ts
+        sha256: f598e30b9f3d977cf5972dc52f7dbc3546ec617790ddf2cb8b92dadb01d26576
+        lines:
+        - 1
+        - 40
+    - evidenceRef: s4-001-source-excerpt-004
+      description: TypeSpec logical workflow outcomes and operations.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/workflow.tsp
+        sha256: ec65f8384aa979943412a2d4c37a389f344c80d66cc1c8233117dbfb54bfb84b
+        lines:
+        - 1
+        - 76
+    - evidenceRef: s4-001-source-excerpt-005
+      description: Reviewed test call sequence and assertions; the test was not executed.
+      location:
+        snapshotRef: snapshot-005
+        path: test/interface/architecture/load-workflow.test.ts
+        sha256: a7fc53c611246ffd28c5ad9c71381bc97959d44351ae2cee6bb927e0366a1569
+        lines:
+        - 1
+        - 46
+- id: s4-001-baseline-decoder
+  name: Baseline YAML decoder
+  owner:
+    value: s4-001-workspace
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-006
+    - s4-001-source-excerpt-007
+    - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-008
+    - s4-001-source-excerpt-009
+    - s4-001-source-excerpt-010
+    - s4-001-source-excerpt-011
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+  publicAccess:
+    value:
+    - src/lib/baseline-yaml.ts#decodeBaselineYaml
+    - src/lib/generated/contracts.ts#BaselineCodec.decode
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-006
+    - s4-001-source-excerpt-007
+    - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-008
+    - s4-001-source-excerpt-009
+    - s4-001-source-excerpt-010
+    - s4-001-source-excerpt-011
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-006
+    - s4-001-source-excerpt-007
+    - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-008
+    - s4-001-source-excerpt-009
+    - s4-001-source-excerpt-010
+    - s4-001-source-excerpt-011
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+  promises:
+    value:
+      behavior: Accept one bounded JSON-compatible YAML document, then validate the supported baseline model.
+      data: DecodeBaselineOutcome preserves supported recorded values and reports a duration; no source-byte copy
+        is retained.
+      errors: Returns unsupported-version, invalid-encoding, invalid-document or limit-exceeded as a decoding failure.
+        Documentation errors can include a safe field path and limit detail.
+      lifecycle: Decode each supplied text value without file access, analyzer work, export or persistence.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-006
+    - s4-001-source-excerpt-007
+    - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-008
+    - s4-001-source-excerpt-009
+    - s4-001-source-excerpt-010
+    - s4-001-source-excerpt-011
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+  documentation:
+    summary:
+      value: Decode bounded YAML text into a validated version 1 or version 2 baseline without loading source evidence.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-excerpt-006
+      - s4-001-source-excerpt-007
+      - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      - s4-001-source-excerpt-008
+      - s4-001-source-excerpt-009
+      - s4-001-source-excerpt-010
+      - s4-001-source-excerpt-011
+      - s4-001-source-excerpt-012
+      - s4-001-source-excerpt-013
+    entries:
+    - id: decode
+      name: Decode baseline YAML
+      accessPoint: src/lib/baseline-yaml.ts#decodeBaselineYaml
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-007
+      description:
+        value: Parse text and return either a validated baseline or a bounded decoding failure.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-007
+      signature:
+        value: 'export function decodeBaselineYaml(text: string): DecodeBaselineOutcome'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-006
+      interaction:
+        value:
+          input: A string containing one baseline YAML document within the bounded parser profile.
+          success: A success outcome with baseline data and durationMs.
+          failures: A failure outcome with stage decoding, a declared code, a safe message and durationMs.
+          effects: Performs in-memory parsing and schema checks; it does not open files, resolve evidence or write
+            the input.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-007
+      examples:
+      - id: invalid-model
+        name: Reviewed incomplete-model input
+        basis: source-reviewed
+        content:
+          value:
+            text: 'baselineCodec.decode("formatVersion: 1\n")'
+            input: The reviewed interface test includes this text in its invalid-document cases. It was not run
+              during recovery.
+          status: proposed
+          evidenceRefs:
+          - s4-001-source-excerpt-014
+    - id: logical-decode
+      name: Generated decoder operation
+      accessPoint: src/lib/generated/contracts.ts#BaselineCodec.decode
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-014
+      description:
+        value: Describe the logical decode operation implemented by the exported baselineCodec wrapper.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-014
+      signature:
+        value: 'decode(text: baselineYaml): DecodeBaselineOutcome;'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      interaction:
+        value:
+          input: baselineYaml, a generated alias for string.
+          success: DecodeBaselineOutcome as declared by the generated contract.
+          failures: BaselineDecodeFailure records one of the four declared decoding codes.
+          effects: The declaration has no runtime effects; the wrapper delegates to decodeBaselineYaml.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-014
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-excerpt-006
+      description: Decoder implementation and exported baselineCodec wrapper.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/baseline-yaml.ts
+        sha256: 0017a3d12d6f8261d9642902ea9986316c90e9ab58d8e4411515a64ec76c75c3
+        lines:
+        - 1
+        - 43
+    - evidenceRef: s4-001-source-excerpt-007
+      description: Input and documentation bounds and safe decoding outcomes.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/baseline-codec.md
+        sha256: fba2f6044b403efb80f2fe3dc7e2cd60664aa27ca42e132477cde7533d36a0ef
+        lines:
+        - 1
+        - 70
+    - evidenceRef: s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      description: Literal generated decoder method declaration.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/generated/contracts.ts
+        sha256: 195022a9ad46f12e3f38aa80e9b6bf4a400976751f233e06ae272588f9d4f34c
+        lines:
+        - 1
+        - 27
+    - evidenceRef: s4-001-source-excerpt-008
+      description: UTF-8 byte, depth and node limits.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/architecture-yaml/limits.ts
+        sha256: b70582606a7637fe709f0aa09e3de854413a56193d35057cde285049a26ef987
+        lines:
+        - 1
+        - 32
+    - evidenceRef: s4-001-source-excerpt-009
+      description: Strict YAML composition and structural checks.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/architecture-yaml/parse.ts
+        sha256: fc13f1b344f5c1316f04f811bb20cc4af0ecc255b27c82510d5e5abb656a3db6
+        lines:
+        - 1
+        - 108
+    - evidenceRef: s4-001-source-excerpt-010
+      description: Line-break, token and flow-comma checks.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/architecture-yaml/lex.ts
+        sha256: c3a715021a916ea138a1430453ef2e272978223d7d8dfd1ab4c822e2ed307550
+        lines:
+        - 1
+        - 27
+    - evidenceRef: s4-001-source-excerpt-011
+      description: Finite JSON scalar boundary.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/architecture-yaml/json-data.ts
+        sha256: 7b2f620129befee4f4a6f414e91ff07a5e4cd9658bde6ba615f81fd693d81888
+        lines:
+        - 1
+        - 7
+    - evidenceRef: s4-001-source-excerpt-012
+      description: Model validation after parsing.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/baseline.ts
+        sha256: cc02d12bf967caf5d2ffc9d6a83fbd6ebf5102058a6429f302c8b94c144b7691
+        lines:
+        - 1
+        - 165
+    - evidenceRef: s4-001-source-excerpt-013
+      description: Version 2 documentation checks.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/baseline-documentation.ts
+        sha256: bf266e4d574096323bc3f28e45b1b6375bfbd35dc47ce11adafdf455abeb842f
+        lines:
+        - 1
+        - 107
+    - evidenceRef: s4-001-source-excerpt-014
+      description: Source-reviewed failure-case example; assertions are evidence of expectations, not a test result.
+      location:
+        snapshotRef: snapshot-005
+        path: test/interface/lib/baseline-yaml.test.ts
+        sha256: 5ddfbcca1a2b30928b8b388b3c7b1400c3b6e87d2a4a32c27077cc3cfbd72520
+        lines:
+        - 1
+        - 34
+- id: s4-001-prepared-layout
+  name: Prepared component layout
+  owner:
+    value: s4-001-workspace
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+    - s4-001-source-excerpt-015
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-016
+  publicAccess:
+    value:
+    - src/lib/architecture-layout.ts#layoutBaseline
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+    - s4-001-source-excerpt-015
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-016
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+    - s4-001-source-excerpt-015
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-016
+  promises:
+    value:
+      behavior: Check display bounds and use rectangle packing to produce complete component geometry.
+      data: ArchitectureLayout carries each component ID, finite position, positive size and optional parent ID;
+        the baseline remains unchanged.
+      errors: Rejects excessive display size and incomplete or invalid layout output.
+      lifecycle: The workspace awaits layout before publication. The diagram receives prepared geometry and maintains
+        its own arrangement.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+    - s4-001-source-excerpt-015
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-016
+  documentation:
+    summary:
+      value: Prepare parent-relative component geometry before the workspace publishes a view.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      - s4-001-source-excerpt-015
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-003
+      - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+      - s4-001-source-excerpt-016
+    entries:
+    - id: layout
+      name: Lay out the baseline components
+      accessPoint: src/lib/architecture-layout.ts#layoutBaseline
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+        - s4-001-source-excerpt-015
+      description:
+        value: Build a component hierarchy, run the supplied or default arranger, and check the prepared positions.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+        - s4-001-source-excerpt-015
+      signature:
+        value: "export async function layoutBaseline(\n  baseline: Baseline,\n  arrange: (graph: ElkNode) => Promise<ElkNode>\
+          \ = (graph) => new ELK().layout(graph),\n): Promise<ArchitectureLayout>"
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      interaction:
+        value:
+          input: A validated Baseline and an optional ELK-compatible arrange function with its declared default.
+          success: A Promise for ArchitectureLayout; an empty component list returns empty nodes.
+          failures: Throws BaselineDisplayLimitError above 500 records, 2000 owner/consumer links or 16 component
+            levels; invalid arranger geometry throws an error. Arranger rejection propagates to the workflow.
+          effects: Calls the arranger for a nonempty model and creates new geometry; it does not mutate the baseline
+            or read a file.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+        - s4-001-source-excerpt-015
+      examples:
+      - id: preview-call
+        name: Reviewed starter preview call
+        basis: source-reviewed
+        content:
+          value:
+            text: "layoutBaseline(starterBaseline).then(\n  (prepared) => { if (active) setLayout(prepared); },\n\
+              \  () => { if (active) setError(true); },\n)"
+          status: proposed
+          evidenceRefs:
+          - s4-001-source-excerpt-017
+    sourceNotes:
+    - evidenceRef: s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      description: Complete async layout declaration, default arranger and output checks.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/architecture-layout.ts
+        sha256: 4b29e8f201f07776294a41ade5fd3224ac2187875055c2a879456cecffab6fef
+        lines:
+        - 1
+        - 88
+    - evidenceRef: s4-001-source-excerpt-015
+      description: Viewer record, link and hierarchy limits.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/baseline-display-limits.ts
+        sha256: 8b771c4cf7cadbc3599f8dac140b4c853d205e74210975cbcb333678eba541f2
+        lines:
+        - 1
+        - 38
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Lazy layout binding.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Layout completion precedes view publication.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-excerpt-003
+      description: Prepared-layout contract.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/workspace.md
+        sha256: c8398ad9384340e2042db4a931beca55d48e33c7f96c937c0695ca737002b531
+        lines:
+        - 1
+        - 180
+    - evidenceRef: s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+      description: The diagram consumes prepared data and creates viewer-owned node positions.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-diagram.tsx
+        sha256: 0a2a902426b7fb69e47ce06da715742f96e988375bbe4f18cf771e1067fb37eb
+        lines:
+        - 1
+        - 200
+    - evidenceRef: s4-001-source-excerpt-016
+      description: A published baseline/layout pair creates a new arrangement.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-diagram.tsx
+        sha256: 0a2a902426b7fb69e47ce06da715742f96e988375bbe4f18cf771e1067fb37eb
+        lines:
+        - 201
+        - 305
+    - evidenceRef: s4-001-source-excerpt-017
+      description: Reviewed preview call; starter content is sample data, not the recovered Choom model.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-preview.tsx
+        sha256: c5145bd9ad7a6ce903d84bc3a9f179b5d887dbd70e4dde3772841184e657e6ae
+        lines:
+        - 1
+        - 20
+- id: s4-001-interface-inspection
+  name: Interface inspection view
+  owner:
+    value: s4-001-workspace
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-020
+    - s4-001-source-excerpt-021
+    - s4-001-source-excerpt-022
+    - s4-001-source-excerpt-023
+    - s4-001-source-excerpt-024
+    - s4-001-source-excerpt-025
+    - s4-001-source-excerpt-026
+    - s4-001-source-excerpt-027
+    - s4-001-source-excerpt-028
+  publicAccess:
+    value:
+    - src/components/interface-details.tsx#InterfaceDetails
+    - src/lib/interface-provenance.ts#interfaceSourceStatements
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-020
+    - s4-001-source-excerpt-021
+    - s4-001-source-excerpt-022
+    - s4-001-source-excerpt-023
+    - s4-001-source-excerpt-024
+    - s4-001-source-excerpt-025
+    - s4-001-source-excerpt-026
+    - s4-001-source-excerpt-027
+    - s4-001-source-excerpt-028
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-020
+    - s4-001-source-excerpt-021
+    - s4-001-source-excerpt-022
+    - s4-001-source-excerpt-023
+    - s4-001-source-excerpt-024
+    - s4-001-source-excerpt-025
+    - s4-001-source-excerpt-026
+    - s4-001-source-excerpt-027
+    - s4-001-source-excerpt-028
+  promises:
+    value:
+      behavior: Show the selected saved interface and preserve distinct unknown, missing, proposed and accepted-recorded
+        states. Signatures are literal text for function entries only.
+      data: Readonly Baseline and BaselineInterface values supply entries, examples, statements and source notes.
+        Access policy remains separate from call activity.
+      errors: null
+      lifecycle: One mounted inspection frame owns tab positions, disclosure choices, entry/example choices and
+        copy feedback. Direct selection or successful view replacement creates a fresh frame; tab changes do not.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-020
+    - s4-001-source-excerpt-021
+    - s4-001-source-excerpt-022
+    - s4-001-source-excerpt-023
+    - s4-001-source-excerpt-024
+    - s4-001-source-excerpt-025
+    - s4-001-source-excerpt-026
+    - s4-001-source-excerpt-027
+    - s4-001-source-excerpt-028
+  documentation:
+    summary:
+      value: Read saved interface purpose, signatures, interactions, examples and provenance in Overview, Example
+        and Sources tabs.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-excerpt-018
+      - s4-001-source-excerpt-019
+      - s4-001-source-excerpt-020
+      - s4-001-source-excerpt-021
+      - s4-001-source-excerpt-022
+      - s4-001-source-excerpt-023
+      - s4-001-source-excerpt-024
+      - s4-001-source-excerpt-025
+      - s4-001-source-excerpt-026
+      - s4-001-source-excerpt-027
+      - s4-001-source-excerpt-028
+    entries:
+    - id: details
+      name: Read one interface
+      accessPoint: src/components/interface-details.tsx#InterfaceDetails
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+        - s4-001-source-excerpt-020
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-025
+      description:
+        value: Render the selected interface with three reading tabs, current entry and example state, and an optional
+          inspector scroll container. The declaration has no explicit return annotation, so a complete signature
+          remains unknown.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+        - s4-001-source-excerpt-020
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-025
+      signature:
+        value: null
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-018
+      interaction:
+        value:
+          input: Readonly baseline and interface props, with an optional RefObject for the record-content div.
+          success: Overview shows entry facts and saved signature text; Example shows the chosen saved sample; Sources
+            shows recorded notes, statement paths, evidence references and the original record.
+          failures: Clipboard rejection shows manual-copy guidance. Missing signatures and null signatures use distinct
+            text; absent examples and source locations stay absent.
+          effects: Changes frame-local selection, disclosure and scroll state. Copy example writes the chosen example
+            text to the host clipboard; signatures, examples and source references are not executed or fetched.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+        - s4-001-source-excerpt-020
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-025
+      examples: []
+    - id: source-statements
+      name: Project interface statement metadata
+      accessPoint: src/lib/interface-provenance.ts#interfaceSourceStatements
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-029
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-019
+      description:
+        value: Produce stable local-ID field paths for every legacy and documented statement, including signatures
+          and examples.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-029
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-019
+      signature:
+        value: 'export function interfaceSourceStatements(item: ReadonlyData<BaselineInterface>): SourceStatement[]'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-029
+      interaction:
+        value:
+          input: A read-only BaselineInterface.
+          success: A SourceStatement array with field path, label, status, evidence references and any acceptance
+            reference.
+          failures: null
+          effects: Builds metadata in memory without resolving references or reading source files.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-029
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-019
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-excerpt-018
+      description: Entry and example state, tab delegation and the return-unannotated InterfaceDetails declaration.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-details.tsx
+        sha256: 64b978dc0103acbb59d8fc5935455944f500168838bd8cef959f69b5ec81d490
+        lines:
+        - 1
+        - 73
+    - evidenceRef: s4-001-source-excerpt-019
+      description: Literal signature display, unknown and omitted states, entry interactions and permission wording.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-overview.tsx
+        sha256: 9a13661380e9be0957d85d87173e056d1f57cc1d9a6e8fb7b052606d3cb47e6b
+        lines:
+        - 1
+        - 141
+    - evidenceRef: s4-001-source-excerpt-020
+      description: Saved sample basis, copy trigger and lazy result disclosure; the view states that examples were
+        not run.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-examples.tsx
+        sha256: af11442e1e98827af2aa89cae7d609d1f529eb8984bfba21c3d229516dba0ffc
+        lines:
+        - 1
+        - 55
+    - evidenceRef: s4-001-source-excerpt-021
+      description: Source notes and original saved record are presented without fetching evidence.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-sources.tsx
+        sha256: e41f2072b518152f787d84edacfb5d08cf758926bbffca10cb0493d37ef4d3c3
+        lines:
+        - 1
+        - 64
+    - evidenceRef: s4-001-source-excerpt-022
+      description: Per-tab reading positions and focused-control visibility.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/use-interface-tabs.ts
+        sha256: 04c6e78be3707a61b50856ee0154e4f6eea7a7af12ca7c2b3e79b2b2a31c32e5
+        lines:
+        - 1
+        - 38
+    - evidenceRef: s4-001-source-excerpt-023
+      description: Frame-owned native disclosure state.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/use-interface-disclosures.ts
+        sha256: 03c3ceb9b30fdc3b5058f11f6345ca6fe7220e2c7c4f50669144fae85a74fc9c
+        lines:
+        - 1
+        - 25
+    - evidenceRef: s4-001-source-excerpt-024
+      description: Clipboard write outcomes and invalidation of older feedback.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/use-example-copy.ts
+        sha256: 932d8050e1742e1db26b181afcd7099e46b69c43468a99a71953a0a11ae09974
+        lines:
+        - 1
+        - 24
+    - evidenceRef: s4-001-source-excerpt-025
+      description: Interface-reading lifecycle contract.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/workspace.md
+        sha256: c8398ad9384340e2042db4a931beca55d48e33c7f96c937c0695ca737002b531
+        lines:
+        - 181
+        - 316
+    - evidenceRef: s4-001-source-excerpt-026
+      description: Inspector frame key and record-content container.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-inspector.tsx
+        sha256: 15231cd5c8385ad78710eaf931fb2e83e268723ee24cabddfe1487d78ad58470
+        lines:
+        - 1
+        - 59
+    - evidenceRef: s4-001-source-excerpt-027
+      description: New direct selections and published-pair replacement reset inspection frames.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/use-architecture-inspection.ts
+        sha256: c8cc5e8231a6fd04db16839a53d3949a7e557b74ceabd71b8a75a40036d61305
+        lines:
+        - 1
+        - 155
+    - evidenceRef: s4-001-source-excerpt-028
+      description: ArchitectureDetails dispatches an interface record to InterfaceDetails.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-details.tsx
+        sha256: ccd35b1a26bccb8872aa04b8624be98d9ad9d7e2b6be2b045a93f4004463a3c9
+        lines:
+        - 1
+        - 102
+    - evidenceRef: s4-001-source-excerpt-029
+      description: Complete provenance projection declaration and signature-specific statement paths.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/interface-provenance.ts
+        sha256: 7110da2902efd37b1dc956697455799ca3577e2e55559d88d22191790a0c15d1
+        lines:
+        - 1
+        - 51
+- id: s4-001-baseline-model
+  name: Saved baseline model validation
+  owner:
+    value: s4-001-architecture-model
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-030
+    - s4-001-source-excerpt-031
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+    - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-032
+    - s4-001-source-excerpt-006
+  publicAccess:
+    value:
+    - src/domain/baseline.ts#baselineSchema
+    - src/domain/generated/contracts.ts#Baseline
+    - src/domain/generated/contracts.ts#BaselineDocumentedEntry
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-030
+    - s4-001-source-excerpt-031
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+    - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-032
+    - s4-001-source-excerpt-006
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-030
+    - s4-001-source-excerpt-031
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+    - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-032
+    - s4-001-source-excerpt-006
+  promises:
+    value:
+      behavior: Check model shape, unique global record IDs, component references, parent cycles, safe membership
+        selectors and version 2 documentation links and limits.
+      data: Baseline is the generated BaselineV1 or BaselineV2 union. Version 2 adds optional summary, entries,
+        signatures, interactions, examples and source notes.
+      errors: safeParse returns schema issues; the decoder translates these into invalid-document outcomes. A signature
+        on a non-function entry is invalid.
+      lifecycle: Validation neither accepts proposed intent nor opens referenced evidence. It preserves recorded
+        statuses and signature text without interpreting the declaration.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-030
+    - s4-001-source-excerpt-031
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+    - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-032
+    - s4-001-source-excerpt-006
+  documentation:
+    summary:
+      value: Validate strict version 1 and version 2 architecture records and preserve structured interface documentation.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-excerpt-030
+      - s4-001-source-excerpt-031
+      - s4-001-source-excerpt-012
+      - s4-001-source-excerpt-013
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      - s4-001-source-excerpt-032
+      - s4-001-source-excerpt-006
+    entries:
+    - id: schema
+      name: Baseline runtime schema
+      accessPoint: src/domain/baseline.ts#baselineSchema
+      kind:
+        value: data
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-013
+        - s4-001-source-excerpt-031
+      description:
+        value: The exported strict discriminated schema accepts supported Baseline data and performs reference and
+          documentation refinements. Its third-party safeParse implementation is not supplied in this snapshot.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-013
+        - s4-001-source-excerpt-031
+      examples: []
+    - id: baseline-type
+      name: Baseline data type
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      kind:
+        value: type
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-032
+      description:
+        value: The generated union distinguishes version 1 records from version 2 records with optional structured
+          interface documentation.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-032
+      examples: []
+    - id: documented-entry
+      name: Documented interface entry type
+      accessPoint: src/domain/generated/contracts.ts#BaselineDocumentedEntry
+      kind:
+        value: type
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-013
+      description:
+        value: The generated entry includes ID, name, access point, kind, description, optional signature and interaction,
+          and examples; runtime refinements enforce the permitted combinations.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-013
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-excerpt-030
+      description: Architecture-model declaration.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/component.yaml
+        sha256: 7d16895c2dc6045dbfbb439b8a98e2fd5fb209aea06130f6e048b1a14b00b2f5
+        lines:
+        - 1
+        - 16
+    - evidenceRef: s4-001-source-excerpt-031
+      description: Viewer model contract and the limit of evidence validation.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/baseline.md
+        sha256: b64a246876379fc6bac8ea043f8c0d6da440e737978d81c0171bdf67220ca8a1
+        lines:
+        - 1
+        - 88
+    - evidenceRef: s4-001-source-excerpt-012
+      description: Strict version discrimination and runtime model/reference checks.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/baseline.ts
+        sha256: cc02d12bf967caf5d2ffc9d6a83fbd6ebf5102058a6429f302c8b94c144b7691
+        lines:
+        - 1
+        - 165
+    - evidenceRef: s4-001-source-excerpt-013
+      description: Documentation bounds, kind checks and cited source-note checks.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/baseline-documentation.ts
+        sha256: bf266e4d574096323bc3f28e45b1b6375bfbd35dc47ce11adafdf455abeb842f
+        lines:
+        - 1
+        - 107
+    - evidenceRef: s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      description: Generated entry and documentation shapes.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/generated/contracts.ts
+        sha256: 63d6c998d26b284ca3ab895b26c12a391510472f72c17bd039282bf64afbc8da
+        lines:
+        - 1
+        - 200
+    - evidenceRef: s4-001-source-excerpt-032
+      description: Generated BaselineV1 and BaselineV2 definitions.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/generated/contracts.ts
+        sha256: 63d6c998d26b284ca3ab895b26c12a391510472f72c17bd039282bf64afbc8da
+        lines:
+        - 201
+        - 322
+    - evidenceRef: s4-001-source-excerpt-006
+      description: Caller of baselineSchema.safeParse and decoding-failure conversion.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/baseline-yaml.ts
+        sha256: 0017a3d12d6f8261d9642902ea9986316c90e9ab58d8e4411515a64ec76c75c3
+        lines:
+        - 1
+        - 43
+- id: s4-001-browser-file-input
+  name: Browser baseline selection and read
+  owner:
+    value: s4-001-desktop-adapter
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-033
+  publicAccess:
+    value:
+    - src/platform/browser-documents.ts#selectBrowserBaseline
+    - src/platform/browser-documents.ts#readBrowserBaseline
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-033
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-033
+  promises:
+    value:
+      behavior: Use a temporary file input for YAML selection and read the selected File without a native capability.
+      data: Selection returns File or null; reading returns text or a storage failure with a duration.
+      errors: Picker opening can reject; reading reports limit-exceeded, invalid-utf8 or io-error. AbortSignal checks
+        can throw cancellation to the workflow.
+      lifecycle: Selection removes its input and abort listener when it completes. Reads check the signal before
+        and after awaited work and retain no persistent copy.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-excerpt-033
+  documentation:
+    summary:
+      value: Select a local browser File and read bounded UTF-8 text with cancellation checks.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-excerpt-033
+    entries:
+    - id: select
+      name: Select a browser baseline
+      accessPoint: src/platform/browser-documents.ts#selectBrowserBaseline
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      description:
+        value: Open a temporary browser file input and return its first selected File or null.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      signature:
+        value: 'export function selectBrowserBaseline(signal: AbortSignal): Promise<File | null>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      interaction:
+        value:
+          input: An AbortSignal.
+          success: A Promise resolving to the first selected File, or null for cancellation and an already aborted
+            signal.
+          failures: Rejects with a fixed picker error if input.click throws.
+          effects: Creates, appends, clicks and removes a hidden file input and attaches temporary change, cancel
+            and abort listeners.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      examples: []
+    - id: read
+      name: Read a browser baseline
+      accessPoint: src/platform/browser-documents.ts#readBrowserBaseline
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-excerpt-033
+      description:
+        value: Check size, read bytes, and decode strict UTF-8 after cancellation checks.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-excerpt-033
+      signature:
+        value: 'export async function readBrowserBaseline(file: Pick<File, "size" | "arrayBuffer">, signal: AbortSignal):
+          Promise<ReadDocumentTextOutcome>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      interaction:
+        value:
+          input: An object with File size and arrayBuffer plus an AbortSignal.
+          success: Text decoded with a fatal UTF-8 decoder and durationMs.
+          failures: Rejects on abort; returns storage failures for more than 16 MiB, invalid UTF-8 or unreadable
+            file bytes.
+          effects: Reads the selected File bytes and checks actual byte length; no source write or native IPC occurs
+            in this function.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-excerpt-033
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      description: Complete selection/read declarations and browser DOM/File operations.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/browser-documents.ts
+        sha256: decc915b134a6ebcf839a40b81320dd51c16b53d85817103cea2d76c020a0369
+        lines:
+        - 1
+        - 53
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Browser selection is wrapped as a retryable selected baseline.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-excerpt-033
+      description: Bounded selected-file boundary contract.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/documents.md
+        sha256: 31e1121237ec3e8c9cd89d5d351398dae2d32a765aa5b4ecce57d2a61de208ae
+        lines:
+        - 1
+        - 58
+- id: s4-001-desktop-selection
+  name: Desktop availability and baseline picker
+  owner:
+    value: s4-001-desktop-adapter
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdesktop.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-034
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+  publicAccess:
+    value:
+    - src/platform/desktop.ts#isDesktop
+    - src/platform/document-dialogs.ts#selectBaselineFile
+    - src/platform/generated/contracts.ts#BaselineDialogOperations.selectBaselineFile
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdesktop.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-034
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdesktop.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-034
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+  promises:
+    value:
+      behavior: Delegate host detection to isTauri and request a single non-directory YAML selection when desktop
+        access is available.
+      data: Host detection returns the generated boolean result; native selection returns a nonempty path string
+        or null through a Promise binding.
+      errors: A plugin error or malformed selection throws the fixed native-picker unavailable error. Browser absence
+        returns null.
+      lifecycle: Picker work begins on selection, not workspace construction. An AbortSignal cannot close the native
+        picker.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdesktop.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-034
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-003
+  documentation:
+    summary:
+      value: Detect a Tauri host and select one YAML baseline path through its dialog plugin.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-src%2Fplatform%2Fdesktop.ts
+      - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      - s4-001-source-excerpt-034
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-003
+    entries:
+    - id: host
+      name: Detect desktop host
+      accessPoint: src/platform/desktop.ts#isDesktop
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdesktop.ts
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      description:
+        value: Return the Tauri API host check through the declared desktop operation result type.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdesktop.ts
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      signature:
+        value: 'export function isDesktop(): ReturnType<DesktopOperations["isDesktop"]>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdesktop.ts
+      interaction:
+        value:
+          input: No parameters.
+          success: The result of isTauri, typed through DesktopOperations.
+          failures: null
+          effects: Calls the host API check; no file read is present in this wrapper.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdesktop.ts
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      examples: []
+    - id: select
+      name: Select one desktop baseline file
+      accessPoint: src/platform/document-dialogs.ts#selectBaselineFile
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-excerpt-034
+      description:
+        value: Request one non-directory yaml/yml path and validate the returned selection.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-excerpt-034
+      signature:
+        value: 'export async function selectBaselineFile(): Promise<ReturnType<BaselineDialogOperations["selectBaselineFile"]>>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      interaction:
+        value:
+          input: No parameters.
+          success: A nonempty path string or null. A non-desktop host returns null.
+          failures: Throws the fixed native-picker unavailable error on plugin rejection or invalid selection.
+          effects: Invokes the native open dialog for one YAML file. It does not read the selected file.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-excerpt-034
+      examples: []
+    - id: logical-selection
+      name: Generated picker operation
+      accessPoint: src/platform/generated/contracts.ts#BaselineDialogOperations.selectBaselineFile
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-034
+      description:
+        value: Declare the logical nullable selection result, separate from the async plugin wrapper.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-034
+      signature:
+        value: 'selectBaselineFile(): BaselineFileSelection;'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      interaction:
+        value:
+          input: No declared parameters.
+          success: BaselineFileSelection, a string-or-null union.
+          failures: The accompanying TypeSpec comment preserves picker rejection in Promise bindings.
+          effects: The generated declaration itself performs no selection.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-034
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fdesktop.ts
+      description: Complete host-detection declaration.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/desktop.ts
+        sha256: 64c60d78034e1ebcd7236e06ade02857a1bdc49fe0418a2b5942f4024c2dcefc
+        lines:
+        - 1
+        - 6
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      description: Complete Promise binding, picker filters and selection validation.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/document-dialogs.ts
+        sha256: 0fbba7590bc56bc2b84ee8148d85199e6a1593aad11fc1c1af42e472f9d93772
+        lines:
+        - 1
+        - 18
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      description: Generated logical desktop and picker operation declarations.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/generated/contracts.ts
+        sha256: 06e8148d67a186caad03594d4a0d2d903d84e56d195c757b6063df980e9605ef
+        lines:
+        - 1
+        - 45
+    - evidenceRef: s4-001-source-excerpt-034
+      description: Logical picker contract and Promise-rejection comment.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/document-dialogs.tsp
+        sha256: d1673226eec259d02d82c764c37eb90a09ba05257bb157d6e81bac8de423db5d
+        lines:
+        - 1
+        - 17
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Pending native selection keeps the operation slot until it returns.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-excerpt-003
+      description: Native picker cancellation limitation.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/workspace.md
+        sha256: c8398ad9384340e2042db4a931beca55d48e33c7f96c937c0695ca737002b531
+        lines:
+        - 1
+        - 180
+- id: s4-001-desktop-file-read
+  name: Desktop selected-file read adapter
+  owner:
+    value: s4-001-desktop-adapter
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    - s4-001-source-excerpt-035
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-036
+    - s4-001-source-excerpt-033
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+  publicAccess:
+    value:
+    - src/platform/documents.ts#DesktopDocumentAccess.readDocumentFile
+    - src/platform/generated/contracts.ts#DocumentFileOperations.readDocumentFile
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    - s4-001-source-excerpt-035
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-036
+    - s4-001-source-excerpt-033
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    - s4-001-source-excerpt-035
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-036
+    - s4-001-source-excerpt-033
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+  promises:
+    value:
+      behavior: Only the dedicated native read command is invoked by this adapter.
+      data: An absolute bounded path enters the transport; a validated ReadDocumentTextOutcome leaves it. Generated
+        synchronous operation declarations and async bindings are distinct.
+      errors: Invalid request, unavailable host/transport and invalid response become fixed storage failures. Native
+        failure codes retain fixed safe messages.
+      lifecycle: Each call performs one read through its configured transport; the adapter does not create a snapshot,
+        export or writable cache.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    - s4-001-source-excerpt-035
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-036
+    - s4-001-source-excerpt-033
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+  documentation:
+    summary:
+      value: Validate the request, invoke document_file_read, validate the reply, and expose a safe text outcome.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-src%2Fplatform%2Fdocuments.ts
+      - s4-001-source-excerpt-035
+      - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      - s4-001-source-excerpt-036
+      - s4-001-source-excerpt-033
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    entries:
+    - id: read
+      name: Read a desktop document file
+      accessPoint: src/platform/documents.ts#DesktopDocumentAccess.readDocumentFile
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-035
+        - s4-001-source-excerpt-033
+      description:
+        value: Validate input and native output around the dedicated IPC read, retaining safe failure codes.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-035
+        - s4-001-source-excerpt-033
+      signature:
+        value: 'async readDocumentFile(request: Parameters<DocumentFileOperations["readDocumentFile"]>[0]): Promise<ReturnType<DocumentFileOperations["readDocumentFile"]>>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+      interaction:
+        value:
+          input: The declared read request; runtime validation requires an absolute path with at most 4096 UTF-8
+            bytes and no controls or unpaired surrogates.
+          success: The validated native success text outcome.
+          failures: Returns invalid-request, unavailable or invalid-response for boundary failures, and normalizes
+            native failure messages by code.
+          effects: Calls the configured transport with command document_file_read and the validated request.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-excerpt-035
+        - s4-001-source-excerpt-033
+      examples:
+      - id: selected-path
+        name: Reviewed selected-path adapter call
+        basis: source-reviewed
+        content:
+          value:
+            text: files.readDocumentFile({ path })
+            input: In the desktop branch, path is the non-null selection returned by selectBaselineFile. This call
+              was read as source, not executed.
+          status: proposed
+          evidenceRefs:
+          - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - id: logical-read
+      name: Generated document read operation
+      accessPoint: src/platform/generated/contracts.ts#DocumentFileOperations.readDocumentFile
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-036
+      description:
+        value: Describe the logical request and outcome wire contract; this declaration is not the Promise binding.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-036
+      signature:
+        value: 'readDocumentFile(request: ReadDocumentFileRequest): ReadDocumentTextOutcome;'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      interaction:
+        value:
+          input: ReadDocumentFileRequest with a documentFilePath.
+          success: ReadDocumentText with text and durationMs.
+          failures: DocumentNativeFailure with storage stage and a declared failure code.
+          effects: The TypeSpec contract specifies selected-file reading without a cache, snapshot or write operation;
+            the generated declaration has no effects.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+        - s4-001-source-excerpt-036
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fdocuments.ts
+      description: Complete async method declaration and input/transport/output handling.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/documents.ts
+        sha256: 7974e3b29f766ece7956dd8af62b64516473824df68ea9a9277456e44d2df63b
+        lines:
+        - 1
+        - 57
+    - evidenceRef: s4-001-source-excerpt-035
+      description: Strict path, text and outcome validators.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/documents-contract.ts
+        sha256: 8c7ca871a294153090d201e34b8c527f819b6a099c89fdfded41732c6333c9e9
+        lines:
+        - 1
+        - 30
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      description: Literal generated logical read declaration and data shapes.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/generated/contracts.ts
+        sha256: 06e8148d67a186caad03594d4a0d2d903d84e56d195c757b6063df980e9605ef
+        lines:
+        - 1
+        - 45
+    - evidenceRef: s4-001-source-excerpt-036
+      description: Native wire contract and read-only intent.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/desktop-documents.tsp
+        sha256: 9c0973dc82db0b464f949b119cb9d9c631d59931f597d3c831d26de78d9472e7
+        lines:
+        - 1
+        - 71
+    - evidenceRef: s4-001-source-excerpt-033
+      description: Selected-file read ownership and error contract.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/documents.md
+        sha256: 31e1121237ec3e8c9cd89d5d351398dae2d32a765aa5b4ecce57d2a61de208ae
+        lines:
+        - 1
+        - 58
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Reviewed concrete call from desktop workspace composition.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+- id: s4-001-native-file-read
+  name: Native document read command
+  owner:
+    value: s4-001-native-shell
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-038
+    - s4-001-source-excerpt-033
+  publicAccess:
+    value:
+    - document_file_read
+    - src-tauri/src/documents/mod.rs#read_file
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-038
+    - s4-001-source-excerpt-033
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-038
+    - s4-001-source-excerpt-033
+  promises:
+    value:
+      behavior: Decode the JSON request, validate the native path, hold directory and file identities, read bounded
+        bytes and decode UTF-8.
+      data: The command accepts serde_json::Value and returns Outcome<Text>; success carries text and durationMs.
+      errors: Malformed requests and path, file-type, identity, size, UTF-8 and I/O failures become fixed native
+        codes. Worker join failure becomes unavailable.
+      lifecycle: Each read owns its handles until return. The registered native service has no file write, repository
+        scan, analyzer or persistent snapshot operation.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-038
+    - s4-001-source-excerpt-033
+  documentation:
+    summary:
+      value: Run bounded native selected-file reading on a blocking worker and return a storage outcome.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+      - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+      - s4-001-source-excerpt-037
+      - s4-001-source-excerpt-038
+      - s4-001-source-excerpt-033
+    entries:
+    - id: command
+      name: Invoke document_file_read
+      accessPoint: document_file_read
+      kind:
+        value: command
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      description:
+        value: The Tauri invoke handler exposes the dedicated native read command and dispatches its work with spawn_blocking.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      interaction:
+        value:
+          input: A request JSON value with one path field.
+          success: A serialized Outcome<Text> with text on success.
+          failures: Storage failures use fixed codes/messages; a failed blocking worker produces unavailable.
+          effects: Starts blocking native read work. The command source performs no selected-file writes.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      examples: []
+    - id: read-file
+      name: Read the selected native file
+      accessPoint: src-tauri/src/documents/mod.rs#read_file
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+        - s4-001-source-excerpt-037
+        - s4-001-source-excerpt-038
+      description:
+        value: Own the native selected-file read from request decoding through the final outcome.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+        - s4-001-source-excerpt-037
+        - s4-001-source-excerpt-038
+      signature:
+        value: 'pub fn read_file(request: Value) -> Outcome<Text>'
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+      interaction:
+        value:
+          input: A serde_json::Value decoded as a ReadRequest with no unknown fields.
+          success: Outcome::Success with valid UTF-8 text and elapsed duration.
+          failures: Returns storage failures for invalid request/path, missing or non-regular file, changed identity,
+            size limit, invalid UTF-8 or I/O.
+          effects: Opens read-only directory and file handles, checks identities before/after read, and reads at
+            most the byte limit plus one detection byte. Handles belong to this call.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+        - s4-001-source-excerpt-037
+        - s4-001-source-excerpt-038
+      examples: []
+    sourceNotes:
+    - evidenceRef: s4-001-source-src-tauri%2Fsrc%2Flib.rs
+      description: Tauri dialog plugin and the sole registered invoke command.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/lib.rs
+        sha256: 7c6096cabc038b099a1d7cc765657ed165f9d2294e1599d13783ae71d891f9e5
+        lines:
+        - 1
+        - 23
+    - evidenceRef: s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      description: Command wrapper and blocking-worker failure conversion.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/document_commands.rs
+        sha256: 656dcec63102be06706951d7029f8d7608a28af90b170bcf118b94ed9140c2c1
+        lines:
+        - 1
+        - 9
+    - evidenceRef: s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+      description: Complete public native read function declaration and per-call sequence.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/documents/mod.rs
+        sha256: d41a897d7279a69768dca13c89d083f4c499f2a9a7e3d1406691f625d5d29319
+        lines:
+        - 1
+        - 22
+    - evidenceRef: s4-001-source-excerpt-037
+      description: Native read-only options, final symlink/type checks, held identities and bounded byte read.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/documents/files.rs
+        sha256: e57aaa1cb1fa3cbaa234fab3341b1f186631bbe96cad9e2715f97c1974ac8b50
+        lines:
+        - 1
+        - 168
+    - evidenceRef: s4-001-source-excerpt-038
+      description: Strict request decoding, data model and fixed native outcomes.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/documents/model.rs
+        sha256: 9b6f93a13dfcfaafd9070908bd832869de1893641ee1a4b430a628730ff90864
+        lines:
+        - 1
+        - 96
+    - evidenceRef: s4-001-source-excerpt-033
+      description: Read ownership and no-persistence contract.
+      location:
+        snapshotRef: snapshot-005
+        path: cookbook/interfaces/documents.md
+        sha256: 31e1121237ec3e8c9cd89d5d351398dae2d32a765aa5b4ecce57d2a61de208ae
+        lines:
+        - 1
+        - 58
+- id: s5-001-producer-publication
+  name: Manual review publication commands
+  owner:
+    value: s5-001-manual-producer
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+  publicAccess:
+    value:
+    - docs/design/app-a/stage-4-5-publish.mjs#check
+    - docs/design/app-a/stage-4-5-publish.mjs#finish
+    - docs/design/app-a/stage-4-5-publish.mjs#verify
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+    - s5-001-source-excerpt-017
+  promises:
+    value:
+      behavior: Check, publish or verify a manually reviewed Stage 4 or Stage 5 packet against saved identities
+        and evidence.
+      data: Five candidate records plus the full prompt, response, call metadata and review scope form the exact
+        nine-file packet. The selected run identifies its snapshot and registered artifacts.
+      errors: Validation failures stop with a diagnostic and nonzero exit status. Publication failure can retain
+        attempt files or failure evidence, and rollback can fail.
+      lifecycle: An operator selects the action and attempt. Check and verify are read-only. Finish locks publication,
+        rechecks inputs, saves the packet, replaces drafts and writes the manifest last. Record checks do not accept
+        proposed intent.
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+  documentation:
+    summary:
+      value: Commands for the manual Stage 4 and Stage 5 handoff. Capture, query and final-freeze commands are outside
+        this documented interface.
+      status: proposed
+      evidenceRefs:
+      - s5-001-source-excerpt-001
+      - s5-001-source-excerpt-002
+    entries:
+    - id: check
+      name: Check a review packet
+      accessPoint: docs/design/app-a/stage-4-5-publish.mjs#check
+      kind:
+        value: command
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      description:
+        value: Validate a Stage 4 or Stage 5 packet against saved identities and evidence before publication.
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      interaction:
+        value:
+          input: The check action, stage 4 or 5, and an absolute review-directory argument. CHOOM_WORK, CHOOM_TOOLS,
+            the stage attempt ID and attempt directory select the saved inputs.
+          success: Prints a stage review-verified result, validation counts and an empty writes list.
+          failures: Invalid arguments, missing or changed inputs, mismatched identities, invalid metadata or invalid
+            candidate records stop the command with a diagnostic and nonzero exit status.
+          effects: Reads the selected saved inputs and exact nine-file packet. This action does not call the publication
+            function.
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      examples: []
+    - id: finish
+      name: Publish a reviewed packet
+      accessPoint: docs/design/app-a/stage-4-5-publish.mjs#finish
+      kind:
+        value: command
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      description:
+        value: Save a checked Stage 4 or Stage 5 packet and advance the selected working records.
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      interaction:
+        value:
+          input: The finish action, stage 4 or 5, an absolute review-directory argument and the same run/attempt
+            environment.
+          success: Copies the packet, saves a publication receipt, replaces baseline.yaml and discovery.yaml, and
+            writes run.yaml last.
+          failures: An existing lock, changed files or failed validation stops publication. Failure handling attempts
+            rollback and can leave attempt files or failure evidence; rollback can also fail.
+          effects: Creates a publication lock, immutable attempt files and temporary working files, then renames
+            the three working records. This sequence does not establish atomic multi-file publication.
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      examples: []
+    - id: verify
+      name: Verify saved publication
+      accessPoint: docs/design/app-a/stage-4-5-publish.mjs#verify
+      kind:
+        value: command
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      description:
+        value: Check a completed Stage 4 or Stage 5 publication against its receipt, selections and saved bytes.
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      interaction:
+        value:
+          input: The verify action and stage 4 or 5, with the run and attempt environment; no review-directory argument.
+          success: Prints a stage publication-verified result, validation counts and an empty writes list.
+          failures: A remaining lock, invalid receipt, changed hashes, mismatched selected files or failed record
+            checks stop the command with a diagnostic and nonzero exit status.
+          effects: Reads the saved packet, receipt, snapshot and working records. This branch does not publish new
+            model files.
+        status: proposed
+        evidenceRefs:
+        - s5-001-source-excerpt-001
+        - s5-001-source-excerpt-002
+      examples: []
+    sourceNotes:
+    - evidenceRef: s5-001-source-excerpt-001
+      description: Command grammar, environment identities, packet shape and verified saved-input loading.
+      location:
+        snapshotRef: snapshot-005
+        path: docs/design/app-a/stage-4-5-publish.mjs
+        sha256: 032878bb644bbc5862f7d973eb7dc34f336a52baf33e7dc9b890a0e6337f0ff0
+        lines:
+        - 1
+        - 180
+    - evidenceRef: s5-001-source-excerpt-002
+      description: Candidate checks, read-only verification, publication lock, saved files, replacement order, rollback
+        and action dispatch.
+      location:
+        snapshotRef: snapshot-005
+        path: docs/design/app-a/stage-4-5-publish.mjs
+        sha256: 032878bb644bbc5862f7d973eb7dc34f336a52baf33e7dc9b890a0e6337f0ff0
+        lines:
+        - 181
+        - 355
+    - evidenceRef: s5-001-source-excerpt-017
+      description: The saved cookbook gives operator command examples and the review-before-publication sequence;
+        it does not define a complete component permission policy.
+      location:
+        snapshotRef: snapshot-005
+        path: docs/design/app-a/step-5-cookbook.md
+        sha256: 55d197231baf0d6f634cae091d70b087163c74d7b15444e18a4d167ad20237a7
+        lines:
+        - 215
+        - 302
+resources:
+- id: s4-001-selected-baseline-file
+  name: User-selected baseline document
+  identity:
+    value: A browser File selected through the temporary input, or an absolute native path returned by the file
+      picker. The concrete file identity depends on the selection.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-excerpt-033
+  owner:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-excerpt-033
+  accessRules:
+    value: Read bounded UTF-8 content from the selected file. The viewer has no encoder, export or write action,
+      and validation/layout failure keeps the previous view.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-excerpt-033
+- id: s4-001-native-read-handles
+  name: Native read handles
+  identity:
+    value: The Directory and OwnedFile handles held for one selected native read, with file and directory identity
+      checks.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-033
+  owner:
+    value: s4-001-native-shell
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-033
+  accessRules:
+    value: Open without write access; reject final symlinks and non-regular files; check held identities and size/modification
+      metadata around bounded reads. Release ownership when the read returns.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    - s4-001-source-excerpt-037
+    - s4-001-source-excerpt-033
+- id: s4-001-published-view
+  name: Published baseline and layout
+  identity:
+    value: The workflow snapshot current pair produced by ownCurrentView and exposed through LoadWorkflowSnapshot.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-016
+  owner:
+    value: s4-001-workspace
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-016
+  accessRules:
+    value: Copy and deeply freeze the validated baseline and prepared layout before one commit. Views observe the
+      pair and use separate mutable geometry; failure or pre-commit cancellation does not replace it.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-016
+- id: s4-001-host-clipboard
+  name: Host clipboard
+  identity:
+    value: The host navigator.clipboard.writeText destination used by Copy example.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-024
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-025
+  owner:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-024
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-025
+  accessRules:
+    value: Only the selected example text is submitted by the Copy example action. Feedback waits for the write
+      result; stale requests cannot update newer frame feedback, and no host-level write cancellation is promised.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-024
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-025
+- id: s5-001-analysis-run
+  name: Saved manual analysis run
+  identity:
+    value: The canonical CHOOM_WORK directory, including its indexed snapshot, immutable attempt evidence and selected
+      run.yaml, baseline.yaml and discovery.yaml records.
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+    - s5-001-source-excerpt-003
+  owner:
+    value: s5-001-manual-producer
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+    - s5-001-source-excerpt-003
+  accessRules:
+    value: The manual publisher verifies the indexed snapshot and registered evidence. Check and verify read saved
+      state. Finish takes one publication lock, rechecks inputs, saves new attempt records and replaces the selected
+      drafts with the manifest last. Proposed ownership describes this workflow responsibility, not OS permission
+      or exclusive filesystem access.
+    status: proposed
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+rules:
+- id: s4-001-rule-read-only
+  name: Read-only baseline opening
+  subject:
+    value:
+      components:
+      - s4-001-workspace
+      - s4-001-desktop-adapter
+      - s4-001-native-shell
+      resource: s4-001-selected-baseline-file
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-033
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-excerpt-037
+  expected:
+    value:
+      restriction: Opening, validating, laying out and inspecting a baseline must not write the selected file or
+        create a persistent snapshot/export.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-033
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-excerpt-037
+  check:
+    value:
+      method: Inspect each selected-file access and public command surface; use the declared browser/native acceptance
+        checks when execution is separately authorized.
+      execution: Proposed source and behavior checks. The saved target code and tests were read as text; no target
+        behavior was executed in this run.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-033
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-excerpt-037
+- id: s4-001-rule-publication
+  name: One immutable view publication
+  subject:
+    value:
+      component: s4-001-workspace
+      resource: s4-001-published-view
+      interface: s4-001-load-workflow
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-002
+    - s4-001-source-excerpt-003
+    - s4-001-source-excerpt-005
+  expected:
+    value:
+      restriction: Only one load owns the slot. Publish a copied frozen baseline/layout pair together after successful
+        validation and layout. Ignore late cancelled work and retain the prior current view on failure.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-002
+    - s4-001-source-excerpt-003
+    - s4-001-source-excerpt-005
+  check:
+    value:
+      method: Inspect the active-operation checks and commit site; exercise overlap, cancellation, failure and replacement
+        assertions in the workflow suites when execution is authorized.
+      execution: Proposed source and behavior checks. The saved target code and tests were read as text; no target
+        behavior was executed in this run.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-002
+    - s4-001-source-excerpt-003
+    - s4-001-source-excerpt-005
+- id: s4-001-rule-recorded-meaning
+  name: Preserve recorded meaning in interface inspection
+  subject:
+    value:
+      interfaces:
+      - s4-001-interface-inspection
+      - s4-001-baseline-model
+      components:
+      - s4-001-workspace
+      - s4-001-architecture-model
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-025
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-020
+    - s4-001-source-excerpt-021
+    - s4-001-source-excerpt-029
+    - s4-001-source-excerpt-013
+  expected:
+    value:
+      restriction: Keep unknown and omitted facts distinct. Render saved signatures and examples as text; show their
+        own statuses and sources. Allowed consumers are permission, not observed activity. Do not resolve source
+        references or execute saved checks or samples.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-025
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-020
+    - s4-001-source-excerpt-021
+    - s4-001-source-excerpt-029
+    - s4-001-source-excerpt-013
+  check:
+    value:
+      method: Inspect schema refinements, view branches and provenance paths; exercise literal-signature, unknown/missing,
+        status and source assertions when execution is authorized.
+      execution: Proposed source and behavior checks. The saved target code and tests were read as text; no target
+        behavior was executed in this run.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-025
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-020
+    - s4-001-source-excerpt-021
+    - s4-001-source-excerpt-029
+    - s4-001-source-excerpt-013
+- id: s4-001-rule-input-bounds
+  name: Bound baseline input and presentation
+  subject:
+    value:
+      interfaces:
+      - s4-001-baseline-decoder
+      - s4-001-baseline-model
+      - s4-001-prepared-layout
+      - s4-001-browser-file-input
+      - s4-001-desktop-file-read
+      - s4-001-native-file-read
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-007
+    - s4-001-source-excerpt-008
+    - s4-001-source-excerpt-010
+    - s4-001-source-excerpt-013
+    - s4-001-source-excerpt-015
+  expected:
+    value:
+      restriction: Apply the saved UTF-8/YAML, model documentation and display limits before the baseline can replace
+        the current view.
+      limits: 16 MiB input; depth 32; 250000 nodes, flow commas and line breaks; 1500000 lexer tokens; 32 entries/interface;
+        8 examples/entry; 2 MiB aggregate documentation; 500 architecture records; 2000 explicit owner/consumer
+        links; 16 component levels.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-007
+    - s4-001-source-excerpt-008
+    - s4-001-source-excerpt-010
+    - s4-001-source-excerpt-013
+    - s4-001-source-excerpt-015
+  check:
+    value:
+      method: Review each boundary and use the existing decoder, documentation and display limit suites for separately
+        authorized behavior checks.
+      execution: Proposed source and behavior checks. The saved target code and tests were read as text; no target
+        behavior was executed in this run.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-007
+    - s4-001-source-excerpt-008
+    - s4-001-source-excerpt-010
+    - s4-001-source-excerpt-013
+    - s4-001-source-excerpt-015
+sourceUsage:
+  snapshotRef: snapshot-005
+  mappingRef: s5-001-file@code-mapping.json
+  assessments:
+  - interfaceId: s4-001-load-workflow
+    scope: Reviewed workspace construction, App subscriptions, control callbacks, internal cancellation, and two
+      workspace test callers.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-src%2FApp.tsx
+    - s4-001-source-excerpt-043
+    - s4-001-source-test%2Fbrowser%2Fmain.tsx
+    - s4-001-source-excerpt-005
+    - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    - Default workspace and callback bindings were resolved; custom injected workspaces are outside this scope.
+    uses:
+    - id: workspace-construction
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The module calls createWorkspace at line 26 and supplies host selection and layout dependencies
+        to LoadWorkflow. Construction does not open a selected file.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      accessPoint: src/architecture/workspace.ts#createWorkspace
+      entryId: create-workspace
+    - id: view-subscription
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: App passes workflow.subscribe to useSyncExternalStore at line 18. The default binding resolves
+        through workspace.ts to LoadWorkflow and WorkflowView.
+      callerRef: s4-001-source-src%2FApp.tsx
+      evidenceRefs:
+      - s4-001-source-src%2FApp.tsx
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.subscribe
+      entryId: subscribe
+    - id: view-snapshot
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: App passes workflow.getSnapshot as the client and server snapshot callback at line 18. This is
+        a reviewed callback reference, not recorded execution.
+      callerRef: s4-001-source-src%2FApp.tsx
+      evidenceRefs:
+      - s4-001-source-src%2FApp.tsx
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.getSnapshot
+      entryId: snapshot
+    - id: open-button
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The WorkspaceControls handler calls workspace.workflow.openBaseline at line 36. App supplies
+        the default bound workspace to this control.
+      callerRef: s4-001-source-excerpt-043
+      evidenceRefs:
+      - s4-001-source-excerpt-043
+      - s4-001-source-src%2FApp.tsx
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.openBaseline
+      entryId: open-binding
+    - id: cancel-button
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The WorkspaceControls handler calls workspace.workflow.cancel at line 39. App supplies the default
+        bound workspace to this control.
+      callerRef: s4-001-source-excerpt-043
+      evidenceRefs:
+      - s4-001-source-excerpt-043
+      - s4-001-source-src%2FApp.tsx
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.cancel
+      entryId: cancel-binding
+    - id: retry-button
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The WorkspaceControls handler calls workspace.workflow.retry at line 40. App supplies the default
+        bound workspace to this control.
+      callerRef: s4-001-source-excerpt-043
+      evidenceRefs:
+      - s4-001-source-excerpt-043
+      - s4-001-source-src%2FApp.tsx
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.retry
+      entryId: retry-binding
+    - id: dispose-cancel
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The owner dispose method awaits this.cancel at line 93; this is an internal workflow call.
+      callerRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.cancel
+      entryId: cancel-binding
+    - id: browser-harness-construction
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: 'The browser acceptance entry passes createWorkspace({ layout: controlledLayout }) to App at
+        line 25. The control hook and injected failure branch identify test context.'
+      callerRef: s4-001-source-test%2Fbrowser%2Fmain.tsx
+      evidenceRefs:
+      - s4-001-source-test%2Fbrowser%2Fmain.tsx
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2FApp.tsx
+      accessPoint: src/architecture/workspace.ts#createWorkspace
+      entryId: create-workspace
+    - id: test-open-first
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow open-binding entry at line 32 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.openBaseline
+      entryId: open-binding
+    - id: test-open-busy
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow open-binding entry at line 33 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.openBaseline
+      entryId: open-binding
+    - id: test-open-success
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow open-binding entry at line 39 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.openBaseline
+      entryId: open-binding
+    - id: test-open-failure
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow open-binding entry at line 41 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.openBaseline
+      entryId: open-binding
+    - id: test-cancel
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow cancel-binding entry at line 34 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/load-workflow.ts#LoadWorkflow.cancel
+      entryId: cancel-binding
+    - id: test-subscribe
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow subscribe entry at line 29 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.subscribe
+      entryId: subscribe
+    - id: test-snapshot-initial
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow snapshot entry at line 28 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.getSnapshot
+      entryId: snapshot
+    - id: test-snapshot-callback
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow snapshot entry at line 29 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.getSnapshot
+      entryId: snapshot
+    - id: test-snapshot-assertion
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The reviewed Bun interface test calls the workflow snapshot entry at line 44 after constructing
+        LoadWorkflow at line 27. Test source was inspected, not run.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/workspace-view.ts#WorkflowView.getSnapshot
+      entryId: snapshot
+    - id: operation-types-implementation
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: A mapped binding type uses the imported WorkflowOperations contract to derive operation signatures.
+        This is a type reference, not an operation call.
+      callerRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/generated/workflow.ts#WorkflowOperations.openBaseline
+      entryId: open-logical
+    - id: operation-types-view
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: A mapped binding type uses the imported WorkflowOperations contract to derive operation signatures.
+        This is a type reference, not an operation call.
+      callerRef: s4-001-source-excerpt-001
+      evidenceRefs:
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/generated/workflow.ts#WorkflowOperations.openBaseline
+      entryId: open-logical
+    - id: operation-types-test
+      consumerId: s4-001-workspace
+      kind: type
+      context: test
+      description: A mapped binding type uses the imported WorkflowOperations contract to derive operation signatures.
+        This is a type reference, not an operation call.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      accessPoint: src/architecture/generated/workflow.ts#WorkflowOperations.openBaseline
+      entryId: open-logical
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Reviewed src/architecture/workspace.ts lines 1–26 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Reviewed src/architecture/load-workflow.ts lines 1–174 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-excerpt-001
+      description: Reviewed src/architecture/workspace-view.ts lines 1–25 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace-view.ts
+        sha256: e01a1643e95763f2c8ba3d4a7e60fe6851719a3896321201e98cc9a2446d286a
+        lines:
+        - 1
+        - 25
+    - evidenceRef: s4-001-source-src%2FApp.tsx
+      description: Reviewed src/App.tsx lines 1–78 for the caller, declaration, or binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/App.tsx
+        sha256: fd18ed7d603cf9acef31089fd55cc80b355ef67e11804cb59505ae21cf3086d9
+        lines:
+        - 1
+        - 78
+    - evidenceRef: s4-001-source-excerpt-043
+      description: Reviewed src/components/workspace-controls.tsx lines 1–49 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/workspace-controls.tsx
+        sha256: e01126e7626780c0e3dec09074d5d8b81729eab9c59fa55adbfacb552b75a089
+        lines:
+        - 1
+        - 49
+    - evidenceRef: s4-001-source-test%2Fbrowser%2Fmain.tsx
+      description: Reviewed test/browser/main.tsx lines 1–27 for the caller, declaration, or binding cited by this
+        assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: test/browser/main.tsx
+        sha256: 7b8168883eaba8d074ebb96a41cda08200533429e95f38f492daac8fc72ad336
+        lines:
+        - 1
+        - 27
+    - evidenceRef: s4-001-source-excerpt-005
+      description: Reviewed test/interface/architecture/load-workflow.test.ts lines 1–46 for the caller, declaration,
+        or binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: test/interface/architecture/load-workflow.test.ts
+        sha256: a7fc53c611246ffd28c5ad9c71381bc97959d44351ae2cee6bb927e0366a1569
+        lines:
+        - 1
+        - 46
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fgenerated%2Fworkflow.ts
+      description: Reviewed src/architecture/generated/workflow.ts lines 1–40 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/generated/workflow.ts
+        sha256: f598e30b9f3d977cf5972dc52f7dbc3546ec617790ddf2cb8b92dadb01d26576
+        lines:
+        - 1
+        - 40
+  - interfaceId: s4-001-baseline-decoder
+    scope: Reviewed LoadWorkflow decoding, the baselineCodec binding, and codec interface-test calls and types.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-006
+    - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-014
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    uses:
+    - id: load-validation
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: LoadWorkflow calls decodeBaselineYaml(read.text) at line 125 and branches on its returned outcome.
+      callerRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-excerpt-006
+      accessPoint: src/lib/baseline-yaml.ts#decodeBaselineYaml
+      entryId: decode
+    - id: wrapper-binding
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The exported baselineCodec object binds decode to decodeBaselineYaml at line 43. This is an internal
+        value reference.
+      callerRef: s4-001-source-excerpt-006
+      evidenceRefs:
+      - s4-001-source-excerpt-006
+      - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/lib/baseline-yaml.ts#decodeBaselineYaml
+      entryId: decode
+    - id: wrapper-contract-type
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The baselineCodec object satisfies the imported BaselineCodec contract at line 43; the generated
+        method declaration is a type contract.
+      callerRef: s4-001-source-excerpt-006
+      evidenceRefs:
+      - s4-001-source-excerpt-006
+      - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/lib/generated/contracts.ts#BaselineCodec.decode
+      entryId: logical-decode
+    - id: test-valid-decode
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The interface test calls baselineCodec.decode at line 15. The exported codec wrapper binds this
+        method to decodeBaselineYaml. No test execution is claimed.
+      callerRef: s4-001-source-excerpt-014
+      evidenceRefs:
+      - s4-001-source-excerpt-014
+      - s4-001-source-excerpt-006
+      - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/lib/baseline-yaml.ts#decodeBaselineYaml
+      entryId: decode
+    - id: test-failure-decode
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The interface test calls baselineCodec.decode at line 30. The exported codec wrapper binds this
+        method to decodeBaselineYaml. No test execution is claimed.
+      callerRef: s4-001-source-excerpt-014
+      evidenceRefs:
+      - s4-001-source-excerpt-014
+      - s4-001-source-excerpt-006
+      - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/lib/baseline-yaml.ts#decodeBaselineYaml
+      entryId: decode
+    - id: test-codec-type
+      consumerId: s4-001-workspace
+      kind: type
+      context: test
+      description: The interface test checks the baselineCodec type against BaselineCodec at line 13. This is test
+        type evidence.
+      callerRef: s4-001-source-excerpt-014
+      evidenceRefs:
+      - s4-001-source-excerpt-014
+      - s4-001-source-excerpt-006
+      - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/lib/generated/contracts.ts#BaselineCodec.decode
+      entryId: logical-decode
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Reviewed src/architecture/load-workflow.ts lines 1–174 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-excerpt-006
+      description: Reviewed src/lib/baseline-yaml.ts lines 1–43 for the caller, declaration, or binding cited by
+        this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/baseline-yaml.ts
+        sha256: 0017a3d12d6f8261d9642902ea9986316c90e9ab58d8e4411515a64ec76c75c3
+        lines:
+        - 1
+        - 43
+    - evidenceRef: s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      description: Reviewed src/lib/generated/contracts.ts lines 1–27 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/generated/contracts.ts
+        sha256: 195022a9ad46f12e3f38aa80e9b6bf4a400976751f233e06ae272588f9d4f34c
+        lines:
+        - 1
+        - 27
+    - evidenceRef: s4-001-source-excerpt-014
+      description: Reviewed test/interface/lib/baseline-yaml.test.ts lines 1–34 for the caller, declaration, or
+        binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: test/interface/lib/baseline-yaml.test.ts
+        sha256: 5ddfbcca1a2b30928b8b388b3c7b1400c3b6e87d2a4a32c27077cc3cfbd72520
+        lines:
+        - 1
+        - 34
+  - interfaceId: s4-001-prepared-layout
+    scope: Reviewed the default workspace layout callback, LoadWorkflow invocation, example preview, and browser
+      test binding.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-excerpt-017
+    - s4-001-source-test%2Fbrowser%2Fmain.tsx
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    - The default layout binding is conditional; callers can inject another implementation.
+    uses:
+    - id: default-layout-binding
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The default callback dynamically imports architecture-layout.ts and calls layoutBaseline at line
+        21; LoadWorkflow invokes this callback at line 128.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      accessPoint: src/lib/architecture-layout.ts#layoutBaseline
+      entryId: layout
+    - id: load-layout-call
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The workflow invokes its injected layout dependency at line 128. The default workspace binding
+        resolves it to layoutBaseline; callers can supply another implementation.
+      callerRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      accessPoint: src/lib/architecture-layout.ts#layoutBaseline
+      entryId: layout
+    - id: example-layout
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: ArchitecturePreview calls layoutBaseline(starterBaseline) at line 11 and handles its result with
+        an active-frame guard.
+      callerRef: s4-001-source-excerpt-017
+      evidenceRefs:
+      - s4-001-source-excerpt-017
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      accessPoint: src/lib/architecture-layout.ts#layoutBaseline
+      entryId: layout
+    - id: layout-option-type
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The options.layout declaration uses typeof layoutBaseline through a type-only import at line
+        1. This reference does not call the function.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      accessPoint: src/lib/architecture-layout.ts#layoutBaseline
+      entryId: layout
+    - id: browser-harness-layout
+      consumerId: s4-001-workspace
+      kind: value
+      context: test
+      description: The controlled browser acceptance layout calls layoutBaseline at line 15, between test control
+        hooks, and supplies this callback to createWorkspace at line 25.
+      callerRef: s4-001-source-test%2Fbrowser%2Fmain.tsx
+      evidenceRefs:
+      - s4-001-source-test%2Fbrowser%2Fmain.tsx
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      accessPoint: src/lib/architecture-layout.ts#layoutBaseline
+      entryId: layout
+    - id: browser-harness-layout-type
+      consumerId: s4-001-workspace
+      kind: type
+      context: test
+      description: The browser acceptance callback uses typeof layoutBaseline at line 12. This is a test type reference.
+      callerRef: s4-001-source-test%2Fbrowser%2Fmain.tsx
+      evidenceRefs:
+      - s4-001-source-test%2Fbrowser%2Fmain.tsx
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      accessPoint: src/lib/architecture-layout.ts#layoutBaseline
+      entryId: layout
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Reviewed src/architecture/workspace.ts lines 1–26 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      description: Reviewed src/lib/architecture-layout.ts lines 1–88 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/architecture-layout.ts
+        sha256: 4b29e8f201f07776294a41ade5fd3224ac2187875055c2a879456cecffab6fef
+        lines:
+        - 1
+        - 88
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Reviewed src/architecture/load-workflow.ts lines 1–174 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-excerpt-017
+      description: Reviewed src/components/architecture-preview.tsx lines 1–20 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-preview.tsx
+        sha256: c5145bd9ad7a6ce903d84bc3a9f179b5d887dbd70e4dde3772841184e657e6ae
+        lines:
+        - 1
+        - 20
+    - evidenceRef: s4-001-source-test%2Fbrowser%2Fmain.tsx
+      description: Reviewed test/browser/main.tsx lines 1–27 for the caller, declaration, or binding cited by this
+        assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: test/browser/main.tsx
+        sha256: 7b8168883eaba8d074ebb96a41cda08200533429e95f38f492daac8fc72ad336
+        lines:
+        - 1
+        - 27
+  - interfaceId: s4-001-interface-inspection
+    scope: Reviewed ArchitectureDetails JSX, interface status collection, and source projection inside the workspace.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-excerpt-028
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-029
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    uses:
+    - id: interface-panel
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: ArchitectureDetails renders InterfaceDetails through JSX at line 93 when the selected record
+        has allowedConsumers.
+      callerRef: s4-001-source-excerpt-028
+      evidenceRefs:
+      - s4-001-source-excerpt-028
+      - s4-001-source-excerpt-018
+      accessPoint: src/components/interface-details.tsx#InterfaceDetails
+      entryId: details
+    - id: recorded-status
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: InterfaceRecordedStatus calls interfaceSourceStatements at line 40 to collect saved statement
+        statuses.
+      callerRef: s4-001-source-excerpt-019
+      evidenceRefs:
+      - s4-001-source-excerpt-019
+      - s4-001-source-excerpt-029
+      accessPoint: src/lib/interface-provenance.ts#interfaceSourceStatements
+      entryId: source-statements
+    - id: source-projection
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: projectInterfaceSources calls interfaceSourceStatements at line 41 before grouping notes and
+        references. This is internal workspace use.
+      callerRef: s4-001-source-excerpt-029
+      evidenceRefs:
+      - s4-001-source-excerpt-029
+      accessPoint: src/lib/interface-provenance.ts#interfaceSourceStatements
+      entryId: source-statements
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-excerpt-028
+      description: Reviewed src/components/architecture-details.tsx lines 1–102 for the caller, declaration, or
+        binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-details.tsx
+        sha256: ccd35b1a26bccb8872aa04b8624be98d9ad9d7e2b6be2b045a93f4004463a3c9
+        lines:
+        - 1
+        - 102
+    - evidenceRef: s4-001-source-excerpt-018
+      description: Reviewed src/components/interface-details.tsx lines 1–73 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-details.tsx
+        sha256: 64b978dc0103acbb59d8fc5935455944f500168838bd8cef959f69b5ec81d490
+        lines:
+        - 1
+        - 73
+    - evidenceRef: s4-001-source-excerpt-019
+      description: Reviewed src/components/interface-overview.tsx lines 1–141 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-overview.tsx
+        sha256: 9a13661380e9be0957d85d87173e056d1f57cc1d9a6e8fb7b052606d3cb47e6b
+        lines:
+        - 1
+        - 141
+    - evidenceRef: s4-001-source-excerpt-029
+      description: Reviewed src/lib/interface-provenance.ts lines 1–51 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/interface-provenance.ts
+        sha256: 7110da2902efd37b1dc956697455799ca3577e2e55559d88d22191790a0c15d1
+        lines:
+        - 1
+        - 51
+  - interfaceId: s4-001-baseline-model
+    scope: Reviewed decoder validation and saved model/entry type references in workflow, layout, view and interface-test
+      declarations.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-excerpt-006
+    - s4-001-source-excerpt-012
+    - s4-001-source-excerpt-013
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-001
+    - s4-001-source-excerpt-002
+    - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+    - s4-001-source-excerpt-015
+    - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    - s4-001-source-excerpt-018
+    - s4-001-source-excerpt-019
+    - s4-001-source-excerpt-026
+    - s4-001-source-excerpt-027
+    - s4-001-source-excerpt-028
+    - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+    - s4-001-source-excerpt-005
+    - s4-001-source-excerpt-020
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    uses:
+    - id: decoder-schema
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: decodeBaselineYaml calls baselineSchema.safeParse at line 19 to validate the parsed candidate.
+      callerRef: s4-001-source-excerpt-006
+      evidenceRefs:
+      - s4-001-source-excerpt-006
+      - s4-001-source-excerpt-012
+      - s4-001-source-excerpt-013
+      accessPoint: src/domain/baseline.ts#baselineSchema
+      entryId: schema
+    - id: baseline-type-01
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-02
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-001
+      evidenceRefs:
+      - s4-001-source-excerpt-001
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-03
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-002
+      evidenceRefs:
+      - s4-001-source-excerpt-002
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-04
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      evidenceRefs:
+      - s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-05
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-015
+      evidenceRefs:
+      - s4-001-source-excerpt-015
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-06
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+      evidenceRefs:
+      - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-07
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-018
+      evidenceRefs:
+      - s4-001-source-excerpt-018
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-08
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-019
+      evidenceRefs:
+      - s4-001-source-excerpt-019
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-09
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-026
+      evidenceRefs:
+      - s4-001-source-excerpt-026
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-10
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-027
+      evidenceRefs:
+      - s4-001-source-excerpt-027
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-11
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-028
+      evidenceRefs:
+      - s4-001-source-excerpt-028
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-12
+      consumerId: s4-001-architecture-model
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-012
+      evidenceRefs:
+      - s4-001-source-excerpt-012
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-13
+      consumerId: s4-001-architecture-model
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-013
+      evidenceRefs:
+      - s4-001-source-excerpt-013
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-14
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      evidenceRefs:
+      - s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: baseline-type-15
+      consumerId: s4-001-workspace
+      kind: type
+      context: test
+      description: The reviewed file imports Baseline as a type and uses it in its declarations. This supplies a
+        model type dependency, not validation or runtime execution.
+      callerRef: s4-001-source-excerpt-005
+      evidenceRefs:
+      - s4-001-source-excerpt-005
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#Baseline
+      entryId: baseline-type
+    - id: entry-type-1
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed component imports BaselineDocumentedEntry and uses it for entry props or an entry
+        type alias. This is a type dependency.
+      callerRef: s4-001-source-excerpt-019
+      evidenceRefs:
+      - s4-001-source-excerpt-019
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#BaselineDocumentedEntry
+      entryId: documented-entry
+    - id: entry-type-2
+      consumerId: s4-001-workspace
+      kind: type
+      context: application
+      description: The reviewed component imports BaselineDocumentedEntry and uses it for entry props or an entry
+        type alias. This is a type dependency.
+      callerRef: s4-001-source-excerpt-020
+      evidenceRefs:
+      - s4-001-source-excerpt-020
+      - s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/domain/generated/contracts.ts#BaselineDocumentedEntry
+      entryId: documented-entry
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-excerpt-006
+      description: Reviewed src/lib/baseline-yaml.ts lines 1–43 for the caller, declaration, or binding cited by
+        this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/baseline-yaml.ts
+        sha256: 0017a3d12d6f8261d9642902ea9986316c90e9ab58d8e4411515a64ec76c75c3
+        lines:
+        - 1
+        - 43
+    - evidenceRef: s4-001-source-excerpt-012
+      description: Reviewed src/domain/baseline.ts lines 1–165 for the caller, declaration, or binding cited by
+        this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/baseline.ts
+        sha256: cc02d12bf967caf5d2ffc9d6a83fbd6ebf5102058a6429f302c8b94c144b7691
+        lines:
+        - 1
+        - 165
+    - evidenceRef: s4-001-source-excerpt-013
+      description: Reviewed src/domain/baseline-documentation.ts lines 1–107 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/baseline-documentation.ts
+        sha256: bf266e4d574096323bc3f28e45b1b6375bfbd35dc47ce11adafdf455abeb842f
+        lines:
+        - 1
+        - 107
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Reviewed src/architecture/load-workflow.ts lines 1–174 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-src%2Fdomain%2Fgenerated%2Fcontracts.ts
+      description: Reviewed src/domain/generated/contracts.ts lines 1–200 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/domain/generated/contracts.ts
+        sha256: 63d6c998d26b284ca3ab895b26c12a391510472f72c17bd039282bf64afbc8da
+        lines:
+        - 1
+        - 200
+    - evidenceRef: s4-001-source-excerpt-001
+      description: Reviewed src/architecture/workspace-view.ts lines 1–25 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace-view.ts
+        sha256: e01a1643e95763f2c8ba3d4a7e60fe6851719a3896321201e98cc9a2446d286a
+        lines:
+        - 1
+        - 25
+    - evidenceRef: s4-001-source-excerpt-002
+      description: Reviewed src/architecture/load-publication.ts lines 1–37 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-publication.ts
+        sha256: 43bfb0adfacf74611663b921092494a02cd450aee1a876416f80bc95ce462fce
+        lines:
+        - 1
+        - 37
+    - evidenceRef: s4-001-source-src%2Flib%2Farchitecture-layout.ts
+      description: Reviewed src/lib/architecture-layout.ts lines 1–88 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/architecture-layout.ts
+        sha256: 4b29e8f201f07776294a41ade5fd3224ac2187875055c2a879456cecffab6fef
+        lines:
+        - 1
+        - 88
+    - evidenceRef: s4-001-source-excerpt-015
+      description: Reviewed src/lib/baseline-display-limits.ts lines 1–38 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/baseline-display-limits.ts
+        sha256: 8b771c4cf7cadbc3599f8dac140b4c853d205e74210975cbcb333678eba541f2
+        lines:
+        - 1
+        - 38
+    - evidenceRef: s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+      description: Reviewed src/components/architecture-diagram.tsx lines 1–200 for the caller, declaration, or
+        binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-diagram.tsx
+        sha256: 0a2a902426b7fb69e47ce06da715742f96e988375bbe4f18cf771e1067fb37eb
+        lines:
+        - 1
+        - 200
+    - evidenceRef: s4-001-source-excerpt-018
+      description: Reviewed src/components/interface-details.tsx lines 1–73 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-details.tsx
+        sha256: 64b978dc0103acbb59d8fc5935455944f500168838bd8cef959f69b5ec81d490
+        lines:
+        - 1
+        - 73
+    - evidenceRef: s4-001-source-excerpt-019
+      description: Reviewed src/components/interface-overview.tsx lines 1–141 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-overview.tsx
+        sha256: 9a13661380e9be0957d85d87173e056d1f57cc1d9a6e8fb7b052606d3cb47e6b
+        lines:
+        - 1
+        - 141
+    - evidenceRef: s4-001-source-excerpt-026
+      description: Reviewed src/components/architecture-inspector.tsx lines 1–59 for the caller, declaration, or
+        binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-inspector.tsx
+        sha256: 15231cd5c8385ad78710eaf931fb2e83e268723ee24cabddfe1487d78ad58470
+        lines:
+        - 1
+        - 59
+    - evidenceRef: s4-001-source-excerpt-027
+      description: Reviewed src/components/use-architecture-inspection.ts lines 1–155 for the caller, declaration,
+        or binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/use-architecture-inspection.ts
+        sha256: c8cc5e8231a6fd04db16839a53d3949a7e557b74ceabd71b8a75a40036d61305
+        lines:
+        - 1
+        - 155
+    - evidenceRef: s4-001-source-excerpt-028
+      description: Reviewed src/components/architecture-details.tsx lines 1–102 for the caller, declaration, or
+        binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/architecture-details.tsx
+        sha256: ccd35b1a26bccb8872aa04b8624be98d9ad9d7e2b6be2b045a93f4004463a3c9
+        lines:
+        - 1
+        - 102
+    - evidenceRef: s4-001-source-src%2Flib%2Fgenerated%2Fcontracts.ts
+      description: Reviewed src/lib/generated/contracts.ts lines 1–27 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/lib/generated/contracts.ts
+        sha256: 195022a9ad46f12e3f38aa80e9b6bf4a400976751f233e06ae272588f9d4f34c
+        lines:
+        - 1
+        - 27
+    - evidenceRef: s4-001-source-excerpt-005
+      description: Reviewed test/interface/architecture/load-workflow.test.ts lines 1–46 for the caller, declaration,
+        or binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: test/interface/architecture/load-workflow.test.ts
+        sha256: a7fc53c611246ffd28c5ad9c71381bc97959d44351ae2cee6bb927e0366a1569
+        lines:
+        - 1
+        - 46
+    - evidenceRef: s4-001-source-excerpt-020
+      description: Reviewed src/components/interface-examples.tsx lines 1–55 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/interface-examples.tsx
+        sha256: af11442e1e98827af2aa89cae7d609d1f529eb8984bfba21c3d229516dba0ffc
+        lines:
+        - 1
+        - 55
+  - interfaceId: s4-001-browser-file-input
+    scope: Reviewed browser selection and the file-read callback from createWorkspace through LoadWorkflow.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    - The read binding applies when the browser branch supplies the selected-file callback.
+    uses:
+    - id: browser-selection
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The browser branch calls selectBrowserBaseline(signal) at line 18.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      accessPoint: src/platform/browser-documents.ts#selectBrowserBaseline
+      entryId: select
+    - id: browser-read-binding
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The selected browser file is captured in a read callback that calls readBrowserBaseline at line
+        19; LoadWorkflow invokes selected.read at line 121.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      accessPoint: src/platform/browser-documents.ts#readBrowserBaseline
+      entryId: read
+    - id: browser-read-invocation
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The selected.read invocation at line 121 resolves to readBrowserBaseline when the workspace browser
+        selection branch supplies the callback. This conditional binding does not prove that the branch executed.
+      callerRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      accessPoint: src/platform/browser-documents.ts#readBrowserBaseline
+      entryId: read
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Reviewed src/architecture/workspace.ts lines 1–26 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+      description: Reviewed src/platform/browser-documents.ts lines 1–53 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/browser-documents.ts
+        sha256: decc915b134a6ebcf839a40b81320dd51c16b53d85817103cea2d76c020a0369
+        lines:
+        - 1
+        - 53
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Reviewed src/architecture/load-workflow.ts lines 1–174 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+  - interfaceId: s4-001-desktop-selection
+    scope: Reviewed host checks in workspace composition, App and the picker, plus the picker contract type.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Fplatform%2Fdesktop.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+    - s4-001-source-src%2FApp.tsx
+    - s4-001-source-excerpt-043
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    - Host-dependent branches were inspected, not exercised.
+    uses:
+    - id: composition-host
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The selection callback calls isDesktop at line 14 before choosing the host-specific picker.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Fplatform%2Fdesktop.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      accessPoint: src/platform/desktop.ts#isDesktop
+      entryId: host
+    - id: desktop-picker
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The desktop branch calls selectBaselineFile at line 15.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      accessPoint: src/platform/document-dialogs.ts#selectBaselineFile
+      entryId: select
+    - id: app-host
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: App calls isDesktop at line 20 and supplies its result to the displayed host label.
+      callerRef: s4-001-source-src%2FApp.tsx
+      evidenceRefs:
+      - s4-001-source-src%2FApp.tsx
+      - s4-001-source-src%2Fplatform%2Fdesktop.ts
+      - s4-001-source-excerpt-043
+      accessPoint: src/platform/desktop.ts#isDesktop
+      entryId: host
+    - id: picker-host
+      consumerId: s4-001-desktop-adapter
+      kind: value
+      context: application
+      description: selectBaselineFile calls isDesktop at line 9 before opening the native picker. This is internal
+        adapter use.
+      callerRef: s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      evidenceRefs:
+      - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      - s4-001-source-src%2Fplatform%2Fdesktop.ts
+      accessPoint: src/platform/desktop.ts#isDesktop
+      entryId: host
+    - id: picker-contract-type
+      consumerId: s4-001-desktop-adapter
+      kind: type
+      context: application
+      description: The selectBaselineFile return type uses ReturnType<BaselineDialogOperations["selectBaselineFile"]>
+        at line 8 through a type import. This is a type reference.
+      callerRef: s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      evidenceRefs:
+      - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/platform/generated/contracts.ts#BaselineDialogOperations.selectBaselineFile
+      entryId: logical-selection
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Reviewed src/architecture/workspace.ts lines 1–26 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fdesktop.ts
+      description: Reviewed src/platform/desktop.ts lines 1–6 for the caller, declaration, or binding cited by this
+        assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/desktop.ts
+        sha256: 64c60d78034e1ebcd7236e06ade02857a1bdc49fe0418a2b5942f4024c2dcefc
+        lines:
+        - 1
+        - 6
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Reviewed src/architecture/load-workflow.ts lines 1–174 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+      description: Reviewed src/platform/document-dialogs.ts lines 1–18 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/document-dialogs.ts
+        sha256: 0fbba7590bc56bc2b84ee8148d85199e6a1593aad11fc1c1af42e472f9d93772
+        lines:
+        - 1
+        - 18
+    - evidenceRef: s4-001-source-src%2FApp.tsx
+      description: Reviewed src/App.tsx lines 1–78 for the caller, declaration, or binding cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/App.tsx
+        sha256: fd18ed7d603cf9acef31089fd55cc80b355ef67e11804cb59505ae21cf3086d9
+        lines:
+        - 1
+        - 78
+    - evidenceRef: s4-001-source-excerpt-043
+      description: Reviewed src/components/workspace-controls.tsx lines 1–49 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/components/workspace-controls.tsx
+        sha256: e01126e7626780c0e3dec09074d5d8b81729eab9c59fa55adbfacb552b75a089
+        lines:
+        - 1
+        - 49
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      description: Reviewed src/platform/generated/contracts.ts lines 1–45 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/generated/contracts.ts
+        sha256: 06e8148d67a186caad03594d4a0d2d903d84e56d195c757b6063df980e9605ef
+        lines:
+        - 1
+        - 45
+  - interfaceId: s4-001-desktop-file-read
+    scope: Reviewed DesktopDocumentAccess construction, the workspace read callback, LoadWorkflow invocation and
+      generated operation types.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    - The read binding applies when the desktop branch supplies the callback; custom transports remain outside this
+      scope.
+    uses:
+    - id: desktop-read-binding
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: createWorkspace constructs DesktopDocumentAccess at line 11 and captures it in the read callback
+        at line 16. That callback calls readDocumentFile; LoadWorkflow invokes selected.read at line 121.
+      callerRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Fplatform%2Fdocuments.ts
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      accessPoint: src/platform/documents.ts#DesktopDocumentAccess.readDocumentFile
+      entryId: read
+    - id: desktop-read-invocation
+      consumerId: s4-001-workspace
+      kind: value
+      context: application
+      description: The selected.read invocation at line 121 resolves to DesktopDocumentAccess.readDocumentFile when
+        the desktop branch supplies the callback. The default composition and instance method establish this conditional
+        binding.
+      callerRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      evidenceRefs:
+      - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      - s4-001-source-src%2Fplatform%2Fdocuments.ts
+      accessPoint: src/platform/documents.ts#DesktopDocumentAccess.readDocumentFile
+      entryId: read
+    - id: read-contract-type
+      consumerId: s4-001-desktop-adapter
+      kind: type
+      context: application
+      description: DocumentAccess maps DocumentFileOperations to Promise bindings, and readDocumentFile uses the
+        generated request and return types at line 38. This is internal adapter type use.
+      callerRef: s4-001-source-src%2Fplatform%2Fdocuments.ts
+      evidenceRefs:
+      - s4-001-source-src%2Fplatform%2Fdocuments.ts
+      - s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      accessPoint: src/platform/generated/contracts.ts#DocumentFileOperations.readDocumentFile
+      entryId: logical-read
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Reviewed src/architecture/workspace.ts lines 1–26 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fdocuments.ts
+      description: Reviewed src/platform/documents.ts lines 1–57 for the caller, declaration, or binding cited by
+        this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/documents.ts
+        sha256: 7974e3b29f766ece7956dd8af62b64516473824df68ea9a9277456e44d2df63b
+        lines:
+        - 1
+        - 57
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+      description: Reviewed src/architecture/load-workflow.ts lines 1–174 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/load-workflow.ts
+        sha256: 7210b6b445d2bdcf8879b616d92b5ea61a627b3f5783f9ddca2419da8544b389
+        lines:
+        - 1
+        - 174
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fgenerated%2Fcontracts.ts
+      description: Reviewed src/platform/generated/contracts.ts lines 1–45 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/generated/contracts.ts
+        sha256: 06e8148d67a186caad03594d4a0d2d903d84e56d195c757b6063df980e9605ef
+        lines:
+        - 1
+        - 45
+  - interfaceId: s4-001-native-file-read
+    scope: Reviewed the default Tauri transport, matching handler registration and native read callback.
+    evidenceRefs:
+    - s4-001-file@graph-results.json
+    - s4-001-file@source-sites.json
+    - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+    - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+    - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+    limitations:
+    - Partial review of the saved v1/v2 source; other callers may exist.
+    - Only the default invoke transport is bound here; custom transports and native execution remain outside this
+      scope.
+    uses:
+    - id: native-read-ipc
+      consumerId: s4-001-desktop-adapter
+      kind: value
+      context: application
+      description: DesktopDocumentAccess defaults its transport to Tauri invoke at line 33 and sends document_file_read
+        at line 46. The native builder registers the matching document_commands::document_file_read handler.
+      callerRef: s4-001-source-src%2Fplatform%2Fdocuments.ts
+      evidenceRefs:
+      - s4-001-source-src%2Fplatform%2Fdocuments.ts
+      - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+      - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      accessPoint: document_file_read
+      entryId: command
+    - id: native-handler-registration
+      consumerId: s4-001-native-shell
+      kind: value
+      context: application
+      description: The native builder passes document_commands::document_file_read to generate_handler at lines
+        13–15. This is a value registration for the command, not an observed invocation.
+      callerRef: s4-001-source-src-tauri%2Fsrc%2Flib.rs
+      evidenceRefs:
+      - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+      - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      accessPoint: document_file_read
+      entryId: command
+    - id: native-read-dispatch
+      consumerId: s4-001-native-shell
+      kind: value
+      context: application
+      description: document_file_read passes a callback to spawn_blocking that calls documents::read_file at line
+        6. This is internal native-shell use.
+      callerRef: s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      evidenceRefs:
+      - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      - s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+      accessPoint: src-tauri/src/documents/mod.rs#read_file
+      entryId: read-file
+    sourceNotes:
+    - evidenceRef: s4-001-file@graph-results.json
+      description: The completed graph retains separate compiler and import/require contexts; it supplies scope,
+        not call proof.
+    - evidenceRef: s4-001-file@source-sites.json
+      description: The saved syntax query identifies import and resource candidates; binding meaning comes from
+        the reviewed ranges.
+    - evidenceRef: s4-001-source-src%2Fplatform%2Fdocuments.ts
+      description: Reviewed src/platform/documents.ts lines 1–57 for the caller, declaration, or binding cited by
+        this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/platform/documents.ts
+        sha256: 7974e3b29f766ece7956dd8af62b64516473824df68ea9a9277456e44d2df63b
+        lines:
+        - 1
+        - 57
+    - evidenceRef: s4-001-source-src-tauri%2Fsrc%2Flib.rs
+      description: Reviewed src-tauri/src/lib.rs lines 1–23 for the caller, declaration, or binding cited by this
+        assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/lib.rs
+        sha256: 7c6096cabc038b099a1d7cc765657ed165f9d2294e1599d13783ae71d891f9e5
+        lines:
+        - 1
+        - 23
+    - evidenceRef: s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+      description: Reviewed src-tauri/src/document_commands.rs lines 1–9 for the caller, declaration, or binding
+        cited by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/document_commands.rs
+        sha256: 656dcec63102be06706951d7029f8d7608a28af90b170bcf118b94ed9140c2c1
+        lines:
+        - 1
+        - 9
+    - evidenceRef: s4-001-source-src%2Farchitecture%2Fworkspace.ts
+      description: Reviewed src/architecture/workspace.ts lines 1–26 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src/architecture/workspace.ts
+        sha256: dba1e50e6d0af0366699f6effdebaa42a7782a59816d23e01db817937a540e1e
+        lines:
+        - 1
+        - 26
+    - evidenceRef: s4-001-source-src-tauri%2Fsrc%2Fdocuments%2Fmod.rs
+      description: Reviewed src-tauri/src/documents/mod.rs lines 1–22 for the caller, declaration, or binding cited
+        by this assessment.
+      location:
+        snapshotRef: snapshot-005
+        path: src-tauri/src/documents/mod.rs
+        sha256: d41a897d7279a69768dca13c89d083f4c499f2a9a7e3d1406691f625d5d29319
+        lines:
+        - 1
+        - 22
+  - interfaceId: s5-001-producer-publication
+    scope: Reviewed the publisher dispatcher, package command list and saved cookbook operator commands.
+    evidenceRefs:
+    - s5-001-source-excerpt-001
+    - s5-001-source-excerpt-002
+    - s5-001-source-excerpt-017
+    - s5-001-source-package.json
+    - s5-001-file@remaining-units.json
+    limitations:
+    - No component caller was established in this scope. The cookbook commands are manual operator examples.
+    - This is partial review of the saved producer, not a search of every external script or operator environment.
+      An empty list does not mean unused.
+    uses: []
+    sourceNotes:
+    - evidenceRef: s5-001-source-excerpt-001
+      description: Reads the action and stage from process arguments and resolves the run and tool environment.
+      location:
+        snapshotRef: snapshot-005
+        path: docs/design/app-a/stage-4-5-publish.mjs
+        sha256: 032878bb644bbc5862f7d973eb7dc34f336a52baf33e7dc9b890a0e6337f0ff0
+        lines:
+        - 1
+        - 180
+    - evidenceRef: s5-001-source-excerpt-002
+      description: Dispatches check, finish and verify inside the command process; this is the implementation, not
+        a component caller of the command interface.
+      location:
+        snapshotRef: snapshot-005
+        path: docs/design/app-a/stage-4-5-publish.mjs
+        sha256: 032878bb644bbc5862f7d973eb7dc34f336a52baf33e7dc9b890a0e6337f0ff0
+        lines:
+        - 181
+        - 355
+    - evidenceRef: s5-001-source-excerpt-017
+      description: Documents shell commands for an operator to run from the trusted checkout.
+      location:
+        snapshotRef: snapshot-005
+        path: docs/design/app-a/step-5-cookbook.md
+        sha256: 55d197231baf0d6f634cae091d70b087163c74d7b15444e18a4d167ad20237a7
+        lines:
+        - 215
+        - 302
+    - evidenceRef: s5-001-source-package.json
+      description: The complete saved package script list does not invoke this manual publication command.
+      location:
+        snapshotRef: snapshot-005
+        path: package.json
+        sha256: ac109d2fe602d593310dbf1542a862503a6ed5f93bfd8338ae6f3e70da7dba62
+        lines:
+        - 1
+        - 96
+    - evidenceRef: s5-001-file@remaining-units.json
+      description: The saved graph records no incoming edge to this publisher. That bounded graph fact cannot prove
+        there is no caller.
