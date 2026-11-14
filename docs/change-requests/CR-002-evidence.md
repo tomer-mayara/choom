@@ -1,9 +1,11 @@
 # CR-002 implementation evidence
 
 Status: implemented. This record separates the original implementation checks
-from the PR #45 follow-up below. An earlier GTK picker timeout and the later
-macOS picker observation remain unexplained; the passing platform coverage is
-stated below. The starting revision was
+from the PR #45 follow-up below. An earlier GTK picker timeout remains
+unexplained. The later macOS observation was an automated selection failure;
+a [follow-up manual control](BV-macos-picker-investigation.md) opened the same
+baseline in the unchanged app. The passing platform coverage is stated below.
+The starting revision was
 `e6c1835dc535455f088dce2f7b573d146ceffa94`; the original PR commit was
 `b2ed4a62f5d17888a105571a44df3c45efe1e695`.
 
@@ -178,21 +180,25 @@ Open/Retry selected the exact Retry entry; Back returned to the comparison.
 Evidence showed source locations, hashes, opposing evidence and independent
 review provenance. Recorded baseline facts kept their Proposed status.
 
-The review identified two UI issues:
+The review identified a UI labeling issue and a native-picker verification limit:
 
 - **Review incomplete** appears beside **Review: completed** when the scan is
   partial. The PR #45 follow-up changes the overall heading to
   **Assessment incomplete** and retains the separate scan and review states.
-- The macOS native picker left Open disabled for the selected YAML file. Its
-  cause was not determined. Browser-extension upload was unavailable with the
-  current file-URL permission, so the UI review used the in-app browser. No
-  permissions were changed. This was not a passing installed macOS journey.
+- The automated macOS native picker check left Open disabled for the selected
+  YAML file. Its cause was not determined at that time. Browser-extension upload
+  was unavailable with the current file-URL permission, so the UI review used
+  the in-app browser. No permissions were changed. This was not a passing
+  installed macOS journey.
 
 A read-only PR comparison found no demonstrated picker regression: baseline
 dialog options, YAML extensions, Tauri permissions, registration and dialog
 dependency versions match `main`. The added report picker uses the same
 extensions. Mocked IPC tests check those options, not the macOS panel. The
-observation remains an acceptance limit without an established cause.
+observation remained an acceptance limit without an established cause. The
+[later investigation](BV-macos-picker-investigation.md) confirmed manual baseline
+opening in this unchanged app and classified the automated attempt separately.
+It did not establish a product fix or a passing complete macOS acceptance suite.
 
 The producer and shared portable codec verified all 157 registered artifacts
 and the original input identity after publication. The local report bindings are:

@@ -242,3 +242,31 @@ Verify the launched process environment separately when claiming operation
 without an analyzer runtime. A terminal launch does not verify Finder,
 Start-menu, or desktop-entry behavior. Record unavailable platform checks as
 limits; do not replace them with browser results or mocked native commands.
+
+### macOS picker automation check
+
+Use the supported computer-use interface for native UI actions. Keep file
+selection and the resulting application state as separate observations:
+
+1. Record the running app path, executable hash, macOS version and selected
+   file identity. A disposable comparison build is not the original app.
+2. Open the native picker and inspect its current state before sending input.
+   After using Go to Folder, verify the entered path before pressing Return,
+   then verify the resulting directory and selected file.
+3. Check whether Open is enabled. A selected accessibility row alone does not
+   show that the panel has accepted the selection. Do not force a disabled
+   control or count a failed input action as an application result.
+4. If automated selection stalls, record the actual state and elapsed interval.
+   Use a manual control on the unchanged app: bring Choom to the front, select
+   the same file with the mouse, and open it. Pause automated input during this
+   handoff.
+5. Observe the resulting app state after the handoff. If the manual action
+   succeeds, record that success and the automation limit separately. Do not
+   report the automated attempt as passing or infer a file-filter defect.
+6. Verify report selection, cancellation and invalid-file preservation
+   separately before claiming a complete macOS journey.
+
+The [2026-11-14 investigation](BV-macos-picker-investigation.md) followed this
+control and confirmed manual baseline opening in the unchanged app. Removing
+the YAML filter or changing the dialog window level did not establish a fix for
+the automated interaction. No product workaround was retained.
