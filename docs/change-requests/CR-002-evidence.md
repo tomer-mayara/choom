@@ -1,10 +1,11 @@
 # CR-002 implementation evidence
 
-Status: implemented; automated checks passed within the platform coverage below.
-An earlier GTK picker timeout remains unexplained; the clean serial rerun passed.
-The later Choom trial found a macOS picker limit and a UI wording issue, recorded
-below. The change is prepared for a draft pull request. The starting revision was
-`e6c1835dc535455f088dce2f7b573d146ceffa94`; the candidate includes local changes.
+Status: implemented. This record separates the original implementation checks
+from the PR #45 follow-up below. An earlier GTK picker timeout and the later
+macOS picker observation remain unexplained; the passing platform coverage is
+stated below. The starting revision was
+`e6c1835dc535455f088dce2f7b573d146ceffa94`; the original PR commit was
+`b2ed4a62f5d17888a105571a44df3c45efe1e695`.
 
 ## Result and scope
 
@@ -119,13 +120,13 @@ recorded process and data flow. They do not measure semantic accuracy, false
 positive rate or recall on production repositories. The initial Choom trial in
 the CR is historical evidence, separate from these controlled examples.
 
-Draft PR review identified a remaining tool-identity limit. The manifest hashes
-the `duplication-*.mjs` helpers and lockfile and records the runtime; it does not
-hash their imported shared codec, domain, parser and layout sources. An operator
-must preserve the whole trusted checkout and its revision. The producer guide
-now states this boundary explicitly. Extending the fingerprint to those shared
-sources is deferred; the draft does not claim that every tool-source change is
-detected between phases. No shared source changed during the recorded runs.
+Draft PR review identified a tool-identity limit in the original commit. The
+manifest hashed the `duplication-*.mjs` helpers and lockfile and recorded the
+runtime, but did not hash their imported shared codec, domain, parser and layout
+sources. No shared source changed during the recorded runs. The PR #45 follow-up
+below records the correction. Historical assessments retain their original
+fingerprints and require the original trusted tool revision for producer checks;
+the saved viewer report remains portable.
 
 The final literal `start → collect → review → publish` CLI run used 21 public
 endpoints in four bounded groups. It retained three AST pairs, one helper-only
@@ -177,14 +178,21 @@ Open/Retry selected the exact Retry entry; Back returned to the comparison.
 Evidence showed source locations, hashes, opposing evidence and independent
 review provenance. Recorded baseline facts kept their Proposed status.
 
-The review identified two unresolved UI limits:
+The review identified two UI issues:
 
 - **Review incomplete** appears beside **Review: completed** when the scan is
-  partial. The overall heading conflates assessment coverage with review status.
+  partial. The PR #45 follow-up changes the overall heading to
+  **Assessment incomplete** and retains the separate scan and review states.
 - The macOS native picker left Open disabled for the selected YAML file. Its
   cause was not determined. Browser-extension upload was unavailable with the
   current file-URL permission, so the UI review used the in-app browser. No
   permissions were changed. This was not a passing installed macOS journey.
+
+A read-only PR comparison found no demonstrated picker regression: baseline
+dialog options, YAML extensions, Tauri permissions, registration and dialog
+dependency versions match `main`. The added report picker uses the same
+extensions. Mocked IPC tests check those options, not the macOS panel. The
+observation remains an acceptance limit without an established cause.
 
 The producer and shared portable codec verified all 157 registered artifacts
 and the original input identity after publication. The local report bindings are:
@@ -220,10 +228,10 @@ These are single local observations, not a latency guarantee or a production SLO
 The manager also inspected installed comparison screenshots at 1200×800 and
 740×800: the panel stayed readable and moved below the canvas at the narrow size.
 
-## Final checks
+## Original implementation checks
 
 Verification uses Bun 1.4.4, Node 26.13.0 and Rust 1.99.1. The check commands
-below run on the complete candidate, including shared viewer callers.
+below ran before the follow-up, including shared viewer callers.
 
 | Check | Result |
 | --- | --- |
@@ -259,3 +267,39 @@ macOS and Windows installed flows, Wayland and desktop portals remain outside
 the observed acceptance evidence. Build warnings about existing large chunks
 and the controlled browser harness's mixed static/dynamic layout import remain;
 they are not behavior failures.
+
+## PR #45 follow-up
+
+The user requested CI and review checks, fixes, and merge. At the start of the
+follow-up, both CI runs for `b2ed4a62f5d17888a105571a44df3c45efe1e695` passed:
+web plus desktop on Linux, macOS and Windows. The
+[PR workflow](https://github.com/tomer-mayara/choom/actions/runs/43558664281)
+also passed installed Linux acceptance. There were no GitHub review submissions,
+comments or unresolved review threads, and no required branch approvals.
+
+The manager reviewed and corrected the two documented implementation issues:
+
+- Tool identity now also hashes package metadata, the shared layout helper,
+  both codecs, generated codec contracts, and all files in the domain and YAML
+  parser folders. The sorted file set detects additions and removals as well
+  as changed bytes. The manager checked that coverage against the current local
+  import graph. The producer guide states that imports outside this coverage
+  require an update. Existing assessments and saved fixtures were not rewritten.
+- The overall coverage label is now **Assessment incomplete**. The separate
+  **Scan: partial. Review: completed.** line remains. The Cucumber scenario and
+  focused DOM test first failed for the missing corrected label, then passed.
+  Only this observable wording changed; the report and workflow contracts did
+  not change.
+
+A disposable-copy experiment confirmed the fingerprint defect before the fix:
+a changed `duplication-binding.ts` was accepted by the old check. After the fix,
+11 mutations across the covered source groups, package metadata, CLI helper,
+and added or removed domain files were rejected before phase output was written.
+An unchanged control passed. This was a manual tooling check; no behavior tests
+were added for tooling.
+
+The complete `bun run check` passed again: 298 native unit tests, 238 DOM tests,
+36 browser-free scenarios / 114 steps, 75 interface tests, and all static gates.
+`bun run check-types` passed. The 16 producer specifications also passed under
+Node. The corrected browser scenario passed all eight steps, and its focused
+DOM file passed all ten tests.

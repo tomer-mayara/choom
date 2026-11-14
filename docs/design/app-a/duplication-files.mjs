@@ -22,8 +22,13 @@ export function toolIdentity() {
   const folder = join(toolRoot, 'docs/design/app-a');
   const helpers = Object.fromEntries(readdirSync(folder).filter(name => /^duplication-.*\.mjs$/.test(name)).sort()
     .map(name => [name, hash(savedFile(folder, name))]));
+  // Pin whole schema/parser folders so new sibling dependencies are included.
+  const sharedPaths = ['package.json', 'docs/design/app-a/run-layout.mjs',
+    'src/lib/baseline-yaml.ts', 'src/lib/interface-duplication-yaml.ts', 'src/lib/generated/contracts.ts',
+    ...listFiles(toolRoot, 'src/domain'), ...listFiles(toolRoot, 'src/lib/architecture-yaml')].sort();
+  const sharedSources = Object.fromEntries(sharedPaths.map(path => [path, hash(savedFile(toolRoot, path))]));
   return { node: process.version, bun: process.versions.bun ?? null,
-    lockSha256: hash(savedFile(toolRoot, 'bun.lock')), helpers };
+    lockSha256: hash(savedFile(toolRoot, 'bun.lock')), helpers, sharedSources };
 }
 
 export function canonicalDirectory(path) {

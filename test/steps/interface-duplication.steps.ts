@@ -67,12 +67,12 @@ Then("the list shows one finding and Billing shows one possible duplicate", asyn
   await expect(this.page.getByText("Potential redundancy: 1", { exact: true })).toBeVisible();
 });
 
-Then("the report shows its incomplete scan coverage", async function (this: DuplicationWorld) {
+Then("the assessment is incomplete because the scan is partial even though the review is complete", async function (this: DuplicationWorld) {
   assert.ok(this.page && this.duplicationData);
   assert.equal(this.duplicationData.report.scan.status, "partial");
   assert.equal(this.duplicationData.report.scan.counts.excluded, null);
-  await expect(this.page.getByText("Review incomplete", { exact: true })).toBeVisible();
   await expect(this.page.getByText("Scan: partial. Review: completed.", { exact: true })).toBeVisible();
+  await expect(this.page.getByText("Assessment incomplete", { exact: true })).toBeVisible();
   await expect(this.page.getByText(/Excluded: Unknown/)).toBeVisible();
 });
 

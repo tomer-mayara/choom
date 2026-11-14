@@ -17,11 +17,19 @@ Use the trusted Choom checkout, its pinned Node and Bun versions, and
 `bun install --frozen-lockfile`. Use one tool revision and runtime for an
 assessment. The commands record helper hashes, the lockfile digest and runtime;
 collection also records the native jscpd 5.4.2 binary digest and exact arguments.
-The assessment rejects changed registered inputs, producer helpers, lockfile or
-runtime between commands. Imported shared codec, domain, parser and layout
-sources are not included in that tool fingerprint. Keep the whole trusted
-checkout unchanged and retain its revision; the helper cannot enforce that
-condition for those shared sources.
+The tool fingerprint also covers `package.json`, the shared run-layout helper,
+both codec entry files, generated codec contracts, and all files in `src/domain/`
+and `src/lib/architecture-yaml/`. Sorted paths and file hashes detect changes,
+additions and removals in those folders. This covers the producer's local source
+dependencies; extend the explicit coverage if an import moves outside it.
+The assessment rejects changed registered inputs, fingerprinted sources,
+lockfile or runtime between commands. Keep the trusted checkout unchanged
+during each command and retain its revision and installed dependencies.
+
+Existing assessments keep their recorded tool identity. Use their original
+trusted revision for later verification; this expanded fingerprint does not
+upgrade an old assessment. A run with changed tools needs a new assessment
+folder. Do not rewrite a saved manifest or report to make it match.
 
 Use absolute paths. The output parent must exist and the output folder must be
 new. Prefer a location outside both the completed run and the trusted checkout.

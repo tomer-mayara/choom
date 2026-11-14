@@ -92,14 +92,15 @@ test("completed zero and partial coverage have different conclusions", () => {
   const view = render(<ArchitectureDiagram {...{ baseline, layout, duplication: { report, session: 1 } }} />);
   fireEvent.click(screen.getByRole("button", { name: "Duplicates" }));
   expect(screen.getByText("No public-interface candidate pairs found in the recorded scope")).toBeTruthy();
-  expect(screen.queryByText("Review incomplete")).toBeNull();
+  expect(screen.queryByText("Assessment incomplete")).toBeNull();
   const partial = structuredClone(report);
   partial.scan.status = "partial";
   partial.scan.counts.unmapped = null;
   partial.scan.diagnostics = ["A supported file could not be examined."];
   partial.scan.mappingGaps = ["Owner mapping is unresolved."];
   view.rerender(<ArchitectureDiagram {...{ baseline, layout, duplication: { report: partial, session: 2 } }} />);
-  expect(screen.getByText("Review incomplete")).toBeTruthy();
+  expect(screen.getByText("Scan: partial. Review: completed.")).toBeTruthy();
+  expect(screen.getByText("Assessment incomplete")).toBeTruthy();
   expect(screen.queryByText("No public-interface candidate pairs found in the recorded scope")).toBeNull();
   expect(screen.getByText(/Unmapped candidates: Unknown/)).toBeTruthy();
   expect(screen.getByRole("region", { name: "Coverage notes" }).textContent).toContain("Owner mapping is unresolved.");

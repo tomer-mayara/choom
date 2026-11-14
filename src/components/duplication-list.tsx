@@ -15,7 +15,7 @@ function DuplicationSummary({ report }: { report: ReadonlyData<DuplicationReport
     <p>Report: {report.id}</p><p>Created: {report.createdAt}</p>
     <p>Baseline: {report.baseline.id} (version {report.baseline.formatVersion})</p>
     <p className="text-xs text-muted-foreground">SHA-256: {report.baseline.sha256}</p>
-    {incomplete ? <p className="font-semibold">Review incomplete</p> : null}
+    {incomplete ? <p className="font-semibold">Assessment incomplete</p> : null}
     {failed ? <p>Detection was not completed</p> : null}
     <p>Scan: {scan.status}. Review: {review.status}.</p>
     <ul className="space-y-1">{Object.entries(duplicationStatusLabels).map(([status, label]) =>

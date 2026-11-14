@@ -8,7 +8,7 @@ Feature: Read a saved duplication assessment
     Given a baseline and its published duplication assessment are available offline
     When the reader opens the saved duplication assessment
     Then the saved duplication finding is available for inspection
-    And the report shows its incomplete scan coverage
+    And the assessment is incomplete because the scan is partial even though the review is complete
     And reading the assessment has not changed either selected file
 
   @di-03-01
