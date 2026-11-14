@@ -161,8 +161,12 @@ Earlier reports keep the versions they used. Human review is optional; Choom
 can continue with a provisional baseline.
 
 The baseline stores membership rules and intended ownership. The run stores the
-code matched by those rules and the observed resource access. Keep these results
-out of the reusable baseline. A missing or ambiguous match stays unresolved.
+full code mapping and observed resource access. Version 3 can also carry a
+bounded `sourceUsage` summary for the single-file viewer. It names one saved
+snapshot and selected mapping, with scoped interface assessments and exact
+caller/binding evidence. These are source observations, not accepted intent,
+permission policy, or execution results. The full mapping and evidence remain
+in the run. A missing or ambiguous match stays unresolved.
 Do not silently guess which new symbol replaces an old one.
 
 ### Map components to code
@@ -587,7 +591,7 @@ are its likely components, how do they interact, and what remains uncertain?
 
 | File | Purpose | Produced by |
 | --- | --- | --- |
-| `baselines/<baseline-id>/baseline.yaml` | Reusable architectural intent: components, interfaces, resource owners, and rules. | The LLM proposes the model from evidence. Choom validates and saves it. |
+| `baselines/<baseline-id>/baseline.yaml` | Architectural intent, interface documentation, and optional version 3 source-use assessments tied to a saved snapshot. | The LLM proposes the model from evidence. Choom validates and saves it. |
 | `runs/<run-id>/discovery.yaml` | What this pass established, inspected, or left unresolved. References the selected baseline and saved facts. | Tools supply facts and coverage. The LLM supplies explanations and questions. Choom assembles and validates the result. |
 
 These files represent the [saved records](#saved-records); they do not introduce
@@ -595,10 +599,16 @@ a second model. The diagram and any readable summary are views of these records.
 They use a separate format from version-1 `.choom.yaml` diagrams. Step 1 produces
 no smell findings, redesign proposal, or health score.
 
-**The reusable baseline.** `baseline.yaml` has `formatVersion: 1`, an `id`, a
-`parentId` (`null` for the first version), and the four collections defined in
+**The reusable baseline.** `baseline.yaml` has a supported `formatVersion`, an
+`id`, a `parentId` (`null` for the first version), and the four collections defined in
 [Model and review](#model-and-review): `components`, `interfaces`, `resources`,
-and `rules`.
+and `rules`. Version 1 keeps the original model. Version 2 adds interface
+documentation and method signatures. Version 3 retains that contract and can add
+`sourceUsage`, as defined in the [producer record contract](app-a/record-format.md#version-3-source-use-assessments).
+The viewer keeps legacy permission arrows for versions 1/2. Version 3 uses only
+saved application/tooling value uses for arrows, with known consumer and provider
+components. Other references stay readable in details. It never infers a source
+consumer from permission or claims that source inspection proves execution.
 
 IDs and names identify items. Each statement about intent uses
 `{value, status, evidenceRefs}`. The first pass marks inferred statements
@@ -628,8 +638,9 @@ groupingReason:
 ```
 
 This record stores a membership rule. The actual files matched in this snapshot
-belong to the run's code mapping. Observed callers also belong to run evidence;
-they do not become allowed consumers automatically.
+belong to the run's code mapping. Source callers can also be summarized in
+version 3 with their reviewed evidence. They do not become allowed consumers
+automatically, and partial review does not establish a complete caller list.
 
 **The discovery result.** Use the following required top-level fields. Keep
 large file lists and raw tool output in referenced artifacts.

@@ -42,9 +42,10 @@ completed stage 3 inspection priorities, a selected entry analysis that supports
 Knip reuse, and an empty initial baseline. It saves checkpoints and copies the
 tools into the new attempt. Later evidence commands use these saved copies.
 The publication commands in section 6 use the matching trusted checkout helper.
-The input remains the empty version 1 seed. A proposal can use version 1 or
-version 2. Use version 2 for the structured
-[interface documentation](record-format.md#version-2-interface-documentation).
+The input remains the empty version 1 seed. Versions 1 and 2 remain readable.
+Use version 3 for [source-use assessments](record-format.md#version-3-source-use-assessments),
+with the structured [interface documentation](record-format.md#version-2-interface-documentation)
+and signatures from version 2.
 Keep unknown facts explicit. Review a source range before claiming that it
 supports an example; a collected excerpt alone is insufficient. Check the full
 baseline against the reader limits before publication.
@@ -274,6 +275,15 @@ Use the returned source ID, snapshot ID, path, digest and exact saved range in
 Use bounded displays, and request any part lost to display truncation before
 claiming to have inspected it.
 
+Use the saved ranges to resolve interface consumers separately from permission.
+Review calls, value references, callback/JSX bindings, and IPC registration as
+needed. A query match is a place to inspect, not a resolved use. Keep type,
+test, tooling, and self-use distinctions. Use the candidate mapping's direct
+file owner; parent containment does not add a caller. Each use needs the actual
+reviewed caller and all supporting binding ranges with matching located notes.
+Keep unassessed interfaces, scoped empty results, and operator-command limits
+explicit. Do not fill an unknown permission policy from source callers.
+
 ## 5. Ask the LLM to recover components
 
 Give the LLM the saved `review-prompt.md`. In an interactive session, use:
@@ -285,8 +295,10 @@ Verify the registered inputs and proposed artifact digests before analysis.
 Use the stage 3 inspection priorities and the separate graph contexts.
 Request additional numbered source excerpts when needed.
 Recover the apparent intended architecture; do not recommend redesigns.
-Use version 2 for structured interface documentation. For each function or
-method entry (`kind: function`), record a signature statement with its own
+Use version 3 for source-use assessments, separately from allowedConsumers.
+Use one selected mapping and reviewed caller/binding evidence with partial scope.
+Retain structured interface documentation. For each function or method entry
+(`kind: function`), record a signature statement with its own
 status and evidence references. Copy the supported declaration with parameters
 and return type, without the body or opening brace. Do not invent types, void,
 defaults or parameters, or derive types from prose. If the complete declaration

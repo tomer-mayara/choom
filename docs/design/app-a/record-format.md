@@ -62,15 +62,17 @@ described as future work beside a newly appended correction.
 
 ## Baseline
 
-Top-level fields are exactly `formatVersion`, `id`, `parentId: null`,
-`components`, `interfaces`, `resources`, and `rules`. Keep the initial baseline
+All versions have `formatVersion`, `id`, `parentId: null`,
+`components`, `interfaces`, `resources`, and `rules`. Version 3 also permits
+`sourceUsage`; no other top-level fields are allowed. Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
 
-Stage 1 still creates the empty version 1 seed. Stages 4 and 5 can publish
-version 1 or version 2. Use `formatVersion: 2` when adding interface documentation.
-Version 1 does not permit the `documentation` field. Version 2 keeps all version
-1 fields and rules. Stage 6 validates either version and saves its exact bytes.
+Stage 1 still creates the empty version 1 seed. Versions 1 and 2 remain strict:
+version 1 has no interface `documentation`, and neither permits `sourceUsage`.
+Use `formatVersion: 3` for source-use assessments. It retains version 2
+documentation, signatures, semantic checks, and limits. Stage 6 validates the
+selected version and saves its exact bytes. There is no automatic migration.
 
 An intent statement has exactly `value`, `status: proposed`, and `evidenceRefs`.
 Unknown intent uses `value: null` and a question or gap whose `subjectRefs`
@@ -80,7 +82,7 @@ Publication does not accept intent.
 | Collection | Exact item fields |
 | --- | --- |
 | `components` | `id`, `name`, `purpose`, `membership`, `groupingReason`; optional `parent`. |
-| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; version 2 also permits `documentation`. |
+| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2/3 also permit `documentation`. |
 | `resources` | `id`, `name`, `identity`, `owner`, `accessRules`. |
 | `rules` | `id`, `name`, `subject`, `expected`, `check`. |
 
@@ -235,6 +237,125 @@ documentation:
       description: Saved decoder contract used for this explanation.
 ```
 
+### Version 3 source-use assessments
+
+Version 3 can add one top-level `sourceUsage` object. It records reviewed source
+use independently from permission. It has no statement status or execution
+flag. Component assignments depend on the selected mapping, which can remain
+proposed. Keep owner and permission statements unchanged unless separate intent
+evidence supports a change. Never fill `allowedConsumers` from caller lists.
+
+The object has exactly `snapshotRef`, `mappingRef`, and `assessments`.
+`snapshotRef` must equal `run.snapshot.id`, even when assessments are empty.
+`mappingRef` must equal the candidate `discovery.codeMappingRef`, whose mapping
+uses the same snapshot. Use one common mapping; do not repeat it in use records.
+
+Each assessment has these required fields:
+
+| Field | Value |
+| --- | --- |
+| `interfaceId` | An existing interface ID, unique across assessments. |
+| `scope` | Nonblank text explaining which callers and files were reviewed. |
+| `evidenceRefs` | Nonempty, distinct references supporting this scope. General graph or query evidence can occur here. |
+| `limitations` | An array of nonblank explanations; it can be empty. The assessment can still omit other uses. |
+| `uses` | The saved use records below. An empty list means no uses found in this scope, not that the interface is unused. |
+| `sourceNotes` | Notes for cited assessment or use references. Reuse the documentation note/location shape, scoped to this assessment. |
+
+Each use has these fields, with no additional keys:
+
+| Field | Value |
+| --- | --- |
+| `id` | A stable model ID, unique within this assessment. |
+| `consumerId` | The caller file's direct owner in the selected mapping, or null when that owner is unresolved. A known ID names an existing component. |
+| `kind` | `value` or `type`. Value use includes a reviewed call, value reference, callback/JSX binding, or resolved IPC binding. It does not prove execution. |
+| `context` | `application`, `tooling`, `test`, or `unknown`, based on source review. Do not classify solely from the filename. |
+| `description` | Nonblank text explaining the use, including unresolved ownership or context when present. |
+| `callerRef` | A direct saved source-record ID without a fragment. It must occur in this use's `evidenceRefs`. |
+| `evidenceRefs` | Nonempty, distinct direct saved source-record IDs without fragments. They support the caller and any declaration, configuration, or binding chain. |
+| `accessPoint` | Optional exact item from this interface's `publicAccess.value`. |
+| `entryId` | Optional documented entry ID in this interface. If both binding fields exist, its access point must equal `accessPoint`. |
+
+A source record is distinct from its containing artifact ID. Every use reference
+must name a source record in the selected entry-analysis `reviewedFiles` chain.
+A collected but unread excerpt is insufficient, including supporting bindings.
+Graph, query, and import-index artifacts cannot replace direct use evidence.
+Saved declaration and configuration text can support a binding; source evidence
+is not limited to JavaScript, TypeScript, or Rust.
+
+Every use reference requires a matching source note with the source record's
+exact snapshot, path, hash, and saved range. All supplied note locations must use
+the common `snapshotRef`. A note must cite a reference from this assessment or
+one of its uses; allow one note per reference. Scope-only notes may omit location.
+The publisher checks identity and review history. The manager checks that the
+cited code supports the claim and records that review in `llm/analysis-response.md`.
+The viewer does not fetch source, check digests, execute examples, or verify calls.
+
+Read concrete calls and bindings. Follow aliases, injected callbacks, JSX, and
+native command registration as needed. An import match alone does not establish
+which interface is used. Keep an unresolved interface finding in discovery
+instead of attaching it to a guessed interface. Entry binding is optional when
+the interface is supported but a precise entry is not; absence does not mean
+that every method is used. Preserve repeated caller sites and self-use.
+
+If the caller's owner or context is unresolved, explain it in `description` and
+add a discovery question or gap with the exact corresponding subject:
+
+```text
+interface-id.sourceUsage.uses.use-id.consumerId
+interface-id.sourceUsage.uses.use-id.context
+```
+
+A permission gap does not explain an unresolved source consumer. No source-use
+object means not recorded; no assessment means not assessed for that interface.
+Neither absence nor a scoped empty list requires an invented gap. Record a
+manual command with no established source caller in scope limitations, supported
+by evidence. Do not invent a root component or external actor as its consumer.
+
+Stage 5 updates the common `mappingRef` to its candidate mapping even when all
+owners stay the same. Recheck every carried consumer assignment and interface
+or entry binding. Reuse unchanged reviewed caller evidence. Stage 6 retains the
+published Stage 5 mapping and bytes; saving does not revise source use.
+
+The following fragment illustrates one resolved callback use. Its IDs and digest
+are fictional. Replace them with this run's saved identities and include the
+rest of the baseline. Here both source ranges were reviewed, the mapping assigns
+`src/workspace.ts` to `workspace`, and `read-text` is an entry of `file-reader`:
+
+```yaml
+sourceUsage:
+  snapshotRef: snapshot-example
+  mappingRef: s4-example-file@code-mapping.json
+  assessments:
+    - interfaceId: file-reader
+      scope: Reviewed the workspace reader construction and callback invocation.
+      evidenceRefs: [s4-example-caller, s4-example-binding]
+      limitations: [Other callers and runtime execution were not assessed.]
+      uses:
+        - id: workspace-read
+          consumerId: workspace
+          kind: value
+          context: application
+          description: The workspace invokes the injected reader to obtain selected text.
+          callerRef: s4-example-caller
+          evidenceRefs: [s4-example-caller, s4-example-binding]
+          entryId: read-text
+      sourceNotes:
+        - evidenceRef: s4-example-caller
+          description: The saved workflow invokes the reader callback.
+          location:
+            snapshotRef: snapshot-example
+            path: src/workspace.ts
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            lines: [10, 30]
+        - evidenceRef: s4-example-binding
+          description: The saved composition passes the file reader to the workflow.
+          location:
+            snapshotRef: snapshot-example
+            path: src/composition.ts
+            sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+            lines: [1, 20]
+```
+
 ### Reader limits
 
 The publisher and Stage 6 use the viewer's bounded YAML profile before parsing
@@ -244,7 +365,7 @@ and invalid flow separators are rejected. Limits are 16 MiB per baseline,
 32 YAML levels, 250,000 YAML nodes and line breaks, and 1,500,000 lexer tokens.
 
 The complete architecture permits at most 500 records, 2,000 explicit owner and
-consumer links, and 16 component levels. These are viewer limits, separate from
+allowed-consumer links, and 16 component levels. These are viewer limits, separate from
 the command readers' larger per-file ceilings. Stage 4 and 5 can read at most
 128 MiB per artifact; Stage 6 review files are limited to 16 MiB each. Those
 ceilings do not establish viewer compatibility.
@@ -261,10 +382,21 @@ The combined documentation limit is 2 MiB. Count UTF-8 bytes of
 interface order. Include array delimiters, metadata, punctuation and repeated
 values. Do not count only displayed text or deduplicate references for the limit.
 
+Source use has a separate limit of 2,000 use records and 4,000 source notes
+across all assessments. Count all uses before combining sites or filtering the
+canvas. IDs, references, access points, and paths each have a 4 KiB UTF-8 limit;
+descriptions, scope, and limitation text each have an 8 KiB limit. Require
+nonblank text, safe snapshot-relative paths, 64-digit hexadecimal SHA-256, and
+positive ordered safe-integer line ranges, as for documentation. The complete
+`sourceUsage` object has a 2 MiB UTF-8 limit using compact `JSON.stringify`,
+including metadata and repeated strings. Enforce these budgets independently
+from documentation and legacy owner/allowed-consumer links. Do not add source
+uses to the permission-link total or ignore data hidden by a view filter.
+
 Before publishing, review the documentation's meaning with its exact saved
 source ranges. Keep the review in `llm/analysis-response.md`. The nine-file packet
-does not change. During tool development, check saved version 1 and new version
-2 proposals with the public reader and display boundary, and record those
+does not change. During tool development, check versions 1, 2, and 3
+with the public reader and display boundary, and record those
 results outside the publication packet. Reader success does not replace source
 review or the publisher's provenance checks.
 
