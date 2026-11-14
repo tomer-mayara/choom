@@ -7,6 +7,18 @@ import { accepted, fixtureItem, proposed, reviewedBaseline } from "../../support
 
 afterEach(cleanup);
 
+test("an interface's original record retains every saved value without changing it", () => {
+  const baseline = baselineDetailsExample();
+  const item = fixtureItem(baseline.interfaces);
+  const original = structuredClone(item);
+  render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: item.id }} />);
+  const summary = screen.getByText("Original record", { selector: "summary" });
+  fireEvent.click(summary);
+  const record = summary.closest("details")?.querySelector("pre")?.textContent;
+  expect(JSON.parse(record ?? "null")).toEqual(original);
+  expect(item).toEqual(original);
+});
+
 test("component details keep purpose, membership, grouping, and parent fields", () => {
   const baseline = baselineDetailsExample();
   const component = fixtureItem(baseline.components);

@@ -21,6 +21,27 @@ export interface AcceptedConsumersStatement {
   acceptanceRef: baselineText;
 }
 
+export interface AcceptedEntryKindStatement {
+  value: BaselineEntryKind;
+  status: "accepted";
+  evidenceRefs: Array<baselineText>;
+  acceptanceRef: baselineText;
+}
+
+export interface AcceptedExampleStatement {
+  value: BaselineExampleContent;
+  status: "accepted";
+  evidenceRefs: Array<baselineText>;
+  acceptanceRef: baselineText;
+}
+
+export interface AcceptedInteractionStatement {
+  value: BaselineInteraction;
+  status: "accepted";
+  evidenceRefs: Array<baselineText>;
+  acceptanceRef: baselineText;
+}
+
 export interface AcceptedMembershipStatement {
   value: BaselineMembership;
   status: "accepted";
@@ -56,15 +77,7 @@ export interface AcceptedTextStatement {
   acceptanceRef: baselineText;
 }
 
-export interface Baseline {
-  formatVersion: 1;
-  id: baselineId;
-  parentId: baselineText | null;
-  components: Array<BaselineComponent>;
-  interfaces: Array<BaselineInterface>;
-  resources: Array<BaselineResource>;
-  rules: Array<BaselineRule>;
-}
+export type Baseline = BaselineV1 | BaselineV2;
 
 export type BaselineAccessPoints = Array<baselineText>;
 
@@ -85,7 +98,68 @@ export type BaselineConsumers = Array<baselineId>;
 
 export type BaselineConsumersStatement = ProposedConsumersStatement | AcceptedConsumersStatement;
 
+export interface BaselineDocumentation {
+  summary: BaselineNullableTextStatement;
+  entries: Array<BaselineDocumentedEntry>;
+  sourceNotes: Array<BaselineSourceNote>;
+}
+
+export interface BaselineDocumentationExample {
+  id: baselineId;
+  name: baselineText;
+  basis: "illustrative" | "source-reviewed";
+  content: BaselineExampleStatement;
+}
+
+export interface BaselineDocumentedEntry {
+  id: baselineId;
+  name: baselineText;
+  accessPoint: baselineText;
+  kind: BaselineEntryKindStatement;
+  description: BaselineNullableTextStatement;
+  signature?: BaselineNullableTextStatement;
+  interaction?: BaselineInteractionStatement;
+  examples: Array<BaselineDocumentationExample>;
+}
+
+export type BaselineEntryKind = "function" | "command" | "type" | "data" | "message" | "workflow" | null;
+
+export type BaselineEntryKindStatement = ProposedEntryKindStatement | AcceptedEntryKindStatement;
+
+export interface BaselineExampleContent {
+  text: baselineText;
+  input?: baselineText;
+  result?: BaselineExampleResult;
+}
+
+export interface BaselineExampleResult {
+  text: baselineText;
+  summary: baselineText;
+  scope: "complete" | "excerpt";
+}
+
+export type BaselineExampleStatement = ProposedExampleStatement | AcceptedExampleStatement;
+
+export interface BaselineInteraction {
+  input: baselineText | null;
+  success: baselineText | null;
+  failures: baselineText | null;
+  effects: baselineText | null;
+}
+
+export type BaselineInteractionStatement = ProposedInteractionStatement | AcceptedInteractionStatement;
+
 export interface BaselineInterface {
+  id: baselineId;
+  name: baselineText;
+  owner: BaselineComponentReferenceStatement;
+  publicAccess: BaselineAccessPointsStatement;
+  allowedConsumers: BaselineConsumersStatement;
+  promises: BaselinePromisesStatement;
+  documentation?: BaselineDocumentation;
+}
+
+export interface BaselineInterfaceV1 {
   id: baselineId;
   name: baselineText;
   owner: BaselineComponentReferenceStatement;
@@ -136,7 +210,40 @@ export type BaselineRuleObjectStatement = ProposedRuleObjectStatement | Accepted
 
 export type BaselineRuleValue = string | boolean | number | null | BaselineRuleObject | Array<BaselineRuleValue>;
 
+export interface BaselineSourceLocation {
+  snapshotRef: baselineText;
+  path: baselineText;
+  sha256: baselineSourceDigest;
+  lines: Array<baselineSourceLine>;
+}
+
+export interface BaselineSourceNote {
+  evidenceRef: baselineText;
+  description: baselineText;
+  location?: BaselineSourceLocation;
+}
+
 export type BaselineTextStatement = ProposedTextStatement | AcceptedTextStatement;
+
+export interface BaselineV1 {
+  formatVersion: 1;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: Array<BaselineComponent>;
+  interfaces: Array<BaselineInterfaceV1>;
+  resources: Array<BaselineResource>;
+  rules: Array<BaselineRule>;
+}
+
+export interface BaselineV2 {
+  formatVersion: 2;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: Array<BaselineComponent>;
+  interfaces: Array<BaselineInterface>;
+  resources: Array<BaselineResource>;
+  rules: Array<BaselineRule>;
+}
 
 export interface ProposedAccessPointsStatement {
   value: Array<baselineText> | null;
@@ -152,6 +259,24 @@ export interface ProposedComponentReferenceStatement {
 
 export interface ProposedConsumersStatement {
   value: Array<baselineId> | null;
+  status: "proposed";
+  evidenceRefs: Array<baselineText>;
+}
+
+export interface ProposedEntryKindStatement {
+  value: BaselineEntryKind;
+  status: "proposed";
+  evidenceRefs: Array<baselineText>;
+}
+
+export interface ProposedExampleStatement {
+  value: BaselineExampleContent;
+  status: "proposed";
+  evidenceRefs: Array<baselineText>;
+}
+
+export interface ProposedInteractionStatement {
+  value: BaselineInteraction;
   status: "proposed";
   evidenceRefs: Array<baselineText>;
 }
@@ -189,5 +314,9 @@ export interface ProposedTextStatement {
 export type baselineId = string;
 
 export type baselineSelector = baselineText;
+
+export type baselineSourceDigest = string;
+
+export type baselineSourceLine = number;
 
 export type baselineText = string;

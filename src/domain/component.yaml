@@ -4,6 +4,7 @@ description: Validates saved baselines and supplies a starter baseline.
 artifacts:
   behavior:
     - path: ../../cookbook/behavior/baseline-viewer/validation.feature
+    - path: ../../cookbook/behavior/baseline-viewer/interface-documentation.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
@@ -11,4 +12,5 @@ artifacts:
   contracts:
     # TypeSpec owns the structure; the runtime schema also checks IDs and references.
     - path: ../../cookbook/interfaces/baseline.tsp
+    - path: ../../cookbook/interfaces/baseline-documentation.tsp
     - path: ../../cookbook/interfaces/baseline.md

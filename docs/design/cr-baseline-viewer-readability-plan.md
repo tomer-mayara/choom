@@ -1,7 +1,8 @@
 # Baseline viewer readability plan
 
-Status: **BR-01 to BR-04 and BR-07A to BR-07D are merged. BR-07 replaces BR-06.
-BR-08A to BR-08D are implemented in the draft PR stack. BR-05 remains planned.**
+Status: **BR-01 to BR-04, BR-07A to BR-07D, and BR-08A to BR-08D are merged.
+BR-10A to BR-10F are approved for implementation as a draft PR stack.
+BR-05 is superseded by the separate BR-09 graph design; BR-07 replaced BR-06.**
 
 Reviewed: **2026-11-13**
 
@@ -21,8 +22,9 @@ their superseded assertions are identified in BR-08.
 
 This plan follows the [baseline viewer plan](cr-baseline-viewer-plan.md).
 BR-01 to BR-04 replaced that plan's rules for showing every record on the canvas,
-double-click inspection, and automatic fitting on resize. The baseline format,
-read-only file access, statement meanings, and load protections stay in force.
+double-click inspection, and automatic fitting on resize. Read-only file access,
+statement meanings, and load protections stay in force. BR-10 adds the explicit
+version 2 extension below while retaining strict version 1 support.
 
 This document defines the intended behavior and ticket sequence. Its scenarios
 are requirements, not test results. See the
@@ -54,15 +56,16 @@ at once makes even this small model hard to read.
 | Stage | Tickets | Result |
 | --- | --- | --- |
 | Merged | BR-01 to BR-04 | Side-panel inspection, a compact component overview, movement, and reset. |
-| Follow-up | BR-05 | Expand and collapse component groups. |
+| Superseded | BR-05 | The separate BR-09 graph design replaces canvas collapse. |
 | Superseded | BR-06 | Replaced by BR-07; do not implement the temporary interface node. |
 | Merged | BR-07A to BR-07D | Interface arcs, unknown-endpoint explanations, inspection, and complete-drawing Fit. |
-| Implemented in the draft PR stack | BR-08A to BR-08D | Selected connections, labels on demand, optional self-connections, and Fit/lifetime checks for the filtered view. |
+| Merged | BR-08A to BR-08D | Selected connections, labels on demand, optional self-connections, and Fit/lifetime checks for the filtered view. |
 
 BR-07 follows review of the component-only view. It can build directly on BR-04;
 it does not require BR-05. The collapse rules below apply when both features
-exist. BR-05 remains a separate follow-up. BR-08 builds on BR-07D and does not
-require BR-05.
+exist. BR-05 is retained below as history. BR-08 builds on BR-07D and does not
+require BR-05. BR-10 keeps the merged graph behavior while improving interface details.
+The separate BR-09 graph prototype still needs reader validation.
 
 Remember the arrangement while the current baseline remains open. Saving it
 across app restarts or successful file opens remains out of scope, as do
@@ -1597,3 +1600,819 @@ For each implemented follow-up release:
 
 The manager reviews the complete candidate. Keep PRs as drafts, keep validation
 current, and follow the repository's constraint review requirements before merge.
+
+
+## Interface details and supporting baseline data
+
+### Reading order and compatibility
+
+BR-10 uses the existing inspector. It does not copy the mock's three-item picker,
+second relationship drawing, fixed fixture content, or wide panel. Keep the
+current panel width and stack content within it. A width change requires a new
+BR-09A visibility check before it can become part of the graph plan.
+
+The interface heading shows its recorded name and a friendly provider name.
+Use **Provider unknown** when `owner.value` is null. Show **Overview**,
+**Example**, and **Sources** as keyboard-accessible tabs in the same panel.
+
+| View | Content |
+| --- | --- |
+| Overview | Purpose, entry points, the selected entry's recorded input/result/failure/effects when supplied, and the existing interface-wide behavior. |
+| Example | Name the selected entry. Show its saved example text, input if supplied, and a short result explanation before the detailed result. |
+| Sources | Statement statuses and acceptance references, useful saved source notes, deduplicated evidence IDs with field associations, and all original interface fields. |
+
+Keep the main reading path short. Put **Access rule** and **What changes and
+when it ends** in secondary disclosures. Resolve component IDs to names; retain
+IDs where names repeat and in Sources. Access rule explains who the record
+permits to use the interface. It does not describe observed calls or runtime
+authorization. Keep self-use in this list. Unknown permission must say that the
+permitted components are not recorded; it does not mean none or everybody.
+
+Old files need an honest, useful view. They must not need a fresh analysis just
+to remain readable:
+
+| Saved value | Reading label or behavior |
+| --- | --- |
+| `promises.behavior` | **Behavior**; show the saved text directly. |
+| `promises.data` | **Data exchanged**; do not split prose into invented input and result fields. |
+| `promises.errors` | **Failures**. |
+| `promises.lifecycle` | **What changes and when it ends**. |
+| `publicAccess` without an explicit new entry description | **Recorded entry reference**; keep the string without guessing its kind or signature. |
+| No saved examples | **No example recorded for this entry**, or **No examples recorded** when there are no documented entries. |
+| Null statement value | State that the fact is unknown. |
+
+If all promises are unknown, say that behavior is not recorded. Do not construct
+a description from the interface name, a source path, or another interface.
+Unchanged baseline-003 must not acquire the mock's `safeParse` signature,
+classified entry points, or examples through an ID-specific fallback.
+
+New entry descriptions supplement the existing interface-wide promises. When
+an entry has a recorded description or a known interaction fact, show that
+detail first and put the existing promises in **Interface-wide contract**.
+This is a secondary disclosure. Otherwise, keep the existing prose in the main
+view. Do not rewrite or discard it. The producer must review both descriptions
+for contradictions; schema validation cannot establish that their prose agrees.
+
+Initially select the first documented entry in saved order. Identify that entry
+beside its details so readers cannot mistake one operation's contract for every
+entry point. Select entries in Overview; Example names the same selected entry
+without adding a second entry selector. Keep every recorded access reference reachable, including references
+with no richer description. Several documented operations may refer to the same
+recorded access point; their stable entry IDs distinguish them.
+
+Show input/result cards only for a saved function, command, or workflow that
+has known interaction facts. If all four facts are null, show one
+**Interaction facts are unknown** summary instead of four empty cards. Retain
+the individual unknown fields in Sources. A type, data value, or message remains
+a named entry with its saved description and examples. Do not give it a fake call,
+success response, or HTTP transport. A message-specific reference layout is
+outside this series. Use **Example** and **Copy example** for all entry kinds.
+Optional sample input and result describe that example; they do not make a
+type, data value, or message a callable operation. Label a result as an example
+outcome, never as output observed by Choom.
+
+### Baseline version 2 extension
+
+Use an explicit `formatVersion: 2`. Version 1 remains strict and supported.
+Do not add new fields to version 1, rewrite old files, or maintain an implicit
+migration copy. The new reader accepts versions 1 and 2; unsupported versions
+and malformed known fields remain load errors. Older readers reject version 2
+with their existing unsupported-version outcome. Ship the reader before the
+external workflow starts publishing version 2.
+
+Keep the top-level fields, four collections, existing interface fields, and
+their meanings. A version 2 interface may add one optional `documentation`
+object. Absence means no richer documentation was supplied. In particular,
+`owner` and `allowedConsumers` keep their existing meaning and validation.
+Documentation creates no architecture record, consumer, edge, or owned count.
+
+The extension has these fields. BR-10A defines them in TypeSpec and generated
+contracts before implementing the validator; this table fixes their meaning.
+
+| Location | Fields and rules |
+| --- | --- |
+| `documentation` | `summary`, `entries`, and `sourceNotes`. All three are required when the object exists. `summary` is a nullable text statement; the other two are arrays. |
+| Entry | `id`, `name`, `accessPoint`, `kind`, `description`, `examples`, and optional `interaction`. IDs are unique within the interface. `accessPoint` must equal an existing string in that interface's `publicAccess.value`. Unknown access points cannot be enriched until that fact is recorded. |
+| Entry `kind` | A statement whose value is `function`, `command`, `type`, `data`, `message`, `workflow`, or null. Null means unclassified. The viewer does not infer a kind. |
+| Entry `description` | A nullable text statement explaining this entry's purpose. The short `name` is a display label, as with interface names. |
+| Entry `interaction` | Optional statement for `function`, `command`, or `workflow` only. Its value is an object with `input`, `success`, `failures`, and `effects`; each is nonempty text or null. The object itself cannot be null. Review these four descriptions together, as with existing promises. They are not executable schemas. |
+| Example | `id`, `name`, `basis`, and `content`. IDs are unique within their entry. `basis` is `illustrative` or `source-reviewed`. `content` is one statement for the complete example, with its own status and evidence. |
+| Example content value | Required `text`; optional `input` text and optional `result`. A result contains `text`, `summary`, and `scope: complete` or `scope: excerpt`. Each supplied text is nonempty. Examples are saved text only; no executable flag or test-run claim is supported. |
+| Source note | `evidenceRef`, `description`, and optional `location`. The reference must occur in a statement of this interface, including its documentation. One note per reference per interface. |
+| Source location | `snapshotRef`, safe snapshot-relative `path`, file `sha256`, and `lines: [first, last]`. Both line numbers are positive safe integers; `last` is at least `first`. This describes an inclusive saved source range. It does not request a read of the live checkout. |
+
+Use the existing statement structure for every new claim: `value`, `status`,
+and nonempty `evidenceRefs`; accepted statements also require `acceptanceRef`.
+Summary, entry kind, entry description, the whole interaction, and each example
+have separate statements. An interaction has one status and evidence list for
+its four facts. An example's status applies to its content and recorded basis.
+Do not flatten these statuses into ownership status. Existing promises keep
+their current grouping. Source notes describe references; they do not introduce
+another acceptance state.
+
+A `source-reviewed` example must cite at least one direct source-record ID in
+its own `content.evidenceRefs`, with a source note for that exact ID and a saved
+location. A note cited only by another statement does not qualify. The reader
+checks this in-file link. It cannot establish that the source was reviewed.
+The external workflow checks that separately, as described below.
+
+All objects have explicit allowed keys. Apply the existing ID syntax to new
+entry and example IDs. Local IDs are scoped by baseline session, interface, and
+entry as appropriate; they need not be globally unique architecture record IDs.
+Retain the saved entry and example order. Do not reinterpret an access-point
+string as a URI, shell command, or selector to execute.
+
+Use these missing-data rules consistently:
+
+- Missing `documentation`: use the existing prose and entry references.
+- An empty `entries`, `examples`, or `sourceNotes` array: none of those
+  documentation items was supplied. This says nothing about component usage.
+- Missing `interaction`: no structured interaction description was supplied.
+  For a callable entry, say **Interaction details not recorded**. Do not imply
+  that it has no parameters or errors.
+- A null summary, kind, description, or fact inside `interaction.value`: unknown.
+  A known no-input or no-side-effect claim must be explicit supported text, such as
+  **Accepts no arguments**; null cannot express it.
+- A missing sample input or result: that part of the example was not supplied.
+  Do not present it as a returned null, successful void result, or runtime fact.
+- Example content cannot be null. Use an empty example list when there is no
+  example to show. Optional sample parts avoid placeholder claims.
+
+The complete positive consumer policy remains a nonempty distinct list or null.
+Do not add empty consumer lists, partial permissions, or observed-caller fields
+as part of this extension.
+
+### Bounds and provenance
+
+Keep the current 16 MiB file, YAML parser, 500-record, 2,000-explicit-link, and
+16-parent-level limits. Add bounded documentation work: at most 32 entries per
+interface, 8 examples per entry, 8 KiB per name or descriptive text value, and
+16 KiB per example input, example text, or result text. A result summary uses
+the 8 KiB description limit. Bound each new identifier/reference/path by 4 KiB
+and each SHA-256 by its exact 64-hex-character form. These limits apply only to the new
+fields; do not tighten valid version 1 fields incidentally.
+
+Count the UTF-8 bytes of compact JSON serialization of one array containing
+each present `documentation` object, in baseline interface order. Include the
+array brackets and commas, source notes, statement metadata, and repeated
+strings. That count must not exceed 2 MiB. Use the same definition in reader
+and publisher. Parser limits still apply to the complete YAML first. New
+documentation shape, reference, item, and byte violations return
+`invalid-document`, with the affected path and a clear limit message where
+applicable. Keep existing parser-limit failure codes. Never drop invalid
+documentation and publish a partial replacement view.
+
+Validate before deriving the drawing. Documentation IDs and references do not
+count as architecture links; their own byte and item limits bound them. Render
+only the inspected interface and selected example, with secondary content
+disclosed on request. Measure the supported limit cases in BR-10F; a byte cap
+alone does not prove usable rendering speed.
+
+The viewer displays provenance recorded in the baseline. It does not inspect
+source, resolve external artifacts, fetch URLs, verify hashes, or execute
+examples. Label a source-reviewed example **Source-reviewed (recorded)** and an
+illustrative one **Illustrative example**. Neither label says the viewer ran a
+test. Do not offer Run, Try request, or automatic file-opening actions.
+
+In Sources, show saved source paths, ranges, snapshot identity, and what each
+note supports. Keep raw evidence IDs in one collapsed list, deduplicated for
+display but retaining links to all statement paths that cite them. Unresolved
+IDs stay plain text with **Evidence content is not included**. Do not decode
+an ID into an invented source location or show a dead link as an action.
+Keep every status, acceptance reference, and original field available. Original
+record means all saved field values; it does not promise the original YAML
+whitespace, comments, or byte serialization.
+
+A heading may summarize a uniform recorded status. If statuses differ, show
+**Mixed recorded statuses** and retain each field's status near its detail and
+in Sources. Never describe the whole interface as verified because one example
+was reviewed or one statement was accepted.
+
+### External authoring and publication
+
+The external six-stage workflow owns richer content. Stage 4 and Stage 5 must
+prepare it from the selected saved snapshot and registered evidence, in the
+review packet. Use short purpose sentences, concrete inputs and outcomes,
+explicit failure conditions, and effects that matter to the caller. Keep
+unknowns and their discovery questions/gaps. Publication continues to produce
+proposed intent only.
+
+Reuse the existing evidence resolver and saved-source checks. Walk every new
+nested statement. Apply these rules:
+
+- A source note without a location describes a registered cited reference. It
+  does not establish a source range. A note with a location must name a direct
+  source-record ID, without a fragment, and match its snapshot, path, digest,
+  and range exactly.
+- A source-reviewed example must cite a `reviewedFiles` record from the selected
+  entry-analysis history, with the matching location note in the baseline.
+  Use the existing reviewed-range list. A collected excerpt alone is not proof
+  that someone reviewed it. Tools check membership and source identity; a
+  reviewer checks whether the range supports the example text and outcome.
+- An illustrative example cites registered evidence for the contract it
+  illustrates. It need not claim a new source review. If support is absent,
+  omit the example and retain any real unresolved finding.
+
+For new null facts, use stable discovery subjects such as
+`interface-id.documentation.summary` and
+`interface-id.documentation.entries.entry-id.interaction.input`. These subjects
+use local IDs, not array positions, and omit the statement's `value` wrapper.
+Each new null fact needs an exact matching question or gap subject; one issue
+can name several fields. A gap about consumers cannot explain an unknown input.
+Keep legacy gap matching unchanged. Missing optional documentation or sample
+parts, and empty documentation arrays, do not require placeholder gaps.
+
+The publisher checks structure, references, bounds, and source identity. Record
+semantic review of the descriptions, examples, and existing promises in the
+packet's existing `llm/analysis-response.md`, beside the complete candidate
+records. Record implementation compatibility commands and outcomes in the
+BR-10 verification evidence. Do not add a tenth packet file or change a receipt
+schema to store these results. These checks do not prove runtime behavior.
+This series does not introduce executed-example receipts or an example runner.
+
+Stage 1 may keep its empty version 1 seed, and Stage 4 may keep its existing
+seed check. New Stage 4 output may be version 2. Stage 5 must accept a supported
+version 1 or 2 working baseline before collection starts. Update that input
+check as well as the shared Stage 4/5/6 record validation. Stage 4/5 `check`,
+`finish`, and `verify`, and Stage 6 readiness/save must agree on the output profile.
+
+Reject invalid documentation before draft replacement. Preserve publication
+order, digest checks, immutable attempts, and recovery rules. Publisher file
+limits differ from viewer limits: Stage 4/5 reads allow 128 MiB per file; Stage 6
+review files allow 16 MiB each. Neither proves that a baseline can open. Check
+the actual baseline bytes, YAML and documentation limits, and the separate
+500-record, 2,000-link, and 16-parent-level display checks. Decoder success alone
+is insufficient.
+
+Only the baseline version changes. Keep discovery, run manifest, and review
+packet versions unchanged unless their own contracts change in a separate
+proposal. Preserve saved version 1 runs, including analysis-run-003. The new
+viewer opens their baseline files. Historical attempts are verified with the
+matching trusted tool revision and recorded environment; current tool bytes
+need not match old attempts. Keep the tool pins and receipts intact. Never
+replace frozen helpers inside an active attempt. Finish it with matching tools
+or start a fresh attempt/run under the new tools, as the workflow permits.
+Demonstrate new publication in a disposable run; do not rewrite historical output.
+
+### Interface navigation and input
+
+Keep interface UI state in its existing inspection frame: selected tab, selected
+entry, example choice, disclosure choices, and per-tab scroll. Do not add a
+global cache keyed only by interface ID. Direct selection starts a fresh frame
+on Overview and its first documented entry. Panel Back restores the opening
+list's row and scroll. BR-10 adds no deeper record-navigation route from an
+interface. Selecting an entry starts with its first example. Tab changes
+preserve the frame's other choices and each tab's scroll position. Changing
+entry or example resets Example to the top with its detailed result collapsed
+and copy feedback cleared. Returning to the same content keeps its reading
+position. Do not add per-entry or per-example scroll histories.
+
+Use standard tab keyboard behavior: Left/Right, Home/End, and Tab into the
+selected panel. Keep focus on the tab when switching tabs. Keyboard interface
+activation follows the existing panel-heading rule. Tab, entry, example, and
+disclosure changes do not alter graph scope, positions, or camera. Record
+selection and panel Back retain the current drawing rules: BR-08 changes the
+visible arrows with the inspected record; BR-09 keeps graph scope separate.
+BR-10 does not implement that pending graph change. When BR-09 lands, its graph
+changes must preserve a valid inspection frame within the same session.
+
+Successful file opens clear old interface frames even when IDs repeat. Failed,
+cancelled, and ignored late opens preserve them. Only the latest copy request
+for an unchanged session, frame, entry, and example may update feedback.
+Changing any part of that selection invalidates pending feedback, even if the
+user returns to the same IDs. Do not claim that changing selection cancels an
+operating-system clipboard write already requested.
+
+**Copy example** copies exactly the selected example's `text` and announces
+the result. On clipboard failure, keep the text selectable and explain how to
+copy it manually. Do not change the baseline or report success after failure.
+Render all saved prose and sample text literally. Do not interpret HTML, execute
+code, or navigate automatically from saved text.
+
+Keep long names, code, and paths accessible at 320 CSS pixels, with enlarged text,
+and in short desktop windows. Code may scroll within its own region; the page
+must not require horizontal scrolling to reach controls. Use the app's themes
+and focus styles. Keep both the canvas and panel usable without widening the
+panel as a substitute for a readable information order.
+
+## BR-10 delivery tickets
+
+### BR-10: Make interface details useful
+
+**Approved for implementation; delivery results are recorded per ticket.** Use the approved mock as an information-design reference, not as
+production code or as a hidden source of descriptions. BR-10 can follow the
+merged viewer without waiting for the separate BR-09 graph experiment. It does
+not waive that experiment's gate or change its layout requirements.
+
+| Ticket | Result | Depends on |
+| --- | --- | --- |
+| [BR-10A](#br-10a-read-and-validate-versioned-interface-documentation) | Strict version 1/2 reader, generated contract, bounds, and complete record access. | Current baseline reader |
+| [BR-10B](#br-10b-explain-the-interface-and-its-entry-points) | Readable Overview, classified entries when recorded, and useful old-file fallback. | BR-10A |
+| [BR-10C](#br-10c-read-prepared-examples-without-running-them) | Saved example selection, readable results, and honest copy feedback. | BR-10B |
+| [BR-10D](#br-10d-explain-sources-and-preserve-inspection-context) | Useful provenance, complete original fields, and stable panel navigation. | BR-10C |
+| [BR-10E](#br-10e-publish-supported-interface-documentation) | External authoring and publication agree with the new reader. | BR-10A to BR-10D available in the target reader |
+| [BR-10F](#br-10f-validate-published-files-and-reader-understanding) | Complete browser/installed journeys and recorded reader results. | BR-10E |
+
+Land reader support before the producer emits version 2. Each step keeps all
+saved fields accessible. BR-10A may expose new fields through a simple Original
+record disclosure that later moves into Sources. BR-10B introduces Overview and
+Sources; BR-10C adds Example. Do not display a false empty-example state while
+examples exist only in raw data during this sequence. BR-10D improves Sources
+and verifies context; earlier tickets must already preserve existing Back and
+load behavior. Do not defer known defects to BR-10F to manufacture a red test.
+
+#### Shared fixtures and evidence for BR-10
+
+Keep the original baseline-003 and `full.yaml` unchanged as version 1 fixtures.
+Add a separate version 2 fixture with the same architecture facts and supported
+documentation. It must produce the same component counts, permissions, graph
+endpoints, and internal-use membership as its version 1 counterpart.
+
+The enriched fixture includes a function with valid/invalid examples, a type,
+example data, a native command, and a workflow with unknown consumers. Add small
+variants for unclassified references, partial documentation, all-null interaction
+facts, missing sample parts, mixed statement statuses, accepted statements,
+duplicate display names, unknown owners, and reused local IDs across interfaces
+and entries. Include entries with no examples beside entries with examples.
+Keep a message entry and a data/type sample without a fake request/response UI.
+
+Mutation fixtures cover unsupported versions, new fields in version 1, unknown
+keys, duplicate local IDs, dangling access references, illegal kind/interaction
+combinations, invalid example basis/scope, invalid source ranges, notes for
+uncited references, missing or mismatched source notes for reviewed examples,
+and all new size/count boundaries. Use exact UTF-8 boundary
+values and multibyte text. Keep arbitrary HTML-like and command-like text as a
+literal-rendering fixture, without executing it.
+
+Place production fixtures with existing test support. Preserve the complete
+source/proposal records; do not copy only the fields convenient for the mock.
+Producer checks use a separate disposable review packet and saved snapshot.
+Record fixture provenance and hashes in a BR-10 implementation evidence document
+when implementation begins. Scenario text below states expected behavior; it is
+not a record that a test has failed or passed.
+
+#### BR-10A: Read and validate versioned interface documentation
+
+**Acceptance first — `@br-10a`: the first three cases use the public decoder
+in the native profile; replacement and record-access cases use `@browser`:**
+
+```gherkin
+Scenario: Decode a supported enriched baseline
+  Given a valid version 2 baseline with documented entries and examples
+  When the public baseline decoder reads the file
+  Then it returns all saved architecture and documentation fields unchanged
+
+Scenario: Keep the old format strict
+  Given a version 1 baseline containing a documentation field
+  When the public baseline decoder reads the file
+  Then it rejects the unsupported field rather than silently upgrading the file
+
+Scenario Outline: Reject malformed documentation
+  Given a version 2 baseline with <defect>
+  When the public baseline decoder reads the file
+  Then it returns an invalid-document failure that identifies the affected field
+
+  Examples:
+    | defect                                      |
+    | a duplicate entry ID in one interface        |
+    | an entry bound to another interface's access |
+    | interaction facts on a type entry            |
+    | an unsupported example basis                 |
+    | an excerpt without a valid scope value       |
+    | a source note for an uncited reference       |
+    | a reversed source line range                 |
+    | a reviewed example with no matching location note |
+    | a reviewed example whose note is cited only by another statement |
+
+Scenario Outline: Reject excessive documentation before replacing the view
+  Given a readable baseline is open and a version 2 candidate exceeds <limit>
+  When the user opens the candidate
+  Then the app reports an invalid-document failure naming the exceeded limit
+  And it keeps the previous view and inspection
+
+  Examples:
+    | limit                      |
+    | entries per interface      |
+    | examples per entry          |
+    | descriptive text bytes     |
+    | sample text bytes          |
+    | total documentation bytes  |
+
+Scenario: Retain complete access before the formatted panel lands
+  Given a supported enriched baseline is open
+  When the user opens an interface's Original record disclosure
+  Then every saved field value and statement status is available
+```
+
+**First red:** Decode a valid version 2 fixture through the existing decoder
+and assert success with its documentation. Today it reports an unsupported
+version. Keep existing version 1 success/failure cases, file limits, and late-load
+protection as passing characterization. Do not weaken those cases to accept v2.
+
+**TDD steps:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Versioned contract | Public interface test: the decoder accepts a valid v2 and preserves the existing v1 profile, including nulls and accepted statements. | Define the extension in `baseline.tsp`; regenerate types/schema; dispatch to strict version-specific runtime schemas. | Keep the common architecture fields shared without widening v1 or creating a second mutable baseline. |
+| 2 — Nested facts | Interface/native tests: reject missing statement metadata, missing accepted references, unknown keys, bad kind/interaction combinations, empty supplied text, and malformed examples. | Validate each new statement and its explicit value shape. | Reuse statement validation; review the four interaction facts together and each example separately. |
+| 3 — Local references | Native tests: entry/example IDs have the declared scopes; access bindings resolve; a reviewed example cites its own matching source note with a location. | Add local reference and source-note linkage checks after shape validation. | Reuse validated indexes; leave external review and source-identity checks to the publisher. |
+| 4 — Bounds | Boundary tests: exact limits pass; one item/byte over fails, including multibyte strings and total metadata. | Add the documented entry/example/text/total budget checks before view publication. | Share the budget definition and failure mapping; keep parser and architecture limits intact. |
+| 5 — Shared readers | Native/DOM tests: paired v1/v2 fixtures produce identical architecture facts and both retain all original fields. | Update generated-type callers and add the minimal Original record disclosure. | Derive common facts directly from the validated union; avoid ID-specific adapters or hidden data loss. |
+| 6 — Replacement failure | Browser acceptance: a structurally valid but excessive v2 keeps the prior interface frame; valid same-ID replacement starts a new session. | Route failures and successes through the existing load publication boundary. | Preserve existing cancellation and late-result guards. |
+
+**Complete when:** Native and browser `@br-10a` scenarios, affected decoder/domain
+interface tests, and existing load/limit acceptance pass. Run contract generation,
+contract conformance, type checks, frontend build, and shared production checks.
+Review the generated contract and update its boundary notes and owning artifacts.
+Only the baseline format changes; native file-read and run-manifest contracts do not.
+
+#### BR-10B: Explain the interface and its entry points
+
+**Acceptance first — `@br-10b @browser`:**
+
+```gherkin
+Scenario: Read the existing baseline without invented detail
+  Given unchanged version 1 baseline-003 is open
+  When the user inspects Baseline data and validation
+  Then Overview shows its friendly provider and saved behavior, data, failures, and lifetime
+  And no generated signature, input/result split, or prepared example is added
+  And evidence IDs and repeated field bookkeeping are outside the main reading path
+
+Scenario: Explain the selected entry's contract
+  Given an enriched interface has a function entry, a type entry, and a data entry
+  When the user opens its Overview
+  Then the first documented entry is identified and its saved description and interaction facts are shown
+  And every documented entry and unmatched access reference remains reachable
+
+Scenario: Keep a type distinct from an operation
+  Given an enriched interface with a function and a type is open
+  When the user selects the type entry
+  Then its saved type description replaces the function's interaction cards
+  And no call, success response, or inferred signature appears for that type
+
+Scenario: Keep unknown interaction facts explicit
+  Given the selected function has unknown input and failure facts but known success and effects
+  When the user reads its interaction description
+  Then those facts are labelled unknown rather than no arguments or no failures
+
+Scenario: Summarize a wholly unknown interaction
+  Given every fact in the selected entry's interaction statement is null
+  When the user reads Overview
+  Then one unknown-interaction summary appears without four empty cards
+  And the original fields and their shared status remain available in Sources
+
+Scenario: Keep the general contract available without repeating it
+  Given a selected entry has known interaction facts and saved interface-wide promises
+  When the user reads Overview
+  Then the selected entry's details appear first and the general promises remain in Interface-wide contract
+
+Scenario: Inspect an interface with no known provider
+  Given an interface has an unknown owner
+  When the user opens it from Baseline details
+  Then its name and Provider unknown appear without an invented component
+
+Scenario: Explain permission separately from activity
+  Given an interface names Baseline workspace as a permitted component
+  When the user expands Access rule
+  Then it names Baseline workspace and explains that call activity is not recorded
+
+Scenario: Keep unknown permission unknown
+  Given an interface has no recorded consumer policy
+  When the user expands Access rule
+  Then it says the permitted components are not recorded without inventing a user or a connection
+
+Scenario: Preserve mixed recorded statuses
+  Given ownership is accepted and an interaction description is proposed
+  When the user reads the interface
+  Then the view identifies mixed statuses and retains the distinct field statuses
+  And it does not label the interface verified
+```
+
+**First red:** Open the existing screenshot interface through a working
+inspection route, then assert the new Overview and the absence of visible raw
+evidence lists there. Current rendering prints each statement's metadata inline.
+Keep old record values and access routes as characterization.
+
+**TDD steps:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Old-file projection | Native/DOM tests: each old promise maps to its reading label, null stays unknown, and unclassified references remain references. | Render the saved prose under the specified headings. | Keep label mapping separate from saved values; do not parse prose or look up mock IDs. |
+| 2 — Entry selection | DOM tests: saved order, selected-entry identity, missing descriptions, duplicate names, and unmatched access references remain clear. | Add the saved entry list and one selected-entry detail area. | Scope selection to the inspection frame; derive it from the validated record. |
+| 3 — Interaction kinds | DOM tests: only known callable/workflow facts produce interaction cards; missing, partly unknown, and wholly unknown facts have clear states. | Render the grouped interaction statement and neutral descriptions for other kinds; keep general promises in the specified fallback or disclosure. | Reuse text/statement presentation without duplicating contracts or adding a generic HTTP model. |
+| 4 — Status and policy | DOM tests: mixed statuses stay distinct, known/unknown providers display correctly, self-use remains listed, and unknown permission is explicit. | Add concise status, Access rule, and lifetime disclosures. | Use existing component-name resolution and statement semantics. |
+| 5 — Panel shell | DOM/browser tests: Overview and Sources are accessible, original fields remain available, and long content fits the existing panel. | Place the reading view and original record in the current nonmodal inspector. | Reuse app theme and focus primitives; do not ship the mock's picker or second diagram. |
+
+**Complete when:** `@br-10b`, affected existing details/unknown-value acceptance,
+new focused tests, and shared production checks pass. Inspect wide, narrow, short,
+and enlarged-text views. The panel width and graph positions remain unchanged.
+
+#### BR-10C: Read prepared examples without running them
+
+**Acceptance first — `@br-10c @browser`:**
+
+```gherkin
+Scenario: Read a saved failure example
+  Given an enriched function has a success example and a failure example
+  When the user selects the failure example in Example
+  Then its saved input, example text, result explanation, and result text are shown
+  And the example's recorded basis and statement status remain visible
+
+Scenario: Identify a partial result
+  Given a saved example marks its result as an excerpt
+  When the user opens that example's detailed result
+  Then the result is labelled an excerpt without filling missing fields
+
+Scenario: Keep absent examples explicit
+  Given the selected entry has no examples but another entry has saved examples
+  When the user opens Example
+  Then the selected entry is named and No example recorded for this entry is shown
+  And no Run action or fabricated sample appears
+
+Scenario: Read a data sample without implying a call
+  Given a selected data entry has a saved example
+  When the user opens Example
+  Then its sample is shown as Example without an invented call or response
+
+Scenario: Copy the displayed example
+  Given an example is selected and clipboard writing succeeds
+  When the user activates Copy example
+  Then exactly the selected example text is copied and success is announced
+
+Scenario: Keep a failed copy honest
+  Given an example is selected and clipboard writing is denied
+  When the user activates Copy example
+  Then the sample remains selectable and the app explains manual copying without reporting success
+
+Scenario: Ignore copy feedback for a replaced selection
+  Given a copy request is pending and the entry, example, or baseline selection has changed
+  When the old clipboard request completes
+  Then it changes no feedback or selection in the current view
+
+Scenario: Ignore an older copy after returning to the same IDs
+  Given a copy is pending and the user selected another entry before returning to the original example
+  When the old copy request completes
+  Then no old success or error appears in the current view
+
+Scenario: Report only the latest copy request
+  Given two copy requests were made for the current example and the newer request has completed
+  When the older request completes
+  Then it does not replace feedback from the newer request
+
+Scenario: Treat a saved command as text
+  Given an example contains HTML-like text and a command-like sample
+  When the user selects it
+  Then the text is displayed literally and no command, file request, or network request runs
+```
+
+**First red:** After valid enriched-file setup and interface inspection, assert
+that Example and the saved example choices exist. Then assert that selecting a
+different choice changes the displayed example. Missing controls are presence
+failures, not failed clicks. No app example runner is part of the green change.
+
+**TDD steps:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Example state | DOM tests: identify the entry, handle empty/populated entries and repeated local IDs, reset content/scroll/result/copy state on selection change, and preserve state on tab return. | Add Example to the inspector with the specified frame and session lifetime. | Avoid per-entry history, a global example cache, or duplicated copied content. |
+| 2 — Reading order | DOM/browser tests: show the saved explanation before detailed output, label excerpts, and explain absent sample parts. | Render the saved text with a result disclosure and responsive input/result layout. | Keep result summaries authored; do not generate them by inspecting code or output text. |
+| 3 — Basis and status | DOM tests: illustrative/source-reviewed labels describe saved claims and never change a proposed statement into a verified one. | Display the recorded basis and the example's own status. | Reuse the statement metadata view from BR-10B. |
+| 4 — Copy | DOM tests with controlled clipboard promises: exact bytes, failure, repeated IDs across entries, A→B→A selection, and out-of-order copies follow the latest-request rule. | Add Copy example with accessible feedback; invalidate earlier feedback on request or selection changes. | Keep one request lifetime at the UI boundary, without persistent copy history or clipboard cancellation claims. |
+| 5 — Literal content | DOM/browser tests: markup remains text and selecting/copying makes no filesystem, IPC, command, or network call. | Use escaped text/code nodes with no executable preview. | Avoid new syntax-highlighting or sample-execution dependencies. |
+
+**Complete when:** `@br-10c`, new focused tests, affected selection/session checks,
+and shared production checks pass. Check keyboard and touch selection and copy
+in the real browser. Record platform limits for clipboard support.
+
+#### BR-10D: Explain sources and preserve inspection context
+
+**Acceptance first — `@br-10d @browser`:**
+
+```gherkin
+Scenario: Read useful saved source notes
+  Given an interface has two source notes with saved locations and one without a location
+  When the user opens Sources
+  Then the saved descriptions and available locations are shown without inventing a missing path
+  And the app makes no source-file or network request
+
+Scenario: Keep provenance complete without repeating it
+  Given several statements cite the same evidence ID and one has an acceptance reference
+  When the user expands the evidence reference list in Sources
+  Then that ID appears once with every citing statement path and the acceptance reference remains available
+  And unresolved evidence stays plain text without an invented link
+
+Scenario: Preserve all original field values
+  Given an enriched interface is being read through the new tabs
+  When the user expands Original record
+  Then all saved interface fields and values remain available without a byte-format claim
+
+Scenario: Return to the opening list
+  Given an interface was opened from a scrolled owned-interface list
+  When the user goes Back after reading an example
+  Then the opening list's row and scroll position return
+  And the drawing follows its existing component-selection rules without moving cards or camera
+
+Scenario: Return to a tab without losing the reading position
+  Given Example has a selected entry, example, and scroll position before Sources is opened
+  When the user returns to the Example tab
+  Then the same entry, example, and scroll position remain without adding a Back-history entry
+
+Scenario Outline: Preserve inspection after an unsuccessful replacement
+  Given an interface is open on Example with a selected saved case
+  When opening a replacement baseline <outcome>
+  Then its frame, selected example, disclosures, and scroll remain unchanged
+
+  Examples:
+    | outcome      |
+    | fails        |
+    | is cancelled |
+
+Scenario: Start fresh on a successful same-ID replacement
+  Given an interface is open on Sources with expanded evidence
+  When a new baseline with the same saved IDs opens successfully
+  Then the old interface frame is removed and a later direct selection starts on Overview
+
+Scenario: Reach details without a pointer
+  Given a long interface is open in a narrow or short window
+  When the user moves through the tabs and disclosures with the keyboard
+  Then all controls and text remain reachable with visible focus and no page-wide horizontal scroll
+```
+
+**First red:** Assert that Sources renders a supplied human-readable note and
+its source location. Raw record access and existing Back/load behavior should
+already pass; keep them as characterization and add a red focused test only for
+a real new state gap. When BR-09's grouped controls exist, run the same Back
+journey through its connection member list too.
+
+**TDD steps:**
+
+| Step | Red: focused test first | Green: smallest passing change | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Provenance projection | Native tests: deduplicate IDs while preserving statement paths, field statuses, accepted references, and saved notes. | Derive the source view from the one validated interface. | Keep raw values immutable and avoid a second evidence store. |
+| 2 — Source reading | DOM tests: render useful notes, label unloaded evidence, and preserve every original value behind a disclosure. | Format Sources with readable labels and plain source locations. | Reuse record serialization only for full-field access, not as the main UI. |
+| 3 — Inspection frame | DOM tests: Back, direct selection, tab/entry changes, close, and same-ID replacement apply the specified frame lifetime. | Extend the existing inspection state with only the new UI choices. | Reuse existing history and session identity; remove duplicate state owners. |
+| 4 — Asynchronous feedback | Controlled-completion tests: late loads and old copy feedback cannot update a replacement frame. | Add any missing guard at the existing owner. | Keep passing load-race behavior as characterization. |
+| 5 — Real input and layout | Browser tests: tab keys, Back row focus, touch, code-region scrolling, narrow width, short height, and larger text remain usable. | Fix wrapping, scroll regions, or focus routing at the responsible UI control. | Preserve panel width and graph navigation; do not use font reduction to fit content. |
+
+**Complete when:** `@br-10d`, affected inspection and lifetime acceptance, new
+focused tests, and shared production checks pass. Review both themes and the
+actual panel width. If BR-09 has landed, include its member-list and focus-view
+regressions; otherwise BR-09B/F must run these BR-10 regressions when integrating.
+
+#### BR-10E: Publish supported interface documentation
+
+**Acceptance specification first — external command/artifact checks:**
+
+```gherkin
+Scenario: Publish a supported enriched candidate
+  Given a disposable review packet has a valid version 2 baseline and registered supporting source ranges
+  When the normal Stage 4 check, finish, and verify sequence completes
+  Then the published baseline retains the reviewed documentation and passes the target reader's compatibility check
+
+Scenario: Carry version 2 through the next stages
+  Given Stage 4 published a version 2 baseline in a disposable run under the new tools
+  When Stage 5 start, collect, check, finish, and verify complete, followed by Stage 6 readiness and save
+  Then each stage accepts the supported format and the saved baseline matches the reviewed Stage 5 bytes
+
+Scenario Outline: Reject unsupported publication before replacement
+  Given a disposable review packet has <defect>
+  When the publication check validates the candidate
+  Then it reports the defect without replacing a working draft or completed attempt
+
+  Examples:
+    | defect                                              |
+    | an unknown nested statement evidence reference       |
+    | source location metadata that differs from its range |
+    | a source-reviewed example citing only an unreviewed collected excerpt |
+    | a reviewed example whose location note is cited only by another statement |
+    | a null input fact explained only by a consumer-policy gap |
+    | documentation that exceeds the reader's byte limit   |
+    | a baseline that decodes but exceeds a display limit  |
+
+Scenario: Keep readiness aligned with the reader
+  Given a published enriched baseline and its reviewed Stage 6 packet
+  When the normal readiness and save sequence completes
+  Then the saved baseline preserves its reviewed bytes and the selected draft digests remain correct
+
+Scenario: Preserve historical version 1 runs
+  Given a disposable version 1 run and its matching trusted historical tools and environment
+  When the normal verification commands inspect the run
+  Then verification passes without changing its files, pins, or declared version
+
+Scenario: Reject changed tools within an attempt
+  Given a disposable attempt was started with one trusted tool revision
+  When a later command runs with changed frozen-helper bytes
+  Then it rejects the mismatch without rewriting the attempt or weakening the pin checks
+```
+
+**First failing check:** Submit a valid enriched packet to the current shared
+record validator through its normal command. It rejects version 2. Record that
+result separately from the later success. Keep existing manifest/digest and
+publication-recovery checks as characterization; do not rerun a completed
+`finish` action to create artificial failures. Start fresh disposable attempts
+when tool bytes change. Do not patch frozen helpers to reuse an old test attempt.
+
+This ticket changes external scripts and guidance. Follow the repository rule:
+use real command, schema, artifact, and manual checks rather than adding unit
+tests or Cucumber wrappers whose only purpose is to test a script. The scenarios
+above are the executable review specification. If the work exposes a production
+reader defect, add its failing production test before fixing that boundary.
+
+**Small check–change–simplify cycles:**
+
+| Step | Failing check or recorded review first | Smallest passing change | Simplify after success |
+| --- | --- | --- | --- |
+| 1 — Authoring profile | Inspect a packet prepared under current guidance; richer descriptions, entry roles, and sample provenance are unspecified. | Update record-format and Stage 4/5 guidance to the reviewed v2 profile, with a minimal worked record and unknown cases. | Reuse current promises and statement meanings; do not create a competing contract source. |
+| 2 — Versions and claims | Run valid v2 through the Stage 5 input check and shared validator. Check nested references and exact gap subjects, including repeated local IDs. | Accept supported working-baseline versions in Stage 5; validate all new statements and null facts. | Keep the v1 seed, legacy validation, and shared Stage 4/5/6 rules; do not globalize local IDs. |
+| 3 — Source binding | Check wrong source metadata, collected-but-unreviewed excerpts, and evidence cited only by another statement. Also check a valid location-free note. | Match located notes to saved source records; match reviewed examples to their own cited reviewed-range IDs and notes. | Reuse the selected entry-analysis history and source checks; do not add a review registry. |
+| 4 — Reader compatibility | Check exact and excessive byte/item limits, plus a candidate that decodes but fails a display limit. | Align publication checks with the public decoder and display-limit boundary; record the actual outcomes. | Use the complete reader boundary, not a packet-size check or decoder success alone. |
+| 5 — Stage transitions | Run Stage 4 publication → Stage 5 start/collect/publication → Stage 6 readiness/save. Verify an old run with matching tools, and reject changed tools in an active attempt. | Update only format-specific stage checks; preserve reviewed bytes, selected digests, tool pins, and manifest-last recovery. | Keep run/discovery/packet formats unchanged and use fresh disposable attempts for each tool revision. |
+| 6 — Human content review | Review one enriched record against its source and old interface-wide promises; identify unsupported claims or contradictions. | Correct the candidate or retain explicit gaps before publication; save the review in the existing analysis response. | Keep concise purpose, input/result, failure, and effect descriptions; do not fill fields merely to make cards look complete. |
+
+**Complete when:** The reader supporting BR-10A to BR-10D is available; both
+valid and invalid command outcomes are recorded; the disposable published
+candidate opens through it; and historical verification passes with matching
+trusted tools. Old baseline files must also open in the new reader. Update
+`start-here.md`, `record-format.md`,
+Stage 4/5/6 guidance, the Stage 5 input check, and shared validator/publisher
+owners as needed. Use syntax, contract/artifact checks, the
+real command sequences, link review, and Habit Hooks. Preserve unrelated local
+edits in those files. Do not run a fresh user analysis or alter analysis-run-003
+as an incidental part of this ticket.
+
+#### BR-10F: Validate published files and reader understanding
+
+**Acceptance and characterization first — `@br-10f @browser`; the installed
+file-opening journey also uses `@packaged`:**
+
+```gherkin
+Scenario: Read a published enriched baseline end to end
+  Given the normal file control opens a candidate published by the external workflow
+  When the user completes the interface reading journey
+  Then Overview, Example, Sources, access rules, and original fields agree with the published record
+  And the original file bytes and architecture relationships remain unchanged
+
+Scenario: Keep existing baselines readable
+  Given baseline-003 and full.yaml are unchanged version 1 files
+  When the user reads their interfaces through the normal file control
+  Then saved prose and unknown facts remain available without invented examples or call activity
+
+Scenario: Handle the largest supported documentation
+  Given a baseline reaches one documented item or byte limit while respecting all other limits
+  When the user opens an interface and selects its last example
+  Then its complete saved content and all controls remain usable without losing records
+
+Scenario: Reject invalid documentation atomically
+  Given an enriched interface is open with a selected example
+  When a malformed or excessive candidate is opened through the installed app
+  Then the old view and example remain usable with a clear load failure
+```
+
+**First check:** Run the assembled journey after BR-10A to BR-10E. Keep passing
+behavior as characterization. Record a genuine failing assertion only when it
+reveals a gap. Add a focused failing test at that gap's production boundary,
+make it pass, and refactor. This ticket can close with verification and evidence
+alone if all required outcomes already pass.
+
+**Verification and TDD for any discovered gap:**
+
+| Step | Check first | If it fails: smallest correction | Refactor while green |
+| --- | --- | --- | --- |
+| 1 — Published artifact | Open the same published bytes in browser and installed app; compare all new field values and relationships. | Fix the owning reader, publisher, or presentation boundary with its proper failing test/check first. | Keep one data contract and normal file route. |
+| 2 — Session and input | Complete Back, direct selection, entry/example/tab changes, copy, failed/cancelled opens, and successful same-ID replacement. | Fix the uncovered frame/focus/session transition. | Reuse existing view-lifetime behavior; avoid special cases for sample IDs. |
+| 3 — Size and layout | Exercise exact and excessive bounds, long text, narrow/short windows, enlarged text, both themes, and touch/keyboard. | Fix validation or rendering at its owner without weakening limits or hiding saved facts. | Render only selected content and keep secondary records disclosed on demand. |
+| 4 — Reader understanding | Run the questions below with a reader who did not build the view. Record answers, mistakes, help, and viewport. | Revise the content contract, labels, or reading order responsible for confusion; add production regression tests for changed behavior. | Remove unnecessary detail before adding another permanent pane or control. |
+
+**Reading journey:** Open an owned interface, identify its provider and purpose,
+switch between a function and type, read a failure example and its excerpt,
+inspect its recorded basis and source note, inspect its access rule, and return
+to the opening list. Open an unknown-owner interface through Baseline details.
+Repeat with unknown permission, an entry with no examples, a data sample, and a
+legacy file. Exercise copy failure and same-ID replacement. Use current canvas
+controls; if grouped connections are available, repeat through their member lists.
+
+**Reader questions:** What does this entry need, return, and reject? What does
+it change? How does the type differ from the function? Does valid baseline data
+prove the architecture is correct? What does the permission list establish,
+and what is unknown about actual calls? Was the example executed by Choom?
+What supports the description? Use an unfamiliar equivalent record for transfer
+rather than reusing an answer the reader learned from the mock.
+
+**Complete when:** All BR-10 acceptance, affected earlier acceptance, production
+checks, producer checks, and the installed route are recorded. Measure loading,
+time to open an interface, and example switching at supported limits on named
+hardware; do not promise a latency threshold without measurements. Record a
+reader proceed/revise decision. Passing CI or identifying a control does not
+prove understanding. Record unresolved platform or performance limits, update
+affected README/boundary/contract documents, and keep BR-09's separate graph
+validation status accurate.
+
+
+BR-10 uses acceptance-first Cucumber scenarios for production behavior and the
+small red/green/refactor steps above. Existing behavior stays as characterization.
+External scripts use real command and artifact checks. Register affected features
+with their component manifests. Run focused native/browser acceptance, full
+`bun run check`, `bun run check-types`, `bun run build`, and Habit Hooks before
+closing each production ticket. Use native `@br-10a`, browser `@br-10`, and the
+installed BR-10F journey. Record actual failures, fixes, and platform limits in
+[the BR-10 evidence record](../change-requests/BR-interface-details-evidence.md).

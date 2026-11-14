@@ -49,6 +49,7 @@ function ComponentFields({ item }: { item: ReadonlyData<BaselineComponent> }) {
 }
 
 function InterfaceFields({ item }: { item: ReadonlyData<BaselineInterface> }) {
+  const [showOriginal, setShowOriginal] = useState(false);
   const promises = item.promises.value;
   const unknownOwner = item.owner.value === null;
   const unknownConsumers = item.allowedConsumers.value === null;
@@ -68,6 +69,10 @@ function InterfaceFields({ item }: { item: ReadonlyData<BaselineInterface> }) {
         <Field name="Lifecycle"><RecordedValue value={promises.lifecycle} /></Field>
       </> : <RecordedValue value={null} />}
     </StatementDetails>
+    <details data-section="original-interface-record" onToggle={(event) => setShowOriginal(event.currentTarget.open)}>
+      <summary className="cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-ring">Original record</summary>
+      {showOriginal ? <pre className="whitespace-pre-wrap wrap-anywhere text-xs">{JSON.stringify(item, null, 2)}</pre> : null}
+    </details>
   </>;
 }
 
