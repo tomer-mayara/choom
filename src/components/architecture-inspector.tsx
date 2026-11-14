@@ -1,17 +1,10 @@
 import { ArrowLeft, X } from "lucide-react";
 import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
-import { ArchitectureDetails, type ArchitecturePanel } from "./architecture-details.tsx";
+import { ArchitectureDetails } from "./architecture-details.tsx";
 import { ArchitectureRecordList } from "./architecture-record-list.tsx";
 import type { ArchitectureInspection } from "./use-architecture-inspection.ts";
 import { Button } from "./ui/button.tsx";
-
-function panelKey(panel: ArchitecturePanel): string {
-  if (panel.kind === "component") return panel.componentId;
-  if (panel.kind === "interface") return panel.interfaceId;
-  if (panel.kind === "resource") return panel.resourceId;
-  return panel.kind;
-}
 
 function InspectionContent({ baseline, inspection }: {
   baseline: ReadonlyData<Baseline>; inspection: ArchitectureInspection;
@@ -60,7 +53,7 @@ export function ArchitectureDetailsPanel({ baseline, inspection }: {
       <Button variant="outline" aria-label="Close details" className="size-8 shrink-0 p-0" onClick={close}><X aria-hidden="true" className="size-4" /></Button>
     </div>
     <div ref={content} aria-label="Record content" className="min-h-0 flex-1 overflow-y-auto p-5">
-      <InspectionContent key={panelKey(panel)} baseline={baseline} inspection={inspection} />
+      <InspectionContent key={inspection.frameKey} baseline={baseline} inspection={inspection} />
     </div>
   </aside>;
 }

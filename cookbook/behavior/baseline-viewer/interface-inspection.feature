@@ -19,6 +19,7 @@ Feature: Inspect recorded interface arcs
     And pointer focus stays on the exact initiating arc label
     And arc inspection preserves the camera and component positions
     And the short arc label has no long empty background beside its name
+    And the arc's original interface fields remain readable in Sources
 
     Examples:
       | target |
@@ -75,6 +76,7 @@ Feature: Inspect recorded interface arcs
     Then Invoice API details are shown as a fresh inspection path
     And pointer focus stays on the exact initiating arc label
     And arc inspection preserves the camera and component positions
+    And the arc's original interface fields remain readable in Sources
 
   Scenario: Reach an off-screen arc label
     Given the interface inspection baseline is open
@@ -95,6 +97,7 @@ Feature: Inspect recorded interface arcs
     When the user selects the Checkout Invoice API arc by its label
     Then Invoice API details are shown as a fresh inspection path
     And arc inspection preserves the camera and component positions
+    And the arc's original interface fields remain readable in Sources
 
     Examples:
       | ending         |

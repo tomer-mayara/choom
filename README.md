@@ -139,6 +139,16 @@ all component fields. **Baseline details** includes metadata and lists of all
 components, interfaces, and resources, including items with unknown owners.
 **Rules** opens the recorded rule list.
 
+Interface inspection starts with **Overview**. It names the provider and shows
+the saved contract as readable text. Version 1 promises appear as **Behavior**,
+**Data exchanged**, **Failures**, and **What changes and when it ends**. Version 2
+can add named entries and explicit interaction facts. Select an entry to read
+its own description. A type or data entry does not acquire invented call details.
+Unknown facts stay unknown. **Access rule** lists permitted components; it does
+not report actual calls or runtime authorization. **Sources** keeps the original
+fields, statuses, references, and expandable **Original record**. Use arrow keys,
+Home, or End to change tabs. A direct interface selection starts a fresh Overview.
+
 **Escape** first cancels an active drag and restores its starting positions and
 bounds. An interrupted drag does the same. Otherwise, Escape closes the expanded
 rule containing focus, then the panel on the next press. Closing the panel
@@ -151,7 +161,7 @@ inspection path. If focus was in the replaced view, it moves to the new baseline
 heading. Keyboard focus and movement reveal the component name without changing
 zoom, even when a header or arc label is wider than the canvas.
 
-Details show all recorded fields, including statement status, evidence references,
+Details keep all recorded fields, including statement status, evidence references,
 and acceptance references. **Accepted (recorded)** describes the saved status;
 it is not a verified result. References remain plain text and say **Evidence not
 loaded**. Unknown values, omitted fields, and empty objects or lists stay distinct.

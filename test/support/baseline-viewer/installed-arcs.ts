@@ -75,27 +75,27 @@ function expectAccessibleNames(state: InstalledArcState): void {
   }
 }
 
-function expectInvoice(state: InstalledArcState, back: boolean): void {
+function expectInvoice(state: InstalledArcState, back: boolean, fields = state.fields): void {
   assert.equal(state.panelTitle, "Interface details");
-  assert.ok(state.fields["Interface ID"]?.includes("invoice-api"));
+  assert.ok(fields["Interface ID"]?.includes("invoice-api"));
   assert.equal(state.back, back, "Arc selection starts a fresh path; list selection retains Back");
-  for (const text of ["billing", "Proposed", "fixture-owner"]) assert.ok(state.fields.Owner?.includes(text));
+  for (const text of ["billing", "Proposed", "fixture-owner"]) assert.ok(fields.Owner?.includes(text));
   for (const text of ["checkout", "reporting", "Accepted (recorded)", "fixture-consumers", "fixture-review"]) {
-    assert.ok(state.fields["Allowed consumers"]?.includes(text));
+    assert.ok(fields["Allowed consumers"]?.includes(text));
   }
-  assert.ok(state.fields["Public access"]?.includes("createInvoice"));
-  for (const text of ["Create an invoice", "Invoice", "Invalid invoice", "One request"]) assert.ok(state.fields.Promises?.includes(text));
+  assert.ok(fields["Public access"]?.includes("createInvoice"));
+  for (const text of ["Create an invoice", "Invoice", "Invalid invoice", "One request"]) assert.ok(fields.Promises?.includes(text));
 }
 
-function expectAudit(state: InstalledArcState, back: boolean): void {
+function expectAudit(state: InstalledArcState, back: boolean, fields = state.fields): void {
   assert.equal(state.panelTitle, "Interface details");
-  assert.ok(state.fields["Interface ID"]?.includes("audit-api"));
+  assert.ok(fields["Interface ID"]?.includes("audit-api"));
   assert.equal(state.back, back);
   for (const field of ["Owner", "Allowed consumers"]) {
-    for (const text of ["commerce", "Proposed", "installed-fixture"]) assert.ok(state.fields[field]?.includes(text));
+    for (const text of ["commerce", "Proposed", "installed-fixture"]) assert.ok(fields[field]?.includes(text));
   }
-  assert.ok(state.fields["Public access"]?.includes("recordAudit"));
-  assert.ok(state.fields.Promises?.includes("Unknown (null)"));
+  assert.ok(fields["Public access"]?.includes("recordAudit"));
+  assert.ok(fields.Promises?.includes("Unknown (null)"));
 }
 
 async function tabTo(browser: Browser, selector: string): Promise<void> {
@@ -134,8 +134,15 @@ async function pointAtCurve(browser: Browser, selector: string): Promise<{ x: nu
 }
 
 async function interfaceReady(browser: Browser, id: string) {
-  return stateWhen(browser, (state) => state.panelTitle === "Interface details" && state.fields["Interface ID"]?.includes(id) === true,
+  const name = id === "invoice-api" ? "Invoice API" : "Audit API";
+  return stateWhen(browser, (state) => state.panelTitle === "Interface details" && state.panelText.includes(name),
     `The installed panel must open the complete ${id} record`);
+}
+
+async function readInterfaceSources(browser: Browser) {
+  await browser.$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
+  return (await stateWhen(browser, (state) => Boolean(state.fields["Interface ID"] && state.fields.Promises),
+    "Sources must show the original interface fields before they are read")).fields;
 }
 
 async function ownedInterface(browser: Browser, owner: string, id: string): Promise<void> {
@@ -143,6 +150,7 @@ async function ownedInterface(browser: Browser, owner: string, id: string): Prom
   await browser.$(`[role="region"][aria-label="Components"] button[data-record-id="${owner}"]`).click();
   await browser.$(`[role="region"][aria-label="Owned interfaces"] button[data-record-id="${id}"]`).click();
   await interfaceReady(browser, id);
+  await readInterfaceSources(browser);
   await pointerAway(browser);
 }
 
@@ -165,6 +173,7 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
   await interfaceReady(browser, "invoice-api");
   await pointerAway(browser);
   const pointer = await observeInstalledArcs(browser);
+  const pointerFields = await readInterfaceSources(browser);
   await tabTo(browser, 'button[aria-label="Close details"]');
   await browser.keys(Key.Escape);
   const selectedClosed = await stateWhen(browser, (state) => state.panelTitle === "" && state.arcs.length === 0 && state.focusedNode === "billing",
@@ -178,6 +187,7 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
   const beforeKeyboard = await observeInstalledArcs(browser);
   await browser.keys(Key.Enter);
   const keyboard = await interfaceReady(browser, "invoice-api");
+  const keyboardFields = await readInterfaceSources(browser);
   await browser.keys(Key.Escape);
   const allClosed = await stateWhen(browser, (state) => state.panelTitle === "" && state.focusedArc === invoiceIds[1],
     "Closing in All must restore the exact surviving keyboard arc");
@@ -211,6 +221,7 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
   await interfaceReady(browser, "audit-api");
   await pointerAway(browser);
   const selfInspection = await observeInstalledArcs(browser);
+  const selfFields = await readInterfaceSources(browser);
   await ownedInterface(browser, "commerce", "audit-api");
   const beforeReset = await observeInstalledArcs(browser);
   await browser.$('button[aria-label="Reset layout"]').click();
@@ -224,7 +235,8 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
     "Back after Reset must restore the baseline catalog and Commerce row focus");
   await ownedInterface(browser, "commerce", "audit-api");
   const result = { initial, checkout, hovered, pointer, selectedClosed, all, beforeKeyboard, keyboard, allClosed,
-    selfOn, selfOff, emptySelected, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack };
+    selfOn, selfOff, emptySelected, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack,
+    sourceFields: { pointer: pointerFields, keyboard: keyboardFields, selfInspection: selfFields } };
   await world.attach(JSON.stringify(result), "application/json");
   return result;
 }
@@ -234,7 +246,8 @@ type InstalledArcJourney = Awaited<ReturnType<typeof inspectAndArrangeInstalledA
 export function expectInstalledArcJourney(result: InstalledArcJourney): void {
   const { initial, checkout, hovered, pointer, selectedClosed, all, beforeKeyboard, keyboard, allClosed,
     selfOn, selfOff, emptySelected, restoredAll, beforeMove, afterMove, afterFit, selfInspection, beforeReset, afterReset, ownerBack, catalogBack } = result;
-  for (const state of Object.values(result)) {
+  const { sourceFields, ...states } = result;
+  for (const state of Object.values(states)) {
     assert.deepEqual(state.nativeScroll, { canvasX: 0, canvasY: 0, viewportX: 0, viewportY: 0 },
       "The installed canvas must not scroll outside its observed CSS camera");
     assert.deepEqual(state.choices.modes, ["selected", "all"]);
@@ -271,9 +284,10 @@ export function expectInstalledArcJourney(result: InstalledArcJourney): void {
   assert.equal(pointer.focusedArc, invoiceIds[0]);
   assert.equal(selectedClosed.focusedNode, "billing");
   assert.equal(allClosed.focusedArc, invoiceIds[1]);
-  for (const state of [pointer, keyboard]) expectInvoice(state, false);
+  expectInvoice(pointer, false, sourceFields.pointer);
+  expectInvoice(keyboard, false, sourceFields.keyboard);
   for (const state of [beforeMove, afterMove, afterFit]) expectInvoice(state, true);
-  expectAudit(selfInspection, false);
+  expectAudit(selfInspection, false, sourceFields.selfInspection);
   for (const state of [beforeReset, afterReset]) expectAudit(state, true);
 }
 
@@ -333,6 +347,7 @@ export async function expectInstalledUnknownConsumers(browser: Browser): Promise
   assert.equal(records.length, 8);
   assert.ok(records[0]);
   await records[0].click();
+  await browser.$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
   await browser.waitUntil(async () => (await browser.$('[role="dialog"]').getText()).includes("Allowed consumers are unknown."),
     { timeout: 10_000, timeoutMsg: "An installed interface with null consumers must explain the missing arcs" });
   const consumers = await browser.$('[role="group"][aria-label="Allowed consumers"]').getText();

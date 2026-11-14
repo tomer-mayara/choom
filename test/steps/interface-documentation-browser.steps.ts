@@ -84,6 +84,7 @@ Then("the previous view and interface inspection remain open", async function (t
   assert.equal(await browser.locator(".react-flow__viewport").getAttribute("style"), this.documentationCamera);
 });
 When("the user opens its interface's Original record disclosure", async function (this: DocumentationBrowserWorld) {
+  await page(this).getByRole("dialog").getByRole("tab", { name: "Sources", exact: true }).click();
   await page(this).getByRole("dialog").locator("details[data-section='original-interface-record'] summary").click();
 });
 Then("all saved interface values and statement statuses are readable", async function (this: DocumentationBrowserWorld) {

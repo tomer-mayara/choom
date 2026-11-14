@@ -175,12 +175,14 @@ Then("the self-connection choice keeps focus", async function (this: SelfWorld) 
 Then("Billing still shows two owned interfaces", async function (this: SelfWorld) { await expect(page(this).getByRole("button", { name: "Billing, billing", exact: true })).toHaveText("Billing2 interfaces"); });
 Then("Invoice API records Billing as owner and Checkout, Reporting, and Billing as consumers", async function (this: SelfWorld) {
   const panel = page(this).getByRole("dialog", { name: "Interface details", exact: true });
+  await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText("billing");
   const consumers = panel.getByRole("group", { name: "Allowed consumers", exact: true });
   for (const id of ["checkout", "reporting", "billing"]) await expect(consumers).toContainText(id);
 });
 Then("Health records Billing as both owner and consumer", async function (this: SelfWorld) {
   const panel = page(this).getByRole("dialog", { name: "Interface details", exact: true });
+  await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   await expect(panel.getByRole("heading", { name: "Health", exact: true })).toBeVisible();
   await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText("billing");
   await expect(panel.getByRole("group", { name: "Allowed consumers", exact: true })).toContainText("billing");

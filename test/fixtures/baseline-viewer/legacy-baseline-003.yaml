@@ -1,0 +1,967 @@
+formatVersion: 1
+id: baseline-003
+parentId: null
+components:
+  - id: s4-001-workspace
+    name: Baseline workspace
+    purpose:
+      value: Open a saved baseline, prepare and publish its view, and let the user inspect and arrange recorded
+        components and interface permissions without changing the file.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-010
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2Fcomponents%2Farchitecture-diagram.tsx
+    membership:
+      value:
+        paths:
+          - src/**
+          - cookbook/interfaces/workflow.tsp
+          - cookbook/interfaces/workspace.md
+          - cookbook/interfaces/baseline-codec.tsp
+          - cookbook/interfaces/baseline-codec.md
+          - test/unit/app.test.tsx
+          - test/unit/architecture/**
+          - test/unit/components/**
+          - test/unit/lib/**
+          - test/interface/architecture/**
+          - test/interface/lib/**
+          - index.html
+          - public/icon.svg
+          - vite.config.ts
+          - scripts/run-browser-behavior.ts
+          - scripts/run-packaged-behavior.ts
+          - cookbook/behavior/**
+          - test/browser/**
+          - test/steps/**
+          - test/support/**
+        excludePaths:
+          - src/domain/**
+          - src/platform/**
+          - cookbook/behavior/baseline-viewer/validation.feature
+          - cookbook/behavior/baseline-viewer/native-retirement.feature
+          - test/steps/baseline-validation.steps.ts
+          - test/steps/baseline-native-retirement.steps.ts
+          - test/support/baseline-fixtures.ts
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-034
+        - s4-001-source-excerpt-035
+        - s4-001-source-excerpt-038
+        - s5-001-source-excerpt-024
+        - s5-001-source-excerpt-025
+        - s5-001-source-excerpt-026
+        - s5-001-source-excerpt-028
+        - s5-001-source-excerpt-029
+        - s5-001-source-excerpt-031
+        - s5-001-source-excerpt-034
+        - s5-001-source-excerpt-037
+        - s5-001-source-excerpt-038
+        - s5-001-source-excerpt-059
+        - s5-001-source-excerpt-060
+        - s5-001-source-excerpt-061
+        - s5-001-source-src%2Fcomponent.yaml
+    groupingReason:
+      value: The declared workspace connects loading, validation, deferred layout and rendering under one open-view
+        lifecycle. Keep its internal workflow, codec, UI and geometry together rather than create components
+        from each helper. Domain model and host file access remain children with exclusive direct memberships.
+        The root Choom manifest is an aggregate of the four implementation boundaries, not another recovered
+        runtime role, so this model omits that extra group and keeps Workspace and Native shell as roots. The
+        browser and installed-view acceptance runners, steps and specialized fixtures follow this main
+        workflow owner. Their native/model collaborators do not duplicate direct file ownership or add
+        production client roles.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-010
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Flib%2Fcomponent-arrangement.ts
+        - s5-001-source-excerpt-024
+        - s5-001-source-excerpt-028
+        - s5-001-source-excerpt-031
+        - s5-001-source-excerpt-034
+        - s5-001-source-excerpt-059
+  - id: s4-001-baseline-model
+    name: Baseline model
+    purpose:
+      value: Define and validate recorded baseline data, IDs, references, membership selectors and parent hierarchy;
+        supply the example baseline.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-008
+        - s4-001-source-src%2Fdomain%2Fbaseline.ts
+        - s4-001-source-excerpt-028
+    membership:
+      value:
+        paths:
+          - src/domain/**
+          - cookbook/interfaces/baseline.tsp
+          - cookbook/interfaces/baseline.md
+          - test/unit/domain/**
+          - test/interface/domain/**
+          - cookbook/behavior/baseline-viewer/validation.feature
+          - test/steps/baseline-validation.steps.ts
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-036
+        - s5-001-source-excerpt-024
+        - s5-001-source-excerpt-033
+        - s5-001-source-excerpt-040
+        - s5-001-source-src%2Fdomain%2Fcomponent.yaml
+    groupingReason:
+      value: The model owns saved-data meaning independently of host access and UI. Its TypeSpec contract and
+        runtime validation belong together; model tests and generated declarations remain with that owner.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-008
+        - s4-001-source-src%2Fdomain%2Fbaseline.ts
+        - s4-001-source-excerpt-036
+    parent:
+      value: s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-002
+  - id: s4-001-file-adapter
+    name: Host file adapter
+    purpose:
+      value: Detect the browser or desktop host, select a baseline, and read bounded UTF-8 text through the
+        appropriate host boundary.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+    membership:
+      value:
+        paths:
+          - src/platform/**
+          - test/unit/platform/**
+          - test/interface/platform/**
+          - cookbook/interfaces/desktop.tsp
+          - cookbook/interfaces/document-dialogs.tsp
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-037
+        - s5-001-source-excerpt-018
+        - s5-001-source-excerpt-019
+        - s5-001-source-excerpt-020
+    groupingReason:
+      value: Browser selection, desktop dialogs, host detection and native request/response validation vary with the
+        host and expose the same selected-file role to workspace composition. Keep them behind the existing
+        platform import boundary. The declaration name desktop-adapter is broader in current behavior because
+        it also owns browser reading.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    parent:
+      value: s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-002
+  - id: s4-001-native-shell
+    name: Native shell
+    purpose:
+      value: Host the frontend and dialog plugin, expose the bounded document_file_read command, and hold read
+        handles for the duration of a native read.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    membership:
+      value:
+        paths:
+          - src-tauri/**
+          - cookbook/behavior/baseline-viewer/native-retirement.feature
+          - test/steps/baseline-native-retirement.steps.ts
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-022
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fbuild.rs
+        - s5-001-source-excerpt-024
+        - s5-001-source-excerpt-032
+        - s5-001-source-excerpt-039
+        - s5-001-source-src-tauri%2Fcomponent.yaml
+    groupingReason:
+      value: Tauri startup, native capabilities, packaging inputs and Rust file identity checks have a separate
+        runtime and resource lifetime. The native implementation boundary remains separate from the
+        browser-capable workspace, as the root declaration and cookbook table describe. Native build assets
+        and tests belong to this source owner without implying that their generated state or execution was
+        verified.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-001
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+  - id: s4-001-manual-producer
+    name: Manual baseline producer
+    purpose:
+      value: Run the separate evidence-preserving analysis workflow that captures source, collects controlled tool
+        facts, records LLM proposals, and publishes baseline and discovery records.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-032
+        - s4-001-source-excerpt-033
+    membership:
+      value:
+        paths:
+          - docs/design/app-a/**
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-032
+        - s4-001-source-excerpt-033
+        - s3-001-entry-analysis#/inspectionPriorities/5
+    groupingReason:
+      value: These command drivers, saved-input helpers, record contracts and cookbooks jointly implement one
+        operator-led producer protocol outside the viewer runtime. Its records, command receipts and
+        publication lifecycle distinguish it from repository development checks. Uninspected driver bodies
+        retain explicit coverage limits; the historical recovery helper is support for this protocol, not a
+        revived app analyzer.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-033
+        - s3-001-entry-analysis#/gaps/12
+interfaces:
+  - id: s4-001-baseline-model-api
+    name: Baseline data and validation
+    owner:
+      value: s4-001-baseline-model
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-026
+        - s4-001-source-excerpt-027
+        - s4-001-source-excerpt-028
+        - s4-001-source-src%2Fdomain%2Fbaseline.ts
+        - s4-001-source-src%2Flib%2Fbaseline-yaml.ts
+        - s4-001-source-src%2Fcomponents%2Farchitecture-preview.tsx
+    publicAccess:
+      value:
+        - src/domain/baseline.ts#baselineSchema
+        - src/domain/generated/contracts.ts#Baseline
+        - src/domain/starter-baseline.ts#starterBaseline
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-026
+        - s4-001-source-excerpt-027
+        - s4-001-source-excerpt-028
+        - s4-001-source-src%2Fdomain%2Fbaseline.ts
+        - s4-001-source-src%2Flib%2Fbaseline-yaml.ts
+        - s4-001-source-src%2Fcomponents%2Farchitecture-preview.tsx
+    allowedConsumers:
+      value:
+        - s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-008
+        - s4-001-source-src%2Flib%2Fbaseline-yaml.ts
+        - s4-001-source-src%2Fcomponents%2Farchitecture-preview.tsx
+    promises:
+      value:
+        behavior: Validate unknown saved baseline data without accepting proposals or resolving evidence; provide the
+          starter example.
+        data: The TypeSpec Baseline profile retains the four collections and recorded statements, statuses and
+          references. Runtime validation adds unique IDs, component references, parent cycles and safe
+          selectors.
+        errors: safeParse reports validation issues with paths; invalid IDs, references, shapes or statement forms
+          fail validation.
+        lifecycle: Validation operates on supplied data. The model has no host file, layout or publication lifecycle.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-003
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-026
+        - s4-001-source-excerpt-027
+        - s4-001-source-excerpt-028
+        - s4-001-source-src%2Fdomain%2Fbaseline.ts
+        - s4-001-source-src%2Flib%2Fbaseline-yaml.ts
+        - s4-001-source-src%2Fcomponents%2Farchitecture-preview.tsx
+  - id: s4-001-workspace-binding
+    name: Workspace commands and observations
+    owner:
+      value: s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-023
+        - s4-001-source-excerpt-024
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2Farchitecture%2Fload-publication.ts
+        - s4-001-source-excerpt-034
+        - s4-001-source-excerpt-035
+    publicAccess:
+      value:
+        - src/architecture/workspace-view.ts#WorkspaceBinding
+        - src/architecture/workspace-view.ts#WorkflowView
+        - src/architecture/workspace.ts#createWorkspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-023
+        - s4-001-source-excerpt-024
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2Farchitecture%2Fload-publication.ts
+        - s4-001-source-excerpt-034
+        - s4-001-source-excerpt-035
+    allowedConsumers:
+      value:
+        - s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-023
+        - s4-001-source-excerpt-024
+        - s4-001-source-src%2FApp.tsx
+    promises:
+      value:
+        behavior: Open Baseline, Cancel and Retry coordinate one load slot and publish the baseline and prepared
+          layout together. A failed or cancelled load preserves the previous view.
+        data: The view receives read-only workflow state and a nullable frozen baseline/layout pair through
+          getSnapshot and subscribe.
+        errors: Outcomes distinguish success, busy, cancelled and stage-specific safe failures; disposed owners reject
+          subsequent loads. A pending native picker retains the slot until it settles.
+        lifecycle: Workspace composition owns the workflow. View subscriptions return an unsubscribe function;
+          disposal stays with the owner. Late cancelled work cannot publish.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-017
+        - s4-001-source-excerpt-023
+        - s4-001-source-excerpt-024
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2Farchitecture%2Fload-publication.ts
+        - s4-001-source-excerpt-034
+        - s4-001-source-excerpt-035
+  - id: s4-001-baseline-codec
+    name: Baseline YAML decoder
+    owner:
+      value: s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-013
+        - s4-001-source-src%2Flib%2Fbaseline-yaml.ts
+        - s4-001-source-excerpt-029
+        - s4-001-source-excerpt-032
+    publicAccess:
+      value:
+        - src/lib/baseline-yaml.ts#decodeBaselineYaml
+        - src/lib/baseline-yaml.ts#baselineCodec.decode
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-013
+        - s4-001-source-src%2Flib%2Fbaseline-yaml.ts
+        - s4-001-source-excerpt-029
+        - s4-001-source-excerpt-032
+    allowedConsumers:
+      value:
+        - s4-001-workspace
+        - s4-001-manual-producer
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-002
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-032
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    promises:
+      value:
+        behavior: Decode one bounded strict YAML document and validate its recorded baseline without opening
+          referenced files, executing checks, changing statements or running layout.
+        data: Text is decoded into the generated Baseline result with a duration; formatVersion selects the format
+          rather than the filename.
+        errors: Return unsupported-version, invalid-encoding, invalid-document or limit-exceeded with safe messages.
+          Legacy schemaVersion diagrams are rejected.
+        lifecycle: The decoder retains no original bytes. Host file reading precedes decoding; layout and publication
+          follow it. The separate producer may call the decoder for its documented read-only compatibility
+          check.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-013
+        - s4-001-source-src%2Flib%2Fbaseline-yaml.ts
+        - s4-001-source-excerpt-029
+        - s4-001-source-excerpt-032
+  - id: s4-001-host-detection
+    name: Host availability
+    owner:
+      value: s4-001-file-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-016
+        - s4-001-source-src%2Fplatform%2Fdesktop.ts
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2FApp.tsx
+        - s5-001-source-excerpt-018
+        - s5-001-source-excerpt-019
+    publicAccess:
+      value:
+        - src/platform/desktop.ts#isDesktop
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-016
+        - s4-001-source-src%2Fplatform%2Fdesktop.ts
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2FApp.tsx
+    allowedConsumers:
+      value:
+        - s4-001-workspace
+        - s4-001-file-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-012
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2FApp.tsx
+        - s5-001-source-excerpt-018
+        - s5-001-source-excerpt-019
+    promises:
+      value:
+        behavior: Report whether the current host is Tauri so composition chooses a reader and the native picker
+          avoids browser calls.
+        data: Return the DesktopAvailability boolean.
+        errors: No typed failure is declared for this synchronous host query.
+        lifecycle: Evaluate host availability when called; constructing the workspace does not open a picker or read a
+          file.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-016
+        - s4-001-source-src%2Fplatform%2Fdesktop.ts
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s4-001-source-src%2FApp.tsx
+  - id: s4-001-baseline-selection
+    name: Baseline file selection
+    owner:
+      value: s4-001-file-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-015
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s5-001-source-excerpt-018
+        - s5-001-source-excerpt-020
+    publicAccess:
+      value:
+        - src/platform/browser-documents.ts#selectBrowserBaseline
+        - src/platform/document-dialogs.ts#selectBaselineFile
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-015
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    allowedConsumers:
+      value:
+        - s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-012
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s5-001-source-excerpt-018
+        - s5-001-source-excerpt-020
+    promises:
+      value:
+        behavior: Choose a single baseline through a temporary browser file input or the native Open Baseline dialog.
+        data: Browser selection returns File or null; desktop selection returns a path string or null. Selection alone
+          does not copy, decode or write the selected file.
+        errors: Cancellation returns null; picker failures use safe rejection messages. In a browser the native picker
+          returns null without a native call.
+        lifecycle: The browser input removes itself and its abort listener on completion. A native picker is not
+          closed by AbortSignal; the workflow holds the load slot until it returns.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-015
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Fplatform%2Fdocument-dialogs.ts
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+  - id: s4-001-baseline-reading
+    name: Selected baseline text reading
+    owner:
+      value: s4-001-file-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-014
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments-contract.ts
+        - s4-001-source-excerpt-037
+        - s5-001-source-excerpt-017
+        - s5-001-source-excerpt-021
+    publicAccess:
+      value:
+        - src/platform/browser-documents.ts#readBrowserBaseline
+        - src/platform/documents.ts#DesktopDocumentAccess.readDocumentFile
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-014
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments-contract.ts
+        - s4-001-source-excerpt-037
+    allowedConsumers:
+      value:
+        - s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-004
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+        - s5-001-source-excerpt-017
+        - s5-001-source-excerpt-021
+    promises:
+      value:
+        behavior: Read selected baseline text through the host boundary and validate the native wire exchange before
+          returning it to the workspace.
+        data: Return ReadDocumentTextOutcome with UTF-8 text or a storage-stage failure. Text is bounded at 16 MiB;
+          desktop requests use bounded absolute paths.
+        errors: The adapter returns safe fixed codes/messages for invalid requests, unavailable transport, invalid
+          responses and native failures. Browser abort propagates through its AbortSignal checks; unreadable
+          files return safe guidance.
+        lifecycle: Reads perform no write or native snapshot creation. The workflow retains a selected-file callback
+          for Retry; decoding and layout remain workspace work.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-014
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s4-001-source-src%2Fplatform%2Fdocuments-contract.ts
+        - s4-001-source-excerpt-037
+  - id: s4-001-native-read-command
+    name: Native bounded read command
+    owner:
+      value: s4-001-native-shell
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-014
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+        - s4-001-source-excerpt-020
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-022
+        - s5-001-source-excerpt-018
+        - s5-001-source-excerpt-021
+    publicAccess:
+      value:
+        - src-tauri/src/document_commands.rs#document_file_read
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-014
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+        - s4-001-source-excerpt-020
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-022
+    allowedConsumers:
+      value:
+        - s4-001-file-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-022
+        - s4-001-source-src%2Fplatform%2Fdocuments.ts
+        - s5-001-source-excerpt-018
+        - s5-001-source-excerpt-021
+    promises:
+      value:
+        behavior: Run selected-file reading on a blocking worker and return a structured text or failure outcome.
+        data: Accept the closed request containing an absolute path of at most 4096 bytes and return UTF-8 text
+          bounded at 16 MiB with duration.
+        errors: Reject invalid requests, missing or nonregular files, changes of held file/directory identity or
+          metadata, excess size and invalid UTF-8. Worker failure maps to unavailable with safe messages.
+        lifecycle: Each read holds its own file and directory identities until it returns. It creates no managed
+          repository service, writable cache or native snapshot. The local main-window capability grants the
+          read command; the intended component route is through the file adapter.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-005
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-excerpt-014
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+        - s4-001-source-src-tauri%2Fsrc%2Fdocument_commands.rs
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+        - s4-001-source-excerpt-020
+        - s4-001-source-excerpt-021
+        - s4-001-source-excerpt-022
+  - id: s4-001-manual-producer-cli
+    name: Manual evidence and publication commands
+    owner:
+      value: s4-001-manual-producer
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-032
+        - s4-001-source-excerpt-033
+        - s5-001-source-excerpt-041
+    publicAccess:
+      value:
+        - docs/design/app-a/start-here.md#run-the-six-stages
+        - docs/design/app-a/stage-4-5-publish.mjs#check-finish-verify
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-032
+        - s4-001-source-excerpt-033
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-033
+        - s4-001-entry-analysis#/gaps/20
+        - s5-001-source-excerpt-041
+    promises:
+      value:
+        behavior: Coordinate separate capture, controlled collection, source review and proposed-record publication
+          through the documented six stages.
+        data: Use a saved snapshot, manifest, evidence, baseline, discovery and external review packet. Tool facts and
+          proposed architectural intent remain distinct.
+        errors: Reject changed registered inputs, invalid records or inconsistent publication state; retain failed
+          attempt evidence and use the documented correction route.
+        lifecycle: An external manager/operator drives the six stages. The inspected Stage 4/5 shared publisher
+          preserves the reviewed packet, checks inputs, replaces working drafts and writes its manifest last.
+          Other stages retain their own documented publication order; saved attempts remain immutable.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-032
+        - s4-001-source-excerpt-033
+resources:
+  - id: s4-001-selected-baseline
+    name: User-selected baseline file
+    identity:
+      value: The browser File or absolute native path chosen for one baseline load; its concrete identity is
+        supplied at runtime.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-011
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+        - s4-001-source-src%2Farchitecture%2Fworkspace.ts
+    owner:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-011
+        - s4-001-entry-analysis#/gaps/21
+    accessRules:
+      value: The app may read the selected file as bounded UTF-8 text. It does not write it or resolve source,
+        membership, evidence or rule references from it. Runtime file identity checks and reader handles do
+        not transfer ownership of the external file to an app component.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+  - id: s4-001-workspace-state
+    name: Workspace load state and published view
+    identity:
+      value: In-memory LoadWorkflow active operation, retained selection, state and immutable current
+        baseline/layout pair for one workspace.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2Farchitecture%2Fload-publication.ts
+    owner:
+      value: s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+    accessRules:
+      value: One workflow owns the load slot. It copies and freezes data before a single publication, exposes
+        read-only snapshots and retains the old view on failure or cancellation before commit. View clients
+        observe and send commands through WorkspaceBinding.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-023
+        - s4-001-source-src%2Farchitecture%2Fload-workflow.ts
+        - s4-001-source-src%2Farchitecture%2Fload-publication.ts
+  - id: s4-001-view-arrangement
+    name: Current view arrangement
+    identity:
+      value: ComponentArrangement geometry and gesture state created for one published baseline/layout pair.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-025
+        - s4-001-source-src%2Flib%2Fcomponent-arrangement.ts
+        - s4-001-source-excerpt-040
+    owner:
+      value: s4-001-workspace
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-025
+        - s4-001-source-src%2Flib%2Fcomponent-arrangement.ts
+    accessRules:
+      value: The viewer may move and reset local geometry. The prepared layout and recorded baseline stay unchanged;
+        a new successful open creates a new arrangement, and cancelled gestures restore their starting
+        geometry.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-src%2Flib%2Fcomponent-arrangement.ts
+        - s4-001-source-excerpt-040
+  - id: s4-001-native-read-handles
+    name: Native read handles
+    identity:
+      value: OwnedFile and Directory handles and identities held during one documents::read_file invocation.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    owner:
+      value: s4-001-native-shell
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+    accessRules:
+      value: Open the selected regular file and its directory for reading, check identities before and after bounded
+        reads, then release operation-owned handles when the read returns. No write access or persistent
+        native cache is part of this route.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-018
+        - s4-001-source-excerpt-019
+  - id: s4-001-browser-picker
+    name: Temporary browser picker
+    identity:
+      value: The hidden HTML input created for one selectBrowserBaseline operation.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    owner:
+      value: s4-001-file-adapter
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-004
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+    accessRules:
+      value: Append and click the input to request one file; remove the input and abort listener on success,
+        cancellation or picker failure.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-src%2Fplatform%2Fbrowser-documents.ts
+  - id: s4-001-producer-records
+    name: Registered analysis records
+    identity:
+      value: The chosen CHOOM_WORK snapshot, evidence, run manifest and baseline/discovery records governed by the
+        producer protocol; manager progress notes remain outside the artifact registry.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-033
+    owner:
+      value: s4-001-manual-producer
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-033
+    accessRules:
+      value: Capture and registered attempt evidence stay fixed. The inspected Stage 4/5 shared publisher validates
+        a complete external packet, preserves its bytes and replaces working drafts with its manifest last.
+        Other stage finalizers have their own order. Only one publication lock owns a run at a time; producer
+        publication is separate from opening a baseline in the app.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-031
+        - s4-001-source-excerpt-033
+rules:
+  - id: s4-001-read-only-viewer
+    name: Viewing does not analyze or write source files
+    subject:
+      value:
+        components:
+          - s4-001-workspace
+          - s4-001-file-adapter
+          - s4-001-native-shell
+        resource: s4-001-selected-baseline
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-011
+    expected:
+      value:
+        restriction: Read a selected baseline and display recorded facts. Do not run repository analysis, load
+          evidence references, accept proposals, write the input or export a diagram.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-007
+        - s4-001-source-excerpt-009
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+    check:
+      value:
+        method: Review retained command registrations, file-operation boundaries and viewer behavior against the
+          selected-file contracts; run the corresponding browser and installed acceptance outside this
+          analysis workflow.
+        status: proposed-check-not-run
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-010
+        - s4-001-source-excerpt-011
+        - s4-001-source-excerpt-012
+        - s4-001-source-src-tauri%2Fsrc%2Flib.rs
+  - id: s4-001-component-boundaries
+    name: Host and model boundaries
+    subject:
+      value:
+        components:
+          - s4-001-workspace
+          - s4-001-baseline-model
+          - s4-001-file-adapter
+          - s4-001-native-shell
+        declaration: .dependency-cruiser.cjs
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-006
+    expected:
+      value:
+        restriction: Keep domain independent of platform/UI; route frontend desktop access through src/platform; use
+          platform contracts rather than retained platform implementation imports in application workflow;
+          keep analysis dependencies out of src.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-007
+    check:
+      value:
+        method: Apply the declared dependency rules and boundary probes for JS/TS, plus the native capability and
+          command checks for the Rust host. The controlled recovery graph did not execute these target rules.
+        status: proposed-check-not-run
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-006
+        - s4-001-source-excerpt-012
+        - s4-001-file@graph-results.json
+  - id: s4-001-baseline-invariants
+    name: Saved baseline invariants
+    subject:
+      value:
+        component: s4-001-baseline-model
+        interface: s4-001-baseline-model-api
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-008
+        - s4-001-source-src%2Fdomain%2Fbaseline.ts
+    expected:
+      value:
+        restriction: Require valid statement wrappers and distinct model IDs, valid component references, acyclic
+          parents and safe relative membership selectors; preserve unknown, missing and empty values as
+          separate meanings.
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-026
+        - s4-001-source-excerpt-027
+        - s4-001-source-src%2Fdomain%2Fbaseline.ts
+    check:
+      value:
+        method: Validate with baselineSchema and the generated contract, then exercise the focused domain interface
+          cases. The test source was inspected; no target test was run in this analysis.
+        status: proposed-check-not-run
+      status: proposed
+      evidenceRefs:
+        - s4-001-source-excerpt-008
+        - s4-001-source-excerpt-036

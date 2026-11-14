@@ -6,6 +6,7 @@ import type { ConnectionMode } from "../lib/interface-arc-visibility.ts";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 
 interface InspectionFrame {
+  key: number;
   panel: ArchitecturePanel;
   scrollTop: number;
   sections: string[];
@@ -21,8 +22,8 @@ interface InspectionState {
   returning: boolean;
 }
 
-function frame(panel: ArchitecturePanel): InspectionFrame {
-  return { panel, scrollTop: 0, sections: [] };
+function frame(panel: ArchitecturePanel, key: number): InspectionFrame {
+  return { key, panel, scrollTop: 0, sections: [] };
 }
 
 function visibleControl(control: HTMLElement | null | undefined): control is HTMLElement {
@@ -69,6 +70,7 @@ function hidesFocusedArc(panel: ArchitecturePanel, mode: ConnectionMode): boolea
 /** One inspection path belongs to one published baseline/layout pair. */
 export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>, connectionMode: ConnectionMode = "selected") {
   const [state, setState] = useState<InspectionState | null>(null);
+  const nextFrameKey = useRef(0);
   const container = useRef<HTMLElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
@@ -80,7 +82,7 @@ export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layo
 
   const open = useCallback((panel: ArchitecturePanel, opener: HTMLElement, keyboard: boolean) => {
     const focusHeading = keyboard || Boolean(container.current?.contains(document.activeElement)) || hidesFocusedArc(panel, connectionMode);
-    setState({ baseline, layout, frames: [frame(panel)], opener, focusHeading, returning: false });
+    setState({ baseline, layout, frames: [frame(panel, ++nextFrameKey.current)], opener, focusHeading, returning: false });
   }, [baseline, layout, connectionMode]);
 
   function navigate(panel: ArchitecturePanel, trigger: HTMLElement) {
@@ -90,7 +92,7 @@ export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layo
       sections: Array.from(content.current?.querySelectorAll<HTMLDetailsElement>("details[open][data-section]") ?? [],
         (section) => section.dataset.section ?? ""),
     };
-    setState({ ...current, frames: [...current.frames.slice(0, -1), saved, frame(panel)], focusHeading: true, returning: false });
+    setState({ ...current, frames: [...current.frames.slice(0, -1), saved, frame(panel, ++nextFrameKey.current)], focusHeading: true, returning: false });
   }
 
   function back() {
@@ -106,7 +108,7 @@ export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layo
   useInspectionFocus(current, { container, content, heading }, close);
 
   return {
-    panel, open, navigate, back, close, container, content, heading,
+    panel, open, navigate, back, close, container, content, heading, frameKey: entry?.key,
     sections: entry?.sections ?? [], canGoBack: (current?.frames.length ?? 0) > 1,
     componentId: component?.kind === "component" ? component.componentId : undefined,
   };

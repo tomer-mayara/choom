@@ -4,6 +4,7 @@ import { interfaceViewBaseline } from "../../support/interface-view-fixtures.ts"
 import { renderDiagramWithViewport } from "../../support/diagram-viewport.tsx";
 import { pointerClick } from "../../support/pointer.ts";
 import { showAllConnections, showSelfConnections } from "../../support/connection-controls.tsx";
+import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
 
 afterEach(cleanup);
 
@@ -21,6 +22,7 @@ test("Fit includes measured arc labels in the actual canvas while keeping geomet
   const label = document.querySelector<HTMLElement>('[data-interface-label][data-consumer-id="billing"]');
   if (!label) throw new Error("The self-loop must have its HTML label.");
   fireEvent.click(label, { detail: 0 });
+  selectInterfaceTab("Sources");
   const panel = screen.getByRole("dialog", { name: "Interface details" });
   const text = panel.textContent;
   const nodes = canvas.getNodes().map(({ id, position }) => ({ id, position }));
