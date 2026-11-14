@@ -97,7 +97,8 @@ artifact, which retains the same Sources contract. The B follow-up commit
 contains only those two helper changes and this evidence; its new CI run checks
 the exact B snapshot independently of C.
 
-[PR 38](https://github.com/tomer-mayara/choom/pull/38) remains a draft at
+Before the signature restack, [PR 38](https://github.com/tomer-mayara/choom/pull/38)
+was checked at
 `cf0242cb973fc55391a896007ccbd82e95871e92`.
 [CI run 43513816522](https://github.com/tomer-mayara/choom/actions/runs/43513816522)
 passed all four jobs, including full browser acceptance and the Linux installed
@@ -140,3 +141,101 @@ The manager reviewed state ownership, copy lifetime, lazy content, and actual
 wide/narrow screenshots. Overview/Sources disclosure persistence remains D's
 scope; installed clipboard behavior remains F's scope. The inspector width,
 graph navigation, source-file behavior, and baseline bytes are unchanged.
+
+Before the signature restack, [PR 39](https://github.com/tomer-mayara/choom/pull/39)
+was checked at
+`a7f8e32ce6767efbfa86bc143882d410a6e29281`.
+[CI run 43515327307](https://github.com/tomer-mayara/choom/actions/runs/43515327307)
+passed all four jobs, including full browser and Linux installed acceptance.
+
+
+## BR-10A signature follow-up
+
+The reader now preserves an optional signature statement for function entries,
+including methods. It retains literal parameters and return type, independent
+status and references, and the difference between missing and unknown. Other
+entry kinds reject the field. The existing UTF-8 field and aggregate limits
+include it; a saved source note can cite a signature alone.
+
+The new native acceptance scenario failed at the unsupported field before the
+implementation. The focused contract suites first had 20 failures, then passed
+all 51 tests. Native acceptance passed 12 scenarios / 36 steps; browser
+acceptance passed 7 scenarios / 47 steps, including full Original record equality.
+The A snapshot's full check passed 269 native tests, 152 DOM tests, 30 native
+constraints / 93 steps, and 41 interface tests. Types, frontend build, generated
+contracts, lint, boundaries, unused-code and duplicate checks, and Habit Hooks
+passed. The manager reviewed the contract, semantic rules, generated diff,
+limits and reference tests. The follow-up commit is
+`077026ab6e1f7e5e705ba48e804d246a99cfaf65`. CI must run again on the restacked heads.
+
+## BR-10D
+
+Sources starts with saved descriptions and supplied source locations. Recorded
+statements, deduplicated evidence IDs with all citing paths, and the complete
+Original record are separate disclosures. The source projection also supplies
+the header's mixed-status summary. Choom does not read or verify source files.
+One explanation says evidence content is not included. The Original record
+preserves field values, not YAML formatting.
+
+A valid-file browser acceptance case first failed at the missing source note.
+Focused projection and UI tests failed before their implementations. Existing
+Original record behavior remained characterized. Native disclosure choices now
+belong to the mounted interface frame and survive tab changes. Legacy tests
+read the complete record without dropping value, reference, focus, or graph
+assertions.
+
+The full browser suite found two long-example scroll regressions after Sources
+became shorter. Focus and mouse-down could repeat a tab transition, and Radix
+mounted the new body after the parent tried to restore its position. A focused
+red test captured the duplicate transition. A synchronous guard and restoration
+from the mounted lazy body fixed both causes. A later short-window failure
+showed a deferred disclosure opening below an already focused control. Its
+focused test failed before a separate focus-only reveal fixed it. These changes
+do not reset reading position during copy feedback or move focus outside the
+record.
+
+The final D run passed all 266 browser scenarios / 1960 steps. The complete
+check passed 262 native tests, 196 DOM tests, 29 native constraints / 90 steps,
+and 31 interface tests. Frontend builds, type checks, lint, cookbook, contracts,
+boundaries, unused-code and duplicate checks, Habit Hooks, and whitespace checks
+passed. The snooze file is empty. The manager reviewed the projection, lazy
+content, state ownership, and scroll/focus fixes. Screenshots were inspected at
+1280×800, 320×640, 1280×360, and 200% text. Both OS color preferences use the
+app's current light palette; this is not a dark-theme claim.
+
+These D results precede the signature UI follow-up. Its checks and the final
+installed-app and reader checks are recorded below when complete.
+
+
+### Signature display and restacked validation
+
+A valid signature baseline first loaded through the browser file control, then
+failed at the missing Signature block. Focused UI and projection tests failed
+before the declaration display and common statement traversal were added. The
+selected function now shows its literal declaration, parameters, and return
+type. Unknown and missing signatures have different messages; other entry kinds
+have no method-signature block. Signature-only evidence, independent status,
+acceptance reference, and Original record are retained.
+
+Manager review caught a reading-order issue in the first implementation: a
+signature alone hid the existing general behavior. A failing characterization
+captured it. The older prose now stays visible until a saved description or
+known interaction supplies explanatory detail.
+
+All 68 BR-10 browser scenarios / 466 steps passed after the signature change.
+The final nine signature scenarios / 65 steps also passed with a stronger real
+mouse-wheel check: readers can bring the return type into view below the sticky
+tabs at narrow and short sizes. Long literal declarations remain wrapped, retain
+their exact text, and cause no source request or navigation. The full check
+passed 274 native tests, 209 DOM tests, 30 native constraints / 93 steps, and 41
+interface tests. Build, types, code hygiene and Habit Hooks passed; the snooze
+file is empty. The manager inspected the code and actual wide/narrow/short
+rendered panels. Final assembled acceptance is recorded in BR-10F below.
+
+The contract addition was restacked without changing the B/C behavior patches.
+All four CI jobs passed on these updated heads:
+
+| PR | Head | CI |
+| --- | --- | --- |
+| [37](https://github.com/tomer-mayara/choom/pull/37) | `077026ab6e1f7e5e705ba48e804d246a99cfaf65` | [43521403660](https://github.com/tomer-mayara/choom/actions/runs/43521403660) |
+| [38](https://github.com/tomer-mayara/choom/pull/38) | `4edc237627cb4c3d92265d0fbc0f04070af50535` | [43521407254](https://github.com/tomer-mayara/choom/actions/runs/43521407254) |

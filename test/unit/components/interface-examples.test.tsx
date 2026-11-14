@@ -242,6 +242,39 @@ test("resetting an example keeps the focused choice below the sticky tabs in a s
   expect(sampleText()).toBe(failureExampleText);
 });
 
+test("ordinary focus reveals an earlier example choice below sticky tabs without selecting it", () => {
+  const area = boundedView(); selectInterfaceTab("Example");
+  const choice = sample().getByRole("button", { name: "An empty order, empty-order" });
+  choice.getBoundingClientRect = () => new DOMRect(0, 270 - area.scrollTop, 100, 38);
+  area.scrollTop = 260;
+  act(() => choice.focus());
+  expect(choice.getBoundingClientRect().top).toBeGreaterThanOrEqual(40);
+  expect(choice.getBoundingClientRect().bottom).toBeLessThanOrEqual(160);
+  expect(choice.getAttribute("aria-pressed")).toBe("false");
+  expect(sampleText()).toBe("createInvoice(order)");
+});
+
+test("focus on a visible control does not move the current reading position", () => {
+  const area = boundedView(); selectInterfaceTab("Example");
+  const choice = sample().getByRole("button", { name: "A valid order, valid-order" });
+  choice.getBoundingClientRect = () => new DOMRect(0, 340 - area.scrollTop, 100, 38);
+  area.scrollTop = 260;
+  act(() => choice.focus());
+  expect(area.scrollTop).toBe(260);
+});
+
+test("focusing the tab body keeps its reading bookmark instead of jumping to its start", () => {
+  const area = boundedView(); selectInterfaceTab("Example");
+  const body = screen.getByRole("tabpanel", { name: "Example" });
+  body.getBoundingClientRect = () => new DOMRect(0, 220 - area.scrollTop, 400, 1800);
+  area.scrollTop = 600;
+  act(() => body.focus());
+  expect(area.scrollTop).toBe(600);
+  act(() => screen.getByRole("tab", { name: "Sources" }).focus()); selectInterfaceTab("Sources");
+  act(() => screen.getByRole("tab", { name: "Example" }).focus()); selectInterfaceTab("Example");
+  expect(area.scrollTop).toBe(600);
+});
+
 test("an entry choice keeps Overview reading position while clearing the Example bookmark", () => {
   const area = boundedView(); selectInterfaceTab("Example");
   area.scrollTop = 600; selectInterfaceTab("Overview");
@@ -251,4 +284,18 @@ test("an entry choice keeps Overview reading position while clearing the Example
   selectInterfaceTab("Example");
   expect(area.scrollTop).toBe(0);
   expect(sampleText()).toBe('{"id":"saved-invoice"}\n');
+});
+
+test("copy feedback and source disclosure updates preserve the live reading position", async () => {
+  const pending = Promise.withResolvers<void>(); clipboard(() => pending.promise);
+  const area = boundedView(); selectInterfaceTab("Example");
+  area.scrollTop = 600; copy();
+  expect(area.scrollTop).toBe(600);
+  area.scrollTop = 800;
+  await act(async () => { pending.resolve(); await pending.promise; });
+  expect(feedback()).toBe("Example copied."); expect(area.scrollTop).toBe(800);
+  selectInterfaceTab("Sources"); area.scrollTop = 180;
+  fireEvent.click(screen.getByText("Evidence references", { selector: "summary" }));
+  expect(area.scrollTop).toBe(180);
+  selectInterfaceTab("Example"); expect(area.scrollTop).toBe(800);
 });

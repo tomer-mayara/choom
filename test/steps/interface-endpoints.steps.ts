@@ -1,3 +1,4 @@
+import { originalInterfaceRecord } from "../support/interface-record-browser.ts";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -107,21 +108,9 @@ Then("both endpoint statements retain their values, status, and references", asy
   assert.ok(this.page && this.endpointBaseline && this.endpointPath && this.endpointBytes);
   const item = fixtureItem(this.endpointBaseline.interfaces);
   const panel = this.page.getByRole("dialog", { name: "Interface details", exact: true });
-  for (const [name, statement] of [["Owner", item.owner], ["Allowed consumers", item.allowedConsumers]] as const) {
-    const group = panel.getByRole("group", { name, exact: true });
-    if (Array.isArray(statement.value)) {
-      assert.deepEqual(JSON.parse(await group.locator(":scope > pre").textContent() ?? "null"), statement.value);
-    } else {
-      await expect(group.locator(":scope > p").nth(1)).toHaveText(statement.value ?? "Unknown (null)");
-    }
-    await expect(group.getByText(statement.status === "accepted" ? "Accepted (recorded)" : "Proposed", { exact: true })).toHaveCount(1);
-    assert.deepEqual(JSON.parse(await group.getByRole("group", { name: "Evidence references", exact: true }).locator("pre").textContent() ?? "null"), statement.evidenceRefs);
-    if (statement.status === "accepted") {
-      await expect(group.getByRole("group", { name: "Acceptance reference", exact: true })).toContainText(statement.acceptanceRef);
-    } else {
-      await expect(group.getByRole("group", { name: "Acceptance reference", exact: true })).toHaveCount(0);
-    }
-  }
+  const original = await originalInterfaceRecord(panel);
+  assert.deepEqual(original.owner, item.owner);
+  assert.deepEqual(original.allowedConsumers, item.allowedConsumers);
   assert.equal(await readFile(this.endpointPath, "utf8"), this.endpointBytes);
 });
 

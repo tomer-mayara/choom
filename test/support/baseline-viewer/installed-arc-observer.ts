@@ -21,6 +21,13 @@ export async function observeInstalledArcs(browser: Browser) {
     // Apply the observed CSS camera so endpoints include the same zoom as headers.
     const matrix = new DOMMatrixReadOnly().translate(canvas.x, canvas.y).multiply(camera);
     const panel = document.querySelector<HTMLElement>('[role="dialog"]');
+    const panelRecord = () => ({
+      panelTitle: panel?.querySelector("#inspection-title")?.textContent?.trim() ?? "",
+      panelText: panel?.innerText.trim() ?? "", back: Boolean(panel?.querySelector('button[aria-label="Back"]')),
+      originalRecord: panel?.querySelector("details[data-section='original-interface-record'] pre")?.textContent ?? null,
+      fields: Object.fromEntries(["Interface ID", "Owner", "Allowed consumers", "Public access", "Promises"].map((name) =>
+        [name, panel?.querySelector<HTMLElement>(`[role="group"][aria-label="${name}"]`)?.innerText ?? ""])),
+    });
     const labels = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-interface-label]"), (label) => {
       const style = getComputedStyle(label);
       return { id: identity(label), bounds: rect(label.getBoundingClientRect()), name: label.getAttribute("aria-label"),
@@ -93,10 +100,7 @@ export async function observeInstalledArcs(browser: Browser) {
           start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y } };
       }),
       labels,
-      panelTitle: panel?.querySelector("#inspection-title")?.textContent?.trim() ?? "",
-      panelText: panel?.innerText.trim() ?? "", back: Boolean(panel?.querySelector('button[aria-label="Back"]')),
-      fields: Object.fromEntries(["Interface ID", "Owner", "Allowed consumers", "Public access", "Promises"].map((name) =>
-        [name, panel?.querySelector<HTMLElement>(`[role="group"][aria-label="${name}"]`)?.innerText ?? ""])),
+      ...panelRecord(),
       focusedArc: identity(document.activeElement?.closest("[data-interface-label]") ?? null),
       focusedNode: document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id") ?? null,
       focusedRecord: document.activeElement?.getAttribute("data-record-id") ?? null,

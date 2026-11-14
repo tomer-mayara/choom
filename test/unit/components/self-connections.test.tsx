@@ -1,3 +1,4 @@
+import { originalInterfaceRecord } from "../../support/interface-details-dom.ts";
 import { afterEach, expect, test } from "bun:test";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ArchitectureDiagram } from "../../../src/components/architecture-diagram.tsx";
@@ -87,13 +88,12 @@ test("mixed and self-only interface facts remain readable with no unknown-fact w
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Invoice API, invoice-api" }));
   expect(arcs()).toEqual(billing);
   fireEvent.keyDown(screen.getByRole("tab", { name: "Sources" }), { key: "Enter" });
-  const consumers = within(screen.getByRole("dialog")).getByRole("group", { name: "Allowed consumers" }).textContent;
-  for (const id of ["checkout", "reporting", "billing"]) expect(consumers).toContain(id);
+  expect<unknown>(originalInterfaceRecord()).toEqual(selfConnectionBaseline().interfaces.find(({ id }) => id === "invoice-api"));
   fireEvent.click(screen.getByRole("button", { name: "Baseline details" }));
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Health, health" }));
   fireEvent.keyDown(screen.getByRole("tab", { name: "Sources" }), { key: "Enter" });
   expect(arcs()).toEqual([]);
-  for (const name of ["Owner", "Allowed consumers"]) expect(within(screen.getByRole("dialog")).getByRole("group", { name }).textContent).toContain("billing");
+  expect<unknown>(originalInterfaceRecord()).toEqual(selfConnectionBaseline().interfaces.find(({ id }) => id === "health"));
   expect(screen.getByText("No connections shown.").style.visibility).toBe("visible");
   expect(screen.queryByText(/unknown owners or allowed consumers/)).toBeNull();
 });

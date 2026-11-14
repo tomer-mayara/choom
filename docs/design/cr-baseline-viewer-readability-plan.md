@@ -1617,7 +1617,7 @@ Use **Provider unknown** when `owner.value` is null. Show **Overview**,
 
 | View | Content |
 | --- | --- |
-| Overview | Purpose, entry points, the selected entry's recorded input/result/failure/effects when supplied, and the existing interface-wide behavior. |
+| Overview | Purpose, entry points, a saved method signature when supplied, the selected entry's recorded input/result/failure/effects, and the existing interface-wide behavior. |
 | Example | Name the selected entry. Show its saved example text, input if supplied, and a short result explanation before the detailed result. |
 | Sources | Statement statuses and acceptance references, useful saved source notes, deduplicated evidence IDs with field associations, and all original interface fields. |
 
@@ -1660,6 +1660,16 @@ without adding a second entry selector. Keep every recorded access reference rea
 with no richer description. Several documented operations may refer to the same
 recorded access point; their stable entry IDs distinguish them.
 
+For a function or method, show **Signature** near the selected entry's name.
+Use the saved declaration, including its parameters and return type, as literal
+text. Methods use the existing `function` kind. Do not infer types from an entry
+name, access reference, example, or prose. Missing signature data says
+**Signature not recorded**; an explicit null says **Signature is unknown**.
+Other entry kinds have no method-signature block. Keep the signature's own
+recorded status and references available. This addition follows the user's
+implementation review; A supplies the contract, D supplies its final UI, E
+supplies authoring support, and F checks the published result.
+
 Show input/result cards only for a saved function, command, or workflow that
 has known interaction facts. If all four facts are null, show one
 **Interaction facts are unknown** summary instead of four empty cards. Retain
@@ -1692,9 +1702,10 @@ contracts before implementing the validator; this table fixes their meaning.
 | Location | Fields and rules |
 | --- | --- |
 | `documentation` | `summary`, `entries`, and `sourceNotes`. All three are required when the object exists. `summary` is a nullable text statement; the other two are arrays. |
-| Entry | `id`, `name`, `accessPoint`, `kind`, `description`, `examples`, and optional `interaction`. IDs are unique within the interface. `accessPoint` must equal an existing string in that interface's `publicAccess.value`. Unknown access points cannot be enriched until that fact is recorded. |
+| Entry | `id`, `name`, `accessPoint`, `kind`, `description`, `examples`, and optional `signature` and `interaction`. IDs are unique within the interface. `accessPoint` must equal an existing string in that interface's `publicAccess.value`. Unknown access points cannot be enriched until that fact is recorded. |
 | Entry `kind` | A statement whose value is `function`, `command`, `type`, `data`, `message`, `workflow`, or null. Null means unclassified. The viewer does not infer a kind. |
 | Entry `description` | A nullable text statement explaining this entry's purpose. The short `name` is a display label, as with interface names. |
+| Entry `signature` | Optional nullable text statement for the `function` kind only, including methods. It records a supported declaration with its parameters and return type, without a function body. Preserve its syntax and line breaks. The viewer does not parse, infer, or execute it. |
 | Entry `interaction` | Optional statement for `function`, `command`, or `workflow` only. Its value is an object with `input`, `success`, `failures`, and `effects`; each is nonempty text or null. The object itself cannot be null. Review these four descriptions together, as with existing promises. They are not executable schemas. |
 | Example | `id`, `name`, `basis`, and `content`. IDs are unique within their entry. `basis` is `illustrative` or `source-reviewed`. `content` is one statement for the complete example, with its own status and evidence. |
 | Example content value | Required `text`; optional `input` text and optional `result`. A result contains `text`, `summary`, and `scope: complete` or `scope: excerpt`. Each supplied text is nonempty. Examples are saved text only; no executable flag or test-run claim is supported. |
@@ -1703,7 +1714,7 @@ contracts before implementing the validator; this table fixes their meaning.
 
 Use the existing statement structure for every new claim: `value`, `status`,
 and nonempty `evidenceRefs`; accepted statements also require `acceptanceRef`.
-Summary, entry kind, entry description, the whole interaction, and each example
+Summary, entry kind, entry description, signature, the whole interaction, and each example
 have separate statements. An interaction has one status and evidence list for
 its four facts. An example's status applies to its content and recorded basis.
 Do not flatten these statuses into ownership status. Existing promises keep
@@ -1725,6 +1736,8 @@ string as a URI, shell command, or selector to execute.
 Use these missing-data rules consistently:
 
 - Missing `documentation`: use the existing prose and entry references.
+- Missing `signature`: no declaration was recorded. A null signature means its
+  complete declaration is unknown. Neither case means no parameters or no return value.
 - An empty `entries`, `examples`, or `sourceNotes` array: none of those
   documentation items was supplied. This says nothing about component usage.
 - Missing `interaction`: no structured interaction description was supplied.
@@ -1746,7 +1759,7 @@ as part of this extension.
 
 Keep the current 16 MiB file, YAML parser, 500-record, 2,000-explicit-link, and
 16-parent-level limits. Add bounded documentation work: at most 32 entries per
-interface, 8 examples per entry, 8 KiB per name or descriptive text value, and
+interface, 8 examples per entry, 8 KiB per name, signature, or descriptive text value, and
 16 KiB per example input, example text, or result text. A result summary uses
 the 8 KiB description limit. Bound each new identifier/reference/path by 4 KiB
 and each SHA-256 by its exact 64-hex-character form. These limits apply only to the new
@@ -1797,6 +1810,13 @@ explicit failure conditions, and effects that matter to the caller. Keep
 unknowns and their discovery questions/gaps. Publication continues to produce
 proposed intent only.
 
+The Stage 4 and Stage 5 review prompts must request function and method
+signatures from reviewed source or a supported contract. Include the parameter
+list and return type. Do not add guessed types, defaults, or a `void` return.
+If the complete declaration is unsupported, retain a null signature and its
+exact discovery subject; keep any known input or result prose separately.
+Update the actual emitted prompts as well as their Markdown guidance.
+
 Reuse the existing evidence resolver and saved-source checks. Walk every new
 nested statement. Apply these rules:
 
@@ -1819,6 +1839,8 @@ For new null facts, use stable discovery subjects such as
 use local IDs, not array positions, and omit the statement's `value` wrapper.
 Each new null fact needs an exact matching question or gap subject; one issue
 can name several fields. A gap about consumers cannot explain an unknown input.
+Use `interface-id.documentation.entries.entry-id.signature` for an unknown
+signature; a consumer-policy gap does not explain it.
 Keep legacy gap matching unchanged. Missing optional documentation or sample
 parts, and empty documentation arrays, do not require placeholder gaps.
 
@@ -1957,7 +1979,7 @@ not a record that a test has failed or passed.
 
 #### BR-10A: Read and validate versioned interface documentation
 
-**Acceptance first — `@br-10a`: the first three cases use the public decoder
+**Acceptance first — `@br-10a`: the decoding cases use the public decoder
 in the native profile; replacement and record-access cases use `@browser`:**
 
 ```gherkin
@@ -1971,6 +1993,12 @@ Scenario: Keep the old format strict
   When the public baseline decoder reads the file
   Then it rejects the unsupported field rather than silently upgrading the file
 
+Scenario: Preserve a recorded method signature
+  Given a version 2 function entry has a signature with parameters and a return type
+  When the public baseline decoder reads the file
+  Then its exact text, status, evidence, and acceptance reference are retained
+  And older version 2 entries without a signature still load
+
 Scenario Outline: Reject malformed documentation
   Given a version 2 baseline with <defect>
   When the public baseline decoder reads the file
@@ -1981,6 +2009,8 @@ Scenario Outline: Reject malformed documentation
     | a duplicate entry ID in one interface        |
     | an entry bound to another interface's access |
     | interaction facts on a type entry            |
+    | a signature on an entry whose kind is not function |
+    | a signature with missing statement metadata  |
     | an unsupported example basis                 |
     | an excerpt without a valid scope value       |
     | a source note for an uncited reference       |
@@ -2023,6 +2053,7 @@ protection as passing characterization. Do not weaken those cases to accept v2.
 | 4 — Bounds | Boundary tests: exact limits pass; one item/byte over fails, including multibyte strings and total metadata. | Add the documented entry/example/text/total budget checks before view publication. | Share the budget definition and failure mapping; keep parser and architecture limits intact. |
 | 5 — Shared readers | Native/DOM tests: paired v1/v2 fixtures produce identical architecture facts and both retain all original fields. | Update generated-type callers and add the minimal Original record disclosure. | Derive common facts directly from the validated union; avoid ID-specific adapters or hidden data loss. |
 | 6 — Replacement failure | Browser acceptance: a structurally valid but excessive v2 keeps the prior interface frame; valid same-ID replacement starts a new session. | Route failures and successes through the existing load publication boundary. | Preserve existing cancellation and late-result guards. |
+| 7 — Saved signatures | Native/interface tests: retain known, missing, and null signatures; reject other kinds and invalid metadata; enforce exact UTF-8 and reference limits; allow source notes cited only by a signature. | Add the optional function-only statement to TypeSpec, generated contracts, runtime validation, and statement walks. | Reuse nullable text, provenance, and total-budget rules. Do not add a parameter schema or infer a declaration. |
 
 **Complete when:** Native and browser `@br-10a` scenarios, affected decoder/domain
 interface tests, and existing load/limit acceptance pass. Run contract generation,
@@ -2193,6 +2224,18 @@ in the real browser. Record platform limits for clipboard support.
 **Acceptance first — `@br-10d @browser`:**
 
 ```gherkin
+Scenario: Read a method's parameters and return type
+  Given a supported function entry records its method signature
+  When the user selects that entry in Overview
+  Then Signature shows the exact declaration and its recorded status
+  And Sources retains the signature's own evidence and acceptance reference
+
+Scenario: Keep missing signatures explicit
+  Given function entries have missing and null signature statements
+  When the user selects each entry
+  Then the view distinguishes not recorded from unknown without inventing parameters or a return type
+  And a type or data entry has no method-signature block
+
 Scenario: Read useful saved source notes
   Given an interface has two source notes with saved locations and one without a location
   When the user opens Sources
@@ -2257,6 +2300,7 @@ journey through its connection member list too.
 | 3 — Inspection frame | DOM tests: Back, direct selection, tab/entry changes, close, and same-ID replacement apply the specified frame lifetime. | Extend the existing inspection state with only the new UI choices. | Reuse existing history and session identity; remove duplicate state owners. |
 | 4 — Asynchronous feedback | Controlled-completion tests: late loads and old copy feedback cannot update a replacement frame. | Add any missing guard at the existing owner. | Keep passing load-race behavior as characterization. |
 | 5 — Real input and layout | Browser tests: tab keys, Back row focus, touch, code-region scrolling, narrow width, short height, and larger text remain usable. | Fix wrapping, scroll regions, or focus routing at the responsible UI control. | Preserve panel width and graph navigation; do not use font reduction to fit content. |
+| 6 — Method reading | After A accepts signatures, first fail a browser assertion on the absent Signature view. Add focused DOM/projection tests for exact multiline text, missing/null values, kind restrictions, independent status, and all citing paths. | Render the saved function declaration near the entry name and include it in the common statement traversal. | Keep signatures literal and separate from examples. Preserve legacy files and current panel width. |
 
 **Complete when:** `@br-10d`, affected inspection and lifetime acceptance, new
 focused tests, and shared production checks pass. Review both themes and the
@@ -2332,6 +2376,7 @@ reader defect, add its failing production test before fixing that boundary.
 | 4 — Reader compatibility | Check exact and excessive byte/item limits, plus a candidate that decodes but fails a display limit. | Align publication checks with the public decoder and display-limit boundary; record the actual outcomes. | Use the complete reader boundary, not a packet-size check or decoder success alone. |
 | 5 — Stage transitions | Run Stage 4 publication → Stage 5 start/collect/publication → Stage 6 readiness/save. Verify an old run with matching tools, and reject changed tools in an active attempt. | Update only format-specific stage checks; preserve reviewed bytes, selected digests, tool pins, and manifest-last recovery. | Keep run/discovery/packet formats unchanged and use fresh disposable attempts for each tool revision. |
 | 6 — Human content review | Review one enriched record against its source and old interface-wide promises; identify unsupported claims or contradictions. | Correct the candidate or retain explicit gaps before publication; save the review in the existing analysis response. | Keep concise purpose, input/result, failure, and effect descriptions; do not fill fields merely to make cards look complete. |
+| 7 — Signature authoring | Check the actual Stage 4/5 emitted prompts and submit a supported signature through the ordinary publisher. Reject wrong-kind and unexplained-null records; review the source for unsupported type claims. | Request declarations in both prompt owners, validate the optional statement, and publish a source-backed example in a fresh run. | Reuse the exact-null subject and existing source evidence rules. Preserve completed runs and their frozen tools. |
 
 **Complete when:** The reader supporting BR-10A to BR-10D is available; both
 valid and invalid command outcomes are recorded; the disposable published
@@ -2388,7 +2433,8 @@ alone if all required outcomes already pass.
 | 4 — Reader understanding | Run the questions below with a reader who did not build the view. Record answers, mistakes, help, and viewport. | Revise the content contract, labels, or reading order responsible for confusion; add production regression tests for changed behavior. | Remove unnecessary detail before adding another permanent pane or control. |
 
 **Reading journey:** Open an owned interface, identify its provider and purpose,
-switch between a function and type, read a failure example and its excerpt,
+read its recorded parameters and return type, switch between a function and type,
+read a failure example and its excerpt,
 inspect its recorded basis and source note, inspect its access rule, and return
 to the opening list. Open an unknown-owner interface through Baseline details.
 Repeat with unknown permission, an entry with no examples, a data sample, and a

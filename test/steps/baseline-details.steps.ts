@@ -1,3 +1,4 @@
+import { originalInterfaceRecord } from "../support/interface-record-browser.ts";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -12,7 +13,7 @@ import {
   baselineDetailsExample, baselineWithOnlyRules, baselineWithUnknownDetails,
   finalPolicyLine, recordedAcceptanceRef, recordedEvidenceRef, recordedMarkup,
 } from "../support/baseline-detail-fixtures.ts";
-import { reviewedBaseline } from "../support/baseline-fixtures.ts";
+import { fixtureItem, reviewedBaseline } from "../support/baseline-fixtures.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
 
 const expect = browserExpect.configure({ timeout: 2_000 });
@@ -203,7 +204,13 @@ Then(/^all recorded (.+) fields are readable$/, async function (this: BaselineDe
   const values = expected[kind];
   assert.ok(values, `Unknown record kind: ${kind}`);
   const panel = page(this).getByRole("dialog");
-  if (kind === "interface") await panel.getByRole("tab", { name: "Sources", exact: true }).click();
+  if (kind === "interface") {
+    assert.ok(this.detailBaseline);
+    assert.deepEqual(await originalInterfaceRecord(panel), fixtureItem(this.detailBaseline.interfaces));
+    await panel.locator("details[data-section='interface-statements'] summary").click();
+    await panel.locator("details[data-section='interface-evidence'] summary").click();
+    return;
+  }
   for (const value of [...values, "Proposed", "Accepted (recorded)", "Evidence not loaded"]) {
     await expect(panel).toContainText(value);
   }
@@ -222,7 +229,7 @@ Then("its proposed and accepted statements keep their recorded references", asyn
 
 Then("evidence is marked not loaded without a pass or fail result", async function (this: BaselineDetailsWorld) {
   const panel = page(this).getByRole("dialog");
-  await expect(panel.getByText("Evidence not loaded", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText(this.detailKind === "interface" ? "Evidence content is not included." : "Evidence not loaded", { exact: true }).first()).toBeVisible();
   await expect(panel.getByText(/^(Passed|Failed|Verified|Valid|Pass|Fail)$/i)).toHaveCount(0);
 });
 
@@ -249,7 +256,13 @@ Then(/^the (.+) record identifies its unknown and missing fields$/, async functi
   const expected = fields[kind];
   assert.ok(expected);
   const panel = page(this).getByRole("dialog");
-  if (kind === "interface") await panel.getByRole("tab", { name: "Sources", exact: true }).click();
+  if (kind === "interface") {
+    assert.ok(this.detailBaseline);
+    const item = fixtureItem(this.detailBaseline.interfaces);
+    assert.deepEqual(await originalInterfaceRecord(panel), item);
+    for (const statement of [item.owner, item.publicAccess, item.allowedConsumers, item.promises]) assert.equal(statement.value, null);
+    return;
+  }
   for (const field of [...expected, "Unknown (null)"]) await expect(panel).toContainText(field);
 });
 

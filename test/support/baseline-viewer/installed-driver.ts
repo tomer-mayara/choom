@@ -1,3 +1,4 @@
+import { expectInstalledInterfaceRecord, readInstalledInterfaceRecord } from "./installed-interface-record.ts";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -226,15 +227,16 @@ export class InstalledBaselineDriver {
       assert.equal(await row.getAttribute("aria-label"), `${name}, ${id}`);
       if (owner.value === null) assert.ok((await row.getText()).includes("Owner unknown"));
       await row.click();
-      if (kind === "Interfaces") await this.session().$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
-      await waitFor(async () => this.session().execute((recordId, recordOwner, recordKind) => {
+      if (kind === "Interfaces") {
+        const original = await readInstalledInterfaceRecord(this.session());
+        expectInstalledInterfaceRecord(original, id, owner);
+      } else await waitFor(async () => this.session().execute((recordId, recordOwner) => {
         const panel = document.querySelector('[role="dialog"]');
-        const idField = recordKind === "Interfaces" ? "Interface ID" : "Resource ID";
         const ownership = panel?.querySelector('[role="group"][aria-label="Owner"]')?.textContent;
-        return panel?.querySelector(`[role="group"][aria-label="${idField}"]`)?.textContent?.includes(recordId) === true
+        return panel?.querySelector('[role="group"][aria-label="Resource ID"]')?.textContent?.includes(recordId) === true
           && ownership?.includes(recordOwner.value ?? "Unknown (null)") === true
           && ownership.includes(recordOwner.status === "accepted" ? "Accepted (recorded)" : "Proposed");
-      }, id, owner, kind), `The installed viewer must inspect ${id} with its recorded owner`);
+      }, id, owner), `The installed viewer must inspect ${id} with its recorded owner`);
       await this.session().$('button[aria-label="Back"]').click();
       await waitFor(async () => (await this.session().$$(selector)).length === records.length,
         "Back must restore the installed record catalog");
@@ -300,14 +302,8 @@ export class InstalledBaselineDriver {
     const first = ownedInterfaces[0];
     assert.ok(first && rows[0]);
     await rows[0].click();
-    await this.session().$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
-    await waitFor(async () => this.session().execute((id) => {
-      const panel = document.querySelector('[role="dialog"]');
-      return panel?.querySelector('[role="group"][aria-label="Interface ID"]')?.textContent?.includes(id) === true
-        && panel.querySelector('[role="group"][aria-label="Owner"]')?.textContent?.includes("workspace") === true
-        && ["Public access", "Allowed consumers", "Promises"].every((name) =>
-          panel.querySelector(`[role="group"][aria-label="${name}"]`));
-    }, first[0]), "An owned interface must open with its recorded details in the installed panel");
+    const original = await readInstalledInterfaceRecord(this.session());
+    expectInstalledInterfaceRecord(original, first[0], { value: "workspace" });
     await this.session().$('button[aria-label="Back"]').click();
     await waitFor(async () => {
       const state = await this.diagramState();

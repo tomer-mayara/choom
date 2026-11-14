@@ -1,3 +1,4 @@
+import { originalInterfaceRecord } from "../support/interface-record-browser.ts";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -115,9 +116,10 @@ Then("the arc's original interface fields remain readable in Sources", async fun
   const panel = page(this).getByRole("dialog", { name: "Interface details", exact: true });
   await panel.getByRole("tab", { name: "Sources", exact: true }).click();
   await expect(panel.getByRole("group", { name: "Interface ID", exact: true })).toContainText("invoice-api");
-  await expect(panel.getByRole("group", { name: "Owner", exact: true })).toContainText("billing");
-  await expect(panel.getByRole("group", { name: "Allowed consumers", exact: true })).toContainText("reporting");
-  await expect(panel.getByRole("group", { name: "Behavior", exact: true })).toContainText("Create an invoice");
+  const original = await originalInterfaceRecord(panel);
+  const expected = interfaceInspectionBaseline().interfaces.find(({ id }) => id === "invoice-api");
+  assert.ok(expected);
+  assert.deepEqual(original, expected);
 });
 
 Given("keyboard focus is on the Reporting Invoice API arc label", async function (this: ArcInspectionWorld) {

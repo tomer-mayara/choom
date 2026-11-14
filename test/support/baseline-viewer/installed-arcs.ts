@@ -1,3 +1,8 @@
+import { readFileSync } from "node:fs";
+import { parse } from "yaml";
+import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { parseInterfaceRecord } from "../interface-record.ts";
+import { readInstalledInterfaceRecord } from "./installed-interface-record.ts";
 import assert from "node:assert/strict";
 import type { World } from "@cucumber/cucumber";
 import { Key, type Browser } from "webdriverio";
@@ -75,27 +80,23 @@ function expectAccessibleNames(state: InstalledArcState): void {
   }
 }
 
-function expectInvoice(state: InstalledArcState, back: boolean, fields = state.fields): void {
-  assert.equal(state.panelTitle, "Interface details");
-  assert.ok(fields["Interface ID"]?.includes("invoice-api"));
-  assert.equal(state.back, back, "Arc selection starts a fresh path; list selection retains Back");
-  for (const text of ["billing", "Proposed", "fixture-owner"]) assert.ok(fields.Owner?.includes(text));
-  for (const text of ["checkout", "reporting", "Accepted (recorded)", "fixture-consumers", "fixture-review"]) {
-    assert.ok(fields["Allowed consumers"]?.includes(text));
-  }
-  assert.ok(fields["Public access"]?.includes("createInvoice"));
-  for (const text of ["Create an invoice", "Invoice", "Invalid invoice", "One request"]) assert.ok(fields.Promises?.includes(text));
+function recordedFixture(id: string, fixture = "installed-known-consumers.yaml") {
+  const baseline = baselineSchema.parse(parse(readFileSync(new URL(`../../fixtures/baseline-viewer/${fixture}`, import.meta.url), "utf8")));
+  const record = baseline.interfaces.find((item) => item.id === id);
+  assert.ok(record);
+  return record;
 }
 
-function expectAudit(state: InstalledArcState, back: boolean, fields = state.fields): void {
+function expectInvoice(state: InstalledArcState, back: boolean, record = parseInterfaceRecord(state.originalRecord ?? "null")): void {
   assert.equal(state.panelTitle, "Interface details");
-  assert.ok(fields["Interface ID"]?.includes("audit-api"));
+  assert.equal(state.back, back, "Arc selection starts a fresh path; list selection retains Back");
+  assert.deepEqual(record, recordedFixture("invoice-api"));
+}
+
+function expectAudit(state: InstalledArcState, back: boolean, record = parseInterfaceRecord(state.originalRecord ?? "null")): void {
+  assert.equal(state.panelTitle, "Interface details");
   assert.equal(state.back, back);
-  for (const field of ["Owner", "Allowed consumers"]) {
-    for (const text of ["commerce", "Proposed", "installed-fixture"]) assert.ok(fields[field]?.includes(text));
-  }
-  assert.ok(fields["Public access"]?.includes("recordAudit"));
-  assert.ok(fields.Promises?.includes("Unknown (null)"));
+  assert.deepEqual(record, recordedFixture("audit-api"));
 }
 
 async function tabTo(browser: Browser, selector: string): Promise<void> {
@@ -140,9 +141,7 @@ async function interfaceReady(browser: Browser, id: string) {
 }
 
 async function readInterfaceSources(browser: Browser) {
-  await browser.$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
-  return (await stateWhen(browser, (state) => Boolean(state.fields["Interface ID"] && state.fields.Promises),
-    "Sources must show the original interface fields before they are read")).fields;
+  return readInstalledInterfaceRecord(browser);
 }
 
 async function ownedInterface(browser: Browser, owner: string, id: string): Promise<void> {
@@ -184,13 +183,17 @@ export async function inspectAndArrangeInstalledArcs(browser: Browser, world: Wo
   const all = await stateWhen(browser, (state) => state.arcs.length === 2 && state.choices.mode === "all",
     "All must show the two known non-self Invoice API arcs");
   await tabTo(browser, invoiceArc("reporting"));
-  const beforeKeyboard = await observeInstalledArcs(browser);
+  const beforeKeyboard = await stateWhen(browser, (state) => state.focusedArc === invoiceIds[1]
+    && state.labels.some(({ id, painted }) => id === invoiceIds[1] && painted),
+  "Tab must focus and reveal the Reporting Invoice API label before activation");
   await browser.keys(Key.Enter);
   const keyboard = await interfaceReady(browser, "invoice-api");
   const keyboardFields = await readInterfaceSources(browser);
+  await tabTo(browser, 'button[aria-label="Close details"]');
   await browser.keys(Key.Escape);
-  const allClosed = await stateWhen(browser, (state) => state.panelTitle === "" && state.focusedArc === invoiceIds[1],
-    "Closing in All must restore the exact surviving keyboard arc");
+  const allClosed = await stateWhen(browser, (state) => state.panelTitle === "" && state.focusedArc === invoiceIds[1]
+    && state.labels.some(({ id, painted }) => id === invoiceIds[1] && painted),
+  "Closing with the keyboard in All must focus and reveal the exact surviving arc");
   await browser.$(selfChoice).click();
   const selfOn = await stateWhen(browser, (state) => state.choices.showSelf === true && state.arcs.length === 3,
     "Show self-connections must add Commerce's Audit API loop to All");
@@ -347,10 +350,19 @@ export async function expectInstalledUnknownConsumers(browser: Browser): Promise
   assert.equal(records.length, 8);
   assert.ok(records[0]);
   await records[0].click();
+  const access = browser.$('details[data-section="interface-access-rule"]');
+  await access.$("summary").click();
+  assert.ok((await access.getText()).includes("Permitted components are not recorded."),
+    "Overview must explain the unknown permitted-component list without implying actual calls");
   await browser.$('//button[@role="tab" and normalize-space(.)="Sources"]').click();
   await browser.waitUntil(async () => (await browser.$('[role="dialog"]').getText()).includes("Allowed consumers are unknown."),
     { timeout: 10_000, timeoutMsg: "An installed interface with null consumers must explain the missing arcs" });
-  const consumers = await browser.$('[role="group"][aria-label="Allowed consumers"]').getText();
-  assert.ok(consumers.includes("Unknown (null)"), "The unknown-consumer explanation must retain the recorded null value");
+  const record = await readInterfaceSources(browser);
+  assert.ok(typeof record.id === "string");
+  assert.deepEqual(record, recordedFixture(record.id, "full.yaml"),
+    "Original record must preserve the unknown-consumer statement and all its saved metadata");
+  const consumers = record.allowedConsumers;
+  assert.ok(consumers && typeof consumers === "object" && "value" in consumers);
+  assert.equal(consumers.value, null, "The unknown-consumer explanation must retain the recorded null value");
   expectArcSet(await observeInstalledArcs(browser), []);
 }
