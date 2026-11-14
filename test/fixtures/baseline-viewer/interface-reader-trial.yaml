@@ -1,0 +1,250 @@
+formatVersion: 2
+id: interface-reader-trial
+parentId: baseline-previous
+components:
+  - id: checkout
+    name: Checkout
+    purpose:
+      value: Create orders
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    membership:
+      value:
+        paths:
+          - checkout/**
+        excludePaths:
+          - checkout/generated/**
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    groupingReason:
+      value: Orders change together
+      status: accepted
+      evidenceRefs:
+        - missing-evidence#/items/1
+      acceptanceRef: missing-review#/decisions/4
+  - id: billing
+    name: Billing
+    purpose:
+      value: Prepare invoices
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    membership:
+      value:
+        paths:
+          - billing/invoice.ts
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    groupingReason:
+      value: Invoice rules change together
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+interfaces:
+  - id: invoice-api
+    name: Invoice API
+    owner:
+      value: billing
+      status: proposed
+      evidenceRefs:
+        - contract-notes
+        - unresolved-contract#/claims/7
+        - contract-notes
+    publicAccess:
+      value:
+        - createInvoice
+        - Invoice
+        - InvoiceFile
+        - unclassified-reference
+      status: proposed
+      evidenceRefs:
+        - contract-notes
+        - unresolved-contract#/claims/7
+    allowedConsumers:
+      value:
+        - checkout
+      status: accepted
+      evidenceRefs:
+        - contract-notes
+      acceptanceRef: missing-review#/decisions/4
+    promises:
+      value:
+        behavior: Create an invoice
+        data: null
+        errors: null
+        lifecycle: null
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    documentation:
+      summary:
+        value: Create an invoice from a supported order.
+        status: accepted
+        evidenceRefs:
+          - contract-notes
+        acceptanceRef: review-42#decision-1
+      entries:
+        - id: create-invoice
+          name: Create invoice
+          accessPoint: createInvoice
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - missing-evidence#/items/0
+          signature:
+            value: |-
+              createInvoice(
+                order: Order,
+              ): Promise<Invoice>
+            status: proposed
+            evidenceRefs:
+              - reader-trial-declaration#create-invoice
+          description:
+            value: Validate an order and create its invoice.
+            status: proposed
+            evidenceRefs:
+              - missing-evidence#/items/0
+          interaction:
+            value:
+              input: An order with at least one item.
+              success: An invoice with a stable ID.
+              failures: Reject an empty order.
+              effects: Save the invoice once validation succeeds.
+            status: proposed
+            evidenceRefs:
+              - missing-evidence#/items/0
+          examples:
+            - id: valid-order
+              name: A valid order
+              basis: source-reviewed
+              content:
+                value:
+                  text: createInvoice(order)
+                  input: '{"items":[{"quantity":1}]}'
+                  result:
+                    text: '{"id":"invoice-1"}'
+                    summary: The saved invoice has an ID.
+                    scope: excerpt
+                status: proposed
+                evidenceRefs:
+                  - reviewed-invoice-source
+            - id: empty-order
+              name: An empty order
+              basis: illustrative
+              content:
+                value:
+                  text: |
+                    createInvoice({ items: [] })
+                  input: '{"items":[]}'
+                  result:
+                    text: '{"error":"Order has no items"}'
+                    summary: The order is rejected because it has no items.
+                    scope: excerpt
+                status: accepted
+                evidenceRefs:
+                  - empty-order-source
+                  - contract-notes
+                acceptanceRef: missing-review#/decisions/4
+        - id: invoice-type
+          name: Invoice type
+          accessPoint: Invoice
+          kind:
+            value: type
+            status: proposed
+            evidenceRefs:
+              - missing-evidence#/items/0
+          description:
+            value: The invoice ID and its line items.
+            status: proposed
+            evidenceRefs:
+              - missing-evidence#/items/0
+          examples: []
+        - id: invoice-data
+          name: Invoice data
+          accessPoint: InvoiceFile
+          kind:
+            value: data
+            status: proposed
+            evidenceRefs:
+              - missing-evidence#/items/0
+          description:
+            value: Saved invoice records.
+            status: proposed
+            evidenceRefs:
+              - missing-evidence#/items/0
+          examples:
+            - id: valid-order
+              name: Saved invoice
+              basis: illustrative
+              content:
+                value:
+                  text: |
+                    {"id":"saved-invoice"}
+                status: proposed
+                evidenceRefs:
+                  - missing-evidence#/items/0
+      sourceNotes:
+        - evidenceRef: reviewed-invoice-source
+          description: Invoice validation and result construction.
+          location:
+            snapshotRef: snapshot-invoice
+            path: billing/invoice.ts
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            lines:
+              - 1
+              - 12
+        - evidenceRef: empty-order-source
+          description: Empty orders are rejected before storage.
+          location:
+            snapshotRef: snapshot-invoice
+            path: billing/order-check.ts
+            sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+            lines:
+              - 17
+              - 23
+        - evidenceRef: contract-notes
+          description: Approved public contract and permitted callers.
+        - evidenceRef: reader-trial-declaration#create-invoice
+          description: "Fictional contract authored for this reading exercise: createInvoice accepts an Order and returns a
+            Promise<Invoice>."
+resources:
+  - id: invoice-store
+    name: Invoices
+    identity:
+      value: Invoice database
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    owner:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    accessRules:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+rules:
+  - id: invoice-access
+    name: Invoice access
+    subject:
+      value: {}
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    expected:
+      value:
+        expression: Only permitted consumers may use Invoice API
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0
+    check:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - missing-evidence#/items/0

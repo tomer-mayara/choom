@@ -1,13 +1,14 @@
 # BR-10 interface details evidence
 
-Status: implementation in progress. The six draft PRs follow BR-10A to BR-10F.
+Status: implemented in a draft PR stack. BR-10A to BR-10F are not merged.
 The approved scope is in [the plan](../design/cr-baseline-viewer-readability-plan.md#br-10-make-interface-details-useful).
 
 ## Scope
 
 The viewer reads version 1 and version 2 files. The external workflow authors
 new documentation. The BR-09 graph prototype is separate and is not delivered
-by this stack. Reader validation and installed checks will be reported explicitly.
+by this stack. Per-ticket results below retain the earlier red/green history;
+the final BR-10F section records assembled checks and reader-review limits.
 
 ## BR-10A
 
@@ -43,12 +44,12 @@ anchors. The unsupported-version regression uses version 3 now that version 2
 is supported.
 
 Manager review and a separate contract review found no remaining A correctness
-issue. [PR 37](https://github.com/tomer-mayara/choom/pull/37) is a draft at
+issue. The initial [PR 37](https://github.com/tomer-mayara/choom/pull/37) draft head was
 `58b5bc6142e845d6758a06abe08f72e2120bd9ba`.
 [CI run 43508348633](https://github.com/tomer-mayara/choom/actions/runs/43508348633)
 passed web, macOS, Windows, and Linux jobs. The Linux job includes the existing
 installed baseline-viewer acceptance. The complete installed BR-10 reading
-journey and human reader check are still pending.
+journey and reader check had not run at this stage; their later results are below.
 
 ## BR-10B
 
@@ -218,7 +219,7 @@ have no method-signature block. Signature-only evidence, independent status,
 acceptance reference, and Original record are retained.
 
 Manager review caught a reading-order issue in the first implementation: a
-signature alone hid the existing general behavior. A failing characterization
+signature alone hid the existing general behavior. A failing regression test
 captured it. The older prose now stays visible until a saved description or
 known interaction supplies explanatory detail.
 
@@ -239,6 +240,60 @@ All four CI jobs passed on these updated heads:
 | --- | --- | --- |
 | [37](https://github.com/tomer-mayara/choom/pull/37) | `077026ab6e1f7e5e705ba48e804d246a99cfaf65` | [43521403660](https://github.com/tomer-mayara/choom/actions/runs/43521403660) |
 | [38](https://github.com/tomer-mayara/choom/pull/38) | `4edc237627cb4c3d92265d0fbc0f04070af50535` | [43521407254](https://github.com/tomer-mayara/choom/actions/runs/43521407254) |
+| [39](https://github.com/tomer-mayara/choom/pull/39) | `235a30a805bd5a45ce1dcc592fdfafa48cef423d` | [43521410986](https://github.com/tomer-mayara/choom/actions/runs/43521410986) |
+
+### Installed regression corrections
+
+D's first updated Linux CI run passed 19 of 21 installed scenarios. The two
+failures came from older inspection helpers: one still selected a removed raw
+field, and the other used pointer clicks before asserting a keyboard-only focus
+label. The helper now reads the Access rule, Sources explanation, and complete
+Original record, including the recorded null consumer value. Actual Tab
+navigation establishes keyboard focus before the return-to-arc check.
+
+A local installed run then reached a later assertion that the earlier failure
+had prevented. The native file picker left the pointer over an Invoice API
+curve, so that label was correctly visible alongside the inspected Audit API.
+The helper now moves the actual pointer to a neutral area before checking the
+inspection-only label state. Exact arc, label, focus, outline, attachment,
+geometry, camera, and saved-record assertions remain. No production behavior
+changed for these corrections.
+
+Both affected installed scenarios and all 16 steps passed locally. Type checks,
+focused ESLint, Habit Hooks, and whitespace checks passed. D includes the two
+helper fixes at `7175fb49e0b1e3d6a698e1c96cdb373686a6c259`; E was restacked at
+`b2c82fe3ac5d0563f107eb89d3252dc948a8f2aa` with all producer bytes unchanged.
+Their CI runs are [43525672437](https://github.com/tomer-mayara/choom/actions/runs/43525672437)
+and [43525704833](https://github.com/tomer-mayara/choom/actions/runs/43525704833).
+Current CI outcomes are kept in the PR descriptions after each final push.
+
+### Reverse keyboard focus correction
+
+Final independent review found a real gap after the first full suites passed.
+At 1280×360, three Shift+Tab presses from Detailed result focused the first
+example choice behind the sticky tabs. The original reproduction measured its
+rectangle at y206–244 while the tab strip covered y203–242.
+
+A new browser acceptance case reproduced the failure using the existing D
+fixture, and a focused DOM test failed on ordinary descendant focus. The fix
+reuses the existing visibility helper for keyboard-visible focus inside tab
+content. It excludes the tabpanel itself and pointer focus. It adds no state
+or timer. Characterization checks retain tab bookmarks and prove that a pointer
+press does not move a partly visible choice before release.
+
+The independent original reproduction now places the choice at y242–280, fully
+below the tabs, with its focus outline visible. The affected browser sweep
+passed 91 scenarios / 619 steps, including reverse navigation at short and
+narrow sizes and 200% text. The complete check passed 274 native tests, 212 DOM
+tests, 41 interface tests, and 30 native behavior scenarios / 93 steps. Build,
+types, Habit Hooks, and whitespace checks passed.
+
+D's final correction is `dae52ef45182ae5ff837e04da1f50d2c73df4813`; E was
+restacked at `c714c9282b6d2553f78ed08100297f1d65d46c53` without changing its ten
+producer files. Final CI runs are
+[43528566345](https://github.com/tomer-mayara/choom/actions/runs/43528566345) and
+[43528572264](https://github.com/tomer-mayara/choom/actions/runs/43528572264).
+F's final artifact and results below include this correction.
 
 
 ## BR-10E
@@ -298,3 +353,132 @@ also include these unchanged ten app-a files. The original analysis run and its
 input copy still match across all 1,755 files. All 96 pre-existing original
 checkout documents also retain their saved hashes. Unrelated BR-09 work remains
 in its original checkout.
+
+## BR-10F
+
+The assembled journeys open the exact published file through the normal browser
+file control and the installed native picker. They compare provider, purpose,
+entry kind, literal signature, interaction, examples, result scope, source
+notes, access rule, and complete Original record with the saved file. They also
+check unchanged version 1 files, missing and null signatures, maximum supported
+documentation, failed opens, cancellation, and unchanged drawing and file bytes.
+
+The committed [published fixture](../../test/fixtures/baseline-viewer/interface-documentation-published.yaml)
+is byte-identical to flow-006. The separate
+[reader exercise](../../test/fixtures/baseline-viewer/interface-reader-trial.yaml)
+is fictional and is not codebase evidence. Its provenance and both hashes are
+in the [fixture manifest](../../test/fixtures/baseline-viewer/interface-reading-fixtures.json).
+
+These checks characterize the assembled A–E behavior. Final independent review
+found the keyboard-focus defect described above; it was corrected in D before
+F's final verification. Initial harness failures exposed disclosure locators that
+changed after opening, hidden legacy groups sharing a label, nested source
+lists, and WebKit's prefixed selection property. The helpers now wait for named,
+visible content and use precise selectors. Strict WebDriver selection remains
+enabled. These test corrections are not claimed as feature-level BDD red steps.
+
+### Local validation
+
+- The full browser suite passed **286 scenarios / 2,099 steps**, including the
+  seven new F browser scenarios / 46 steps.
+- The full installed baseline-viewer suite passed **23 scenarios / 135 steps**,
+  including both F scenarios and the earlier arc, view-lifetime, file-opening,
+  cancellation, and atomic-failure checks.
+- The final `bun run check` passed **274 native unit tests, 212 DOM tests,
+  30 native behavior scenarios / 93 steps, and 41 interface tests**, plus lint,
+  generated contracts, types, cookbook links, dependency, unused-code, and
+  duplication checks.
+- Frontend build, `bun run check-types`, and `bun run habit-hooks --all` passed.
+  The snooze file is empty. Existing large-bundle build warnings remain.
+- The manager reviewed the complete change and the actual rendered interface
+  view. No new fetching, source execution, runtime example execution, or graph
+  behavior is introduced by F.
+
+The final tested source archive has Git tree
+`3ffaa40c3672b3cafc225bbc052dc6e266733d88`, SHA-256
+`a64ee4bfd660ea7776d232ab012effc8b12c6093120bdfc6d9b0450f7c6c6673`.
+It includes runtime code, fixtures, and the final test helpers. Restacking F
+preserved all 349 file hashes. Only this evidence document and the plan were
+updated after that snapshot. CI checks the final pushed branch separately;
+the PR descriptions retain its current run links and outcomes.
+
+### Installed artifact and clipboard
+
+The release package was built and installed in the task-owned Ubuntu 24.04.5
+ARM64 container, with WebKitGTK/driver 2.52.6-0ubuntu0.24.04.1 and tauri-driver
+2.1.0. The container used four CPUs and 4 GiB memory on the M1 Pro host.
+The final full installed run was `run-QYrhZP` in the packaged evidence folder.
+
+| Artifact | Bytes | SHA-256 |
+| --- | --- | --- |
+| `Choom_0.1.0_arm64.deb` | 3,748,206 | `6b6369c5b5c2b343f3f14b861458b730b4ce402008d34df7d8d4a56642e79451` |
+| Installed `/usr/bin/choom-desktop` | 11,835,160 | `eeca5f9f2b8a2720bde15291ca4328e431f41a83fcf31165bfb63bc395d79311` |
+
+The installed executable matches the package content. Its real Copy example
+button reported success, and `xclip` read the exact saved text from the native
+clipboard. An actual pointer double-click selected `decodeBaselineYaml` inside
+the displayed sample. The standard computed selection property was empty;
+WebKit's prefixed property was `text`. The saved example remained unchanged.
+No clipboard API was mocked in this installed journey. Clipboard refusal has
+browser coverage; refusal was not forced in the installed environment.
+
+Linux packaged acceptance is the installed-platform evidence. macOS and Windows
+CI build and test the desktop route; those jobs do not establish an installed
+interactive session on those platforms. The existing app uses a light palette
+under both tested OS color preferences; this is not dark-theme validation.
+
+### Measurements at supported limits
+
+Measurements used Chromium 158.0.8127.18 at 1280×800 on an Apple M1 Pro with
+eight logical CPUs and 16 GiB memory. Each workload ran three ordinary file-
+control journeys. The runtime and browser helper bytes match the final tested
+snapshot. Times include driver and input overhead; they are observations, not
+latency guarantees.
+
+Both workloads concentrate the exact 2,097,152-byte aggregate documentation
+budget in one interface, with 32 entries, eight examples per entry, and a final
+16 KiB sample. The larger file also reaches 500 records, 2,000 links, and 16
+parent levels. The smaller file has two components and one interface.
+
+| Workload | Load | Open interface | Switch to final example | Open Sources | Open and read full Original record |
+| --- | --- | --- | --- | --- | --- |
+| Display and documentation limits | 594–624 ms | 57–59 ms | 35–36 ms | 37–38 ms | 303–313 ms |
+| Single-interface documentation limit | 369–388 ms | 40–42 ms | 33–35 ms | 37–38 ms | 261–322 ms |
+
+The large file is 2,446,339 bytes, SHA-256
+`aed9d28fd3524fecdb8b6e7951be3e95bd6589c3c28d0bce99fc5402924bb035`.
+The small file is 2,155,123 bytes, SHA-256
+`f67d494b5aedc62a6c09a229ecb2e735d433c48dcbaa8967b5a568729a348cb0`.
+The complete saved sample and original record were read; measurements did not
+stop at finding an empty control or a loading placeholder.
+
+### Reader review and decision
+
+The user said “Looks good,” requested signatures, and asked the manager to check
+the view too. This is positive visual feedback, not a completed independent
+comprehension study: no question-by-question answers or viewport were supplied.
+The manager performed the following self-check through the normal file control
+on the separate fictional Invoice API record:
+
+- Create invoice takes an `Order` with at least one item, returns
+  `Promise<Invoice>`, rejects an empty order, and saves the invoice after
+  validation. Invoice type describes the saved ID and items; it is not a call.
+- The Access rule permits Checkout in the baseline. It does not establish
+  observed calls or runtime authorization. Accepted is a recorded statement
+  status; Choom did not verify the architecture.
+- The empty-order example is illustrative. Choom says it did not run it, and
+  the displayed error result is explicitly an excerpt.
+- The signature, purpose, and example have their own notes. The entry
+  description cites a reference whose content is not included. The manager
+  did not treat another field's note as proof of that description.
+
+The manager inspected 1280×800, 320×640, and 1280×360 views. The signature wraps
+within the panel; narrow and short windows need vertical scrolling, and saved
+content remains reachable below the sticky tabs. A separate check opened the
+actual published decoder signature and compared it with the captured source.
+The original reader trial file remained unchanged.
+
+Manager decision: **proceed with the draft stack**. The user-requested self-check
+is complete, and the automated browser and installed checks pass. This does not
+claim independent human comprehension or validate the separate BR-09 graph
+prototype. Human review of changed constraints remains required before merge.
