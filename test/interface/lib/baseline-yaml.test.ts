@@ -21,7 +21,7 @@ test("the public decoder returns the generated baseline outcome", () => {
 test("the public decoder uses the declared failure codes and decoding stage", () => {
   const validate = schemas.compile({ $ref: "BaselineDecodeFailure.json" });
   const cases = [
-    [stringify({ ...baselineExample(), formatVersion: 3 }), "unsupported-version"],
+    [stringify({ ...baselineExample(), formatVersion: 4 }), "unsupported-version"],
     ["id: !tag baseline\n", "invalid-encoding"],
     ["formatVersion: 1\n", "invalid-document"],
     ["é".repeat(8_388_609), "limit-exceeded"],

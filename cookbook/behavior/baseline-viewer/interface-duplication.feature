@@ -3,6 +3,16 @@ Feature: Read a saved duplication assessment
   The reader can inspect recorded interface findings without a source checkout
   or an analyzer in the viewer.
 
+  @br-11-duplication
+  Scenario: Read and inspect documented comparisons from a version 3 baseline
+    Given a version 3 baseline and its matching duplication assessment are available offline
+    When the reader opens the saved duplication assessment
+    And the reader compares the first supported duplication finding
+    Then the comparison shows the version 3 entry names and saved contract facts
+    When the reader inspects its recorded public entry
+    Then the interface opens at that entry instead of its initial entry
+    And reading the assessment has not changed either selected file
+
   @di-04
   Scenario: Open a published assessment through ordinary file controls
     Given a baseline and its published duplication assessment are available offline

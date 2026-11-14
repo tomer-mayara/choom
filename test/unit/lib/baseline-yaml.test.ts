@@ -27,7 +27,7 @@ test("accepts a byte order mark, CRLF, and non-ASCII statement text", () => {
 });
 
 test("identifies an unsupported baseline format version", () => {
-  const text = stringify({ ...baselineExample(), formatVersion: 3 });
+  const text = stringify({ ...baselineExample(), formatVersion: 4 });
   expect(decodeBaselineYaml(text)).toMatchObject({
     status: "failure", stage: "decoding", code: "unsupported-version",
   });
@@ -46,7 +46,7 @@ test("rejects legacy diagram content", () => {
   expect(outcome.status).toBe("failure");
   expect(outcome).toMatchObject({
     status: "failure", stage: "decoding", code: "invalid-document",
-    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1 or 2.",
+    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, or 3.",
   });
 });
 

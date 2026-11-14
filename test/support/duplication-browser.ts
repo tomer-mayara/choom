@@ -45,7 +45,7 @@ export function publishedEntry(world: DuplicationWorld) {
   const observationIndex = finding.observations.findIndex((observation) => observation.endpoints[0]?.entryId);
   const endpoint = finding.observations[observationIndex]?.endpoints[0];
   const baseline = world.duplicationData?.baseline;
-  assert.ok(endpoint?.entryId && baseline?.formatVersion === 2);
+  assert.ok(endpoint?.entryId && baseline && baseline.formatVersion !== 1);
   const item = baseline.interfaces.find(({ id }) => id === endpoint.interfaceId);
   const entry = item?.documentation?.entries.find(({ id }) => id === endpoint.entryId);
   assert.ok(item && entry);

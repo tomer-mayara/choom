@@ -43,11 +43,11 @@ const location = z.strictObject({
   const [first, last] = lines;
   return first !== undefined && last !== undefined && first <= last;
 }, { path: ["lines"], message: "The source range must end at or after its first line." });
-const note = z.strictObject({ evidenceRef: reference, description, location: location.optional() });
+export const baselineSourceNoteSchema = z.strictObject({ evidenceRef: reference, description, location: location.optional() });
 
 export const baselineDocumentationSchema = z.strictObject({
   summary: nullableTextStatement,
-  entries: z.array(entry).max(32, "The limit is 32 entries per interface."), sourceNotes: z.array(note),
+  entries: z.array(entry).max(32, "The limit is 32 entries per interface."), sourceNotes: z.array(baselineSourceNoteSchema),
 });
 
 function validateDocumentationLinks(item: BaselineInterface, index: number, context: z.RefinementCtx): void {
@@ -95,7 +95,7 @@ function validateDocumentationLinks(item: BaselineInterface, index: number, cont
 }
 
 export function validateBaselineDocumentation(baseline: Baseline, context: z.RefinementCtx): void {
-  if (baseline.formatVersion !== 2) return;
+  if (baseline.formatVersion === 1) return;
   const docs = baseline.interfaces.flatMap((item) => item.documentation ? [item.documentation] : []);
   if (encoder.encode(JSON.stringify(docs)).byteLength > documentationByteLimit) {
     context.addIssue({

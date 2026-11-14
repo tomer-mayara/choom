@@ -1,4 +1,4 @@
-import type { Baseline, DuplicationEndpointReference, DuplicationFinding, DuplicationReport, DuplicationStatus } from "../domain/generated/contracts.ts";
+import type { Baseline, BaselineInterface, DuplicationEndpointReference, DuplicationFinding, DuplicationReport, DuplicationStatus } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 
 interface DuplicationAttachment {
@@ -39,9 +39,8 @@ export function duplicationCounts(baseline: ReadonlyData<Baseline>, report?: Rea
 }
 
 export function duplicationEndpointName(baseline: ReadonlyData<Baseline>, endpoint: ReadonlyData<DuplicationEndpointReference>): string {
-  const item = baseline.interfaces.find(({ id }) => id === endpoint.interfaceId);
-  const entry = baseline.formatVersion === 2 ? baseline.interfaces.find(({ id }) => id === endpoint.interfaceId)
-    ?.documentation?.entries.find(({ id }) => id === endpoint.entryId) : undefined;
+  const item: ReadonlyData<BaselineInterface> | undefined = baseline.interfaces.find(({ id }) => id === endpoint.interfaceId);
+  const entry = baseline.formatVersion !== 1 ? item?.documentation?.entries.find(({ id }) => id === endpoint.entryId) : undefined;
   return `${item?.name ?? endpoint.interfaceId}${entry ? ` / ${entry.name}` : ""}`;
 }
 

@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
-import { duplicationCounts, findingsForRecord } from "../../../src/components/duplication-view.ts";
+import { duplicationCounts, duplicationEndpointName, findingsForRecord } from "../../../src/components/duplication-view.ts";
 import { fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
-import { duplicationUiFixture } from "../../support/interface-duplication-fixtures.ts";
+import { duplicationUiFixture, duplicationV3Fixture } from "../../support/interface-duplication-fixtures.ts";
+
+test("version 3 comparison labels name the exact documented entry", () => {
+  const { baseline } = duplicationV3Fixture();
+  expect(duplicationEndpointName(baseline, { interfaceId: "invoice-api", entryId: "invoice-type" })).toBe("Invoice API / Invoice type");
+  expect(duplicationEndpointName(baseline, { interfaceId: "invoice-api" })).toBe("Invoice API");
+});
 
 test.each(["needs-review", "potential-redundancy", "insufficient-evidence"] as const)("%s contributes one count to each direct owner", (status) => {
   const { baseline, report, finding } = duplicationUiFixture();

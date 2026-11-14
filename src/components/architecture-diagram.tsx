@@ -242,7 +242,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           Show self-connections
         </label>
       </fieldset>
-      <p>Arrow: consumer may use the owner's interface.</p>
+      {baseline.formatVersion !== 3 ? <p>Arrow: consumer may use the owner's interface.</p> : null}
       <p style={{ visibility: edges.length ? "hidden" : "visible" }}>No connections shown.</p>
     </div>
     <div className="min-h-0 flex-1">

@@ -22,7 +22,7 @@ CR, or CRLF pair counts as one line break. The parser checks bounds before
 model validation. See [documents.md](documents.md#yaml-encoding) for the shared
 parser rules.
 
-A numeric `formatVersion` other than 1 or 2 returns `unsupported-version`. Missing
+A numeric `formatVersion` other than 1, 2, or 3 returns `unsupported-version`. Missing
 or invalid model fields return `invalid-document`, with the field path when
 available. YAML syntax and unsupported YAML constructs return
 `invalid-encoding`; exceeded bounds return `limit-exceeded`. Error messages do
@@ -30,8 +30,8 @@ not contain raw input values, unknown field names, or parser exception text.
 Every result includes a nonnegative duration in milliseconds. These local
 results do not establish a production reliability or latency claim.
 
-Version 2 documentation has these additional limits. They do not restrict old
-architecture fields in either supported version.
+Version 2/3 documentation has these additional limits. They do not restrict old
+architecture fields in any supported version.
 
 | Value | Limit |
 | --- | --- |
@@ -52,6 +52,29 @@ Malformed or excessive documentation returns `invalid-document`, with the field
 path and a useful limit message. This differs from the existing YAML parser
 `limit-exceeded` failure. Both failures keep the previous view and inspection.
 Documentation does not change the existing display limits.
+
+Version 3 source-use data has separate limits:
+
+| Value | Limit |
+| --- | --- |
+| Uses across all assessments, before combining or filtering | 2,000 |
+| Source notes across all assessments | 4,000 |
+| Each new ID, reference, access point, or path | 4 KiB of UTF-8 |
+| Each description, scope, or limitation | 8 KiB of UTF-8 |
+| The complete `sourceUsage` object | 2 MiB of UTF-8 |
+
+The total is the byte size of compact `JSON.stringify(sourceUsage)`, including
+all metadata and repeated strings. Source notes retain the existing safe path,
+SHA-256, and positive inclusive line-range rules. Source-use shape, reference,
+count, and byte failures return `invalid-document` with an affected field and
+useful reason. Exact limits pass; one record or byte over fails. All version 2
+documentation refinements and budgets apply to version 3 independently.
+
+The existing 500 architecture records, 2,000 explicit permission/owner links,
+and 16-level hierarchy limits remain unchanged. Source uses are not added to
+that link budget. One source use can produce at most one source arrow. The
+reader validates hidden records before layout and rejects the whole candidate;
+a failed replacement preserves the existing view and choices.
 
 The viewer uses this decoder on both hosts. The legacy diagram codec was removed in BV-03.
 
