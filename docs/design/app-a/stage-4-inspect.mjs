@@ -265,6 +265,12 @@ function prompt(state) {
     `Keep each graph context separate. Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
     `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
     `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n` +
+    `Use version 2 for structured interface documentation. For each function or method entry (kind: function), ` +
+    `record a signature statement with its own status and evidence references. Copy the supported declaration with parameters ` +
+    `and return type, without the body or opening brace. Do not invent types, void, defaults or parameters, or derive types from prose. ` +
+    `If the complete declaration is unsupported, use a null signature and the exact discovery subject ` +
+    `interface-id.documentation.entries.entry-id.signature. Keep known interaction facts separately. ` +
+    `Omit signatures for other kinds. An absent signature means not recorded; a null signature means unknown.\n\n` +
     `Prepare the complete external review packet in the saved record-format.md and step-4-cookbook.md. ` +
     `It includes the proposed baseline, code mapping, resource observations, entry analysis, discovery and LLM review records. ` +
     `Preserve prior questions and gaps unchanged and append resolution notes with links to the old IDs. ` +

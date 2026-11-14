@@ -6,7 +6,7 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import { runLayout } from './run-layout.mjs';
-import { validateDiscoveryRecords } from './stage-6-records.mjs';
+import { readBaselineYaml, validateDiscoveryRecords } from './stage-6-records.mjs';
 
 const [action, stage, reviewDirectory, ...extra] = process.argv.slice(2);
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
@@ -96,7 +96,8 @@ const require = createRequire(join(tools, 'package.json'));
 const yamlPath = require.resolve('yaml');
 assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/') && realpathSync(yamlPath) === yamlPath,
   'Use YAML from the trusted checkout.');
-const { parse, stringify } = require(yamlPath);
+const yaml = require(yamlPath);
+const { parse, stringify } = yaml;
 const parseBytes = bytes => parse(bytes.toString('utf8'));
 const json = bytes => JSON.parse(bytes.toString('utf8'));
 const refFor = name => name === 'entry-analysis.yaml' ? id + '-entry-analysis' : id + '-file@' + encodeURIComponent(name);
@@ -106,7 +107,7 @@ function verifiedInput() {
   const drafts = new Map(draftFiles.map(name => [name, read(attempt, checkpoint(name))]));
   const run = parseBytes(drafts.get('run.yaml'));
   const priorDiscovery = parseBytes(drafts.get('discovery.yaml'));
-  const priorBaseline = parseBytes(drafts.get('baseline.yaml'));
+  const priorBaseline = readBaselineYaml(drafts.get('baseline.yaml'), yaml);
   assert(run?.formatVersion === 1 && run.mode === 'A' && run.status === 'in-progress' && run.snapshot?.root === 'snapshot' &&
     ['inventory', 'entryAnalysis', 'inspectionPriorities'].every(key => run.progress?.[key] === 'complete') &&
     run.progress.baselineRecovery === 'pending' && !Object.hasOwn(run.progress, progressKey) &&
@@ -198,7 +199,7 @@ function candidate(state, packet) {
     if (name === receiptName || name.startsWith('.publication-')) continue;
     put(refFor(name), 'evidence/' + id + '/' + name, bytes);
   }
-  const baseline = parseBytes(packet.get('baseline.proposed.yaml'));
+  const baseline = readBaselineYaml(packet.get('baseline.proposed.yaml'), yaml);
   const discovery = parseBytes(packet.get('discovery.proposed.yaml'));
   const entry = parseBytes(packet.get('entry-analysis.yaml'));
   assert(baseline.id === priorBaseline.id && baseline.parentId === priorBaseline.parentId &&

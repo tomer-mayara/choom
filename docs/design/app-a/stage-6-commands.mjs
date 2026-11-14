@@ -134,8 +134,7 @@ function loadYaml(pinned) {
   const path = require.resolve('yaml');
   assert(path.startsWith(root + '/') && realpathSync(path) === path && Object.hasOwn(files, path.slice(root.length + 1)),
     'Use the pinned YAML entry from the trusted checkout.');
-  const { parse, stringify } = require(path);
-  return { parse, stringify, versions };
+  return { ...require(path), versions };
 }
 
 async function loadRecords(bytes) {
@@ -192,7 +191,9 @@ function workingDrafts() { return new Map(draftNames.map(name => [name, file(wor
 
 function readStageFive({ drafts, packet, records, yaml }) {
   const parse = bytes => yaml.parse(bytes.toString('utf8'));
-  const [run, baseline, discovery] = draftNames.map(name => parse(drafts.get(name)));
+  const run = parse(drafts.get('run.yaml'));
+  const baseline = records.readBaselineYaml(drafts.get('baseline.yaml'), yaml);
+  const discovery = parse(drafts.get('discovery.yaml'));
   assert(run?.formatVersion === 1 && run.mode === 'A' && run.status === 'in-progress' &&
     same(run.progress, { inventory: 'complete', entryAnalysis: 'complete', inspectionPriorities: 'complete',
       componentRecovery: 'complete', remainingCode: 'complete', baselineRecovery: 'pending' }) &&

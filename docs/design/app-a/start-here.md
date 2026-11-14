@@ -49,6 +49,22 @@ analysis-run-001/
 ```
 
 The baseline describes components, membership, interfaces, resources and rules.
+Stage 1 creates an empty version 1 baseline. Stages 4 and 5 can publish version 1
+or version 2; version 2 adds structured interface documentation. Use the exact
+[record contract](record-format.md#version-2-interface-documentation) and its
+reader limits. Keep unsupported behavior unknown. Do not invent examples,
+observed users, or execution results to fill a panel. For function and method
+entries, record the supported literal signature with parameters and return type. Keep an unsupported complete declaration unknown
+with its exact field gap; do not invent types or infer them from prose. Stage 6
+saves the validated proposal without changing its bytes. Choom's current reader
+opens both versions.
+
+Use one trusted tool revision and the pinned environment for an attempt. A tool
+change needs a fresh attempt. Historical runs keep their saved baselines,
+receipts and tool pins. Verify an old attempt with its matching trusted tools;
+do not edit its pins or run saved scripts without first checking them against
+that trusted revision. New reader compatibility does not permit a new helper
+revision to rewrite an old run.
 Discovery explains the system, inspected behavior paths, file ownership and
 remaining questions. Large inventories and tool results stay in referenced files.
 Keep the complete output folder; the two final YAML files alone are not a
