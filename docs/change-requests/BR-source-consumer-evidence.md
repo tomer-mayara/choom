@@ -75,6 +75,53 @@ Completed B checks:
 - The frontend/browser build and `bun run habit-hooks --all` passed. No finding
   was snoozed. Manager review checked the complete B production and test diff.
 
+PR #44 CI passed web and all three desktop jobs, including installed Linux
+acceptance, at commit `ce17b8e37bc7d161f46020e320ac569b92732a8b`.
+
 The first green browser attempt exposed an incorrect test locator (`Fit view`).
 It was corrected to the existing accessible label (`Fit View`); no application
 change was needed. Later acceptance runs use the corrected locator.
+
+
+## BR-11C — Read callers and review scope
+
+The first browser acceptance opened the interface but failed because Used by
+was absent. Focused DOM tests then failed for the missing consumer groups,
+assessment states, inline caller source and separate statement status. Source
+projection tests and Sources assertions failed before their matching changes.
+Existing Overview and Sources behavior passed as characterization first.
+
+Used by now keeps the whole interface's source uses, grouped by direct consumer.
+It preserves each site and entry binding. Type, test, unknown-context and
+unmapped references remain available in Other source references. Missing data,
+unassessed interfaces and scoped empty results have different messages. Sources
+retains the common snapshot/mapping, exact locations, all supporting citations
+and original assessment, separately from the original interface and intent
+statements. The source notice does not count permission gaps as unknown callers.
+
+Independent review found a large-input defect before commit: 2,000 uses citing
+100 shared notes passed the public decoder but expanded into 200,103 list items
+on the initial Sources view. New browser and focused DOM assertions failed on
+these eagerly shown citations. Each note and evidence reference now has a lazy
+Source uses (N) disclosure using the existing inspection state. With the same
+valid input, initial Sources has 103 list items; opening Evidence references has
+214, and opening one citation list has 2,214, including the last use. These are
+rendered element counts, not browser timing claims.
+
+Completed C checks:
+
+- Focused native/DOM checks and the valid large-input regression passed.
+- Full `bun run check`: 334 native tests, 236 DOM tests, 49 native Cucumber
+  scenarios / 150 steps, and 51 interface tests passed. Types, contracts, lint,
+  links, dependency rules, unused code and duplication also passed.
+- Frontend build, `bun run check-types`, and Habit Hooks passed; snooze is empty.
+- Manager and independent review checked the complete C change. Independent
+  verification passed 37 DOM tests and seven provenance tests after the fix.
+  No unresolved review finding remains.
+
+The C reading cases cover accepted statements, unknown providers, duplicate
+names, interface-wide entry bindings, inline source details, keyboard/touch,
+short/narrow windows, Back and successful, failed, or cancelled replacement.
+The final C plus BR-10/B browser regression passed 108 scenarios / 770 steps,
+including all 19 C scenarios. The assembled published-file and installed
+journeys remain F's scope.

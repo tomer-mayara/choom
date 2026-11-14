@@ -267,6 +267,14 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
   </div>;
 }
 
+function SourceReviewNotice({ baseline }: { baseline: ReadonlyData<Baseline> }) {
+  if (baseline.formatVersion !== 3 || baseline.interfaces.length === 0) return null;
+  const message = !baseline.sourceUsage ? "Source use not recorded."
+    : baseline.sourceUsage.assessments.length === 0 ? "No interface source assessments recorded."
+      : "Source review is partial. See interface details for scope and gaps.";
+  return <p className="shrink-0 border-b border-border px-4 py-2 text-xs text-muted-foreground">{message}</p>;
+}
+
 /** The published pair defines one view; pointer frames only update its canvas. */
 export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
@@ -303,6 +311,7 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
       {incompleteInterfaces > 0 ? <p className="shrink-0 border-b border-border px-4 py-2 text-xs text-muted-foreground">
         {incompleteInterfaces} {incompleteInterfaces === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.
       </p> : null}
+      <SourceReviewNotice baseline={baseline} />
       {baseline.components.length === 0 ? (
         <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
       ) : null}

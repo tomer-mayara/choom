@@ -155,8 +155,8 @@ components, interfaces, and resources, including items with unknown owners.
 
 Interface inspection starts with **Overview**. It names the provider and shows
 the saved contract as readable text. Version 1 promises appear as **Behavior**,
-**Data exchanged**, **Failures**, and **What changes and when it ends**. Version 2
-can add named entries and explicit interaction facts. Select an entry to read
+**Data exchanged**, **Failures**, and **What changes and when it ends**. Versions 2
+and 3 can add named entries and explicit interaction facts. Select an entry to read
 its own description. A function or method can show a saved **Signature**, including
 its parameters and return type. Choom shows the exact declaration and its own
 recorded status. **Signature not recorded.** and **Signature is unknown.** are
@@ -165,6 +165,20 @@ entry does not acquire invented call details.
 Unknown facts stay unknown. **Access rule** lists permitted components; it does
 not report actual calls or runtime authorization. Use arrow keys, Home, or End
 to change tabs. A direct interface selection starts a fresh Overview.
+
+In version 3, **Used by** groups saved application and tooling value references
+by their direct consumer. The list covers the whole interface, even when an
+entry is selected. Each site keeps its entry binding, kind, context, and
+description. **Caller source** shows the saved caller note and location inline.
+**Other source references** keeps type, test, unknown-context, and unmapped
+references available without drawing them as connections. Internal use stays
+listed when self-connections are hidden on the drawing.
+
+Missing source data, an unassessed interface, and an assessed empty result have
+different explanations. A saved assessment remains a partial source review.
+**Sources** keeps its scope, limits, shared snapshot and mapping, all supporting
+references, and original assessment. The access rule and interface statement
+status remain separate; neither establishes runtime execution.
 
 **Example** names the selected entry and lists its saved examples. Select a case
 to read its sample and, when supplied, its input and result summary. **Detailed

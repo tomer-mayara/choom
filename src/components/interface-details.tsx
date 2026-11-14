@@ -22,6 +22,7 @@ export function InterfaceDetails({ baseline, item, contentRef, initialEntryId, r
   initialEntryId?: string;
   reading?: InterfaceReadingState;
 }) {
+  const assessment = baseline.formatVersion === 3 ? baseline.sourceUsage?.assessments.find((assessment) => assessment.interfaceId === item.id) : undefined;
   const tabs = useInterfaceTabs(contentRef, reading);
   const disclosure = useInterfaceDisclosures(contentRef, reading);
   const [entryId, setEntryId] = useState(reading?.entryId ?? initialEntryId ?? item.documentation?.entries[0]?.id);
@@ -56,7 +57,9 @@ export function InterfaceDetails({ baseline, item, contentRef, initialEntryId, r
   }
   return <section className="space-y-4 wrap-anywhere">
     <h2 className="text-lg font-semibold">{item.name}</h2>
-    <InterfaceRecordedStatus item={item} />
+    {baseline.formatVersion === 3 ? <div role="group" aria-label="Interface statement status" className="space-y-1">
+      <p className="text-xs font-semibold">Interface statement status</p><InterfaceRecordedStatus item={item} />
+    </div> : <InterfaceRecordedStatus item={item} />}
     <InterfaceProvider baseline={baseline} item={item} />
     <Tabs.Root value={tabs.tab} onValueChange={tabs.changeTab} className="space-y-4">
       <Tabs.List aria-label="Interface views" className="sticky top-0 z-10 flex gap-1 border-b border-border bg-card">
@@ -64,7 +67,7 @@ export function InterfaceDetails({ baseline, item, contentRef, initialEntryId, r
           className="min-w-0 flex-1 rounded-t px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:font-semibold">{name}</Tabs.Trigger>)}
       </Tabs.List>
       <Tabs.Content value="overview" onFocus={revealFocusedControl} className="focus-visible:outline-2 focus-visible:outline-ring">
-        <TabBody restore={tabs.restore}><InterfaceOverview baseline={baseline} item={item} entry={entry} selectEntry={selectEntry} disclosure={disclosure} /></TabBody>
+        <TabBody restore={tabs.restore}><InterfaceOverview baseline={baseline} item={item} entry={entry} selectEntry={selectEntry} disclosure={disclosure} assessment={assessment} /></TabBody>
       </Tabs.Content>
       <Tabs.Content value="example" onFocus={revealFocusedControl} className="focus-visible:outline-2 focus-visible:outline-ring">
         <TabBody restore={tabs.restore}><InterfaceExamples entry={entry} example={example} selectExample={selectExample} resultOpen={resultOpen} setResultOpen={(open) => {
@@ -74,7 +77,7 @@ export function InterfaceDetails({ baseline, item, contentRef, initialEntryId, r
           showEntryId={Boolean(entry && item.documentation?.entries.some((other) => other.id !== entry.id && other.name === entry.name))} /></TabBody>
       </Tabs.Content>
       <Tabs.Content value="sources" onFocus={revealFocusedControl} className="space-y-4 focus-visible:outline-2 focus-visible:outline-ring">
-        <TabBody restore={tabs.restore}><InterfaceSources item={item} disclosure={disclosure} /></TabBody>
+        <TabBody restore={tabs.restore}><InterfaceSources baseline={baseline} item={item} disclosure={disclosure} assessment={assessment} /></TabBody>
       </Tabs.Content>
     </Tabs.Root>
   </section>;

@@ -268,7 +268,31 @@ general behavior, so the legacy contract stays visible when the description and
 interaction are absent. Original record keeps the complete signature statement.
 
 Overview, Example, and Sources use standard keyboard tabs in the existing inspector width.
-Sources starts with saved note descriptions and exact supplied source locations.
+For version 3, Overview's **Used by** list groups application and tooling value
+references by direct consumer ID. Duplicate component names retain their IDs.
+Each saved site keeps its kind, context, description, and optional entry binding.
+The list covers the interface and does not change when an entry is selected.
+Known consumers remain visible when the provider is unknown. Only known equal
+consumer/provider IDs mark internal use. **Other source references** shows the
+count and explanation for type, test, unknown-context, and unmapped references.
+Its disclosure keeps every omitted row available. **Caller source** uses an
+inline disclosure for the saved note and location; it does not navigate or fetch.
+
+Missing source data, missing assessment, and assessed empty uses have distinct
+messages. The source notice describes absent data, no assessments, or partial
+review. It does not count permission gaps as unknown callers. Omit the notice
+when no interfaces exist. Version 3 labels the header status **Interface statement
+status**, separately from source use. Access rule remains permission only.
+
+Sources also shows the assessment's scope and limits, shared snapshot and
+mapping, and supporting references. Deduplicate evidence IDs while retaining
+each citing use and separate intent-statement support. Each note or evidence
+reference keeps its citing uses in a closed **Source uses (N)** disclosure.
+Expand it to read every citing use without rendering the same list under all
+shared references at once. **Original source assessment**
+keeps that record with its common provenance. **Original record** remains the
+interface itself; Baseline details keeps the complete source-use object.
+Saved documentation notes retain their descriptions and exact supplied source locations.
 A missing location stays missing. Recorded statements retains each field path,
 status, and acceptance reference. Evidence references deduplicates IDs and keeps
 every citing path; it states once that evidence content is not included. These
