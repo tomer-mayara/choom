@@ -36,8 +36,10 @@ node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" start
 
 The helper requires completed component recovery and its published working
 drafts. The baseline must still be proposed, before Stage 6 saves a fixed version.
-Version 1 and version 2 inputs are supported. Use version 2 to preserve or add
-the [interface documentation](record-format.md#version-2-interface-documentation).
+Versions 1, 2, and 3 keep their own strict fields. Use version 3 for
+[source-use assessments](record-format.md#version-3-source-use-assessments).
+It retains the [interface documentation](record-format.md#version-2-interface-documentation)
+and signatures from version 2.
 It verifies the registered artifacts, the selected Stage 4 facts,
 the published draft pair, and every indexed snapshot file. It saves the three
 draft checkpoints, its tools, the cookbook, the query scope, and a handoff record.
@@ -118,6 +120,13 @@ Review omitted declarations, contracts and setup inputs deliberately. The
 automatic cap is not a reason to omit material evidence from the review; use
 focused excerpt requests for the missing ranges that the decisions need.
 
+Before publication, review source-use assignments against the complete candidate
+mapping. Update its shared mapping reference even when ownership did not change.
+Every carried use must still name the correct direct consumer and interface.
+The [source-use contract](record-format.md#version-3-source-use-assessments)
+defines caller evidence, unknown subjects, and limits. Collection alone does
+not make a source range reviewed.
+
 ## 3. Ask the LLM to account for the remaining code
 
 Give the LLM the saved `review-prompt.md` and [record formats](record-format.md).
@@ -159,8 +168,9 @@ and discovery records. Keep continuing component IDs. Keep all inferred intent
 proposed. Retain an unknown owner with a specific reason where evidence is
 insufficient. Do not create a utilities group to eliminate unknowns.
 
-Use version 2 for structured interface documentation. For each function or
-method entry (`kind: function`), record a signature statement with its own
+Use formatVersion: 3 for source-use assessments. Retain structured interface
+documentation and its meanings. For each function or method entry
+(`kind: function`), record a signature statement with its own
 status and evidence references. Copy the supported declaration with parameters
 and return type, without the body or opening brace. Do not invent types, void,
 defaults or parameters, or derive types from prose. If the complete declaration
@@ -168,6 +178,41 @@ is unsupported, use a null signature and the exact discovery subject
 interface-id.documentation.entries.entry-id.signature. Keep known interaction
 facts separately. Omit signatures for other kinds. An absent signature means
 not recorded; a null signature means unknown.
+
+For each interface, retain or add a sourceUsage assessment, or leave it
+unassessed. Source use and allowedConsumers answer different questions. Keep
+permission unknown without separate policy evidence; source use does not prove
+runtime execution. Use this run's snapshotRef and update the one shared
+sourceUsage.mappingRef to the candidate discovery.codeMappingRef. Do this even
+when all assignments are unchanged. Recheck every carried consumer assignment
+and interface/entry binding against the candidate mapping and baseline. Reuse
+unchanged caller evidence; do not copy mappingRef into each use.
+
+Map each caller file to its direct owner, not its parent. Read calls and value
+references; resolve aliases, injected callbacks, JSX, and IPC registration where
+needed. For an injected reader, inspect construction, callback assignment, and
+invocation. For IPC, inspect the caller and registered native handler. Import
+matches and graph/query records alone cannot prove a resolved interface use.
+Keep unresolved interface findings in discovery rather than guessing a binding.
+
+Each assessment needs scope, evidenceRefs, limitations, uses, and sourceNotes.
+Each use has a stable local ID, consumerId (or null), description, callerRef,
+and nonempty distinct evidenceRefs. Use kind value or type, and context
+application, tooling, test, or unknown. Keep repeated sites and self-use. A
+manual command without a source caller belongs in limitations with scope
+evidence. An empty uses list means no uses found in the reviewed scope, not
+unused or complete coverage. Retain known uses despite other review gaps.
+
+Every use evidenceRef must be a direct saved source-record ID without a fragment.
+Include callerRef in that list. Read the caller and every binding, declaration,
+or configuration range; each must be in the selected reviewedFiles chain with
+a matching located source note. Use graph/query evidence for scope only.
+Optional accessPoint and entryId must name this interface and agree when both
+exist. Explain null consumers or unknown contexts in the description and exact
+discovery subjects interface-id.sourceUsage.uses.use-id.consumerId or
+interface-id.sourceUsage.uses.use-id.context. Follow the separate source-use
+and reader limits in record-format.md. Preserve supported descriptions, examples,
+source notes, signatures, and explicit unknown facts.
 
 Preserve prior questions, gaps and evidence in this manual prototype. Append
 linked resolution notes when the new evidence answers part of an earlier

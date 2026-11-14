@@ -265,12 +265,33 @@ function prompt(state) {
     `Keep each graph context separate. Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
     `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
     `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n` +
-    `Use version 2 for structured interface documentation. For each function or method entry (kind: function), ` +
+    `Use formatVersion: 3 for source-use assessments; retain version 2 interface documentation and its meanings. ` +
+    `For each function or method entry (kind: function), ` +
     `record a signature statement with its own status and evidence references. Copy the supported declaration with parameters ` +
     `and return type, without the body or opening brace. Do not invent types, void, defaults or parameters, or derive types from prose. ` +
     `If the complete declaration is unsupported, use a null signature and the exact discovery subject ` +
     `interface-id.documentation.entries.entry-id.signature. Keep known interaction facts separately. ` +
     `Omit signatures for other kinds. An absent signature means not recorded; a null signature means unknown.\n\n` +
+    `For each interface, record a sourceUsage assessment or leave that interface unassessed. ` +
+    `Keep source use separate from allowedConsumers: a source caller does not establish permission or runtime execution. ` +
+    `Use one sourceUsage.snapshotRef for this run and one sourceUsage.mappingRef equal to the candidate discovery.codeMappingRef. ` +
+    `Map each caller file to its direct owner in that candidate mapping; do not roll a child up to its parent.\n\n` +
+    `Read actual calls and value references, and follow aliases, injected callbacks, JSX, and native command registration ` +
+    `until the interface binding is supported. For an injected reader, inspect construction, callback assignment, and invocation; ` +
+    `for IPC, inspect the caller and registered native handler. An import or graph match alone is not a resolved use. ` +
+    `Keep an unresolved interface finding in discovery rather than attaching it to a guessed interface.\n\n` +
+    `Use stable local use IDs, kind value or type, and context application, tooling, test, or unknown. ` +
+    `Retain repeated sites and self-use. A documented operator command alone creates no component caller. ` +
+    `Keep it in scoped limitations with supporting evidence. Each assessment needs scope, evidenceRefs, limitations, uses, ` +
+    `and sourceNotes. An empty uses list means no uses found in the reviewed scope, not unused or complete coverage.\n\n` +
+    `Each use needs consumerId (or null), description, callerRef, and nonempty distinct evidenceRefs. ` +
+    `Use direct saved source-record IDs without fragments for every use reference; callerRef must occur in evidenceRefs. ` +
+    `Read every caller and binding/declaration/configuration range, add it to the selected reviewedFiles chain, ` +
+    `and supply a matching located source note for every use reference. Graph/query evidence supports scope only. ` +
+    `Optional accessPoint and entryId must name this interface and agree when both are supplied. ` +
+    `Explain unresolved ownership or context in the description and in exact discovery subjects ` +
+    `interface-id.sourceUsage.uses.use-id.consumerId or interface-id.sourceUsage.uses.use-id.context. ` +
+    `Keep all known uses even when other callers remain unassessed. Check the separate source-use and reader limits in record-format.md.\n\n` +
     `Prepare the complete external review packet in the saved record-format.md and step-4-cookbook.md. ` +
     `It includes the proposed baseline, code mapping, resource observations, entry analysis, discovery and LLM review records. ` +
     `Preserve prior questions and gaps unchanged and append resolution notes with links to the old IDs. ` +

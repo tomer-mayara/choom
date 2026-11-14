@@ -12,14 +12,20 @@ artifact is an error, not a coverage gap that the helper can ignore.
 The helper supports this Mode A first-baseline profile: retained Knip inputs
 and completed dependency graphs with explicit partial coverage. Other result
 formats need a separate validator.
-Baseline versions 1 and 2 use the same shared record checks as Stages 4 and 5.
-For version 2, review each documented entry, example, source note and exact
+Baseline versions 1, 2, and 3 use the same shared record checks as Stages 4 and 5.
+For versions 2/3, review each documented entry, example, source note and exact
 unknown-field subject against the
 [record contract](record-format.md#version-2-interface-documentation). A
 source-reviewed example means that its cited saved lines were reviewed; it does
 not mean the example ran. Stage 6 checks the complete viewer bounds and preserves
 the published baseline bytes. It does not fill missing documentation or migrate
 an older baseline.
+
+For version 3, also review the [source-use assessments](record-format.md#version-3-source-use-assessments).
+Keep the selected Stage 5 mapping and all source records unchanged. Source use,
+permission policy, and runtime execution remain separate. Partial scope and
+unknown consumers are allowed when explained; missing evidence is not a gap
+that can bypass validation.
 
 ## Contents
 
@@ -69,6 +75,15 @@ Check whether the overview, proposed memberships and inspected paths agree
 with their cited evidence. Distinguish source ownership, runtime resource
 ownership, test placement and source inspection. Keep observations separate
 from intended access policy. Preserve unknown owners and partial coverage.
+
+Check sourceUsage against this run's snapshot and the selected Stage 5 mapping.
+For every use, verify the direct caller owner, actual interface/entry binding,
+kind and context, and the reviewed caller and supporting source ranges. Every
+use evidence reference needs a matching located note. Keep permission separate
+and retain self-use, type/test references, and manual-command limits. Null
+consumers and unknown contexts need exact discovery subjects. Missing assessments
+and scoped empty lists are not complete absence claims. Preserve the partial
+scope. Do not change the mapping reference or source records during saving.
 
 Check each documented function or method signature against its cited saved
 source or registered contract. It must preserve the supported declaration's

@@ -51,15 +51,25 @@ analysis-run-001/
 ```
 
 The baseline describes components, membership, interfaces, resources and rules.
-Stage 1 creates an empty version 1 baseline. Stages 4 and 5 can publish version 1
-or version 2; version 2 adds structured interface documentation. Use the exact
-[record contract](record-format.md#version-2-interface-documentation) and its
-reader limits. Keep unsupported behavior unknown. Do not invent examples,
-observed users, or execution results to fill a panel. For function and method
-entries, record the supported literal signature with parameters and return type. Keep an unsupported complete declaration unknown
-with its exact field gap; do not invent types or infer them from prose. Stage 6
-saves the validated proposal without changing its bytes. Choom's current reader
-opens both versions.
+Stage 1 creates an empty version 1 baseline. Use version 3 in Stages 4 and 5
+for [source-use assessments](record-format.md#version-3-source-use-assessments).
+It retains version 2's [interface documentation](record-format.md#version-2-interface-documentation)
+and signatures. Versions 1 and 2 remain strict and readable; they are not
+silently upgraded. Follow the record contract and its reader limits.
+
+Record the direct components that use each interface in reviewed source,
+separately from those permitted to use it. Keep the shared snapshot and selected
+mapping, caller sites, binding evidence, and partial scope. A missing assessment
+is not an empty caller list. An empty reviewed list is not proof of no use.
+Type, test, tooling, and self-use remain explicit. Do not invent a consumer for
+a manual command or infer permission or execution from source references.
+
+Keep unsupported behavior unknown. For function and method entries, record the
+supported literal signature with parameters and return type. Keep an unsupported
+complete declaration unknown with its exact field gap; do not invent types or
+infer them from prose. Preserve supported descriptions, examples, and evidence.
+Stage 6 saves the validated proposal without changing its bytes. Choom reads
+all three versions without running source analysis.
 
 Use one trusted tool revision and the pinned environment for an attempt. A tool
 change needs a fresh attempt. Historical runs keep their saved baselines,
@@ -253,6 +263,15 @@ assembles the full response, but the complete final packet still needs review.
 - Compare memberships, exact owners, paths, resource actors and interface
   promises. Keep file ownership, runtime resource ownership, inspection and
   behavior verification separate.
+- Check source use independently from permission. Resolve calls, callbacks,
+  JSX, and IPC bindings against saved caller and declaration/configuration
+  ranges. Every use evidence reference needs reviewed source and a matching
+  located note. Compare caller ownership with the candidate's selected mapping,
+  including explicit null owners; do not use parent ownership as a substitute.
+- Check the common snapshot and mapping references even for empty assessments.
+  In Stage 5, update the one mapping reference and recheck carried assignments
+  and entry bindings. Preserve known uses under partial coverage. Explain null
+  consumers and unknown contexts with their exact discovery subjects.
 - Recalculate current counts from the records. Refresh the overview, mapping
   limits and other current explanations. Preserve earlier questions and gaps
   unchanged, with linked resolution notes; do not preserve obsolete current

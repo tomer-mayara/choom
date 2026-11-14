@@ -125,3 +125,34 @@ short/narrow windows, Back and successful, failed, or cancelled replacement.
 The final C plus BR-10/B browser regression passed 108 scenarios / 770 steps,
 including all 19 C scenarios. The assembled published-file and installed
 journeys remain F's scope.
+
+## BR-11D — Analysis prompts
+
+The original commands successfully emitted Stage 4/5 prompts, but review found
+that they requested version 2 documentation without structured source consumers,
+shared mapping, reviewed caller/binding evidence or exact unresolved subjects.
+This was a prompt-content failure, not a command failure.
+
+The changed Stage 4 generator and Stage 5 prompt block now request version 3
+assessments. They distinguish source use, permission and execution; require
+direct caller ownership and reviewed binding chains; retain type/test/tooling
+and self-use; and keep partial, empty and manual-command scope explicit. Stage 5
+must update the common mapping and recheck carried assignments and bindings,
+even when ownership is unchanged. Supported documentation and literal method
+signatures remain required. The existing nine-file packet remains unchanged.
+
+Normal start/toolchain/run/collect commands emitted the reviewed prompts in
+fresh disposable attempts. All six Stage 4 graph contexts completed. Stage 5
+collection used a valid v2 predecessor, so this check does not depend on E.
+Both emitted prompts were read in full. Syntax, 123 local file/anchor links,
+the fictional YAML example and whitespace checks passed. The full C candidate
+checks and Habit Hooks also included these files. No behavior test was added
+for prompt tooling.
+
+The new Stage 4 prompt SHA-256 is
+`3eb824e9003719bff6f858fe44b29a5dfcea9707488fb05950563b8cc25181fe`;
+the Stage 5 prompt hash is
+`5fdc167a99129146fa10d5d51752ebe01320da3951aa873c8ca9395fa30a2942`.
+The disposable checks used saved run 004 inputs and left its 1,111 registered
+artifact hashes and manifest unchanged. They are prompt rehearsals, not new
+completed architecture analyses. F records the complete successor publication.
