@@ -3,26 +3,16 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
-import { parse, stringify } from "yaml";
+import { parse } from "yaml";
 import { type CommandResult, runCli } from "../../packages/producer/test/support/commands.ts";
-import { completedRun, type CompletedRunFixture, type FixtureBaseline, type FixtureComponent }
-  from "../../packages/producer/test/support/completed-run.ts";
+import { completedRun, type CompletedRunFixture, type DecisionEntry, type DecisionFile, decisionFileYaml, type FixtureBaseline,
+  type FixtureComponent } from "../../packages/producer/test/support/completed-run.ts";
 import { folderState } from "../../packages/producer/test/support/producer-record.ts";
 
 // The scenarios record decisions about the published baseline of a run that Stage 6
 // completed, through the producer command line. A fictional model made the run's
 // readiness review, so the run's LLM call record names that model. In the fixture,
 // the component http is named Billing.
-interface DecisionEntry { action: string; itemId: string; field: string; oldValue?: unknown; newValue?: unknown }
-interface DecisionFile {
-  formatVersion: number;
-  id: string;
-  baselineRef: string;
-  baselineDigest: string;
-  decider: { name: string; kind: string };
-  decidedAt: string;
-  entries: DecisionEntry[];
-}
 interface RecordedDecisions {
   path: string;
   sha256: string;
@@ -81,13 +71,10 @@ async function savedBaseline(world: DecisionsWorld): Promise<FixtureBaseline> {
 // run. It starts with a YAML comment that names the baseline, as a copied entry does.
 function writeDecisions(world: DecisionsWorld, entries: DecisionEntry[], name = person): void {
   const run = currentRun(world);
-  const digest = sha256(publishedBytes(world));
-  const file: DecisionFile = { formatVersion: 1, id: "decisions-001", baselineRef: run.baselineId,
-    baselineDigest: digest, decider: { name, kind: "human" }, decidedAt, entries };
   const folder = join(run.root, "decision-input");
   mkdirSync(folder, { recursive: true });
   world.decisionFile = join(folder, "decisions.yaml");
-  writeFileSync(world.decisionFile, `# Baseline ${run.baselineId}, SHA-256 ${digest}\n${stringify(file)}`);
+  writeFileSync(world.decisionFile, decisionFileYaml(run, entries, { decider: { name, kind: "human" }, decidedAt }));
 }
 
 function lastDecide(world: DecisionsWorld): CommandResult {

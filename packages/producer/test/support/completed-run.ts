@@ -45,7 +45,7 @@ export async function completedRun(model: string, change?: BaselineChange): Prom
 }
 
 export interface DecisionEntry { action: string; itemId: string; field: string; oldValue?: unknown; newValue?: unknown }
-export interface DecisionRecord {
+export interface DecisionFile {
   formatVersion: number;
   id: string;
   baselineRef: string;
@@ -55,22 +55,14 @@ export interface DecisionRecord {
   entries: DecisionEntry[];
 }
 
-// The decisions of a person about the published baseline of the run, with the
-// fields of `change` replaced.
-export function decisionRecord(run: CompletedRunFixture, entries: DecisionEntry[], change: Partial<DecisionRecord> = {}):
-  DecisionRecord {
-  const baselineDigest = createHash("sha256").update(readFileSync(join(run.work, run.baselinePath))).digest("hex");
-  return { formatVersion: 1, id: "decisions-001", baselineRef: run.baselineId, baselineDigest,
-    decider: { name: "Ada Example", kind: "human" }, decidedAt: "2026-11-15T10:30:00Z", entries, ...change };
-}
-
-// Saves a decision record in the run folder as baseline decide saves a decision
-// file: as decisions/<id>.yaml. Returns the path in the run folder.
-export function saveDecisionRecord(work: string, record: DecisionRecord): string {
-  const path = `decisions/${record.id}.yaml`;
-  mkdirSync(join(work, "decisions"), { recursive: true });
-  writeFileSync(join(work, path), stringify(record));
-  return path;
+// The YAML text of a decision file of a person for the published baseline in the
+// run folder `run.work`, with the fields of `change` replaced. It starts with a
+// YAML comment that names the baseline, as a copied entry does.
+export function decisionFileYaml(run: CompletedRunFixture, entries: DecisionEntry[], change: Partial<DecisionFile> = {}): string {
+  const digest = createHash("sha256").update(readFileSync(join(run.work, run.baselinePath))).digest("hex");
+  return `# Baseline ${run.baselineId}, SHA-256 ${digest}\n` + stringify({ formatVersion: 1, id: "decisions-001",
+    baselineRef: run.baselineId, baselineDigest: digest, decider: { name: "Ada Example", kind: "human" },
+    decidedAt: "2026-11-15T10:30:00Z", entries, ...change });
 }
 
 // A file of a small run folder that a test writes. run.yaml registers it with its

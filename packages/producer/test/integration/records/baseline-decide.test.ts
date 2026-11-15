@@ -4,13 +4,13 @@ import { appendFileSync, cpSync, readFileSync, rmSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { type CommandResult, runCli, withScratch } from "../../support/commands.ts";
-import { completedRun, type CompletedRunFixture, stageSixAttempt } from "../../support/completed-run.ts";
+import { completedRun, type CompletedRunFixture, type DecisionEntry as Entry, type DecisionFile, decisionFileYaml, stageSixAttempt }
+  from "../../support/completed-run.ts";
 import { folderState } from "../../support/producer-record.ts";
 
 // The baseline decide command on copies of one run that the Stage 6 command line
 // completed. The command checks the decisions with @choom/baseline-model, so this
 // is an integration suite. A fictional model made the readiness review of the run.
-interface Entry { action: string; itemId: string; field: string; oldValue?: unknown; newValue?: unknown }
 
 const model = "Fictional Model 7";
 const callRecord = `evidence/${stageSixAttempt}/llm/analysis-call.yaml`;
@@ -35,17 +35,12 @@ function baselineDigest(work: string): string {
   return sha256(readFileSync(join(work, published.baselinePath)));
 }
 
-// The YAML text of a decision file for the published baseline. It starts with a
-// YAML comment that names the baseline, as a copied entry does.
-function decisionYaml(work: string, entries: Entry[], change: Record<string, unknown> = {}): string {
-  const digest = baselineDigest(work);
-  return `# Baseline ${published.baselineId}, SHA-256 ${digest}\n` + stringify({ formatVersion: 1, id: "decisions-001",
-    baselineRef: published.baselineId, baselineDigest: digest, decider: { name: "Ada Example", kind: "human" },
-    decidedAt: "2026-11-15T10:30:00Z", entries, ...change });
-}
+// The YAML text of a decision file for the published baseline in the run copy `work`.
+const decisionYaml = (work: string, entries: Entry[], change: Partial<DecisionFile> = {}): string =>
+  decisionFileYaml({ ...published, work }, entries, change);
 
 // Writes a decision file outside the run folder.
-function decisionFile(scratch: string, work: string, entries: Entry[], change: Record<string, unknown> = {}): string {
+function decisionFile(scratch: string, work: string, entries: Entry[], change: Partial<DecisionFile> = {}): string {
   const path = join(scratch, "decisions.yaml");
   writeFileSync(path, decisionYaml(work, entries, change));
   return path;

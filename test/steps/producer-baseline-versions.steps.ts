@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
@@ -8,17 +8,17 @@ import type { baselineSchema } from "@choom/baseline-model";
 import type { Baseline } from "@choom/baseline-model/contracts";
 import { baselineStatements, type StatementState } from "@choom/baseline-model/item-statements";
 import { type CommandResult, runCli } from "../../packages/producer/test/support/commands.ts";
-import { completedRun, type CompletedRunFixture, decisionRecord, saveDecisionRecord }
-  from "../../packages/producer/test/support/completed-run.ts";
+import { completedRun, type CompletedRunFixture, decisionFileYaml } from "../../packages/producer/test/support/completed-run.ts";
 import { folderState } from "../../packages/producer/test/support/producer-record.ts";
 import { readYamlData } from "../../src/lib/architecture-yaml/parse.ts";
 import { checkBaselineDisplayLimits } from "../../src/lib/baseline-display-limits.ts";
 
 // The scenarios make the next version of the published baseline of a run that
-// Stage 6 completed, through the producer command line. The decision record is
-// saved in the run folder as baseline decide saves it. A fictional model made the
-// readiness review of the run. The viewer validation step "a caller validates it
-// for viewing" checks the new version with the shared baseline rules.
+// Stage 6 completed, through the producer command line: baseline decide records a
+// decision file, and baseline next makes the version from the saved record. A
+// fictional model made the readiness review of the run. The viewer validation step
+// "a caller validates it for viewing" checks the new version with the shared
+// baseline rules.
 interface FileLink { id: string; path: string; sha256: string }
 interface MadeVersion { status: string; id: string; path: string; sha256: string; decisions: FileLink }
 
@@ -58,13 +58,19 @@ function expectDecidedStatements(baseline: Baseline): void {
   }
 }
 
+// A person decides about the published baseline, and baseline decide records the
+// decision file in the run folder.
 async function recordDecisions(world: VersionsWorld): Promise<void> {
   world.versionsRun = await completedRun(runModel);
   const run = world.versionsRun;
-  world.decisionRecordPath = saveDecisionRecord(run.work, decisionRecord(run, [
+  const file = join(run.root, "decisions.yaml");
+  writeFileSync(file, decisionFileYaml(run, [
     { action: "accept", itemId: "cli", field: "purpose" }, { action: "accept", itemId: "mcp", field: "groupingReason" },
     { action: "correct", itemId: "http", field: "purpose", oldValue: "Provide http", newValue: correctedPurpose },
   ], { id: decisionsId }));
+  const decide = runCli(["baseline", "decide", "--run", run.work, file]);
+  assert.equal(decide.status, 0, decide.stderr);
+  world.decisionRecordPath = (JSON.parse(decide.stdout) as { path: string }).path;
 }
 
 function makeNextVersion(world: VersionsWorld): void {
