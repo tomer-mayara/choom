@@ -9,6 +9,42 @@ import type { DuplicationReportCodec } from "../../../src/lib/generated/contract
 import { decodeDuplicationReportYaml, duplicationReportCodec } from "../../../src/lib/interface-duplication-yaml.ts";
 import { duplicationFixture } from "../../support/duplication-fixtures.ts";
 import { duplicationV3Fixture } from "../../support/interface-duplication-fixtures.ts";
+import { duplicationV4Fixture } from "../../support/duplication-v4-fixtures.ts";
+
+test("generated and runtime report contracts bind to an exact version 4 baseline", () => {
+  const { baselineText, report, sha256 } = duplicationV4Fixture();
+  const baseline = decodeBaselineYaml(baselineText);
+  expect(baseline.status).toBe("success");
+  if (baseline.status !== "success") throw new Error("Invalid version 4 baseline fixture.");
+  expect(baselineText).not.toBe(JSON.stringify(baseline.baseline));
+  expect(createHash("sha256").update(baselineText).digest("hex")).toBe(sha256);
+  const schemas = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }));
+  expect(schemas.compile({ $ref: "DuplicationReport.json" })(report)).toBe(true);
+  expect(duplicationReportCodec.decode(JSON.stringify(report), baseline.baseline, sha256))
+    .toMatchObject({ status: "success", report });
+});
+
+test("version 4 binding rejects a different baseline ID, version, or original-byte digest", () => {
+  const { baseline, report, sha256 } = duplicationV4Fixture();
+  for (const binding of [
+    { ...report.baseline, id: "another-baseline" },
+    { ...report.baseline, formatVersion: 3 },
+    { ...report.baseline, sha256: "0".repeat(64) },
+  ]) {
+    expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: binding }), baseline, sha256))
+      .toMatchObject({ status: "failure", code: "baseline-mismatch" });
+  }
+  expect(duplicationReportCodec.decode(JSON.stringify(report), baseline, "0".repeat(64)))
+    .toMatchObject({ status: "failure", code: "baseline-mismatch" });
+  const reformatted = JSON.stringify(baseline);
+  const decoded = decodeBaselineYaml(reformatted);
+  expect(decoded.status).toBe("success");
+  if (decoded.status !== "success") throw new Error("Invalid reformatted baseline fixture.");
+  const reformattedSha256 = createHash("sha256").update(reformatted).digest("hex");
+  expect(reformattedSha256).not.toBe(sha256);
+  expect(duplicationReportCodec.decode(JSON.stringify(report), decoded.baseline, reformattedSha256))
+    .toMatchObject({ status: "failure", code: "baseline-mismatch" });
+});
 
 test("generated and runtime report contracts accept a version 3 baseline binding", () => {
   const { baseline, report, sha256 } = duplicationV3Fixture();
@@ -20,8 +56,9 @@ test("generated and runtime report contracts accept a version 3 baseline binding
 
 test("version 3 reports still require supported versions, exact bytes and resolvable facts", () => {
   const { baseline, report, sha256 } = duplicationV3Fixture();
+  expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: { ...report.baseline, formatVersion: 5 } }), baseline, sha256))
+    .toMatchObject({ status: "failure", code: "invalid-document" });
   for (const changed of [
-    { ...report, baseline: { ...report.baseline, formatVersion: 4 } },
     { ...report, findings: report.findings.map((finding) => ({ ...finding, facts: [{
       endpoint: { interfaceId: "invoice-api", entryId: "invoice-type" },
       topic: "input", basis: "recorded-contract", field: "interaction.input",
@@ -30,7 +67,8 @@ test("version 3 reports still require supported versions, exact bytes and resolv
     expect(duplicationReportCodec.decode(JSON.stringify(changed), baseline, sha256))
       .toMatchObject({ status: "failure", code: "invalid-document" });
   }
-  for (const binding of [{ ...report.baseline, formatVersion: 2 }, { ...report.baseline, sha256: "0".repeat(64) }]) {
+  for (const binding of [{ ...report.baseline, formatVersion: 2 }, { ...report.baseline, formatVersion: 4 },
+    { ...report.baseline, sha256: "0".repeat(64) }]) {
     expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: binding }), baseline, sha256))
       .toMatchObject({ status: "failure", code: "baseline-mismatch" });
   }
