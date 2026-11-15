@@ -36,11 +36,15 @@ function excludedFile(rules: Rule[], path: string): boolean {
   });
 }
 
+// The rule lines of exclusions.txt, as written: every line that is not blank and not a comment.
+export function captureExclusionRules(text: string): string[] {
+  return text.split('\n').filter(line => line !== '' && !line.startsWith('#') && !line.startsWith(';'));
+}
+
 // Reads the rules. `excludes` tells if the rules leave out a file, given by its path relative to the target folder.
 export function readCaptureExclusions(text: string): CaptureExclusions {
   const rules: Rule[] = [];
-  for (const line of text.split('\n')) {
-    if (line === '' || line.startsWith('#') || line.startsWith(';')) continue;
+  for (const line of captureExclusionRules(text)) {
     const rule = otherRuleForm.test(line) ? undefined : readRule(line.startsWith('- ') ? line.slice(2) : line);
     if (rule === undefined) return { readable: false, rule: line };
     rules.push(rule);

@@ -18,6 +18,8 @@ export interface StageFacts {
 }
 export interface StageState {
   facts: StageFacts;
+  // The snapshot record of run.yaml, with its root and the path of its capture exclusion rules.
+  snapshotRecord: Fields;
   inputs: Record<string, Buffer>;
   files: Map<string, IndexedFile>;
   artifacts: Map<string, RegisteredArtifact>;
@@ -144,11 +146,21 @@ export function handoffState(parse: Parse, work: string, id: string): StageState
     indexedRegularFiles: [...files.values()].filter(file => file.kind === 'file').length,
     checkpointDigests: Object.fromEntries(drafts.map(name => [checkpoint(name), hash(inputs[name] as Buffer)])),
   };
-  return { facts, inputs, files, artifacts, runsArtifact, runs, analysis };
+  return { facts, snapshotRecord: runSnapshot, inputs, files, artifacts, runsArtifact, runs, analysis };
 }
 
-// Checks the digest of a large file without keeping it, then refuses it.
-function refuseLargeSource(absolute: string, file: IndexedFile, path: string): never {
+// The path of an indexed regular file of the snapshot, with its inventory record.
+function indexedSource(state: StageState, path: string): { absolute: string; file: IndexedFile } {
+  const file = state.files.get(path);
+  assert(safePath(path) && file?.kind === 'file', 'Path is outside the indexed regular files: ' + path);
+  const absolute = join(state.facts.snapshot.path, path);
+  const stat = lstatSync(absolute);
+  assert(stat.isFile() && stat.size === file.bytes && realpathSync(absolute) === absolute, 'Changed indexed source: ' + path);
+  return { absolute, file };
+}
+
+// Checks the size and digest of a file in parts, without keeping its bytes.
+function checkStreamedDigest(absolute: string, file: IndexedFile, path: string): void {
   const fd = openSync(absolute, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
     assert(fstatSync(fd).isFile(), 'Expected a regular saved source: ' + path);
@@ -156,17 +168,21 @@ function refuseLargeSource(absolute: string, file: IndexedFile, path: string): n
     while ((count = readSync(fd, chunk, 0, chunk.length, null)) > 0) { digest.update(chunk.subarray(0, count)); size += count; }
     assert(size === file.bytes && digest.digest('hex') === file.sha256, 'Changed indexed source: ' + path);
   } finally { closeSync(fd); }
-  throw Object.assign(new Error('Excerpt source exceeds 2 MiB: ' + path), { code: 'EXCERPT_SOURCE_TOO_LARGE' });
+}
+
+// Checks that an indexed regular file of the snapshot still has its inventory size and digest.
+export function checkIndexedSource(state: StageState, path: string): void {
+  const { absolute, file } = indexedSource(state, path);
+  checkStreamedDigest(absolute, file, path);
 }
 
 // The bytes of an indexed regular file of the snapshot, checked against the inventory.
 export function readSource(state: StageState, path: string, maxBytes = Infinity): Buffer {
-  const file = state.files.get(path);
-  assert(safePath(path) && file?.kind === 'file', 'Path is outside the indexed regular files: ' + path);
-  const absolute = join(state.facts.snapshot.path, path);
-  const stat = lstatSync(absolute);
-  assert(stat.isFile() && stat.size === file.bytes && realpathSync(absolute) === absolute, 'Changed indexed source: ' + path);
-  if (file.bytes > maxBytes) refuseLargeSource(absolute, file, path);
+  const { absolute, file } = indexedSource(state, path);
+  if (file.bytes > maxBytes) {
+    checkStreamedDigest(absolute, file, path);
+    throw Object.assign(new Error('Excerpt source exceeds 2 MiB: ' + path), { code: 'EXCERPT_SOURCE_TOO_LARGE' });
+  }
   const bytes = read(absolute);
   assert(bytes.length === file.bytes && hash(bytes) === file.sha256, 'Changed indexed source: ' + path);
   return bytes;

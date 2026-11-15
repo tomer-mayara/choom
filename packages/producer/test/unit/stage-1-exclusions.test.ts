@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { type CaptureExclusions, defaultCaptureExclusions, readCaptureExclusions } from "../../src/stage-1-exclusions.ts";
+import { type CaptureExclusions, captureExclusionRules, defaultCaptureExclusions, readCaptureExclusions }
+  from "../../src/stage-1-exclusions.ts";
 
 // Each path is a file path relative to the target folder, as rsync sees it.
 function excludedPaths(exclusions: CaptureExclusions, paths: string[]): string[] {
@@ -24,6 +25,11 @@ describe("the capture exclusions of a Stage 1 run", () => {
       "docs/notesA.txt"];
     const kept = ["app/work-choom/x.txt", "src-tauri/target", "notes12.txt", "notes.txt", "# The run area"];
     expect(excludedPaths(readCaptureExclusions(rules), [...excluded, ...kept])).toEqual(excluded);
+  });
+
+  test("list their rule lines as written, without blank and comment lines", () => {
+    expect(captureExclusionRules("# The run area\n; another comment\n\n- /work-choom/\nnode_modules\n.env\n"))
+      .toEqual(["- /work-choom/", "node_modules", ".env"]);
   });
 
   test("name the first rule form that Choom does not read", () => {
