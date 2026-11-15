@@ -9,23 +9,28 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
+import { savedSettings, settingsRef } from './compiler-settings.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
 import { syntaxParser } from './snapshot-project.ts';
 import { directory, safePath } from './stage-3-inputs.ts';
+import { referencesRecord } from './stage-4-references.ts';
 import { reviewPrompt } from './stage-4-review-prompt.ts';
 import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 
 // The Stage 4 source collection helper. collect saves the source sites of the
 // graph profile scope, the first excerpts, the review prompt and the proposed
-// artifact map; excerpt saves a requested range of an indexed file. Each action
+// artifact map; excerpt saves a requested range of an indexed file; references
+// saves the references to a symbol of a source file of the graph scope. Each action
 // first checks that the attempt is still the one that Stage 4 start, toolchain and
 // run prepared, then saves a receipt and appends its outcome to the command log.
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
-// The checked attempt: the handoff, the run, the graph profile, the inventory, the
-// snapshot folder, the checked reader of indexed snapshot files and the selected entry analysis.
+// The checked attempt: the handoff, the run, its registered artifacts, the graph
+// profile, the inventory, the snapshot folder, the checked reader of indexed
+// snapshot files and the selected entry analysis.
 interface InspectState {
-  handoff: Fields; run: Fields; profile: Fields; files: Map<string, InventoryFile>; snapshotRoot: string; entry: Fields;
+  handoff: Fields; run: Fields; artifacts: Map<string, Buffer>; profile: Fields; files: Map<string, InventoryFile>;
+  snapshotRoot: string; entry: Fields;
   source(path: string, maxBytes?: number): Buffer;
 }
 interface OperatorRecord {
@@ -52,8 +57,8 @@ const { CHOOM_WORK, CHOOM_TOOLS } = process.env;
 const id = process.env.CHOOM_STAGE4_ID ?? '';
 const [action, ...args] = process.argv.slice(2);
 assert(/^s4-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id), 'Set CHOOM_STAGE4_ID to an s4-... ID.');
-assert((action === 'collect' && args.length === 0) || (action === 'excerpt' && args.length === 3),
-  'Use collect, or excerpt PATH FIRST LAST.');
+assert((action === 'collect' && args.length === 0) || (action === 'excerpt' && args.length === 3) ||
+  (action === 'references' && args.length === 2), 'Use collect, excerpt PATH FIRST LAST, or references PATH SYMBOL.');
 const work = directory(CHOOM_WORK);
 const tools = directory(CHOOM_TOOLS);
 const attempt = directory(join(directory(join(work, 'evidence')), id));
@@ -238,7 +243,7 @@ function state(): InspectState {
   const entry = parse(utf8(artifacts.get(discovery.entryAnalysisRef as string) as Buffer, 'selected entry analysis')) as Fields;
   if (lstatSync(join(attempt, 'source-sites.json'), { throwIfNoEntry: false }))
     assert(isDeepStrictEqual(json('source-sites.json').parser, parser), 'Trusted parser changed since collect.');
-  return { handoff, run, profile, files, snapshotRoot: snapshot, source, entry };
+  return { handoff, run, artifacts, profile, files, snapshotRoot: snapshot, source, entry };
 }
 
 function excerpt(current: InspectState, path: string, first: number, last: number, sourceId: string): Fields {
@@ -320,19 +325,44 @@ function collect(current: InspectState): string[] {
   return ['source-sites.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'];
 }
 
+// The source sites that a completed collect saved, unchanged since then.
+function collectedSites(): Fields {
+  assert(lstatSync(join(attempt, 'operator-collect.json'), { throwIfNoEntry: false }), 'Run collect before ' + action + '.');
+  const value = json('operator-collect.json');
+  const started = json('operator-collect.started.json');
+  assert(value.attemptId === id && value.phase === 'collect' && value.status === 'completed' && value.exitCode === 0 &&
+    started.startedAt === value.startedAt && isDeepStrictEqual(started.command, value.command), 'Run collect before ' + action + '.');
+  assert(hash(saved('source-sites.json')) === (value.digests as Fields | undefined)?.['source-sites.json'],
+    'Changed collect output: source-sites.json');
+  return json('source-sites.json');
+}
+
+// Saves the references to a symbol of a source file of the graph scope.
+function references(current: InspectState, name: string): string[] {
+  const sites = collectedSites();
+  const [path = '', symbol = ''] = args;
+  saveJson(name, referencesRecord({ attemptId: id, snapshotRef: current.handoff.snapshotRef, path, symbol,
+    snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
+    profile: current.profile, profileRef: artifactId('graph-profile.json'), sites, sitesRef: artifactId('source-sites.json'),
+    settings: savedSettings(current.artifacts.get(settingsRef), current.handoff.snapshotRef), tsMorph, parser }));
+  return [name];
+}
+
+// The phase of the action. Each excerpt and references request takes the next number of its action.
 function phase(): string {
   if (action === 'collect') return 'collect';
   for (let number = 1; number < 10000; number++) {
-    const name = 'excerpt-' + String(number).padStart(3, '0');
+    const name = action + '-' + String(number).padStart(3, '0');
     if (!lstatSync(join(attempt, 'operator-' + name + '.started.json'), { throwIfNoEntry: false })) return name;
   }
-  throw new Error('Too many saved excerpts.');
+  throw new Error('Too many saved ' + action + ' requests.');
 }
 
 // Runs the action and returns the names of its outputs.
 function runAction(phaseName: string): string[] {
   const current = state();
   if (action === 'collect') return collect(current);
+  if (action === 'references') return references(current, phaseName + '.json');
   const [path = '', first = '', last = ''] = args;
   assert(/^\d+$/.test(first) && /^\d+$/.test(last), 'Line numbers must be positive integers.');
   const name = phaseName + '.json';

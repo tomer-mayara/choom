@@ -27,7 +27,7 @@ const usageCases: UsageCase[] = [
     message: "Use start, toolchain, or run." },
   { helper: "stage-4-graph.ts", args: [], status: 1, message: "Use /control/graph-profile.json or --fixture." },
   { helper: "stage-4-inspect.ts", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
-    message: "Use collect, or excerpt PATH FIRST LAST." },
+    message: "Use collect, excerpt PATH FIRST LAST, or references PATH SYMBOL." },
   { helper: "stage-4-5-publish.ts", args: [], status: 1,
     message: "Use check STAGE REVIEW_DIR, finish STAGE REVIEW_DIR, or verify STAGE (4 or 5)." },
   { helper: "stage-5-commands.ts", args: [], attempt: { CHOOM_STAGE5_ID: "s5-check" }, status: 1,

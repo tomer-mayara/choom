@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import * as tsMorph from "ts-morph";
-import type { SourcePosition } from "../../src/snapshot-exports.ts";
 import { openSnapshotProject } from "../../src/snapshot-project.ts";
 import { findReferences, type ReferenceKind, type SymbolReferences } from "../../src/snapshot-references.ts";
 import { withScratch } from "../support/commands.ts";
+import { rangeIn } from "../support/source-ranges.ts";
 import { writeFiles } from "../support/stage-1-run.ts";
 
 // findReferences on a saved snapshot. The test adds the files of `searched` to a
@@ -30,21 +30,6 @@ function referencesIn(files: Files, path: string, symbol: string,
     for (const file of searched) project.sourceFile(file);
     return findReferences(project, path, symbol);
   });
-}
-
-function position(text: string, offset: number): SourcePosition {
-  const lines = text.slice(0, offset).split("\n");
-  return { line: lines.length, column: (lines.at(-1) ?? "").length + 1 };
-}
-
-// The range of the marked text. « and » mark the range inside a unique part of the file;
-// without marks, the whole text is the range.
-function rangeIn(text: string, marked: string): [SourcePosition, SourcePosition] {
-  const [first, last] = marked.includes("«") ? [marked.indexOf("«"), marked.indexOf("»") - 1] : [0, marked.length];
-  const found = text.indexOf(marked.replace("«", "").replace("»", ""));
-  if (found < 0 || text.indexOf(marked.replace("«", "").replace("»", ""), found + 1) >= 0)
-    throw new Error("The file has no unique text " + marked);
-  return [position(text, found + first), position(text, found + last)];
 }
 
 function expectReferences(files: Files, found: SymbolReferences, expected: Expected[]): void {
@@ -189,6 +174,20 @@ describe("findReferences", () => {
       { path: "src/lazy.ts", kind: "call", localName: "billing.createInvoice", at: "return «billing.createInvoice»" },
       { path: "src/legacy.js", kind: "import", localName: "make", at: "{ «createInvoice: make» }" },
       { path: "src/legacy.js", kind: "call", localName: "make", at: "«make»('legacy')" },
+    ]);
+  });
+
+  // The record notes name these limits.
+  test("does not follow a require call in a TypeScript file or the local names of a destructured dynamic import", () => {
+    const files: Files = {
+      [invoicePath]: invoice,
+      "src/required.cts": "const { createInvoice } = require('./invoice');\n\ncreateInvoice('required');\n",
+      "src/unpacked.ts": "export async function later() {\n  const { createInvoice: make } = await import('./invoice');\n" +
+        "  const { createInvoice } = await import('./invoice');\n  return [make('later'), createInvoice('again')];\n}\n",
+    };
+    expectReferences(files, referencesIn(files, invoicePath, "createInvoice"), [
+      { path: invoicePath, kind: "call", localName: "createInvoice", at: "draft = «createInvoice»" },
+      { path: "src/unpacked.ts", kind: "value", localName: "createInvoice", at: "{ «createInvoice»: make }" },
     ]);
   });
 

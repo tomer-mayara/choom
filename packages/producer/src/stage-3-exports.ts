@@ -1,7 +1,7 @@
 import { fileSettings, savedSettings, settingsRef } from './compiler-settings.ts';
 import { assert, type Fields } from './record-checks.ts';
 import { listExports } from './snapshot-exports.ts';
-import { openSnapshotProject, type ProjectTools, virtualRoot } from './snapshot-project.ts';
+import { openSnapshotProject, outsideReadsNote, type ProjectTools, virtualRoot } from './snapshot-project.ts';
 import { sourceExtensions } from './stage-3-collect.ts';
 import { type IndexedFile, safePath, type StageState } from './stage-3-inputs.ts';
 
@@ -36,9 +36,7 @@ export const exportsNotes = [
   'gaps lists each compiler input that the snapshot does not hold: a files entry of the configuration itself (not one ' +
     'that comes from an extended configuration), a types entry, and a reference path or reference types directive of ' +
     'this file. The modules that the file imports are not checked.',
-  'outsideReads lists each request of the project for a path that the snapshot does not hold: a file or folder read, or a ' +
-    'check whether it exists. The answer was not found. The project reads only indexed snapshot files, checked against ' +
-    'their inventory digests, and paths are as the project sees them below ' + virtualRoot + '.',
+  outsideReadsNote,
 ];
 
 // The indexed regular source file that the operator named.

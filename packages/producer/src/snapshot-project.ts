@@ -39,6 +39,10 @@ export interface SnapshotProject {
 }
 
 export const virtualRoot = '/repo';
+// What the outsideReads of a record mean, in the words of the record.
+export const outsideReadsNote = 'outsideReads lists each request of the project for a path that the snapshot does not hold: ' +
+  'a file or folder read, or a check whether it exists. The answer was not found. The project reads only indexed snapshot ' +
+  'files, checked against their inventory digests, and paths are as the project sees them below ' + virtualRoot + '.';
 // The text of a source file is its saved bytes as UTF-8. A file that is not UTF-8 text stops the read.
 const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const readOnly = (): Error => new Error('The snapshot project is read-only.');
