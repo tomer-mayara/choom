@@ -35,7 +35,7 @@ describe("Stage 2 start handoff", () => {
       const handoff = savedJson(attempt, "handoff.json");
       expect(handoff).toMatchObject({ formatVersion: 1, snapshotRef: "snapshot-check", inventoryRef: "inventory-001",
         registeredArtifacts: ["inventory-001", "s1-file@inventory.mjs", "s1-file@evidence%2Fproducer.json", "exclusions-001",
-          "discovery-001"],
+          "settings-001", "discovery-001"],
         status: "verified", knip: "6.44.1",
         registrationChanges: [{ id: "discovery-001", from: "discovery.yaml", to: checkpoint, sha256: sha256(discovery) }],
         originalRunSha256: sha256(original), finalRunSha256: sha256(readFileSync(join(work, "run.yaml"))) });

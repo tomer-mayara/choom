@@ -99,11 +99,11 @@ function mention(path: string, text: string, parentKind: string, line: number, c
 describe("Stage 3 start", () => {
   test("checks the run after Stage 2 and saves the checkpoints, the cookbook and the handoff", () => {
     expect(results.start).toEqual({ status: 0, stderr: "",
-      stdout: `Saved ${id} for ${snapshotRef}. Verified 9 registered artifacts and indexed 23 regular-file records.\n` });
+      stdout: `Saved ${id} for ${snapshotRef}. Verified 10 registered artifacts and indexed 23 regular-file records.\n` });
     const handoff = saved("handoff.json");
     expect(handoff).toMatchObject({ formatVersion: 1, attemptId: id, work, tools: toolsRoot, runRef: "run-check", snapshotRef,
       inventoryRef: "inventory-001", entryAnalysisRef: "s2-check-entry-analysis", planRef: "s2-check-entry-plan",
-      knipRunsRef: "s2-check-knip-runs", registeredArtifacts: 9, indexedRegularFiles: 23,
+      knipRunsRef: "s2-check-knip-runs", registeredArtifacts: 10, indexedRegularFiles: 23,
       checkpointDigests: { "run.before.yaml": sha256(readFileSync(join(folder(), "run.before.yaml"))),
         "discovery.before.yaml": sha256(readFileSync(join(folder(), "discovery.before.yaml"))),
         "baseline.before.yaml": sha256(readFileSync(join(folder(), "baseline.before.yaml"))) },
