@@ -4,6 +4,7 @@ description: Manual producer helpers and command line that recover a baseline an
 artifacts:
   behavior:
     - path: ../../cookbook/behavior/producer/recovery.feature
+    - path: ../../cookbook/behavior/producer/visible-response.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:

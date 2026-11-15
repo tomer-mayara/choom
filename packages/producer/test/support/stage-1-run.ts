@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
+import { pathWithDoubles } from "./tool-doubles.ts";
 
 // Helpers that run Stage 1 the way the step-1 cookbook does, on a small target
 // folder. The capture needs rsync: give a PATH with the test double.
@@ -49,6 +50,20 @@ export function stageOne(run: StageOneRun, action: string, ...args: string[]): C
 
 export interface Excerpt { id: string; artifactRef: string; snapshotRef: string; path: string; sha256: string; lines: number[] }
 type Fields = Record<string, unknown>;
+
+function checked(result: CommandResult, action: string): CommandResult {
+  if (result.status !== 0) throw new Error(`Stage 1 ${action} failed: ${result.stderr}`);
+  return result;
+}
+
+// A Stage 1 run after start, capture and settings, with one saved excerpt of
+// package.json. The capture uses the rsync test double.
+export function capturedStageOneRun(scratch: string): { run: StageOneRun; excerpt: Excerpt } {
+  const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) });
+  for (const action of ["start", "capture", "settings"]) checked(stageOne(run, action), action);
+  const excerpt = checked(stageOne(run, "excerpt", "package.json", "1", "5", "Check the workspace patterns."), "excerpt");
+  return { run, excerpt: JSON.parse(excerpt.stdout) as Excerpt };
+}
 export interface ReviewPacket { review: Fields; scope: Fields; call: Fields; prompt: string; response?: string }
 
 // A complete Stage 1 review packet that cites one saved excerpt. A test can

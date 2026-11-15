@@ -2,9 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { withScratch } from "../../support/commands.ts";
-import { type Excerpt, type ReviewPacket, reviewPacket, stageOne, stageOneRun, type StageOneRun,
-  writeReview } from "../../support/stage-1-run.ts";
-import { pathWithDoubles } from "../../support/tool-doubles.ts";
+import { capturedStageOneRun, type ReviewPacket, reviewPacket, stageOne, writeReview } from "../../support/stage-1-run.ts";
 
 // Finish checks the complete review packet before it copies anything, and excerpt
 // checks the requested range. Each refused command leaves the run unchanged.
@@ -46,13 +44,6 @@ const reviewCases: ReviewCase[] = [
     message: "Keep review inputs outside the saved run." },
 ];
 
-function capturedRun(scratch: string): { run: StageOneRun; excerpt: Excerpt } {
-  const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) });
-  for (const action of ["start", "capture", "settings"]) expect(stageOne(run, action).status).toBe(0);
-  const excerpt = stageOne(run, "excerpt", "package.json", "1", "5", "Check the workspace patterns.");
-  return { run, excerpt: JSON.parse(excerpt.stdout) as Excerpt };
-}
-
 const excerptCases = [
   { args: ["package.json", "1", "99", "Read more."], message: "Source range is outside the saved file." },
   { args: ["missing.ts", "1", "1", "Read it."], message: "Source is not in the saved inventory: missing.ts" },
@@ -63,7 +54,7 @@ const excerptCases = [
 describe("Stage 1 review and excerpt checks", () => {
   test("refuses invalid excerpts and incomplete review packets, then saves a complete packet", () => {
     withScratch((scratch) => {
-      const { run, excerpt } = capturedRun(scratch);
+      const { run, excerpt } = capturedStageOneRun(scratch);
       for (const { args, message } of excerptCases) {
         const result = stageOne(run, "excerpt", ...args);
         expect({ args, status: result.status, stdout: result.stdout, stderr: result.stderr }).toEqual({ args, status: 1,
