@@ -658,13 +658,16 @@ Stage 4 `stage-4-inspect references PATH SYMBOL` lists the references to a
 top-level symbol of a source file of the graph scope, after `collect`. It opens
 the same snapshot project with the files of the import pass of the graph group
 that holds the file, and with the compiler settings of that group, chosen by the
-same rule as Stage 3 `exports`. The TypeScript type checker follows renamed
-imports and exports, `export * from`, namespace imports and the other aliases to
-the declaration. Each request saves `references-NNN.json` with the settings, the
-scope, the tool versions, the declarations, each reference with its kind, range
-and local name, and as unresolved entries, each with its reason, the loading sites
-of the scope with a computed module name and the `require` calls of its TypeScript
-files; `completeness` is `partial` when there is one. The
+same rule as Stage 3 `exports`, and with the module format that the compiler
+gives each file. The TypeScript type checker follows renamed imports and exports,
+`export * from`, namespace imports, the local names of a destructured module
+object and the other aliases to the declaration. Each request saves
+`references-NNN.json` with the settings, the scope, the tool versions, the
+declarations, each reference with its kind, range and local name, and as
+unresolved entries, each with its reason, the loading sites of the scope with a
+computed module name, the `require` calls of its TypeScript files and the relative
+imports that the compiler settings do not resolve; `completeness` is `partial`
+when there is one. The
 [Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-references-to-a-symbol)
 gives the fields. Run the focused checks of the references with:
 

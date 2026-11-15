@@ -389,16 +389,23 @@ the files and the compiler settings of one graph group:
   else the named Choom parsing profile, else no settings. The helper adds
   `allowJs`, so that the JavaScript files of the scope are part of the compiler
   program.
+- Each file of the scope gets the module format that the compiler gives it: from
+  its extension (`.mts` is an ES module and `.cts` is CommonJS) and, under Node16
+  and NodeNext, from the `type` of its nearest `package.json`. Its imports resolve
+  in that format, as `tsc` resolves them. For example, under NodeNext an ES module
+  file needs the extension in a relative import.
 
 The TypeScript type checker links each name of the scope to the symbol that it
 names. The helper follows each alias to the declaration: renamed imports and
 exports (`import { createInvoice as ci }` and
 `export { createInvoice as make } from './invoice'`), `export * from`, namespace
 imports (`billing.createInvoice()`), default imports, `import =` and the
-JavaScript `require` calls that the compiler resolves. It does not follow a
-`require` call in a TypeScript file (`unresolved` lists it), an import that the
-compiler settings do not resolve, the local names that a destructured dynamic
-import binds in a TypeScript file, or JSDoc types.
+JavaScript `require` calls that the compiler resolves. It also follows the local
+names that a destructuring of a module object binds, such as
+`const { createInvoice } = await import('./invoice')`. It does not follow a
+`require` call in a TypeScript file or an import that the compiler settings do
+not resolve (`unresolved` lists them; an import only with a relative module
+name), or JSDoc types.
 
 Some loading sites of `source-sites.json` in the scope can load the module of the
 symbol, but the helper does not follow them. It lists each one in `unresolved`
@@ -410,10 +417,22 @@ with a `reason`, as a possible use that it does not resolve:
 - A `require-candidate` site with a literal module name in a TypeScript file
   (`.ts`, `.tsx`, `.mts` or `.cts`). TypeScript does not follow a `require` call
   in a TypeScript file.
+- An `import`, `re-export`, `import-equals`, `import-type`, literal
+  `dynamic-import` or JavaScript `require-candidate` site whose relative module
+  name (`./`, `../` or `/`, or `.` or `..` alone) the compiler settings do not
+  resolve to a file. Examples are an import of a file that the capture did not
+  save, and an extensionless relative import of an ES module under NodeNext.
 
 The type checker follows a literal `require` call in a JavaScript file, and a
 `require.resolve` call with a literal module name loads nothing, so the helper
-does not list them. With an unresolved entry, the references can be incomplete.
+does not list them. A bare package name, such as `zod`, names an external
+package, which the snapshot never holds, and a relative name of a snapshot file
+that is not source code, such as `./theme.css`, cannot hold the symbol, so the
+helper does not list them either. The helper finds the saved site of each
+unresolved import with the walk of the source collection. When no saved site
+matches, for example after the site limit of `collect`, the entry has
+`siteRef: null`, and its lines and expression come from the compiler syntax
+tree. With an unresolved entry, the references can be incomplete.
 
 The helper saves:
 
@@ -434,7 +453,7 @@ The helper saves:
 | `completeness` | `partial` when `unresolved` has an entry, else `complete-within-scope`. Neither value covers the files outside the scope or the uses that the helper does not follow. |
 | `declarations` | The declarations of the symbol after its aliases: `path` and `range`. A declaration is not a reference. |
 | `references` | Each site outside the declarations, by path and in source order: `path`, `range`, `kind` and `localName`. |
-| `unresolved` | Each loading site of the scope that the helper does not follow: `siteRef` (a JSON Pointer into `source-sites.json`), `path`, `lines`, `kind`, `expression` and `reason`. |
+| `unresolved` | Each loading site of the scope that the helper does not follow: `siteRef` (a JSON Pointer into `source-sites.json`, or `null` when no saved site matches), `path`, `lines`, `kind`, `expression` and `reason`. |
 | `gaps`, `outsideReads` | As in the Stage 3 exports record, for all files of the scope. |
 | `notes` | What the list covers and does not cover, in plain text. |
 
@@ -450,17 +469,22 @@ The helper saves:
 - `call`: a call, `new` expression, tagged template, decorator or JSX element
   that the reference starts. The closing tag of a JSX element is not listed.
 - `value`: any other use, such as an assignment, an argument or a class
-  `extends` clause.
+  `extends` clause. A destructuring that takes the symbol from a module object,
+  such as `const { createInvoice } = await import('./invoice')`, is a value site
+  whose range is the property name.
 
-`localName` is the name that the site uses: the local name of an import, such as
-`ci`; the export name of a re-export, such as `make`; or the name expression of
-another use, such as `ci` or `billing.createInvoice`. A `range` has 1-based lines
-and columns, as in the Stage 3 exports record. A byte order mark is not counted.
+`localName` is the name that the site uses: the local name of an import or a
+destructuring, such as `ci`; the export name of a re-export, such as `make`; or
+the name expression of another use, such as `ci` or `billing.createInvoice`. A
+`range` has 1-based lines and columns, as in the Stage 3 exports record. A byte
+order mark is not counted.
 
 A request for `createInvoice` in a small snapshot saves this record. Two users
-import it, one through a `paths` alias of `tsconfig.json`. `src/legacy.cts` takes
-it with a `require` call, and `src/plugins.ts` loads a module by a computed name.
-The snapshot ID is an example, and the tool digests and `notes` are cut:
+import it, one through a `paths` alias of `tsconfig.json`, and `src/lazy.ts` takes
+it from a dynamic import. `src/legacy.cts` takes it with a `require` call,
+`src/plugins.ts` loads a module by a computed name, and `src/generated.ts`
+re-exports a module that the capture did not save. The snapshot ID is an example,
+and the tool digests and `notes` are cut:
 
 ```json
 {
@@ -485,7 +509,8 @@ The snapshot ID is an example, and the tool digests and `notes` are cut:
   "scope": {
     "graphContext": "compiler-1-import",
     "graphContextRef": "s4-001-file@graph-profile.json#/contexts/0",
-    "files": ["src/billing/invoice.ts", "src/legacy.cts", "src/orders.ts", "src/plugins.ts", "src/refunds.ts"]
+    "files": ["src/billing/invoice.ts", "src/generated.ts", "src/lazy.ts", "src/legacy.cts", "src/orders.ts", "src/plugins.ts",
+      "src/refunds.ts"]
   },
   "tool": { "name": "ts-morph snapshot project (TypeScript type checker)", "node": "v26.13.0", "tsMorph": "28.0.0",
     "typescript": "6.0.2", "modules": { "ts-morph/dist/ts-morph.js": "a86ac69a892c87c860e842c755543bd9600b9b13c26be44495cdcf4ef8fb7307" } },
@@ -495,6 +520,10 @@ The snapshot ID is an example, and the tool digests and `notes` are cut:
     { "path": "src/billing/invoice.ts", "range": [{ "line": 1, "column": 1 }, { "line": 3, "column": 2 }] }
   ],
   "references": [
+    { "path": "src/lazy.ts", "range": [{ "line": 2, "column": 11 }, { "line": 2, "column": 24 }],
+      "kind": "value", "localName": "createInvoice" },
+    { "path": "src/lazy.ts", "range": [{ "line": 3, "column": 10 }, { "line": 3, "column": 23 }],
+      "kind": "call", "localName": "createInvoice" },
     { "path": "src/orders.ts", "range": [{ "line": 1, "column": 10 }, { "line": 1, "column": 23 }],
       "kind": "import", "localName": "createInvoice" },
     { "path": "src/orders.ts", "range": [{ "line": 4, "column": 10 }, { "line": 4, "column": 23 }],
@@ -505,15 +534,19 @@ The snapshot ID is an example, and the tool digests and `notes` are cut:
       "kind": "call", "localName": "invoiceFor" }
   ],
   "unresolved": [
-    { "siteRef": "s4-001-file@source-sites.json#/sites/0", "path": "src/legacy.cts", "lines": [1, 1],
+    { "siteRef": "s4-001-file@source-sites.json#/sites/0", "path": "src/generated.ts", "lines": [1, 1],
+      "kind": "re-export", "expression": "export * from './generated/billing';",
+      "reason": "The compiler settings do not resolve this relative module name, so the query cannot tell whether it names the module of the symbol." },
+    { "siteRef": "s4-001-file@source-sites.json#/sites/2", "path": "src/legacy.cts", "lines": [1, 1],
       "kind": "require-candidate", "expression": "require('./billing/invoice')",
       "reason": "TypeScript does not follow a require call in a TypeScript file. The call can load the module of the symbol." },
-    { "siteRef": "s4-001-file@source-sites.json#/sites/2", "path": "src/plugins.ts", "lines": [2, 2],
+    { "siteRef": "s4-001-file@source-sites.json#/sites/4", "path": "src/plugins.ts", "lines": [2, 2],
       "kind": "dynamic-import", "expression": "import('./billing/' + name)",
       "reason": "The module name is computed. The query cannot tell which module the site names, so it can name the module of the symbol." }
   ],
   "gaps": [],
   "outsideReads": [
+    { "operation": "directory-exists", "path": "/repo/src/generated" },
     { "operation": "directory-exists", "path": "/node_modules/typescript/lib" },
     { "operation": "directory-exists", "path": "/node_modules/typescript" },
     { "operation": "directory-exists", "path": "/node_modules" },
