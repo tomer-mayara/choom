@@ -179,6 +179,15 @@ component inspection emphasizes incoming and outgoing arcs. Interface inspection
 emphasizes its arcs and reveals their labels; unrelated shown labels still respond
 to hover and keyboard focus. Other panel kinds and a closed panel show normal arcs.
 
+When version 4 has a system-entry assessment, component details list its directly
+owned entries under **System entry points**. Startup and External groups keep the
+saved order within each kind. Each entry shows its label, path, evidence
+references, and saved source lines when present. A linked operation opens that
+exact interface entry, even when another component owns the interface. A link
+without an operation opens the interface Overview. An entry without a link has
+no navigation control. Back restores the component view, scroll position, and
+link focus. The full saved list remains available, up to the 2,000-entry limit.
+
 Keyboard activation focuses the panel heading; pointer selection keeps focus on
 the canvas. The panel has no overlay or focus trap. Escape and the close button
 return focus to the opener when focus was inside the panel and it will remain
@@ -255,6 +264,8 @@ details, partly unknown facts, and wholly unknown facts remain distinct. Type,
 data, and message entries have no invented call contract. Rich entry details put
 the unchanged general promises in Interface-wide contract. Access rule resolves
 component names, keeps self-use, and distinguishes permission from activity.
+Overview labels its operation list **Interface entries** to distinguish it from
+system entry points on components.
 
 A function or method can record a Signature. The selected entry shows its exact
 declaration, including parameters and return type, near the entry name. Code text

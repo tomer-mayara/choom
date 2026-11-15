@@ -57,6 +57,9 @@ Version 2 can add saved interface documentation. Version 3 retains those fields
 and can add source-use records with a shared snapshot and code mapping.
 Version 4 can also add a saved [system-entry assessment](cookbook/interfaces/baseline-system-entry-points.tsp)
 for reviewed startup and external call boundaries.
+Component details show the saved Startup and External entries with their paths,
+evidence, and optional source lines. An interface link opens the saved operation
+or interface Overview, and Back returns to the component entry.
 Versions 1 and 2 keep their strict fields. An interface's **Original record** disclosure retains all saved
 values, including documentation and statement references.
 For versions 3 and 4, **Baseline details → Original source-use data** retains the
@@ -386,6 +389,14 @@ Run the system-entry marker checks with:
 bun test ./test/unit/lib/system-entry-points.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/system-entry-markers.test.tsx
 bun run test:e2e --tags @ep-05
+```
+
+Run the focused system-entry detail checks with:
+
+```sh
+bun test --preload ./test/preload.ts ./test/unit/components/system-entry-details.test.tsx ./test/unit/components/interface-overview.test.tsx
+bun run test:e2e --tags @ep-06
+bun run test:behavior:packaged --tags @ep-06
 ```
 
 Run the Stage 6 system-entry publication check with:
