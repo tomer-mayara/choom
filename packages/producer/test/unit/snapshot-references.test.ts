@@ -191,15 +191,16 @@ describe("findReferences", () => {
     ]);
   });
 
-  test("searches only the files that the project holds", () => {
+  // The compiler reads src/outside.ts to resolve the import of src/inside.ts, but the query does not search it.
+  test("searches only the files that the project holds, also when the compiler reads another file", () => {
     const files: Files = {
       [invoicePath]: invoice,
-      "src/inside.ts": "import { createInvoice } from './invoice';\n\ncreateInvoice('inside');\n",
-      "src/outside.ts": "import { createInvoice } from './invoice';\n\ncreateInvoice('outside');\n",
+      "src/inside.ts": "import { createInvoice } from './invoice';\nimport { label } from './outside';\n\ncreateInvoice(label);\n",
+      "src/outside.ts": "import { createInvoice } from './invoice';\n\nexport const label = createInvoice('outside').id;\n",
     };
     expectReferences(files, referencesIn(files, invoicePath, "createInvoice", { searched: [invoicePath, "src/inside.ts"] }), [
       { path: "src/inside.ts", kind: "import", localName: "createInvoice", at: "import { «createInvoice» }" },
-      { path: "src/inside.ts", kind: "call", localName: "createInvoice", at: "«createInvoice»('inside')" },
+      { path: "src/inside.ts", kind: "call", localName: "createInvoice", at: "«createInvoice»(label)" },
       { path: invoicePath, kind: "call", localName: "createInvoice", at: "draft = «createInvoice»" },
     ]);
   });
