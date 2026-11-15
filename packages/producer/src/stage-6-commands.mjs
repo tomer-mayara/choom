@@ -7,15 +7,17 @@ import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 import { runLayout } from './run-layout.mjs';
+import * as records from './stage-6-records.mjs';
 
 const self = fileURLToPath(import.meta.url);
 const [action, reviewDir, ...extra] = process.argv.slice(2);
 const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE6, CHOOM_STAGE6_ID: id } = process.env;
 const commandsName = 'stage-6-commands.mjs';
-const recordsName = 'stage-6-records.mjs';
-const runtimeTools = [commandsName, recordsName, 'run-layout.mjs'];
-const toolsToFreeze = [...runtimeTools, 'step-6-cookbook.md'];
+// Start saves the cookbook as a record. Every action runs the producer code in
+// the tool checkout after the producer code check.
+const toolsToFreeze = ['step-6-cookbook.md'];
 const draftNames = ['run.yaml', 'baseline.yaml', 'discovery.yaml'];
 const checkpoints = draftNames.map(name => name.replace('.yaml', '.before.yaml'));
 const candidateNames = ['baseline.candidate.yaml', 'discovery.candidate.yaml'];
@@ -118,6 +120,7 @@ const sourceFolder = name => name.endsWith('.md') ? join(tools, 'docs/design/app
 assert(self === join(sourceTools, commandsName) && realpathSync(self) === self, 'Use the Stage 6 helper in the trusted checkout.');
 const attempt = join(directory(join(work, 'evidence')), id);
 assert(CHOOM_STAGE6 === attempt, 'Set CHOOM_STAGE6 to the matching attempt directory.');
+refuseChangedProducerCode(work, tools);
 const lockPath = join(work, '.stage-6-publish.lock');
 const environment = { CHOOM_WORK: work, CHOOM_TOOLS: tools, CHOOM_STAGE6_ID: id, CHOOM_STAGE6: attempt };
 const command = () => ({ args: process.argv, cwd: process.cwd(), environment });
@@ -137,11 +140,6 @@ function loadYaml(pinned) {
   assert(path.startsWith(root + '/') && realpathSync(path) === path && Object.hasOwn(files, path.slice(root.length + 1)),
     'Use the pinned YAML entry from the trusted checkout.');
   return { ...require(path), versions };
-}
-
-async function loadRecords(bytes) {
-  // Use the bytes read from the trusted checkout, without reopening a saved helper path.
-  return await import('data:text/javascript;base64,' + bytes.toString('base64'));
 }
 
 function readRegistry(run, { permitFinal = false } = {}) {
@@ -316,7 +314,6 @@ async function start() {
   assert(review !== work && !review.startsWith(work + '/') && !work.startsWith(review + '/'),
     'Keep the readiness packet outside the saved run.');
   const frozenTools = new Map(toolsToFreeze.map(name => [name, file(sourceFolder(name), name)]));
-  const records = await loadRecords(frozenTools.get(recordsName));
   requireNames(fileNames(review), records.packetFiles, 'readiness packet');
   const packet = new Map(records.packetFiles.map(name => [name, file(review, name, { maxBytes: maxReviewBytes })]));
   const yaml = loadYaml();
@@ -357,11 +354,7 @@ async function loadPrepared({ completed }) {
   const handoff = json(prepared.get('handoff.json'));
   const frozenTools = new Map(toolsToFreeze.map(name => [name, prepared.get(name)]));
   assert(same(hashMap(frozenTools), handoff.toolInputDigests) && object(handoff.parserVersions), 'Missing or changed frozen tool pins.');
-  const trusted = new Map(runtimeTools.map(name => [name, file(sourceTools, name)]));
-  for (const [name, bytes] of trusted)
-    assert(bytes.equals(frozenTools.get(name)), 'Trusted helper changed since start: ' + name);
   const yaml = loadYaml(handoff.parserVersions);
-  const records = await loadRecords(trusted.get(recordsName));
   requireNames(names, [...checkpoints, ...toolsToFreeze, ...records.packetFiles, ...candidateNames,
     'handoff.json', 'validation.json', 'commands.md'], 'prepared output');
   const packet = new Map(records.packetFiles.map(name => [name, prepared.get(name)]));

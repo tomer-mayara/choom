@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { cpSync, mkdirSync, readdirSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { producerReceipt } from "../../src/producer-code.ts";
 import { producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
 
 // Each case runs a producer command file as an operator does, with no action or an
@@ -21,7 +22,7 @@ const usageCases: UsageCase[] = [
   { helper: "stage-3-commands.mjs", args: [], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
     message: "Use start, collect, excerpt PATH FIRST LAST, or save-review REVIEW_DIR." },
   { helper: "stage-3-finish.mjs", args: ["unknown"], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
-    message: "Run the saved Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3." },
+    message: "Run the Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3." },
   { helper: "stage-4-commands.mjs", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use start, toolchain, or run." },
   { helper: "stage-4-graph.mjs", args: [], status: 1, message: "Use /control/graph-profile.json or --fixture." },
@@ -47,6 +48,19 @@ function emptyRun(scratch: string): string {
   const work = join(scratch, "run");
   mkdirSync(join(work, "evidence"), { recursive: true });
   return work;
+}
+
+// An empty run with the producer code record of this checkout, so that each helper passes the code check.
+function recordedRun(scratch: string): string {
+  const work = emptyRun(scratch);
+  writeFileSync(join(work, "evidence/producer.json"), JSON.stringify(producerReceipt(toolsRoot)));
+  return work;
+}
+
+// A copy of a helper outside the tool checkout, with the module that it imports.
+function helperCopy(folder: string, helper: string): string {
+  for (const name of [helper, "producer-code.ts"]) cpSync(join(producerSource, name), join(folder, name));
+  return join(folder, helper);
 }
 
 function attemptFolder(work: string, id: string): string {
@@ -76,45 +90,54 @@ describe("producer command usage", () => {
   });
 });
 
-describe("helpers that run from a saved attempt", () => {
-  test("Stage 3 refuses its trusted finalizer and runs the saved copy against its checkpoints", () => {
+describe("helpers that run only from the tool checkout", () => {
+  test("Stage 2 refuses a driver copy for a later action", () => {
     withScratch((scratch) => {
-      const work = emptyRun(scratch);
-      const attempt = attemptFolder(work, "s3-check");
-      const settings = { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE3_ID: "s3-check" };
-      const trusted = runHelper(join(producerSource, "stage-3-finish.mjs"), [], settings);
-      expect(trusted.status).toBe(1);
-      expect(trusted.stderr).toBe("Run stage-3-finish.mjs from the saved attempt.\n");
-      cpSync(join(producerSource, "stage-3-finish.mjs"), join(attempt, "stage-3-finish.mjs"));
-      const saved = runHelper(join(attempt, "stage-3-finish.mjs"), [], settings);
-      expect(saved.status).toBe(1);
-      expect(saved.stderr).toBe(`ENOENT: no such file or directory, lstat '${join(attempt, "run.before.yaml")}'\n`);
+      const work = recordedRun(scratch);
+      const attempt = attemptFolder(work, "s2-check");
+      const copy = runHelper(helperCopy(attempt, "stage-2-commands.ts"), ["prepare"],
+        { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE2_ID: "s2-check" });
+      expect(copy.status).toBe(1);
+      expect(copy.stderr).toContain("Use the Stage 2 driver in the trusted checkout with a prepared attempt.");
     });
   });
 
-  test("Stage 4 refuses later actions and inspection from the trusted checkout", () => {
+  test("Stage 3 refuses a finalizer copy and runs the checkout finalizer against the attempt checkpoints", () => {
     withScratch((scratch) => {
-      const work = emptyRun(scratch);
+      const work = recordedRun(scratch);
+      const attempt = attemptFolder(work, "s3-check");
+      const settings = { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE3_ID: "s3-check" };
+      const copy = runHelper(helperCopy(attempt, "stage-3-finish.mjs"), [], settings);
+      expect(copy.status).toBe(1);
+      expect(copy.stderr).toBe("Use the Stage 3 finalizer in the trusted checkout.\n");
+      const trusted = runHelper(join(producerSource, "stage-3-finish.mjs"), [], settings);
+      expect(trusted.status).toBe(1);
+      expect(trusted.stderr).toBe(`ENOENT: no such file or directory, lstat '${join(attempt, "run.before.yaml")}'\n`);
+    });
+  });
+
+  test("Stage 4 refuses helper copies and runs the checkout inspection helper against the attempt", () => {
+    withScratch((scratch) => {
+      const work = recordedRun(scratch);
       const attempt = attemptFolder(work, "s4-check");
       const settings = { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE4_ID: "s4-check" };
-      const toolchain = runHelper(join(producerSource, "stage-4-commands.mjs"), ["toolchain"], settings);
+      const toolchain = runHelper(helperCopy(attempt, "stage-4-commands.mjs"), ["toolchain"], settings);
       expect(toolchain.status).toBe(1);
-      expect(toolchain.stderr).toContain("Use the trusted checkout for start and the frozen attempt helper for later commands.");
-      const inspection = runHelper(join(producerSource, "stage-4-inspect.mjs"), ["collect"], settings);
+      expect(toolchain.stderr).toContain("Use the Stage 4 helper in the trusted checkout.");
+      const inspection = runHelper(helperCopy(attempt, "stage-4-inspect.mjs"), ["collect"], settings);
       expect(inspection.status).toBe(1);
-      expect(inspection.stderr).toContain("Run the saved inspection helper.");
-      cpSync(join(producerSource, "stage-4-inspect.mjs"), join(attempt, "stage-4-inspect.mjs"));
-      const saved = runHelper(join(attempt, "stage-4-inspect.mjs"), ["collect"], settings);
-      expect(saved.status).toBe(1);
-      expect(saved.stderr).toContain(`ENOENT: no such file or directory, lstat '${join(attempt, "operator-start.json")}'`);
+      expect(inspection.stderr).toContain("Use the Stage 4 inspection helper in the trusted checkout.");
+      const trusted = runHelper(join(producerSource, "stage-4-inspect.mjs"), ["collect"], settings);
+      expect(trusted.status).toBe(1);
+      expect(trusted.stderr).toContain(`ENOENT: no such file or directory, lstat '${join(attempt, "operator-start.json")}'`);
     });
   });
 });
 
-describe("trusted commands find their own files before they read the run", () => {
+describe("trusted commands check the producer code, then find their own files before they read the run", () => {
   test("the Stage 4/5 publisher reaches the saved attempt checkpoints", () => {
     withScratch((scratch) => {
-      const work = emptyRun(scratch);
+      const work = recordedRun(scratch);
       const attempt = attemptFolder(work, "s5-check");
       const result = runHelper(join(producerSource, "stage-4-5-publish.mjs"), ["verify", "5"],
         { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE5_ID: "s5-check", CHOOM_STAGE5: attempt });
@@ -123,27 +146,27 @@ describe("trusted commands find their own files before they read the run", () =>
     });
   });
 
-  test("Stage 5 reads its seven tool sources and parsers, then reaches the run manifest", () => {
+  test("Stage 5 reads its two saved documents and its parsers, then reaches the run manifest", () => {
     withScratch((scratch) => {
-      const work = emptyRun(scratch);
+      const work = recordedRun(scratch);
       const result = runHelper(join(producerSource, "stage-5-commands.mjs"), ["start"], { CHOOM_TOOLS: toolsRoot,
         CHOOM_WORK: work, CHOOM_STAGE5_ID: "s5-check", CHOOM_STAGE5: join(work, "evidence", "s5-check") });
       expect(result.status).toBe(1);
       expect(result.stderr).toBe(`ENOENT: no such file or directory, lstat '${join(work, "run.yaml")}'\n`);
-      expect(readdirSync(join(work, "evidence"))).toEqual([]);
+      expect(readdirSync(join(work, "evidence"))).toEqual(["producer.json"]);
     });
   });
 
-  test("Stage 6 reads its four tool sources, then checks the readiness packet", () => {
+  test("Stage 6 reads its cookbook, then checks the readiness packet", () => {
     withScratch((scratch) => {
-      const work = emptyRun(scratch);
+      const work = recordedRun(scratch);
       const review = join(scratch, "review");
       mkdirSync(review);
       const result = runHelper(join(producerSource, "stage-6-commands.mjs"), ["start", review], { CHOOM_TOOLS: toolsRoot,
         CHOOM_WORK: work, CHOOM_STAGE6_ID: "s6-check", CHOOM_STAGE6: join(work, "evidence", "s6-check") });
       expect(result.status).toBe(1);
       expect(result.stderr).toBe("Unexpected readiness packet file set.\n");
-      expect(readdirSync(join(work, "evidence"))).toEqual([]);
+      expect(readdirSync(join(work, "evidence"))).toEqual(["producer.json"]);
     });
   });
 });

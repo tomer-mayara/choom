@@ -18,10 +18,12 @@ export interface HelperCall {
 
 export const producerCommands: ReadonlyMap<string, ProducerCommand> = new Map([
   ["stage-1", { helper: "stage-1-commands.ts", use: "Capture the snapshot and review its settings." }],
-  ["stage-2", { helper: "stage-2-commands.ts", use: "Start the entry analysis." }],
+  ["stage-2", { helper: "stage-2-commands.ts", use: "Run the entry analysis." }],
   ["stage-2-consolidate", { helper: "stage-2-consolidate-inputs.ts", use: "Merge earlier per-attempt Knip inputs into the shared input." }],
-  ["stage-3", { helper: "stage-3-commands.mjs", use: "Start the loading and symbol search." }],
-  ["stage-4", { helper: "stage-4-commands.mjs", use: "Start the component recovery." }],
+  ["stage-3", { helper: "stage-3-commands.mjs", use: "Run the loading and symbol search." }],
+  ["stage-3-finish", { helper: "stage-3-finish.mjs", use: "Save or verify the Stage 3 review." }],
+  ["stage-4", { helper: "stage-4-commands.mjs", use: "Prepare the component recovery and its dependency graph." }],
+  ["stage-4-inspect", { helper: "stage-4-inspect.mjs", use: "Collect the Stage 4 source evidence and excerpts." }],
   ["stage-4-5-publish", { helper: "stage-4-5-publish.mjs", use: "Check, publish or verify a Stage 4 or Stage 5 review." }],
   ["stage-5", { helper: "stage-5-commands.mjs", use: "Collect and review the remaining code." }],
   ["stage-6", { helper: "stage-6-commands.mjs", use: "Save and verify the fixed baseline and discovery result." }],
@@ -54,8 +56,9 @@ export function usage(): string {
     "Commands:",
     ...lines,
     "",
-    "Later Stage 2, 3 and 4 actions run the helper copies saved in the attempt",
-    "folder. The stage cookbooks in docs/design/app-a give each command.",
+    "Each stage action after Stage 1 start first checks that the producer code is",
+    "the code that started the run. The stage cookbooks in docs/design/app-a give",
+    "each command.",
     "",
   ].join("\n");
 }

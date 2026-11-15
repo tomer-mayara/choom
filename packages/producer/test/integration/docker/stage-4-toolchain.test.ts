@@ -25,7 +25,8 @@ test("Stage 4 builds the pinned graph image and the image fixture approves it", 
     const settings = { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE4_ID: "s4-docker" };
     const started = runHelper(join(producerSource, "stage-4-commands.mjs"), ["start"], settings);
     expect({ status: started.status, stderr: started.stderr }).toEqual({ status: 0, stderr: "" });
-    const toolchain = runHelper(join(attempt, "stage-4-commands.mjs"), ["toolchain"],
+    // Later actions run the helper in the tool checkout, as start does.
+    const toolchain = runHelper(join(producerSource, "stage-4-commands.mjs"), ["toolchain"],
       { ...settings, CHOOM_STAGE4: attempt }, toolchainTimeout);
     // The helper saves Docker output in the attempt; stderr is shown here only to explain a failure.
     expect({ status: toolchain.status, stderr: toolchain.stderr }).toMatchObject({ status: 0 });

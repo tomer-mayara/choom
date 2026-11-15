@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import { isAbsolute, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -15,7 +16,8 @@ const strings = value => Array.isArray(value) && value.length > 0 && value.every
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const own = (value, key) => Object.hasOwn(value, key);
 const draftNames = ['run', 'discovery', 'baseline'];
-const toolFiles = ['stage-3-commands.mjs', 'stage-3-finish.mjs', 'step-3-cookbook.md'];
+// The documents that Stage 3 start saved; the attempt holds no producer code.
+const toolFiles = ['step-3-cookbook.md'];
 const checkpoints = draftNames.map(name => name + '.before.yaml');
 const collectFiles = ['loading-search.json', 'symbol-mentions.json', 'source-excerpts.json',
   'review-prompt.md', 'artifact-map.json'];
@@ -76,7 +78,7 @@ function finish() {
   const [action, ...args] = process.argv.slice(2);
   const verifyOnly = action === 'verify';
   assert((action === undefined || verifyOnly) && args.length === 0,
-    'Run the saved Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3.');
+    'Run the Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3.');
   const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE3_ID: id } = process.env;
   assert([CHOOM_WORK, CHOOM_TOOLS].every(value => text(value) && isAbsolute(value)),
     'Set CHOOM_WORK and CHOOM_TOOLS to absolute paths.');
@@ -85,8 +87,10 @@ function finish() {
   const tools = directory(CHOOM_TOOLS);
   assert(work !== tools && !tools.startsWith(work + '/'), 'Use a trusted tool checkout outside CHOOM_WORK.');
   const attempt = directory(join(directory(join(work, 'evidence')), id));
+  assert(!process.env.CHOOM_STAGE3 || process.env.CHOOM_STAGE3 === attempt, 'CHOOM_STAGE3 does not match the attempt.');
   const self = fileURLToPath(import.meta.url);
-  assert(self === join(attempt, 'stage-3-finish.mjs'), 'Run stage-3-finish.mjs from the saved attempt.');
+  assert(self === join(tools, 'packages/producer/src/stage-3-finish.mjs'), 'Use the Stage 3 finalizer in the trusted checkout.');
+  refuseChangedProducerCode(work, tools);
   const require = createRequire(join(tools, 'package.json'));
   const yamlPath = require.resolve('yaml');
   assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/') && realpathSync(yamlPath) === yamlPath,

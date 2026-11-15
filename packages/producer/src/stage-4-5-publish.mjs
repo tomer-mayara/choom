@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 import { runLayout } from './run-layout.mjs';
 import { readBaselineYaml, validateDiscoveryRecords } from './stage-6-records.mjs';
 
@@ -75,7 +76,9 @@ const recordFiles = ['baseline.proposed.yaml', 'discovery.proposed.yaml', 'entry
   'code-mapping.json', 'resource-access.json'];
 const packetFiles = [...recordFiles, 'llm/analysis-prompt.md', 'llm/analysis-response.md',
   'llm/analysis-call.yaml', 'llm/review-scope.json'];
-const toolFiles = ['stage-4-5-publish.mjs', 'stage-6-records.mjs', 'record-format.md', 'run-layout.mjs'];
+// The record format that Stage 4 and Stage 5 start saved. It must still match the
+// tool checkout; the producer code check covers the code.
+const toolFiles = ['record-format.md'];
 const draftFiles = ['run.yaml', 'baseline.yaml', 'discovery.yaml'];
 const checkpoint = name => name.replace('.yaml', '.before.yaml');
 const receiptName = 'publication.json';
@@ -92,9 +95,10 @@ const source = directory(join(tools, 'packages/producer/src'));
 // The record format stays with the cookbooks in docs/design/app-a.
 const documents = directory(join(tools, 'docs/design/app-a'));
 const sourceFolder = name => name.endsWith('.md') ? documents : source;
-assert(fileURLToPath(import.meta.url) === join(source, toolFiles[0]), 'Use the publisher in the trusted checkout.');
+assert(fileURLToPath(import.meta.url) === join(source, 'stage-4-5-publish.mjs'), 'Use the publisher in the trusted checkout.');
 const attempt = directory(join(directory(join(work, 'evidence')), id));
 assert(process.env['CHOOM_STAGE' + stage] === attempt, 'Set the matching stage attempt directory.');
+refuseChangedProducerCode(work, tools);
 const require = createRequire(join(tools, 'package.json'));
 const yamlPath = require.resolve('yaml');
 assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/') && realpathSync(yamlPath) === yamlPath,

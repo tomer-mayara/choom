@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
+import { producerReceipt } from '../../../src/producer-code.ts';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const snapshotRef = 'fixture-snapshot';
@@ -20,6 +22,8 @@ const selectedRefs = {
 const registrationRef = 'launch-settings';
 const evidenceRefs = [registrationRef];
 const limits = ['Only saved fixture launch paths and registrations were reviewed.'];
+// The run records the producer code of this checkout, as Stage 1 start does.
+const toolsRoot = realpathSync(fileURLToPath(new URL('../../../../../', import.meta.url)));
 
 function statement(value) {
   return { value, status: 'proposed', evidenceRefs };
@@ -52,6 +56,7 @@ export function producerFixture(change = () => {}) {
     inventory.files.push({ path, kind: 'file', bytes: Buffer.byteLength(source), sha256: digest(source) });
   }
   register(inventoryRef, 'evidence/inventory.json', inventory);
+  register('s1-file@evidence%2Fproducer.json', 'evidence/producer.json', producerReceipt(toolsRoot));
   register(registrationRef, 'evidence/launch-settings.json', {
     cli: 'choom serve', http: ['GET /orders', 'POST /orders'], mcp: 'search', unresolved: 'plugin command',
   });

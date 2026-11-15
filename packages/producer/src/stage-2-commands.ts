@@ -448,7 +448,7 @@ const checkoutDriver = join(tools, 'packages/producer/src/stage-2-commands.ts');
 if (action === 'start') assert(self === checkoutDriver, 'Start from the tool checkout.');
 else {
   assert(self === checkoutDriver && realpathSync(self) === self && realpathSync(attempt) === attempt,
-    'Use the driver in the tool checkout with a prepared attempt.');
+    'Use the Stage 2 driver in the trusted checkout with a prepared attempt.');
 }
 refuseChangedProducerCode(work, tools);
 if (action === 'start') {

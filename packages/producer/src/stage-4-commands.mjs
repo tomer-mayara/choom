@@ -8,13 +8,16 @@ import { dirname, isAbsolute, join, posix } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 
 const self = fileURLToPath(import.meta.url);
 const [action, ...args] = process.argv.slice(2);
 const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE4_ID: id } = process.env;
-const toolsToFreeze = ['stage-4-commands.mjs', 'stage-4-graph.mjs', 'stage-4-inspect.mjs',
-  'step-4-cookbook.md', 'inventory-view.py', 'stage-4-5-publish.mjs', 'stage-6-records.mjs', 'record-format.md',
-  'run-layout.mjs'];
+// Start saves the documents that the stage follows. Every action runs the producer
+// code in the tool checkout after the producer code check.
+const toolsToFreeze = ['step-4-cookbook.md', 'record-format.md'];
+// The container path of the graph helper, which each run mounts from the tool checkout.
+const graphHelper = '/producer/stage-4-graph.mjs';
 const drafts = ['run', 'discovery', 'baseline'];
 const maxOutputBytes = 64 * 1024 * 1024;
 const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
@@ -63,8 +66,8 @@ assert(!process.env.CHOOM_STAGE4 || process.env.CHOOM_STAGE4 === attempt, 'CHOOM
 // The cookbooks and record format stay in docs/design/app-a; the code is in packages/producer/src.
 const sourceTool = name => join(tools, name.endsWith('.md') ? 'docs/design/app-a' : 'packages/producer/src', name);
 const sourceSelf = sourceTool('stage-4-commands.mjs');
-assert(self === (action === 'start' ? sourceSelf : join(attempt, 'stage-4-commands.mjs')),
-  'Use the trusted checkout for start and the frozen attempt helper for later commands.');
+assert(self === sourceSelf, 'Use the Stage 4 helper in the trusted checkout.');
+refuseChangedProducerCode(work, tools);
 const require = createRequire(join(tools, 'package.json'));
 function trustedModule(name) {
   const path = require.resolve(name);
@@ -296,7 +299,7 @@ function receipt(phase) {
     required.every(name => Object.hasOwn(value.digests, name)) &&
     isDeepStrictEqual(Object.keys(value.logDigests).sort(), logs.sort()) &&
     !Object.keys(value.digests).some(name => logs.includes(name)) &&
-    value.command?.args?.[1] === (phase === 'start' ? sourceSelf : join(attempt, 'stage-4-commands.mjs')) &&
+    value.command?.args?.[1] === sourceSelf &&
     isDeepStrictEqual(value.command.args.slice(2), [phase]) &&
     [value.digests, value.logDigests].every(records => Object.entries(records)
       .every(([name, digest]) => hash(saved(name)) === digest)),
@@ -373,8 +376,8 @@ function toolchain() {
   assert(/^sha256:[a-f0-9]{64}$/.test(imageId), 'Expected a concrete image ID.');
   const inspect = command('docker', ['image', 'inspect', '--format', '{{.Id}}', imageId], 'toolchain/image', 30000);
   assert(succeeded(inspect) && saved(inspect.stdout).toString().trim() === imageId, 'Built image identity mismatch.');
-  const fixture = container(imageId, ['/control/stage-4-graph.mjs', '--fixture'], 'toolchain/fixture',
-    mount(join(attempt, 'stage-4-graph.mjs'), '/control/stage-4-graph.mjs'));
+  const fixture = container(imageId, [graphHelper, '--fixture'], 'toolchain/fixture',
+    mount(sourceTool('stage-4-graph.mjs'), graphHelper));
   assert(succeeded(fixture), 'Image fixture failed; do not run it on the snapshot.');
   const check = JSON.parse(saved(fixture.stdout));
   assert(check.status === 'approved' && check.toolVersions?.dependencyCruiser === '18.7.2' &&
@@ -404,7 +407,7 @@ function graphRun(current) {
   const inputRoot = join(work, 'knip-input-' + inventory.sha256);
   const viewArgs = [work, join(work, inventory.path), inventory.sha256, current.facts.snapshotRef, id];
   function view(operation, stem) {
-    const result = command('python3', [join(attempt, 'inventory-view.py'), operation, ...viewArgs], stem, 900000);
+    const result = command('python3', [sourceTool('inventory-view.py'), operation, ...viewArgs], stem, 900000);
     assert(succeeded(result), 'Inventory input ' + operation + ' failed; see ' + result.stderr);
     const value = JSON.parse(saved(result.stdout));
     assert(value.status === 'verified' && value.snapshotRef === current.facts.snapshotRef && value.attemptId === id &&
@@ -414,8 +417,9 @@ function graphRun(current) {
   }
   const prepared = view('prepare', 'graph-input-prepare');
   const before = view('verify', 'graph-input-before');
-  const result = container(chosen.imageId, ['/control/stage-4-graph.mjs', '/control/graph-profile.json'], 'graph',
-    [...mount(directory(inputRoot), '/repo'), ...mount(attempt, '/control')], '/repo');
+  const result = container(chosen.imageId, [graphHelper, '/control/graph-profile.json'], 'graph',
+    [...mount(directory(inputRoot), '/repo'), ...mount(attempt, '/control'), ...mount(sourceTool('stage-4-graph.mjs'), graphHelper)],
+    '/repo');
   const after = view('verify', 'graph-input-after');
   const report = { formatVersion: 1, attemptId: id, snapshotRef: current.facts.snapshotRef, profileRef: artifactId('graph-profile.json'),
     profileSha256: hash(saved('graph-profile.json')), imageId: chosen.imageId, dockerEndpoint,

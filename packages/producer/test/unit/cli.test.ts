@@ -11,7 +11,9 @@ describe("producer command line mapping", () => {
       ["stage-2", "stage-2-commands.ts"],
       ["stage-2-consolidate", "stage-2-consolidate-inputs.ts"],
       ["stage-3", "stage-3-commands.mjs"],
+      ["stage-3-finish", "stage-3-finish.mjs"],
       ["stage-4", "stage-4-commands.mjs"],
+      ["stage-4-inspect", "stage-4-inspect.mjs"],
       ["stage-4-5-publish", "stage-4-5-publish.mjs"],
       ["stage-5", "stage-5-commands.mjs"],
       ["stage-6", "stage-6-commands.mjs"],
@@ -35,7 +37,7 @@ describe("producer command line mapping", () => {
   });
 
   test.each([[[]], [["unknown"]], [["constructor"]], [["__proto__"]], [["STAGE-1"]], [["stage-1-commands.ts"]],
-    [["stage-3-finish"]], [["stage-4-inspect"]]])("has no helper for %p", (argv: string[]) => {
+    [["stage-3-finish.mjs"]], [["producer-code"]]])("has no helper for %p", (argv: string[]) => {
     expect(helperCall(argv)).toBeUndefined();
   });
 

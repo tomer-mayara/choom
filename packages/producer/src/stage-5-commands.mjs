@@ -7,16 +7,18 @@ import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 import { runLayout } from './run-layout.mjs';
+import * as query from './stage-5-query.mjs';
 
 const self = fileURLToPath(import.meta.url);
 const [action, ...args] = process.argv.slice(2);
 const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE5, CHOOM_STAGE5_ID: id } = process.env;
 const helper = 'stage-5-commands.mjs';
 const cookbook = 'step-5-cookbook.md';
-const queryName = 'stage-5-query.mjs';
-const toolFiles = [helper, queryName, cookbook, 'stage-4-5-publish.mjs', 'stage-6-records.mjs', 'record-format.md',
-  'run-layout.mjs'];
+// Start saves the documents that the stage follows. The review prompt comes from
+// the saved cookbook. Every action runs the producer code in the tool checkout.
+const toolFiles = [cookbook, 'record-format.md'];
 const draftNames = ['run.yaml', 'discovery.yaml', 'baseline.yaml'];
 const checkpoint = name => name.replace('.yaml', '.before.yaml');
 const startOutputs = [...draftNames.map(checkpoint), ...toolFiles, 'handoff.json', 'scope.json'];
@@ -105,6 +107,7 @@ const attempt = join(directory(join(work, 'evidence')), id);
 assert(CHOOM_STAGE5 === attempt, 'Set CHOOM_STAGE5 to the matching attempt directory.');
 assert(self === sourceTool(helper) && realpathSync(self) === self,
   'Use the Stage 5 command helper in the trusted checkout.');
+refuseChangedProducerCode(work, tools);
 
 const saved = name => {
   assert(safe(name), 'Invalid saved attempt path: ' + name);
@@ -141,11 +144,6 @@ function loadTools(pinned) {
     modules: Object.fromEntries(loaded.map(path => [path.slice(modules.length), hash(read(path))])) };
   if (pinned) assert(isDeepStrictEqual(versions, pinned), 'Trusted parser modules changed since start.');
   return { parse, ts, versions };
-}
-
-async function loadQuery(bytes) {
-  // Import the verified bytes without reopening the saved path.
-  return await import('data:text/javascript;base64,' + bytes.toString('base64'));
 }
 
 function readState(parse) {
@@ -314,14 +312,12 @@ function logCommand(entry) {
 
 async function main() {
   let toolchain;
-  let query;
   let state;
   let frozenTools;
   if (action === 'start') {
     assert(!exists(attempt), 'Start with a new attempt ID.');
     frozenTools = Object.fromEntries(toolFiles.map(name => [name, read(sourceTool(name))]));
     toolchain = loadTools();
-    query = await loadQuery(frozenTools[queryName]);
     state = readState(toolchain.parse);
     mkdirSync(attempt);
     save(commandLog, commandHeader);
@@ -353,14 +349,11 @@ async function main() {
         handoff.scopeSha256 === hash(saved('scope.json')) &&
         hash(saved(commandLog).subarray(0, Buffer.byteLength(commandHeader))) === handoff.initialCommandsSha256,
       'Frozen tools, scope or command log changed since start.');
-      for (const name of [helper, queryName])
-        assert(savedTools[name].equals(read(sourceTool(name))), 'Trusted implementation changed since start: ' + name);
       assert(object(handoff.versions), 'Missing pinned parser versions.');
       toolchain = loadTools(handoff.versions);
       state = readState(toolchain.parse);
       assert(Object.entries(state.facts).every(([key, value]) => isDeepStrictEqual(handoff[key], value)),
         'Work, snapshot, checkpoints or registered inputs changed since start.');
-      query = await loadQuery(savedTools[queryName]);
       for (const name of draftNames)
         assert(state.inputs[name].equals(saved(checkpoint(name))), 'Working draft changed: ' + name);
       if (action === 'collect') {

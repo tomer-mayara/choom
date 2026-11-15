@@ -6,14 +6,15 @@ import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 
 const self = fileURLToPath(import.meta.url);
 const [action, ...args] = process.argv.slice(2);
 const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE3_ID: id } = process.env;
 const helper = 'stage-3-commands.mjs';
-const finalizer = 'stage-3-finish.mjs';
 const cookbook = 'step-3-cookbook.md';
-const toolInputs = [helper, finalizer, cookbook];
+// Start saves the cookbook. The review prompt comes from that saved copy.
+const toolInputs = [cookbook];
 const drafts = ['run.yaml', 'discovery.yaml', 'baseline.yaml'];
 const checkpoint = name => name.replace('.yaml', '.before.yaml');
 const frozen = [...drafts.map(checkpoint), ...toolInputs, 'handoff.json'];
@@ -70,7 +71,7 @@ const tools = directory(CHOOM_TOOLS);
 assert(work !== tools && !tools.startsWith(work + '/'), 'Use a trusted tool checkout outside CHOOM_WORK.');
 const evidence = directory(join(work, 'evidence'));
 const attempt = join(evidence, id);
-const savedHelper = join(attempt, helper);
+assert(!process.env.CHOOM_STAGE3 || process.env.CHOOM_STAGE3 === attempt, 'CHOOM_STAGE3 does not match the attempt.');
 const sourceHelper = join(tools, 'packages/producer/src', helper);
 const sourceCookbook = join(tools, 'docs/design/app-a', cookbook);
 function saved(name) {
@@ -445,16 +446,16 @@ function main() {
   let toolchain;
   let state;
   let sourceInputs;
+  refuseChangedProducerCode(work, tools);
   if (action === 'start') {
     assert(self === sourceHelper && !exists(attempt), 'Start from CHOOM_TOOLS with a fresh attempt ID.');
     toolchain = loadTools();
     state = handoffState(toolchain.parse);
-    sourceInputs = Object.fromEntries(toolInputs.map(name =>
-      [name, read(name === cookbook ? sourceCookbook : join(dirname(self), name))]));
+    sourceInputs = { [cookbook]: read(sourceCookbook) };
     mkdirSync(attempt);
   } else {
     directory(attempt);
-    assert(self === savedHelper, 'Use the frozen helper in the attempt directory.');
+    assert(self === sourceHelper, 'Use the Stage 3 helper in the trusted checkout.');
   }
 
   const { phase, prefix, started } = reserve();
@@ -471,10 +472,10 @@ function main() {
       save(commandLog, '# Stage 3 commands\n\n' +
         'Set CHOOM_WORK, CHOOM_TOOLS and CHOOM_STAGE3_ID before running these commands.\n\n' +
         '\x60\x60\x60sh\nnode "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 start\n' +
-        'node "$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID/stage-3-commands.mjs" collect\n' +
-        'node "$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID/stage-3-commands.mjs" excerpt PATH FIRST LAST\n' +
-        'node "$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID/stage-3-commands.mjs" save-review REVIEW_DIR\n' +
-        'node "$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID/stage-3-finish.mjs"\n\x60\x60\x60\n\n' +
+        'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 collect\n' +
+        'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 excerpt PATH FIRST LAST\n' +
+        'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 save-review REVIEW_DIR\n' +
+        'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3-finish\n\x60\x60\x60\n\n' +
         '## Recorded invocations\n');
       for (const name of drafts) save(checkpoint(name), state.inputs[name]);
       for (const [name, bytes] of Object.entries(sourceInputs)) save(name, bytes);
@@ -518,7 +519,7 @@ function main() {
         assert(reviewFiles.every(name => supplied[name].length > 0), 'Review packet files must not be empty.');
         mkdirSync(join(attempt, 'llm'));
         for (const name of reviewFiles) { save(name, supplied[name]); outputNames.push(name); }
-        message = 'Saved the review packet. Run stage-3-finish.mjs to validate and register it.';
+        message = 'Saved the review packet. Run stage-3-finish to validate and register it.';
       } else {
         const [path, firstText, lastText] = args;
         const [first, last] = [Number(firstText), Number(lastText)];

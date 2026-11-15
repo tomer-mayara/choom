@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -39,8 +40,11 @@ assert((action === 'collect' && args.length === 0) || (action === 'excerpt' && a
 const work = directory(CHOOM_WORK);
 const tools = directory(CHOOM_TOOLS);
 const attempt = directory(join(directory(join(work, 'evidence')), id));
-assert(fileURLToPath(import.meta.url) === join(attempt, 'stage-4-inspect.mjs'), 'Run the saved inspection helper.');
+assert(!process.env.CHOOM_STAGE4 || process.env.CHOOM_STAGE4 === attempt, 'CHOOM_STAGE4 does not match the attempt.');
+assert(fileURLToPath(import.meta.url) === join(tools, 'packages/producer/src/stage-4-inspect.mjs'),
+  'Use the Stage 4 inspection helper in the trusted checkout.');
 assert(work !== tools && !tools.startsWith(work + '/'), 'Keep the trusted tool checkout out of the saved run.');
+refuseChangedProducerCode(work, tools);
 const artifactId = name => id + '-file@' + encodeURIComponent(name);
 const saved = name => { assert(safe(name), 'Invalid saved path.'); return read(join(attempt, name)); };
 const json = name => JSON.parse(utf8(saved(name), name));
@@ -71,9 +75,8 @@ function receipt(phase, required) {
 }
 
 function state() {
-  const frozen = ['stage-4-commands.mjs', 'stage-4-graph.mjs', 'stage-4-inspect.mjs',
-    'step-4-cookbook.md', 'inventory-view.py', 'stage-4-5-publish.mjs', 'stage-6-records.mjs', 'record-format.md',
-    'run-layout.mjs'];
+  // The documents that Stage 4 start saved; the attempt holds no producer code.
+  const frozen = ['step-4-cookbook.md', 'record-format.md'];
   receipt('start', ['handoff.json', 'graph-profile.json', 'graph-profile-notes.json', ...frozen,
     'run.before.yaml', 'discovery.before.yaml', 'baseline.before.yaml']);
   const handoff = json('handoff.json');

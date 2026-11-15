@@ -6,9 +6,10 @@ import { producerReceipt } from "../../src/producer-code.ts";
 import { producerDocuments, producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
 import { stagedRun, stagedSnapshotRef as snapshotRef } from "../support/staged-run.ts";
 
-// A stage start saves copies of the files it uses in the run, under fixed names.
-// Each case states where every saved name comes from in the tool checkout. A
-// saved copy of a TypeScript file ends in .mts, so Node runs it as an ES module.
+// A stage start saves copies of the documents that the stage follows, as records,
+// under fixed names. It saves no producer code: every action runs the code in the
+// tool checkout after the producer code check. Each case states where every saved
+// name comes from in the tool checkout.
 type SourceMap = Record<string, string>;
 
 interface ProducerFixture { root: string; work: string; review: string }
@@ -31,7 +32,7 @@ function json(path: string): unknown {
   return JSON.parse(readFileSync(path, "utf8")) as unknown;
 }
 
-describe("stage starts save their source copies", () => {
+describe("stage starts save their documents and no producer code", () => {
   test("Stage 1 saves its cookbook and the producer code record, and no producer code", () => {
     withScratch((scratch) => {
       const target = join(scratch, "target");
@@ -66,7 +67,7 @@ describe("stage starts save their source copies", () => {
     });
   });
 
-  test("Stage 3 saves its helper, finalizer and cookbook", () => {
+  test("Stage 3 saves its cookbook", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stagedRun(work, 2);
@@ -75,15 +76,15 @@ describe("stage starts save their source copies", () => {
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toContain(`Saved s3-new for ${snapshotRef}.`);
       const attempt = join(work, "evidence/s3-new");
-      const sources = { "stage-3-commands.mjs": code("stage-3-commands.mjs"), "stage-3-finish.mjs": code("stage-3-finish.mjs"),
-        "step-3-cookbook.md": documents("step-3-cookbook.md") };
+      const sources = { "step-3-cookbook.md": documents("step-3-cookbook.md") };
       expectCopies(attempt, sources);
+      expect(readdirSync(attempt).filter(producerCode)).toEqual([]);
       expect(Object.keys((json(join(attempt, "handoff.json")) as { toolInputDigests: object }).toolInputDigests))
         .toEqual(Object.keys(sources));
     });
   });
 
-  test("Stage 4 freezes nine tool files, and the Stage 4/5 publisher accepts the same sources", () => {
+  test("Stage 4 saves its cookbook and the record format, and the Stage 4/5 publisher accepts them", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stagedRun(work, 3);
@@ -92,10 +93,9 @@ describe("stage starts save their source copies", () => {
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toStartWith("Prepared s4-new: ");
       const attempt = join(work, "evidence/s4-new");
-      const sources = Object.fromEntries(["stage-4-commands.mjs", "stage-4-graph.mjs", "stage-4-inspect.mjs",
-        "step-4-cookbook.md", "inventory-view.py", "stage-4-5-publish.mjs", "stage-6-records.mjs", "record-format.md",
-        "run-layout.mjs"].map((name) => [name, name.endsWith(".md") ? documents(name) : code(name)]));
+      const sources = { "step-4-cookbook.md": documents("step-4-cookbook.md"), "record-format.md": documents("record-format.md") };
       expectCopies(attempt, sources);
+      expect(readdirSync(attempt).filter(producerCode)).toEqual([]);
       expect(Object.keys((json(join(attempt, "handoff.json")) as { toolInputDigests: object }).toolInputDigests))
         .toEqual(Object.keys(sources));
       const review = join(scratch, "review");
@@ -106,7 +106,7 @@ describe("stage starts save their source copies", () => {
     });
   });
 
-  test("Stage 6 freezes its helper, records module, run layout and cookbook", async () => {
+  test("Stage 6 saves its cookbook", async () => {
     const { producerFixture } = (await import(fixtureModule.href)) as FixtureModule;
     const fixture = producerFixture();
     try {
@@ -114,9 +114,9 @@ describe("stage starts save their source copies", () => {
       const result = runHelper(code("stage-6-commands.mjs"), ["start", fixture.review], { CHOOM_TOOLS: toolsRoot,
         CHOOM_WORK: fixture.work, CHOOM_STAGE6_ID: "s6-new", CHOOM_STAGE6: attempt });
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
-      const sources = { "stage-6-commands.mjs": code("stage-6-commands.mjs"), "stage-6-records.mjs": code("stage-6-records.mjs"),
-        "run-layout.mjs": code("run-layout.mjs"), "step-6-cookbook.md": documents("step-6-cookbook.md") };
+      const sources = { "step-6-cookbook.md": documents("step-6-cookbook.md") };
       expectCopies(attempt, sources);
+      expect(readdirSync(attempt).filter(producerCode)).toEqual([]);
       expect((json(join(attempt, "handoff.json")) as { toolInputDigests: object }).toolInputDigests)
         .toEqual(Object.fromEntries(Object.entries(sources).map(([name, path]) => [name, sha256(readFileSync(path))])));
     } finally {
