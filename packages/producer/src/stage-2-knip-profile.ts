@@ -4,9 +4,10 @@ import { createRequire } from 'node:module';
 import { resolve, join, posix } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-// The Stage 2 prepare action runs the copy of this module that start saved in
-// the attempt. It checks the entry plan, writes the fixed profile for Knip 6.44.1
-// with every framework plugin turned off, and writes the preflight decision.
+// The Stage 2 prepare action runs this module in the tool checkout, after the
+// driver checked the producer code record of the run. It checks the entry plan,
+// writes the fixed profile for Knip 6.44.1 with every framework plugin turned
+// off, and writes the preflight decision.
 // Saved JSON and YAML stay unchecked values until the checks below read them.
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 interface Workspace { dir: string; entry: unknown; project: unknown }
@@ -105,10 +106,6 @@ writeFileSync(join(attempt, 'preflight.json'), JSON.stringify({
   inventory: { ref: run.snapshot.inventoryRef, ...run.artifacts[run.snapshot.inventoryRef] },
   status: reasons.length ? 'unsupported' : 'eligible', reasons,
   environment: { KNIP_DISABLE_RAW_TRANSFER: '1' },
-  helpers: {
-    inventoryViewSha256: hash(readFileSync(join(attempt, 'inventory-view.py'))),
-    imageCheckSha256: hash(readFileSync(join(attempt, 'check-knip-image.mjs'))),
-  },
   disabledPlugins: pluginNames,
   approvedCoreParsers: ['JS/TS', 'MDX', 'Sass/SCSS', 'Less', 'Stylus', 'TSRX'],
   limits: ['All framework plugins disabled.', 'Missing dependencies remain missing.',

@@ -17,6 +17,7 @@ interface Receipt { digests: Record<string, string> }
 
 const sha256 = (bytes: Buffer | string): string => createHash("sha256").update(bytes).digest("hex");
 const code = (name: string): string => join(producerSource, name);
+const producerCode = (name: unknown): boolean => /\.(?:m?ts|mjs|py)$/.test(String(name));
 const documents = (name: string): string => join(producerDocuments, name);
 // The fixture is JavaScript. This local type states only what these tests use.
 const fixtureModule = new URL("../fixtures/entry-points/producer.mjs", import.meta.url);
@@ -42,14 +43,14 @@ describe("stage starts save their source copies", () => {
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toBe("Working folder prepared. Review exclusions.txt and scope-notes.md before capture.\n");
       expectCopies(join(work, "evidence"), { "cookbook.md": documents("step-1-cookbook.md") });
-      expect(readdirSync(work, { recursive: true }).filter((name) => /\.(?:m?ts|mjs|py)$/.test(String(name)))).toEqual([]);
+      expect(readdirSync(work, { recursive: true }).filter(producerCode)).toEqual([]);
       expect(json(join(work, "evidence/producer.json"))).toEqual(producerReceipt(toolsRoot));
       expect(json(join(work, "evidence/stage1-inputs.json"))).toMatchObject({ tools: toolsRoot, target, workLayout: "separate" });
       expect(Object.keys(json(join(work, "evidence/tools.json")) as object)).toEqual(["node", "tsMorph", "typescript", "yaml"]);
     });
   });
 
-  test("Stage 2 saves its cookbook, driver, stage modules and helper copies", () => {
+  test("Stage 2 saves its cookbook and no producer code", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stagedRun(work, 1);
@@ -58,13 +59,10 @@ describe("stage starts save their source copies", () => {
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toContain("Prepared the attempt.");
       const attempt = join(work, "evidence/s2-new");
-      const modules = ["commands", "handoff", "knip-profile", "knip-input", "tool-image", "knip-run", "finish"];
-      const sources = { "cookbook.md": documents("step-2-cookbook.md"),
-        ...Object.fromEntries(modules.map((name) => [`stage-2-${name}.mts`, code(`stage-2-${name}.ts`)])),
-        "check-knip-image.mjs": code("check-knip-image.mjs"), "inventory-view.py": code("inventory-view.py") };
-      expectCopies(attempt, sources);
-      expect(Object.keys((json(join(attempt, "operator-start.json")) as Receipt).digests)).toEqual(
-        expect.arrayContaining(Object.keys(sources)));
+      expectCopies(attempt, { "cookbook.md": documents("step-2-cookbook.md") });
+      expect(readdirSync(attempt).filter(producerCode)).toEqual([]);
+      const digests = Object.keys((json(join(attempt, "operator-start.json")) as Receipt).digests);
+      expect({ cookbook: digests.includes("cookbook.md"), code: digests.filter(producerCode) }).toEqual({ cookbook: true, code: [] });
     });
   });
 

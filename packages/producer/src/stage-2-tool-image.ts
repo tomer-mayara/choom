@@ -3,14 +3,15 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync
 import { constants } from 'node:os';
 import { join } from 'node:path';
 
-// The Stage 2 toolchain action runs the copy of this module that start saved in
-// the attempt, only when the preflight is eligible and a docker command exists.
-// It builds the Knip tool image from a Dockerfile with an empty build context,
-// resolves the image ID, and checks the image with the saved check-knip-image.mjs
-// fixture. Each step saves its output and exit code under toolchain/. A failed
-// build, inspection or check is recorded, and the driver then selects no image.
-const { CHOOM_STAGE2: attempt = '', CHOOM_STAGE2_ID: id = '' } = process.env;
+// The Stage 2 toolchain action runs this module in the tool checkout, only when
+// the preflight is eligible and a docker command exists. It builds the Knip tool
+// image from a Dockerfile with an empty build context, resolves the image ID, and
+// checks the image with the check-knip-image.mjs fixture in the tool checkout.
+// Each step saves its output and exit code under toolchain/. A failed build,
+// inspection or check is recorded, and the driver then selects no image.
+const { CHOOM_STAGE2: attempt = '', CHOOM_STAGE2_ID: id = '', CHOOM_TOOLS: tools = '' } = process.env;
 const toolchain = join(attempt, 'toolchain');
+const imageCheck = join(tools, 'packages/producer/src/check-knip-image.mjs');
 const dockerfile = 'FROM node:24-bookworm-slim\nWORKDIR /opt/choom-tools\n' +
   'RUN npm init -y && npm install --ignore-scripts --save-exact knip@6.44.1\nUSER 65534:65534\nWORKDIR /repo\n';
 const record = (name: string, text: string): void => writeFileSync(join(toolchain, name), text, { flag: 'wx' });
@@ -78,7 +79,7 @@ function checkImage(image: string): void {
     '--pids-limit', '128', '--memory', '2g', '--memory-swap', '2g',
     '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777',
     '--entrypoint', 'node', image, '--input-type=module'],
-  join(attempt, 'check-knip-image.mjs'), join(toolchain, 'metadata.json'), join(toolchain, 'check.stderr.txt'));
+  imageCheck, join(toolchain, 'metadata.json'), join(toolchain, 'check.stderr.txt'));
   if (check === 0) record('check-exit.txt', '0\n');
   else {
     record('check-exit.txt', `${check}\n`);

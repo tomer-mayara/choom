@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
-import { type CommandResult, runCli, runHelper, toolsRoot } from "./commands.ts";
+import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
 import { type SnapshotFile, stagedRun, stagedSnapshotRef } from "./staged-run.ts";
 
 // Helpers that run a Stage 2 attempt the way the step-2 cookbook does, on a
@@ -27,25 +27,21 @@ export const stageTwoSnapshot: SnapshotFile[] = [
 const llmCall = { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown" };
 
 // Saves a Stage 1 run with the given snapshot and one earlier discovery question.
-export function stageOneRun(work: string, snapshot: SnapshotFile[] = stageTwoSnapshot): void {
-  stagedRun(work, 1, { snapshot, questions: [priorQuestion] });
+// The run records the producer code of the given tool checkout.
+export function stageOneRun(work: string, snapshot: SnapshotFile[] = stageTwoSnapshot, tools = toolsRoot): void {
+  stagedRun(work, 1, { snapshot, questions: [priorQuestion], tools });
 }
 
 export function stageTwoAttempt(work: string, id: string, env: Record<string, string> = {}, tools = toolsRoot): StageTwoAttempt {
   return { work, id, folder: join(work, "evidence", id), tools, env };
 }
 
-// The driver copy that start saved in the attempt.
-const savedDriver = (folder: string): string => join(folder, "stage-2-commands.mts");
-
-// Start runs through the command line of the tool checkout. Every later action
-// runs the driver copy saved in the attempt.
+// Every action runs through the command line of the tool checkout.
 export function stageTwo(attempt: StageTwoAttempt, action: string, args: string[] = [],
   env: Record<string, string> = {}): CommandResult {
   const settings = { CHOOM_TOOLS: attempt.tools, CHOOM_WORK: attempt.work, CHOOM_STAGE2_ID: attempt.id,
     CHOOM_STAGE2: attempt.folder, DOCKER_HOST: "", DOCKER_CONTEXT: "", ...attempt.env, ...env };
-  if (action === "start") return runCli(["stage-2", "start", ...args], settings, attempt.tools);
-  return runHelper(savedDriver(attempt.folder), [action, ...args], settings);
+  return runCli(["stage-2", action, ...args], settings, attempt.tools);
 }
 
 export function writePacket(folder: string, files: Record<string, string>): string {

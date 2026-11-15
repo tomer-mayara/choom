@@ -4,8 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { isAbsolute, join, resolve, sep } from 'node:path';
 
-// The Stage 2 run action runs the copy of this module that start saved in the
-// attempt. It runs Knip on the inventory-only input in normal and production
+// The Stage 2 run action runs this module in the tool checkout. It runs Knip on the inventory-only input in normal and production
 // mode, each in a container with no network, and saves raw output and receipts.
 // A missing image, an unsupported profile or a failed check gives skipped runs.
 interface CommandResult {
@@ -28,12 +27,13 @@ const limits = {
   network: 'none', readOnly: true, user: '65534:65534',
   environment: { KNIP_DISABLE_RAW_TRANSFER: '1' },
 };
-for (const key of ['CHOOM_WORK', 'CHOOM_STAGE2']) {
+for (const key of ['CHOOM_WORK', 'CHOOM_STAGE2', 'CHOOM_TOOLS']) {
   if (!process.env[key] || !isAbsolute(process.env[key] ?? ''))
     throw new Error(`${key} must be an existing absolute directory.`);
 }
 const work = await realpath(process.env.CHOOM_WORK as string);
 const attempt = await realpath(process.env.CHOOM_STAGE2 as string);
+const inventoryView = join(await realpath(process.env.CHOOM_TOOLS as string), 'packages/producer/src/inventory-view.py');
 const id = process.env.CHOOM_STAGE2_ID ?? '';
 if (!id || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(id))
   throw new Error('CHOOM_STAGE2_ID must contain only letters, digits, hyphens, or underscores.');
@@ -65,9 +65,6 @@ const inputDigests = {
 if (inputDigests.planSha256 !== preflight.planSha256 || inputDigests.profileSha256 !== preflight.profileSha256 ||
     inputDigests.inventorySha256 !== preflight.inventory.sha256)
   throw new Error('Plan, profile, or inventory changed after preflight. Use a new attempt.');
-if (hash(await readFile(join(attempt, 'inventory-view.py'))) !== preflight.helpers?.inventoryViewSha256 ||
-    hash(await readFile(join(attempt, 'check-knip-image.mjs'))) !== preflight.helpers?.imageCheckSha256)
-  throw new Error('A saved helper changed after preflight. Use a new attempt.');
 
 // Do not replace a prior attempt's receipts or raw output.
 const receiptPath = join(attempt, 'knip-runs.json');
@@ -196,7 +193,7 @@ async function checkLocalImage(inputRoot: string, blockers: string[]): Promise<s
 }
 
 async function verifyInputView(inputRoot: string, blockers: string[]): Promise<void> {
-  const check = await command('python3', [join(attempt, 'inventory-view.py'), 'verify', work,
+  const check = await command('python3', [inventoryView, 'verify', work,
     inventoryPath, inputDigests.inventorySha256, plan.snapshotRef, id], 'knip-input-check', limits.inputCheckTimeoutMs);
   receipt.inputView = { verification: check, status: 'failed' };
   try {

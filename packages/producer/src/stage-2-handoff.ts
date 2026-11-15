@@ -4,10 +4,11 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
-// Stage 2 start runs the copy of this module that it saved in the attempt. It
-// checks the saved Stage 1 inputs and saves checkpoints of the three drafts. A
-// registered artifact that points to a working draft moves to its checkpoint,
-// with the same ID, bytes and digest. Saved YAML stays unchecked until read here.
+// Stage 2 start runs this module in the tool checkout, after the driver checked
+// the producer code record of the run. It checks the saved Stage 1 inputs and
+// saves checkpoints of the three drafts. A registered artifact that points to a
+// working draft moves to its checkpoint, with the same ID, bytes and digest.
+// Saved YAML stays unchecked until read here.
 interface Registered { path: string; from: string; sha256: string }
 interface RegistrationChange { id: string; from: string; to: string; sha256: string }
 

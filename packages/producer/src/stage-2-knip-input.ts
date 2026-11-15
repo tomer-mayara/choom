@@ -3,11 +3,12 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 
-// The Stage 2 prepare action runs the copy of this module that start saved in
-// the attempt. For an eligible profile, the saved inventory-view.py helper
-// prepares or reuses the shared inventory-only Knip input and checks it.
+// The Stage 2 prepare action runs this module in the tool checkout. For an
+// eligible profile, the inventory-view.py helper in the tool checkout prepares
+// or reuses the shared inventory-only Knip input and checks it.
 const work = resolve(process.env.CHOOM_WORK as string);
 const attempt = resolve(process.env.CHOOM_STAGE2 as string);
+const inventoryView = resolve(process.env.CHOOM_TOOLS as string, 'packages/producer/src/inventory-view.py');
 const preflight = JSON.parse(readFileSync(join(attempt, 'preflight.json')).toString());
 if (preflight.status === 'eligible') {
   const inventory = resolve(work, preflight.inventory.path);
@@ -17,7 +18,7 @@ if (preflight.status === 'eligible') {
   const err = openSync(join(attempt, 'knip-input.stderr.txt'), 'wx');
   let result;
   try {
-    result = spawnSync('python3', [join(attempt, 'inventory-view.py'), 'prepare', work,
+    result = spawnSync('python3', [inventoryView, 'prepare', work,
       inventory, preflight.inventory.sha256, preflight.snapshotRef, process.env.CHOOM_STAGE2_ID as string],
     { stdio: ['ignore', out, err] });
   } finally { closeSync(out); closeSync(err); }

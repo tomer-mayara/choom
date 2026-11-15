@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parse } from "yaml";
-import { withScratch } from "../../support/commands.ts";
+import { producerSource, withScratch } from "../../support/commands.ts";
 import { candidate, finishAttempt, priorQuestion, runAttempt, savedJson, stageOneRun, stageTwoAttempt,
   type JsonRecord } from "../../support/stage-2-attempt.ts";
 import { dockerCalls, pathWithDoubles } from "../../support/tool-doubles.ts";
@@ -74,7 +74,6 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         planSha256: sha256(saved("entry-plan.json")), profileSha256: sha256(saved("knip-profile.json")),
         inventory: { ref: "inventory-001", path: "evidence/inventory.json", sha256: sha256(inventory) },
         status: "eligible", reasons: [], environment: { KNIP_DISABLE_RAW_TRANSFER: "1" },
-        helpers: { inventoryViewSha256: sha256(saved("inventory-view.py")), imageCheckSha256: sha256(saved("check-knip-image.mjs")) },
         disabledPlugins: plugins, approvedCoreParsers: ["JS/TS", "MDX", "Sass/SCSS", "Less", "Stylus", "TSRX"],
         limits: ["All framework plugins disabled.", "Missing dependencies remain missing.",
           "Explicit workspaces and entries do not replace metadata-discovered workspaces or roots.",
@@ -93,7 +92,7 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         imageId + "\n", "Docker version 0.0.0, build test-double\n", "#1 test double build\n", "", ""]);
       expect(savedJson(attempt, "toolchain-selection.json")).toEqual({ status: "approved", imageId, reason: null });
 
-      // Docker receives exactly these calls. The image check reads the saved image check helper.
+      // Docker receives exactly these calls. The image check reads the image check helper in the tool checkout.
       const runs = (savedJson(attempt, "knip-runs.json") as unknown as KnipRuns).runs;
       const calls = dockerCalls(log);
       expect(calls.map(({ args }) => args)).toEqual([
@@ -108,7 +107,7 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         ...runs.map((run) => knipArgs(run, inputRoot, join(attempt.folder, "knip-profile.json"))),
       ]);
       expect(calls[1]?.stdin).toBe(dockerfile);
-      expect(calls[3]?.stdin).toBe(saved("check-knip-image.mjs").toString());
+      expect(calls[3]?.stdin).toBe(readFileSync(join(producerSource, "check-knip-image.mjs"), "utf8"));
 
       const receipt = savedJson(attempt, "knip-runs.json") as unknown as KnipRuns;
       expect(runs.map(({ mode, status, containerName, report, cleanup }) => ({ mode, status, report, cleanup,

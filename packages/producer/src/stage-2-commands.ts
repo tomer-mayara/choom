@@ -5,12 +5,14 @@ import {
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { refuseChangedProducerCode } from './producer-code.ts';
 
-// The Stage 2 driver. Start runs from the tool checkout and saves this driver
-// and the helpers in the attempt folder. Every later action runs the saved copy.
+// The Stage 2 driver. Every action runs from the tool checkout, after it checks
+// that the producer code is the code that started the run. The saved commands of
+// each action run the stage modules in the tool checkout.
 // Saved JSON and YAML stay unchecked values until the checks below read them.
 type Fields = Record<string, unknown>;
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
@@ -40,15 +42,12 @@ const self = fileURLToPath(import.meta.url);
 const [action, ...args] = process.argv.slice(2);
 const planPath = action === 'start' ? args[0] : undefined;
 const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE2_ID: id = '' } = process.env;
-// Saved copies of TypeScript files end in .mts, so Node runs them as ES modules in any folder.
-// Start saves the driver and every program that a later action runs. The
-// cookbook copy is a record of the instructions and prompts; no code reads it.
-const savedDriver = 'stage-2-commands.mts';
-const modules = { handoff: 'stage-2-handoff.mts', profile: 'stage-2-knip-profile.mts', input: 'stage-2-knip-input.mts',
-  image: 'stage-2-tool-image.mts', knip: 'stage-2-knip-run.mts', finish: 'stage-2-finish.mts' };
-const sources = ['cookbook.md', savedDriver, ...Object.values(modules), 'check-knip-image.mjs', 'inventory-view.py'];
-// The saved command that runs one saved module copy in the attempt folder.
-const runSaved = (name: string): string => 'node "$CHOOM_STAGE2/' + name + '"\n';
+// Start saves the cookbook as a record of the instructions and prompts; no code reads it.
+const cookbook = 'cookbook.md';
+const modules = { handoff: 'stage-2-handoff.ts', profile: 'stage-2-knip-profile.ts', input: 'stage-2-knip-input.ts',
+  image: 'stage-2-tool-image.ts', knip: 'stage-2-knip-run.ts', finish: 'stage-2-finish.ts' };
+// The saved command that runs one stage module in the tool checkout.
+const runModule = (name: string): string => 'node "$CHOOM_TOOLS/packages/producer/src/' + name + '"\n';
 const drafts = ['run', 'discovery', 'baseline'];
 const planFile = 'entry-plan.json';
 const coreFiles = [planFile, 'entry-analysis.yaml', 'knip-runs.json', 'knip-profile.json', 'preflight.json'];
@@ -68,7 +67,7 @@ const tools = realpathSync(CHOOM_TOOLS ?? '');
 const evidence = join(work, 'evidence');
 assert(realpathSync(evidence) === evidence && lstatSync(evidence).isDirectory(), 'Expected a real evidence directory.');
 const attempt = join(evidence, id);
-const savedSelf = join(attempt, savedDriver);
+assert(!process.env.CHOOM_STAGE2 || process.env.CHOOM_STAGE2 === attempt, 'CHOOM_STAGE2 does not match the attempt.');
 const { parse } = createRequire(join(tools, 'package.json'))('yaml');
 const env: NodeJS.ProcessEnv = { ...process.env, CHOOM_WORK: work, CHOOM_TOOLS: tools, CHOOM_STAGE2: attempt,
   CHOOM_STAGE2_ID: id, CHOOM_KNIP_IMAGE: '' };
@@ -95,9 +94,6 @@ const json = (name: string) => JSON.parse(saved(name).toString());
 const save = (name: string, data: string | Buffer): void => writeFileSync(join(attempt, name), data, { flag: 'wx' });
 const saveJson = (name: string, data: unknown): void => save(name, JSON.stringify(data, null, 2) + '\n');
 const utc = (): string => new Date().toISOString();
-// A saved copy of a TypeScript file comes from the .ts file of the same name.
-const sourceOf = (name: string): string => name === sources[0] ? join(tools, 'docs/design/app-a/step-2-cookbook.md') :
-  join(dirname(self), name.replace(/\.mts$/, '.ts'));
 
 function exact(record: unknown, keys: string[], label: string): void {
   assert(object(record) && Object.keys(record).length === keys.length &&
@@ -290,9 +286,9 @@ function execute({ record, stdout, stderr }: PhaseContext, recipe: string, name:
 function startPhase(context: PhaseContext): void {
   const plan = planPath ? regularFile(resolve(planPath)) : null;
   if (plan) validatePlan(plan, state(false));
-  for (const name of sources) save(name, regularFile(sourceOf(name)));
-  Object.assign(context.record.digests, digests(sources));
-  execute(context, runSaved(modules.handoff), 'handoff');
+  save(cookbook, regularFile(join(tools, 'docs/design/app-a/step-2-cookbook.md')));
+  Object.assign(context.record.digests, digests([cookbook]));
+  execute(context, runModule(modules.handoff), 'handoff');
   state(true);
   if (plan) save(planFile, plan);
   Object.assign(context.record.digests, digests([
@@ -388,16 +384,16 @@ function packetPhase({ record, stdout }: PhaseContext, current: RunState): void 
 function preparePhase(context: PhaseContext, current: RunState): void {
   validatePlan(saved(planFile), current);
   if (!Object.hasOwn(receiptFor('start').digests, planFile)) assert(receiptFor('plan').exitCode === 0, 'Save the plan before prepare.');
-  execute(context, runSaved(modules.profile), 'profile');
-  execute(context, runSaved(modules.input), 'inventory');
-  Object.assign(context.record.digests, digests([modules.profile, modules.input, 'knip-profile.json', 'preflight.json',
+  execute(context, runModule(modules.profile), 'profile');
+  execute(context, runModule(modules.input), 'inventory');
+  Object.assign(context.record.digests, digests(['knip-profile.json', 'preflight.json',
     ...(json('preflight.json').status === 'eligible' ? ['knip-input.json'] : [])]));
 }
 
 function toolchainPhase(context: PhaseContext): void {
   const eligible = json('preflight.json').status === 'eligible';
   if (eligible) {
-    execute(context, 'if command -v docker >/dev/null 2>&1; then\n  ' + runSaved(modules.image) +
+    execute(context, 'if command -v docker >/dev/null 2>&1; then\n  ' + runModule(modules.image) +
       "else\n  printf 'Docker is unavailable.\\n'\nfi\n", 'image');
   }
   const selected: Selection = eligible ? selection() : {
@@ -405,7 +401,7 @@ function toolchainPhase(context: PhaseContext): void {
   };
   saveJson('toolchain-selection.json', selected);
   context.record.selection = selected;
-  Object.assign(context.record.digests, digests([...(eligible ? [modules.image] : []), 'toolchain-selection.json',
+  Object.assign(context.record.digests, digests(['toolchain-selection.json',
     ...imageFiles.filter(name => lstatSync(join(attempt, name), { throwIfNoEntry: false }))]));
   writeSync(context.stdout, JSON.stringify(selected, null, 2) + '\n');
   assert(selected.status === 'approved' || !eligible,
@@ -419,8 +415,8 @@ function runPhase(context: PhaseContext): void {
     assert(isDeepStrictEqual(selected, toolchain.selection), 'Approved image evidence changed.');
     env.CHOOM_KNIP_IMAGE = selected.imageId as string;
   }
-  execute(context, runSaved(modules.knip), 'knip');
-  Object.assign(context.record.digests, digests([modules.knip, 'knip-runs.json']));
+  execute(context, runModule(modules.knip), 'knip');
+  Object.assign(context.record.digests, digests(['knip-runs.json']));
 }
 
 function phase(context: PhaseContext): void {
@@ -440,7 +436,7 @@ function finish(): never {
   assert(receiptFor('start').exitCode === 0 && receiptFor('run').exitCode === 0 && receiptFor('save-review').exitCode === 0,
     'Start, run and save-review must succeed before finish.');
   const script = 'operator-finish.sh';
-  save(script, 'set -eCu\n' + runSaved(modules.finish));
+  save(script, 'set -eCu\n' + runModule(modules.finish));
   appendFileSync(join(attempt, 'commands.md'), '\n' + utc() + ' Publish with ' + JSON.stringify([process.execPath, self, 'finish']) +
     '. The finalizer registers this command and the saved recipe; no log writes follow success.\n');
   const result = spawnSync('/bin/bash', [join(attempt, script)], { cwd: attempt, env, stdio: 'inherit' });
@@ -448,15 +444,17 @@ function finish(): never {
   process.exit(result.status ?? 1);
 }
 
+const checkoutDriver = join(tools, 'packages/producer/src/stage-2-commands.ts');
+if (action === 'start') assert(self === checkoutDriver, 'Start from the tool checkout.');
+else {
+  assert(self === checkoutDriver && realpathSync(self) === self && realpathSync(attempt) === attempt,
+    'Use the driver in the tool checkout with a prepared attempt.');
+}
+refuseChangedProducerCode(work, tools);
 if (action === 'start') {
-  assert(self === join(tools, 'packages/producer/src/stage-2-commands.ts'), 'Start from the tool checkout.');
   mkdirSync(attempt);
   save('commands.md', '# Stage 2 commands\n');
-} else {
-  assert(self === savedSelf && realpathSync(attempt) === attempt && realpathSync(self) === self,
-    'Use the saved driver in the prepared attempt.');
-  saved('commands.md');
-}
+} else saved('commands.md');
 
 const stem = 'operator-' + action;
 let receiptStem = stem;

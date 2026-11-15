@@ -6,11 +6,11 @@ import { join, resolve, relative, posix } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 
-// The Stage 2 finish action runs the copy of this module that start saved in the
-// attempt. It checks every attempt file, the plan, the Knip receipts and the LLM
-// entry analysis, registers the attempt files with their digests, and only then
-// updates discovery.yaml and run.yaml. Saved JSON and YAML stay unchecked values
-// until the checks below read them.
+// The Stage 2 finish action runs this module in the tool checkout, after the
+// driver checked the producer code record of the run. It checks every attempt
+// file, the plan, the Knip receipts and the LLM entry analysis, registers the
+// attempt files with their digests, and only then updates discovery.yaml and
+// run.yaml. Saved JSON and YAML stay unchecked values until the checks below read them.
 type Fields = Record<string, unknown>;
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 interface Entry { path: string; sha256: string }
