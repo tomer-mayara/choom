@@ -26,3 +26,14 @@ Feature: Recover an architecture baseline with the producer
     When the operator starts the next stage action
     Then the action is refused
     And the operator is told that the producer code changed
+
+  Scenario: The producer and the viewer agree on a baseline
+    Given a reviewed Stage 5 draft
+    When the operator saves the result
+    Then the viewer accepts the saved baseline without errors
+
+  Scenario: A reserved ID is refused before Stage 5 closes
+    Given a Stage 4 draft with a component whose ID is the baseline ID
+    When the operator publishes the Stage 4 draft
+    Then the draft is refused
+    And the operator is told which ID is reserved

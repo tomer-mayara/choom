@@ -8,8 +8,13 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
+import { publishStageFour, stageFourPublication, type StageFourPublication }
+  from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
+import type { CommandResult } from "../../packages/producer/test/support/commands.ts";
 import { copyToolCheckout } from "../../packages/producer/test/support/tool-checkout.ts";
 import { pathWithDoubles } from "../../packages/producer/test/support/tool-doubles.ts";
+import { checkBaselineDisplayLimits } from "../../src/lib/baseline-display-limits.ts";
+import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 
 interface FixtureComponent {
   id: string;
@@ -44,6 +49,8 @@ interface RecoveryWorld extends World {
   saveCommands?: SpawnSyncReturns<string>[];
   stageOneRun?: StageOneRun;
   stageOneCommand?: SpawnSyncReturns<string>;
+  stageFourRun?: StageFourPublication;
+  publishCommand?: CommandResult;
 }
 
 const tools = realpathSync(fileURLToPath(new URL("../../", import.meta.url)));
@@ -143,6 +150,16 @@ function currentRun(world: RecoveryWorld): ProducerFixture {
   return world.producerRun;
 }
 
+function currentStageFourRun(world: RecoveryWorld): StageFourPublication {
+  assert.ok(world.stageFourRun, "Prepare a Stage 4 draft first.");
+  return world.stageFourRun;
+}
+
+function lastPublishCommand(world: RecoveryWorld): CommandResult {
+  assert.ok(world.publishCommand, "Publish the Stage 4 draft first.");
+  return world.publishCommand;
+}
+
 function savedRun(run: ProducerFixture): SavedRun {
   return parse(readFileSync(join(run.work, "run.yaml"), "utf8")) as SavedRun;
 }
@@ -157,9 +174,10 @@ function publishedPaths(world: RecoveryWorld): PublishedPaths {
 After({ tags: "@producer" }, function (this: RecoveryWorld) {
   if (this.producerRun) rmSync(this.producerRun.root, { recursive: true, force: true });
   if (this.stageOneRun) rmSync(this.stageOneRun.root, { recursive: true, force: true });
+  if (this.stageFourRun) rmSync(this.stageFourRun.root, { recursive: true, force: true });
 });
 
-Given("a reviewed Stage 5 draft for a small fixture repository", async function (this: RecoveryWorld) {
+Given("a reviewed Stage 5 draft( for a small fixture repository)", async function (this: RecoveryWorld) {
   this.producerRun = await reviewedDraft();
 });
 
@@ -228,6 +246,41 @@ Then("the operator is told which file has two owners", function (this: RecoveryW
   const message = this.saveCommands?.[0]?.stderr ?? "";
   assert.match(message, /\bcli\.ts\b/);
   assert.doesNotMatch(message, /\b(http|mcp)\.ts\b/);
+});
+
+// The viewer opens a baseline with its decoder and then checks its display limits.
+Then("the viewer accepts the saved baseline without errors", function (this: RecoveryWorld) {
+  const text = readFileSync(join(currentRun(this).work, publishedPaths(this).baselinePath), "utf8");
+  const decoded = decodeBaselineYaml(text);
+  assert.equal(decoded.status, "success", decoded.status === "failure" ? decoded.message : "");
+  assert.deepEqual(decoded.baseline, parse(text), "The viewer keeps every saved value.");
+  assert.doesNotThrow(() => checkBaselineDisplayLimits(decoded.baseline));
+});
+
+Given("a Stage 4 draft with a component whose ID is the baseline ID", function (this: RecoveryWorld) {
+  this.stageFourRun = stageFourPublication((baseline) => {
+    const http = baseline.components.find((component) => component.id === "http");
+    assert.ok(http, "The fixture has an http component.");
+    http.id = baseline.id;
+  });
+});
+
+When("the operator publishes the Stage 4 draft", function (this: RecoveryWorld) {
+  const run = currentStageFourRun(this);
+  this.savedFilesBefore = savedFiles(run.work);
+  this.publishCommand = publishStageFour(run, "finish");
+});
+
+Then("the draft is refused", function (this: RecoveryWorld) {
+  const command = lastPublishCommand(this);
+  assert.equal(command.status, 1, command.stdout);
+  assert.deepEqual(savedFiles(currentStageFourRun(this).work), this.savedFilesBefore);
+});
+
+Then("the operator is told which ID is reserved", function (this: RecoveryWorld) {
+  const message = lastPublishCommand(this).stderr;
+  assert.match(message, /\bbaseline-check\b/);
+  assert.match(message, /\breserved\b/);
 });
 
 Given("a new run", function (this: RecoveryWorld) {
