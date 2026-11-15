@@ -65,10 +65,14 @@ function checked(result: CommandResult, action: string): CommandResult {
   return result;
 }
 
-// A Stage 1 run of the target after start and capture. The capture uses the
-// rsync test double.
+// A Stage 1 run of the target before start. Its capture uses the rsync test double.
+export function newStageOneRun(scratch: string, target = settingsTarget): StageOneRun {
+  return stageOneRun(scratch, { PATH: pathWithDoubles(scratch) }, toolsRoot, target);
+}
+
+// A Stage 1 run of the target after start and capture.
 export function capturedRun(scratch: string, target = settingsTarget): StageOneRun {
-  const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) }, toolsRoot, target);
+  const run = newStageOneRun(scratch, target);
   for (const action of ["start", "capture"]) checked(stageOne(run, action), action);
   return run;
 }
