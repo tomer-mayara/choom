@@ -41,7 +41,7 @@ duplication helpers have tests. Stages 1–5 and `recover-capture.mjs` have none
 | G7 | **Behavior-entry syntax rules:** there are no route, worker or command rules. Resource access is matched by name only. | 877–878 | `stage-4-inspect.mjs:176-179` |
 | G8 | **Approved framework plugins for Knip:** all plugins are turned off, so entries found only by plugins are lost. | 782–783, 788 | `step-2-cookbook.md:364,432` |
 | G9 | **Named parsing profile when there are no project settings:** not present. | 768–769 | Stage 1 helpers |
-| G10 | **Node `type` field:** not read. Each file gets both an import pass and a require pass. | 866 | `stage-4-commands.mjs:245-254` |
+| G10 | **Node `type` field:** not read. Each file gets both an import pass and a require pass. The visible defect is TypeScript that compiles to CommonJS: it resolves with the `import` condition (plan change 16). | 866 | `stage-4-commands.mjs:245-254` |
 | G11 | **Gaps, deferred regions, uncovered code and questions in the Baseline view, and corrections submitted from it:** the viewer loads no discovery data and has no editing. | 190–191, 392–394 | Deferred by `cr-baseline-viewer-plan.md:48-49`; the design does not say so |
 | G12 | **"Do not save hidden reasoning":** not stated anywhere. The cookbooks ask for the "complete response". | 475 | `step-1-cookbook.md:245`, `step-2-cookbook.md:1105`, `step-3-cookbook.md:260` |
 
@@ -150,6 +150,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-05 | tomer-mayara/choom#73 | Draft. This PR also records plan changes 10 and 11. |
 | GA-06a | tomer-mayara/choom#74 | Draft. This PR also records plan changes 12 and 13. |
 | GA-06a2 | tomer-mayara/choom#75 | Draft. This PR also records plan change 14. |
+| GA-10a | tomer-mayara/choom#76 | Draft. This PR also records plan changes 15 and 16. |
 
 Plan changes:
 
@@ -248,6 +249,23 @@ Plan changes:
     `limits` line says so. The records of Stages 4 and 5 keep
     `formatVersion: 1`, because the producer code record (GA-00e) makes each
     run use one producer version.
+15. **GA-10 is split.** A correct GA-10 must change the checks of the graph
+    helper `stage-4-graph.mjs`, so rule 5 applies. **GA-10a** converts that
+    helper to TypeScript with no behavior change. The helper runs in the
+    `node:24-bookworm-slim` graph image, and this session has no Docker
+    engine. The CI `producer` job is the proof that the image runs the
+    converted file and that the helper writes nothing to stderr there.
+    **GA-10b** then makes the module kind change.
+16. **The GA-10 scenarios are corrected (GA-10b).** The two scenarios of
+    GA-10 pass today: dependency-cruiser reads `import` syntax only in the
+    import pass and `require` syntax only in the require pass, so a
+    JavaScript file already gets the right target. The real G10 defect is
+    TypeScript that compiles to CommonJS: a `.cts` file, a `.ts` file with
+    `module: commonjs`, or a `.ts` file with `module: nodenext` in a package
+    whose `type` is not `module`. Its `import` statements become `require`
+    calls at run time, but the graph resolves them with the `import`
+    condition and marks them `pre-compilation-only`. GA-10b keeps the two
+    scenarios as guards and adds scenarios that fail today.
 
 ### How to work every ticket
 
@@ -359,7 +377,8 @@ Tickets with the same order number can run at the same time.
 | 5 | GA-04 Git identity | G4 | GA-00b |
 | 5 | GA-05 ripgrep search | G5 | GA-00b |
 | 5 | GA-06a ts-morph project on the snapshot | G6 | GA-00b |
-| 5 | GA-10 Node `type` field | G10 | GA-00d |
+| 5 | GA-10a Convert the Stage 4 graph helper | G10 | GA-00d |
+| 6 | GA-10b Module kind of the emitted code | G10 | GA-10a, GA-09 |
 | 5 | GA-01a Decision file | G1 | GA-00c |
 | 6 | GA-06a2 Stages 4 and 5 use the snapshot project | G6 | GA-06a |
 | 6 | GA-06b Definition and reference queries | G6 | GA-06a |
@@ -850,12 +869,30 @@ Feature: Find where a symbol is used
    outcome. Completeness is `partial` when there are unresolved entries.
 5. **N** Run it through the query command on a fixture snapshot.
 
-### GA-10 Use the Node `type` field when resolving imports
+### GA-10a Convert the Stage 4 graph helper to TypeScript
 
-**Gap:** G10 (design 866). **Needs:** GA-00d.
+**Gap:** G10 (plan change 15). **Needs:** GA-00d. No new behavior, so there is
+no new scenario. The characterization tests are the acceptance check.
+
+**Steps:**
+
+1. **N** Add characterization tests for `stage-4-graph.mjs` that run here
+   without Docker. They pass on the `.mjs` file.
+2. Convert the helper to TypeScript with no behavior change (rule 5). It
+   imports only Node built-ins at run time, so the graph image needs only this
+   one file. Stage 4 mounts it so that Node runs it as an ES module.
+3. **N** Pin today's edges for an ES module package, a TypeScript project with
+   `module: commonjs` and a TypeScript project with `module: nodenext`,
+   including the wrong edges that GA-10b changes.
+4. **D** The Docker test checks that the helper writes nothing to stderr in
+   the image fixture run and in the graph run. The CI `producer` job runs it.
+
+### GA-10b Resolve imports by the module kind of the emitted code
+
+**Gap:** G10 (design 866), plan change 16. **Needs:** GA-10a, GA-09.
 
 ```gherkin
-@producer @docker
+@producer
 Feature: Resolve imports by module kind
 
   Scenario: An ES module file uses the import condition only
@@ -867,22 +904,52 @@ Feature: Resolve imports by module kind
     Given a ".cjs" file in the same package that requires the same dependency
     When the dependency graph is built
     Then the edge points to the require target only
+
+  Scenario Outline: TypeScript that compiles to CommonJS uses the require condition
+    Given a package without a type field
+    And a TypeScript file <file> with compiler module <module> that imports the same dependency
+    When the dependency graph is built
+    Then the edge points to the require target only
+    And the edge is not marked as pre-compilation only
+
+    Examples:
+      | file     | module   |
+      | main.ts  | commonjs |
+      | plain.ts | nodenext |
+      | kind.cts | nodenext |
+
+  Scenario: TypeScript that compiles to an ES module keeps the import condition
+    Given a package without a type field
+    And a TypeScript file "esm.mts" with compiler module nodenext that imports the same dependency
+    When the dependency graph is built
+    Then the edge points to the import target only
 ```
 
-It fails today because every file gets both an import pass and a require pass.
+The first two scenarios pass today and guard the JavaScript rules. The others
+fail today because the graph resolves every TypeScript `import` with the
+`import` condition.
 
 **Steps:**
 
-1. **U** `moduleKind(path, nearestPackage)`: `.mjs` and `.mts` are ES modules;
-   `.cjs` and `.cts` are CommonJS; other files use the nearest `package.json`
-   `type` (default `commonjs`).
-2. **U** A TypeScript file uses the compiler `module` setting when that setting
-   decides the output kind. The record says which rule decided.
-3. **U** From each pass, keep only the edges for files of that kind. A file of
-   unknown kind keeps both, with a reason.
-4. **D** A dependency-cruiser fixture with dual-condition exports gives the
-   edges in the scenarios.
-
+1. **U** `emittedKind(path, compilerModule, nearestPackage)` gives the module
+   kind of the code that runs: `.mts` is an ES module and `.cts` is CommonJS.
+   For `.ts` and `.tsx`, `commonjs` gives CommonJS and `es2015` to `esnext`
+   give ES modules. `node16`, `node18`, `node20` and `nodenext` use the `type`
+   of the nearest `package.json` in the snapshot (default `commonjs`).
+   `preserve`, no setting, and JavaScript files keep the syntax as written.
+   The record says which rule decided, and names the setting or the
+   `package.json`. A `package.json` that cannot be read gives an unknown kind
+   with a reason.
+2. **U** In a file that compiles to CommonJS, `import` and `export ... from`
+   statements resolve with the `require` condition. A dynamic `import()` does
+   too with `module: commonjs`, and keeps the `import` condition with `node16`
+   to `nodenext`, as TypeScript emits it. Type-only imports stay
+   `pre-compilation-only`.
+3. **U** Change the graph helper checks so that a pass can read `import` syntax
+   with the `require` condition for these files only. Every other file keeps
+   today's passes.
+4. **N** The scenarios above, with the checkout's dependency-cruiser. The pinned
+   GA-10a edges change on purpose.
 ---
 
 ### GA-01a Decision file for accepting and correcting statements
