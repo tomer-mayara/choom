@@ -1,0 +1,356 @@
+import {
+  appendFileSync, closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, readSync,
+  readdirSync, realpathSync, writeFileSync,
+} from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
+import type * as TypeScript from 'typescript';
+import type * as Yaml from 'yaml';
+import { refuseChangedProducerCode } from './producer-code.ts';
+import { assert, type Fields, hash } from './record-checks.ts';
+import { directory, safePath } from './stage-3-inputs.ts';
+import { reviewPrompt } from './stage-4-review-prompt.ts';
+import { type SiteInputs, type SourceFile, sourceSites } from './stage-4-source-sites.ts';
+
+// The Stage 4 source collection helper. collect saves the source sites of the
+// graph profile scope, the first excerpts, the review prompt and the proposed
+// artifact map; excerpt saves a requested range of an indexed file. Each action
+// first checks that the attempt is still the one that Stage 4 start, toolchain and
+// run prepared, then saves a receipt and appends its outcome to the command log.
+interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
+// The checked attempt: the handoff, the run, the graph profile, the inventory, the
+// checked reader of indexed snapshot files and the selected entry analysis.
+interface InspectState {
+  handoff: Fields; run: Fields; profile: Fields; files: Map<string, InventoryFile>; entry: Fields;
+  source(path: string, maxBytes?: number): Buffer;
+}
+interface OperatorRecord {
+  formatVersion: 1; attemptId: string; action: string; phase: string; startedAt: string;
+  command: { args: string[]; cwd: string; environment: Record<string, string> };
+  status: string; exitCode?: number; digests?: Record<string, string>; reason?: string; finishedAt?: string;
+}
+
+const excerptSourceBytes = 2 * 1024 * 1024;
+function read(path: string): Buffer {
+  assert(lstatSync(path).isFile() && realpathSync(path) === path, 'Expected a regular file: ' + path);
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    assert(fstatSync(fd).isFile(), 'Expected a regular file: ' + path);
+    return readFileSync(fd);
+  } finally { closeSync(fd); }
+}
+function utf8(bytes: Buffer, label: string): string {
+  const text = bytes.toString('utf8');
+  assert(Buffer.from(text).equals(bytes), 'Invalid UTF-8: ' + label);
+  return text;
+}
+const { CHOOM_WORK, CHOOM_TOOLS } = process.env;
+const id = process.env.CHOOM_STAGE4_ID ?? '';
+const [action, ...args] = process.argv.slice(2);
+assert(/^s4-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id), 'Set CHOOM_STAGE4_ID to an s4-... ID.');
+assert((action === 'collect' && args.length === 0) || (action === 'excerpt' && args.length === 3),
+  'Use collect, or excerpt PATH FIRST LAST.');
+const work = directory(CHOOM_WORK);
+const tools = directory(CHOOM_TOOLS);
+const attempt = directory(join(directory(join(work, 'evidence')), id));
+assert(!process.env.CHOOM_STAGE4 || process.env.CHOOM_STAGE4 === attempt, 'CHOOM_STAGE4 does not match the attempt.');
+assert(fileURLToPath(import.meta.url) === join(tools, 'packages/producer/src/stage-4-inspect.ts'),
+  'Use the Stage 4 inspection helper in the trusted checkout.');
+assert(work !== tools && !tools.startsWith(work + '/'), 'Keep the trusted tool checkout out of the saved run.');
+refuseChangedProducerCode(work, tools);
+const artifactId = (name: string): string => id + '-file@' + encodeURIComponent(name);
+const saved = (name: string): Buffer => { assert(safePath(name), 'Invalid saved path.'); return read(join(attempt, name)); };
+const json = (name: string): Fields => JSON.parse(utf8(saved(name), name)) as Fields;
+const save = (name: string, bytes: string | Buffer): void => writeFileSync(join(attempt, name), bytes, { flag: 'wx' });
+const saveJson = (name: string, value: unknown): void => save(name, JSON.stringify(value, null, 2) + '\n');
+const require = createRequire(join(tools, 'package.json'));
+const yamlPath = require.resolve('yaml');
+assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/'), 'Use YAML from the trusted checkout.');
+read(yamlPath);
+const { parse } = require(yamlPath) as typeof Yaml;
+const parsed = (name: string): Fields => parse(utf8(saved(name), name)) as Fields;
+
+// The completed receipt of a phase: its started record, its outputs and its logs, with unchanged digests.
+function receipt(phase: string, required: string[]): void {
+  const value = json('operator-' + phase + '.json');
+  const started = json('operator-' + phase + '.started.json');
+  assert(value.formatVersion === 1 && value.attemptId === id && value.phase === phase && value.action === phase &&
+    value.status === 'completed' && value.exitCode === 0 &&
+    started.formatVersion === 1 && started.attemptId === id && started.phase === phase && started.action === phase &&
+    started.status === 'started' && started.startedAt === value.startedAt &&
+    isDeepStrictEqual(started.command, value.command), 'Invalid ' + phase + ' receipt.');
+  const logs = ['.started.json', '.stdout.txt', '.stderr.txt'].map(suffix => 'operator-' + phase + suffix);
+  assert(required.every(name => Object.hasOwn((value.digests ?? {}) as object, name)) &&
+    logs.every(name => Object.hasOwn((value.logDigests ?? {}) as object, name)), 'Missing ' + phase + ' output digests.');
+  assert(isDeepStrictEqual(Object.keys(value.logDigests as object).sort(), [...logs].sort()), 'Unexpected receipt log names.');
+  for (const map of [value.digests, value.logDigests])
+    for (const [name, digest] of Object.entries(map as Record<string, unknown>))
+      assert(/^[a-f0-9]{64}$/.test(digest as string) && hash(saved(name)) === digest, 'Changed ' + phase + ' output: ' + name);
+}
+
+// The handoff of the completed start, with the unchanged drafts, saved documents and graph profile.
+function startedHandoff(): Fields {
+  // The documents that Stage 4 start saved; the attempt holds no producer code.
+  const frozen = ['step-4-cookbook.md', 'record-format.md'];
+  receipt('start', ['handoff.json', 'graph-profile.json', 'graph-profile-notes.json', ...frozen,
+    'run.before.yaml', 'discovery.before.yaml', 'baseline.before.yaml']);
+  const handoff = json('handoff.json');
+  assert(handoff.attemptId === id && handoff.work === work && handoff.tools === tools, 'Invalid Stage 4 handoff.');
+  for (const name of ['run', 'discovery', 'baseline']) {
+    const bytes = saved(name + '.before.yaml');
+    assert(bytes.equals(read(join(work, name + '.yaml'))), 'Draft changed after preparation: ' + name);
+    assert(hash(bytes) === (handoff.checkpointDigests as Fields)[name + '.before.yaml'], 'Checkpoint changed: ' + name);
+  }
+  for (const [name, digest] of Object.entries(handoff.toolInputDigests as Fields))
+    assert(hash(saved(name)) === digest, 'Saved tool changed: ' + name);
+  assert(hash(saved('graph-profile.json')) === handoff.graphProfileSha256, 'Graph profile changed.');
+  return handoff;
+}
+
+// The registered artifacts of the run, checked by digest. This attempt is not registered yet.
+function registeredArtifacts(run: Fields): Map<string, Buffer> {
+  const artifacts = new Map<string, Buffer>();
+  for (const [ref, record] of Object.entries(run.artifacts as Record<string, { path: string; sha256: string }>)) {
+    assert(safePath(record.path) && !['run.yaml', 'discovery.yaml', 'baseline.yaml'].includes(record.path),
+      'Invalid artifact path: ' + ref);
+    assert(!record.path.startsWith('evidence/' + id + '/'), 'This attempt is registered. Keep it unchanged.');
+    const bytes = read(join(work, record.path));
+    assert(hash(bytes) === record.sha256, 'Registered evidence changed: ' + ref);
+    artifacts.set(ref, bytes);
+  }
+  return artifacts;
+}
+
+// The indexed regular files of the saved inventory, by path.
+function inventoryFiles(handoff: Fields, run: Fields, artifacts: Map<string, Buffer>): Map<string, InventoryFile> {
+  const snapshot = run.snapshot as Fields;
+  assert(snapshot.id === handoff.snapshotRef && snapshot.inventoryRef === handoff.inventoryRef, 'Snapshot identity changed.');
+  const inventory = JSON.parse(String(artifacts.get(handoff.inventoryRef as string))) as Fields;
+  assert(inventory.formatVersion === 1 && inventory.snapshotId === handoff.snapshotRef && Array.isArray(inventory.files),
+    'Inventory snapshot mismatch.');
+  const files = new Map((inventory.files as InventoryFile[]).map(file => [file.path, file]));
+  assert(files.size === (inventory.files as unknown[]).length, 'Duplicate inventory paths.');
+  return files;
+}
+
+// The saved graph profile, after the checks that the graph run completed for its
+// contexts and that its source scope is the saved Stage 3 scope.
+function checkedProfile(handoff: Fields, discovery: Fields, artifacts: Map<string, Buffer>): Fields {
+  const profile = json('graph-profile.json');
+  const graph = json('graph-results.json');
+  receipt('run', ['graph-results.json', 'graph-run.json']);
+  const loadingRef = (discovery.entryAnalysisRef as string).replace(/-entry-analysis$/, '-file@loading-search.json');
+  const loading = JSON.parse(String(artifacts.get(loadingRef))) as Fields;
+  const scope = (value: SourceFile[]): SourceFile[] => value.map(({ path, sha256 }) => ({ path, sha256 })).sort((a, b) =>
+    a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  const sourceFiles = profile.sourceFiles as SourceFile[];
+  assert(profile.formatVersion === 1 && profile.snapshotRef === handoff.snapshotRef && profile.attemptId === id &&
+    Array.isArray(sourceFiles) && new Set(sourceFiles.map(file => file.path)).size === sourceFiles.length &&
+    loading.snapshotRef === handoff.snapshotRef && loading.status === 'completed' &&
+    isDeepStrictEqual(scope(sourceFiles), scope(loading.scope as SourceFile[])), 'Graph profile changed the saved source scope.');
+  const contexts = graph.contexts as Fields[];
+  const profileContexts = profile.contexts as Fields[];
+  assert(graph.snapshotRef === handoff.snapshotRef && graph.profileRef === artifactId('graph-profile.json') &&
+    graph.status === 'completed' && contexts.length === profileContexts.length &&
+    contexts.every((context, index) => context.status === 'completed' && context.id === profileContexts[index]?.id),
+  'Expected completed graph contexts with documented coverage limits.');
+  const graphRun = json('graph-run.json');
+  assert(graphRun.attemptId === id && graphRun.snapshotRef === handoff.snapshotRef && graphRun.status === 'completed' &&
+    graphRun.profileRef === artifactId('graph-profile.json') && graphRun.profileSha256 === hash(saved('graph-profile.json')) &&
+    graphRun.graphRef === artifactId('graph-results.json') && graphRun.graphSha256 === hash(saved('graph-results.json')),
+  'Graph run identity or digests changed.');
+  return profile;
+}
+
+// Streams an indexed file that is too large for an excerpt to check its digest,
+// then refuses it with the code that collect records as a skip reason.
+function refuseLargeSource(absolute: string, file: InventoryFile): never {
+  const fd = openSync(absolute, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    assert(fstatSync(fd).isFile(), 'Expected a regular saved source: ' + file.path);
+    const digest = createHash('sha256'); const chunk = Buffer.alloc(64 * 1024); let size = 0; let count: number;
+    while ((count = readSync(fd, chunk, 0, chunk.length, null)) > 0) { digest.update(chunk.subarray(0, count)); size += count; }
+    assert(size === file.bytes && digest.digest('hex') === file.sha256, 'Snapshot source changed: ' + file.path);
+  } finally { closeSync(fd); }
+  throw Object.assign(new Error('Excerpt source exceeds 2 MiB: ' + file.path), { code: 'EXCERPT_SOURCE_TOO_LARGE' });
+}
+
+// The checked reader of indexed regular files in the saved snapshot.
+function snapshotReader(snapshot: string, files: Map<string, InventoryFile>): InspectState['source'] {
+  return (path, maxBytes = Infinity) => {
+    assert(safePath(path) && files.get(path)?.kind === 'file', 'Path is not an indexed regular file: ' + path);
+    const file = files.get(path) as InventoryFile; const absolute = join(snapshot, path);
+    const stat = lstatSync(absolute);
+    assert(stat.isFile() && stat.size === file.bytes && realpathSync(absolute) === absolute, 'Snapshot source changed: ' + path);
+    if (file.bytes > maxBytes) refuseLargeSource(absolute, file);
+    const bytes = read(absolute);
+    assert(bytes.length === file.bytes && hash(bytes) === file.sha256, 'Snapshot source changed: ' + path);
+    return bytes;
+  };
+}
+
+// The attempt as start, toolchain and run left it, checked again before and after each action.
+function state(): InspectState {
+  const handoff = startedHandoff();
+  const run = parsed('run.before.yaml');
+  const discovery = parsed('discovery.before.yaml');
+  const progress = run.progress as Fields | undefined;
+  assert(progress?.inspectionPriorities === 'complete' && progress.baselineRecovery === 'pending' &&
+    run.status === 'in-progress' && (run.snapshot as Fields | undefined)?.root === 'snapshot' && run.id === handoff.runRef &&
+    discovery.kind === 'architecture-discovery' && discovery.runRef === run.id &&
+    discovery.entryAnalysisRef === handoff.entryAnalysisRef, 'Expected a finalized Stage 3 handoff.');
+  const artifacts = registeredArtifacts(run);
+  const files = inventoryFiles(handoff, run, artifacts);
+  const profile = checkedProfile(handoff, discovery, artifacts);
+  for (const record of profile.sourceFiles as SourceFile[])
+    assert(files.get(record.path)?.kind === 'file' && files.get(record.path)?.sha256 === record.sha256,
+      'Source scope does not match the inventory: ' + record.path);
+  const snapshot = directory(join(work, (run.snapshot as Fields).root as string));
+  read(join(attempt, 'commands.md'));
+  assert(lstatSync(join(attempt, 'commands.md')).nlink === 1, 'Command log must not share a hard link.');
+  const source = snapshotReader(snapshot, files);
+  const entry = parse(utf8(artifacts.get(discovery.entryAnalysisRef as string) as Buffer, 'selected entry analysis')) as Fields;
+  return { handoff, run, profile, files, source, entry };
+}
+
+function excerpt(current: InspectState, path: string, first: number, last: number, sourceId: string): Fields {
+  assert(Number.isSafeInteger(first) && Number.isSafeInteger(last) && first >= 1 && last >= first &&
+    last - first < 300, 'Use a range of 1 to 300 lines.');
+  const text = utf8(current.source(path, excerptSourceBytes), path);
+  const lines = text ? text.split(/\r\n|\r|\n/) : [];
+  if (/[\r\n]$/.test(text)) lines.pop();
+  assert(first <= lines.length, 'First line is outside the file: ' + path);
+  const end = Math.min(last, lines.length);
+  const numbered = lines.slice(first - 1, end).map((line, index) => (first + index) + ': ' + line).join('\n');
+  assert(Buffer.byteLength(numbered) <= 100 * 1024, 'Excerpt exceeds 100 KiB; request a smaller range.');
+  return { id: sourceId, snapshotRef: current.handoff.snapshotRef, path, sha256: current.files.get(path)?.sha256,
+    lines: [first, end], totalLines: lines.length, truncated: first !== 1 || end !== lines.length, excerpt: numbered };
+}
+
+// Loads the TypeScript parser from the trusted checkout, with the record of its version and digest.
+function loadParser(): Pick<SiteInputs, 'ts' | 'parser'> {
+  const tsPath = require.resolve('typescript');
+  assert(tsPath.startsWith(join(tools, 'node_modules/typescript') + '/'), 'Use the trusted TypeScript parser.');
+  read(tsPath);
+  const ts = require(tsPath) as typeof TypeScript;
+  return { ts, parser: { name: 'TypeScript createSourceFile', version: ts.version, node: process.version,
+    parserSha256: hash(read(tsPath)) } };
+}
+
+// The paths of the first excerpts: inspection priorities, root README files, entry
+// candidates and component declarations. The first 40 paths are excerpted.
+function initialExcerpts(current: InspectState): Fields {
+  const entryCandidates = current.entry.candidates as Fields[];
+  const candidates = new Map(entryCandidates.map(item => [item.id, item.path as string]));
+  const prioritized = (current.entry.inspectionPriorities as Fields[]).flatMap(item => (item.subjectRefs as string[]).flatMap(ref =>
+    current.files.has(ref) ? [ref] : candidates.get(ref) ? [candidates.get(ref) as string] : []));
+  const initial = [...prioritized, ...[...current.files.keys()].filter(path => /^readme(?:\.[^/]*)?$/i.test(path)),
+    ...entryCandidates.map(item => item.path).filter(path => typeof path === 'string')];
+  const declarations = [...current.files.keys()].filter(path => path === 'component.yaml' || path.endsWith('/component.yaml')).sort();
+  const paths = [...new Set([...initial, ...declarations])];
+  const excerpts: Fields[] = []; const skipped: Fields[] = [];
+  for (const [index, path] of paths.entries()) {
+    if (index >= 40) { skipped.push({ path, reason: 'Initial excerpt limit of 40 paths.' }); continue; }
+    if (current.files.get(path)?.kind !== 'file') { skipped.push({ path, reason: 'Not an indexed regular file.' }); continue; }
+    try {
+      const bytes = current.source(path, excerptSourceBytes);
+      if (!bytes.length) { skipped.push({ path, reason: 'Empty file.' }); continue; }
+      excerpts.push(excerpt(current, path, 1, 200, id + '-source-' + encodeURIComponent(path)));
+    }
+    catch (error) {
+      const failure = error as NodeJS.ErrnoException;
+      if (failure.code === 'EXCERPT_SOURCE_TOO_LARGE' || failure.message.startsWith('Excerpt exceeds') ||
+        failure.message.startsWith('Invalid UTF-8'))
+        skipped.push({ path, reason: failure.message });
+      else throw error;
+    }
+  }
+  return { formatVersion: 1, snapshotRef: current.handoff.snapshotRef, excerpts, skipped,
+    limits: ['Initial excerpts end at line 200 and 100 KiB from UTF-8 files of at most 2 MiB; truncation and skipped paths are explicit.',
+      'Only source spans actually read by the LLM can become reviewedFiles.'] };
+}
+
+// The proposed IDs and digests of the attempt files, except the command log and the map itself.
+function artifactMap(): Record<string, { path: string; sha256: string }> {
+  const artifacts: Record<string, { path: string; sha256: string }> = {};
+  function index(folder = ''): void {
+    for (const name of readdirSync(join(attempt, folder)).sort()) {
+      const path = folder ? folder + '/' + name : name;
+      const stat = lstatSync(join(attempt, path));
+      if (stat.isDirectory()) { directory(join(attempt, path)); index(path); }
+      else if (!['commands.md', 'artifact-map.json'].includes(path))
+        artifacts[artifactId(path)] = { path: 'evidence/' + id + '/' + path, sha256: hash(saved(path)) };
+    }
+  }
+  index();
+  return artifacts;
+}
+
+function collect(current: InspectState): string[] {
+  saveJson('source-sites.json', sourceSites({ ...loadParser(), attemptId: id, snapshotRef: current.handoff.snapshotRef,
+    sourceFiles: current.profile.sourceFiles as SourceFile[], text: path => utf8(current.source(path), path) }));
+  saveJson('source-excerpts.json', initialExcerpts(current));
+  save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,
+    entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt }));
+  saveJson('artifact-map.json', { formatVersion: 1, attemptId: id, snapshotRef: current.handoff.snapshotRef,
+    status: 'proposed', artifacts: artifactMap(),
+    limits: ['This map is not registered yet. It omits itself, the mutable command log, and later files.'] });
+  return ['source-sites.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'];
+}
+
+function phase(): string {
+  if (action === 'collect') return 'collect';
+  for (let number = 1; number < 10000; number++) {
+    const name = 'excerpt-' + String(number).padStart(3, '0');
+    if (!lstatSync(join(attempt, 'operator-' + name + '.started.json'), { throwIfNoEntry: false })) return name;
+  }
+  throw new Error('Too many saved excerpts.');
+}
+
+// Runs the action and returns the names of its outputs.
+function runAction(phaseName: string): string[] {
+  const current = state();
+  if (action === 'collect') return collect(current);
+  const [path = '', first = '', last = ''] = args;
+  assert(/^\d+$/.test(first) && /^\d+$/.test(last), 'Line numbers must be positive integers.');
+  const name = phaseName + '.json';
+  saveJson(name, excerpt(current, path, Number(first), Number(last), id + '-source-' + phaseName));
+  return [name];
+}
+
+function appendCommandLog(phaseName: string, record: OperatorRecord): void {
+  const log = join(attempt, 'commands.md');
+  read(log);
+  const fd = openSync(log, constants.O_WRONLY | constants.O_APPEND | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    assert(stat.isFile() && stat.nlink === 1, 'Command log must be a separate regular file.');
+    appendFileSync(fd, '\n## ' + phaseName + '\n\n```json\n' + JSON.stringify(record, null, 2) + '\n```\n');
+  } finally { closeSync(fd); }
+}
+
+// Refuse a stale or registered attempt before creating any receipt there.
+state();
+const phaseName = phase();
+const record: OperatorRecord = { formatVersion: 1, attemptId: id, action: action as string, phase: phaseName,
+  startedAt: new Date().toISOString(),
+  command: { args: process.argv, cwd: process.cwd(), environment: { CHOOM_WORK: work, CHOOM_TOOLS: tools, CHOOM_STAGE4_ID: id } },
+  status: 'started' };
+saveJson('operator-' + phaseName + '.started.json', record);
+try {
+  const outputs = runAction(phaseName);
+  state();
+  record.status = 'completed'; record.exitCode = 0;
+  record.digests = Object.fromEntries(outputs.map(name => [name, hash(saved(name))]));
+  console.log(action === 'collect' ? 'Saved source sites, bounded excerpts, and the Stage 4 review prompt.' : 'Saved ' + outputs[0] + '.');
+} catch (error) {
+  record.status = 'failed'; record.exitCode = 1; record.reason = (error as Error).message;
+  process.exitCode = 1; console.error((error as Error).message);
+} finally {
+  record.finishedAt = new Date().toISOString();
+  saveJson('operator-' + phaseName + '.json', record);
+  appendCommandLog(phaseName, record);
+}

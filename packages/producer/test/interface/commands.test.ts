@@ -26,7 +26,7 @@ const usageCases: UsageCase[] = [
   { helper: "stage-4-commands.ts", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use start, toolchain, or run." },
   { helper: "stage-4-graph.mjs", args: [], status: 1, message: "Use /control/graph-profile.json or --fixture." },
-  { helper: "stage-4-inspect.mjs", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
+  { helper: "stage-4-inspect.ts", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use collect, or excerpt PATH FIRST LAST." },
   { helper: "stage-4-5-publish.ts", args: [], status: 1,
     message: "Use check STAGE REVIEW_DIR, finish STAGE REVIEW_DIR, or verify STAGE (4 or 5)." },
@@ -124,10 +124,10 @@ describe("helpers that run only from the tool checkout", () => {
       const toolchain = runHelper(helperCopy(attempt, "stage-4-commands.ts"), ["toolchain"], settings);
       expect(toolchain.status).toBe(1);
       expect(toolchain.stderr).toContain("Use the Stage 4 helper in the trusted checkout.");
-      const inspection = runHelper(helperCopy(attempt, "stage-4-inspect.mjs"), ["collect"], settings);
+      const inspection = runHelper(helperCopy(attempt, "stage-4-inspect.ts"), ["collect"], settings);
       expect(inspection.status).toBe(1);
       expect(inspection.stderr).toContain("Use the Stage 4 inspection helper in the trusted checkout.");
-      const trusted = runHelper(join(producerSource, "stage-4-inspect.mjs"), ["collect"], settings);
+      const trusted = runHelper(join(producerSource, "stage-4-inspect.ts"), ["collect"], settings);
       expect(trusted.status).toBe(1);
       expect(trusted.stderr).toContain(`ENOENT: no such file or directory, lstat '${join(attempt, "operator-start.json")}'`);
     });
