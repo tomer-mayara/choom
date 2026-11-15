@@ -469,8 +469,20 @@ describe("readBaselineYaml", () => {
     ["a repeated mapping key", "a: 1\na: 2\n", "Baseline YAML mapping keys must be unique strings."],
     ["two documents", "a: 1\n---\nb: 2\n", "Baseline must contain one YAML document."],
     ["an explicit tag", "a: !!str 1\n", "Baseline YAML anchors and explicit tags are unsupported."],
+    ["a custom tag", "a: !custom 1\n", "Baseline YAML anchors and explicit tags are unsupported."],
+    ["an alias without an anchor", "a: *shared\n", "Baseline YAML aliases and syntax errors are unsupported."],
+    ["a key that is not a string", "1: a\n", "Baseline YAML mapping keys must be unique strings."],
+    ["no document", "", "Baseline must contain one YAML document."],
+    ["a directive", "%YAML 1.2\n---\na: 1\n", "Baseline YAML directives and syntax errors are unsupported."],
+    ["a flow sequence that does not end", "a: [1, 2\n", "Baseline must contain valid YAML."],
+    ["a number that is not finite", "a: .inf\n", "Baseline must contain JSON-compatible data."],
+    ["an escape that YAML does not define", 'a: "\\q"\n', "Invalid baseline YAML scalar."],
+    ["two commas in a flow sequence", "a: [1,,2]\n", "Invalid baseline YAML flow separators."],
+    ["33 nested levels", `a: ${"[".repeat(33)}${"]".repeat(33)}\n`, "Baseline exceeds the YAML structure limit."],
+    ["more than 1,500,000 lexer tokens", "- [[[[x]]]]\n".repeat(130_000), "Baseline exceeds the YAML token limit."],
+    ["more than 16 MiB", "#".repeat(16 * 1024 * 1024 + 1), "Baseline exceeds the 16 MiB file limit."],
   ])("refuses %s", (_name, text, message) => {
-    expect(() => readBaselineYaml(Buffer.from(text), yaml)).toThrow(message);
+    expect(() => readBaselineYaml(Buffer.from(text), yaml)).toThrow(new Error(message));
   });
 
   test("refuses bytes that are not UTF-8", () => {
