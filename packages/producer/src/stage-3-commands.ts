@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import type * as Ripgrep from '@vscode/ripgrep';
-import type * as TypeScript from 'typescript';
+import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
@@ -26,10 +26,11 @@ import {
 // receipt and appends its outcome to the command log.
 interface Toolchain {
   parse: Parse;
-  ts: typeof TypeScript;
+  // ts-morph, with its own copy of TypeScript, which Stage 3 uses.
+  tsMorph: typeof TsMorph;
   // The absolute path of the ripgrep program.
   ripgrep: string;
-  versions: { node: string; typescript: string; ripgrep: RipgrepTool; modules: Record<string, string> };
+  versions: { node: string; tsMorph: string; typescript: string; ripgrep: RipgrepTool; modules: Record<string, string> };
 }
 interface Prepared { toolchain: Toolchain; state: StageState; sourceInputs: Record<string, Buffer> }
 interface Started { toolchain: Toolchain; state: StageState }
@@ -76,25 +77,26 @@ const logs = (prefix: string): string[] => ['.started.json', '.stdout.txt', '.st
 const require = createRequire(join(tools, 'package.json'));
 const modules = join(tools, 'node_modules') + '/';
 
-// The trusted tools of the checkout: YAML, the TypeScript parser and ripgrep, with
-// the ripgrep version and the digest of each tool file that this action loaded.
+// The trusted tools of the checkout: YAML, ts-morph with its TypeScript, and ripgrep,
+// with their versions and the digest of each tool file that this action loaded.
 function loadTools(): Toolchain {
-  function load(name: string): unknown {
-    const path = require.resolve(name);
+  function load(name: string, file = ''): unknown {
+    const path = require.resolve(name + file);
     assert(path.startsWith(modules + name + '/'), 'Install ' + name + ' in the trusted tool checkout.');
     read(path);
     return require(path);
   }
 
   const { parse } = load('yaml') as typeof Yaml;
-  const ts = load('typescript') as typeof TypeScript;
+  const tsMorph = load('ts-morph') as typeof TsMorph;
+  const { version: tsMorphVersion } = load('ts-morph', '/package.json') as { version: string };
   // @vscode/ripgrep names the program of this platform, from its own package in the checkout.
   const { rgPath } = load('@vscode/ripgrep') as typeof Ripgrep;
   assert(rgPath.startsWith(modules + '@vscode/ripgrep-'), 'Install @vscode/ripgrep in the trusted tool checkout.');
   const ripgrep = { version: ripgrepVersion(rgPath), program: rgPath.slice(modules.length), sha256: hash(read(rgPath)) };
   const toolFiles = Object.keys(require.cache).filter(path => path.startsWith(modules)).sort();
-  return { parse, ts, ripgrep: rgPath, versions: {
-    node: process.version, typescript: ts.version, ripgrep,
+  return { parse, tsMorph, ripgrep: rgPath, versions: {
+    node: process.version, tsMorph: tsMorphVersion, typescript: tsMorph.ts.version, ripgrep,
     modules: Object.fromEntries(toolFiles.map(path => [path.slice(modules.length), hash(read(path))])),
   } };
 }

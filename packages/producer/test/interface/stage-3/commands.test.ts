@@ -2,9 +2,11 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ts } from "ts-morph";
 import { parse, stringify } from "yaml";
 import { type CommandResult, makeScratch, removeScratch, runCli, toolsRoot } from "../../support/commands.ts";
 import { type SnapshotFile, stagedRun, stagedSnapshotRef as snapshotRef } from "../../support/staged-run.ts";
+import { copyToolCheckout } from "../../support/tool-checkout.ts";
 
 // The Stage 3 helper on a run after Stage 2 whose two Knip modes completed with
 // reports: start, collect, excerpt and save-review, with the files that each
@@ -109,7 +111,14 @@ describe("Stage 3 start", () => {
         "discovery.before.yaml": sha256(readFileSync(join(folder(), "discovery.before.yaml"))),
         "baseline.before.yaml": sha256(readFileSync(join(folder(), "baseline.before.yaml"))) },
       toolInputDigests: { "step-3-cookbook.md": sha256(readFileSync(join(folder(), "step-3-cookbook.md"))) } });
-    expect(Object.keys(handoff.versions as Json)).toEqual(["node", "typescript", "ripgrep", "modules"]);
+    const versions = handoff.versions as Json;
+    expect(Object.keys(versions)).toEqual(["node", "tsMorph", "typescript", "ripgrep", "modules"]);
+    // ts-morph brings the TypeScript that Stage 3 uses. Both are trusted tool files.
+    const tsMorphPackage = JSON.parse(readFileSync(join(toolsRoot, "node_modules/ts-morph/package.json"), "utf8")) as Json;
+    expect({ tsMorph: versions.tsMorph, typescript: versions.typescript })
+      .toEqual({ tsMorph: tsMorphPackage.version, typescript: ts.version });
+    expect(Object.keys(versions.modules as Json)).toEqual(expect.arrayContaining(["ts-morph/package.json",
+      "ts-morph/dist/ts-morph.js", "@ts-morph/common/dist/ts-morph-common.js", "@ts-morph/common/dist/typescript.js"]));
     expect(readFileSync(join(folder(), "run.before.yaml")).equals(readFileSync(join(work, "run.yaml")))).toBe(true);
     expect(saved("operator-start.json")).toMatchObject({ formatVersion: 1, attemptId: id, action: "start", phase: "start",
       status: "completed", exitCode: 0, digests: Object.fromEntries(["run.before.yaml", "discovery.before.yaml",
@@ -149,7 +158,7 @@ describe("Stage 3 collect", () => {
 
   test("saves the loading syntax search of every JavaScript and TypeScript file", () => {
     const loading = saved("loading-search.json");
-    expect(Object.keys((loading.query as Json).versions as Json)).toEqual(["node", "typescript", "ripgrep", "modules"]);
+    expect(Object.keys((loading.query as Json).versions as Json)).toEqual(["node", "tsMorph", "typescript", "ripgrep", "modules"]);
     const checked: Json = { ...loading, query: { ...(loading.query as Json), versions: "checked above" } };
     expect(checked).toEqual({
       formatVersion: 1, snapshotRef, scope, status: "completed", outcome: "matches",
@@ -340,5 +349,23 @@ describe("Stage 3 collect of other source forms", () => {
     expect(JSON.parse(readFileSync(join(attempt, "operator-collect.json"), "utf8")) as Json)
       .toMatchObject({ status: "failed", exitCode: 1, digests: {} });
     expect(existsSync(join(attempt, "loading-search.json"))).toBe(false);
+  }, 60_000);
+});
+
+describe("Stage 3 trusted tools", () => {
+  test.each([
+    ["ts-morph", "node_modules/ts-morph/dist/ts-morph.js"],
+    ["the TypeScript of ts-morph", "node_modules/@ts-morph/common/dist/typescript.js"],
+  ])("refuse a later action after %s changed in the tool checkout", (name, file) => {
+    const base = join(scratch, name.replaceAll(" ", "-"));
+    mkdirSync(base);
+    const tools = copyToolCheckout(base);
+    const run = join(base, "run");
+    stagedRun(run, 2, { tools });
+    const settings = { CHOOM_TOOLS: tools, CHOOM_WORK: run, CHOOM_STAGE3_ID: "s3-tools" };
+    expect(runCli(["stage-3", "start"], settings, tools)).toMatchObject({ status: 0, stderr: "" });
+    appendFileSync(join(tools, file), "\n// A later change.\n");
+    expect(runCli(["stage-3", "excerpt", "app.ts", "1", "1"], settings, tools)).toEqual({ status: 1, stdout: "",
+      stderr: "Work, snapshot, checkpoints or trusted tools changed since start.\n" });
   }, 60_000);
 });

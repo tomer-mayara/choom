@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
-import type * as TypeScript from 'typescript';
+import type { ts as TypeScript } from 'ts-morph';
 import { assert, type Fields } from './record-checks.ts';
+import type { ProjectTools } from './snapshot-project.ts';
 import { type Excerpt, numberedExcerpt, readSource, type RegisteredArtifact, safePath, type StageState } from './stage-3-inputs.ts';
 
 // The evidence that Stage 3 collect saves: the loading syntax search of every
@@ -8,7 +9,8 @@ import { type Excerpt, numberedExcerpt, readSource, type RegisteredArtifact, saf
 // and types that Knip reported, and the first excerpts of the focused paths.
 type Ts = typeof TypeScript;
 export type Output = (name: string, value: unknown) => void;
-export interface CollectTools { ts: Ts; versions: unknown }
+// ts-morph, with the TypeScript that the loading search uses, and the tool versions to record.
+export interface CollectTools { tsMorph: ProjectTools; versions: unknown }
 interface Target {
   reportedFile: string; name: string; issueKinds: string[]; reportRefs: string[]; mentions: Fields[]; mentionCount: number;
 }
@@ -200,7 +202,8 @@ function symbolStatus(reports: ReportSummary[]): string {
 }
 
 // Saves loading-search.json, symbol-mentions.json and source-excerpts.json, and returns the summary to print.
-export function collect(state: StageState, { ts, versions }: CollectTools, output: Output, id: string): string {
+export function collect(state: StageState, { tsMorph, versions }: CollectTools, output: Output, id: string): string {
+  const { ts } = tsMorph;
   const { reports, targets } = reportTargets(state);
   const targetsByName = new Map<string, Target[]>();
   for (const target of targets) {
