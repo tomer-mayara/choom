@@ -70,20 +70,28 @@ export function newStageOneRun(scratch: string, target = settingsTarget): StageO
   return stageOneRun(scratch, { PATH: pathWithDoubles(scratch) }, toolsRoot, target);
 }
 
-// A Stage 1 run of the target after start and capture.
-export function capturedRun(scratch: string, target = settingsTarget): StageOneRun {
-  const run = newStageOneRun(scratch, target);
+// Starts the run and captures its target.
+export function startAndCapture(run: StageOneRun): StageOneRun {
   for (const action of ["start", "capture"]) checked(stageOne(run, action), action);
   return run;
+}
+
+// A Stage 1 run of the target after start and capture.
+export function capturedRun(scratch: string, target = settingsTarget): StageOneRun {
+  return startAndCapture(newStageOneRun(scratch, target));
+}
+
+// Collects the settings of a captured run and saves one excerpt of package.json.
+export function settingsAndExcerpt(run: StageOneRun): { run: StageOneRun; excerpt: Excerpt } {
+  checked(stageOne(run, "settings"), "settings");
+  const excerpt = checked(stageOne(run, "excerpt", "package.json", "1", "5", "Check the workspace patterns."), "excerpt");
+  return { run, excerpt: JSON.parse(excerpt.stdout) as Excerpt };
 }
 
 // A Stage 1 run of the target after start, capture and settings, with one saved
 // excerpt of package.json.
 export function capturedStageOneRun(scratch: string, target = settingsTarget): { run: StageOneRun; excerpt: Excerpt } {
-  const run = capturedRun(scratch, target);
-  checked(stageOne(run, "settings"), "settings");
-  const excerpt = checked(stageOne(run, "excerpt", "package.json", "1", "5", "Check the workspace patterns."), "excerpt");
-  return { run, excerpt: JSON.parse(excerpt.stdout) as Excerpt };
+  return settingsAndExcerpt(capturedRun(scratch, target));
 }
 export interface ReviewPacket { review: Fields; scope: Fields; call: Fields; prompt: string; response?: string }
 

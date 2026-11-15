@@ -11,7 +11,8 @@ import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from '
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
 import { type DiscoveryGap, toolGaps } from './stage-1-gaps.ts';
-import { type GitIdentityRecord, gitIdentity, gitIdentityPath, gitIdentityRef, type RunGit } from './stage-1-git.ts';
+import { type GitIdentityRecord, gitIdentity, gitIdentityGaps, gitIdentityPath, gitIdentityRef, type RunGit }
+  from './stage-1-git.ts';
 
 // The Stage 1 helper. Every action runs from the trusted tool checkout. Start
 // records the producer code, and each later action refuses the run when the
@@ -296,9 +297,12 @@ function checkCapturedInputs(inputs: StageOneInputs): { gaps: unknown[] } {
   return settings;
 }
 
-// The discovery gaps that finish adds from the settings record, such as missing project settings.
-function settingsGaps(settings: { gaps: unknown[] }): DiscoveryGap[] {
-  return toolGaps({ name: 'settings', artifactRef: 'settings-001', gaps: settings.gaps });
+// The discovery gaps that finish adds from each tool record, such as missing
+// project settings or missing Git evidence, with the name of the record.
+interface AddedGaps { record: string; gaps: DiscoveryGap[] }
+function addedGaps(settings: { gaps: unknown[] }, inputs: StageOneInputs): AddedGaps[] {
+  return [{ record: 'settings', gaps: toolGaps({ name: 'settings', artifactRef: 'settings-001', gaps: settings.gaps }) },
+    { record: 'Git identity', gaps: gitIdentityGaps(json(gitIdentityPath), inputs.snapshotRef) }];
 }
 
 function readReview(reviewDir: string, inputs: StageOneInputs): { bytes: Map<string, Buffer>; review: Review } {
@@ -385,11 +389,13 @@ function checkReviewItems(review: Review, evidence: ReviewEvidence): void {
 }
 
 // The IDs of the gaps that finish adds stay unique: no review question or gap uses them.
-function checkReservedIds(review: Review, addedGaps: DiscoveryGap[]): void {
-  const reserved = new Set<unknown>(addedGaps.map(gap => gap.id));
-  for (const item of [...review.questions, ...review.gaps])
-    assert(!reserved.has(item.id), 'The ID ' + item.id + ' is reserved for a gap that finish adds from the settings record. ' +
-      'Use a different ID.');
+function checkReservedIds(review: Review, added: AddedGaps[]): void {
+  for (const { record, gaps } of added) {
+    const reserved = new Set<unknown>(gaps.map(gap => gap.id));
+    for (const item of [...review.questions, ...review.gaps])
+      assert(!reserved.has(item.id), 'The ID ' + item.id + ' is reserved for a gap that finish adds from the ' + record +
+        ' record. Use a different ID.');
+  }
 }
 
 function checkSuppliedScope(scopeBytes: Buffer, inputs: StageOneInputs, review: Review, evidence: ReviewEvidence): void {
@@ -445,21 +451,22 @@ function finish(inputs: StageOneInputs): void {
   const reviewDir = realpathSync(args[0] ?? '');
   assert(!reviewDir.startsWith(work + '/') && reviewDir !== work, 'Keep review inputs outside the saved run.');
   const inventory: Inventory = json('evidence/inventory.json'); verifyInventory(inventory);
-  const addedGaps = settingsGaps(checkCapturedInputs(inputs));
+  const added = addedGaps(checkCapturedInputs(inputs), inputs);
   const { bytes, review } = readReview(reviewDir, inputs);
   const evidence = reviewSources(review, inventory);
   checkReviewItems(review, evidence);
-  checkReservedIds(review, addedGaps);
+  checkReservedIds(review, added);
   checkSuppliedScope(bytes.get('review-scope.json') as Buffer, inputs, review, evidence);
-  publish(inputs, bytes, review, inventory, addedGaps);
+  publish(inputs, bytes, review, inventory, added.flatMap(({ gaps }) => gaps));
 }
 
-// The saved Stage 1 discovery has each gap that finish adds from the saved settings record.
-function checkSavedSettingsGaps(): void {
+// The saved Stage 1 discovery has each gap that finish adds from the saved tool records.
+function checkSavedToolGaps(inputs: StageOneInputs): void {
   const discovery = parse(read('evidence/stage1-discovery.yaml').toString());
-  for (const gap of settingsGaps(json('evidence/settings.json')))
-    assert(Array.isArray(discovery?.gaps) && discovery.gaps.some((saved: unknown) => isDeepStrictEqual(saved, gap)),
-      'The saved Stage 1 discovery lacks the settings gap ' + gap.id + '. Start a new run.');
+  for (const { record, gaps } of addedGaps(json('evidence/settings.json'), inputs))
+    for (const gap of gaps)
+      assert(Array.isArray(discovery?.gaps) && discovery.gaps.some((saved: unknown) => isDeepStrictEqual(saved, gap)),
+        'The saved Stage 1 discovery lacks the ' + record + ' gap ' + gap.id + '. Start a new run.');
 }
 
 function verify(inputs: StageOneInputs): void {
@@ -469,7 +476,7 @@ function verify(inputs: StageOneInputs): void {
   for (const [id, record] of Object.entries<{ path: string; sha256: string }>(run.artifacts))
     assert(hash(read(record.path)) === record.sha256, 'Changed artifact: ' + id);
   verifyInventory(inventory);
-  checkSavedSettingsGaps();
+  checkSavedToolGaps(inputs);
   console.log(JSON.stringify({ status: 'stage1-inputs-verified', runRef: run.id, snapshotRef: run.snapshot.id,
     registeredArtifacts: Object.keys(run.artifacts).length, files: inventory.files.length, writes: [] }, null, 2));
 }

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { type CommandResult, withScratch } from "../../support/commands.ts";
 import { commitAll, git } from "../../support/git-repository.ts";
-import { type Excerpt, newStageOneRun, noSettingsTarget, reviewPacket, stageOne, type StageOneRun, writeFiles,
+import { newStageOneRun, noSettingsTarget, reviewPacket, settingsAndExcerpt, stageOne, type StageOneRun, writeFiles,
   writeReview } from "../../support/stage-1-run.ts";
 
 // Stage 1 capture runs the real Git on a temporary target, and the rsync test
@@ -42,9 +42,8 @@ function savedCall(run: StageOneRun, number: number): { record: GitCallRecord; s
 }
 
 function finishAndVerify(run: StageOneRun): void {
-  expectSuccess(stageOne(run, "settings"));
-  const excerpt = expectSuccess(stageOne(run, "excerpt", "package.json", "1", "5", "Check the package type."));
-  expectSuccess(stageOne(run, "finish", writeReview(run, reviewPacket(JSON.parse(excerpt.stdout) as Excerpt))));
+  const { excerpt } = settingsAndExcerpt(run);
+  expectSuccess(stageOne(run, "finish", writeReview(run, reviewPacket(excerpt))));
   expectSuccess(stageOne(run, "verify"));
 }
 
