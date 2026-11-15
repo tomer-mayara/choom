@@ -72,8 +72,12 @@ export const referencesNotes = [
   'The query follows renamed imports and exports, export * from, namespace imports, default imports, import =, the ' +
     'JavaScript require calls that the compiler resolves, and the local names that a destructuring of a module object ' +
     'binds, such as const { createInvoice } = await import(\'./invoice\'). It does not follow a require call in a ' +
-    'TypeScript file or an import that the compiler settings do not resolve (unresolved lists them, an import only with a ' +
-    'relative module name or a paths alias), or JSDoc types.',
+    'TypeScript file or an import that the compiler settings do not resolve; unresolved lists them, an import only with ' +
+    'a relative module name or a paths alias.',
+  'The query does not find these uses, and unresolved has no entry for them: an import of a bare module name that does ' +
+    'not resolve, also when baseUrl maps bare names to snapshot source, because such a name cannot be told apart from a ' +
+    'package name; a destructuring assignment, such as ({ createInvoice } = billing), which assigns to names that exist ' +
+    'already; and a JSDoc type, such as @type {import(\'./invoice\').Invoice}.',
   'kind is import for an import, import = or JavaScript require that binds a local name to the symbol; re-export for an ' +
     'export list entry, export default, export = or export * from that exports it; type for a use in a type; call for a ' +
     'call, new expression, tagged template, decorator or JSX element that it starts; and value for any other use, such ' +
@@ -91,8 +95,10 @@ export const referencesNotes = [
     'paths key names an external package, which the snapshot does not hold, and a snapshot file that is not source ' +
     'code, such as ./theme.css, cannot hold the symbol, so none of them is listed. siteRef is null when no ' +
     'saved site matches, such as after the site limit of collect; then lines and expression come from the compiler ' +
-    'syntax tree. completeness is partial when unresolved has an entry, and complete-within-scope otherwise. Neither ' +
-    'value covers the files outside the scope or the other uses that the query does not follow.',
+    'syntax tree.',
+  'completeness is partial when unresolved has an entry, and complete-within-scope otherwise. complete-within-scope ' +
+    'means that the query found no unresolved entry. It is not proof that the references are complete: neither value ' +
+    'covers the files outside the scope or the uses that the query does not find.',
   'A range starts at the first character of the site and ends after its last character: the name, the import or export ' +
     'entry, or the export * from statement. Lines and columns start at 1 and count UTF-16 code units. A byte order mark ' +
     'is not counted.',

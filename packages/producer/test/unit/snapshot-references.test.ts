@@ -200,6 +200,22 @@ describe("findReferences through module loading, and the files that it searches"
     ]);
   });
 
+  // The record notes name these limits.
+  test("does not follow the names of a destructuring assignment or read a JSDoc type", () => {
+    const files: Files = {
+      [invoicePath]: invoice,
+      "src/assigned.ts": "let make: (id: string) => unknown;\nexport async function later() {\n" +
+        "  ({ createInvoice: make } = await import('./invoice'));\n  return make('later');\n}\n",
+      "src/typed.js": "/** @type {import('./invoice').Invoice} */\nexport const typed = { id: 'typed' };\n",
+    };
+    expectReferences(files, referencesIn(files, "src/invoice.ts", "createInvoice", { compilerOptions: { allowJs: true } }), [
+      { path: invoicePath, kind: "call", localName: "createInvoice", at: "draft = «createInvoice»" },
+    ]);
+    expectReferences(files, referencesIn(files, "src/invoice.ts", "Invoice", { compilerOptions: { allowJs: true } }), [
+      { path: invoicePath, kind: "type", localName: "Invoice", at: "): «Invoice» {" },
+    ]);
+  });
+
   // The record notes name this limit, and the Stage 4 record lists the call as unresolved.
   test("does not follow a require call in a TypeScript file", () => {
     const files: Files = {
