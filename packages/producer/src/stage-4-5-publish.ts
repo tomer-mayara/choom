@@ -2,29 +2,55 @@ import { createHash } from 'node:crypto';
 import { constants, closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, readSync,
   readdirSync, realpathSync, renameSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, isAbsolute, join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
+import type * as Yaml from 'yaml';
 import { refuseChangedProducerCode } from './producer-code.ts';
+import type { Artifact, Fields } from './record-checks.ts';
 import { runLayout } from './run-layout.mjs';
-import { readBaselineYaml, validateDiscoveryRecords } from './stage-6-records.ts';
+import { readBaselineYaml, type RecordCounts, type RunRecord, validateDiscoveryRecords } from './stage-6-records.ts';
+
+// The Stage 4/5 publisher. check validates a reviewed packet, finish validates it
+// again and publishes it as one update of the drafts, and verify checks a
+// published attempt. Saved JSON and YAML stay unchecked values until the checks read them.
+type Packet = Map<string, Buffer>;
+interface IndexedFile { path: string; kind: unknown; bytes: number; sha256: string }
+// The checked inputs of a publication: the checkpointed drafts, the registered
+// artifacts, the indexed snapshot and the attempt files.
+interface State {
+  drafts: Map<string, Buffer>;
+  run: RunRecord;
+  priorDiscovery: Fields;
+  priorBaseline: Fields;
+  artifacts: Map<string, Artifact>;
+  put(ref: string, path: unknown, bytes: Buffer, sha256?: unknown): void;
+  inventory: Fields;
+  indexed: Map<unknown, IndexedFile>;
+  attemptFiles: Map<string, Buffer>;
+  verifySnapshot(): void;
+  readSource(path: string, limit: number): Buffer;
+}
+interface Candidate { counts: RecordCounts; baseline: unknown; discovery: unknown }
+// The outputs that publication placed and the temporary files that it still holds.
+interface Staged { placed: Map<string, Buffer>; temporary: Map<string, Buffer> }
 
 const [action, stage, reviewDirectory, ...extra] = process.argv.slice(2);
-const assert = (condition, message) => { if (!condition) throw new Error(message); };
-const text = value => typeof value === 'string' && value.trim().length > 0;
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
-const safe = value => text(value) && !isAbsolute(value) && !/[\\\u0000-\u001f\u007f]/.test(value) &&
-  value.split('/').every(part => part && part !== '.' && part !== '..');
-const encode = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
-const exists = path => Boolean(lstatSync(path, { throwIfNoEntry: false }));
-function directory(path) {
-  assert(isAbsolute(path ?? '') && lstatSync(path).isDirectory() && realpathSync(path) === path,
+function assert(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
+const text = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+const object = (value: unknown): value is Fields => value !== null && typeof value === 'object' && !Array.isArray(value);
+const hash = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
+const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const safe = (value: unknown): value is string => text(value) && !isAbsolute(value) &&
+  !/[\\\u0000-\u001f\u007f]/.test(value) && value.split('/').every(part => part && part !== '.' && part !== '..');
+const encode = (value: unknown): Buffer => Buffer.from(JSON.stringify(value, null, 2) + '\n');
+const exists = (path: string): boolean => Boolean(lstatSync(path, { throwIfNoEntry: false }));
+function directory(path: string | undefined): string {
+  assert(isAbsolute(path ?? '') && lstatSync(path as string).isDirectory() && realpathSync(path as string) === path,
     'Expected a canonical directory: ' + path);
-  return path;
+  return path as string;
 }
-function read(root, name) {
+function read(root: string, name: unknown): Buffer {
   assert(safe(name), 'Invalid file path: ' + name);
   const path = join(root, name);
   const before = lstatSync(path);
@@ -42,7 +68,7 @@ function read(root, name) {
     return bytes;
   } finally { closeSync(fd); }
 }
-function names(root, prefix = '') {
+function names(root: string, prefix = ''): string[] {
   return readdirSync(join(root, prefix)).sort().flatMap(name => {
     const relative = prefix ? prefix + '/' + name : name;
     assert(safe(relative), 'Invalid filename: ' + relative);
@@ -52,7 +78,7 @@ function names(root, prefix = '') {
     return [relative];
   }).sort();
 }
-function verifyIndexed(root, item) {
+function verifyIndexed(root: string, item: IndexedFile): void {
   const path = join(root, item.path);
   const before = lstatSync(path);
   assert(before.isFile() && realpathSync(path) === path && before.size === item.bytes, 'Indexed metadata changed: ' + item.path);
@@ -80,22 +106,22 @@ const packetFiles = [...recordFiles, 'llm/analysis-prompt.md', 'llm/analysis-res
 // tool checkout; the producer code check covers the code.
 const toolFiles = ['record-format.md'];
 const draftFiles = ['run.yaml', 'baseline.yaml', 'discovery.yaml'];
-const checkpoint = name => name.replace('.yaml', '.before.yaml');
+const checkpoint = (name: string): string => name.replace('.yaml', '.before.yaml');
 const receiptName = 'publication.json';
 const progressKey = stage === '4' ? 'componentRecovery' : 'remainingCode';
-assert(['4', '5'].includes(stage) && extra.length === 0 &&
-  ((['check', 'finish'].includes(action) && isAbsolute(reviewDirectory ?? '')) ||
+assert(['4', '5'].includes(stage as string) && extra.length === 0 &&
+  ((['check', 'finish'].includes(action as string) && isAbsolute(reviewDirectory ?? '')) ||
     (action === 'verify' && reviewDirectory === undefined)), 'Use check STAGE REVIEW_DIR, finish STAGE REVIEW_DIR, or verify STAGE (4 or 5).');
-const id = process.env['CHOOM_STAGE' + stage + '_ID'];
-assert(new RegExp('^s' + stage + '-[a-z0-9]+(?:-[a-z0-9]+)*$').test(id ?? ''), 'Set the matching stage attempt ID.');
+const id = process.env['CHOOM_STAGE' + stage + '_ID'] ?? '';
+assert(new RegExp('^s' + stage + '-[a-z0-9]+(?:-[a-z0-9]+)*$').test(id), 'Set the matching stage attempt ID.');
 const work = directory(process.env.CHOOM_WORK);
 const tools = directory(process.env.CHOOM_TOOLS);
 runLayout(work, tools);
 const source = directory(join(tools, 'packages/producer/src'));
 // The record format stays with the cookbooks in docs/design/app-a.
 const documents = directory(join(tools, 'docs/design/app-a'));
-const sourceFolder = name => name.endsWith('.md') ? documents : source;
-assert(fileURLToPath(import.meta.url) === join(source, 'stage-4-5-publish.mjs'), 'Use the publisher in the trusted checkout.');
+const sourceFolder = (name: string): string => name.endsWith('.md') ? documents : source;
+assert(fileURLToPath(import.meta.url) === join(source, 'stage-4-5-publish.ts'), 'Use the publisher in the trusted checkout.');
 const attempt = directory(join(directory(join(work, 'evidence')), id));
 assert(process.env['CHOOM_STAGE' + stage] === attempt, 'Set the matching stage attempt directory.');
 refuseChangedProducerCode(work, tools);
@@ -103,52 +129,77 @@ const require = createRequire(join(tools, 'package.json'));
 const yamlPath = require.resolve('yaml');
 assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/') && realpathSync(yamlPath) === yamlPath,
   'Use YAML from the trusted checkout.');
-const yaml = require(yamlPath);
+const yaml = require(yamlPath) as typeof Yaml;
 const { parse, stringify } = yaml;
-const parseBytes = bytes => parse(bytes.toString('utf8'));
-const json = bytes => JSON.parse(bytes.toString('utf8'));
-const refFor = name => name === 'entry-analysis.yaml' ? id + '-entry-analysis' : id + '-file@' + encodeURIComponent(name);
+const parseBytes = (bytes: Buffer | undefined): Fields => parse((bytes as Buffer).toString('utf8')) as Fields;
+const json = (bytes: Buffer | undefined): Fields => JSON.parse((bytes as Buffer).toString('utf8')) as Fields;
+const refFor = (name: string): string => name === 'entry-analysis.yaml' ? id + '-entry-analysis' : id + '-file@' + encodeURIComponent(name);
 const lock = join(work, '.app-a-publish.lock');
 
-function verifiedInput() {
+function checkpointedRun(): Pick<State, 'drafts' | 'run' | 'priorDiscovery' | 'priorBaseline'> {
   const drafts = new Map(draftFiles.map(name => [name, read(attempt, checkpoint(name))]));
   const run = parseBytes(drafts.get('run.yaml'));
   const priorDiscovery = parseBytes(drafts.get('discovery.yaml'));
-  const priorBaseline = readBaselineYaml(drafts.get('baseline.yaml'), yaml);
-  assert(run?.formatVersion === 1 && run.mode === 'A' && run.status === 'in-progress' && run.snapshot?.root === 'snapshot' &&
-    ['inventory', 'entryAnalysis', 'inspectionPriorities'].every(key => run.progress?.[key] === 'complete') &&
-    run.progress.baselineRecovery === 'pending' && !Object.hasOwn(run.progress, progressKey) &&
-    (stage === '4' || run.progress.componentRecovery === 'complete'), 'Unexpected pre-publication run state.');
-  const artifacts = new Map();
-  const paths = new Set();
-  const put = (ref, path, bytes, sha256 = hash(bytes)) => {
+  const priorBaseline = readBaselineYaml(drafts.get('baseline.yaml') as Buffer, yaml) as Fields;
+  const progress = run?.progress as Fields | null | undefined;
+  assert(run?.formatVersion === 1 && run.mode === 'A' && run.status === 'in-progress' &&
+    (run.snapshot as Fields | null | undefined)?.root === 'snapshot' &&
+    ['inventory', 'entryAnalysis', 'inspectionPriorities'].every(key => progress?.[key] === 'complete') &&
+    (progress as Fields).baselineRecovery === 'pending' && !Object.hasOwn(progress as Fields, progressKey) &&
+    (stage === '4' || (progress as Fields).componentRecovery === 'complete'), 'Unexpected pre-publication run state.');
+  return { drafts, run: run as RunRecord, priorDiscovery, priorBaseline };
+}
+
+// The registered artifacts of the run, each checked by digest.
+function registry(run: RunRecord): Pick<State, 'artifacts' | 'put'> {
+  const artifacts = new Map<string, Artifact>();
+  const paths = new Set<unknown>();
+  const put = (ref: string, path: unknown, bytes: Buffer, sha256: unknown = hash(bytes)): void => {
     assert(text(ref) && !artifacts.has(ref) && safe(path) && !draftFiles.includes(path) && !paths.has(path) && digest(sha256),
       'Invalid or colliding artifact: ' + ref);
     assert(hash(bytes) === sha256, 'Registered artifact changed: ' + ref);
     artifacts.set(ref, { path, bytes, sha256 }); paths.add(path);
   };
-  for (const [ref, item] of Object.entries(run.artifacts ?? {})) put(ref, item.path, read(work, item.path), item.sha256);
+  for (const [ref, item] of Object.entries((run.artifacts ?? {}) as Record<string, Fields>))
+    put(ref, item.path, read(work, item.path), item.sha256);
+  return { artifacts, put };
+}
+
+// The saved inventory and the snapshot files that it indexes, each checked by digest.
+function indexedSnapshot(run: RunRecord, artifacts: Map<string, Artifact>): Pick<State, 'inventory' | 'indexed'> & { snapshot: string } {
   const inventory = json(artifacts.get(run.snapshot.inventoryRef)?.bytes ?? Buffer.from('null'));
   assert(inventory?.formatVersion === 1 && inventory.snapshotId === run.snapshot.id && Array.isArray(inventory.files), 'Invalid inventory.');
   const snapshot = directory(join(work, 'snapshot'));
-  const indexed = new Map();
-  for (const item of inventory.files) {
+  const indexed = new Map<unknown, IndexedFile>();
+  for (const item of inventory.files as IndexedFile[]) {
     assert(safe(item.path) && item.kind === 'file' && !indexed.has(item.path) && digest(item.sha256) &&
       Number.isSafeInteger(item.bytes) && item.bytes >= 0, 'This profile requires unique regular inventory files.');
     verifyIndexed(snapshot, item);
     indexed.set(item.path, item);
   }
   assert(same(names(snapshot), [...indexed.keys()].sort()), 'Snapshot file set differs from its inventory.');
+  return { inventory, indexed, snapshot };
+}
+
+// The attempt files. The handoff names this run and attempt, and the drafts and tool documents that start froze.
+function attemptInput(run: RunRecord, drafts: Map<string, Buffer>): { attemptFiles: Map<string, Buffer>; get(name: string): Buffer } {
   const attemptFiles = new Map(names(attempt).map(name => [name, read(attempt, name)]));
-  const get = name => { assert(attemptFiles.has(name), 'Missing attempt file: ' + name); return attemptFiles.get(name); };
+  const get = (name: string): Buffer => { assert(attemptFiles.has(name), 'Missing attempt file: ' + name); return attemptFiles.get(name) as Buffer; };
   const handoff = json(get('handoff.json'));
   assert(handoff.attemptId === id && handoff.runRef === run.id && handoff.snapshotRef === run.snapshot.id &&
     handoff.work === work && handoff.tools === tools, 'Attempt identities changed.');
-  for (const [name, bytes] of drafts) assert(handoff.checkpointDigests?.[checkpoint(name)] === hash(bytes), 'Checkpoint digest changed: ' + name);
-  for (const name of toolFiles) assert(handoff.toolInputDigests?.[name] === hash(get(name)) && get(name).equals(read(sourceFolder(name), name)),
+  const checkpointDigests = handoff.checkpointDigests as Fields | null | undefined;
+  const toolInputDigests = handoff.toolInputDigests as Fields | null | undefined;
+  for (const [name, bytes] of drafts) assert(checkpointDigests?.[checkpoint(name)] === hash(bytes), 'Checkpoint digest changed: ' + name);
+  for (const name of toolFiles) assert(toolInputDigests?.[name] === hash(get(name)) && get(name).equals(read(sourceFolder(name), name)),
     'Publication tools changed or were not frozen at start: ' + name + '. Use a new attempt.');
+  return { attemptFiles, get };
+}
+
+// Each required phase and each excerpt completed, and its recorded outputs did not change.
+function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => Buffer): void {
   const required = stage === '4' ? ['start', 'toolchain', 'run', 'collect'] : ['start', 'collect'];
-  const requiredOutputs = {
+  const requiredOutputs: Record<string, string[]> = {
     start: [...draftFiles.map(checkpoint), ...toolFiles, 'handoff.json', ...(stage === '4' ? ['graph-profile.json'] : ['scope.json'])],
     toolchain: ['toolchain-selection.json'], run: ['graph-results.json', 'graph-run.json'],
     collect: stage === '4' ? ['source-sites.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'] :
@@ -167,12 +218,21 @@ function verifiedInput() {
     } else {
       assert(receipt.status === 'completed' && receipt.exitCode === 0 && object(receipt.digests),
         'Required collection or excerpt did not complete: ' + phase + '. Preserve it and use a fresh attempt.');
-      assert((requiredOutputs[phase] ?? [phase + '.json']).every(name => Object.hasOwn(receipt.digests, name)),
+      const digests = receipt.digests;
+      assert((requiredOutputs[phase] ?? [phase + '.json']).every(name => Object.hasOwn(digests, name)),
         'Required output was not recorded: ' + phase);
     }
-    for (const [name, sha256] of Object.entries({ ...receipt.digests, ...receipt.logDigests }))
+    for (const [name, sha256] of Object.entries({ ...(receipt.digests as Fields), ...(receipt.logDigests as Fields) }))
       assert(digest(sha256) && hash(get(name)) === sha256, 'Collection output changed: ' + name);
   }
+}
+
+function verifiedInput(): State {
+  const { drafts, run, priorDiscovery, priorBaseline } = checkpointedRun();
+  const { artifacts, put } = registry(run);
+  const { inventory, indexed, snapshot } = indexedSnapshot(run, artifacts);
+  const { attemptFiles, get } = attemptInput(run, drafts);
+  checkPhases(attemptFiles, get);
   return { drafts, run, priorDiscovery, priorBaseline, artifacts, put, inventory, indexed, attemptFiles,
     verifySnapshot() {
       assert(same(names(snapshot), [...indexed.keys()].sort()), 'Snapshot file set changed.');
@@ -185,28 +245,28 @@ function verifiedInput() {
     } };
 }
 
-function reviewMetadata(packet, state) {
+function reviewMetadata(packet: Packet, state: State): void {
   const scope = json(packet.get('llm/review-scope.json'));
   const call = parseBytes(packet.get('llm/analysis-call.yaml'));
   assert(scope.formatVersion === 1 && scope.runRef === state.run.id && scope.snapshotRef === state.run.snapshot.id &&
     scope.attemptId === id && Array.isArray(scope.suppliedArtifactRefs) && scope.suppliedArtifactRefs.length &&
-    scope.suppliedArtifactRefs.every(ref => text(ref) && state.artifacts.has(ref.split('#')[0])) &&
+    scope.suppliedArtifactRefs.every(ref => text(ref) && state.artifacts.has(ref.split('#')[0] as string)) &&
     Array.isArray(scope.limits) && scope.limits.length && scope.limits.every(text), 'Invalid LLM review scope.');
   assert(text(call.provider) && text(call.model) && text(call.date) && (object(call.settings) || call.settings === 'unknown'),
     'Record exposed LLM metadata; use unknown for unavailable values.');
-  const response = packet.get('llm/analysis-response.md').toString('utf8');
-  assert(text(packet.get('llm/analysis-prompt.md').toString('utf8')) &&
-    recordFiles.every(name => response.includes(packet.get(name).toString('utf8').trimEnd())),
+  const response = (packet.get('llm/analysis-response.md') as Buffer).toString('utf8');
+  assert(text((packet.get('llm/analysis-prompt.md') as Buffer).toString('utf8')) &&
+    recordFiles.every(name => response.includes((packet.get(name) as Buffer).toString('utf8').trimEnd())),
   'Save the complete prompt and response, including the exact five candidate records.');
 }
 
-function candidate(state, packet) {
+function candidate(state: State, packet: Packet): Candidate {
   const { run, priorDiscovery, priorBaseline, artifacts, put, inventory, readSource } = state;
   for (const [name, bytes] of [...state.attemptFiles, ...packet]) {
     if (name === receiptName || name.startsWith('.publication-')) continue;
     put(refFor(name), 'evidence/' + id + '/' + name, bytes);
   }
-  const baseline = readBaselineYaml(packet.get('baseline.proposed.yaml'), yaml);
+  const baseline = readBaselineYaml(packet.get('baseline.proposed.yaml') as Buffer, yaml) as Fields;
   const discovery = parseBytes(packet.get('discovery.proposed.yaml'));
   const entry = parseBytes(packet.get('entry-analysis.yaml'));
   assert(baseline.id === priorBaseline.id && baseline.parentId === priorBaseline.parentId &&
@@ -214,41 +274,42 @@ function candidate(state, packet) {
     discovery.codeMappingRef === refFor('code-mapping.json') && discovery.resourceAccessRef === refFor('resource-access.json') &&
     discovery.dependenciesRef === (stage === '4' ? refFor('graph-results.json') : priorDiscovery.dependenciesRef),
   'Candidate identities or selected facts differ from this stage.');
-  const previous = parseBytes(artifacts.get(priorDiscovery.entryAnalysisRef).bytes);
+  const previous = parseBytes((artifacts.get(priorDiscovery.entryAnalysisRef as string) as Artifact).bytes);
+  const previousCandidates = previous.candidates as unknown[];
   assert(entry.planRef === previous.planRef && entry.knipRunsRef === previous.knipRunsRef &&
-    Array.isArray(entry.candidates) && same(entry.candidates.slice(0, previous.candidates.length), previous.candidates) &&
+    Array.isArray(entry.candidates) && same(entry.candidates.slice(0, previousCandidates.length), previousCandidates) &&
     same(entry.inspectionPriorities, previous.inspectionPriorities),
   'Preserve previous file candidates, Knip inputs and inspection priorities. Revisit the affected stage for changes.');
-  const graph = json(artifacts.get(discovery.dependenciesRef).bytes);
-  const roots = new Set(graph.contexts.flatMap(context => context.roots.map(root => root.path)));
-  for (const added of entry.candidates.slice(previous.candidates.length))
-    assert(added.path === null || !/\.(?:[cm]?[jt]s|[jt]sx)$/.test(added.path) || roots.has(added.path),
+  const graph = json((artifacts.get(discovery.dependenciesRef as string) as Artifact).bytes);
+  const roots = new Set((graph.contexts as Fields[]).flatMap(context => (context.roots as Fields[]).map(root => root.path)));
+  for (const added of entry.candidates.slice(previousCandidates.length) as Fields[])
+    assert(added.path === null || !/\.(?:[cm]?[jt]s|[jt]sx)$/.test(added.path as string) || roots.has(added.path),
       'New JavaScript/TypeScript entry is outside the saved root set: ' + added.id + '. Revisit entry and graph analysis.');
-  if (stage === '5') for (const item of priorBaseline.components)
-    assert(baseline.components.some(next => next.id === item.id), 'Keep continuing component IDs during remaining-code review.');
+  if (stage === '5') for (const item of priorBaseline.components as Fields[])
+    assert((baseline.components as Fields[]).some(next => next.id === item.id), 'Keep continuing component IDs during remaining-code review.');
   reviewMetadata(packet, state);
   const counts = validateDiscoveryRecords({ run, baseline, discovery, artifacts, inventory, parse, readSource,
     reservedIds: [refFor(receiptName)] });
   return { counts, baseline, discovery };
 }
 
-function readPacket(root) {
+function readPacket(root: string): Packet {
   assert(same(names(root), [...packetFiles].sort()), 'Expected exactly the nine review packet files from record-format.md.');
   return new Map(packetFiles.map(name => [name, read(root, name)]));
 }
-function expectedRun(state, receipt) {
+function expectedRun(state: State, receipt: Buffer): Buffer {
   const artifacts = Object.fromEntries([...state.artifacts].map(([ref, { path, sha256 }]) => [ref, { path, sha256 }]));
   artifacts[refFor(receiptName)] = { path: 'evidence/' + id + '/' + receiptName, sha256: hash(receipt) };
-  return Buffer.from(stringify({ ...state.run, progress: { ...state.run.progress, [progressKey]: 'complete' }, artifacts }));
+  return Buffer.from(stringify({ ...state.run, progress: { ...(state.run.progress as Fields), [progressKey]: 'complete' }, artifacts }));
 }
-function checkCurrent(drafts) {
+function checkCurrent(drafts: Map<string, Buffer>): void {
   for (const [name, bytes] of drafts) assert(read(work, name).equals(bytes), 'Working draft changed: ' + name);
 }
-function sameFiles(root, expected) {
+function sameFiles(root: string, expected: Map<string, Buffer>): void {
   assert(same(names(root), [...expected.keys()].sort()), 'File set changed during publication: ' + root);
   for (const [name, bytes] of expected) assert(read(root, name).equals(bytes), 'File changed during publication: ' + name);
 }
-function verify() {
+function verify(): Fields {
   assert(!exists(lock), 'Publication lock remains: ' + lock);
   const state = verifiedInput();
   const all = state.attemptFiles;
@@ -258,88 +319,101 @@ function verify() {
   assert(receipt.formatVersion === 1 && receipt.attemptId === id && receipt.runRef === state.run.id &&
     receipt.snapshotRef === state.run.snapshot.id && receipt.stage === Number(stage) && receipt.status === 'prepared-for-publication',
   'Invalid publication receipt.');
-  const packet = new Map(packetFiles.map(name => [name, all.get(name)]));
+  const packet = new Map(packetFiles.map(name => [name, all.get(name) as Buffer]));
   assert(packetFiles.every(name => Buffer.isBuffer(packet.get(name))), 'Missing saved review packet.');
   state.attemptFiles = new Map([...all].filter(([name]) => !packetFiles.includes(name) && name !== receiptName));
   assert(same(receipt.inputDigests, Object.fromEntries([...state.attemptFiles].map(([name, bytes]) => [name, hash(bytes)]))) &&
     same(receipt.packetDigests, Object.fromEntries([...packet].map(([name, bytes]) => [name, hash(bytes)]))), 'Publication evidence changed.');
   const result = candidate(state, packet);
   checkCurrent(new Map([['run.yaml', expectedRun(state, receiptBytes)],
-    ['baseline.yaml', packet.get('baseline.proposed.yaml')], ['discovery.yaml', packet.get('discovery.proposed.yaml')]]));
+    ['baseline.yaml', packet.get('baseline.proposed.yaml') as Buffer], ['discovery.yaml', packet.get('discovery.proposed.yaml') as Buffer]]));
   return { status: 'stage' + stage + '-publication-verified', ...result.counts, writes: [] };
 }
 
-function publish(state, packet, result, review) {
+// Saves the packet and the receipt in the attempt, and the three new drafts as temporary files.
+function stageOutputs(state: State, packet: Packet, review: string, staged: Staged): { receipt: Buffer; outputs: Map<string, Buffer> } {
+  checkCurrent(state.drafts);
+  sameFiles(attempt, state.attemptFiles);
+  sameFiles(review, packet);
+  if (!exists(join(attempt, 'llm'))) mkdirSync(join(attempt, 'llm'));
+  for (const [name, bytes] of packet) writeFileSync(join(attempt, name), bytes, { flag: 'wx' });
+  const receipt = encode({ formatVersion: 1, stage: Number(stage), attemptId: id, runRef: state.run.id,
+    snapshotRef: state.run.snapshot.id, status: 'prepared-for-publication', preparedAt: new Date().toISOString(),
+    command: { args: process.argv, cwd: process.cwd() },
+    inputDigests: Object.fromEntries([...state.attemptFiles].map(([name, bytes]) => [name, hash(bytes)])),
+    packetDigests: Object.fromEntries([...packet].map(([name, bytes]) => [name, hash(bytes)])),
+    note: 'The updated run manifest is the publication marker. Proposed intent remains proposed.' });
+  writeFileSync(join(attempt, receiptName), receipt, { flag: 'wx' });
+  const outputs = new Map([['baseline.yaml', packet.get('baseline.proposed.yaml') as Buffer],
+    ['discovery.yaml', packet.get('discovery.proposed.yaml') as Buffer], ['run.yaml', expectedRun(state, receipt)]]);
+  for (const [name, bytes] of outputs) {
+    const path = '.publication-' + id + '-' + name;
+    writeFileSync(join(work, path), bytes, { flag: 'wx' }); staged.temporary.set(path, bytes);
+  }
+  return { receipt, outputs };
+}
+
+// Checks every input again, then replaces the drafts one by one.
+function placeOutputs(state: State, packet: Packet, receipt: Buffer, outputs: Map<string, Buffer>, { placed, temporary }: Staged): void {
+  for (const [ref, item] of state.artifacts) {
+    if (item.path.startsWith('evidence/' + id + '/')) continue;
+    assert(read(work, item.path).equals(item.bytes), 'Registered input changed before publication: ' + ref);
+  }
+  sameFiles(attempt, new Map([...state.attemptFiles, ...packet, [receiptName, receipt]]));
+  state.verifySnapshot();
+  checkCurrent(state.drafts);
+  for (const [name, bytes] of outputs) {
+    const path = '.publication-' + id + '-' + name;
+    assert(read(work, path).equals(bytes), 'Staged output changed: ' + name);
+    checkCurrent(new Map([...state.drafts].filter(([key]) => !placed.has(key))));
+    for (const [key, value] of placed) assert(read(work, key).equals(value), 'Published output changed: ' + key);
+    renameSync(join(work, path), join(work, name)); temporary.delete(path); placed.set(name, bytes);
+  }
+}
+
+// Restores the replaced drafts and removes the temporary files after a failed publication.
+function rollBack(state: State, { placed, temporary }: Staged, error: Error): Error {
+  const leftovers: string[] = [];
+  for (const [name, bytes] of [...placed].reverse()) {
+    try {
+      assert(read(work, name).equals(bytes), 'Changed output');
+      const rollback = '.publication-' + id + '-rollback-' + name;
+      writeFileSync(join(work, rollback), state.drafts.get(name) as Buffer, { flag: 'wx' });
+      renameSync(join(work, rollback), join(work, name));
+    } catch { leftovers.push(name); }
+  }
+  for (const [name, bytes] of temporary) {
+    try { if (read(work, name).equals(bytes)) unlinkSync(join(work, name)); else leftovers.push(name); }
+    catch { leftovers.push(name); }
+  }
+  return new Error(error.message + ' Keep this attempt unchanged; use a fresh attempt after resolving the cause.' +
+    (leftovers.length ? ' Inspect retained paths: ' + leftovers.join(', ') : ''));
+}
+
+function publish(state: State, packet: Packet, result: Candidate, review: string): Fields | undefined {
   assert(!exists(lock), 'Another publication owns the lock or cleanup is pending: ' + lock);
   mkdirSync(lock, { mode: 0o700 });
   const lockStat = lstatSync(lock);
-  const placed = new Map();
-  const temporary = new Map();
+  const staged: Staged = { placed: new Map(), temporary: new Map() };
   let committed = false;
-  let failure;
-  let output;
+  let failure: Error | undefined;
+  let output: Fields | undefined;
   try {
-    checkCurrent(state.drafts);
-    sameFiles(attempt, state.attemptFiles);
-    sameFiles(review, packet);
-    if (!exists(join(attempt, 'llm'))) mkdirSync(join(attempt, 'llm'));
-    for (const [name, bytes] of packet) writeFileSync(join(attempt, name), bytes, { flag: 'wx' });
-    const receipt = encode({ formatVersion: 1, stage: Number(stage), attemptId: id, runRef: state.run.id,
-      snapshotRef: state.run.snapshot.id, status: 'prepared-for-publication', preparedAt: new Date().toISOString(),
-      command: { args: process.argv, cwd: process.cwd() },
-      inputDigests: Object.fromEntries([...state.attemptFiles].map(([name, bytes]) => [name, hash(bytes)])),
-      packetDigests: Object.fromEntries([...packet].map(([name, bytes]) => [name, hash(bytes)])),
-      note: 'The updated run manifest is the publication marker. Proposed intent remains proposed.' });
-    writeFileSync(join(attempt, receiptName), receipt, { flag: 'wx' });
-    const outputs = new Map([['baseline.yaml', packet.get('baseline.proposed.yaml')],
-      ['discovery.yaml', packet.get('discovery.proposed.yaml')], ['run.yaml', expectedRun(state, receipt)]]);
-    for (const [name, bytes] of outputs) {
-      const path = '.publication-' + id + '-' + name;
-      writeFileSync(join(work, path), bytes, { flag: 'wx' }); temporary.set(path, bytes);
-    }
-    for (const [ref, item] of state.artifacts) {
-      if (item.path.startsWith('evidence/' + id + '/')) continue;
-      assert(read(work, item.path).equals(item.bytes), 'Registered input changed before publication: ' + ref);
-    }
-    sameFiles(attempt, new Map([...state.attemptFiles, ...packet, [receiptName, receipt]]));
-    state.verifySnapshot();
-    checkCurrent(state.drafts);
-    for (const [name, bytes] of outputs) {
-      const path = '.publication-' + id + '-' + name;
-      assert(read(work, path).equals(bytes), 'Staged output changed: ' + name);
-      checkCurrent(new Map([...state.drafts].filter(([key]) => !placed.has(key))));
-      for (const [key, value] of placed) assert(read(work, key).equals(value), 'Published output changed: ' + key);
-      renameSync(join(work, path), join(work, name)); temporary.delete(path); placed.set(name, bytes);
-    }
+    const { receipt, outputs } = stageOutputs(state, packet, review, staged);
+    placeOutputs(state, packet, receipt, outputs, staged);
     committed = true;
     output = { status: 'stage' + stage + '-published', ...result.counts,
       writes: [...packetFiles, receiptName, ...outputs.keys()] };
   } catch (error) {
-    failure = error;
-    if (!committed) {
-      const leftovers = [];
-      for (const [name, bytes] of [...placed].reverse()) {
-        try {
-          assert(read(work, name).equals(bytes), 'Changed output');
-          const rollback = '.publication-' + id + '-rollback-' + name;
-          writeFileSync(join(work, rollback), state.drafts.get(name), { flag: 'wx' });
-          renameSync(join(work, rollback), join(work, name));
-        } catch { leftovers.push(name); }
-      }
-      for (const [name, bytes] of temporary) {
-        try { if (read(work, name).equals(bytes)) unlinkSync(join(work, name)); else leftovers.push(name); }
-        catch { leftovers.push(name); }
-      }
-      failure = new Error(error.message + ' Keep this attempt unchanged; use a fresh attempt after resolving the cause.' +
-        (leftovers.length ? ' Inspect retained paths: ' + leftovers.join(', ') : ''));
-    }
+    failure = error as Error;
+    if (!committed) failure = rollBack(state, staged, error as Error);
   }
   try {
     const current = lstatSync(lock);
     assert(current.dev === lockStat.dev && current.ino === lockStat.ino, 'Lock changed.'); rmdirSync(lock);
   } catch (error) {
     if (failure) failure = new Error(failure.message + ' Lock cleanup pending: ' + lock);
-    else output = { ...output, lockCleanup: 'pending', warning: 'Inspect ' + lock + ': ' + error.message };
+    else output = { ...output, lockCleanup: 'pending', warning: 'Inspect ' + lock + ': ' + (error as Error).message };
   }
   if (failure) throw failure;
   return output;
@@ -359,4 +433,4 @@ try {
     console.log(JSON.stringify(action === 'check' ? { status: 'stage' + stage + '-review-verified', ...result.counts, writes: [] }
       : publish(state, packet, result, review), null, 2));
   }
-} catch (error) { console.error(error.message); process.exitCode = 1; }
+} catch (error) { console.error((error as Error).message); process.exitCode = 1; }

@@ -28,7 +28,7 @@ const usageCases: UsageCase[] = [
   { helper: "stage-4-graph.mjs", args: [], status: 1, message: "Use /control/graph-profile.json or --fixture." },
   { helper: "stage-4-inspect.mjs", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use collect, or excerpt PATH FIRST LAST." },
-  { helper: "stage-4-5-publish.mjs", args: [], status: 1,
+  { helper: "stage-4-5-publish.ts", args: [], status: 1,
     message: "Use check STAGE REVIEW_DIR, finish STAGE REVIEW_DIR, or verify STAGE (4 or 5)." },
   { helper: "stage-5-commands.mjs", args: [], attempt: { CHOOM_STAGE5_ID: "s5-check" }, status: 1,
     message: "Use start, collect, or excerpt PATH FIRST LAST." },
@@ -139,7 +139,7 @@ describe("trusted commands check the producer code, then find their own files be
     withScratch((scratch) => {
       const work = recordedRun(scratch);
       const attempt = attemptFolder(work, "s5-check");
-      const result = runHelper(join(producerSource, "stage-4-5-publish.mjs"), ["verify", "5"],
+      const result = runHelper(join(producerSource, "stage-4-5-publish.ts"), ["verify", "5"],
         { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE5_ID: "s5-check", CHOOM_STAGE5: attempt });
       expect(result.status).toBe(1);
       expect(result.stderr).toBe(`ENOENT: no such file or directory, lstat '${join(attempt, "run.before.yaml")}'\n`);

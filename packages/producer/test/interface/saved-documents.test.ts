@@ -100,7 +100,7 @@ describe("stage starts save their documents and no producer code", () => {
         .toEqual(Object.keys(sources));
       const review = join(scratch, "review");
       mkdirSync(review);
-      const publisher = runHelper(code("stage-4-5-publish.mjs"), ["check", "4", review], { ...settings, CHOOM_STAGE4: attempt });
+      const publisher = runHelper(code("stage-4-5-publish.ts"), ["check", "4", review], { ...settings, CHOOM_STAGE4: attempt });
       expect(publisher.status).toBe(1);
       expect(publisher.stderr).toBe("Missing attempt file: operator-toolchain.json\n");
     });

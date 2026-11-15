@@ -306,7 +306,7 @@ function prompt(state) {
     `Unknown owners and contract promises stay null with reasons. Keep excluded inputs and uninspected regions visible. ` +
     `If supported entry or Knip setting changes are needed, report them before interpreting affected issues.\n\n` +
     `Do not edit the working drafts or register this attempt during review. Save the complete LLM response and call metadata. ` +
-    `The operator validates and publishes the packet with the trusted stage-4-5-publish.mjs helper. Do not write a custom finalizer.\n`;
+    `The operator validates and publishes the packet with the trusted stage-4-5-publish.ts helper. Do not write a custom finalizer.\n`;
 }
 
 function collect(state) {
