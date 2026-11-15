@@ -9,10 +9,10 @@ import { noProjectSettingsGap } from "../../src/stage-1-settings.ts";
 import { toolsRoot } from "./commands.ts";
 
 export const stagedSnapshotRef = "snapshot-check";
-const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
+const sha256 = (text: string | Buffer): string => createHash("sha256").update(text).digest("hex");
 
-// A saved snapshot file. A "symlink" record is listed in the inventory only.
-export interface SnapshotFile { path: string; text: string; kind?: "file" | "symlink" }
+// A saved snapshot file, as text or bytes. A "symlink" record is listed in the inventory only.
+export interface SnapshotFile { path: string; text: string | Buffer; kind?: "file" | "symlink" }
 // `tools` is the tool checkout whose producer code record the run gets. `settings`
 // replaces fields of the settings record that a run after Stage 3 gets: by default,
 // the record of a snapshot without project settings.
@@ -28,7 +28,7 @@ const sourceFile = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: StagedRunOptions = {}): void {
   const snapshotRef = stagedSnapshotRef;
   const artifacts: Record<string, { path: string; sha256: string }> = {};
-  function save(path: string, text: string, ref?: string): void {
+  function save(path: string, text: string | Buffer, ref?: string): void {
     mkdirSync(dirname(join(work, path)), { recursive: true });
     writeFileSync(join(work, path), text);
     if (ref) artifacts[ref] = { path, sha256: sha256(text) };

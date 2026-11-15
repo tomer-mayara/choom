@@ -158,32 +158,31 @@ export function captureExclusions(state: StageState): CaptureExclusions {
 
 // The searched scope. ripgrep must have searched as many files as the inventory
 // lists, and each indexed file must still have its inventory digest after the search.
-export function searchScope(state: StageState, searchedFiles: number): SearchScope {
+export function searchScope(state: StageState, searchedFiles: number, exclusions: CaptureExclusions): SearchScope {
   const regular = [...state.files.values()].filter(file => file.kind === 'file');
   assert(searchedFiles === regular.length, 'Ripgrep searched ' + searchedFiles + ' files, but the inventory lists ' +
     regular.length + ' regular files. The snapshot does not match its inventory.');
   for (const file of regular) checkIndexedSource(state, file.path);
   return { root: state.snapshotRecord.root, inventoryRef: state.facts.inventoryRef, indexedRegularFiles: regular.length,
-    searchedFiles, symbolicLinks: state.files.size - regular.length, captureExclusions: captureExclusions(state) };
+    searchedFiles, symbolicLinks: state.files.size - regular.length, captureExclusions: exclusions };
 }
 
-function notes(scope: SearchScope): string[] {
-  const { maxMatchesPerFile, maxMatches, maxLineCodeUnits } = textSearchLimits;
-  return [
-    'ripgrep searched every regular file below the snapshot root, also hidden files and files that ignore files such as ' +
-      '.gitignore name (--hidden --no-ignore). The capture exclusions decided which files the snapshot holds.',
-    'ripgrep does not follow symbolic links and does not decompress files (its defaults; --no-follow --no-search-zip). ' +
-      'The inventory lists ' + scope.symbolicLinks + ' symbolic links; their targets were not searched.',
-    'ripgrep stops reading a file at its first NUL byte and reports no match in it (its rule for binary files).',
-    'The match is case-sensitive and does not span lines. A fixed-string query matches its text exactly; a pattern ' +
-      'uses the ripgrep regular expression syntax. ripgrep reads UTF-8, and UTF-16 with a byte order mark. ' +
-      'A line that is not valid UTF-8 has U+FFFD in place of each invalid byte (validUtf8: false).',
-    'At most ' + maxMatchesPerFile + ' matching lines per file and ' + maxMatches + ' matches in the record. A file with ' +
-      maxMatchesPerFile + ' matching lines can have more; the outcome is then truncated, and a truncated list is partial.',
-    'A line longer than ' + maxLineCodeUnits + ' UTF-16 code units is cut, and the match can be after the cut (truncated: true).',
-    'A no-match outcome covers only this query and this scope. A text match is not a resolved reference, an import or a use.',
-  ];
-}
+const { maxMatchesPerFile, maxMatches, maxLineCodeUnits } = textSearchLimits;
+// What each search covers and what it does not, in the words of the record.
+export const textSearchNotes = [
+  'ripgrep searched every regular file below the snapshot root, also hidden files and files that ignore files such as ' +
+    '.gitignore name (--hidden --no-ignore). The capture exclusions decided which files the snapshot holds.',
+  'ripgrep does not follow symbolic links and does not decompress files (its defaults; --no-follow --no-search-zip). ' +
+    'scope.symbolicLinks counts the symbolic links that the inventory lists; their targets were not searched.',
+  'ripgrep stops reading a file at its first NUL byte and reports no match in it (its rule for binary files).',
+  'The match is case-sensitive and does not span lines. A fixed-string query matches its text exactly; a pattern ' +
+    'uses the ripgrep regular expression syntax. ripgrep reads UTF-8, and UTF-16 with a byte order mark. ' +
+    'A line that is not valid UTF-8 has U+FFFD in place of each invalid byte (validUtf8: false).',
+  'At most ' + maxMatchesPerFile + ' matching lines per file and ' + maxMatches + ' matches in the record. A file with ' +
+    maxMatchesPerFile + ' matching lines can have more; the outcome is then truncated, and a truncated list is partial.',
+  'A line longer than ' + maxLineCodeUnits + ' UTF-16 code units is cut, and the match can be after the cut (truncated: true).',
+  'A no-match outcome covers only this query and this scope. A text match is not a resolved reference, an import or a use.',
+];
 
 // The tool-call record of one search.
 export function textSearchRecord({ attemptId, snapshotRef, query, tool, args, exitCode, scope, search, output }:
@@ -192,6 +191,6 @@ TextSearchInput): Fields {
     formatVersion: 1, attemptId, snapshotRef, status: 'completed', outcome: searchOutcome(search), query,
     tool: { name: 'ripgrep', ...tool, arguments: args, removedEnvironment: ['RIPGREP_CONFIG_PATH'], exitCode },
     scope, limits: textSearchLimits, matchedLines: search.matchedLines, matches: search.matches,
-    filesAtMatchLimit: search.filesAtMatchLimit, output, notes: notes(scope),
+    filesAtMatchLimit: search.filesAtMatchLimit, output, notes: textSearchNotes,
   };
 }

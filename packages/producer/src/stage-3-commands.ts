@@ -3,24 +3,33 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import type * as Ripgrep from '@vscode/ripgrep';
 import type * as TypeScript from 'typescript';
 import type * as Yaml from 'yaml';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
+import { ripgrepVersion, runRipgrep } from './ripgrep.ts';
 import { collect, type Output } from './stage-3-collect.ts';
 import {
   checkpoint, directory, drafts, handoffState, numberedExcerpt, type Parse, read, safePath, type StageState,
 } from './stage-3-inputs.ts';
+import {
+  captureExclusions, ripgrepArgs, ripgrepResult, type RipgrepTool, searchOutcome, searchScope, textQuery, textSearchLimits,
+  textSearchRecord,
+} from './stage-3-text-search.ts';
 
 // The Stage 3 helper. start checks the run after Stage 2 and saves the checkpoints,
 // the cookbook and the handoff; collect saves the loading search, the symbol
 // mentions, the first excerpts, the review prompt and the proposed artifact map;
-// excerpt saves a requested range; save-review copies the LLM review packet. Each
-// action saves a receipt and appends its outcome to the command log.
+// excerpt saves a requested range; text-search saves the record of a ripgrep search
+// of the snapshot; save-review copies the LLM review packet. Each action saves a
+// receipt and appends its outcome to the command log.
 interface Toolchain {
   parse: Parse;
   ts: typeof TypeScript;
-  versions: { node: string; typescript: string; modules: Record<string, string> };
+  // The absolute path of the ripgrep program.
+  ripgrep: string;
+  versions: { node: string; typescript: string; ripgrep: RipgrepTool; modules: Record<string, string> };
 }
 interface Prepared { toolchain: Toolchain; state: StageState; sourceInputs: Record<string, Buffer> }
 interface Started { toolchain: Toolchain; state: StageState }
@@ -44,8 +53,9 @@ const errorText = (error: unknown): string => String((error as { message?: unkno
 
 assert(/^s3-[a-z0-9-]+$/.test(id), 'Set CHOOM_STAGE3_ID to an s3-... ID.');
 assert((['start', 'collect'].includes(action) && args.length === 0) ||
-  (action === 'excerpt' && args.length === 3) || (action === 'save-review' && args.length === 1),
-'Use start, collect, excerpt PATH FIRST LAST, or save-review REVIEW_DIR.');
+  (action === 'excerpt' && args.length === 3) || (action === 'save-review' && args.length === 1) ||
+  (action === 'text-search' && (args.length === 1 || (args.length === 2 && args[1] === '--pattern'))),
+'Use start, collect, excerpt PATH FIRST LAST, text-search TEXT [--pattern], or save-review REVIEW_DIR.');
 const work = directory(CHOOM_WORK);
 const tools = directory(CHOOM_TOOLS);
 assert(work !== tools && !tools.startsWith(work + '/'), 'Use a trusted tool checkout outside CHOOM_WORK.');
@@ -66,8 +76,8 @@ const logs = (prefix: string): string[] => ['.started.json', '.stdout.txt', '.st
 const require = createRequire(join(tools, 'package.json'));
 const modules = join(tools, 'node_modules') + '/';
 
-// The trusted tools of the checkout: YAML and the TypeScript parser, with the
-// digest of each tool file that this action loaded.
+// The trusted tools of the checkout: YAML, the TypeScript parser and ripgrep, with
+// the ripgrep version and the digest of each tool file that this action loaded.
 function loadTools(): Toolchain {
   function load(name: string): unknown {
     const path = require.resolve(name);
@@ -78,9 +88,13 @@ function loadTools(): Toolchain {
 
   const { parse } = load('yaml') as typeof Yaml;
   const ts = load('typescript') as typeof TypeScript;
+  // @vscode/ripgrep names the program of this platform, from its own package in the checkout.
+  const { rgPath } = load('@vscode/ripgrep') as typeof Ripgrep;
+  assert(rgPath.startsWith(modules + '@vscode/ripgrep-'), 'Install @vscode/ripgrep in the trusted tool checkout.');
+  const ripgrep = { version: ripgrepVersion(rgPath), program: rgPath.slice(modules.length), sha256: hash(read(rgPath)) };
   const toolFiles = Object.keys(require.cache).filter(path => path.startsWith(modules)).sort();
-  return { parse, ts, versions: {
-    node: process.version, typescript: ts.version,
+  return { parse, ts, ripgrep: rgPath, versions: {
+    node: process.version, typescript: ts.version, ripgrep,
     modules: Object.fromEntries(toolFiles.map(path => [path.slice(modules.length), hash(read(path))])),
   } };
 }
@@ -99,21 +113,23 @@ function reviewPrompt({ entryAnalysisRef }: { entryAnalysisRef: unknown }): stri
   return prompt;
 }
 
-// Saves the started record of this action. Each excerpt request takes the next free number.
+// Saves the started record of this action. Each excerpt request and each text
+// search takes the next free number.
 function reserve(): Reservation {
   const command = {
     args: [process.execPath, self, action, ...args], cwd: process.cwd(),
     environment: { CHOOM_WORK: work, CHOOM_TOOLS: tools, CHOOM_STAGE3_ID: id },
   };
+  const numbered = action === 'excerpt' || action === 'text-search';
   for (let index = 1; ; index++) {
-    const phase = action === 'excerpt' ? 'excerpt-' + String(index).padStart(3, '0') : action;
+    const phase = numbered ? action + '-' + String(index).padStart(3, '0') : action;
     const prefix = 'operator-' + phase;
     const started = { formatVersion: 1, attemptId: id, action, phase, command, startedAt: utc() };
     try {
       saveJson(prefix + '.started.json', started);
       return { phase, prefix, started };
     } catch (error) {
-      if (action === 'excerpt' && (error as NodeJS.ErrnoException).code === 'EEXIST') continue;
+      if (numbered && (error as NodeJS.ErrnoException).code === 'EEXIST') continue;
       throw error;
     }
   }
@@ -154,6 +170,7 @@ function startAttempt({ toolchain, state, sourceInputs }: Prepared, outputNames:
     '\x60\x60\x60sh\nnode "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 start\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 collect\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 excerpt PATH FIRST LAST\n' +
+    'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 text-search TEXT [--pattern]\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 save-review REVIEW_DIR\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3-finish\n\x60\x60\x60\n\n' +
     '## Recorded invocations\n');
@@ -223,12 +240,34 @@ function excerptAction(state: StageState, phase: string, output: Output): string
   return `Saved ${artifactId(name)} at ${join(attempt, name)} (SHA-256 ${hash(saved(name))}).`;
 }
 
+// Runs ripgrep on the snapshot root and saves its raw output and the tool-call record.
+// Nothing is saved for a refused search; its receipt keeps the reason.
+function textSearchAction({ toolchain, state }: Started, phase: string, output: Output, outputNames: string[]): string {
+  const query = textQuery(args);
+  const exclusions = captureExclusions(state);
+  const root = state.facts.snapshot.path;
+  const ripgrepArguments = ripgrepArgs(query, root);
+  const run = runRipgrep(toolchain.ripgrep, ripgrepArguments, root, textSearchLimits);
+  const search = ripgrepResult(run, root, state.files);
+  const scope = searchScope(state, search.searchedFiles, exclusions);
+  const [stdout, stderr, name] = [phase + '.stdout.jsonl', phase + '.stderr.txt', phase + '.json'];
+  save(stdout, run.stdout);
+  save(stderr, run.stderr);
+  outputNames.push(stdout, stderr);
+  output(name, textSearchRecord({ attemptId: id, snapshotRef: state.facts.snapshotRef, query,
+    tool: toolchain.versions.ripgrep, args: ripgrepArguments, exitCode: run.exitCode, scope, search,
+    output: { stdout, stdoutSha256: hash(run.stdout), stderr, stderrSha256: hash(run.stderr) } }));
+  return `Saved ${artifactId(name)} at ${join(attempt, name)} (SHA-256 ${hash(saved(name))}). ` +
+    `Outcome: ${searchOutcome(search)}. ripgrep searched ${scope.searchedFiles} files.`;
+}
+
 function runAction(prepared: Prepared | undefined, { phase, prefix }: Reservation, output: Output,
   outputNames: string[]): string {
   if (action === 'start') return startAttempt(prepared as Prepared, outputNames);
   const started = startedAttempt();
   if (action === 'collect') return collectAction(started, prefix, output, outputNames);
   if (action === 'save-review') return saveReviewAction(outputNames);
+  if (action === 'text-search') return textSearchAction(started, phase, output, outputNames);
   return excerptAction(started.state, phase, output);
 }
 

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
@@ -95,5 +95,31 @@ describe("Stage 3 finish checks", () => {
       entryAnalysisRef: `${attempt.id}-entry-analysis`, checked: { currentReviewedRanges: 1 }, writes: [] });
     const again = stageThree(attempt, ["stage-3-finish"]);
     expect({ status: again.status, stderr: again.stderr }).toEqual({ status: 1, stderr: "run.yaml changed after checkpointing.\n" });
+  }, 60_000);
+
+  test("publishes a packet that cites a text-search record, and registers the record and the raw ripgrep output", () => {
+    const attempt = newAttempt("text-search");
+    const cited = `${attempt.id}-file@text-search-001.json#/matches/0`;
+    const results = finishStageThree(attempt, (packet) => {
+      firstPriority(packet).evidenceRefs = [cited];
+    }, [["value"]]);
+    expect({ search: results["text-search-1"]?.status, finish: results.finish?.status, stderr: results.finish?.stderr })
+      .toEqual({ search: 0, finish: 0, stderr: "" });
+    const run = parse(folderText(attempt, "run.yaml")) as { artifacts: Record<string, { path: string }> };
+    for (const name of ["text-search-001.json", "text-search-001.stdout.jsonl", "text-search-001.stderr.txt"])
+      expect(run.artifacts[`${attempt.id}-file@${name}`]?.path).toBe(`evidence/${attempt.id}/${name}`);
+    const verify = stageThree(attempt, ["stage-3-finish", "verify"]);
+    expect({ status: verify.status, stderr: verify.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 60_000);
+
+  test("refuses a text-search record that changed after the search, and leaves the drafts unchanged", () => {
+    const attempt = newAttempt("changed-search");
+    const before = draftState(attempt);
+    const results = finishStageThree(attempt, () => {
+      appendFileSync(join(attempt.folder, "text-search-001.json"), "\n");
+    }, [["value"]]);
+    expect({ search: results["text-search-1"]?.status, status: results.finish?.status, stderr: results.finish?.stderr })
+      .toEqual({ search: 0, status: 1, stderr: "The text-search-001 receipt is incomplete, failed, or changed. Use a new attempt.\n" });
+    expect(draftState(attempt)).toEqual(before);
   }, 60_000);
 });

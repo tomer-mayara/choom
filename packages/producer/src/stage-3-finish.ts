@@ -365,6 +365,11 @@ function finish(): void {
   attempt.receipt('start', 'start', [...checkpoints, ...toolFiles, 'handoff.json']);
   attempt.receipt('collect', 'collect', collectFiles);
   attempt.receipt('save-review', 'save-review', reviewFiles);
+  // Each text-search record and its raw ripgrep output must be as the text-search action saved them.
+  for (const name of attempt.names.filter(name => /^text-search-[0-9]+\.json$/.test(name))) {
+    const phase = name.slice(0, -'.json'.length);
+    attempt.receipt(phase, 'text-search', [phase + '.stdout.jsonl', phase + '.stderr.txt', name]);
+  }
   assert(attempt.buffers.has(attempt.attemptRef('commands.md')), 'Missing command log.');
   const inputs = selectedInputs(config, records, attempt);
   const loading = checkQueries(attempt, inputs);

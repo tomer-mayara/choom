@@ -44,6 +44,7 @@ describe("stage actions after the producer code changed", () => {
       changeBaselineModelCode(tools);
       const review = join(scratch, "review");
       expectRefused(work, tools, [[3, ["stage-3", "collect"]], [3, ["stage-3", "excerpt", "app.ts", "1", "1"]],
+        [3, ["stage-3", "text-search", "value"]],
         [3, ["stage-3", "save-review", review]], [3, ["stage-3-finish"]], [3, ["stage-3-finish", "verify"]]],
       changedCodeMessage(work));
     });
@@ -77,6 +78,7 @@ describe("stage actions in a run without a matching producer code record", () =>
       [2, ["stage-2", "plan", review]], [2, ["stage-2", "prepare"]], [2, ["stage-2", "toolchain"]], [2, ["stage-2", "run"]],
       [2, ["stage-2", "save-review", review]], [2, ["stage-2", "finish"]],
       [3, ["stage-3", "start"]], [3, ["stage-3", "collect"]], [3, ["stage-3", "excerpt", "app.ts", "1", "1"]],
+      [3, ["stage-3", "text-search", "value"]],
       [3, ["stage-3", "save-review", review]], [3, ["stage-3-finish"]], [3, ["stage-3-finish", "verify"]],
       [4, ["stage-4", "start"]], [4, ["stage-4", "toolchain"]], [4, ["stage-4", "run"]],
       [4, ["stage-4-inspect", "collect"]], [4, ["stage-4-inspect", "excerpt", "app.ts", "1", "1"]],

@@ -24,14 +24,13 @@ const snapshot: SnapshotFile[] = [
   { path: "app.ts", text: app },
   { path: "broken.ts", text: "export const = 1;\n" },
   { path: "data/large.txt", text: "x".repeat(2 * 1024 * 1024 + 1) },
-  { path: "data/latin1.txt", text: "replaced below\n" },
+  { path: "data/latin1.txt", text: Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]) },
   { path: "empty.ts", text: "" },
   ...generated.map((path) => ({ path, text: required })),
   { path: "jobs/start.mjs", text: job },
   { path: "lib/helper.ts", text: helper },
   { path: "link.ts", text: "", kind: "symlink" },
 ];
-const latin1 = Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]);
 const candidates = ["app.ts", "data/large.txt", "data/latin1.txt", "empty.ts", "link.ts", null]
   .map((path, index) => ({ id: `s2-check-candidate-00${index + 1}`, path }));
 const issues = {
@@ -45,15 +44,10 @@ const reports = { normal: "s2-check-file@knip-normal.json", production: "s2-chec
 function collectableRun(work: string): void {
   stagedRun(work, 2, { snapshot });
   const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as Run;
-  function save(path: string, bytes: string | Buffer, ref: string): void {
+  function save(path: string, bytes: string, ref: string): void {
     writeFileSync(join(work, path), bytes);
     run.artifacts[ref] = { path, sha256: sha256(bytes) };
   }
-  writeFileSync(join(work, "snapshot/data/latin1.txt"), latin1);
-  const inventory = JSON.parse(readFileSync(join(work, "evidence/inventory.json"), "utf8")) as
-    { files: { path: string; bytes: number; sha256: string }[] };
-  Object.assign(inventory.files.find(({ path }) => path === "data/latin1.txt") ?? {}, { bytes: latin1.length, sha256: sha256(latin1) });
-  save("evidence/inventory.json", JSON.stringify(inventory, null, 2) + "\n", "inventory-001");
   const modes = ["normal", "production"] as const;
   for (const mode of modes)
     save(`evidence/s2-check/knip-${mode}.json`, JSON.stringify({ issues: issues[mode] }), reports[mode]);
@@ -114,7 +108,7 @@ describe("Stage 3 start", () => {
         "discovery.before.yaml": sha256(readFileSync(join(folder(), "discovery.before.yaml"))),
         "baseline.before.yaml": sha256(readFileSync(join(folder(), "baseline.before.yaml"))) },
       toolInputDigests: { "step-3-cookbook.md": sha256(readFileSync(join(folder(), "step-3-cookbook.md"))) } });
-    expect(Object.keys(handoff.versions as Json)).toEqual(["node", "typescript", "modules"]);
+    expect(Object.keys(handoff.versions as Json)).toEqual(["node", "typescript", "ripgrep", "modules"]);
     expect(readFileSync(join(folder(), "run.before.yaml")).equals(readFileSync(join(work, "run.yaml")))).toBe(true);
     expect(saved("operator-start.json")).toMatchObject({ formatVersion: 1, attemptId: id, action: "start", phase: "start",
       status: "completed", exitCode: 0, digests: Object.fromEntries(["run.before.yaml", "discovery.before.yaml",
@@ -154,7 +148,7 @@ describe("Stage 3 collect", () => {
 
   test("saves the loading syntax search of every JavaScript and TypeScript file", () => {
     const loading = saved("loading-search.json");
-    expect(Object.keys((loading.query as Json).versions as Json)).toEqual(["node", "typescript", "modules"]);
+    expect(Object.keys((loading.query as Json).versions as Json)).toEqual(["node", "typescript", "ripgrep", "modules"]);
     const checked: Json = { ...loading, query: { ...(loading.query as Json), versions: "checked above" } };
     expect(checked).toEqual({
       formatVersion: 1, snapshotRef, scope, status: "completed", outcome: "matches",
