@@ -28,6 +28,8 @@ export interface RecordInputs {
   readSource(path: string, limit: number): Buffer;
   packet?: Map<string, Buffer>;
   draftDigests?: Record<string, string>;
+  // The IDs of the records that this stage's publication saves. The validator
+  // always reserves the baseline ID too.
   reservedIds?: readonly unknown[];
 }
 export type RecordCounts = Record<string, number>;
