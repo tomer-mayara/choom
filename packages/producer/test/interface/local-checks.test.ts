@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
@@ -25,12 +26,30 @@ function savedSnapshot(work: string, snapshotId: string): { inventory: string; d
   return { inventory: join(work, "evidence/inventory.json"), digest: sha256(inventory) };
 }
 
+// The one line that the Stage 4 graph fixture prints when it approves the tools.
+// The Node version is the version of the node program on PATH, which runs the helper.
+function graphFixtureApproval(): string {
+  const node = spawnSync("node", ["--version"], { encoding: "utf8" }).stdout.trim().replace(/^v/, "");
+  const toolVersions = { node, dependencyCruiser: "18.7.2", typescript: "6.0.2", enhancedResolve: "5.26.0" };
+  return JSON.stringify({ status: "approved", toolVersions, contextCount: 4 }) + "\n";
+}
+
 describe("local producer tool checks", () => {
   test("the Stage 4 graph fixture approves the checkout's dependency-cruiser toolchain", () => {
     const result = runHelper(helper("stage-4-graph.mjs"), ["--fixture"], { CHOOM_GRAPH_TOOLS: toolsRoot });
-    expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
-    expect(JSON.parse(result.stdout)).toMatchObject({ status: "approved", contextCount: 4,
-      toolVersions: { dependencyCruiser: "18.7.2", typescript: "6.0.2", enhancedResolve: "5.26.0" } });
+    expect(result).toEqual({ status: 0, stdout: graphFixtureApproval(), stderr: "" });
+  }, 60_000);
+
+  // Stage 4 mounts only the graph helper in the graph container, at /producer/,
+  // with no package.json next to it. A copy in the same form runs the fixture.
+  test("the Stage 4 graph fixture runs from a copy of the graph helper alone, as the container gets it", () => {
+    withScratch((scratch) => {
+      mkdirSync(join(scratch, "producer"));
+      const copy = join(scratch, "producer/stage-4-graph.mjs");
+      copyFileSync(helper("stage-4-graph.mjs"), copy);
+      const result = runHelper(copy, ["--fixture"], { CHOOM_GRAPH_TOOLS: toolsRoot });
+      expect(result).toEqual({ status: 0, stdout: graphFixtureApproval(), stderr: "" });
+    });
   }, 60_000);
 
   test("the Knip image check passes in both modes with the checkout's Knip", () => {
