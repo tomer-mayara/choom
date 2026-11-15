@@ -48,7 +48,7 @@ export async function completedRun(model: string, change?: BaselineChange): Prom
 // SHA-256 unless `registered` is false.
 export interface RunFile { path: string; text: string; registered?: boolean }
 
-export const smallRunBaselineId = "baseline-check";
+const smallRunBaselineId = "baseline-check";
 export const smallRunBaselinePath = `baselines/${smallRunBaselineId}/baseline.yaml`;
 
 // The call record that a stage saves for one LLM call.
