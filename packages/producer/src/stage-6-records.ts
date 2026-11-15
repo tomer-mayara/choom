@@ -1,7 +1,9 @@
 import { isDeepStrictEqual as same } from 'node:util';
+import type { Baseline } from '@choom/baseline-model/contracts';
 import type * as Yaml from 'yaml';
-import { validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints } from './record-baseline.ts';
-import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, plainId, strings, text } from './record-checks.ts';
+import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
+  from './record-baseline.ts';
+import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, strings, text } from './record-checks.ts';
 import { validateGraph } from './record-graph.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
 
@@ -40,7 +42,7 @@ interface References {
 interface Selection extends References {
   inputs: RecordInputs;
   discovery: Fields;
-  baseline: Fields;
+  baseline: Baseline;
   snapshotRef: string;
   indexed: Map<unknown, Fields>;
   document(id: unknown): unknown;
@@ -209,10 +211,8 @@ function references(artifacts: Map<string, Artifact>, source: SourceRecords, doc
 // baseline under the baseline ID, so Stages 4 and 5 refuse that ID too, while
 // the operator can still correct the draft. Each stage adds the IDs of the
 // records that its own publication saves.
-function reserveRecordIds(refs: References, baseline: unknown, publicationIds: readonly unknown[]): void {
-  const baselineId = (baseline as Fields | null | undefined)?.id;
-  // The baseline checks refuse an ID that is not a plain ID.
-  if (plainId(baselineId)) refs.reserve(baselineId, 'the baseline');
+function reserveRecordIds(refs: References, baseline: Baseline, publicationIds: readonly unknown[]): void {
+  refs.reserve(baseline.id, 'the baseline');
   for (const id of publicationIds) refs.reserve(id, 'a record that this publication saves');
 }
 
@@ -230,6 +230,7 @@ function select(inputs: RecordInputs): Selection {
   const discovery = inputs.discovery;
   const snapshotRef = run.snapshot.id;
   checkWorkingDiscovery(discovery, run);
+  const baseline = checkBaselineDocument(inputs.baseline);
   const indexed = new Map((inventory.files as Fields[]).map(file => [file.path, file]));
   const document = documentReader(artifacts, inputs.parse);
   const [entry, mapping, graph, access] = factKeys.map(key => document(discovery[key]) as Fields) as [Fields, Fields, Fields, Fields];
@@ -237,9 +238,8 @@ function select(inputs: RecordInputs): Selection {
     'A selected fact belongs to a different snapshot.');
   const source = sourcesFor({ artifacts, document, snapshotRef, inventory, readSource });
   const refs = references(artifacts, source, document);
-  reserveRecordIds(refs, inputs.baseline, inputs.reservedIds ?? []);
-  return { ...refs, inputs, discovery, baseline: inputs.baseline as Fields, snapshotRef, indexed, document, source,
-    entry, mapping, graph, access };
+  reserveRecordIds(refs, baseline, inputs.reservedIds ?? []);
+  return { ...refs, inputs, discovery, baseline, snapshotRef, indexed, document, source, entry, mapping, graph, access };
 }
 
 function checkIssues({ discovery, entry, claim, evidence }: Selection): void {
@@ -404,7 +404,7 @@ function checkResourceAccess(selection: Selection, { componentIds, mapped, sourc
     scope.reviewedFilesRef === discovery.entryAnalysisRef + '#/reviewedFiles' &&
     same(scope.historicalEntryAnalysisRefs, historyRefs) && strings(access.limits), 'Invalid resource observation scope.');
   resolve(scope.reviewedFilesRef);
-  const resources = new Set((baseline.resources as Fields[]).map(record => record.id));
+  const resources = new Set<unknown>(baseline.resources.map(record => record.id));
   for (const item of list(access.observations, 'observed access') as Fields[]) {
     claim(item.id);
     const target = item.target as Fields | undefined;

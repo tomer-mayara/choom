@@ -23,7 +23,7 @@
     "test": "bun run test:native && bun run test:dom && bun run test:integration",
     "test:native": "bun test --path-ignore-patterns '**/*.test.tsx' ./test/unit ./packages/baseline-model/test/unit ./packages/producer/test/unit",
     "test:dom": "bun test --preload ./test/preload.ts ./test/unit/app.test.tsx ./test/unit/components ./test/unit/platform/browser-documents.test.tsx",
-    "test:integration": "bun test ./packages/baseline-model/test/integration",
+    "test:integration": "bun test ./packages/baseline-model/test/integration ./packages/producer/test/integration/records",
     "test:producer:docker": "bun test ./packages/producer/test/integration/docker && cucumber-js --config cucumber.mjs --profile docker",
     "test:rust": "bun run desktop:test",
     "test:watch": "bun test --watch",

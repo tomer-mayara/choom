@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import * as yaml from "yaml";
-import { readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords } from "../../src/stage-6-records.ts";
+import { readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
 
-// Characterization of the shared record validator that Stages 4, 5 and 6 use.
+// The shared record validator that Stages 4, 5 and 6 use. The validator runs the
+// shared baseline rules of @choom/baseline-model, so this is an integration suite.
 // The records are small in-memory copies modeled on the Stage 6 producer fixture.
 interface Statement<T> { value: T; status: string; evidenceRefs: string[]; acceptanceRef?: string }
 interface Component {
@@ -184,7 +185,7 @@ const refusedCases: [string, (records: Records) => void, string][] = [
   ["a cycle of component parents", (records) => {
     findComponent(records, "cli").parent = statement("http");
     findComponent(records, "http").parent = statement("cli");
-  }, "Component parent cycle: cli"],
+  }, "The baseline is invalid at components.0.parent.value (component cli): Component parents must not form a cycle."],
   ["a file with two direct owners", (records) => {
     findComponent(records, "http").membership.value.paths.push("cli.ts");
   }, "Mapping and direct membership differ: cli.ts"],
@@ -201,7 +202,8 @@ const refusedCases: [string, (records: Records) => void, string][] = [
   }, "Invalid selected code mapping scope."],
   ["a glob membership selector", (records) => {
     findComponent(records, "cli").membership.value.paths = ["*.ts"];
-  }, "Unsupported membership selectors: cli"],
+  }, "The baseline is invalid at components.0.membership.value.paths.0 (component cli): " +
+    "Expected a safe relative path or a subtree ending in '/**'."],
 ];
 
 // The producer profile: rules that the producer adds to the shared baseline rules. Each case
@@ -409,6 +411,34 @@ describe("run checks of the baseline against the saved records", () => {
 
 describe("the producer profile", () => {
   test.each(profileCases)("refuses %s", (_name, change, message) => {
+    expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(message);
+  });
+});
+
+// @choom/baseline-model checks the baseline shape, as the viewer does. The message
+// names the path, the item that it is in, and the shared rule.
+const sharedRuleCases: [string, (records: Records) => void, string][] = [
+  ["an item ID that two collections use", (records) => {
+    records.baseline.interfaces = [{ id: "cli", name: "CLI", owner: statement("cli"), publicAccess: statement(["serve"]),
+      allowedConsumers: statement(["http"]), promises: statement(null) }];
+  }, "The baseline is invalid at interfaces.0.id (interface cli): Duplicate item ID: cli."],
+  ["a symbol selector in a version 4 baseline", (records) => {
+    records.baseline.formatVersion = 4;
+    Object.assign(findComponent(records, "cli").membership.value, { symbols: [{ path: "cli.ts", symbol: "start" }] });
+  }, "The baseline is invalid at components.0.membership.value (component cli): Unrecognized key: \"symbols\""],
+  ["a documentation entry with an access point that the interface does not record", documented((records) => {
+    const entry = ordersDocumentation(records).entries[0];
+    if (entry) entry.accessPoint = "POST /orders";
+  }), "The baseline is invalid at interfaces.0.documentation.entries.0.accessPoint (interface orders-api): " +
+    "Entry access must match this interface's recorded access."],
+  ["a source use reference without a located note", documented((records) => {
+    ordersUse(records).assessment.sourceNotes = [];
+  }), "The baseline is invalid at sourceUsage.assessments.0.uses.0.evidenceRefs.0: " +
+    "Every use evidence reference needs a source note with a location."],
+];
+
+describe("the shared baseline rules", () => {
+  test.each(sharedRuleCases)("refuses %s", (_name, change, message) => {
     expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(message);
   });
 });

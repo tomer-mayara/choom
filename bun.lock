@@ -66,6 +66,7 @@
       "name": "@choom/producer",
       "version": "0.1.0",
       "dependencies": {
+        "@choom/baseline-model": "workspace:*",
         "dependency-cruiser": "18.7.2",
         "jscpd": "5.4.2",
         "knip": "6.44.1",

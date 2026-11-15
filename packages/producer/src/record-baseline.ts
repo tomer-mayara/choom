@@ -1,20 +1,28 @@
-import { assert, boundedText, exact, type Fields, fields, list, object, oneOf, plainId, safe, strings, text } from './record-checks.ts';
+import { baselineSchema } from '@choom/baseline-model';
+import { supportsSourceUsage, supportsSystemEntryPoints } from '@choom/baseline-model/baseline-format';
+import type { Baseline, BaselineDocumentation, BaselineInterface, BaselineSourceUse } from '@choom/baseline-model/contracts';
+import { assert, type Fields, object, oneOf } from './record-checks.ts';
 import { type SourceRecords, validateSourceLocation } from './record-sources.ts';
 
-// The checks of the proposed baseline against the producer profile, the viewer
-// limits and the saved run records: the discovery result, the evidence registry,
-// the saved source ranges and the selected code mapping.
-export const collectionKeys = ['components', 'interfaces', 'resources', 'rules'] as const;
+// The checks of a proposed baseline. The shared baseline rules in
+// @choom/baseline-model check its shape, as the viewer does. The producer adds
+// its profile, the viewer display limits, and the run checks against the saved
+// records: the discovery result, the evidence registry, the saved source ranges
+// and the selected code mapping.
+const collectionKeys = ['components', 'interfaces', 'resources', 'rules'] as const;
+const itemKinds = new Map<unknown, string>([['components', 'component'], ['interfaces', 'interface'],
+  ['resources', 'resource'], ['rules', 'rule']]);
+const producerVersions = [1, 2, 3, 4];
 
 export interface BaselineInputs {
-  baseline: Fields;
+  baseline: Baseline;
   discovery: Fields;
   claim(id: unknown): void;
   evidence(record: unknown): void;
 }
 export interface BaselineMembers { componentIds: Set<unknown>; members: Map<unknown, Fields> }
 export interface DocumentationInputs {
-  baseline: Fields;
+  baseline: Baseline;
   discovery: Fields;
   evidence(record: unknown): void;
   source: SourceRecords;
@@ -25,16 +33,16 @@ export interface RunBaselineInputs extends DocumentationInputs {
   componentIds: Set<unknown>;
   mapped: Map<unknown, unknown>;
 }
-interface ItemChecks {
-  componentIds: Set<unknown>;
-  unknown(id: unknown): boolean;
-  evidence(record: unknown): void;
-}
+interface Statement { value: unknown; status: string; evidenceRefs: string[] }
+// One statement of an interface's documentation, its subject path, and the facts in it that can be null.
+interface DocumentationStatement { path: string; statement: Statement; facts: [string, unknown][] }
 
-const producerVersions = [1, 2, 3, 4];
 // Reads value?.[key] from an unchecked value.
 const field = (value: unknown, key: string): unknown => (value as Fields | null | undefined)?.[key];
 const statementValue = (item: Fields, name: string): unknown => (item[name] as Fields | undefined)?.value;
+const items = (baseline: Baseline, key: typeof collectionKeys[number]): Fields[] => baseline[key] as unknown as Fields[];
+const issueSubjects = (discovery: Fields): Set<unknown> => new Set([...(discovery.questions as Fields[]),
+  ...(discovery.gaps as Fields[])].flatMap(issue => issue.subjectRefs as unknown[]));
 
 // The producer profile: what the producer writes, on top of the shared baseline
 // rules. It writes formatVersion 1 to 4 and only the first version of a
@@ -42,7 +50,7 @@ const statementValue = (item: Fields, name: string): unknown => (item[name] as F
 // parent that only groups other components, has a purpose, a grouping reason
 // and at least one path. A question or gap does not replace these values. The
 // profile runs first, so that each case has its own message.
-export function checkProducerProfile(baseline: unknown): void {
+function checkProducerProfile(baseline: unknown): void {
   const version = field(baseline, 'formatVersion');
   assert(oneOf(producerVersions, version), 'The producer writes baseline formatVersion 1, 2, 3 or 4, not ' + JSON.stringify(version) + '.');
   assert(field(baseline, 'parentId') === null, 'Expected a first proposed baseline.');
@@ -60,388 +68,176 @@ export function checkProducerProfile(baseline: unknown): void {
       'Component ' + id + ' has no membership paths. The producer needs at least one path for each component.');
   }
 }
-const absent = (value: unknown): boolean => value === null || value === undefined;
-const issueSubjects = (discovery: Fields): Set<unknown> => new Set([...(discovery.questions as Fields[]),
-  ...(discovery.gaps as Fields[])].flatMap(issue => issue.subjectRefs as unknown[]));
 
-function validateDisplayLimits(baseline: Fields): void {
-  assert(collectionKeys.reduce((sum, key) => sum + list(baseline[key], key).length, 0) <= 500,
-    'Baseline exceeds the 500-record display limit.');
-  const links = (baseline.interfaces as Fields[]).reduce((sum, item) => sum + Number(!absent(statementValue(item, 'owner'))) +
-    ((statementValue(item, 'allowedConsumers') as unknown[] | null | undefined)?.length ?? 0), 0) +
-    (baseline.resources as Fields[]).filter(item => !absent(statementValue(item, 'owner'))).length;
-  assert(links <= 2000, 'Baseline exceeds the 2,000-link display limit.');
+// The first problem that the shared rules found: its path, the item that it is in, and the rule.
+function sharedRuleMessage(baseline: unknown, issue: { path: PropertyKey[]; message: string } | undefined): string {
+  if (!issue) return 'The baseline does not match the shared baseline rules.';
+  const path = issue.path.map(String).join('.');
+  const [collection, index] = issue.path;
+  const kind = itemKinds.get(collection);
+  const id = kind === undefined || typeof index !== 'number' ? undefined : field(field(field(baseline, String(collection)), String(index)), 'id');
+  const item = typeof id === 'string' ? ' (' + kind + ' ' + id + ')' : '';
+  return path ? 'The baseline is invalid at ' + path + item + ': ' + issue.message : 'The baseline is invalid: ' + issue.message;
 }
 
-function selector(path: string): boolean {
-  const base = path.endsWith('/**') ? path.slice(0, -3) : path;
-  return safe(base) && !/^[A-Za-z]:/.test(base) && !/[?*[\]{}#]/.test(base);
-}
-
-function checkStatements(item: Fields, checks: ItemChecks): void {
-  for (const [name, statement] of Object.entries(item)) {
-    if (name === 'id' || name === 'name' || name === 'documentation') continue;
-    assert(exact(statement, ['value', 'status', 'evidenceRefs']) && statement.status === 'proposed',
-      'Only proposed intent is supported: ' + item.id + '.' + name);
-    checks.evidence(statement);
-    if (statement.value === null)
-      assert(name === 'parent' || checks.unknown(item.id), 'Unexplained unknown intent: ' + item.id + '.' + name);
+// Each statement of an interface's documentation, in the order of the documentation.
+function documentationStatements(itemId: string, documentation: BaselineDocumentation): DocumentationStatement[] {
+  const root = itemId + '.documentation';
+  const statement = (path: string, value: Statement, facts: [string, unknown][] = [[path, value.value]]): DocumentationStatement =>
+    ({ path, statement: value, facts });
+  const statements = [statement(root + '.summary', documentation.summary)];
+  for (const entry of documentation.entries) {
+    const path = root + '.entries.' + entry.id;
+    statements.push(statement(path + '.kind', entry.kind), statement(path + '.description', entry.description));
+    if (entry.signature) statements.push(statement(path + '.signature', entry.signature));
+    if (entry.interaction) statements.push(statement(path + '.interaction', entry.interaction,
+      Object.entries(entry.interaction.value).map(([key, fact]) => [path + '.interaction.' + key, fact])));
+    for (const example of entry.examples) statements.push(statement(path + '.examples.' + example.id + '.content', example.content, []));
   }
+  return statements;
 }
 
-function checkInterfaceIntent(item: Fields, checks: ItemChecks): void {
-  const access = statementValue(item, 'publicAccess');
-  if (!absent(access)) assert(strings(access), 'Invalid interface access points: ' + item.id);
-  const consumers = statementValue(item, 'allowedConsumers');
-  if (!absent(consumers)) assert(strings(consumers) && new Set(consumers).size === consumers.length &&
-    consumers.every(id => checks.componentIds.has(id)), 'Invalid allowed consumers: ' + item.id);
-  const promises = statementValue(item, 'promises');
-  if (!absent(promises)) assert(exact(promises, ['behavior', 'data', 'errors', 'lifecycle']) &&
-    Object.values(promises).every(value => text(value) || (value === null && checks.unknown(item.id))),
-  'Invalid interface promises: ' + item.id);
-}
-
-function checkIntent(key: string, item: Fields, checks: ItemChecks): void {
-  const owner = statementValue(item, 'owner');
-  if (!absent(owner)) assert(checks.componentIds.has(owner), 'Unknown proposed owner: ' + item.id);
-  if (key === 'interfaces') checkInterfaceIntent(item, checks);
-  if (key === 'resources')
-    for (const name of ['identity', 'accessRules'])
-      assert(absent(statementValue(item, name)) || text(statementValue(item, name)), 'Invalid resource intent: ' + item.id + '.' + name);
-  if (key === 'rules')
-    for (const name of ['subject', 'expected', 'check'])
-      assert(absent(statementValue(item, name)) || object(statementValue(item, name)), 'Invalid rule intent: ' + item.id + '.' + name);
-}
-
-function checkComponent(item: Fields, componentIds: Set<unknown>): unknown {
-  assert(text(statementValue(item, 'purpose')) && text(statementValue(item, 'groupingReason')), 'Missing component intent: ' + item.id);
-  const parent = statementValue(item, 'parent') ?? null;
-  assert(parent === null || componentIds.has(parent), 'Unknown component parent: ' + item.id);
-  const value = statementValue(item, 'membership') as Fields;
-  assert(object(value) && strings(value.paths) && value.paths.every(selector) &&
-    (!Object.hasOwn(value, 'excludePaths') || (Array.isArray(value.excludePaths) &&
-      value.excludePaths.every(path => text(path) && selector(path)))) &&
-    Object.keys(value).every(name => ['paths', 'excludePaths'].includes(name)),
-  'Unsupported membership selectors: ' + item.id);
-  return parent;
-}
-
-function checkParentLevels(componentIds: Set<unknown>, parents: Map<unknown, unknown>): void {
-  for (const id of componentIds) {
-    const ancestors = new Set([id]);
-    for (let parent = parents.get(id); parent !== null; parent = parents.get(parent)) {
-      assert(!ancestors.has(parent), 'Component parent cycle: ' + id);
-      ancestors.add(parent);
-      assert(ancestors.size <= 16, 'Baseline exceeds the 16-parent-level display limit.');
+// Publication does not accept intent: every statement stays proposed.
+function checkProposedIntent(baseline: Baseline): void {
+  for (const key of collectionKeys) {
+    for (const item of items(baseline, key)) {
+      for (const [name, statement] of Object.entries(item)) {
+        if (name === 'id' || name === 'name' || name === 'documentation') continue;
+        assert((statement as Statement).status === 'proposed', 'Only proposed intent is supported: ' + item.id + '.' + name);
+      }
+      const documentation = item.documentation as BaselineDocumentation | undefined;
+      for (const { path, statement } of documentation ? documentationStatements(item.id as string, documentation) : [])
+        assert(statement.status === 'proposed', 'Only proposed intent is supported: ' + path);
     }
   }
 }
 
-function itemKeys(key: string, item: Fields, baseline: Fields): string[] {
-  const required: Record<string, string[]> = {
-    components: ['id', 'name', 'purpose', 'membership', 'groupingReason'],
-    interfaces: ['id', 'name', 'owner', 'publicAccess', 'allowedConsumers', 'promises'],
-    resources: ['id', 'name', 'identity', 'owner', 'accessRules'],
-    rules: ['id', 'name', 'subject', 'expected', 'check'],
-  };
-  return [...(required[key] as string[]),
-    ...(key === 'components' && Object.hasOwn(item, 'parent') ? ['parent'] : []),
-    ...(key === 'interfaces' && oneOf([2, 3, 4], baseline.formatVersion) && Object.hasOwn(item, 'documentation') ? ['documentation'] : [])];
+// The viewer display limits: 500 records, 2,000 explicit links and 16 component levels.
+function checkDisplayLimits(baseline: Baseline): void {
+  assert(collectionKeys.reduce((sum, key) => sum + baseline[key].length, 0) <= 500,
+    'Baseline exceeds the 500-record display limit.');
+  const links = baseline.interfaces.reduce((sum, item) => sum + Number(item.owner.value !== null) +
+    (item.allowedConsumers.value?.length ?? 0), 0) + baseline.resources.filter(item => item.owner.value !== null).length;
+  assert(links <= 2000, 'Baseline exceeds the 2,000-link display limit.');
+  const parents = new Map(baseline.components.map(item => [item.id, item.parent?.value ?? null]));
+  for (const component of baseline.components) {
+    let levels = 1;
+    for (let parent = parents.get(component.id); parent; parent = parents.get(parent))
+      assert(++levels <= 16, 'Baseline exceeds the 16-parent-level display limit.');
+  }
 }
 
+// The baseline document: the producer profile first, then the shared baseline
+// rules, then the producer rules that need a valid shape.
+export function checkBaselineDocument(value: unknown): Baseline {
+  checkProducerProfile(value);
+  const result = baselineSchema.safeParse(value);
+  if (!result.success) throw new Error(sharedRuleMessage(value, result.error.issues[0]));
+  checkProposedIntent(result.data);
+  checkDisplayLimits(result.data);
+  return result.data;
+}
+
+// The run checks of the baseline items: model IDs, resolved evidence, and a
+// question or gap for each unknown value.
 export function validateBaseline({ baseline, discovery, claim, evidence }: BaselineInputs): BaselineMembers {
-  checkProducerProfile(baseline);
-  const keys = ['formatVersion', 'id', 'parentId', ...collectionKeys,
-    ...(oneOf([3, 4], baseline?.formatVersion) && Object.hasOwn(baseline, 'sourceUsage') ? ['sourceUsage'] : []),
-    ...(baseline?.formatVersion === 4 && Object.hasOwn(baseline, 'systemEntryPoints') ? ['systemEntryPoints'] : [])];
-  assert(exact(baseline, keys) && oneOf([1, 2, 3, 4], baseline.formatVersion) &&
-    plainId(baseline.id) && baseline.parentId === null, 'Expected a first proposed baseline.');
-  validateDisplayLimits(baseline);
-  const componentIds = new Set((list(baseline.components, 'components') as Fields[]).map(item => item.id));
-  assert(componentIds.size > 0 && componentIds.size === (baseline.components as unknown[]).length, 'Missing or duplicate components.');
   const issues = [...(discovery.questions as Fields[]), ...(discovery.gaps as Fields[])];
   const unknown = (id: unknown): boolean => issues
     .some(issue => (issue.subjectRefs as string[]).some(ref => ref === id || ref.startsWith(id + '.')));
-  const checks: ItemChecks = { componentIds, unknown, evidence };
-  const parents = new Map<unknown, unknown>();
   const members = new Map<unknown, Fields>();
   for (const key of collectionKeys) {
-    for (const item of list(baseline[key], key) as Fields[]) {
-      assert(exact(item, itemKeys(key, item, baseline)) && plainId(item.id) && text(item.name), 'Invalid baseline item: ' + item?.id);
+    for (const item of items(baseline, key)) {
       claim(item.id);
-      checkStatements(item, checks);
-      checkIntent(key, item, checks);
-      if (key !== 'components') continue;
-      parents.set(item.id, checkComponent(item, componentIds));
-      members.set(item.id, item.membership as Fields);
+      for (const [name, statement] of Object.entries(item)) {
+        if (name === 'id' || name === 'name' || name === 'documentation') continue;
+        evidence(statement);
+        if ((statement as Statement).value === null)
+          assert(name === 'parent' || unknown(item.id), 'Unexplained unknown intent: ' + item.id + '.' + name);
+      }
+      const promises = statementValue(item, 'promises');
+      if (object(promises)) assert(Object.values(promises).every(value => value !== null || unknown(item.id)),
+        'Invalid interface promises: ' + item.id);
+      if (key === 'components') members.set(item.id, item.membership as Fields);
     }
   }
-  checkParentLevels(componentIds, parents);
-  return { componentIds, members };
+  return { componentIds: new Set(baseline.components.map(item => item.id)), members };
 }
 
-interface DocumentationChecks {
-  unknowns: Set<unknown>;
-  reviewed: Set<unknown>;
-  evidence(record: unknown): void;
-  source: SourceRecords;
-}
-type FactCheck = (value: unknown, path: string) => boolean;
-interface InterfaceDocumentation {
-  checks: DocumentationChecks;
-  item: Fields;
-  nullableText: FactCheck;
-  statement(record: unknown, path: string, valid: FactCheck): unknown;
-  reviewedExamples: { example: Fields; subject: string }[];
-}
-
-function checkExample(example: Fields, subject: string, exampleIds: Set<unknown>, documentation: InterfaceDocumentation): void {
-  assert(exact(example, ['id', 'name', 'basis', 'content']) && plainId(example.id) && boundedText(example.id, 4096) &&
-    !exampleIds.has(example.id) && boundedText(example.name) && oneOf(['illustrative', 'source-reviewed'], example.basis),
-  'Invalid documented example: ' + subject);
-  exampleIds.add(example.id);
-  documentation.statement(example.content, subject + '.content', value => {
-    const content = value as Fields;
-    const result = content?.result as Fields;
-    return fields(content, ['text'], ['input', 'result']) && boundedText(content.text, 16384) &&
-      (!Object.hasOwn(content, 'input') || boundedText(content.input, 16384)) &&
-      (!Object.hasOwn(content, 'result') || (exact(result, ['text', 'summary', 'scope']) &&
-        boundedText(result.text, 16384) && boundedText(result.summary) && oneOf(['complete', 'excerpt'], result.scope)));
-  });
-  if (example.basis === 'source-reviewed') documentation.reviewedExamples.push({ example, subject });
-}
-
-function checkEntry(entry: Fields, entryIds: Set<unknown>, documentation: InterfaceDocumentation): void {
-  const { item, nullableText, statement } = documentation;
-  const path = item.id + '.documentation.entries.' + entry?.id;
-  assert(fields(entry, ['id', 'name', 'accessPoint', 'kind', 'description', 'examples'], ['interaction', 'signature']) &&
-    plainId(entry.id) && boundedText(entry.id, 4096) && !entryIds.has(entry.id) && boundedText(entry.name) &&
-    boundedText(entry.accessPoint, 4096) && (statementValue(item, 'publicAccess') as unknown[] | null | undefined)?.includes(entry.accessPoint) &&
-    Array.isArray(entry.examples) && entry.examples.length <= 8, 'Invalid documentation entry: ' + path);
-  entryIds.add(entry.id);
-  const kind = statement(entry.kind, path + '.kind', (value, subject) => value === null ? documentation.checks.unknowns.has(subject) :
-    oneOf(['function', 'command', 'type', 'data', 'message', 'workflow'], value));
-  statement(entry.description, path + '.description', nullableText);
-  if (Object.hasOwn(entry, 'signature')) {
-    assert(kind === 'function', 'Signature requires a function or method entry: ' + path);
-    statement(entry.signature, path + '.signature', nullableText);
+function checkInterfaceDocumentation(item: BaselineInterface, documentation: BaselineDocumentation,
+  inputs: DocumentationInputs, checks: { unknowns: Set<unknown>; reviewed: Set<unknown> }): void {
+  for (const { path, statement, facts } of documentationStatements(item.id, documentation)) {
+    inputs.evidence(statement);
+    assert(facts.every(([subject, value]) => value !== null || checks.unknowns.has(subject)),
+      'Invalid or unexplained documentation fact: ' + path);
   }
-  if (Object.hasOwn(entry, 'interaction')) {
-    assert(oneOf(['function', 'command', 'workflow'], kind), 'Interaction requires a callable or workflow entry: ' + path);
-    statement(entry.interaction, path + '.interaction', (value, subject) =>
-      exact(value, ['input', 'success', 'failures', 'effects']) &&
-      Object.entries(value).every(([key, fact]) => nullableText(fact, subject + '.' + key)));
-  }
-  const exampleIds = new Set<unknown>();
-  for (const example of entry.examples as Fields[]) checkExample(example, path + '.examples.' + example?.id, exampleIds, documentation);
-}
-
-function checkSourceNotes(doc: Fields, citations: Set<unknown>, documentation: InterfaceDocumentation): Set<unknown> {
   const located = new Set<unknown>();
-  const notes = new Set<unknown>();
-  for (const note of doc.sourceNotes as Fields[]) {
-    assert(fields(note, ['evidenceRef', 'description'], ['location']) && boundedText(note.evidenceRef, 4096) &&
-      citations.has(note.evidenceRef) && !notes.has(note.evidenceRef) && boundedText(note.description),
-    'Invalid source note: ' + documentation.item.id);
-    notes.add(note.evidenceRef);
-    if (!Object.hasOwn(note, 'location')) continue;
-    validateSourceLocation(note, documentation.checks.source);
+  for (const note of documentation.sourceNotes) {
+    if (!note.location) continue;
+    validateSourceLocation(note, inputs.source);
     located.add(note.evidenceRef);
   }
-  return located;
+  for (const entry of documentation.entries)
+    for (const example of entry.examples)
+      if (example.basis === 'source-reviewed')
+        assert(example.content.evidenceRefs.some(ref => checks.reviewed.has(ref) && located.has(ref)),
+          'Source-reviewed example needs its own reviewed range and location note: ' +
+          item.id + '.documentation.entries.' + entry.id + '.examples.' + example.id);
 }
 
-function checkInterfaceDocumentation(item: Fields, checks: DocumentationChecks): void {
-  const citations = new Set<unknown>();
-  const nullableText: FactCheck = (value, path) => value === null ? checks.unknowns.has(path) : boundedText(value);
-  function statement(record: unknown, path: string, valid: FactCheck): unknown {
-    assert(exact(record, ['value', 'status', 'evidenceRefs']) && record.status === 'proposed' &&
-      strings(record.evidenceRefs) && record.evidenceRefs.every(ref => boundedText(ref, 4096)), 'Invalid proposed documentation statement: ' + path);
-    checks.evidence(record);
-    record.evidenceRefs.forEach(ref => citations.add(ref));
-    assert(valid(record.value, path), 'Invalid or unexplained documentation fact: ' + path);
-    return record.value;
-  }
-  for (const name of ['owner', 'publicAccess', 'allowedConsumers', 'promises'])
-    ((item[name] as Fields | undefined)?.evidenceRefs as unknown[] | undefined)?.forEach(ref => citations.add(ref));
-  const doc = item.documentation;
-  assert(exact(doc, ['summary', 'entries', 'sourceNotes']) && Array.isArray(doc.entries) &&
-    doc.entries.length <= 32 && Array.isArray(doc.sourceNotes), 'Invalid interface documentation: ' + item.id);
-  const documentation: InterfaceDocumentation = { checks, item, nullableText, statement, reviewedExamples: [] };
-  statement(doc.summary, item.id + '.documentation.summary', nullableText);
-  const entryIds = new Set<unknown>();
-  for (const entry of doc.entries as Fields[]) checkEntry(entry, entryIds, documentation);
-  const located = checkSourceNotes(doc, citations, documentation);
-  for (const { example, subject } of documentation.reviewedExamples)
-    assert(((example.content as Fields).evidenceRefs as unknown[]).some(ref => checks.reviewed.has(ref) && located.has(ref)),
-      'Source-reviewed example needs its own reviewed range and location note: ' + subject);
+// Documentation facts cite resolved evidence, and a source-reviewed example cites
+// a located range that the selected review history read.
+export function validateDocumentation(inputs: DocumentationInputs): void {
+  const checks = { unknowns: issueSubjects(inputs.discovery), reviewed: new Set(inputs.reviewedRanges.map(record => record.id)) };
+  for (const item of inputs.baseline.interfaces as BaselineInterface[])
+    if (item.documentation) checkInterfaceDocumentation(item, item.documentation, inputs, checks);
 }
 
-export function validateDocumentation({ baseline, discovery, evidence, source, reviewedRanges }: DocumentationInputs): void {
-  const documents = (baseline.interfaces as Fields[]).filter(item => Object.hasOwn(item, 'documentation'));
-  assert(Buffer.byteLength(JSON.stringify(documents.map(item => item.documentation)), 'utf8') <= 2 * 1024 * 1024,
-    'Interface documentation exceeds the 2 MiB byte limit.');
-  const checks: DocumentationChecks = { unknowns: issueSubjects(discovery), reviewed: new Set(reviewedRanges.map(record => record.id)),
-    evidence, source };
-  for (const item of documents) checkInterfaceDocumentation(item, checks);
-}
+interface UsageChecks extends RunBaselineInputs { unknowns: Set<unknown>; reviewed: Set<unknown> }
 
-interface UsageChecks extends RunBaselineInputs {
-  interfaces: Map<unknown, Fields>;
-  unknowns: Set<unknown>;
-  reviewed: Set<unknown>;
-  usage: Fields;
-}
-const localId = (value: unknown): boolean => plainId(value) && boundedText(value, 4096);
-const references = (value: unknown): boolean => strings(value) && new Set(value).size === value.length &&
-  value.every(ref => boundedText(ref, 4096));
-
-// The interface that an assessment describes, its documented entries, and the
-// evidence that the assessment and its uses cite.
-interface AssessedInterface { item: Fields; entries: Map<unknown, Fields>; citations: Set<unknown> }
-
-function checkSourceUse(use: Fields, path: string, { item, entries, citations }: AssessedInterface, checks: UsageChecks): void {
-  for (const ref of use.evidenceRefs as string[]) {
-    assert(!ref.includes('#') && checks.source.records.has(ref), 'Source use requires a direct source record: ' + path + ': ' + ref);
+function checkSourceUse(use: BaselineSourceUse, path: string, checks: UsageChecks): void {
+  for (const ref of use.evidenceRefs) {
+    assert(checks.source.records.has(ref), 'Source use requires a direct source record: ' + path + ': ' + ref);
     assert(checks.reviewed.has(ref), 'Source use is outside the selected source review history: ' + path + ': ' + ref);
-    citations.add(ref);
   }
   checks.evidence(use);
   assert(checks.mapped.get((checks.source.records.get(use.callerRef) as Fields).path) === use.consumerId,
     'Source consumer differs from the direct mapped caller owner: ' + path);
-  for (const field of ['consumerId', 'context']) {
-    if (field === 'consumerId' ? use.consumerId === null : use.context === 'unknown')
-      assert(checks.unknowns.has(path + '.' + field), 'Missing exact discovery subject for unresolved source use: ' + path + '.' + field);
+  for (const name of ['consumerId', 'context'] as const) {
+    if (name === 'consumerId' ? use.consumerId === null : use.context === 'unknown')
+      assert(checks.unknowns.has(path + '.' + name), 'Missing exact discovery subject for unresolved source use: ' + path + '.' + name);
   }
-  const access = statementValue(item, 'publicAccess') as unknown[] | null | undefined;
-  if (Object.hasOwn(use, 'accessPoint'))
-    assert(boundedText(use.accessPoint, 4096) && access?.includes(use.accessPoint), 'Unknown source-use access point: ' + path);
-  if (Object.hasOwn(use, 'entryId'))
-    assert(localId(use.entryId) && entries.has(use.entryId), 'Unknown source-use documentation entry: ' + path);
-  if (Object.hasOwn(use, 'accessPoint') && Object.hasOwn(use, 'entryId'))
-    assert((entries.get(use.entryId) as Fields).accessPoint === use.accessPoint, 'Conflicting source-use entry binding: ' + path);
 }
 
-function checkUseNotes(assessment: Fields, citations: Set<unknown>, checks: UsageChecks): void {
-  const located = new Set<unknown>();
-  const noteRefs = new Set<unknown>();
-  for (const note of assessment.sourceNotes as Fields[]) {
-    assert(fields(note, ['evidenceRef', 'description'], ['location']) && boundedText(note.evidenceRef, 4096) &&
-      citations.has(note.evidenceRef) && !noteRefs.has(note.evidenceRef) && boundedText(note.description),
-    'Invalid source-use note: ' + assessment.interfaceId);
-    noteRefs.add(note.evidenceRef);
-    if (!Object.hasOwn(note, 'location')) continue;
-    validateSourceLocation(note, checks.source);
-    assert((note.location as Fields).snapshotRef === checks.usage.snapshotRef,
-      'Source-use note belongs to a different snapshot: ' + note.evidenceRef);
-    located.add(note.evidenceRef);
-  }
-  for (const use of assessment.uses as Fields[])
-    for (const ref of use.evidenceRefs as unknown[])
-      assert(located.has(ref), 'Source use needs a located note for every evidence reference: ' + use.id + ': ' + ref);
-}
-
-function checkAssessment(assessment: Fields, checks: UsageChecks): void {
-  const item = checks.interfaces.get(assessment.interfaceId) as Fields;
-  const entries = new Map(((item.documentation as Fields | undefined)?.entries as Fields[] | undefined ?? [])
-    .map(entry => [entry.id, entry]));
-  const useIds = new Set<unknown>();
-  const citations = new Set(assessment.evidenceRefs as unknown[]);
-  for (const use of assessment.uses as Fields[]) {
-    const path = assessment.interfaceId + '.sourceUsage.uses.' + use?.id;
-    assert(fields(use, ['id', 'consumerId', 'kind', 'context', 'description', 'callerRef', 'evidenceRefs'], ['accessPoint', 'entryId']) &&
-      localId(use.id) && !useIds.has(use.id) && (use.consumerId === null || (localId(use.consumerId) && checks.componentIds.has(use.consumerId))) &&
-      oneOf(['value', 'type'], use.kind) && oneOf(['application', 'tooling', 'test', 'unknown'], use.context) &&
-      boundedText(use.description) && boundedText(use.callerRef, 4096) && references(use.evidenceRefs) &&
-      (use.evidenceRefs as unknown[]).includes(use.callerRef), 'Invalid source use: ' + path);
-    useIds.add(use.id);
-    checkSourceUse(use, path, { item, entries, citations }, checks);
-  }
-  checkUseNotes(assessment, citations, checks);
-}
-
+// Source use belongs to the run snapshot and the selected mapping. Each use cites
+// reviewed source records, and its consumer is the mapped owner of the caller.
 export function validateSourceUsage(inputs: RunBaselineInputs): void {
   const { baseline, discovery, snapshotRef } = inputs;
-  if (!Object.hasOwn(baseline, 'sourceUsage')) return;
-  const usage = baseline.sourceUsage as Fields;
-  assert(oneOf([3, 4], baseline.formatVersion) && exact(usage, ['snapshotRef', 'mappingRef', 'assessments']) &&
-    boundedText(usage.snapshotRef, 4096) && boundedText(usage.mappingRef, 4096) && Array.isArray(usage.assessments),
-  'Invalid sourceUsage record.');
+  if (!supportsSourceUsage(baseline) || !baseline.sourceUsage) return;
+  const usage = baseline.sourceUsage;
   assert(usage.snapshotRef === snapshotRef, 'sourceUsage.snapshotRef differs from the run snapshot.');
   assert(usage.mappingRef === discovery.codeMappingRef, 'sourceUsage.mappingRef differs from the selected candidate mapping.');
-  assert(Buffer.byteLength(JSON.stringify(usage), 'utf8') <= 2 * 1024 * 1024,
-    'sourceUsage exceeds the 2 MiB byte limit.');
-  const checks: UsageChecks = { ...inputs, usage, unknowns: issueSubjects(discovery),
-    interfaces: new Map((baseline.interfaces as Fields[]).map(item => [item.id, item])),
+  const checks: UsageChecks = { ...inputs, unknowns: issueSubjects(discovery),
     reviewed: new Set(inputs.reviewedRanges.map(record => record.id)) };
-  const assessed = new Set<unknown>();
-  let uses = 0;
-  let notes = 0;
-  for (const assessment of usage.assessments as Fields[]) {
-    assert(exact(assessment, ['interfaceId', 'scope', 'evidenceRefs', 'limitations', 'uses', 'sourceNotes']) &&
-      localId(assessment.interfaceId) && checks.interfaces.has(assessment.interfaceId) && !assessed.has(assessment.interfaceId) &&
-      boundedText(assessment.scope) && references(assessment.evidenceRefs) && Array.isArray(assessment.limitations) &&
-      assessment.limitations.every(value => boundedText(value)) && Array.isArray(assessment.uses) && Array.isArray(assessment.sourceNotes),
-    'Invalid or duplicate source-use assessment: ' + assessment?.interfaceId);
-    assessed.add(assessment.interfaceId);
-    uses += assessment.uses.length;
-    notes += assessment.sourceNotes.length;
-    assert(uses <= 2000, 'sourceUsage exceeds the 2,000-use limit.');
-    assert(notes <= 4000, 'sourceUsage exceeds the 4,000-source-note limit.');
+  for (const assessment of usage.assessments) {
     inputs.evidence(assessment);
-    checkAssessment(assessment, checks);
+    for (const use of assessment.uses) checkSourceUse(use, assessment.interfaceId + '.sourceUsage.uses.' + use.id, checks);
+    for (const note of assessment.sourceNotes) if (note.location) validateSourceLocation(note, inputs.source);
   }
 }
 
-function entryEvidence(record: Fields, evidence: (record: unknown) => void): void {
-  assert(strings(record.evidenceRefs) && new Set(record.evidenceRefs).size === record.evidenceRefs.length &&
-    record.evidenceRefs.every(ref => boundedText(ref, 4096)), 'Invalid system-entry evidence: ' + (record.id ?? 'scope'));
-  evidence(record);
-}
-
-function checkSystemEntry(entry: Fields, ids: Set<unknown>, interfaces: Map<unknown, Fields>, inputs: RunBaselineInputs): void {
-  assert(fields(entry, ['id', 'kind', 'label', 'path', 'componentId', 'evidenceRefs'], ['source', 'interfaceId', 'entryId']) &&
-    localId(entry.id) && !ids.has(entry.id) && oneOf(['startup', 'external'], entry.kind) && boundedText(entry.label) &&
-    boundedText(entry.path, 4096) && safe(entry.path) && !/^[A-Za-z]:/.test(entry.path) && localId(entry.componentId) &&
-    inputs.componentIds.has(entry.componentId), 'Invalid or duplicate system entry: ' + entry?.id);
-  ids.add(entry.id);
-  assert(inputs.mapped.get(entry.path) === entry.componentId, 'System entry differs from the direct mapped owner: ' + entry.id);
-  entryEvidence(entry, inputs.evidence);
-  if (Object.hasOwn(entry, 'interfaceId'))
-    assert(localId(entry.interfaceId) && interfaces.has(entry.interfaceId), 'Unknown system-entry interface: ' + entry.id);
-  if (Object.hasOwn(entry, 'entryId'))
-    assert(localId(entry.entryId) && ((interfaces.get(entry.interfaceId)?.documentation as Fields | undefined)?.entries as Fields[] | undefined)
-      ?.some(item => item.id === entry.entryId), 'Unknown system-entry interface operation: ' + entry.id);
-  if (Object.hasOwn(entry, 'source')) checkEntrySource(entry, inputs);
-}
-
-function checkEntrySource(entry: Fields, inputs: RunBaselineInputs): void {
-  const located = entry.source as Fields;
-  const location = located?.location as Fields | undefined;
-  assert(exact(located, ['evidenceRef', 'location']) && boundedText(located.evidenceRef, 4096) &&
-    !located.evidenceRef.includes('#') && (entry.evidenceRefs as unknown[]).includes(located.evidenceRef) &&
-    location?.snapshotRef === inputs.snapshotRef && location.path === entry.path,
-  'Invalid system-entry source: ' + entry.id);
-  validateSourceLocation(located, inputs.source);
-}
-
+// System entries belong to the run snapshot and the selected mapping, and each
+// entry names the mapped owner of its file.
 export function validateSystemEntryPoints(inputs: RunBaselineInputs): void {
   const { baseline, discovery, snapshotRef } = inputs;
-  if (!Object.hasOwn(baseline, 'systemEntryPoints')) return;
-  const assessment = baseline.systemEntryPoints as Fields;
-  assert(exact(assessment, ['snapshotRef', 'mappingRef', 'scope', 'evidenceRefs', 'limitations', 'entries']) &&
-    boundedText(assessment.snapshotRef, 4096) && boundedText(assessment.mappingRef, 4096) &&
-    boundedText(assessment.scope) && Array.isArray(assessment.limitations) &&
-    assessment.limitations.every(value => boundedText(value)) && Array.isArray(assessment.entries),
-  'Invalid systemEntryPoints assessment.');
+  if (!supportsSystemEntryPoints(baseline) || !baseline.systemEntryPoints) return;
+  const assessment = baseline.systemEntryPoints;
   assert(assessment.snapshotRef === snapshotRef, 'systemEntryPoints.snapshotRef differs from the run snapshot.');
   assert(assessment.mappingRef === discovery.codeMappingRef,
     'systemEntryPoints.mappingRef differs from the selected candidate mapping.');
-  assert(assessment.entries.length <= 2000, 'systemEntryPoints exceeds the 2,000-entry limit.');
-  assert(Buffer.byteLength(JSON.stringify(assessment), 'utf8') <= 2 * 1024 * 1024,
-    'systemEntryPoints exceeds the 2 MiB byte limit.');
-  entryEvidence(assessment, inputs.evidence);
-  const interfaces = new Map((baseline.interfaces as Fields[]).map(item => [item.id, item]));
-  const ids = new Set<unknown>();
-  for (const entry of assessment.entries as Fields[]) checkSystemEntry(entry, ids, interfaces, inputs);
+  inputs.evidence(assessment);
+  for (const entry of assessment.entries) {
+    assert(inputs.mapped.get(entry.path) === entry.componentId, 'System entry differs from the direct mapped owner: ' + entry.id);
+    inputs.evidence(entry);
+    if (entry.source) validateSourceLocation(entry.source, inputs.source);
+  }
 }

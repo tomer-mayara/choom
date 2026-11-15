@@ -6,22 +6,26 @@ import { toolsRoot } from "./commands.ts";
 const trustedPackages = new Set(["picomatch", "typescript", "yaml"]);
 
 // A test copy of the tool checkout: the root package.json, the producer package
-// and code, the baseline-model code and the producer documents. Its node_modules
-// folder holds copies of the trusted packages and links to the other packages
-// that this checkout installed.
+// and code, the baseline-model package and code and the producer documents. Its
+// node_modules folder holds copies of the trusted packages, links from the
+// workspace names to the copied workspaces, as in this checkout, and links to the
+// other packages that this checkout installed.
 export function copyToolCheckout(scratch: string): string {
   const tools = join(scratch, "tools");
   mkdirSync(join(tools, "docs/design"), { recursive: true });
   mkdirSync(join(tools, "packages/producer"), { recursive: true });
   mkdirSync(join(tools, "packages/baseline-model"), { recursive: true });
-  mkdirSync(join(tools, "node_modules"));
+  mkdirSync(join(tools, "node_modules/@choom"), { recursive: true });
   cpSync(join(toolsRoot, "package.json"), join(tools, "package.json"));
-  cpSync(join(toolsRoot, "packages/producer/package.json"), join(tools, "packages/producer/package.json"));
-  cpSync(join(toolsRoot, "packages/producer/src"), join(tools, "packages/producer/src"), { recursive: true });
-  cpSync(join(toolsRoot, "packages/baseline-model/src"), join(tools, "packages/baseline-model/src"), { recursive: true });
+  for (const workspace of ["producer", "baseline-model"]) {
+    cpSync(join(toolsRoot, "packages", workspace, "package.json"), join(tools, "packages", workspace, "package.json"));
+    cpSync(join(toolsRoot, "packages", workspace, "src"), join(tools, "packages", workspace, "src"), { recursive: true });
+    symlinkSync(join("../../packages", workspace), join(tools, "node_modules/@choom", workspace));
+  }
   cpSync(join(toolsRoot, "docs/design/app-a"), join(tools, "docs/design/app-a"), { recursive: true });
   for (const name of readdirSync(join(toolsRoot, "node_modules"))) {
     const installed = join(toolsRoot, "node_modules", name);
+    if (name === "@choom") continue;
     if (trustedPackages.has(name)) cpSync(installed, join(tools, "node_modules", name), { recursive: true });
     else symlinkSync(installed, join(tools, "node_modules", name));
   }

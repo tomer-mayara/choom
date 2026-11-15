@@ -1,5 +1,5 @@
 import { isDeepStrictEqual as same } from 'node:util';
-import { type Artifact, assert, boundedText, exact, type Fields, hash, safe, text } from './record-checks.ts';
+import { type Artifact, assert, type Fields, hash, text } from './record-checks.ts';
 
 // The saved source records and excerpts of a run, and the check that a cited
 // source range still matches its saved text and the snapshot or saved inventory.
@@ -109,18 +109,11 @@ export function sourcesFor(inputs: SourceInputs): SourceRecords {
   return { records, verify, verified };
 }
 
-// A source note with a location names a saved source range exactly.
-export function validateSourceLocation(note: Fields, source: SourceRecords): void {
-  const location = note.location as Fields;
+// A located source note names a saved source range exactly. The shared baseline
+// rules check the shape of the location and that the reference has no fragment.
+export function validateSourceLocation(note: { evidenceRef: string; location?: object }, source: SourceRecords): void {
   const record = source.records.get(note.evidenceRef);
-  const lines = location?.lines as number[];
-  assert(!(note.evidenceRef as string).includes('#') && exact(location, ['snapshotRef', 'path', 'sha256', 'lines']) &&
-    boundedText(location.snapshotRef, 4096) &&
-    boundedText(location.path, 4096) && safe(location.path) && !/^[A-Za-z]:/.test(location.path) &&
-    /^[a-fA-F0-9]{64}$/.test(location.sha256 as string) &&
-    Array.isArray(lines) && lines.length === 2 && lines.every(Number.isSafeInteger) &&
-    (lines[0] as number) > 0 && (lines[1] as number) >= (lines[0] as number) && record &&
-    same(location, { snapshotRef: record.snapshotRef, path: record.path, sha256: record.sha256, lines: record.lines }),
-  'Source note differs from its saved source record: ' + note.evidenceRef);
+  assert(record && same(note.location, { snapshotRef: record.snapshotRef, path: record.path, sha256: record.sha256, lines: record.lines }),
+    'Source note differs from its saved source record: ' + note.evidenceRef);
   source.verify(record);
 }

@@ -87,43 +87,55 @@ test('rejects a system entry without its direct mapped file owner', () => {
   rejectsEntry(assessment => { assessment.entries[0].path = 'missing.ts'; }, /direct mapped owner/);
 });
 
+// The shared baseline rules check the assessment shape and its internal links,
+// as the viewer does. The producer checks the run snapshot, the selected mapping,
+// the mapped owners, the registered evidence and the saved source ranges.
 test('rejects an assessment from another snapshot or mapping', () => {
-  rejectsEntry(assessment => { assessment.snapshotRef = 'old-snapshot'; }, /systemEntryPoints\.snapshotRef/);
+  rejectsEntry(assessment => {
+    assessment.snapshotRef = 'old-snapshot';
+    assessment.entries[1].source.location.snapshotRef = 'old-snapshot';
+  }, /systemEntryPoints\.snapshotRef differs from the run snapshot/);
   rejectsEntry(assessment => { assessment.mappingRef = 'old-mapping'; }, /systemEntryPoints\.mappingRef/);
 });
 
 test('requires distinct registered assessment and entry evidence', () => {
-  rejectsEntry(assessment => { assessment.evidenceRefs = []; }, /Invalid system-entry evidence/);
+  rejectsEntry(assessment => { assessment.evidenceRefs = []; },
+    /invalid at systemEntryPoints\.evidenceRefs: Too small: expected array to have >=1 items/);
   rejectsEntry(assessment => { assessment.entries[0].evidenceRefs = ['unregistered']; }, /Unknown evidence: unregistered/);
   rejectsEntry(assessment => { assessment.entries[0].evidenceRefs = ['launch-settings', 'launch-settings']; },
-    /Invalid system-entry evidence/);
+    /invalid at systemEntryPoints\.entries\.0\.evidenceRefs: Evidence references must be distinct\./);
 });
 
 test('requires the cited direct source record to match the entry and saved range', () => {
   rejectsEntry(assessment => { assessment.entries[1].source.location.lines = [1, 2]; }, /differs from its saved source record/);
-  rejectsEntry(assessment => { assessment.entries[1].source.location.path = 'cli.ts'; }, /Invalid system-entry source/);
-  rejectsEntry(assessment => { assessment.entries[1].evidenceRefs = ['launch-settings']; }, /Invalid system-entry source/);
+  rejectsEntry(assessment => { assessment.entries[1].source.location.path = 'cli.ts'; },
+    /invalid at systemEntryPoints\.entries\.1\.source\.location\.path: The source path must match the system entry path\./);
+  rejectsEntry(assessment => { assessment.entries[1].evidenceRefs = ['launch-settings']; },
+    /invalid at systemEntryPoints\.entries\.1\.source\.evidenceRef: The source reference must be included in entry evidence\./);
   rejectsEntry(assessment => {
     const entry = assessment.entries[1];
     entry.source.evidenceRef += '#/path';
     entry.evidenceRefs[1] = entry.source.evidenceRef;
-  }, /Invalid system-entry source/);
+  }, /invalid at systemEntryPoints\.entries\.1\.source\.evidenceRef: A source location needs a direct source-record reference\./);
 });
 
 test('requires optional links to resolve to an interface or to its documented entry', () => {
-  rejectsEntry(assessment => { assessment.entries[1].interfaceId = 'missing'; }, /Unknown system-entry interface/);
-  rejectsEntry(assessment => { delete assessment.entries[1].interfaceId; }, /Unknown system-entry interface operation/);
-  rejectsEntry(assessment => { assessment.entries[1].entryId = 'missing'; }, /Unknown system-entry interface operation/);
+  rejectsEntry(assessment => { assessment.entries[1].interfaceId = 'missing'; },
+    /invalid at systemEntryPoints\.entries\.1\.interfaceId: The system entry must name an existing interface\./);
+  rejectsEntry(assessment => { delete assessment.entries[1].interfaceId; },
+    /invalid at systemEntryPoints\.entries\.1\.entryId: An interface entry link needs an interface ID\./);
+  rejectsEntry(assessment => { assessment.entries[1].entryId = 'missing'; },
+    /invalid at systemEntryPoints\.entries\.1\.entryId: The linked entry must belong to this interface's documentation\./);
 });
 
 test('enforces system-entry count and compact UTF-8 budgets independently', () => {
   rejectsEntry(assessment => {
     const original = assessment.entries[0];
     assessment.entries = Array.from({ length: 2001 }, (_, index) => ({ ...original, id: 'start-' + index }));
-  }, /exceeds the 2,000-entry limit/);
+  }, /invalid at systemEntryPoints\.entries: The system-entry limit is 2000 records\./);
   rejectsEntry(assessment => {
     const original = assessment.entries[0];
     const label = 'é'.repeat(4096);
     assessment.entries = Array.from({ length: 256 }, (_, index) => ({ ...original, id: 'start-' + index, label }));
-  }, /exceeds the 2 MiB byte limit/);
+  }, /invalid at systemEntryPoints: The combined system-entry limit is 2097152 UTF-8 bytes\./);
 });
