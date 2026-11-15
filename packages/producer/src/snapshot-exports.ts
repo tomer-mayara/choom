@@ -74,17 +74,29 @@ function declarationMeaning(ts: Ts, statement: Statement): Meaning | undefined {
   return { kind: 'alias', typeOnly: importedTypeOnly(statement.isTypeOnly) };
 }
 
-function bindingNames(ts: Ts, name: TsMorph.ts.BindingName): string[] {
-  if (ts.isIdentifier(name)) return [name.text];
+function bindingNames(ts: Ts, name: TsMorph.ts.BindingName): TsMorph.ts.Identifier[] {
+  if (ts.isIdentifier(name)) return [name];
   return name.elements.flatMap(element => ts.isOmittedExpression(element) ? [] : bindingNames(ts, element.name));
 }
 
-// The names that a top-level declaration declares.
-function declaredNames(ts: Ts, statement: Statement): string[] {
+// The name nodes of a top-level declaration.
+function declaredNameNodes(ts: Ts, statement: Statement): TsMorph.ts.Identifier[] {
   if (ts.isVariableStatement(statement))
     return statement.declarationList.declarations.flatMap(declaration => bindingNames(ts, declaration.name));
   const name = (statement as { name?: TsMorph.ts.Node }).name;
-  return name !== undefined && ts.isIdentifier(name) ? [name.text] : [];
+  return name !== undefined && ts.isIdentifier(name) ? [name] : [];
+}
+
+// The names that a top-level declaration declares.
+const declaredNames = (ts: Ts, statement: Statement): string[] => declaredNameNodes(ts, statement).map(name => name.text);
+
+// The name nodes of the top-level declarations of a file, in source order. An
+// import or an import = declaration names a declaration of another file.
+export function topLevelNames(ts: Ts, source: SourceFile): TsMorph.ts.Identifier[] {
+  return source.statements.flatMap(statement => {
+    const meaning = declarationMeaning(ts, statement);
+    return meaning === undefined || meaning.kind === 're-export' || meaning.kind === 'alias' ? [] : declaredNameNodes(ts, statement);
+  });
 }
 
 // The names that an import declaration binds, with the module and the name in that module.
@@ -103,6 +115,15 @@ function importBindings(ts: Ts, statement: Statement): [string, Meaning][] {
   return bindings;
 }
 
+// The range of a node of a file: from its first character to the position after its last character.
+export function nodeRange(source: SourceFile, node: TsMorph.ts.Node): [SourcePosition, SourcePosition] {
+  const position = (pos: number): SourcePosition => {
+    const { line, character } = source.getLineAndCharacterOfPosition(pos);
+    return { line: line + 1, column: character + 1 };
+  };
+  return [position(node.getStart(source)), position(node.end)];
+}
+
 function exportContext(ts: Ts, source: SourceFile): Context {
   const locals = new Map<string, Meaning[]>();
   const add = (name: string, meaning: Meaning): void => { locals.set(name, [...locals.get(name) ?? [], meaning]); };
@@ -111,13 +132,9 @@ function exportContext(ts: Ts, source: SourceFile): Context {
     if (meaning !== undefined) for (const name of declaredNames(ts, statement)) add(name, meaning);
     for (const [name, binding] of importBindings(ts, statement)) add(name, binding);
   }
-  const position = (pos: number): SourcePosition => {
-    const { line, character } = source.getLineAndCharacterOfPosition(pos);
-    return { line: line + 1, column: character + 1 };
-  };
   return {
     ts,
-    range: node => [position(node.getStart(source)), position(node.end)],
+    range: node => nodeRange(source, node),
     // A name with several declarations: a value export takes the meaning of a value
     // first, and a type-only export the meaning of a type first.
     meaning(name, typeOnly) {
