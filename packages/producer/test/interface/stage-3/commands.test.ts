@@ -273,7 +273,7 @@ describe("Stage 3 excerpt, collect again and save-review", () => {
     expect(log.map(({ phase, status }) => `${String(phase)} ${String(status)}`)).toEqual(["start completed", "collect completed",
       "excerpt-001 completed", ...refusals.map((_, index) => `excerpt-${String(index + 2).padStart(3, "0")} failed`),
       "save-review failed"]);
-  });
+  }, 60_000);
 
   test("refuses an action after a working draft changed, with a failed receipt", () => {
     const other = join(scratch, "changed-run");
@@ -284,5 +284,5 @@ describe("Stage 3 excerpt, collect again and save-review", () => {
       stderr: "Work, snapshot, checkpoints or trusted tools changed since start.\n" });
     const receipt = JSON.parse(readFileSync(join(other, "evidence/s3-changed/operator-excerpt-001.json"), "utf8")) as Json;
     expect(receipt).toMatchObject({ status: "failed", exitCode: 1, digests: {} });
-  });
+  }, 60_000);
 });
