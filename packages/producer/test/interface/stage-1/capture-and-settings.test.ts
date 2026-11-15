@@ -59,7 +59,9 @@ describe("Stage 1 capture, settings and save", () => {
     withScratch((scratch) => {
       const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) });
       expect(stageOne(run, "start").stdout).toBe("Working folder prepared. Review exclusions.txt and scope-notes.md before capture.\n");
-      expect(stageOne(run, "capture").stdout).toBe("Captured 10 regular files. Atomic capture is not proven.\n");
+      // The scratch target is not a Git repository.
+      expect(stageOne(run, "capture").stdout).toBe("Captured 10 regular files. Atomic capture is not proven.\n" +
+        "Git evidence is not available. See evidence/git-identity.json.\n");
       const first = stageOne(run, "settings");
       expectSuccess(first);
       expect(first.stdout).toBe("Settings collected. Evidence ID for this probe: s1-file@evidence%2Fsettings-probes%2Fprobe-001.result.json\n");

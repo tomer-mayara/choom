@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { appendFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync,
   writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
@@ -9,8 +9,9 @@ import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
-import { defaultCaptureExclusions } from './stage-1-exclusions.ts';
+import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
 import { type DiscoveryGap, toolGaps } from './stage-1-gaps.ts';
+import { type GitIdentityRecord, gitIdentity, gitIdentityPath, gitIdentityRef, type RunGit } from './stage-1-git.ts';
 
 // The Stage 1 helper. Every action runs from the trusted tool checkout. Start
 // records the producer code, and each later action refuses the run when the
@@ -23,7 +24,8 @@ interface CaptureLayout { workLayout: string; requiredExclusion: string | null }
 interface StageOneInputs extends CaptureLayout {
   runRef: string; snapshotRef: string; baselineId: string; target: string; tools: string;
 }
-interface CommandOptions { timeout?: number; input?: Buffer }
+// `settings` are variables of `env` that the call record lists.
+interface CommandOptions { timeout?: number; input?: Buffer; env?: NodeJS.ProcessEnv; settings?: Record<string, string> }
 interface SavedArtifact { path: string; bytes: Buffer }
 interface Review { reviewedFiles: Fields[]; roles: Fields[]; workspaceDeclarations: Fields[]; questions: Fields[]; gaps: Fields[] }
 interface ReviewEvidence { artifacts: Map<string, SavedArtifact>; sources: Map<string, Fields>; excerpts: Fields[]; ids: Set<unknown> }
@@ -59,13 +61,18 @@ function read(name: string): Buffer {
 }
 const json = (name: string) => JSON.parse(read(name).toString());
 function present(name: string): boolean { return Boolean(lstatSync(join(work, name), { throwIfNoEntry: false })); }
-function command(program: string, commandArgs: string[], stem: string, { timeout = 300_000, input }: CommandOptions = {}): Buffer {
-  const result = spawnSync(program, commandArgs, { cwd: work, env: { ...process.env, CHOOM_WORK: work },
-    input, timeout, maxBuffer: 128 * 1024 * 1024 });
-  const record = { command: program, args: commandArgs, recordedAt: utc(), exitCode: result.status,
-    signal: result.signal, error: result.error?.message ?? null };
+// Runs a program in the working folder, and saves its output and a record of the call.
+function recordedCall(program: string, commandArgs: string[], stem: string,
+  { timeout = 300_000, input, env = { ...process.env, CHOOM_WORK: work }, settings }: CommandOptions = {}): SpawnSyncReturns<Buffer> {
+  const result = spawnSync(program, commandArgs, { cwd: work, env, input, timeout, maxBuffer: 128 * 1024 * 1024 });
+  const record = { command: program, args: commandArgs, ...(settings && { environment: settings }), recordedAt: utc(),
+    exitCode: result.status, signal: result.signal, error: result.error?.message ?? null };
   save(stem + '.stdout.txt', result.stdout ?? ''); save(stem + '.stderr.txt', result.stderr ?? '');
   saveJson(stem + '.json', record);
+  return result;
+}
+function command(program: string, commandArgs: string[], stem: string, options: CommandOptions = {}): Buffer {
+  const result = recordedCall(program, commandArgs, stem, options);
   assert(!result.error && !result.signal && result.status === 0, 'Command failed; see ' + stem + '.stderr.txt');
   return result.stdout;
 }
@@ -111,7 +118,8 @@ function artifactId(path: string): string {
   const fixed: Record<string, string> = { 'evidence/inventory.json': 'inventory-001', 'evidence/settings.json': 'settings-001',
     'evidence/review.yaml': 'review-001', 'evidence/tools.json': 'tools-001', 'exclusions.txt': 'exclusions-001',
     'evidence/scope-notes.md': 'scope-notes-001', 'evidence/extra-configs.json': 'extra-configs-001',
-    'evidence/stage1-discovery.yaml': 'discovery-001', 'evidence/review-scope.json': 'review-scope-001' };
+    'evidence/stage1-discovery.yaml': 'discovery-001', 'evidence/review-scope.json': 'review-scope-001',
+    [gitIdentityPath]: gitIdentityRef };
   return fixed[path] ?? 's1-file@' + encodeURIComponent(path);
 }
 function captureLayout(target: string): CaptureLayout {
@@ -208,7 +216,29 @@ function capture(inputs: StageOneInputs): void {
   saveJson('evidence/capture-scope.json', { formatVersion: 1, snapshotRef: inputs.snapshotRef, ...layout,
     exclusionsSha256: hash(exclusions), scopeNotesSha256: hash(scopeNotes) });
   save('inventory.mjs', inventoryHelper(inputs.snapshotRef));
+  const git = recordGitIdentity(inputs, inventory, exclusions);
   console.log(`Captured ${inventory.files.length} regular files. Atomic capture is not proven.`);
+  console.log(git.status === 'available' ? `Git identity recorded: commit ${git.commit}. See ${gitIdentityPath}.`
+    : `Git evidence is not available. See ${gitIdentityPath}.`);
+}
+
+// Saves the Git identity of the target folder. Each Git call is saved as the rsync
+// calls are, and its record lists the Git variables that the call set.
+function recordGitIdentity(inputs: StageOneInputs, inventory: Inventory, exclusions: Buffer): GitIdentityRecord {
+  mkdirSync(join(work, 'evidence/git'));
+  let calls = 0;
+  const runGit: RunGit = ({ args: gitArgs, env }) => {
+    const stem = 'evidence/git/call-' + String(++calls).padStart(3, '0');
+    const settings = Object.fromEntries(Object.entries(env).filter(([name]) => name.startsWith('GIT_')));
+    const result = recordedCall('git', gitArgs, stem, { env, settings, timeout: 120_000 });
+    return { status: result.status, stdout: result.stdout ?? Buffer.alloc(0), stderr: String(result.stderr ?? ''),
+      error: result.error?.message ?? (result.signal ? 'Git stopped with signal ' + result.signal : null) };
+  };
+  const record = gitIdentity(runGit, { target: inputs.target, environment: process.env,
+    snapshot: { snapshotRef: inputs.snapshotRef, paths: inventory.files.map(file => file.path), read: path => read('snapshot/' + path) },
+    exclusions: readCaptureExclusions(exclusions.toString()) });
+  saveJson(gitIdentityPath, record);
+  return record;
 }
 
 function collectSettings(inputs: StageOneInputs): void {
