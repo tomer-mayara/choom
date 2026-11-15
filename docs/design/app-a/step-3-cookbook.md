@@ -37,7 +37,7 @@ The [manual helper](../../../packages/producer/src/stage-3-commands.mjs) first c
 checks the saved manifest, discovery, empty baseline, and registered artifact
 digests. The manifest must mark entry analysis complete. Discovery must select a
 registered entry analysis. Every later action and the
-[finalizer](../../../packages/producer/src/stage-3-finish.mjs) run from the tool
+[finalizer](../../../packages/producer/src/stage-3-finish.ts) run from the tool
 checkout and make the same producer code check first.
 
 The helper creates a new attempt directory and saves:

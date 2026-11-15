@@ -539,7 +539,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it |
 | `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
-| `stage-3-finish.mjs` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command) |
+| `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5 |
 | `stage-4-5-publish.mjs` | Check, publish and verify the Stage 4 or Stage 5 review |
 | `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence (`stage-4-inspect` command) |

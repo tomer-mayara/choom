@@ -21,7 +21,7 @@ export const producerCommands: ReadonlyMap<string, ProducerCommand> = new Map([
   ["stage-2", { helper: "stage-2-commands.ts", use: "Run the entry analysis." }],
   ["stage-2-consolidate", { helper: "stage-2-consolidate-inputs.ts", use: "Merge earlier per-attempt Knip inputs into the shared input." }],
   ["stage-3", { helper: "stage-3-commands.mjs", use: "Run the loading and symbol search." }],
-  ["stage-3-finish", { helper: "stage-3-finish.mjs", use: "Save or verify the Stage 3 review." }],
+  ["stage-3-finish", { helper: "stage-3-finish.ts", use: "Save or verify the Stage 3 review." }],
   ["stage-4", { helper: "stage-4-commands.mjs", use: "Prepare the component recovery and its dependency graph." }],
   ["stage-4-inspect", { helper: "stage-4-inspect.mjs", use: "Collect the Stage 4 source evidence and excerpts." }],
   ["stage-4-5-publish", { helper: "stage-4-5-publish.mjs", use: "Check, publish or verify a Stage 4 or Stage 5 review." }],

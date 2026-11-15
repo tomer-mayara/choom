@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
-// The small checks that the shared record validator modules use. Saved JSON and
-// YAML stay unchecked values until these checks read them.
+// The small checks that the shared record validator modules and the Stage 3
+// finalizer use. Saved JSON and YAML stay unchecked values until these checks read them.
 export type Fields = Record<string, unknown>;
 export interface Artifact { path: string; bytes: Buffer; sha256: string }
 

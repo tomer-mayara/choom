@@ -21,7 +21,7 @@ const usageCases: UsageCase[] = [
     message: "Use start, excerpt PATH FIRST LAST REASON, plan REVIEW_DIR, prepare, toolchain, run, save-review REVIEW_DIR, or finish." },
   { helper: "stage-3-commands.mjs", args: [], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
     message: "Use start, collect, excerpt PATH FIRST LAST, or save-review REVIEW_DIR." },
-  { helper: "stage-3-finish.mjs", args: ["unknown"], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
+  { helper: "stage-3-finish.ts", args: ["unknown"], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
     message: "Run the Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3." },
   { helper: "stage-4-commands.mjs", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use start, toolchain, or run." },
@@ -57,9 +57,9 @@ function recordedRun(scratch: string): string {
   return work;
 }
 
-// A copy of a helper outside the tool checkout, with the module that it imports.
+// A copy of a helper outside the tool checkout, with the producer modules that it imports.
 function helperCopy(folder: string, helper: string): string {
-  for (const name of [helper, "producer-code.ts"]) cpSync(join(producerSource, name), join(folder, name));
+  cpSync(producerSource, folder, { recursive: true });
   return join(folder, helper);
 }
 
@@ -107,10 +107,10 @@ describe("helpers that run only from the tool checkout", () => {
       const work = recordedRun(scratch);
       const attempt = attemptFolder(work, "s3-check");
       const settings = { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE3_ID: "s3-check" };
-      const copy = runHelper(helperCopy(attempt, "stage-3-finish.mjs"), [], settings);
+      const copy = runHelper(helperCopy(attempt, "stage-3-finish.ts"), [], settings);
       expect(copy.status).toBe(1);
       expect(copy.stderr).toBe("Use the Stage 3 finalizer in the trusted checkout.\n");
-      const trusted = runHelper(join(producerSource, "stage-3-finish.mjs"), [], settings);
+      const trusted = runHelper(join(producerSource, "stage-3-finish.ts"), [], settings);
       expect(trusted.status).toBe(1);
       expect(trusted.stderr).toBe(`ENOENT: no such file or directory, lstat '${join(attempt, "run.before.yaml")}'\n`);
     });
