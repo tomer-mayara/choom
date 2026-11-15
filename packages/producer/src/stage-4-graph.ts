@@ -461,6 +461,7 @@ void import('./lazy');
 export const result: Shape = { value: value + mode };
 `,
     'loader.cjs': "module.exports = require('#mode');\n",
+    'legacy.cts': "import { mode } from '#mode';\nexport const legacy = mode;\n",
     'alias.ts': "export const value = 'alias';\n",
     'types.ts': 'export type Shape = { value: string };\n',
     'lazy.ts': 'export const value = true;\n',
@@ -484,7 +485,8 @@ function writeFixture(scratch: string, baseDir: string, source: Record<string, s
     writeFileSync(join(baseDir, path), 'throw new Error("target config ran");\n');
 }
 
-// An import and a require pass over every fixture file, and two overlapping passes over two files.
+// An import, a require and a CommonJS pass over every fixture file, and two overlapping
+// passes over two files. legacy.cts compiles to CommonJS.
 function fixtureProfile(source: Record<string, string>): GraphProfile {
   const sourceFiles = Object.entries(source).map(([path, contents]) => ({ path, sha256: sha256(contents) }));
   const context = {
@@ -492,10 +494,11 @@ function fixtureProfile(source: Record<string, string>): GraphProfile {
     compilerOptions: { target: 10, module: 99, jsx: 4, verbatimModuleSyntax: true },
     aliases: [{ name: '@/*', alias: '/repo/*' }],
   };
+  const compiledToCommonJS = { files: ['legacy.cts'], dynamicImportCondition: 'import' };
   return {
     formatVersion: 1, snapshotRef: 'fixture', attemptId: 's4-fixture', sourceFiles,
     contexts: [
-      { ...context, id: 'fixture-import', conditionNames: ['import', 'default'],
+      { ...context, id: 'fixture-import', conditionNames: ['import', 'default'], compiledToCommonJS,
         moduleSystems: ['es6', 'tsd'], roots: [{ path: 'main.ts', evidenceRefs: ['fixture'] }] },
       { ...context, id: 'fixture-require', conditionNames: ['require', 'default'],
         moduleSystems: ['cjs'], roots: [{ path: 'loader.cjs', evidenceRefs: ['fixture'] }] },
@@ -503,14 +506,20 @@ function fixtureProfile(source: Record<string, string>): GraphProfile {
         moduleSystems: ['es6', 'tsd'], roots: [] },
       { ...context, id: 'overlap-require', sourceFiles: ['alias.ts', 'types.ts'], conditionNames: ['require', 'default'],
         moduleSystems: ['cjs'], roots: [] },
+      { ...context, id: 'fixture-commonjs', conditionNames: ['require', 'default'], moduleSystems: ['es6', 'tsd', 'cjs'],
+        compiledToCommonJS, roots: [] },
     ],
   };
 }
 
+// legacy.cts compiles to CommonJS: the CommonJS pass, not the import pass, keeps its one import, with the require target.
+const compiledFixture = (imports: ContextResult, commonJS: ContextResult): boolean => !imports.edges.some(edge => edge.from === 'legacy.cts') &&
+  commonJS.edges.length === 1 && commonJS.edges.every(edge => edge.from === 'legacy.cts' && edge.to === 'require-mode.cjs' && edge.preCompilationOnly === false);
+
 function checkFixture(result: GraphResult, scratch: string): void {
   assert(result.status === 'completed', JSON.stringify(result.contexts.map(item => item.limits)));
-  // A completed graph has the four contexts of the fixture profile, each with its reachability.
-  const [imports, requires, overlap] = result.contexts as [ContextResult, ContextResult, ContextResult];
+  // A completed graph has the five contexts of the fixture profile, each with its reachability.
+  const [imports, requires, overlap, , commonJS] = result.contexts as [ContextResult, ContextResult, ContextResult, unknown, ContextResult];
   const lookup = (specifier: string): Edge | undefined => imports.edges.find(edge => edge.specifier === specifier);
   const traversal = (context: ContextResult): Reachability => context.reachability as Reachability;
   assert(lookup('@/alias')?.to === 'alias.ts' && lookup('./types')?.preCompilationOnly &&
@@ -518,7 +527,7 @@ function checkFixture(result: GraphResult, scratch: string): void {
     lookup('./missing')?.targetKind === 'unresolved' && lookup('missing-package')?.targetKind === 'external' &&
     lookup(join(scratch, 'outside.ts'))?.targetKind === 'unresolved' &&
     lookup('node:path')?.targetKind === 'builtin' && lookup('#mode')?.to === 'import-mode.ts' &&
-    requires.edges.some(edge => edge.specifier === '#mode' && edge.to === 'require-mode.cjs') &&
+    requires.edges.some(edge => edge.specifier === '#mode' && edge.to === 'require-mode.cjs') && compiledFixture(imports, commonJS) &&
     traversal(imports).reached.includes('types.ts') && traversal(imports).notReached.includes('orphan.ts') &&
     traversal(overlap).reached.length === 0 && traversal(overlap).notReached.length === 2,
   'Fixture graph did not retain the expected dependencies and reachability.');

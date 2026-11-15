@@ -28,10 +28,12 @@ function savedSnapshot(work: string, snapshotId: string): { inventory: string; d
 
 // The one line that the Stage 4 graph fixture prints when it approves the tools.
 // The Node version is the version of the node program on PATH, which runs the helper.
+// The fixture has five passes: an import, a require and a CommonJS pass over all its
+// files, and an import and a require pass over two of them.
 function graphFixtureApproval(): string {
   const node = spawnSync("node", ["--version"], { encoding: "utf8" }).stdout.trim().replace(/^v/, "");
   const toolVersions = { node, dependencyCruiser: "18.7.2", typescript: "6.0.2", enhancedResolve: "5.26.0" };
-  return JSON.stringify({ status: "approved", toolVersions, contextCount: 4 }) + "\n";
+  return JSON.stringify({ status: "approved", toolVersions, contextCount: 5 }) + "\n";
 }
 
 describe("local producer tool checks", () => {
