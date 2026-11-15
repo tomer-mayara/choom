@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type CallCandidate, callCandidates, entryQuery } from "../../src/behavior-entry-calls.ts";
+import { type EntryCandidate, callCandidates, entryQuery } from "../../src/behavior-entry-calls.ts";
 import type { BehaviorEntryCallRule } from "../../src/generated/contracts.ts";
 import { withScratch } from "../support/commands.ts";
 import { type Files, projectOf } from "../support/snapshot-files.ts";
@@ -19,12 +19,12 @@ const serverPath = "src/server.ts";
 const handlerText = "const list = () => 'orders';\n";
 const handlerAt = (text: string) => ({ path: serverPath, range: rangeIn(text, "const «list = () => 'orders'»;") });
 
-function candidatesIn(files: Files, path = serverPath, rules: BehaviorEntryCallRule[] = [expressGet]): CallCandidate[] {
+function candidatesIn(files: Files, path = serverPath, rules: BehaviorEntryCallRule[] = [expressGet]): EntryCandidate[] {
   return withScratch((scratch) => callCandidates(entryQuery(projectOf(scratch, files)), path, rules));
 }
 
 // The call of the express-route-get rule, with the name /orders and the list handler.
-function routeAt(text: string, call: string, handler = handlerAt(text)): CallCandidate {
+function routeAt(text: string, call: string, handler = handlerAt(text)): EntryCandidate {
   return { ruleId: "express-route-get", ruleVersion: 1, entryKind: "http-route", range: rangeIn(text, call),
     expression: call, truncated: false, name: "/orders", nameReason: null, handler, handlerReason: null };
 }
@@ -120,7 +120,7 @@ describe("callCandidates records a literal name, and an unknown name with a reas
 describe("callCandidates resolves the handler to its declaration or its own range", () => {
   const orders = "export function listOrders() {\n  return 'orders';\n}\nexport default listOrders;\n";
   const declaration = { path: "src/orders.ts", range: rangeIn(orders, "export function listOrders() {\n  return 'orders';\n}") };
-  const handlerIn = (files: Files): Pick<CallCandidate, "handler" | "handlerReason"> => {
+  const handlerIn = (files: Files): Pick<EntryCandidate, "handler" | "handlerReason"> => {
     const [found] = candidatesIn({ "src/orders.ts": orders, ...files });
     return { handler: found?.handler ?? null, handlerReason: found?.handlerReason ?? null };
   };

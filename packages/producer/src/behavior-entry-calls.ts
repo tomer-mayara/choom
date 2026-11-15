@@ -19,7 +19,7 @@ type TsSymbol = TsMorph.ts.Symbol;
 export interface EntryQuery extends Checking { program: TsMorph.ts.Program }
 // A located declaration or function of the snapshot.
 export interface SourceSite { path: string; range: SourceRange }
-export interface CallCandidate {
+export interface EntryCandidate {
   ruleId: string; ruleVersion: number; entryKind: string; range: SourceRange; expression: string; truncated: boolean;
   name: string | null; nameReason: string | null; handler: SourceSite | null; handlerReason: string | null;
 }
@@ -29,8 +29,8 @@ interface ValuePath { module: string; steps: string[] }
 // The callee path of a rule, and whether the rule finds a new call.
 interface RulePath extends ValuePath { newCall: boolean }
 type Argument = { kind: 'none' | 'missing' | 'spread' } | { kind: 'node'; node: TsMorph.ts.Expression };
-type Named = Pick<CallCandidate, 'name' | 'nameReason'>;
-type Handled = Pick<CallCandidate, 'handler' | 'handlerReason'>;
+type Named = Pick<EntryCandidate, 'name' | 'nameReason'>;
+type Handled = Pick<EntryCandidate, 'handler' | 'handlerReason'>;
 
 const expressionLimit = 4096;
 // A local name can lead through other names to the import. The walk stops after this many steps.
@@ -74,11 +74,17 @@ function rulePath(rule: BehaviorEntryCallRule): RulePath {
 }
 
 // The expression inside parentheses and type or non-null assertions.
-function unwrapped(ts: Ts, node: Node): Node {
+export function unwrapped(ts: Ts, node: Node): Node {
   let current = node;
   while (ts.isParenthesizedExpression(current) || ts.isAsExpression(current) || ts.isSatisfiesExpression(current) ||
     ts.isNonNullExpression(current) || ts.isTypeAssertionExpression(current)) current = current.expression;
   return current;
+}
+
+// The range of a node of a file, and its text up to the expression limit.
+export function located(source: TsMorph.ts.SourceFile, node: Node): Pick<EntryCandidate, 'range' | 'expression' | 'truncated'> {
+  const text = node.getText(source);
+  return { range: nodeRange(source, node), expression: text.slice(0, expressionLimit), truncated: text.length > expressionLimit };
 }
 
 // The object and the name of a property access, or of an element access with a string literal.
@@ -224,15 +230,13 @@ function handlerOf(query: Checking, source: TsMorph.ts.SourceFile, argument: Arg
 }
 
 function candidateOf(query: EntryQuery, source: TsMorph.ts.SourceFile, call: TsMorph.ts.CallExpression | TsMorph.ts.NewExpression,
-  rule: BehaviorEntryCallRule): CallCandidate | undefined {
+  rule: BehaviorEntryCallRule): EntryCandidate | undefined {
   const args = call.arguments ?? [];
   const name = argumentAt(query.ts, args, rule.nameArgument, null);
   const handler = argumentAt(query.ts, args, rule.handlerArgument, rule.nameArgument);
   if (name.kind === 'missing' || handler.kind === 'missing') return undefined;
-  const text = call.getText(source);
-  return { ruleId: rule.id, ruleVersion: rule.version, entryKind: rule.entryKind, range: nodeRange(source, call),
-    expression: text.slice(0, expressionLimit), truncated: text.length > expressionLimit, ...nameOf(query.ts, name),
-    ...handlerOf(query, source, handler) };
+  return { ruleId: rule.id, ruleVersion: rule.version, entryKind: rule.entryKind, ...located(source, call),
+    ...nameOf(query.ts, name), ...handlerOf(query, source, handler) };
 }
 
 // The program and the type checker of the files that the project holds.
@@ -242,12 +246,12 @@ export function entryQuery(project: SnapshotProject): EntryQuery {
 }
 
 // The candidates of the call rules in one file that the project holds, in source order.
-export function callCandidates(query: EntryQuery, path: string, rules: readonly BehaviorEntryCallRule[]): CallCandidate[] {
+export function callCandidates(query: EntryQuery, path: string, rules: readonly BehaviorEntryCallRule[]): EntryCandidate[] {
   const { ts, program } = query;
   const source = program.getSourceFile(virtualRoot + '/' + path);
   assert(source, 'The program of the query does not hold ' + path + '.');
   const paths = rules.map(rule => ({ rule, path: rulePath(rule) }));
-  const found: CallCandidate[] = [];
+  const found: EntryCandidate[] = [];
   const visit = (node: Node): void => {
     if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
       // The property name of the callee must be the last name of the rule. Any other callee can be a renamed import.
