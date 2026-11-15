@@ -10,21 +10,24 @@ const computedName = "The module name is computed. The query cannot tell which m
   "the module of the symbol.";
 const typeScriptRequire = "TypeScript does not follow a require call in a TypeScript file. The call can load the module " +
   "of the symbol.";
+const relativeName = "The compiler settings do not resolve this relative module name, so the query cannot tell whether " +
+  "it names the module of the symbol.";
 
 function site(index: number, [path, kind, specifier, expression]: Row): Site {
   return { id: `s4-check-site-${index + 1}`, path, sha256: "0".repeat(64), lines: [index + 1, index + 1], kind, specifier,
     typeOnly: false, dynamic: kind === "dynamic-import", expression, truncated: false };
 }
 
-// The unresolved entries of the sites of the rows, in the scope of each path that a listed row names.
-function listedFrom(rows: Row[], scope: string[]): { sites: Site[]; listed: (index: number, reason: string) => UnresolvedSite;
-  found: UnresolvedSite[] } {
+// The unresolved entries of the sites of the rows in the scope, when the compiler settings do not resolve the relative
+// module names of the sites with the indexes of `relative`.
+function listedFrom(rows: Row[], scope: string[], relative: number[] = []): { sites: Site[];
+  listed: (index: number, reason: string) => UnresolvedSite; found: UnresolvedSite[] } {
   const sites = rows.map((row, index) => site(index, row));
   const listed = (index: number, reason: string): UnresolvedSite => {
     const { path, lines, kind, expression } = sites[index] ?? {};
     return { siteRef: `${sitesRef}#/sites/${index}`, path, lines, kind, expression, reason };
   };
-  return { sites, listed, found: unresolvedSites({ sites }, new Set(scope), sitesRef) };
+  return { sites, listed, found: unresolvedSites({ sites }, new Set(scope), sitesRef, new Set(relative)) };
 }
 
 describe("unresolvedSites", () => {
@@ -50,6 +53,17 @@ describe("unresolvedSites", () => {
     const paths = ["a.ts", "b.tsx", "c.mts", "d.cts", "e.d.ts", "f.js", "g.jsx", "h.mjs", "i.cjs"];
     const { listed, found } = listedFrom(paths.map((path) => [path, "require-candidate", "./invoice", "require('./invoice')"]), paths);
     expect(found).toEqual([0, 1, 2, 3, 4].map((index) => listed(index, typeScriptRequire)));
+  });
+
+  test("lists the sites whose relative module name the compiler settings do not resolve, unless a require call of a " +
+    "TypeScript file has its own reason", () => {
+    const { listed, found } = listedFrom([
+      ["src/load.ts", "import", "./invoice", "import { createInvoice } from './invoice';"],
+      ["src/load.ts", "import", "./invoice.js", "import { createInvoice } from './invoice.js';"],
+      ["src/load.ts", "require-candidate", "./invoice", "require('./invoice')"],
+      ["src/load.js", "require-candidate", "./invoice", "require('./invoice')"],
+    ], ["src/load.ts", "src/load.js"], [0, 2, 3]);
+    expect(found).toEqual([listed(0, relativeName), listed(2, typeScriptRequire), listed(3, relativeName)]);
   });
 
   test("lists nothing for a literal dynamic import or a literal require.resolve call, which the query follows or which loads nothing", () => {

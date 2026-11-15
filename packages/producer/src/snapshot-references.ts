@@ -226,6 +226,23 @@ function referenceProgram({ ts, project }: SnapshotProject): TsMorph.ts.Program 
   return project.getProgram().compilerObject;
 }
 
+// The syntax tree of a file that the project holds, as the program of the query reads it.
+export function programFile(snapshot: SnapshotProject, path: string): SourceFile {
+  const source = referenceProgram(snapshot).getSourceFile(virtualRoot + '/' + path);
+  assert(source, 'The program of the query does not hold ' + path + '.');
+  return source;
+}
+
+// Whether the compiler settings resolve a module name of a file of the program to a
+// file, in the resolution mode of its use, as the program does.
+export function resolvesModuleName(snapshot: SnapshotProject, name: TsMorph.ts.StringLiteralLike): boolean {
+  const program = referenceProgram(snapshot);
+  const source = name.getSourceFile();
+  return snapshot.ts.resolveModuleName(name.text, source.fileName, program.getCompilerOptions(),
+    snapshot.project.getModuleResolutionHost(), undefined, undefined, program.getModeForUsageLocation(source, name))
+    .resolvedModule !== undefined;
+}
+
 // The declarations of the symbol named in the file at path, and its references in
 // the files that the project holds, by path and then in source order.
 export function findReferences(snapshot: SnapshotProject, path: string, symbol: string): SymbolReferences {

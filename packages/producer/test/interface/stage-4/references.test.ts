@@ -46,6 +46,8 @@ const computedName = "The module name is computed. The query cannot tell which m
   "the module of the symbol.";
 const typeScriptRequire = "TypeScript does not follow a require call in a TypeScript file. The call can load the module " +
   "of the symbol.";
+const relativeName = "The compiler settings do not resolve this relative module name, so the query cannot tell whether " +
+  "it names the module of the symbol.";
 
 // The requests after collect, in order. Each request takes the next number, also a refused one.
 const requests: [string, string][] = [["src/billing/invoice.ts", "createInvoice"], ["cli.ts", "start"],
@@ -194,6 +196,45 @@ describe("Stage 4 references with require calls", () => {
           { path: "src/old.js", range: rangeIn(old, "«createInvoice»('old')"), kind: "call", localName: "createInvoice" }],
         unresolved: [{ siteRef: `${id}-file@source-sites.json#/sites/${index}`, path: "src/legacy.cts", lines: [1, 1],
           kind: "require-candidate", expression: "require('./billing/invoice')", reason: typeScriptRequire }],
+      });
+    } finally {
+      rmSync(attempt.root, { recursive: true, force: true });
+    }
+  }, 60_000);
+});
+
+describe("Stage 4 references with relative module names that do not resolve", () => {
+  // Under NodeNext, the .ts files of a package of type module are ES modules: a relative import needs its extension.
+  test("lists a relative module name that the compiler settings do not resolve, and no bare package name", () => {
+    const invoice = "src/billing/invoice.ts";
+    const good = "import { createInvoice } from './billing/invoice.js';\nimport { z } from 'zod';\nimport './theme.css';\n\n" +
+      "export const good = createInvoice(String(z));\n";
+    const attempt = stageFourAttempt([
+      { path: "package.json", text: json({ name: "billing", type: "module" }) },
+      { path: "tsconfig.json", text: json({ compilerOptions: { strict: true, module: "nodenext", moduleResolution: "nodenext" },
+        include: ["src"] }) },
+      { path: invoice, text: "export function createInvoice(id: string) {\n  return { id };\n}\n" },
+      { path: "src/esm.ts", text: "import { createInvoice } from './billing/invoice';\n\nexport const esm = createInvoice('esm');\n" },
+      { path: "src/generated.ts", text: "export * from './missing/index.js';\n" },
+      { path: "src/good.ts", text: good },
+      { path: "src/theme.css", text: "body { color: black; }\n" },
+    ], toolsRoot, "collected");
+    try {
+      expect(inspectStageFour(attempt, ["collect"])).toMatchObject({ status: 0, stderr: "" });
+      expect(inspectStageFour(attempt, ["references", invoice, "createInvoice"]))
+        .toEqual({ status: 0, stderr: "", stdout: "Saved references-001.json.\n" });
+      const record = JSON.parse(readFileSync(join(attempt.attempt, "references-001.json"), "utf8")) as Json;
+      const { sites } = JSON.parse(readFileSync(join(attempt.attempt, "source-sites.json"), "utf8")) as { sites: Json[] };
+      const listed = (path: string, kind: string, lines: number[], expression: string): Json => {
+        const index = sites.findIndex((site) => site.path === path && site.expression === expression);
+        return { siteRef: `${id}-file@source-sites.json#/sites/${index}`, path, lines, kind, expression, reason: relativeName };
+      };
+      expect({ completeness: record.completeness, references: record.references, unresolved: record.unresolved }).toEqual({
+        completeness: "partial",
+        references: [{ path: "src/good.ts", range: rangeIn(good, "import { «createInvoice» }"), kind: "import", localName: "createInvoice" },
+          { path: "src/good.ts", range: rangeIn(good, "good = «createInvoice»("), kind: "call", localName: "createInvoice" }],
+        unresolved: [listed("src/esm.ts", "import", [1, 1], "import { createInvoice } from './billing/invoice';"),
+          listed("src/generated.ts", "re-export", [1, 1], "export * from './missing/index.js';")],
       });
     } finally {
       rmSync(attempt.root, { recursive: true, force: true });
