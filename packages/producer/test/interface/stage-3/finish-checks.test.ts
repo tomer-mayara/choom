@@ -112,6 +112,30 @@ describe("Stage 3 finish checks", () => {
     expect({ status: verify.status, stderr: verify.stderr }).toEqual({ status: 0, stderr: "" });
   }, 60_000);
 
+  test("publishes a packet that cites an exports record, and registers the record", () => {
+    const attempt = newAttempt("exports");
+    const results = finishStageThree(attempt, (packet) => {
+      firstPriority(packet).evidenceRefs = [`${attempt.id}-file@exports-001.json#/exports/0`];
+    }, [], ["app.ts"]);
+    expect({ exports: results["exports-1"]?.status, finish: results.finish?.status, stderr: results.finish?.stderr })
+      .toEqual({ exports: 0, finish: 0, stderr: "" });
+    const run = parse(folderText(attempt, "run.yaml")) as { artifacts: Record<string, { path: string }> };
+    expect(run.artifacts[`${attempt.id}-file@exports-001.json`]?.path).toBe(`evidence/${attempt.id}/exports-001.json`);
+    const verify = stageThree(attempt, ["stage-3-finish", "verify"]);
+    expect({ status: verify.status, stderr: verify.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 60_000);
+
+  test("refuses an exports record that changed after the request, and leaves the drafts unchanged", () => {
+    const attempt = newAttempt("changed-exports");
+    const before = draftState(attempt);
+    const results = finishStageThree(attempt, () => {
+      appendFileSync(join(attempt.folder, "exports-001.json"), "\n");
+    }, [], ["app.ts"]);
+    expect({ exports: results["exports-1"]?.status, status: results.finish?.status, stderr: results.finish?.stderr })
+      .toEqual({ exports: 0, status: 1, stderr: "The exports-001 receipt is incomplete, failed, or changed. Use a new attempt.\n" });
+    expect(draftState(attempt)).toEqual(before);
+  }, 60_000);
+
   test("refuses a text-search record that changed after the search, and leaves the drafts unchanged", () => {
     const attempt = newAttempt("changed-search");
     const before = draftState(attempt);

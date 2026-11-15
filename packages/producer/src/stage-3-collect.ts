@@ -21,7 +21,8 @@ interface MissingPath { path: string; status: 'skipped'; reason: string }
 interface Member { receiver: TypeScript.Expression | undefined; property: string | undefined }
 
 const initialExcerptLimit = 20;
-const extensions = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
+// The JavaScript and TypeScript source files of the loading search and the exports action.
+export const sourceExtensions = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const processes = new Set(['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync']);
 const constructors = ['Worker', 'SharedWorker', 'URL', 'Glob', 'Function'];
 const mentionLimit = 250;
@@ -133,7 +134,7 @@ function scanSources(state: StageState, tsMorph: ProjectTools, targetsByName: Ma
   const project = openSnapshotProject({ files: [...state.files.values()], snapshotRoot: state.facts.snapshot.path },
     syntaxOnly, tsMorph);
   const paths = [...state.files.keys()].filter(path => state.files.get(path)?.kind === 'file' &&
-    extensions.test(path)).sort();
+    sourceExtensions.test(path)).sort();
   for (const path of paths) {
     const { sha256 } = state.files.get(path) as { sha256: string };
     scan.scope.push({ path, sha256 });
@@ -231,7 +232,7 @@ export function collect(state: StageState, { tsMorph, versions }: CollectTools, 
     matches, diagnostics, limits,
     query: { profile: 'stage-3-loading-syntax-v3', parser: 'ts-morph snapshot project (TypeScript parser, Latest)',
       selection: 'all indexed regular files with a JavaScript or TypeScript source extension',
-      extensions: extensions.source, maxExpressionCodeUnits: expressionLimit, versions,
+      extensions: sourceExtensions.source, maxExpressionCodeUnits: expressionLimit, versions,
       candidateKinds: ['import-literal', 'import-computed', 'require', 'require.resolve', 'import.meta.glob',
         ...constructors.map(name => 'new ' + name), ...processes, '.scan', '.register', 'eval'] } });
 

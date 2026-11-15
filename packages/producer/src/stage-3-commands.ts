@@ -10,6 +10,7 @@ import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
 import { ripgrepVersion, runRipgrep } from './ripgrep.ts';
 import { collect, type Output } from './stage-3-collect.ts';
+import { exportsRecord } from './stage-3-exports.ts';
 import {
   checkpoint, directory, drafts, handoffState, numberedExcerpt, type Parse, read, safePath, type StageState,
 } from './stage-3-inputs.ts';
@@ -22,7 +23,8 @@ import {
 // the cookbook and the handoff; collect saves the loading search, the symbol
 // mentions, the first excerpts, the review prompt and the proposed artifact map;
 // excerpt saves a requested range; text-search saves the record of a ripgrep search
-// of the snapshot; save-review copies the LLM review packet. Each action saves a
+// of the snapshot; exports saves the exports of a source file, read with the
+// snapshot project; save-review copies the LLM review packet. Each action saves a
 // receipt and appends its outcome to the command log.
 interface Toolchain {
   parse: Parse;
@@ -55,8 +57,9 @@ const errorText = (error: unknown): string => String((error as { message?: unkno
 assert(/^s3-[a-z0-9-]+$/.test(id), 'Set CHOOM_STAGE3_ID to an s3-... ID.');
 assert((['start', 'collect'].includes(action) && args.length === 0) ||
   (action === 'excerpt' && args.length === 3) || (action === 'save-review' && args.length === 1) ||
-  (action === 'text-search' && (args.length === 1 || (args.length === 2 && args[1] === '--pattern'))),
-'Use start, collect, excerpt PATH FIRST LAST, text-search TEXT [--pattern], or save-review REVIEW_DIR.');
+  (action === 'text-search' && (args.length === 1 || (args.length === 2 && args[1] === '--pattern'))) ||
+  (action === 'exports' && args.length === 1),
+'Use start, collect, excerpt PATH FIRST LAST, text-search TEXT [--pattern], exports PATH, or save-review REVIEW_DIR.');
 const work = directory(CHOOM_WORK);
 const tools = directory(CHOOM_TOOLS);
 assert(work !== tools && !tools.startsWith(work + '/'), 'Use a trusted tool checkout outside CHOOM_WORK.');
@@ -115,14 +118,14 @@ function reviewPrompt({ entryAnalysisRef }: { entryAnalysisRef: unknown }): stri
   return prompt;
 }
 
-// Saves the started record of this action. Each excerpt request and each text
-// search takes the next free number.
+// Saves the started record of this action. Each excerpt request, text search and
+// exports request takes the next free number.
 function reserve(): Reservation {
   const command = {
     args: [process.execPath, self, action, ...args], cwd: process.cwd(),
     environment: { CHOOM_WORK: work, CHOOM_TOOLS: tools, CHOOM_STAGE3_ID: id },
   };
-  const numbered = action === 'excerpt' || action === 'text-search';
+  const numbered = ['excerpt', 'text-search', 'exports'].includes(action);
   for (let index = 1; ; index++) {
     const phase = numbered ? action + '-' + String(index).padStart(3, '0') : action;
     const prefix = 'operator-' + phase;
@@ -173,6 +176,7 @@ function startAttempt({ toolchain, state, sourceInputs }: Prepared, outputNames:
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 collect\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 excerpt PATH FIRST LAST\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 text-search TEXT [--pattern]\n' +
+    'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 exports PATH\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 save-review REVIEW_DIR\n' +
     'node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3-finish\n\x60\x60\x60\n\n' +
     '## Recorded invocations\n');
@@ -263,6 +267,17 @@ function textSearchAction({ toolchain, state }: Started, phase: string, output: 
     `Outcome: ${searchOutcome(search)}. ripgrep searched ${scope.searchedFiles} files.`;
 }
 
+// Lists the exports of one indexed source file and saves the record. Nothing is
+// saved for a refused request; its receipt keeps the reason.
+function exportsAction({ toolchain, state }: Started, phase: string, output: Output): string {
+  const [path = ''] = args;
+  const record = exportsRecord({ attemptId: id, state, path, tsMorph: toolchain.tsMorph, versions: toolchain.versions });
+  const name = phase + '.json';
+  output(name, record);
+  return `Saved ${artifactId(name)} at ${join(attempt, name)} (SHA-256 ${hash(saved(name))}). ` +
+    `Listed ${(record.exports as unknown[]).length} exports of ${path} and ${(record.gaps as unknown[]).length} gaps.`;
+}
+
 function runAction(prepared: Prepared | undefined, { phase, prefix }: Reservation, output: Output,
   outputNames: string[]): string {
   if (action === 'start') return startAttempt(prepared as Prepared, outputNames);
@@ -270,6 +285,7 @@ function runAction(prepared: Prepared | undefined, { phase, prefix }: Reservatio
   if (action === 'collect') return collectAction(started, prefix, output, outputNames);
   if (action === 'save-review') return saveReviewAction(outputNames);
   if (action === 'text-search') return textSearchAction(started, phase, output, outputNames);
+  if (action === 'exports') return exportsAction(started, phase, output);
   return excerptAction(started.state, phase, output);
 }
 

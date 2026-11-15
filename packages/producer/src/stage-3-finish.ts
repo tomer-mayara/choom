@@ -370,6 +370,9 @@ function finish(): void {
     const phase = name.slice(0, -'.json'.length);
     attempt.receipt(phase, 'text-search', [phase + '.stdout.jsonl', phase + '.stderr.txt', name]);
   }
+  // Each exports record must be as the exports action saved it.
+  for (const name of attempt.names.filter(name => /^exports-[0-9]+\.json$/.test(name)))
+    attempt.receipt(name.slice(0, -'.json'.length), 'exports', [name]);
   assert(attempt.buffers.has(attempt.attemptRef('commands.md')), 'Missing command log.');
   const inputs = selectedInputs(config, records, attempt);
   const loading = checkQueries(attempt, inputs);

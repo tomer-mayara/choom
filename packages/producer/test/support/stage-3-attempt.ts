@@ -67,14 +67,16 @@ function writeStageThreePacket(attempt: StageThreeAttempt, packet: StageThreePac
     "llm/analysis-call.yaml": stringify(packet.call), "llm/review-scope.json": JSON.stringify(packet.scope) + "\n" });
 }
 
-// Runs start, collect and each text search (its arguments), saves the packet that
-// `change` gives, and runs the finalizer.
+// Runs start, collect, each text search (its arguments) and each exports request
+// (its path), saves the packet that `change` gives, and runs the finalizer.
 export function finishStageThree(attempt: StageThreeAttempt, change: (packet: StageThreePacket) => void = () => {},
-  searches: string[][] = []): Record<string, CommandResult> {
+  searches: string[][] = [], exports: string[] = []): Record<string, CommandResult> {
   const results: Record<string, CommandResult> = {};
   for (const action of ["start", "collect"]) results[action] = stageThree(attempt, ["stage-3", action]);
   for (const [index, search] of searches.entries())
     results[`text-search-${index + 1}`] = stageThree(attempt, ["stage-3", "text-search", ...search]);
+  for (const [index, path] of exports.entries())
+    results[`exports-${index + 1}`] = stageThree(attempt, ["stage-3", "exports", path]);
   const packet = stageThreePacket(attempt);
   change(packet);
   results["save-review"] = stageThree(attempt, ["stage-3", "save-review", writeStageThreePacket(attempt, packet)]);

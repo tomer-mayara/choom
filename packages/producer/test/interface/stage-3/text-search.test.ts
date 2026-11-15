@@ -161,7 +161,7 @@ describe("Stage 3 text-search", () => {
     }
     const usage = search(script, "--other");
     expect({ status: usage.status, stdout: usage.stdout }).toEqual({ status: 1, stdout: "" });
-    expect(usage.stderr).toContain("Use start, collect, excerpt PATH FIRST LAST, text-search TEXT [--pattern], or save-review REVIEW_DIR.");
+    expect(usage.stderr).toContain("Use start, collect, excerpt PATH FIRST LAST, text-search TEXT [--pattern], exports PATH, or save-review REVIEW_DIR.");
   });
 });
 
