@@ -9,7 +9,8 @@ import type { SourceFile } from './stage-4-graph-profile.ts';
 // source file of the graph scope. The query searches the files of the import pass of
 // the graph profile group that holds the file, with the compiler settings of that
 // group, chosen by the rule of the Stage 3 exports action. The loading sites of the
-// scope with a computed module name are possible uses that the query does not resolve.
+// scope that the query does not follow are possible uses that it does not resolve: a
+// site with a computed module name, and a require call in a TypeScript file.
 export interface ReferencesInput {
   attemptId: string; snapshotRef: unknown; path: string; symbol: string;
   // The indexed files of the saved snapshot and its folder, which the snapshot project reads.
