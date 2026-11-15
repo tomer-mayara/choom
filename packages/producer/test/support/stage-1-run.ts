@@ -84,7 +84,7 @@ export function reviewPacket(excerpt: Excerpt): ReviewPacket {
     scope: { formatVersion: 1, runRef: "run-check", snapshotRef: stageOneSnapshotRef,
       suppliedArtifactRefs: ["inventory-001", "settings-001", "exclusions-001", "scope-notes-001", "extra-configs-001",
         excerpt.artifactRef], limits: ["Only the saved test fixture was supplied."] },
-    call: { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown" },
+    call: { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown", hiddenReasoning: "not-saved" },
     prompt: "Perform Choom Appendix A, stage 1.\n",
   };
 }

@@ -54,7 +54,7 @@ function stageThreePacket(attempt: StageThreeAttempt): StageThreePacket {
     inspectionPriorities: [{ id: `${attempt.id}-priority-001`, subjectRefs: [app.path], priority: 1,
       action: "Read the entry module.", reason: "The package main field names it.", evidenceRefs: [source] }] };
   return { analysis, prompt: "Review the saved Stage 3 evidence.\n",
-    call: { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown" },
+    call: { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown", hiddenReasoning: "not-saved" },
     scope: { formatVersion: 1, runRef: "run-check", snapshotRef: stagedSnapshotRef,
       suppliedArtifactRefs: [`${attempt.id}-file@artifact-map.json`], limits: ["Only the saved test fixture was supplied."] } };
 }

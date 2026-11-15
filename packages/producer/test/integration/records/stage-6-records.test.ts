@@ -294,7 +294,8 @@ describe("validateRecords with a Stage 6 readiness packet", () => {
       "review-scope.json": JSON.stringify({ ...identity, suppliedArtifactRefs: evidenceRefs, limits: ["l"] }),
       "llm/analysis-prompt.md": "Review the saved launch evidence.\n",
       "llm/analysis-response.md": changes.response ?? readinessText,
-      "llm/analysis-call.yaml": JSON.stringify({ provider: "fixture", model: "fixture", date: "2026-01-01", settings: "unknown" }),
+      "llm/analysis-call.yaml": JSON.stringify({ provider: "fixture", model: "fixture", date: "2026-01-01", settings: "unknown",
+        hiddenReasoning: "not-saved" }),
     }).map(([name, text]) => [name, Buffer.from(text)]));
   }
 

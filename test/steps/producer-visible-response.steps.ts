@@ -24,14 +24,12 @@ interface VisibleResponseWorld extends World {
 const reasoningBlock = "<thinking>\nThe settings name a base file that the snapshot does not hold, so I add a gap.\n</thinking>\n\n";
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
-// Writes a complete Stage 1 review packet whose call record says that hidden
+// Writes a complete Stage 1 review packet. Its call record says that hidden
 // reasoning was not saved. `change` edits the saved response text.
 function preparedReview(world: VisibleResponseWorld, change: (response: string) => string = (response) => response): void {
   world.responseScratch = makeScratch();
   const { run, excerpt } = capturedStageOneRun(world.responseScratch);
-  const packet = reviewPacket(excerpt);
-  packet.call.hiddenReasoning = "not-saved";
-  const review = writeReview(run, packet);
+  const review = writeReview(run, reviewPacket(excerpt));
   const response = join(review, "llm-response.md");
   writeFileSync(response, change(readFileSync(response, "utf8")));
   world.responseRun = run;

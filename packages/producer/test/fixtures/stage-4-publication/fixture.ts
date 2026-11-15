@@ -208,7 +208,8 @@ function writePacket(review: string, records: Record<string, unknown>): void {
   for (const [name, text] of texts) write(join(review, name), text);
   write(join(review, "llm/analysis-prompt.md"), "Review the saved Stage 4 evidence and propose the components.\n");
   write(join(review, "llm/analysis-response.md"), texts.map(([, text]) => text).join("\n"));
-  write(join(review, "llm/analysis-call.yaml"), yamlText({ provider: "fixture", model: "fixture", date: "2026-01-01", settings: "unknown" }));
+  write(join(review, "llm/analysis-call.yaml"), yamlText({ provider: "fixture", model: "fixture", date: "2026-01-01", settings: "unknown",
+    hiddenReasoning: "not-saved" }));
   write(join(review, "llm/review-scope.json"), jsonText({ formatVersion: 1, runRef, snapshotRef, attemptId: stageFourAttemptId,
     suppliedArtifactRefs: [artifactId("artifact-map.json"), "launch-settings"], limits }));
 }

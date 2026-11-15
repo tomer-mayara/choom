@@ -183,7 +183,8 @@ export function producerFixture(change = () => {}) {
   });
   write(review, 'readiness.yaml', readiness);
   write(review, 'review-scope.json', JSON.stringify({ ...identity, suppliedArtifactRefs: evidenceRefs, limits }));
-  write(review, 'llm/analysis-call.yaml', stringify({ provider: 'fixture', model: 'fixture', date: '2026-01-01', settings: 'unknown' }));
+  write(review, 'llm/analysis-call.yaml', stringify({ provider: 'fixture', model: 'fixture', date: '2026-01-01', settings: 'unknown',
+    hiddenReasoning: 'not-saved' }));
   write(review, 'llm/analysis-prompt.md', 'Review the saved launch and registration evidence.\n');
   write(review, 'llm/analysis-response.md', readiness);
   return { root, work, review, baseline };

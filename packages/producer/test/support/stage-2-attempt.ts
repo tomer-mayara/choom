@@ -24,7 +24,7 @@ export const stageTwoSnapshot: SnapshotFile[] = [
   { path: "package.json", text: JSON.stringify({ name: "fixture", private: true, main: "app.ts" }, null, 2) + "\n" },
 ];
 
-const llmCall = { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown" };
+const llmCall = { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown", hiddenReasoning: "not-saved" };
 
 // Saves a Stage 1 run with the given snapshot and one earlier discovery question.
 // The run records the producer code of the given tool checkout.
