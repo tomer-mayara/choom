@@ -22,6 +22,19 @@ describe("baseline field shapes", () => {
     expect(baselineSchema.safeParse({ ...baselineExample(), ...change }).success).toBe(false);
   });
 
+  test("rejects a baseline that names itself as its parent version", () => {
+    const input = baselineExample();
+    input.parentId = input.id;
+    const result = baselineSchema.safeParse(input);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path.join("."))).toContain("parentId");
+  });
+
+  test("keeps a parent version ID that names another baseline", () => {
+    const input = { ...baselineExample(), parentId: "baseline-000" };
+    expect(baselineSchema.parse(input)).toEqual(input);
+  });
+
   test.each(["components", "interfaces", "resources", "rules"] as const)(
     "rejects missing names, blank names, and extra fields in %s", (kind) => {
       for (const change of [{ name: undefined }, { name: " \n " }, { displayColor: "blue" }]) {

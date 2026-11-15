@@ -20,7 +20,8 @@ against source files.
 
 Accepted statements require an `acceptanceRef`; proposed statements cannot have
 one. All statements require at least one nonblank evidence reference. The viewer
-does not resolve evidence, acceptance records, or `parentId`. Validation neither
+does not resolve evidence, acceptance records, or `parentId`, but it refuses a
+`parentId` equal to the baseline's own `id`. Validation neither
 accepts a proposal nor proves its evidence, ownership, or rules.
 
 All four collections are required and may be empty. Names may repeat. An

@@ -126,6 +126,9 @@ function validateParents(components: Baseline["components"], context: z.Refineme
 }
 
 function validateReferences(baseline: Baseline, context: z.RefinementCtx): void {
+  if (baseline.parentId === baseline.id) context.addIssue({
+    code: "custom", path: ["parentId"], message: "A baseline version cannot be its own parent.",
+  });
   const ids = new Set<string>();
   const componentIds = new Set(baseline.components.map(({ id }) => id));
   for (const kind of ["components", "interfaces", "resources", "rules"] as const) {
