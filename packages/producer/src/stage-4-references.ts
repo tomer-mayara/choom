@@ -15,7 +15,8 @@ import { type FileSite, fileSites } from './stage-4-source-sites.ts';
 // group, chosen by the rule of the Stage 3 exports action. The loading sites of the
 // scope that the query does not follow are possible uses that it does not resolve: a
 // site with a computed module name, a require call in a TypeScript file, and an
-// import of a relative module name that the compiler settings do not resolve.
+// import of a relative module name or a paths alias that the compiler settings do
+// not resolve.
 export interface ReferencesInput {
   attemptId: string; snapshotRef: unknown; path: string; symbol: string;
   // The indexed files of the saved snapshot and its folder, which the snapshot project reads.
@@ -46,6 +47,8 @@ const typeScriptRequire = 'TypeScript does not follow a require call in a TypeSc
   'of the symbol.';
 const unresolvedRelative = 'The compiler settings do not resolve this relative module name, so the query cannot tell ' +
   'whether it names the module of the symbol.';
+const unresolvedAlias = 'The compiler settings do not resolve this paths alias, so the query cannot tell whether it ' +
+  'names the module of the symbol.';
 // The JavaScript files of the scope are part of the compiler program only with allowJs.
 const queryOptions = { allowJs: true };
 const checker = 'ts-morph snapshot project (TypeScript type checker)';
@@ -70,7 +73,7 @@ export const referencesNotes = [
     'JavaScript require calls that the compiler resolves, and the local names that a destructuring of a module object ' +
     'binds, such as const { createInvoice } = await import(\'./invoice\'). It does not follow a require call in a ' +
     'TypeScript file or an import that the compiler settings do not resolve (unresolved lists them, an import only with a ' +
-    'relative module name), or JSDoc types.',
+    'relative module name or a paths alias), or JSDoc types.',
   'kind is import for an import, import = or JavaScript require that binds a local name to the symbol; re-export for an ' +
     'export list entry, export default, export = or export * from that exports it; type for a use in a type; call for a ' +
     'call, new expression, tagged template, decorator or JSX element that it starts; and value for any other use, such ' +
@@ -81,10 +84,12 @@ export const referencesNotes = [
     'the query does not follow, with its reason: a dynamic import, require, require.resolve or import = site with a ' +
     'computed module name (a null specifier); a require call with a literal module name in a TypeScript file (.ts, ' +
     '.tsx, .mts or .cts); and an import, export from, import =, import type, literal dynamic import or JavaScript ' +
-    'require call whose relative module name (./, ../ or /) the compiler settings do not resolve to a file. The checker ' +
-    'follows a literal require call in a JavaScript file, a require.resolve call with a literal name loads nothing, a ' +
-    'bare package name names an external package, which the snapshot does not hold, and a snapshot file that is not ' +
-    'source code, such as ./theme.css, cannot hold the symbol, so none of them is listed. siteRef is null when no ' +
+    'require call whose relative module name (./, ../ or /) or paths alias the compiler settings do not resolve to a ' +
+    'file. A paths alias is a module name that matches a key of the paths option, as TypeScript matches it; a key * ' +
+    'alone matches every package name, so it does not make an alias. The checker follows a literal require call in a ' +
+    'JavaScript file, a require.resolve call with a literal name loads nothing, a bare package name that matches no ' +
+    'paths key names an external package, which the snapshot does not hold, and a snapshot file that is not source ' +
+    'code, such as ./theme.css, cannot hold the symbol, so none of them is listed. siteRef is null when no ' +
     'saved site matches, such as after the site limit of collect; then lines and expression come from the compiler ' +
     'syntax tree. completeness is partial when unresolved has an entry, and complete-within-scope otherwise. Neither ' +
     'value covers the files outside the scope or the other uses that the query does not follow.',
@@ -98,23 +103,49 @@ export const referencesNotes = [
 ];
 
 // Why the query does not follow a loading site, or undefined for a site that it follows or that loads nothing.
-// `relative` says that the compiler settings do not resolve the relative module name of the site.
-function unresolvedReason({ path, kind, specifier }: Fields, relative: boolean): string | undefined {
+// `unresolvedImport` is the reason when the compiler settings do not resolve the module name of the site.
+function unresolvedReason({ path, kind, specifier }: Fields, unresolvedImport: string | undefined): string | undefined {
   if (loadingKinds.has(kind as string) && specifier === null) return computedName;
   if (kind === 'require-candidate' && typeScriptFile.test(path as string)) return typeScriptRequire;
-  return relative ? unresolvedRelative : undefined;
+  return unresolvedImport;
 }
 
 // The loading sites of the scope that can load the module of the symbol and that the query does not follow,
-// as possible uses that it does not resolve. `relative` holds the indexes of the saved sites whose relative
-// module name the compiler settings do not resolve.
+// as possible uses that it does not resolve. `imports` gives the reason for each saved site, by its index, whose
+// relative module name or paths alias the compiler settings do not resolve.
 export function unresolvedSites(sites: Fields, scope: ReadonlySet<string>, sitesRef: string,
-  relative: ReadonlySet<number> = new Set()): UnresolvedSite[] {
+  imports: ReadonlyMap<number, string> = new Map()): UnresolvedSite[] {
   return (sites.sites as Fields[]).flatMap((site, index) => {
     const { path, lines, kind, expression } = site;
-    const reason = scope.has(path as string) ? unresolvedReason(site, relative.has(index)) : undefined;
+    const reason = scope.has(path as string) ? unresolvedReason(site, imports.get(index)) : undefined;
     return reason === undefined ? [] : [{ siteRef: sitesRef + '#/sites/' + index, path, lines, kind, expression, reason }];
   });
+}
+
+// The key of the paths option that a non-relative module name matches, as TypeScript matches it: a key without *
+// that equals the name, else the key with one * whose prefix and suffix the name has, with the longest prefix. A key
+// * alone matches every package name, so it does not make a name an alias.
+export function pathsAliasKey(paths: Readonly<Fields>, name: string): string | undefined {
+  if (!name.includes('*') && Object.hasOwn(paths, name)) return name;
+  let best: string | undefined;
+  for (const key of Object.keys(paths)) {
+    const [prefix = '', suffix, extra] = key.split('*');
+    if (suffix === undefined || extra !== undefined || key === '*' || name.length < prefix.length + suffix.length ||
+      !name.startsWith(prefix) || !name.endsWith(suffix)) continue;
+    if (best === undefined || prefix.length > best.indexOf('*')) best = key;
+  }
+  return best;
+}
+
+// The snapshot paths that a paths alias names: each target of its key, with the part of the name that the * matched,
+// from the base folder of the paths option.
+function aliasTargets(options: Readonly<Fields>, key: string, name: string): string[] {
+  const star = key.indexOf('*');
+  const part = star < 0 ? '' : name.slice(star, name.length - (key.length - star - 1));
+  const base = String(options.baseUrl ?? options.pathsBasePath ?? virtualRoot);
+  const targets = (options.paths as Fields)[key];
+  return (Array.isArray(targets) ? targets : []).filter(target => typeof target === 'string')
+    .map(target => snapshotPath(posix.resolve(base, star < 0 ? target : target.replace('*', part))));
 }
 
 // The module name of a loading site: the module specifier of a declaration, or the literal of an import type or a call.
@@ -126,13 +157,18 @@ function moduleNameOf(ts: typeof TsMorph.ts, node: TsMorph.ts.Node): TsMorph.ts.
   return name !== undefined && ts.isStringLiteralLike(name) ? name : undefined;
 }
 
-// Whether a site of a file imports a relative module name that can name source code. A require call of a TypeScript
-// file has its own reason, and a file of the snapshot that is not source code, such as ./theme.css, cannot hold the symbol.
-function importsRelativeName(path: string, [kind, specifier]: FileSite['site'], inventory: ReadonlySet<string>): boolean {
-  if (specifier === null || !relativeName.test(specifier) ||
-    !(importKinds.has(kind) || (kind === 'require-candidate' && !typeScriptFile.test(path)))) return false;
-  const named = snapshotPath(posix.resolve(posix.dirname(virtualRoot + '/' + path), specifier));
-  return !inventory.has(named) || sourceCode.test(named);
+// The reason to list a site of a file when the compiler settings do not resolve its module name: a relative module
+// name, or a paths alias, that can name source code. Otherwise undefined: a bare package name, a require call of a
+// TypeScript file, which has its own reason, and a name of a snapshot file that is not source code, such as ./theme.css.
+function localNameReason(path: string, [kind, specifier]: FileSite['site'], inventory: ReadonlySet<string>,
+  options: Readonly<Fields>): string | undefined {
+  if (specifier === null || !(importKinds.has(kind) || (kind === 'require-candidate' && !typeScriptFile.test(path))))
+    return undefined;
+  const dataFile = (named: string): boolean => inventory.has(named) && !sourceCode.test(named);
+  if (relativeName.test(specifier))
+    return dataFile(snapshotPath(posix.resolve(posix.dirname(virtualRoot + '/' + path), specifier))) ? undefined : unresolvedRelative;
+  const key = pathsAliasKey((options.paths ?? {}) as Fields, specifier);
+  return key === undefined || aliasTargets(options, key, specifier).some(dataFile) ? undefined : unresolvedAlias;
 }
 
 // The line of each end of a node, as the compiler syntax tree counts lines.
@@ -141,27 +177,29 @@ function nodeLines(source: TsMorph.ts.SourceFile, node: TsMorph.ts.Node): [numbe
   return [line(node.getStart(source)), line(Math.max(node.getStart(source), node.end - 1))];
 }
 
-// The imports of the scope whose relative module name the compiler settings do not resolve: the indexes of their
-// saved sites, which the same walk of the syntax tree finds in the same order, and an entry for each import that
-// no saved site matches, such as one after the site limit of collect.
-function relativeImports(project: SnapshotProject, scope: readonly string[], sites: Fields[],
-  inventory: ReadonlySet<string>): { indexes: Set<number>; unmatched: UnresolvedSite[] } {
+// The imports of the scope whose relative module name or paths alias the compiler settings do not resolve: the
+// reason for each of their saved sites, by index, which the same walk of the syntax tree finds in the same order, and
+// an entry for each import that no saved site matches, such as one after the site limit of collect.
+function unresolvedImports(project: SnapshotProject, scope: readonly string[], sites: Fields[],
+  inventory: ReadonlySet<string>): { reasons: Map<number, string>; unmatched: UnresolvedSite[] } {
+  const options = project.project.compilerOptions.get() as Fields;
   const saved = new Map<unknown, number[]>();
   sites.forEach((site, index) => { const list = saved.get(site.path) ?? []; list.push(index); saved.set(site.path, list); });
-  const indexes = new Set<number>(); const unmatched: UnresolvedSite[] = [];
+  const reasons = new Map<number, string>(); const unmatched: UnresolvedSite[] = [];
   for (const path of scope) {
     const source = programFile(project, path);
     fileSites(project.ts, source).forEach(({ node, site }, order) => {
       const name = moduleNameOf(project.ts, node);
-      if (name === undefined || !importsRelativeName(path, site, inventory) || resolvesModuleName(project, name)) return;
+      const reason = name === undefined ? undefined : localNameReason(path, site, inventory, options);
+      if (name === undefined || reason === undefined || resolvesModuleName(project, name)) return;
       const index = saved.get(path)?.[order];
       const match = index === undefined ? undefined : sites[index];
-      if (index !== undefined && match?.kind === site[0] && match.specifier === site[1]) { indexes.add(index); return; }
+      if (index !== undefined && match?.kind === site[0] && match.specifier === site[1]) { reasons.set(index, reason); return; }
       unmatched.push({ siteRef: null, path, lines: nodeLines(source, node), kind: site[0],
-        expression: node.getText(source).slice(0, expressionLimit), reason: unresolvedRelative });
+        expression: node.getText(source).slice(0, expressionLimit), reason });
     });
   }
-  return { indexes, unmatched };
+  return { reasons, unmatched };
 }
 
 // The source file of the graph scope that the operator named.
@@ -192,8 +230,8 @@ export function referencesRecord(input: ReferencesInput): Fields {
   for (const scopePath of scope) project.sourceFile(scopePath);
   const { declarations, references } = findReferences(project, path, symbol);
   const inventory = new Set(input.snapshot.files.filter(item => item.kind === 'file').map(item => item.path));
-  const relative = relativeImports(project, scope, input.sites.sites as Fields[], inventory);
-  const unresolved = [...unresolvedSites(input.sites, new Set(scope), input.sitesRef, relative.indexes), ...relative.unmatched];
+  const imports = unresolvedImports(project, scope, input.sites.sites as Fields[], inventory);
+  const unresolved = [...unresolvedSites(input.sites, new Set(scope), input.sitesRef, imports.reasons), ...imports.unmatched];
   return {
     formatVersion: 1, attemptId, snapshotRef: input.snapshotRef, status: 'completed', path, sha256: file.sha256, symbol,
     settingsRef, compilerSettingsRef: settings.ref, compilerSettings: settings.record, queryOptions,

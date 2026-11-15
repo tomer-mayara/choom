@@ -48,6 +48,8 @@ const typeScriptRequire = "TypeScript does not follow a require call in a TypeSc
   "of the symbol.";
 const relativeName = "The compiler settings do not resolve this relative module name, so the query cannot tell whether " +
   "it names the module of the symbol.";
+const aliasName = "The compiler settings do not resolve this paths alias, so the query cannot tell whether it names the " +
+  "module of the symbol.";
 
 // The requests after collect, in order. Each request takes the next number, also a refused one.
 const requests: [string, string][] = [["src/billing/invoice.ts", "createInvoice"], ["cli.ts", "start"],
@@ -235,6 +237,44 @@ describe("Stage 4 references with relative module names that do not resolve", ()
           { path: "src/good.ts", range: rangeIn(good, "good = «createInvoice»("), kind: "call", localName: "createInvoice" }],
         unresolved: [listed("src/esm.ts", "import", [1, 1], "import { createInvoice } from './billing/invoice';"),
           listed("src/generated.ts", "re-export", [1, 1], "export * from './missing/index.js';")],
+      });
+    } finally {
+      rmSync(attempt.root, { recursive: true, force: true });
+    }
+  }, 60_000);
+});
+
+describe("Stage 4 references with paths aliases that do not resolve", () => {
+  // Under NodeNext, an alias of an ES module file needs the extension too, and @gen/* names a folder that the capture did not save.
+  test("lists a paths alias that the compiler settings do not resolve, and no bare package name that matches no key", () => {
+    const invoice = "src/billing/invoice.ts";
+    const good = "import { createInvoice } from '@billing/invoice.js';\nimport { z } from 'zod';\n\n" +
+      "export const good = createInvoice(String(z));\n";
+    const attempt = stageFourAttempt([
+      { path: "package.json", text: json({ name: "billing", type: "module" }) },
+      { path: "tsconfig.json", text: json({ compilerOptions: { strict: true, module: "nodenext", moduleResolution: "nodenext",
+        paths: { "@billing/*": ["./src/billing/*"], "@gen/*": ["./generated/*"] } }, include: ["src"] }) },
+      { path: invoice, text: "export function createInvoice(id: string) {\n  return { id };\n}\n" },
+      { path: "src/orders.ts", text: "import { createInvoice } from '@billing/invoice';\n\nexport const order = createInvoice('order');\n" },
+      { path: "src/report.ts", text: "export * from '@gen/billing.js';\n" },
+      { path: "src/good.ts", text: good },
+    ], toolsRoot, "collected");
+    try {
+      expect(inspectStageFour(attempt, ["collect"])).toMatchObject({ status: 0, stderr: "" });
+      expect(inspectStageFour(attempt, ["references", invoice, "createInvoice"]))
+        .toEqual({ status: 0, stderr: "", stdout: "Saved references-001.json.\n" });
+      const record = JSON.parse(readFileSync(join(attempt.attempt, "references-001.json"), "utf8")) as Json;
+      const { sites } = JSON.parse(readFileSync(join(attempt.attempt, "source-sites.json"), "utf8")) as { sites: Json[] };
+      const listed = (path: string, kind: string, expression: string): Json => {
+        const index = sites.findIndex((site) => site.path === path && site.expression === expression);
+        return { siteRef: `${id}-file@source-sites.json#/sites/${index}`, path, lines: [1, 1], kind, expression, reason: aliasName };
+      };
+      expect({ completeness: record.completeness, references: record.references, unresolved: record.unresolved }).toEqual({
+        completeness: "partial",
+        references: [{ path: "src/good.ts", range: rangeIn(good, "import { «createInvoice» }"), kind: "import", localName: "createInvoice" },
+          { path: "src/good.ts", range: rangeIn(good, "good = «createInvoice»("), kind: "call", localName: "createInvoice" }],
+        unresolved: [listed("src/orders.ts", "import", "import { createInvoice } from '@billing/invoice';"),
+          listed("src/report.ts", "re-export", "export * from '@gen/billing.js';")],
       });
     } finally {
       rmSync(attempt.root, { recursive: true, force: true });
