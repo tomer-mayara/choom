@@ -32,12 +32,17 @@ test("Stage 4 builds the pinned graph image, the image fixture approves it, and 
     // The helper saves Docker output in the attempt; stderr is shown here only to explain a failure.
     const toolchain = runHelper(helper, ["toolchain"], settings, toolchainTimeout);
     expect({ status: toolchain.status, stderr: toolchain.stderr }).toMatchObject({ status: 0 });
+    // The Node 24 of the image ran the TypeScript graph helper, as /producer/stage-4-graph.mts.
     const selection = JSON.parse(readFileSync(join(attempt, "toolchain-selection.json"), "utf8")) as Record<string, unknown>;
-    expect(selection).toMatchObject({ formatVersion: 1, status: "approved",
-      toolVersions: { dependencyCruiser: "18.7.2", typescript: "6.0.2", enhancedResolve: "5.26.0" } });
+    expect(selection).toMatchObject({ formatVersion: 1, status: "approved", toolVersions: { node: expect.stringMatching(/^24\./),
+      dependencyCruiser: "18.7.2", typescript: "6.0.2", enhancedResolve: "5.26.0" } });
+    // The attempt keeps the stderr of each container run, with the stderr of the docker
+    // command. Node wrote no warning, for example about type stripping or the module format.
+    expect(readFileSync(join(attempt, "toolchain/fixture.stderr.txt"), "utf8")).toBe("");
     // The graph container mounts the input view, the attempt and the graph helper from the tool checkout.
     const graph = runHelper(helper, ["run"], settings, graphTimeout);
     expect({ status: graph.status, stderr: graph.stderr }).toMatchObject({ status: 0 });
+    expect(readFileSync(join(attempt, "graph.stderr.txt"), "utf8")).toBe("");
     const results = JSON.parse(readFileSync(join(attempt, "graph-results.json"), "utf8")) as Record<string, unknown>;
     expect(results.status).toBe("completed");
   });
