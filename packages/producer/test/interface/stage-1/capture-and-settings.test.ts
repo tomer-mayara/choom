@@ -105,7 +105,7 @@ describe("Stage 1 capture, settings and save", () => {
       expectSuccess(stageOne(run, "start"));
       expectSuccess(stageOne(run, "capture"));
       const record = { formatVersion: 1, snapshotId: "snapshot-check", configs: [], packages: [], marker: "saved copy" };
-      const collector = existsSync(join(run.work, "settings.mjs")) ? "settings.mjs" : "settings.mts";
+      const collector = "settings.mts";
       writeFileSync(join(run.work, collector), `console.log(JSON.stringify(${JSON.stringify(record)}));\n`);
       expectSuccess(stageOne(run, "settings"));
       expect(readJson(run.work, "evidence/settings.json")).toEqual(record);

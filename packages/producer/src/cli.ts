@@ -19,6 +19,7 @@ export interface HelperCall {
 export const producerCommands: ReadonlyMap<string, ProducerCommand> = new Map([
   ["stage-1", { helper: "stage-1-commands.ts", use: "Capture the snapshot and review its settings." }],
   ["stage-2", { helper: "stage-2-commands.ts", use: "Start the entry analysis." }],
+  ["stage-2-consolidate", { helper: "stage-2-consolidate-inputs.ts", use: "Merge earlier per-attempt Knip inputs into the shared input." }],
   ["stage-3", { helper: "stage-3-commands.mjs", use: "Start the loading and symbol search." }],
   ["stage-4", { helper: "stage-4-commands.mjs", use: "Start the component recovery." }],
   ["stage-4-5-publish", { helper: "stage-4-5-publish.mjs", use: "Check, publish or verify a Stage 4 or Stage 5 review." }],

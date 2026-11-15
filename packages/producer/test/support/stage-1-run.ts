@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
@@ -49,10 +49,7 @@ export function stageOne(run: StageOneRun, action: string, ...args: string[]): C
 
 // The helper copy that start saved for the later comparison.
 export function savedHelper(work: string): string {
-  const names = readdirSync(join(work, "evidence")).filter((name) => /^stage-1-commands\.m[jt]s$/.test(name));
-  const [name] = names;
-  if (name === undefined || names.length !== 1) throw new Error("Expected one saved Stage 1 helper.");
-  return join(work, "evidence", name);
+  return join(work, "evidence", "stage-1-commands.mts");
 }
 
 export interface Excerpt { id: string; artifactRef: string; snapshotRef: string; path: string; sha256: string; lines: number[] }

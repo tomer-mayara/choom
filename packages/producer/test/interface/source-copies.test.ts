@@ -30,7 +30,7 @@ function json(path: string): unknown {
 }
 
 describe("stage starts save their source copies", () => {
-  test("Stage 1 saves its helper, the run layout and its cookbook", () => {
+  test("Stage 1 saves its helper, the run layout, the settings collector and its cookbook", () => {
     withScratch((scratch) => {
       const target = join(scratch, "target");
       const work = join(scratch, "run");
@@ -41,13 +41,14 @@ describe("stage starts save their source copies", () => {
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toBe("Working folder prepared. Review exclusions.txt and scope-notes.md before capture.\n");
       expectCopies(join(work, "evidence"), { "stage-1-commands.mts": code("stage-1-commands.ts"),
-        "run-layout.mjs": code("run-layout.mjs"), "cookbook.md": documents("step-1-cookbook.md") });
+        "run-layout.mjs": code("run-layout.mjs"), "stage-1-settings.mts": code("stage-1-settings.ts"),
+        "cookbook.md": documents("step-1-cookbook.md") });
       expect(json(join(work, "evidence/stage1-inputs.json"))).toMatchObject({ tools: toolsRoot, target, workLayout: "separate" });
       expect(Object.keys(json(join(work, "evidence/tools.json")) as object)).toEqual(["node", "tsMorph", "typescript", "yaml"]);
     });
   });
 
-  test("Stage 2 saves its cookbook, driver and helper copies", () => {
+  test("Stage 2 saves its cookbook, driver, stage modules and helper copies", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stagedRun(work, 1);
@@ -56,7 +57,9 @@ describe("stage starts save their source copies", () => {
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toContain("Prepared the attempt.");
       const attempt = join(work, "evidence/s2-new");
-      const sources = { "cookbook.md": documents("step-2-cookbook.md"), "stage-2-commands.mts": code("stage-2-commands.ts"),
+      const modules = ["commands", "handoff", "knip-profile", "knip-input", "tool-image", "knip-run", "finish"];
+      const sources = { "cookbook.md": documents("step-2-cookbook.md"),
+        ...Object.fromEntries(modules.map((name) => [`stage-2-${name}.mts`, code(`stage-2-${name}.ts`)])),
         "check-knip-image.mjs": code("check-knip-image.mjs"), "inventory-view.py": code("inventory-view.py") };
       expectCopies(attempt, sources);
       expect(Object.keys((json(join(attempt, "operator-start.json")) as Receipt).digests)).toEqual(

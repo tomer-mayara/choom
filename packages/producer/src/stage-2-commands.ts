@@ -41,8 +41,14 @@ const [action, ...args] = process.argv.slice(2);
 const planPath = action === 'start' ? args[0] : undefined;
 const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE2_ID: id = '' } = process.env;
 // Saved copies of TypeScript files end in .mts, so Node runs them as ES modules in any folder.
+// Start saves the driver and every program that a later action runs. The
+// cookbook copy is a record of the instructions and prompts; no code reads it.
 const savedDriver = 'stage-2-commands.mts';
-const sources = ['cookbook.md', savedDriver, 'check-knip-image.mjs', 'inventory-view.py'];
+const modules = { handoff: 'stage-2-handoff.mts', profile: 'stage-2-knip-profile.mts', input: 'stage-2-knip-input.mts',
+  image: 'stage-2-tool-image.mts', knip: 'stage-2-knip-run.mts', finish: 'stage-2-finish.mts' };
+const sources = ['cookbook.md', savedDriver, ...Object.values(modules), 'check-knip-image.mjs', 'inventory-view.py'];
+// The saved command that runs one saved module copy in the attempt folder.
+const runSaved = (name: string): string => 'node "$CHOOM_STAGE2/' + name + '"\n';
 const drafts = ['run', 'discovery', 'baseline'];
 const planFile = 'entry-plan.json';
 const coreFiles = [planFile, 'entry-analysis.yaml', 'knip-runs.json', 'knip-profile.json', 'preflight.json'];
@@ -233,21 +239,6 @@ function validatePlan(bytes: Buffer, { discovery, artifacts, inventory }: RunSta
   checkPlanRecords(plan, discovery, { ids: new Set(), artifacts, reviewed }, workspaces, paths);
 }
 
-function block(marker: string, qualifier = ''): string {
-  const body = saved('cookbook.md').toString().replaceAll('\r\n', '\n');
-  const matches = [...body.matchAll(/^\x60\x60\x60sh\n([\s\S]*?)^\x60\x60\x60[ \t]*$/gm)]
-    .map(match => match[1] ?? '').filter(value => value.startsWith(marker) && value.includes(qualifier));
-  assert(matches.length === 1, 'Expected one saved cookbook block for: ' + marker.trimEnd());
-  return matches[0] ?? '';
-}
-
-function startRecipe(): string {
-  const body = saved('cookbook.md').toString().replaceAll('\r\n', '\n');
-  const matches = [...body.matchAll(/^cat > "\$CHOOM_STAGE2\/prepare\.mjs" <<'JS'\n[\s\S]*?^JS\nnode "\$CHOOM_STAGE2\/prepare\.mjs"\n/gm)];
-  assert(matches.length === 1, 'Expected one saved prepare.mjs heredoc.');
-  return matches[0]?.[0] ?? '';
-}
-
 function digests(names: string[]): Record<string, string> {
   return Object.fromEntries(names.map(name => [name, hash(saved(name))]));
 }
@@ -301,11 +292,11 @@ function startPhase(context: PhaseContext): void {
   if (plan) validatePlan(plan, state(false));
   for (const name of sources) save(name, regularFile(sourceOf(name)));
   Object.assign(context.record.digests, digests(sources));
-  execute(context, startRecipe(), 'handoff');
+  execute(context, runSaved(modules.handoff), 'handoff');
   state(true);
   if (plan) save(planFile, plan);
   Object.assign(context.record.digests, digests([
-    ...(plan ? [planFile] : []), 'prepare.mjs', 'handoff.json', 'run.input.yaml', ...drafts.map(name => name + '.before.yaml'),
+    ...(plan ? [planFile] : []), 'handoff.json', 'run.input.yaml', ...drafts.map(name => name + '.before.yaml'),
   ]));
   writeSync(context.stdout, plan ? 'Saved and validated the supplied entry plan.\n' : 'Prepared the attempt. Collect needed excerpts, then save the LLM plan packet with plan REVIEW_DIR.\n');
 }
@@ -397,18 +388,16 @@ function packetPhase({ record, stdout }: PhaseContext, current: RunState): void 
 function preparePhase(context: PhaseContext, current: RunState): void {
   validatePlan(saved(planFile), current);
   if (!Object.hasOwn(receiptFor('start').digests, planFile)) assert(receiptFor('plan').exitCode === 0, 'Save the plan before prepare.');
-  execute(context, block('cat > "$CHOOM_STAGE2/profile.mjs"'), 'profile');
-  execute(context, block("node --input-type=module <<'JS'", 'knip-input.json'), 'inventory');
-  Object.assign(context.record.digests, digests(['profile.mjs', 'knip-profile.json', 'preflight.json',
+  execute(context, runSaved(modules.profile), 'profile');
+  execute(context, runSaved(modules.input), 'inventory');
+  Object.assign(context.record.digests, digests([modules.profile, modules.input, 'knip-profile.json', 'preflight.json',
     ...(json('preflight.json').status === 'eligible' ? ['knip-input.json'] : [])]));
 }
 
 function toolchainPhase(context: PhaseContext): void {
   const eligible = json('preflight.json').status === 'eligible';
   if (eligible) {
-    execute(context, 'if command -v docker >/dev/null 2>&1; then\n' +
-      block('mkdir "$CHOOM_STAGE2/toolchain"') +
-      block('if [ -n "$CHOOM_KNIP_IMAGE" ]; then', 'toolchain/metadata.json') +
+    execute(context, 'if command -v docker >/dev/null 2>&1; then\n  ' + runSaved(modules.image) +
       "else\n  printf 'Docker is unavailable.\\n'\nfi\n", 'image');
   }
   const selected: Selection = eligible ? selection() : {
@@ -416,8 +405,8 @@ function toolchainPhase(context: PhaseContext): void {
   };
   saveJson('toolchain-selection.json', selected);
   context.record.selection = selected;
-  Object.assign(context.record.digests, digests(['toolchain-selection.json', ...imageFiles.filter(name =>
-    lstatSync(join(attempt, name), { throwIfNoEntry: false }))]));
+  Object.assign(context.record.digests, digests([...(eligible ? [modules.image] : []), 'toolchain-selection.json',
+    ...imageFiles.filter(name => lstatSync(join(attempt, name), { throwIfNoEntry: false }))]));
   writeSync(context.stdout, JSON.stringify(selected, null, 2) + '\n');
   assert(selected.status === 'approved' || !eligible,
     'No tool image was approved. Run can still record skipped Knip outcomes.');
@@ -430,8 +419,8 @@ function runPhase(context: PhaseContext): void {
     assert(isDeepStrictEqual(selected, toolchain.selection), 'Approved image evidence changed.');
     env.CHOOM_KNIP_IMAGE = selected.imageId as string;
   }
-  execute(context, block('cat > "$CHOOM_STAGE2/run-knip.mjs"'), 'knip');
-  Object.assign(context.record.digests, digests(['run-knip.mjs', 'knip-runs.json']));
+  execute(context, runSaved(modules.knip), 'knip');
+  Object.assign(context.record.digests, digests([modules.knip, 'knip-runs.json']));
 }
 
 function phase(context: PhaseContext): void {
@@ -451,7 +440,7 @@ function finish(): never {
   assert(receiptFor('start').exitCode === 0 && receiptFor('run').exitCode === 0 && receiptFor('save-review').exitCode === 0,
     'Start, run and save-review must succeed before finish.');
   const script = 'operator-finish.sh';
-  save(script, 'set -eCu\n' + block('cat > "$CHOOM_STAGE2/finish.mjs"'));
+  save(script, 'set -eCu\n' + runSaved(modules.finish));
   appendFileSync(join(attempt, 'commands.md'), '\n' + utc() + ' Publish with ' + JSON.stringify([process.execPath, self, 'finish']) +
     '. The finalizer registers this command and the saved recipe; no log writes follow success.\n');
   const result = spawnSync('/bin/bash', [join(attempt, script)], { cwd: attempt, env, stdio: 'inherit' });

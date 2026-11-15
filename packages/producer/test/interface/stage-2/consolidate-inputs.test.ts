@@ -3,9 +3,8 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
-import { type CommandResult, producerDocuments, runHelper, toolsRoot, withScratch } from "../../support/commands.ts";
+import { type CommandResult, runCli, runHelper, toolsRoot, withScratch } from "../../support/commands.ts";
 import { stageOneRun } from "../../support/stage-2-attempt.ts";
-import { spawnSync } from "node:child_process";
 
 // The maintenance step adopts one earlier per-attempt Knip input folder as the
 // shared input and removes the others. It refuses to move registered evidence.
@@ -27,14 +26,8 @@ function legacyInputs(work: string): string {
 }
 
 // Runs the operator command from the step-2 cookbook for source s2-003 and retired s2-002.
-function consolidate(work: string): CommandResult {
-  const cookbook = readFileSync(join(producerDocuments, "step-2-cookbook.md"), "utf8");
-  const blocks = [...cookbook.matchAll(/^node --input-type=module <<'JS'\n([\s\S]*?)^JS\n/gm)]
-    .map((match) => match[1] ?? "").filter((block) => block.includes("'consolidate'"));
-  expect(blocks).toHaveLength(1);
-  const result = spawnSync("node", ["--input-type=module"], { input: blocks[0], encoding: "utf8",
-    env: { ...process.env, CHOOM_WORK: work, CHOOM_TOOLS: toolsRoot } });
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+function consolidate(work: string, attempts = ["s2-003", "s2-002"]): CommandResult {
+  return runCli(["stage-2-consolidate", ...attempts], { CHOOM_WORK: work, CHOOM_TOOLS: toolsRoot });
 }
 
 describe("Stage 2 input consolidation", () => {
@@ -69,6 +62,16 @@ describe("Stage 2 input consolidation", () => {
         .map((name) => existsSync(join(work, name)))).toEqual([false, true, true, false]);
     });
   }, 30_000);
+
+  test("refuses a call without a source attempt", () => {
+    withScratch((scratch) => {
+      const work = join(scratch, "run");
+      stageOneRun(work);
+      const result = consolidate(work, []);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Use stage-2-consolidate SOURCE_ATTEMPT [RETIRE_ATTEMPT...].");
+    });
+  });
 
   test("refuses a registered file whose digest changed", () => {
     withScratch((scratch) => {

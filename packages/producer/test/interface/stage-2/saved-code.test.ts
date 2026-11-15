@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { appendFileSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { withScratch } from "../../support/commands.ts";
 import { entryPlan, finishAttempt, planPacket, savedJson, stageOneRun, stageTwo, stageTwoAttempt,
@@ -51,17 +51,19 @@ describe("a Stage 2 attempt runs the code that start saved", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stageOneRun(work);
-      const first = stageTwoAttempt(work, "s2-list");
-      expect(stageTwo(first, "start").status).toBe(0);
-      const programs = readdirSync(first.folder).filter(savedCode).sort();
-      programs.forEach((name, index) => {
-        const attempt = stageTwoAttempt(work, `s2-change-${index}`);
-        expect(stageTwo(attempt, "start").status).toBe(0);
-        appendFileSync(join(attempt.folder, name), "\n");
-        const prepare = stageTwo(attempt, "prepare");
-        expect({ name, status: prepare.status, error: savedJson(attempt, "operator-prepare.json").error })
-          .toEqual({ name, status: 1, error: "Saved phase input or output changed: " + name });
-      });
+      const attempt = stageTwoAttempt(work, "s2-check");
+      expect(stageTwo(attempt, "start").status).toBe(0);
+      const excerpt = ["app.ts", "1", "1", "Check the entry module."];
+      for (const name of readdirSync(attempt.folder).filter(savedCode).sort()) {
+        const path = join(attempt.folder, name);
+        const original = readFileSync(path);
+        appendFileSync(path, "\n");
+        const changed = stageTwo(attempt, "excerpt", excerpt);
+        expect({ name, status: changed.status, refused: changed.stderr.includes("Saved phase input or output changed: " + name) })
+          .toEqual({ name, status: 1, refused: true });
+        writeFileSync(path, original);
+      }
+      expect(stageTwo(attempt, "excerpt", excerpt).status).toBe(0);
     });
   }, 60_000);
 });

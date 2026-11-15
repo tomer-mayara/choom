@@ -149,6 +149,9 @@ runs the same command. It runs the helper in `packages/producer/src/` with the
 same arguments and environment. When a cookbook runs a helper copy saved in an
 attempt folder, use that saved copy as the cookbook shows. A saved copy of a
 TypeScript helper ends in `.mts`, so Node runs it as an ES module in any folder.
+Each stage start saves the code that its later actions run, and those actions
+run the saved copies. The cookbooks contain only the commands to type, the LLM
+prompts and the review steps; there is no code to copy from them.
 
 Choose a new working folder whose parent exists. For a checkout-local run, create
 the parent with `mkdir -p "$CHOOM_TOOLS/work-choom"` and set
@@ -524,6 +527,9 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
 | `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
+| `stage-1-settings.ts` | Stage 1 settings collector; start saves it and the settings action runs its saved copy |
+| `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs from the attempt: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
+| `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
 | `stage-3-finish.mjs` | Validate, save and verify the latest completed Stage 3 state |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5 |
 | `stage-4-5-publish.mjs` | Check, publish and verify the Stage 4 or Stage 5 review |

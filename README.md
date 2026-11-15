@@ -609,12 +609,18 @@ The [producer](packages/producer/component.yaml) is the `@choom/producer` Bun
 workspace. It holds the manual Stage 1 to 6 helpers, the duplication helpers,
 and `cli.ts`, which `bun run producer` runs on Node 26. The cookbooks, the
 [record format](docs/design/app-a/record-format.md), and the duplication guide
-stay in `docs/design/app-a/`. Stage 1 and Stage 2 still run code blocks from
-their saved cookbook copies, and each stage still saves copies of the files it
-uses. The Stage 1 and Stage 2 helpers and the recovery helper are TypeScript; a
-saved copy of a TypeScript file ends in `.mts`, so Node runs it as an ES module
-in any folder. `run-layout.d.mts` gives TypeScript callers the types of
-`run-layout.mjs`.
+stay in `docs/design/app-a/`. The cookbooks hold only the commands that an operator
+types, the LLM prompts and the review steps. The code that Stage 1 and Stage 2
+ran from their cookbooks is in TypeScript modules: the Stage 1 settings collector
+(`stage-1-settings.ts`), the Stage 2 steps (`stage-2-handoff.ts`,
+`stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`,
+`stage-2-knip-run.ts` and `stage-2-finish.ts`) and the input consolidation command
+(`stage-2-consolidate-inputs.ts`). Each stage start saves copies of the code that
+its later actions run, and those actions run the saved copies, so the code cannot
+change during an attempt. A saved copy of a TypeScript file ends in `.mts`, so
+Node runs it as an ES module in any folder. Stage 1 and Stage 2 still save their
+cookbook as a record of the instructions and prompts; no code reads those copies.
+`run-layout.d.mts` gives TypeScript callers the types of `run-layout.mjs`.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model

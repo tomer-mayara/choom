@@ -12,7 +12,7 @@ components or report smells.
 - [3. Collect settings](#3-collect-settings)
 - [4. Request the LLM review](#4-request-the-llm-review)
 - [5. Save and verify](#5-save-and-verify)
-- [Settings collector reference](#settings-collector-reference)
+- [Settings collector](#settings-collector)
 - [Recovery from a damaged older capture](#recovery-from-a-damaged-older-capture)
 
 ## 1. Prepare the run
@@ -43,8 +43,10 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 start
 
 Run one command at a time and stop on an error. The helper creates the folder;
 do not create it first. Keep the tool checkout unchanged for this run. It saves
-its own bytes, this cookbook, tool versions, IDs and a command log. Run the helper
-from the trusted checkout for every stage 1 action.
+copies of itself, the run layout helper and the settings collector, this cookbook
+as a record, tool versions, IDs and a command log. Run the helper from the trusted
+checkout for every stage 1 action; each later action refuses a helper that differs
+from its saved copy.
 
 ## 2. Review scope and capture
 
@@ -88,7 +90,8 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 capture
 The helper copies selected files with `rsync`, then performs a checksum dry-run
 comparison. It stops on differences or unsupported filesystem items. An empty
 comparison does not prove atomic capture. The saved manifest keeps that limit.
-The helper then writes the inventory, `inventory.mjs`, and `settings.mjs`.
+The helper then writes the inventory, `inventory.mjs`, and `settings.mts`, a copy
+of the settings collector that start saved.
 All later analysis reads the saved snapshot. It includes local and untracked
 files that pass the explicit exclusions; Git ignore rules do not define scope.
 
@@ -102,8 +105,10 @@ capture, rather than removed after inventory publication.
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 settings
 ```
 
-The collector reads package manifests and conventional `tsconfig*.json` and
-`jsconfig*.json` files through a snapshot-backed filesystem. It follows saved
+`settings` runs the saved collector `settings.mts` (see
+[Settings collector](#settings-collector)). The collector reads package manifests
+and conventional `tsconfig*.json` and `jsconfig*.json` files through a
+snapshot-backed filesystem. It follows saved
 configuration inheritance and project references without executing target code.
 Each configuration keeps declared options, effective options, diagnostics,
 references and compiler-selected `fileNames`. These filenames are inventory
@@ -299,126 +304,15 @@ For a correction found after publication, follow the correction guidance in
 [start here](start-here.md#record-a-correction); do not edit saved evidence or
 rerun `finish`.
 
-## Settings collector reference
+## Settings collector
 
-The trusted driver extracts the following recipe into `settings.mjs` at capture.
-This is an implementation reference. Do not run it separately when using the
-driver. It is also used by the legacy recovery helper.
-
-```sh
-cat > "$CHOOM_WORK/settings.mjs" <<'JS'
-import { readFileSync, lstatSync, realpathSync } from 'node:fs';
-import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
-import { join, resolve, posix } from 'node:path';
-const work = process.env.CHOOM_WORK;
-const require = createRequire(resolve(process.env.CHOOM_TOOLS, 'package.json'));
-const { InMemoryFileSystemHost, ts } = require('ts-morph');
-const inventory = JSON.parse(readFileSync(join(work, 'evidence/inventory.json'), 'utf8'));
-const snapshotRoot = realpathSync(join(work, 'snapshot'));
-const maxConfigFileBytes = 8 * 1024 * 1024;
-const memory = new InMemoryFileSystemHost();
-const indexed = new Map();
-const contentReads = new Map();
-let snapshotFailure;
-function failSnapshot(message) {
-  snapshotFailure = new Error(`Snapshot integrity check failed: ${message}`);
-  throw snapshotFailure;
-}
-for (const file of inventory.files.filter(file => file.kind === 'file')) {
-  if (!file.path || posix.isAbsolute(file.path) || file.path.includes('\\') ||
-      file.path.split('/').some(part => !part || part === '.' || part === '..'))
-    throw new Error(`Invalid inventory path: ${file.path}`);
-  const virtualPath = `/repo/${file.path}`;
-  if (indexed.has(virtualPath)) throw new Error(`Duplicate inventory path: ${file.path}`);
-  indexed.set(virtualPath, file);
-  memory.writeFileSync(virtualPath, '');
-}
-const readMissing = memory.readFileSync.bind(memory);
-memory.readFileSync = (path, encoding = 'utf8') => {
-  const file = indexed.get(posix.resolve('/', path));
-  if (!file) return readMissing(path, encoding);
-  const absolute = join(snapshotRoot, file.path);
-  let stat;
-  try {
-    stat = lstatSync(absolute);
-    if (!stat.isFile() || realpathSync(absolute) !== absolute || stat.size !== file.bytes)
-      failSnapshot(file.path);
-  } catch (error) {
-    if (snapshotFailure) throw snapshotFailure;
-    failSnapshot(`${file.path}: ${error.message}`);
-  }
-  if (file.bytes > maxConfigFileBytes)
-    throw new Error(`Configuration input exceeds ${maxConfigFileBytes} bytes: ${file.path}`);
-  let bytes;
-  try { bytes = readFileSync(absolute); }
-  catch (error) { failSnapshot(`${file.path}: ${error.message}`); }
-  if (bytes.length !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256)
-    failSnapshot(file.path);
-  contentReads.set(file.path, { path: file.path, bytes: file.bytes, sha256: file.sha256 });
-  return bytes.toString(encoding);
-};
-const packages = [];
-for (const [virtualPath, file] of indexed) {
-  if (posix.basename(file.path) !== 'package.json') continue;
-  try { packages.push({ path: file.path, data: JSON.parse(memory.readFileSync(virtualPath)) }); }
-  catch (error) {
-    if (snapshotFailure) throw snapshotFailure;
-    packages.push({ path: file.path, error: error.message });
-  }
-}
-const configHost = {
-  useCaseSensitiveFileNames: true,
-  fileExists: path => memory.fileExistsSync(path),
-  readFile: path => { try { return memory.readFileSync(path); }
-    catch (error) { if (snapshotFailure) throw snapshotFailure; return undefined; } },
-  readDirectory: (root, extensions, excludes, includes, depth) => ts.matchFiles(
-    root, extensions, excludes, includes, true, '/repo', depth,
-    path => {
-      if (!memory.directoryExistsSync(path)) return { files: [], directories: [] };
-      const entries = memory.readDirSync(path);
-      return { files: entries.filter(entry => entry.isFile).map(entry => posix.basename(entry.name)),
-        directories: entries.filter(entry => entry.isDirectory).map(entry => posix.basename(entry.name)) };
-    }, path => path),
-};
-const pending = [...indexed.keys()].filter(path => /\/(tsconfig|jsconfig)[^/]*\.json$/.test(path));
-const extras = JSON.parse(readFileSync(join(work, 'evidence/extra-configs.json'), 'utf8'));
-for (const path of extras) pending.push(posix.resolve('/repo', path));
-const seen = new Set();
-const configs = [];
-while (pending.length) {
-  const path = pending.shift();
-  if (seen.has(path)) continue;
-  seen.add(path);
-  const record = { path, status: 'partial', diagnostics: [] };
-  try {
-    const parsed = ts.parseConfigFileTextToJson(path, memory.readFileSync(path));
-    if (parsed.error) throw new Error(ts.flattenDiagnosticMessageText(parsed.error.messageText, '\n'));
-    record.declared = structuredClone(parsed.config);
-    const result = ts.parseJsonConfigFileContent(parsed.config, configHost, posix.dirname(path), undefined, path);
-    if (snapshotFailure) throw snapshotFailure;
-    record.compilerOptions = result.options;
-    record.diagnostics = result.errors.map(error => ({ code: error.code,
-      message: ts.flattenDiagnosticMessageText(error.messageText, '\n') }));
-    record.fileNames = result.fileNames.filter(name => indexed.has(name)).map(name => name.slice('/repo/'.length));
-    record.status = result.errors.length ? 'partial' : 'parsed';
-    record.references = (result.projectReferences ?? []).map(reference => ts.resolveProjectReferencePath(reference));
-    pending.push(...record.references);
-  } catch (error) {
-    if (snapshotFailure) throw snapshotFailure;
-    record.status = 'unavailable';
-    record.diagnostics.push({ message: error.message });
-  }
-  configs.push(record);
-}
-if (snapshotFailure) throw snapshotFailure;
-console.log(JSON.stringify({ formatVersion: 1, snapshotId: inventory.snapshotId,
-  virtualRoot: '/repo', limits: { maxConfigFileBytes }, packages, configs,
-  contentReads: [...contentReads.values()],
-  contentReadScope: 'Only requested settings and package manifests were read and verified. Other inventory contents were not revalidated.'
-}, null, 2));
-JS
-```
+The collector is
+[`stage-1-settings.ts`](../../../packages/producer/src/stage-1-settings.ts). Start saves
+it as `evidence/stage-1-settings.mts`, capture copies that saved copy to
+`settings.mts`, and `settings` runs that copy, so a later change to the tool
+checkout does not change this run. Review its settings record as section 3
+describes; do not run the collector separately. The recovery helper below runs
+the same collector.
 
 ## Recovery from a damaged older capture
 
@@ -432,7 +326,8 @@ not finalize stage 1. Its old artifact registry must still be intact.
 Use `--check` for a read-only preflight. Inputs are `CHOOM_PREVIOUS_WORK`, a new
 `CHOOM_WORK`, `CHOOM_TOOLS`, `CHOOM_RUN_ID`, and `CHOOM_SNAPSHOT_ID`. Both runs and
 the tool checkout must be separate canonical directories. Without `--check`, it
-copies evidence and collects settings. Review its capture receipt before further
+copies evidence and collects settings with a `settings.mts` copy of the trusted
+collector. Review its capture receipt before further
 work. Its historical layout requires a separately reviewed stage 1 publication;
 the new driver above does not claim to resume that legacy layout automatically.
 For a new third-party run, use the normal capture flow in this cookbook.

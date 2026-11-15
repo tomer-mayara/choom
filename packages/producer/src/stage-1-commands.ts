@@ -37,6 +37,10 @@ const tools = realpathSync(process.env.CHOOM_TOOLS ?? '');
 assert(self === join(tools, 'packages/producer/src/stage-1-commands.ts'), 'Use the trusted Stage 1 helper.');
 // Saved copies of TypeScript files end in .mts, so Node runs them as ES modules in any folder.
 const savedHelper = 'evidence/stage-1-commands.mts';
+// Start saves the settings collector. Capture copies that saved copy to the
+// collector that the settings action runs and finish registers.
+const savedCollector = 'evidence/stage-1-settings.mts';
+const collector = 'settings.mts';
 const layoutHelper = 'run-layout.mjs';
 const layoutSource = join(dirname(self), layoutHelper);
 assert(isAbsolute(process.env.CHOOM_WORK ?? ''), 'Set CHOOM_WORK to a new absolute path.');
@@ -104,12 +108,6 @@ function sourceRange(path: unknown, first: unknown, last: unknown, inventory: In
   return { snapshotRef: inventory.snapshotId, path, sha256: file.sha256, lines: [first, last],
     excerpt, totalLines: lines.length };
 }
-function settingsRecipe(): string {
-  const cookbook = read('evidence/cookbook.md').toString();
-  const matches = [...cookbook.matchAll(/^cat > "\$CHOOM_WORK\/settings\.mjs" <<'JS'\n([\s\S]*?)^JS\n/gm)];
-  const [match] = matches;
-  assert(matches.length === 1 && match, 'Expected one saved settings helper.'); return match[1] ?? '';
-}
 function artifactId(path: string): string {
   const fixed: Record<string, string> = { 'evidence/inventory.json': 'inventory-001', 'evidence/settings.json': 'settings-001',
     'evidence/review.yaml': 'review-001', 'evidence/tools.json': 'tools-001', 'exclusions.txt': 'exclusions-001',
@@ -157,6 +155,8 @@ function startRun(): void {
   saveJson('evidence/stage1-inputs.json', { formatVersion: 1, ...ids, target, tools, ...layout, startedAt: utc() });
   save(savedHelper, readFileSync(self));
   save('evidence/' + layoutHelper, readFileSync(layoutSource));
+  save(savedCollector, readFileSync(join(dirname(self), 'stage-1-settings.ts')));
+  // A record of the instructions and prompts for this run. No code reads it.
   save('evidence/cookbook.md', readFileSync(join(tools, 'docs/design/app-a/step-1-cookbook.md')));
   saveJson('evidence/tools.json', { node: process.version, tsMorph: require('ts-morph/package.json').version,
     typescript: require('ts-morph').ts.version, yaml: require('yaml/package.json').version });
@@ -211,7 +211,7 @@ function capture(inputs: StageOneInputs): void {
   saveJson('evidence/capture-scope.json', { formatVersion: 1, snapshotRef: inputs.snapshotRef, ...layout,
     exclusionsSha256: hash(exclusions), scopeNotesSha256: hash(scopeNotes) });
   save('inventory.mjs', inventoryHelper(inputs.snapshotRef));
-  save('settings.mjs', settingsRecipe());
+  save(collector, read(savedCollector));
   console.log(`Captured ${inventory.files.length} regular files. Atomic capture is not proven.`);
 }
 
@@ -226,14 +226,14 @@ function collectSettings(inputs: StageOneInputs): void {
   const n = Math.max(0, ...prior) + 1;
   const stem = 'evidence/settings-probes/probe-' + String(n).padStart(3, '0');
   save(stem + '.extra-configs.json', read('evidence/extra-configs.json'));
-  const bytes = command(process.execPath, [join(work, 'settings.mjs')], stem, { timeout: 60_000 });
+  const bytes = command(process.execPath, [join(work, collector)], stem, { timeout: 60_000 });
   const result = JSON.parse(bytes.toString()); assert(result.snapshotId === inputs.snapshotRef, 'Wrong settings snapshot.');
   save(stem + '.result.json', bytes);
   writeFileSync(join(work, 'evidence/settings.json'), bytes);
   writeFileSync(join(work, 'evidence/settings-selection.json'), JSON.stringify({ formatVersion: 1,
     snapshotRef: inputs.snapshotRef, probe: stem, settingsSha256: hash(bytes),
     extraConfigsSha256: hash(read('evidence/extra-configs.json')),
-    collectorSha256: hash(read('settings.mjs')) }, null, 2) + '\n');
+    collectorSha256: hash(read(collector)) }, null, 2) + '\n');
   console.log('Settings collected. Evidence ID for this probe: ' + artifactId(stem + '.result.json'));
 }
 
@@ -263,7 +263,7 @@ function checkCapturedInputs(inputs: StageOneInputs): void {
     selection.settingsSha256 === hash(read(selection.probe + '.result.json')) &&
     selection.extraConfigsSha256 === hash(read('evidence/extra-configs.json')) &&
     selection.extraConfigsSha256 === hash(read(selection.probe + '.extra-configs.json')) &&
-    selection.collectorSha256 === hash(read('settings.mjs')) && json(selection.probe + '.json').exitCode === 0,
+    selection.collectorSha256 === hash(read(collector)) && json(selection.probe + '.json').exitCode === 0,
   'Settings do not match the selected successful probe and current extra paths. Rerun settings before review.');
 }
 
@@ -379,7 +379,7 @@ function publish(inputs: StageOneInputs, bytes: Map<string, Buffer>, review: Rev
     components: [], interfaces: [], resources: [], rules: [] }));
   save('discovery.yaml', stringify(discovery));
   appendFileSync(join(work, 'evidence/commands.md'), '\nCompleted Stage 1 review and verification at ' + utc() + '.\n');
-  const all = [...enumerate('evidence'), 'exclusions.txt', 'inventory.mjs', 'settings.mjs'];
+  const all = [...enumerate('evidence'), 'exclusions.txt', 'inventory.mjs', collector];
   const registry = Object.fromEntries(all.map(path => [artifactId(path), { path, sha256: hash(read(path)) }]));
   assert(Object.keys(registry).length === all.length, 'Duplicate artifact IDs.');
   save('run.yaml', stringify({ formatVersion: 1, id: inputs.runRef, mode: 'A', status: 'in-progress',

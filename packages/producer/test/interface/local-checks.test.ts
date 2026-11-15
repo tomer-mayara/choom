@@ -60,7 +60,7 @@ describe("local producer tool checks", () => {
     });
   });
 
-  test("the recovery check verifies retained inputs with the Stage 1 cookbook and writes nothing", () => {
+  test("the recovery check verifies retained inputs and writes nothing", () => {
     withScratch((scratch) => {
       const previous = join(scratch, "previous");
       const { digest } = savedSnapshot(previous, "snapshot-old");

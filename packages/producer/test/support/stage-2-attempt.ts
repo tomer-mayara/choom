@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { type CommandResult, runCli, runHelper, toolsRoot } from "./commands.ts";
@@ -36,12 +36,7 @@ export function stageTwoAttempt(work: string, id: string, env: Record<string, st
 }
 
 // The driver copy that start saved in the attempt.
-function savedDriver(folder: string): string {
-  const names = readdirSync(folder).filter((name) => /^stage-2-commands\.m[jt]s$/.test(name));
-  const [name] = names;
-  if (name === undefined || names.length !== 1) throw new Error("Expected one saved Stage 2 driver in " + folder);
-  return join(folder, name);
-}
+const savedDriver = (folder: string): string => join(folder, "stage-2-commands.mts");
 
 // Start runs through the command line of the tool checkout. Every later action
 // runs the driver copy saved in the attempt.

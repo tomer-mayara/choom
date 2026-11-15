@@ -9,6 +9,7 @@ describe("producer command line mapping", () => {
     expect([...producerCommands].map(([name, { helper }]) => [name, helper])).toEqual([
       ["stage-1", "stage-1-commands.ts"],
       ["stage-2", "stage-2-commands.ts"],
+      ["stage-2-consolidate", "stage-2-consolidate-inputs.ts"],
       ["stage-3", "stage-3-commands.mjs"],
       ["stage-4", "stage-4-commands.mjs"],
       ["stage-4-5-publish", "stage-4-5-publish.mjs"],
