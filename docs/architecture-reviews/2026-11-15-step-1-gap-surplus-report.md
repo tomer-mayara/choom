@@ -153,6 +153,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-10a | tomer-mayara/choom#76 | Draft. This PR also records plan changes 15 and 16. |
 | GA-10b | tomer-mayara/choom#77 | Draft. This PR also records the approval of plan changes 6 to 16. |
 | GA-01a | tomer-mayara/choom#78 | Draft. This PR also records D22. |
+| GA-06b | tomer-mayara/choom#79 | Draft. The query command is the Stage 4 inspect action `references PATH SYMBOL`, where the design places focused source queries. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
