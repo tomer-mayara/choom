@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { assert, type Fields, hash, object, text } from './record-checks.ts';
@@ -36,7 +36,12 @@ function readManifest(folder: string): Fields {
   const size = entry?.isFile() ? entry.size : undefined;
   assert(size !== undefined, `The folder ${folder} has no run.yaml. Give the folder of a run that Stage 6 completed.`);
   assert(size <= manifestLimit, `run.yaml is larger than the read limit of ${manifestLimit} bytes.`);
-  const manifest: unknown = parse(readFileSync(path, 'utf8'));
+  let manifest: unknown;
+  try {
+    manifest = parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    throw new Error('Cannot read run.yaml: ' + (error as Error).message);
+  }
   assert(object(manifest), 'run.yaml is not a run manifest.');
   return manifest;
 }
@@ -52,6 +57,7 @@ function registeredFiles(manifest: Fields): RegisteredFile[] {
 }
 
 export function readCompletedRun(runFolder: string): CompletedRun {
+  assert(statSync(runFolder, { throwIfNoEntry: false })?.isDirectory(), `The run folder ${runFolder} does not exist or is not a folder.`);
   const folder = realpathSync(runFolder);
   const manifest = readManifest(folder);
   const progress = object(manifest.progress) ? manifest.progress : {};

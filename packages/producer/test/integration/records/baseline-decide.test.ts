@@ -164,6 +164,28 @@ describe("baseline decide", () => {
     });
   });
 
+  test("refuses a decision file that is a folder", () => {
+    withScratch((scratch) => {
+      const work = copiedRun(scratch);
+      expectRefused(work, scratch, `The decision file is not a regular file: ${scratch}\n`);
+    });
+  });
+
+  test("refuses a published baseline that the shared baseline rules refuse, and names the first rule", () => {
+    withScratch((scratch) => {
+      const work = copiedRun(scratch);
+      const file = decisionFile(scratch, work, [acceptPurpose]);
+      const baseline = parse(readFileSync(join(work, published.baselinePath), "utf8")) as Record<string, unknown>;
+      const text = stringify({ ...baseline, rules: undefined });
+      writeFileSync(join(work, published.baselinePath), text);
+      const manifest = parse(readFileSync(join(work, "run.yaml"), "utf8")) as { artifacts: Record<string, { sha256: string }> };
+      Object.assign(manifest.artifacts[published.baselineId] ?? {}, { sha256: sha256(text) });
+      writeFileSync(join(work, "run.yaml"), stringify(manifest));
+      expectRefused(work, file, `The published baseline ${published.baselinePath} does not pass the shared baseline rules ` +
+        "at rules: Invalid input: expected array, received undefined\n");
+    });
+  });
+
   test("refuses a decisions path in the run folder that is not a folder", () => {
     withScratch((scratch) => {
       const work = copiedRun(scratch);

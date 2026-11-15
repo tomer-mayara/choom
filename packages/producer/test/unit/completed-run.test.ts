@@ -38,6 +38,21 @@ describe("a completed run", () => {
     });
   });
 
+  test("refuses a run folder that does not exist", () => {
+    withScratch((scratch) => {
+      const missing = join(scratch, "missing");
+      expect(() => readCompletedRun(missing)).toThrow(new Error(`The run folder ${missing} does not exist or is not a folder.`));
+    });
+  });
+
+  test("refuses a run.yaml that is not YAML", () => {
+    withScratch((scratch) => {
+      const work = smallRun(scratch);
+      writeFileSync(join(work, "run.yaml"), "status: [completed\n");
+      expect(() => readCompletedRun(work)).toThrow(/^Cannot read run\.yaml: /);
+    });
+  });
+
   test.each<[string, Record<string, unknown>]>([
     ["a run that is in progress", { status: "in-progress" }],
     ["a run whose baseline recovery is pending", { progress: { inventory: "complete", baselineRecovery: "pending" } }],

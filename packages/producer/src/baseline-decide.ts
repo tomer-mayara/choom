@@ -48,9 +48,9 @@ function refuse(problems: readonly string[]): never {
 function readDecisionFile(run: CompletedRun, path: string): { bytes: Buffer; value: unknown } {
   assert(lstatSync(path, { throwIfNoEntry: false }) !== undefined, 'The decision file does not exist: ' + path);
   const file = realpathSync(path);
-  assert(!pathsOverlap(run.folder, file), 'Keep the decision file outside the run folder. The command saves its copy in decisions/.');
   const entry = lstatSync(file);
   assert(entry.isFile(), 'The decision file is not a regular file: ' + path);
+  assert(!pathsOverlap(run.folder, file), 'Keep the decision file outside the run folder. The command saves its copy in decisions/.');
   assert(entry.size <= fileLimit, 'The decision file is larger than 16 MiB.');
   const bytes = readFileSync(file);
   let text: string;
@@ -71,7 +71,11 @@ function readDecisionFile(run: CompletedRun, path: string): { bytes: Buffer; val
 // saved file bytes, which Stage 6 registered in run.yaml.
 function publishedBaseline(run: CompletedRun): SavedBaseline {
   const parsed = baselineSchema.safeParse(readBaselineYaml(readRegisteredFile(run, run.baseline, fileLimit), yaml));
-  assert(parsed.success, `The published baseline ${run.baseline.path} does not pass the shared baseline rules.`);
+  if (!parsed.success) {
+    const [issue] = parsed.error.issues;
+    throw new Error(`The published baseline ${run.baseline.path} does not pass the shared baseline rules` +
+      (issue ? ` at ${issue.path.map(String).join('.')}: ${issue.message}` : '.'));
+  }
   return { baseline: parsed.data, sha256: run.baseline.sha256 };
 }
 
