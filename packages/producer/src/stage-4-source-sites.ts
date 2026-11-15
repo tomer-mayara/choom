@@ -26,6 +26,8 @@ export interface SiteInputs {
 }
 // The kind of a site, its literal specifier or null, and its type-only and dynamic flags.
 type Site = [kind: string, specifier: string | null, typeOnly: boolean | null, dynamic: boolean | null];
+// A site of a parsed file: its node and what the collector saves about it.
+export interface FileSite { node: TypeScript.Node; site: Site }
 
 const siteLimit = 10000;
 const expressionLimit = 4096;
@@ -87,6 +89,19 @@ function callSite(ts: Ts, node: TypeScript.CallExpression, source: TypeScript.So
   return undefined;
 }
 
+// The sites of a parsed file, in the order of its syntax tree. The Stage 4 references
+// action finds the saved site of a node with it.
+export function fileSites(ts: Ts, source: TypeScript.SourceFile): FileSite[] {
+  const found: FileSite[] = [];
+  const visit = (node: TypeScript.Node): void => {
+    const site = declarationSite(ts, node) ?? (ts.isCallExpression(node) ? callSite(ts, node, source) : undefined);
+    if (site) found.push({ node, site });
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
 // Parses each file of the scope once with the snapshot project, after its check, and
 // saves its sites and its parser diagnostics. Lines come from the text that the parser read.
 export function sourceSites({ attemptId, snapshotRef, sourceFiles, snapshot, check, tsMorph, parser }: SiteInputs): Fields {
@@ -100,19 +115,13 @@ export function sourceSites({ attemptId, snapshotRef, sourceFiles, snapshot, che
       for (const diagnostic of parseDiagnostics(source))
         diagnostics.push({ path: file.path, code: diagnostic.code, start: diagnostic.start ?? null, length: diagnostic.length ?? null,
           message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n') });
-      const record = (node: TypeScript.Node, [kind, specifier, typeOnly, dynamic]: Site): void => {
-        if (sites.length >= siteLimit) { omittedSites++; return; }
+      for (const { node, site: [kind, specifier, typeOnly, dynamic] } of fileSites(ts, source)) {
+        if (sites.length >= siteLimit) { omittedSites++; continue; }
         const expression = node.getText(source);
         sites.push({ id: attemptId + '-site-' + (sites.length + 1), path: file.path, sha256: file.sha256,
           lines: [lineAt(node.getStart(source)), lineAt(Math.max(node.getStart(source), node.end - 1))],
           kind, specifier, typeOnly, dynamic, expression: expression.slice(0, expressionLimit), truncated: expression.length > expressionLimit });
-      };
-      const visit = (node: TypeScript.Node): void => {
-        const site = declarationSite(ts, node) ?? (ts.isCallExpression(node) ? callSite(ts, node, source) : undefined);
-        if (site) record(node, site);
-        ts.forEachChild(node, visit);
-      };
-      visit(source);
+      }
     });
   }
   return { formatVersion: 1, snapshotRef, status: omittedSites || diagnostics.length ? 'partial' : 'completed',
