@@ -559,15 +559,18 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `attempt-files.ts` | The review prompt of the cookbook that Stage 3 or Stage 5 start saved, and the command log that each action of those stages extends |
 | `stage-3-inputs.ts`, `stage-3-collect.ts` | The checked inputs of each Stage 3 action: the run after Stage 2 and its indexed snapshot files; and the evidence that Stage 3 `collect` saves |
 | `stage-3-text-search.ts`, `ripgrep.ts` | The Stage 3 text search of the saved snapshot (`stage-3 text-search`): the ripgrep arguments, the output check, the scope and the tool-call record; and the ripgrep program, its version and a bounded call |
-| `stage-3-exports.ts` | The Stage 3 exports action (`stage-3 exports`): the compiler settings of the file, the exports record and its notes |
+| `stage-3-exports.ts` | The Stage 3 exports action (`stage-3 exports`): the exports record and its notes |
+| `compiler-settings.ts` | The compiler settings of one source file, chosen by the rule of the Stage 4 graph groups, and their description. The Stage 3 exports action and the Stage 4 references action use them |
 | `snapshot-project.ts`, `snapshot-exports.ts` | The ts-morph project of the saved snapshot: an in-memory file system that holds only the indexed snapshot files with checked digests, the record of each request for a path outside the snapshot, the compiler inputs that the snapshot does not hold as gaps, and the syntax reader without compiler settings that the source queries of Stages 3, 4 and 5 use; and the exports of one file of the project |
+| `snapshot-references.ts` | The references to a symbol of a file of the snapshot project, from the TypeScript type checker: its declarations, and each import, re-export, type use, call and other use with its range and local name |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record and the producer code record |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
-| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, their passes, traversal roots and limits. The Stage 3 exports action uses the same compiler context rule |
+| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, their passes, traversal roots and limits. `compiler-settings.ts` applies the same compiler context rule to one file |
 | `stage-4-module-kinds.ts` | The module kind of the code that runs for each file of a compiler context, from its extension, the compiler `module` setting and the nearest indexed `package.json`. Files that compile to CommonJS get a CommonJS pass |
 | `stage-4-graph.ts` | Dependency extraction in the graph container. The container gets only this file, as `/producer/stage-4-graph.mts` |
-| `stage-4-inspect.ts`, `stage-4-source-sites.ts`, `stage-4-review-prompt.ts` | Bounded source evidence (`stage-4-inspect` command): the checked attempt, the first excerpts and the excerpt action; the source sites; and the Stage 4 review prompt |
+| `stage-4-inspect.ts`, `stage-4-source-sites.ts`, `stage-4-review-prompt.ts` | Bounded source evidence (`stage-4-inspect` command): the checked attempt, the first excerpts, the excerpt action and the references action; the source sites; and the Stage 4 review prompt |
+| `stage-4-references.ts` | The record of the Stage 4 references action: the import pass of the graph group of the file, its compiler settings, the references, the computed loading sites as unresolved entries, and the completeness |
 | `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |

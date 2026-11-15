@@ -459,7 +459,10 @@ and the ripgrep version, and that a search with no match names the searched file
 and the capture exclusions. They list the exports of a snapshot file with the
 Stage 3 exports action and check each kind and source range, and that a
 declaration file that the compiler settings name and the capture did not save is
-a gap of an open project. They build the Stage 4 graph of small packages and check
+a gap of an open project. They ask Stage 4 inspect for the references to a
+function and check the importing files with their ranges and the compiler
+settings of the query, and that a computed import is an unresolved possible use
+that makes the list partial. They build the Stage 4 graph of small packages and check
 that a JavaScript file gets the target of the condition of its syntax, that
 TypeScript that compiles to CommonJS gets the `require` target and no
 `pre-compilation-only` mark, and that TypeScript that compiles to an ES module
@@ -467,7 +470,8 @@ keeps the `import` target. The unit suites check the producer code digest and re
 command mapping, the check of the visible LLM response and the call record, the
 parsing profile, the settings collector, the Git identity, the capture exclusion
 rules, the installed ripgrep program, the text search, the snapshot project, the
-export list, the Stage 4 graph profile, the module kinds, the profile checks of the
+export list, the references to a symbol and their unresolved loading sites,
+the Stage 4 graph profile, the module kinds, the profile checks of the
 Stage 4 graph helper and the skip reasons of the Stage 5 syntax
 query. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
@@ -521,6 +525,9 @@ that attempt: each kind of source site with its lines, the parser record with th
 ts-morph and TypeScript versions, the source forms, a file with a byte order mark,
 the first excerpts and their skip reasons, and the refusals. It shows that a later
 action refuses a changed ts-morph in a copied tool checkout.
+The Stage 4 references suite runs the references action on such an attempt, and
+the publication suite checks the excerpt and references receipts and a citation
+of a reference.
 Run the checks of the shared baseline rules in the producer with:
 
 ```sh
@@ -645,6 +652,25 @@ with:
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/snapshot-project.test.ts ./packages/producer/test/unit/snapshot-exports.test.ts ./packages/producer/test/unit/stage-4-graph-profile.test.ts ./packages/producer/test/unit/stage-1-settings.test.ts
 bun test ./packages/producer/test/interface/stage-3
+```
+
+Stage 4 `stage-4-inspect references PATH SYMBOL` lists the references to a
+top-level symbol of a source file of the graph scope, after `collect`. It opens
+the same snapshot project with the files of the import pass of the graph group
+that holds the file, and with the compiler settings of that group, chosen by the
+same rule as Stage 3 `exports`. The TypeScript type checker follows renamed
+imports and exports, `export * from`, namespace imports and the other aliases to
+the declaration. Each request saves `references-NNN.json` with the settings, the
+scope, the tool versions, the declarations, each reference with its kind, range
+and local name, and the loading sites of the scope with a computed module name as
+unresolved entries; `completeness` is `partial` when there is one. The
+[Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-references-to-a-symbol)
+gives the fields. Run the focused checks of the references with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/snapshot-references.test.ts ./packages/producer/test/unit/stage-4-references.test.ts
+bun test ./packages/producer/test/interface/stage-4/references.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts ./packages/producer/test/interface/stage-3/exports.test.ts
 ```
 
 Run the focused checks of the producer code record with:
@@ -856,7 +882,8 @@ ran from their cookbooks is in TypeScript modules: the Stage 1 settings collecto
 for the evidence of `collect`, `stage-3-text-search.ts` with `ripgrep.ts` for
 the text search, and `stage-3-exports.ts` for the exports action. The Stage 4
 inspection helper (`stage-4-inspect.ts`) uses `stage-4-source-sites.ts` for the
-source sites and `stage-4-review-prompt.ts` for the review prompt. The Stage 5
+source sites, `stage-4-review-prompt.ts` for the review prompt and
+`stage-4-references.ts` for the references action. The Stage 5
 helper (`stage-5-commands.ts`) uses `stage-5-inputs.ts` for the checked run and
 snapshot files, and `stage-5-query.ts` with `stage-5-syntax.ts` for the evidence
 of `collect`. `attempt-files.ts` holds the review prompt of a saved cookbook and
@@ -864,6 +891,9 @@ the command log of Stages 3 and 5. The snapshot project (`snapshot-project.ts`)
 opens a ts-morph project on the in-memory file system of the Stage 1 settings
 collector, and `snapshot-exports.ts` lists the exports of one of its files. The
 source queries of Stages 3, 4 and 5 read their files with its syntax reader.
+`snapshot-references.ts` finds the references to a symbol of one of its files, and
+`compiler-settings.ts` chooses the compiler settings of a file for the Stage 3
+exports and Stage 4 references actions.
 Every stage action runs the code in the tool checkout. Stage 1 start saves the
 producer code record (`producer-code.ts`): the package version, the Git commit
 when there is one, and one digest of

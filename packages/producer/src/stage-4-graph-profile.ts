@@ -147,8 +147,8 @@ function remainingGroup(files: SourceFile[], profile: ParsingProfile | null, set
 // compiler selection that selects some of them, in record order, then one group
 // for the files that no parsed selection covers. That group uses the named Choom
 // parsing profile when the settings record names it; otherwise it is the
-// configuration-free fallback. A file can be in several groups. The Stage 3
-// exports action applies the same rule to one file.
+// configuration-free fallback. A file can be in several groups. compiler-settings.ts
+// applies the same rule to one file for the Stage 3 exports and Stage 4 references actions.
 export function compilerContexts(settings: Fields, sourceFiles: SourceFile[], settingsRef: string): CompilerContexts {
   const parsingProfile = namedParsingProfile(settings);
   const { groups, configurationLimits } = compilerGroups(settings, sourceFiles, settingsRef);

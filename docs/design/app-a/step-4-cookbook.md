@@ -21,6 +21,7 @@ publish the proposed model into the working drafts.
 - [3. Collect dependency evidence](#3-collect-dependency-evidence)
 - [Recover an incomplete saved input](#recover-an-incomplete-saved-input)
 - [4. Collect source evidence](#4-collect-source-evidence)
+  - [Find the references to a symbol](#find-the-references-to-a-symbol)
 - [5. Ask the LLM to recover components](#5-ask-the-llm-to-recover-components)
 - [6. Check the proposed result](#6-check-the-proposed-result)
 - [Saved state](#saved-state)
@@ -358,6 +359,172 @@ reviewed caller and all supporting binding ranges with matching located notes.
 Keep unassessed interfaces, scoped empty results, and operator-command limits
 explicit. Do not fill an unknown permission policy from source callers.
 
+### Find the references to a symbol
+
+After `collect`, the LLM can ask where a top-level symbol of a source file is
+used. It gives the path and the symbol name, as for an excerpt. Run each request
+separately:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-inspect references \
+  "src/billing/invoice.ts" createInvoice
+```
+
+The path must be a JavaScript or TypeScript file of the graph profile scope. The
+symbol is an export name of the file (`default` for the default export and
+`export=` for `export =`), else the name of a top-level declaration of the file.
+An import is not a declaration of the file. Each request takes the next number,
+also when it fails. Excerpt requests have their own numbers.
+
+The helper opens the snapshot project of the Stage 3 exports action (see the
+[Stage 3 cookbook](step-3-cookbook.md#list-the-exports-of-a-source-file)) with
+the files and the compiler settings of one graph group:
+
+- The scope is the import pass of the graph profile group that holds the file:
+  its `sourceFiles` in `graph-profile.json`. The helper does not search the files
+  of other groups. The compiler can read other indexed snapshot files to resolve
+  imports, but the helper does not search them.
+- The compiler settings are those of the group, chosen as for Stage 3 `exports`:
+  the first fully parsed configuration of `settings-001` that selects the file,
+  else the named Choom parsing profile, else no settings. The helper adds
+  `allowJs`, so that the JavaScript files of the scope are part of the compiler
+  program.
+
+The TypeScript type checker links each name of the scope to the symbol that it
+names. The helper follows each alias to the declaration: renamed imports and
+exports (`import { createInvoice as ci }` and
+`export { createInvoice as make } from './invoice'`), `export * from`, namespace
+imports (`billing.createInvoice()`), default imports, `import =` and the
+JavaScript `require` calls that the compiler resolves. It does not follow a
+`require` call in a TypeScript file, an import that the compiler settings do not
+resolve, the local names that a destructured dynamic import binds in a TypeScript
+file, or JSDoc types.
+
+A loading site of `source-sites.json` in the scope with a computed module name
+(`specifier: null`) can load the module of the symbol. The helper lists each
+`dynamic-import`, `require-candidate`, `require-resolve-candidate` and
+`import-equals` site of this kind in `unresolved`, as a possible use that it does
+not resolve. Then the references can be incomplete.
+
+The helper saves:
+
+| File | Contents |
+| --- | --- |
+| `references-NNN.json` | The record below. |
+| `operator-references-NNN.json` | The receipt, with the digest of the record. |
+
+| Record field | Meaning |
+| --- | --- |
+| `formatVersion`, `attemptId`, `snapshotRef`, `status` | `1`, the Stage 4 attempt ID, the snapshot ID and `completed`. A refused request saves no record. |
+| `path`, `sha256`, `symbol` | The source file, its inventory digest and the requested symbol. |
+| `settingsRef`, `compilerSettingsRef`, `compilerSettings` | As in the Stage 3 exports record: the settings of the group and their reference. |
+| `queryOptions` | What the helper adds to the compiler settings: `allowJs: true`. |
+| `scope` | `graphContext`, the ID of the import pass; `graphContextRef`, a JSON Pointer to it in `graph-profile.json`; and `files`, the files that the query searched. |
+| `tool` | The parser record of `source-sites.json` with the name of the type checker: the versions of Node, ts-morph and its TypeScript, and the digests of the tool files. |
+| `virtualRoot` | `/repo`, the snapshot root as the project sees it. |
+| `completeness` | `partial` when `unresolved` has an entry, else `complete-within-scope`. Neither value covers the files outside the scope or the uses that the helper does not follow. |
+| `declarations` | The declarations of the symbol after its aliases: `path` and `range`. A declaration is not a reference. |
+| `references` | Each site outside the declarations, by path and in source order: `path`, `range`, `kind` and `localName`. |
+| `unresolved` | Each loading site of the scope with a computed module name: `siteRef` (a JSON Pointer into `source-sites.json`), `path`, `lines`, `kind` and `expression`. |
+| `gaps`, `outsideReads` | As in the Stage 3 exports record, for all files of the scope. |
+| `notes` | What the list covers and does not cover, in plain text. |
+
+`kind` is one of:
+
+- `import`: an import, `import =` or JavaScript `require` that binds a local name
+  to the symbol. The range is the import entry, such as `createInvoice as ci`.
+- `re-export`: an export list entry, `export default`, `export =` or
+  `export * from` that exports the symbol. `export * from` gives one entry for
+  each name that the file exports as the symbol, and its range is the statement.
+- `type`: a use in a type, such as an annotation, `typeof` in a type or an
+  `implements` clause.
+- `call`: a call, `new` expression, tagged template, decorator or JSX element
+  that the reference starts. The closing tag of a JSX element is not listed.
+- `value`: any other use, such as an assignment, an argument or a class
+  `extends` clause.
+
+`localName` is the name that the site uses: the local name of an import, such as
+`ci`; the export name of a re-export, such as `make`; or the name expression of
+another use, such as `ci` or `billing.createInvoice`. A `range` has 1-based lines
+and columns, as in the Stage 3 exports record. A byte order mark is not counted.
+
+A request for `createInvoice` in a small snapshot saves this record. Two users
+import it, one through a `paths` alias of `tsconfig.json`, and `src/plugins.ts`
+loads a module by a computed name. The snapshot ID is an example, and the tool
+digests and `notes` are cut:
+
+```json
+{
+  "formatVersion": 1,
+  "attemptId": "s4-001",
+  "snapshotRef": "snapshot-001",
+  "status": "completed",
+  "path": "src/billing/invoice.ts",
+  "sha256": "df3fcee4068a1ea8ffb65412db2671c4b80d5b628dd20adc0d12f3ea32b18c25",
+  "symbol": "createInvoice",
+  "settingsRef": "settings-001",
+  "compilerSettingsRef": "settings-001#/configs/0",
+  "compilerSettings": {
+    "source": "configuration",
+    "configPath": "tsconfig.json",
+    "reason": "The first fully parsed configuration of settings-001 that selects the file.",
+    "compilerOptions": { "strict": true, "module": 99, "moduleResolution": 100, "paths": { "@billing/*": ["./src/billing/*"] },
+      "configFilePath": "/repo/tsconfig.json", "pathsBasePath": "/repo" },
+    "otherContextRefs": []
+  },
+  "queryOptions": { "allowJs": true },
+  "scope": {
+    "graphContext": "compiler-1-import",
+    "graphContextRef": "s4-001-file@graph-profile.json#/contexts/0",
+    "files": ["src/billing/invoice.ts", "src/orders.ts", "src/plugins.ts", "src/refunds.ts"]
+  },
+  "tool": { "name": "ts-morph snapshot project (TypeScript type checker)", "node": "v26.13.0", "tsMorph": "28.0.0",
+    "typescript": "6.0.2", "modules": { "ts-morph/dist/ts-morph.js": "a86ac69a892c87c860e842c755543bd9600b9b13c26be44495cdcf4ef8fb7307" } },
+  "virtualRoot": "/repo",
+  "completeness": "partial",
+  "declarations": [
+    { "path": "src/billing/invoice.ts", "range": [{ "line": 1, "column": 1 }, { "line": 3, "column": 2 }] }
+  ],
+  "references": [
+    { "path": "src/orders.ts", "range": [{ "line": 1, "column": 10 }, { "line": 1, "column": 23 }],
+      "kind": "import", "localName": "createInvoice" },
+    { "path": "src/orders.ts", "range": [{ "line": 4, "column": 10 }, { "line": 4, "column": 23 }],
+      "kind": "call", "localName": "createInvoice" },
+    { "path": "src/refunds.ts", "range": [{ "line": 1, "column": 10 }, { "line": 1, "column": 37 }],
+      "kind": "import", "localName": "invoiceFor" },
+    { "path": "src/refunds.ts", "range": [{ "line": 3, "column": 39 }, { "line": 3, "column": 49 }],
+      "kind": "call", "localName": "invoiceFor" }
+  ],
+  "unresolved": [
+    { "siteRef": "s4-001-file@source-sites.json#/sites/1", "path": "src/plugins.ts", "lines": [2, 2],
+      "kind": "dynamic-import", "expression": "import('./billing/' + name)" }
+  ],
+  "gaps": [],
+  "outsideReads": [
+    { "operation": "directory-exists", "path": "/node_modules/typescript/lib" },
+    { "operation": "directory-exists", "path": "/node_modules/typescript" },
+    { "operation": "directory-exists", "path": "/node_modules" },
+    { "operation": "file-exists", "path": "/package.json" }
+  ],
+  "notes": ["The references come from the TypeScript type checker of the snapshot project. ...", "..."]
+}
+```
+
+The helper refuses a request and saves only a failed receipt when collect did
+not complete or `source-sites.json` changed after it, when the path is not a
+JavaScript or TypeScript file of the graph scope, when the file does not declare
+or export the symbol, or when an export does not name a declaration in the
+snapshot. Keep the failed receipt; request a corrected path or symbol in the same
+attempt.
+
+A reference shows that the code names the symbol. References do not prove all
+calls, data flows or mutations, and they are not source inspections. Request
+excerpts of the reference ranges and read them before a claim. The review can cite
+the record, or one entry, as evidence, such as
+`s4-001-file@references-001.json#/references/0`. Name each supplied record in
+`suppliedArtifactRefs`. The publisher checks each references receipt as it checks
+the excerpt receipts.
+
 ## 5. Ask the LLM to recover components
 
 Give the LLM the saved `review-prompt.md`. In an interactive session, use:
@@ -368,6 +535,8 @@ Read its saved review-prompt.md and follow its evidence rules.
 Verify the registered inputs and proposed artifact digests before analysis.
 Use the stage 3 inspection priorities and the separate graph contexts.
 Request additional numbered source excerpts when needed.
+Request the references to a top-level symbol (a path and a symbol name) when
+you need to know where it is used; then read the reference ranges.
 Recover the apparent intended architecture; do not recommend redesigns.
 Keep source-use assessments separate from allowedConsumers.
 Review launch settings, behavior entries and each external operation's
@@ -438,7 +607,8 @@ Apply the [review before publication](start-here.md#review-before-publication)
 guidance before `finish`. Check the complete model and fact records:
 
 - Every evidence reference resolves and matches its digest. Source ranges match
-  saved numbered excerpts. Tool scans are not recorded as LLM inspections.
+  saved numbered excerpts. Tool scans and references records are not recorded as
+  LLM inspections.
 - All inferred intent stays proposed. IDs are unique. Parent relationships have
   no cycles. Each mapped file has one direct owner or an explicit unknown owner.
 - Membership selectors agree with the exact code mapping. Shared parent groups

@@ -67,6 +67,12 @@ against the saved records. A filename alone is not an evidence reference.
 `subjectRefs` identifies the files, components, statements or earlier issues
 being discussed; it is not a substitute for `evidenceRefs`.
 
+A Stage 4 references record (`references-NNN.json`, see the
+[stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
+evidence. Cite the record, or one entry with a JSON Pointer, such as
+`s4-001-file@references-001.json#/references/0`. An entry supports scope and shows
+where to read; it is not a reviewed source range and does not prove a call.
+
 Use saved numbered excerpts for source claims. An excerpt being available does
 not mean it was read by the LLM. A source review record must use the exact saved
 excerpt ID, snapshot ID, hash and range. Request another excerpt for a different
@@ -656,11 +662,14 @@ failure. `check` is read-only. Correct the separate candidate packet and repeat
 `check` until it passes; do not change saved evidence to force a pass.
 
 `finish` checks collected receipts, source digests, the review packet, references,
-source ranges, ownership and graph traversals. It copies the packet into the
-attempt, registers attempt files by digest, replaces the working baseline and
-discovery, and writes the run manifest last. It marks `componentRecovery` or
-`remainingCode` complete. It does not accept intent or verify semantic quality.
-`verify` checks the completed publication without writing files.
+source ranges, ownership and graph traversals. Each numbered request (an excerpt,
+and in Stage 4 also a references request) needs its receipt: a completed request
+keeps the digests of its outputs, and a failed request has no output. `finish`
+copies the packet into the attempt, registers attempt files by digest, replaces
+the working baseline and discovery, and writes the run manifest last. It marks
+`componentRecovery` or `remainingCode` complete. It does not accept intent or
+verify semantic quality. `verify` checks the completed publication without
+writing files.
 
 Only one publisher may operate on a run at a time. Keep failed attempts and
 receipts. If `finish` fails after saving files, inspect the reported state and use
@@ -743,6 +752,7 @@ names an unknown profile. Stage 3 `exports` chooses the settings of one source
 file with the same rule: the first parsed compiler selection that selects the
 file, else the profile, else no settings. See the
 [Stage 3 cookbook](step-3-cookbook.md#list-the-exports-of-a-source-file).
+Stage 4 `stage-4-inspect references` uses the same rule for the group of its file.
 
 ## Git identity record
 
