@@ -25,6 +25,8 @@ interface ContentRead { path: string; bytes: number; sha256: string }
 // The saved snapshot of a run: its inventory, the folder of its files, and the
 // extra compiler settings that the operator named, as snapshot paths.
 export interface SnapshotInput { inventory: { snapshotId: string; files: InventoryFile[] }; snapshotRoot: string; extraConfigs: string[] }
+// The inventory files of a snapshot and the folder that holds them.
+export interface SnapshotFiles { files: readonly InventoryFile[]; snapshotRoot: string }
 // The parts of ts-morph that the collector uses: a file system in memory and the TypeScript compiler API.
 export type SettingsTools = Pick<typeof TsMorph, 'InMemoryFileSystemHost' | 'ts'>;
 type ParsingProfile = ParsingProfiles.ParsingProfile;
@@ -50,8 +52,9 @@ const maxConfigFileBytes = 8 * 1024 * 1024;
 const configFile = /\/(tsconfig|jsconfig)[^/]*\.json$/;
 
 // The snapshot as the compiler reads it: an in-memory file system with one entry
-// for each inventory file. A content read checks the saved file against the inventory.
-class SnapshotFileSystem {
+// for each inventory file. A content read checks the saved file against the
+// inventory. The snapshot project (snapshot-project.ts) reads source through it too.
+export class SnapshotFileSystem {
   readonly memory: MemoryHost;
   readonly indexed = new Map<string, InventoryFile>();
   readonly contentReads = new Map<string, ContentRead>();
@@ -59,10 +62,10 @@ class SnapshotFileSystem {
   // TypeScript can catch an error of a host read, so the collector also checks this failure after each parse.
   private snapshotFailure: Error | undefined;
 
-  constructor(snapshot: SnapshotInput, tools: SettingsTools) {
+  constructor(snapshot: SnapshotFiles, tools: Pick<SettingsTools, 'InMemoryFileSystemHost'>) {
     this.snapshotRoot = snapshot.snapshotRoot;
     this.memory = new tools.InMemoryFileSystemHost();
-    for (const file of snapshot.inventory.files.filter(file => file.kind === 'file')) {
+    for (const file of snapshot.files.filter(file => file.kind === 'file')) {
       if (!file.path || posix.isAbsolute(file.path) || file.path.includes('\\') ||
           file.path.split('/').some(part => !part || part === '.' || part === '..'))
         throw new Error(`Invalid inventory path: ${file.path}`);
@@ -83,8 +86,8 @@ class SnapshotFileSystem {
     if (this.snapshotFailure) throw this.snapshotFailure;
   }
 
-  // Reads a saved snapshot file for the compiler and checks it against the inventory.
-  private readSnapshotFile(file: InventoryFile, encoding: BufferEncoding): string {
+  // Checks that a saved snapshot file is still a canonical regular file of its inventory size.
+  private checkSavedFile(file: InventoryFile): string {
     const absolute = join(this.snapshotRoot, file.path);
     try {
       const stat = lstatSync(absolute);
@@ -94,15 +97,31 @@ class SnapshotFileSystem {
       this.checkSnapshot();
       this.failSnapshot(`${file.path}: ${(error as Error).message}`);
     }
-    if (file.bytes > maxConfigFileBytes)
-      throw new Error(`Configuration input exceeds ${maxConfigFileBytes} bytes: ${file.path}`);
+    return absolute;
+  }
+
+  // Reads a checked saved file, checks its bytes against the inventory digest and records the read.
+  private readCheckedFile(file: InventoryFile, absolute: string): Buffer {
     let bytes: Buffer;
     try { bytes = readFileSync(absolute); }
     catch (error) { this.failSnapshot(`${file.path}: ${(error as Error).message}`); }
     if (bytes.length !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256)
       this.failSnapshot(file.path);
     this.contentReads.set(file.path, { path: file.path, bytes: file.bytes, sha256: file.sha256 });
-    return bytes.toString(encoding);
+    return bytes;
+  }
+
+  // The bytes of an inventory file, read from the snapshot and checked against the inventory.
+  readSnapshotBytes(file: InventoryFile): Buffer {
+    return this.readCheckedFile(file, this.checkSavedFile(file));
+  }
+
+  // Reads a saved snapshot file for the compiler and checks it against the inventory.
+  private readSnapshotFile(file: InventoryFile, encoding: BufferEncoding): string {
+    const absolute = this.checkSavedFile(file);
+    if (file.bytes > maxConfigFileBytes)
+      throw new Error(`Configuration input exceeds ${maxConfigFileBytes} bytes: ${file.path}`);
+    return this.readCheckedFile(file, absolute).toString(encoding);
   }
 
   // Reads a file as text: an inventory file from the snapshot; another path fails as missing.
@@ -197,7 +216,7 @@ export function noProjectSettingsGap(snapshotId: string, profile: ParsingProfile
 // The settings record of a saved snapshot. Without project settings, it names
 // the parsing profile and has the gap that says so.
 export function readProjectSettings(input: SnapshotInput, { tsMorph, parsingProfile }: CollectorTools): SettingsRecord {
-  const snapshot = new SnapshotFileSystem(input, tsMorph);
+  const snapshot = new SnapshotFileSystem({ files: input.inventory.files, snapshotRoot: input.snapshotRoot }, tsMorph);
   const packages = readPackages(snapshot);
   const configs = readConfigs(snapshot, tsMorph.ts, input.extraConfigs);
   snapshot.checkSnapshot();

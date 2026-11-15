@@ -13,15 +13,45 @@ const sha256 = (text: string): string => createHash("sha256").update(text).diges
 const json = (value: unknown): string => JSON.stringify(value, null, 2) + "\n";
 const snapshotId = "snapshot-check";
 
-function settingsOf(files: Record<string, string>, extraConfigs: string[] = []): SettingsRecord {
+// `saved` replaces files of the snapshot folder after the inventory lists `files`;
+// a saved file that the inventory does not list is outside the snapshot.
+function settingsOf(files: Record<string, string>, extraConfigs: string[] = [], saved: Record<string, string> = {}): SettingsRecord {
   return withScratch((scratch) => {
     const snapshotRoot = join(scratch, "snapshot");
     writeFiles(snapshotRoot, files);
+    writeFiles(snapshotRoot, saved);
     const inventory = { snapshotId, files: Object.entries(files).map(([path, text]) =>
       ({ path, kind: "file", bytes: Buffer.byteLength(text), sha256: sha256(text) })) };
     return readProjectSettings({ inventory, snapshotRoot, extraConfigs }, { tsMorph, parsingProfile: choomDefaultProfile });
   });
 }
+
+describe("readProjectSettings and the saved snapshot", () => {
+  test("reads only inventory files: a base configuration that the inventory does not list is not found", () => {
+    const tsconfig = json({ extends: "./tsconfig.base.json", include: ["src"] });
+    const settings = settingsOf({ "tsconfig.json": tsconfig, "src/app.ts": "export const app = 1;\n" }, [],
+      { "tsconfig.base.json": json({ compilerOptions: { strict: true } }) });
+    expect(settings.configs).toEqual([{ path: "/repo/tsconfig.json", status: "partial",
+      diagnostics: [{ code: 5083, message: "Cannot read file '/repo/tsconfig.base.json'." }],
+      declared: { extends: "./tsconfig.base.json", include: ["src"] }, compilerOptions: { configFilePath: "/repo/tsconfig.json" },
+      fileNames: ["src/app.ts"], references: [] }]);
+    expect(settings.contentReads.map(({ path }) => path)).toEqual(["tsconfig.json"]);
+  });
+
+  test("stops when a saved file does not match its inventory digest", () => {
+    const tsconfig = json({ include: ["src"] });
+    expect(() => settingsOf({ "tsconfig.json": tsconfig }, [], { "tsconfig.json": tsconfig.replace("src", "lib") }))
+      .toThrow(new Error("Snapshot integrity check failed: tsconfig.json"));
+  });
+
+  test("records a configuration file larger than 8 MiB as unavailable and does not read it", () => {
+    const large = json({ include: ["src"] }) + " ".repeat(8 * 1024 * 1024);
+    const settings = settingsOf({ "tsconfig.json": large });
+    expect(settings.configs).toEqual([{ path: "/repo/tsconfig.json", status: "unavailable",
+      diagnostics: [{ message: "Configuration input exceeds 8388608 bytes: tsconfig.json" }] }]);
+    expect(settings.contentReads).toEqual([]);
+  });
+});
 
 describe("readProjectSettings", () => {
   test("names the Choom parsing profile and a gap when the snapshot has no tsconfig.json and no jsconfig.json", () => {
