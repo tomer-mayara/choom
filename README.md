@@ -67,7 +67,12 @@ The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
 An old `schemaVersion: 1` diagram is not a baseline.
 
 The view shows the baseline ID and nested component groups. Each component has
-its name and the number of interfaces it directly owns. An empty baseline is valid.
+its name and the number of interfaces it directly owns. A saved system-entry
+assessment adds **Startup** and **External** counts to direct owners in both
+connection modes. A startup starts a program. An external call enters a running
+program. The plot describes missing, empty, or limited coverage, and **Baseline
+details** shows the saved scope, evidence references, and limits. An empty
+baseline is valid.
 **Explore example** opens a small baseline through the same viewer. A failed or
 cancelled open keeps the current view; **Retry** uses the last selected file.
 Only one open operation can run at a time. **Cancel** prevents a pending load
@@ -373,6 +378,14 @@ bun test ./test/unit/architecture/duplication-v4.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/interface-duplication.test.tsx ./test/unit/components/duplication-comparison.test.tsx ./test/unit/components/duplication-navigation.test.tsx
 bun run test:e2e --tags @interface-duplication
 bun run test:behavior:packaged --tags @interface-duplication
+```
+
+Run the system-entry marker checks with:
+
+```sh
+bun test ./test/unit/lib/system-entry-points.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/system-entry-markers.test.tsx
+bun run test:e2e --tags @ep-05
 ```
 
 Run the Stage 6 system-entry publication check with:
