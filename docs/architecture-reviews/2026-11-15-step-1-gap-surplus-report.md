@@ -140,6 +140,10 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-00b | tomer-mayara/choom#63 | Draft |
 | GA-00d | tomer-mayara/choom#64 | Draft |
 | GA-03b | tomer-mayara/choom#65 | Draft |
+| Plan update | tomer-mayara/choom#66 | Draft. D21 needs owner approval. |
+| GA-00b2 | tomer-mayara/choom#67 | Draft |
+| GA-00e | tomer-mayara/choom#68 | Draft |
+| GA-00c | tomer-mayara/choom#69 | Draft. This PR also records plan changes 6 and 7. |
 
 Plan changes:
 
@@ -169,6 +173,24 @@ Plan changes:
    1254). One layout scenario, "the full two-line name, both entry counts, and
    duplication marker fit in the component header", fails locally on the base
    before any change. CI passes it.
+6. **D4 refinement, proposed:** a mechanical edit does not trigger the
+   TypeScript conversion. A mechanical edit changes only an import path, an
+   entry in a list, a mount path or a comment. A change to the logic of a file
+   still converts it first (rule 5).
+   - GA-00c made only mechanical edits to `.mjs` files: the import path in
+     `stage-4-5-publish.mjs`, the import path and one entry of the reserved-ID
+     list in `stage-6-commands.mjs`, and the expected messages in
+     `producer-publication.test.mjs`.
+   - GA-00e did more. In each of the seven Stage 3–6 helpers it added the
+     producer-code check, removed the old saved-copy comparisons and changed
+     paths (59 lines added, 57 removed in total). It did not convert them,
+     because the edits were small. The owner decides if this exception stays.
+     Each of these files is converted when a later ticket changes its logic
+     (GA-12 converts `stage-3-finish.mjs` and `stage-4-5-publish.mjs`).
+7. **GA-12 scope.** The check covers every saved LLM call. Stage 6 also saves
+   one, in its readiness packet, which the ticket did not list. There is no
+   provider JSON file in any packet, so `checkVisibleResponse` checks only
+   the saved response text. GA-12 below shows the changed steps.
 
 ### How to work every ticket
 
@@ -569,15 +591,17 @@ It fails today because no stage checks this, and the cookbooks ask for the
 
 **Steps:**
 
-1. **U** `checkVisibleResponse(text, providerJson?)` refuses provider content
-   blocks of type `thinking`, `redacted_thinking` or `reasoning`, and a
-   `<thinking>` block at the top level of the saved text.
+1. **U** `checkVisibleResponse(text)` refuses a `<thinking>`, `<reasoning>`
+   or `<redacted_thinking>` block at the top level of the saved text (outside
+   fenced code). When the saved text is a pasted provider JSON response, it
+   also refuses content blocks of type `thinking`, `redacted_thinking` or
+   `reasoning`.
 2. **U** The call record must have `hiddenReasoning: "not-saved"`. A missing
    value or another value is refused.
-3. **U** Every `finish` action (Stages 1–3 and the Stage 4/5 publisher) uses
-   this one check.
-4. In the three cookbooks, change "complete response" to "complete visible
-   response. Do not save hidden reasoning."
+3. **U** Every action that saves an LLM call uses this one check: the
+   `finish` actions of Stages 1–3, the Stage 4/5 publisher and Stage 6.
+4. In the cookbooks and `record-format.md`, change "complete response" to
+   "complete visible response. Do not save hidden reasoning."
 
 ### GA-09 Named parsing profile when there are no project settings
 
