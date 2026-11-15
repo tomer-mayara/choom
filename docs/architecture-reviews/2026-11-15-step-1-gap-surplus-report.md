@@ -147,6 +147,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-12 | tomer-mayara/choom#70 | Draft |
 | GA-09 | tomer-mayara/choom#71 | Draft. This PR also records plan change 8. |
 | GA-04 | tomer-mayara/choom#72 | Draft. This PR also records plan change 9. |
+| GA-05 | tomer-mayara/choom#73 | Draft. This PR also records plan changes 10 and 11. |
 
 Plan changes:
 
@@ -211,6 +212,24 @@ Plan changes:
    `GIT_ALLOW_PROTOCOL=` (no transport), `GIT_NO_LAZY_FETCH=1`,
    `GIT_NO_REPLACE_OBJECTS=1` and `--no-pager`. A test with a real partial
    clone checks that no program runs.
+10. **GA-05 does not use `trustedDependencies` (E10 and D16 changed).**
+    `@vscode/ripgrep` 1.18.0 has no install script. It takes the program
+    from a package for each platform (optional dependencies), so a frozen
+    `bun install` installs it with no GitHub download and no token. A
+    `trustedDependencies` list would also replace Bun's default list, and
+    the install script of `geckodriver` would then not run. Stage 3 `start`
+    records the ripgrep version, program and digest, and every later action
+    refuses a changed program. The search is a Stage 3 action,
+    `stage-3 text-search`, and the Stage 3 finalizer checks each search
+    receipt.
+11. **GA-06a is split.** GA-06a adds the snapshot project, `listExports`
+    and the gaps for missing compiler inputs. It adds the operator action
+    `stage-3 exports PATH`, in the same form as `stage-3 text-search`, and
+    replaces the parser call of Stage 3 only. A new ticket, **GA-06a2**,
+    converts `stage-4-inspect.mjs` and `stage-5-query.mjs` to TypeScript
+    (rule 5) and replaces their parser calls. Each PR then stays small
+    enough to review. GA-02a and GA-07f, which work in Stages 4 and 5, now
+    also need GA-06a2.
 
 ### How to work every ticket
 
@@ -260,7 +279,7 @@ record its current behavior.
 | E7 | GA-00b changed how a run records the producer code. That is a change in behavior, but the ticket called it a refactor with no failing acceptance test. | That change is now ticket GA-00e, with its own failing scenario. GA-00b keeps behavior unchanged. |
 | E8 | Removing the saved code copies also removed a protection: today each attempt runs from a frozen copy, so the code cannot change in the middle of an attempt. | GA-00e checks the code digest at every stage action and refuses a changed producer. |
 | E9 | Scenarios that need Docker would run in the normal Cucumber profile and fail on a computer without Docker. | GA-00d adds an `@docker` tag. The normal profile excludes it, and the CI `producer` job runs it. |
-| E10 | GA-05: Bun does not run the install scripts of dependencies unless they are listed in `trustedDependencies`. So `@vscode/ripgrep` would install without its program. | GA-05 adds it to `trustedDependencies` and checks that the program exists after `bun install`. |
+| E10 | GA-05: Bun does not run the install scripts of dependencies unless they are listed in `trustedDependencies`. So `@vscode/ripgrep` would install without its program. | GA-05 checks that the program exists after `bun install`. Version 1.18.0 has no install script, so it needs no `trustedDependencies` entry (plan change 10). |
 | E11 | GA-04 ran `git status` in the target repository. A target's Git settings can make `git status` run a program (`core.fsmonitor`). The design forbids running target code. | GA-04 turns off `core.fsmonitor`, hooks and system and user Git settings for every Git command. |
 | E12 | GA-07e (frontend settings) cannot use the GA-07a rule shape, which only matches calls. | The GA-07a engine has two rule kinds: `call` and `settings-literal`. |
 | E13 | GA-00a did not add the new workspace's tests to `bun run test`, and did not move the generated contract output. | GA-00a adds both. |
@@ -296,7 +315,7 @@ record its current behavior.
 | D13 | G2 and G3 | Symbol selectors divide a file. Each named symbol becomes a unit. The rest of the file is one unit, owned by the file's path owner, or `null` with a reason. Symbols need `formatVersion: 5`. |
 | D14 | G7 | One rule engine with a pinned rule list. The first rules cover HTTP servers, workers and queues, CLI tools and frontend settings. |
 | D15 | G8 | Plugins run with `config: []`, so they use only their default file-name patterns and never load settings files. There is no approval list. This is not yet tested on Knip 6.44.1: GA-08 tests it first. |
-| D16 | ripgrep | `@vscode/ripgrep` at an exact version, listed in `trustedDependencies`. |
+| D16 | ripgrep | `@vscode/ripgrep` at an exact version. Version 1.18.0 needs no `trustedDependencies` entry (plan change 10). |
 | D17 | G11 | CR-004 is approved in principle. The viewer shows discovery questions and gaps, and can copy a decision-file entry. There is no editor in the viewer. |
 | D18 | Docker tests | A CI `producer` job runs `@docker` scenarios. `bun run check` skips them. |
 | D19 | G4 | Git identity only. History is left to Step 2 planning. |
@@ -324,13 +343,14 @@ Tickets with the same order number can run at the same time.
 | 5 | GA-06a ts-morph project on the snapshot | G6 | GA-00b |
 | 5 | GA-10 Node `type` field | G10 | GA-00d |
 | 5 | GA-01a Decision file | G1 | GA-00c |
+| 6 | GA-06a2 Stages 4 and 5 use the snapshot project | G6 | GA-06a |
 | 6 | GA-06b Definition and reference queries | G6 | GA-06a |
 | 6 | GA-01b Make the next baseline version | G1 | GA-01a |
 | 6 | GA-03b Symbol selectors in `formatVersion: 5` | G3 | GA-00a, GA-03a |
 | 6 | GA-07a Entry rule engine | G7 | GA-06a |
-| 7 | GA-02a Symbol selectors divide files | G2, G3 | GA-03b, GA-06a |
+| 7 | GA-02a Symbol selectors divide files | G2, G3 | GA-03b, GA-06a2 |
 | 7 | GA-07b–e Rules for each kind of target | G7 | GA-07a |
-| 7 | GA-07f Resource access by receiver type | G7 | GA-06b |
+| 7 | GA-07f Resource access by receiver type | G7 | GA-06b, GA-06a2 |
 | 7 | GA-11b Viewer shows discovery questions and gaps | G11 | GA-11a, GA-00a, GA-01a |
 | 8 | GA-02b Dependencies of file parts | G2 | GA-02a, GA-06b |
 | 8 | GA-08 Knip plugins without settings files | G8 | GA-00d, GA-07e |
@@ -714,8 +734,8 @@ Feature: Search the saved snapshot
 
 **Steps:**
 
-1. Add `@vscode/ripgrep` at an exact version and list it in
-   `trustedDependencies` (E10). **N** After `bun install`, the program exists
+1. Add `@vscode/ripgrep` at an exact version (E10, plan change 10).
+   **N** After `bun install`, the program exists
    and reports its version.
 2. **U** `ripgrepArgs(query, snapshotRoot)` always has `--fixed-strings`
    (unless the operator asks for a pattern), `--no-config`, `--json`,
@@ -756,8 +776,27 @@ Feature: Read source structure from the snapshot
    never reads the disk.
 3. **U** `listExports(file)` returns names, kinds and ranges.
 4. **U** Missing compiler inputs become gaps.
-5. Replace the `ts.createSourceFile` calls in Stages 3–5 with this project.
-   The characterization tests still pass.
+5. Replace the `ts.createSourceFile` call of Stage 3 `collect` with this
+   project. The characterization tests still pass. Stages 4 and 5 move in
+   GA-06a2 (plan change 11).
+6. **N** The operator action `stage-3 exports PATH` saves `exports-NNN.json`
+   with a receipt, as `stage-3 text-search` does. The Stage 3 finalizer
+   checks the receipt.
+
+### GA-06a2 Stages 4 and 5 use the snapshot project
+
+**Gap:** G6. **Needs:** GA-06a. No new behavior, so there is no new scenario.
+The characterization tests are the acceptance check.
+
+**Steps:**
+
+1. **N** Add characterization tests for `stage-4-inspect.mjs` and
+   `stage-5-query.mjs` where they are missing. They pass on the `.mjs` files.
+2. Convert both files to TypeScript with no behavior change (rule 5). The
+   tests pass before and after.
+3. Replace their `ts.createSourceFile` calls with the snapshot project of
+   GA-06a. The matches stay the same. Only the field that names the parser
+   changes.
 
 ### GA-06b Definition and reference queries
 
@@ -950,7 +989,7 @@ Feature: Read symbol membership
 
 ### GA-02a Symbol selectors divide files
 
-**Gap:** G2 and G3 (design 174–188), D13. **Needs:** GA-03b, GA-06a.
+**Gap:** G2 and G3 (design 174–188), D13. **Needs:** GA-03b, GA-06a2.
 
 ```gherkin
 @producer
@@ -1091,7 +1130,7 @@ write a failing unit test for the engine.
 
 ### GA-07f Resource access by receiver type
 
-**Gap:** G7 (design 240–245, 877–878). **Needs:** GA-06b.
+**Gap:** G7 (design 240–245, 877–878). **Needs:** GA-06b, GA-06a2.
 
 ```gherkin
 @producer
