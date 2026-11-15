@@ -6,10 +6,21 @@ Feature: Open source-use records as one complete baseline
     Then every saved source-use value is readable
     And no permission-based unknown-consumer message is shown
 
-  Scenario: Do not draw permission as source use
-    Given a source-use baseline permits Admin but records Checkout as its consumer
+  Scenario Outline: Draw only saved source use in version <version>
+    Given a version <version> source-use baseline permits Admin but records Checkout as its consumer
     When the user selects all source-use connections
-    Then no Admin permission arrow or permission legend is shown
+    Then the plot shows Checkout's source-use arrow
+    And no Admin permission arrow or permission legend is shown
+
+    Examples:
+      | version |
+      | 3       |
+      | 4       |
+
+  Scenario: Read version 4 source consumers
+    Given a version 4 source-use baseline permits Admin but records Checkout as its consumer
+    When the reader opens Invoice API from Billing
+    Then Used by identifies Checkout as a source consumer
 
   Scenario Outline: Reject source-use replacement atomically
     Given an interface example is open with connection choices recorded

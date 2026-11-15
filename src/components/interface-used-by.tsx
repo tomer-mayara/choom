@@ -3,6 +3,7 @@ import type { ReadonlyData } from "../domain/readonly-data.ts";
 import { componentName } from "../lib/component-name.ts";
 import { InterfaceSourceLocation } from "./interface-source-location.tsx";
 import type { InterfaceDisclosure } from "./use-interface-disclosures.ts";
+import { supportsSourceUsage } from "../domain/baseline-format.ts";
 
 type Use = ReadonlyData<BaselineSourceUse>;
 type Interface = ReadonlyData<BaselineInterface>;
@@ -67,7 +68,8 @@ export function InterfaceUsedBy({ baseline, item, assessment, disclosure }: {
   baseline: ReadonlyData<Baseline>; item: Interface;
   assessment?: ReadonlyData<BaselineSourceAssessment>; disclosure: InterfaceDisclosure;
 }) {
-  const source = baseline.formatVersion === 3 ? baseline.sourceUsage : undefined;
+  const sourceUseFormat = supportsSourceUsage(baseline);
+  const source = sourceUseFormat ? baseline.sourceUsage : undefined;
   const primary = assessment?.uses.filter(primaryUse) ?? [];
   const other = assessment?.uses.filter((use) => !primaryUse(use)) ?? [];
   const notes = new Map(assessment?.sourceNotes.map((note) => [note.evidenceRef, note]));
@@ -86,6 +88,6 @@ export function InterfaceUsedBy({ baseline, item, assessment, disclosure }: {
         {others.open ? <div className="pt-3"><UseGroups baseline={baseline} item={item} uses={other} notes={notes} disclosure={disclosure} /></div> : null}
       </details> : null}
     </>}
-    {baseline.formatVersion === 3 ? <p className="text-xs text-muted-foreground">Runtime execution is not recorded.</p> : null}
+    {sourceUseFormat ? <p className="text-xs text-muted-foreground">Runtime execution is not recorded.</p> : null}
   </section>;
 }

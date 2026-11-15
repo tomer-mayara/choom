@@ -7,6 +7,7 @@ import type {
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import { InterfaceDetails } from "./interface-details.tsx";
 import type { InterfaceReadingState } from "./interface-reading-state.ts";
+import { supportsSourceUsage } from "../domain/baseline-format.ts";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
   | { kind: "interface"; interfaceId: string; entryId?: string }
@@ -87,7 +88,7 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
     <Field name="Parent baseline ID">
       {baseline.parentId === null ? <p className="text-muted-foreground">No parent baseline (null)</p> : <RecordedValue value={baseline.parentId} />}
     </Field>
-    {baseline.formatVersion === 3 && baseline.sourceUsage ? <details data-section="original-source-usage" className="rounded-lg border border-border p-3">
+    {supportsSourceUsage(baseline) && baseline.sourceUsage ? <details data-section="original-source-usage" className="rounded-lg border border-border p-3">
       <summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-ring">Original source-use data</summary>
       <RecordedValue value={baseline.sourceUsage} />
     </details> : null}

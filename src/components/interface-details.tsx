@@ -9,6 +9,7 @@ import { revealInterfaceFocus, useInterfaceTabs } from "./use-interface-tabs.ts"
 import { useInterfaceDisclosures } from "./use-interface-disclosures.ts";
 import { InterfaceSources } from "./interface-sources.tsx";
 import type { InterfaceReadingState } from "./interface-reading-state.ts";
+import { supportsSourceUsage } from "../domain/baseline-format.ts";
 
 // Radix mounts tab contents after its first commit; restore against that content's height.
 function TabBody({ restore, children }: { restore: () => void; children: ReactNode }) {
@@ -22,7 +23,8 @@ export function InterfaceDetails({ baseline, item, contentRef, initialEntryId, r
   initialEntryId?: string;
   reading?: InterfaceReadingState;
 }) {
-  const assessment = baseline.formatVersion === 3 ? baseline.sourceUsage?.assessments.find((assessment) => assessment.interfaceId === item.id) : undefined;
+  const sourceUseFormat = supportsSourceUsage(baseline);
+  const assessment = sourceUseFormat ? baseline.sourceUsage?.assessments.find((assessment) => assessment.interfaceId === item.id) : undefined;
   const tabs = useInterfaceTabs(contentRef, reading);
   const disclosure = useInterfaceDisclosures(contentRef, reading);
   const [entryId, setEntryId] = useState(reading?.entryId ?? initialEntryId ?? item.documentation?.entries[0]?.id);
@@ -57,7 +59,7 @@ export function InterfaceDetails({ baseline, item, contentRef, initialEntryId, r
   }
   return <section className="space-y-4 wrap-anywhere">
     <h2 className="text-lg font-semibold">{item.name}</h2>
-    {baseline.formatVersion === 3 ? <div role="group" aria-label="Interface statement status" className="space-y-1">
+    {sourceUseFormat ? <div role="group" aria-label="Interface statement status" className="space-y-1">
       <p className="text-xs font-semibold">Interface statement status</p><InterfaceRecordedStatus item={item} />
     </div> : <InterfaceRecordedStatus item={item} />}
     <InterfaceProvider baseline={baseline} item={item} />

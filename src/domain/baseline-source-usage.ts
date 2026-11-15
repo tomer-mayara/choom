@@ -2,6 +2,7 @@ import { z } from "zod";
 import { baselineSourceNoteSchema } from "./baseline-documentation.ts";
 import { baselineId, baselineText } from "./baseline-statements.ts";
 import type { Baseline, BaselineInterface, BaselineSourceAssessment } from "./generated/contracts.ts";
+import { supportsSourceUsage } from "./baseline-format.ts";
 
 const encoder = new TextEncoder();
 const bounded = (schema: z.ZodString, bytes: number) => schema.refine(
@@ -69,7 +70,7 @@ function validateAssessment(assessment: BaselineSourceAssessment, snapshotRef: s
 }
 
 export function validateBaselineSourceUsage(baseline: Baseline, context: z.RefinementCtx): void {
-  if ((baseline.formatVersion !== 3 && baseline.formatVersion !== 4) || !baseline.sourceUsage) return;
+  if (!supportsSourceUsage(baseline) || !baseline.sourceUsage) return;
   const source = baseline.sourceUsage;
   const counts = source.assessments.reduce((counts, item) => ({
     uses: counts.uses + item.uses.length, notes: counts.notes + item.sourceNotes.length,

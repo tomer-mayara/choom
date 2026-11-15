@@ -124,6 +124,8 @@ bun run test:behavior --tags @ep-01
 bun run test:e2e --tags @br-11a
 bun test ./test/unit/domain/source-usage.test.ts ./test/unit/domain/source-usage-limits.test.ts
 bun test ./test/interface/domain/source-usage.test.ts
+bun test ./test/unit/lib/source-connections.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/source-use-reading.test.tsx ./test/unit/components/source-usage-guard.test.tsx
 bun test ./test/interface/domain/system-entry-points.test.ts
 bun run test:e2e --tags @br-10a
 bun test ./test/unit/domain/baseline.test.ts

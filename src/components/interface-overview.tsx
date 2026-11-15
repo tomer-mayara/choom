@@ -6,6 +6,7 @@ import { InterfaceUsedBy } from "./interface-used-by.tsx";
 import { Button } from "./ui/button.tsx";
 import { interfaceSourceStatements } from "../lib/interface-provenance.ts";
 import type { InterfaceDisclosure } from "./use-interface-disclosures.ts";
+import { supportsSourceUsage } from "../domain/baseline-format.ts";
 
 type Interface = ReadonlyData<BaselineInterface>;
 type Entry = ReadonlyData<BaselineDocumentedEntry>;
@@ -130,7 +131,7 @@ export function InterfaceOverview({ baseline, item, entry, selectEntry, disclosu
       <div className="space-y-2 pt-2 text-sm">
         {item.allowedConsumers.value === null ? <p>Permitted components are not recorded.</p>
           : <><p>Permitted components:</p><ul className="list-disc space-y-1 pl-5">{item.allowedConsumers.value.map((id) => <li key={id}>{componentName(baseline, id)}</li>)}</ul></>}
-        <p>{baseline.formatVersion === 3 ? "Runtime execution is not recorded." : "Call activity is not recorded."} This rule states permission in the baseline, not runtime authorization.</p>
+        <p>{supportsSourceUsage(baseline) ? "Runtime execution is not recorded." : "Call activity is not recorded."} This rule states permission in the baseline, not runtime authorization.</p>
         <RecordedStatus status={item.allowedConsumers.status} />
       </div>
     </details>

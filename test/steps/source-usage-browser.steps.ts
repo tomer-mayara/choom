@@ -48,14 +48,29 @@ Then("every saved source-use value is readable", async function (this: SourceBro
 Then("no permission-based unknown-consumer message is shown", async function (this: SourceBrowserWorld) {
   await expect(page(this).getByText(/unknown owners or allowed consumers/)).toHaveCount(0, { timeout: 1500 });
 });
-Given("a source-use baseline permits Admin but records Checkout as its consumer", async function (this: SourceBrowserWorld) {
+Given("a version {int} source-use baseline permits Admin but records Checkout as its consumer", async function (this: SourceBrowserWorld, version: number) {
   const input = sourceUsageBaseline();
   input.components.push({ ...structuredClone(fixtureItem(input.components)), id: "admin", name: "Admin" });
   fixtureItem(input.interfaces).allowedConsumers = proposed(["admin"]);
-  await open(this, input);
+  await open(this, { ...input, formatVersion: version });
 });
 When("the user selects all source-use connections", async function (this: SourceBrowserWorld) {
   await page(this).getByRole("radio", { name: "All", exact: true }).check();
+});
+Then("the plot shows Checkout's source-use arrow", async function (this: SourceBrowserWorld) {
+  const arrow = page(this).locator('path[data-interface-arc][data-interface-id="invoice-api"][data-consumer-id="checkout"][data-owner-id="billing"]');
+  await expect(arrow).toHaveCount(1, { timeout: 1500 });
+  await expect(arrow).toBeVisible();
+});
+When("the reader opens Invoice API from Billing", async function (this: SourceBrowserWorld) {
+  const browser = page(this);
+  await browser.getByRole("button", { name: "Billing, billing", exact: true }).click();
+  await browser.getByRole("region", { name: "Owned interfaces" }).getByRole("button", { name: "Invoice API, invoice-api", exact: true }).click();
+});
+Then("Used by identifies Checkout as a source consumer", async function (this: SourceBrowserWorld) {
+  const usedBy = page(this).getByRole("region", { name: "Used by", exact: true });
+  await expect(usedBy.getByRole("heading", { name: "Checkout", exact: true })).toBeVisible({ timeout: 1500 });
+  await expect(usedBy.getByText("Runtime execution is not recorded.", { exact: true })).toBeVisible();
 });
 Then("no Admin permission arrow or permission legend is shown", async function (this: SourceBrowserWorld) {
   await expect(page(this).locator('path[data-interface-arc][data-consumer-id="admin"]')).toHaveCount(0, { timeout: 1500 });
