@@ -2,14 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
-import { type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
+import { type ExtraFile, type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
   type StageFourPublication } from "../../fixtures/stage-4-publication/fixture.ts";
 import { folderState } from "../../support/producer-record.ts";
 
 // The Stage 4/5 publisher runs as an operator runs it, on a run after Stage 3
 // with a complete Stage 4 attempt and a reviewed packet in a separate folder.
-function withPublication(use: (fixture: StageFourPublication) => void, change?: (baseline: FixtureBaseline) => void): void {
-  const fixture = stageFourPublication(change);
+function withPublication(use: (fixture: StageFourPublication) => void, change?: (baseline: FixtureBaseline) => void,
+  extraFiles: ExtraFile[] = []): void {
+  const fixture = stageFourPublication(change, extraFiles);
   try {
     use(fixture);
   } finally {
@@ -92,12 +93,55 @@ describe("the Stage 4/5 publisher with Stage 4 excerpt requests", () => {
     ["a failed excerpt request with an output", (fixture: StageFourPublication) => {
       requested(fixture, ["excerpt", "missing.ts", "1", "1"], 1);
       writeFileSync(join(fixture.attempt, "excerpt-001.json"), "{}\n");
-    }, "A failed excerpt has partial output. Preserve it and use a fresh attempt: excerpt-001"],
+    }, "A failed request has partial output. Preserve it and use a fresh attempt: excerpt-001"],
   ])("refuses %s in check, and writes nothing", (_name, change, message) => {
     withPublication((fixture) => {
       change(fixture);
       refusedInCheck(fixture, message);
     });
+  }, 60_000);
+});
+
+// A file that calls start of cli.ts, so that the references to start have an entry to cite.
+const main: ExtraFile = { path: "main.ts", text: "import { start } from './cli';\n\nstart();\n" };
+const citeReference = (pointer: string) => (baseline: FixtureBaseline): void => {
+  baseline.components[0]?.purpose.evidenceRefs.push(`s4-check-file@references-001.json#${pointer}`);
+};
+
+describe("the Stage 4/5 publisher with Stage 4 references requests", () => {
+  test("accepts a completed references request and a failed one, and resolves a citation of a reference", () => {
+    withPublication((fixture) => {
+      requested(fixture, ["references", "cli.ts", "start"], 0);
+      requested(fixture, ["references", "missing.ts", "start"], 1);
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified" });
+      expect(result(publishStageFour(fixture, "finish"))).toMatchObject({ status: "stage4-published" });
+      const run = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { artifacts: Record<string, { path: string }> };
+      expect(run.artifacts["s4-check-file@references-001.json"]).toMatchObject({ path: "evidence/s4-check/references-001.json" });
+      expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
+    }, citeReference("/references/0"), [main]);
+  }, 60_000);
+
+  test.each([
+    ["a changed references record", (fixture: StageFourPublication) => {
+      requested(fixture, ["references", "cli.ts", "start"], 0);
+      appendFileSync(join(fixture.attempt, "references-001.json"), "\n");
+    }, "Collection output changed: references-001.json"],
+    ["a failed references request with an output", (fixture: StageFourPublication) => {
+      requested(fixture, ["references", "missing.ts", "start"], 1);
+      writeFileSync(join(fixture.attempt, "references-001.json"), "{}\n");
+    }, "A failed request has partial output. Preserve it and use a fresh attempt: references-001"],
+  ])("refuses %s in check, and writes nothing", (_name, change, message) => {
+    withPublication((fixture) => {
+      change(fixture);
+      refusedInCheck(fixture, message);
+    }, undefined, [main]);
+  }, 60_000);
+
+  test("refuses a citation of a reference that the record does not hold", () => {
+    withPublication((fixture) => {
+      requested(fixture, ["references", "cli.ts", "start"], 0);
+      refusedInCheck(fixture, "Unresolved evidence: s4-check-file@references-001.json#/references/9");
+    }, citeReference("/references/9"), [main]);
   }, 60_000);
 });
 

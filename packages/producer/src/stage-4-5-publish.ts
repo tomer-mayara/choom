@@ -197,7 +197,11 @@ function attemptInput(run: RunRecord, drafts: Map<string, Buffer>): { attemptFil
   return { attemptFiles, get };
 }
 
-// Each required phase and each excerpt completed, and its recorded outputs did not change.
+// The numbered requests of each stage after collect: excerpts, and in Stage 4 also references.
+const requestPhase = new RegExp('^(?:' + (stage === '4' ? 'excerpt|references' : 'excerpt') + ')-[0-9]+$');
+
+// Each required phase and each numbered request completed, and its recorded outputs did not change.
+// A failed request has no output.
 function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => Buffer): void {
   const required = stage === '4' ? ['start', 'toolchain', 'run', 'collect'] : ['start', 'collect'];
   const requiredOutputs: Record<string, string[]> = {
@@ -206,19 +210,21 @@ function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => B
     collect: stage === '4' ? ['source-sites.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'] :
       ['remaining-units.json', 'inspection-coverage.json', 'source-candidates.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'],
   };
-  const phases = [...new Set([...required, ...[...attemptFiles.keys()].flatMap(name => /^operator-(excerpt-[0-9]+)\.started\.json$/.exec(name)?.slice(1) ?? [])])];
+  const requests = [...attemptFiles.keys()].flatMap(name => /^operator-(.+)\.started\.json$/.exec(name)?.slice(1) ?? [])
+    .filter(phase => requestPhase.test(phase));
+  const phases = [...new Set([...required, ...requests])];
   for (const phase of phases) {
     const receipt = json(get('operator-' + phase + '.json'));
     const started = json(get('operator-' + phase + '.started.json'));
     assert(receipt.attemptId === id && receipt.phase === phase &&
       receipt.startedAt === started.startedAt && same(receipt.command, started.command),
-    'Collection or excerpt identity changed: ' + phase);
-    if (phase.startsWith('excerpt-') && receipt.status === 'failed' && receipt.exitCode !== 0) {
+    'Collection or request identity changed: ' + phase);
+    if (requestPhase.test(phase) && receipt.status === 'failed' && receipt.exitCode !== 0) {
       assert(!attemptFiles.has(phase + '.json') && Object.keys(receipt.digests ?? {}).length === 0,
-        'A failed excerpt has partial output. Preserve it and use a fresh attempt: ' + phase);
+        'A failed request has partial output. Preserve it and use a fresh attempt: ' + phase);
     } else {
       assert(receipt.status === 'completed' && receipt.exitCode === 0 && object(receipt.digests),
-        'Required collection or excerpt did not complete: ' + phase + '. Preserve it and use a fresh attempt.');
+        'Required collection or request did not complete: ' + phase + '. Preserve it and use a fresh attempt.');
       const digests = receipt.digests;
       assert((requiredOutputs[phase] ?? [phase + '.json']).every(name => Object.hasOwn(digests, name)),
         'Required output was not recorded: ' + phase);
