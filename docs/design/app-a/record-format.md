@@ -71,7 +71,9 @@ A Stage 4 references record (`references-NNN.json`, see the
 [stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
 evidence. Cite the record, or one entry with a JSON Pointer, such as
 `s4-001-file@references-001.json#/references/0`. An entry supports scope and shows
-where to read; it is not a reviewed source range and does not prove a call.
+where to read; it is not a reviewed source range and does not prove a call. A
+`completeness` of `complete-within-scope` means that the query found no
+unresolved entry, not that the references are complete.
 
 Use saved numbered excerpts for source claims. An excerpt being available does
 not mean it was read by the LLM. A source review record must use the exact saved

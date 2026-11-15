@@ -666,8 +666,9 @@ object and the other aliases to the declaration. Each request saves
 declarations, each reference with its kind, range and local name, and as
 unresolved entries, each with its reason, the loading sites of the scope with a
 computed module name, the `require` calls of its TypeScript files and the relative
-imports that the compiler settings do not resolve; `completeness` is `partial`
-when there is one. The
+imports and `paths` aliases that the compiler settings do not resolve;
+`completeness` is `partial` when there is one. `complete-within-scope` means only
+that no unresolved entry was found. The
 [Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-references-to-a-symbol)
 gives the fields. Run the focused checks of the references with:
 

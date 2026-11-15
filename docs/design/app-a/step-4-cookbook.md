@@ -404,8 +404,8 @@ JavaScript `require` calls that the compiler resolves. It also follows the local
 names that a destructuring of a module object binds, such as
 `const { createInvoice } = await import('./invoice')`. It does not follow a
 `require` call in a TypeScript file or an import that the compiler settings do
-not resolve (`unresolved` lists them; an import only with a relative module
-name), or JSDoc types.
+not resolve; `unresolved` lists them, an import only with a relative module name
+or a `paths` alias.
 
 Some loading sites of `source-sites.json` in the scope can load the module of the
 symbol, but the helper does not follow them. It lists each one in `unresolved`
@@ -422,17 +422,37 @@ with a `reason`, as a possible use that it does not resolve:
   name (`./`, `../` or `/`, or `.` or `..` alone) the compiler settings do not
   resolve to a file. Examples are an import of a file that the capture did not
   save, and an extensionless relative import of an ES module under NodeNext.
+- A site of the same kinds whose `paths` alias the compiler settings do not
+  resolve to a file. A `paths` alias is a module name that matches a key of the
+  `paths` option of the query settings, as TypeScript matches it: a key without
+  `*` that equals the name, else the key with one `*` whose prefix and suffix the
+  name has, with the longest prefix. A key `*` alone matches every package name,
+  so it does not make an alias. Examples are an alias of a folder that the
+  capture did not save, and an extensionless alias of an ES module under
+  NodeNext.
 
 The type checker follows a literal `require` call in a JavaScript file, and a
 `require.resolve` call with a literal module name loads nothing, so the helper
-does not list them. A bare package name, such as `zod`, names an external
-package, which the snapshot never holds, and a relative name of a snapshot file
-that is not source code, such as `./theme.css`, cannot hold the symbol, so the
-helper does not list them either. The helper finds the saved site of each
-unresolved import with the walk of the source collection. When no saved site
-matches, for example after the site limit of `collect`, the entry has
-`siteRef: null`, and its lines and expression come from the compiler syntax
-tree. With an unresolved entry, the references can be incomplete.
+does not list them. A bare package name that matches no `paths` key, such as
+`zod`, names an external package, which the snapshot never holds, and a relative
+name or alias of a snapshot file that is not source code, such as `./theme.css`,
+cannot hold the symbol, so the helper does not list them either. The helper finds
+the saved site of each unresolved import with the walk of the source collection.
+When no saved site matches, for example after the site limit of `collect`, the
+entry has `siteRef: null`, and its lines and expression come from the compiler
+syntax tree. With an unresolved entry, the references can be incomplete.
+
+The helper does not find these uses, and `unresolved` has no entry for them:
+
+- An import of a bare module name that does not resolve, also when `baseUrl`
+  maps bare names to snapshot source. Such a name cannot be told apart from a
+  package name.
+- A destructuring assignment, such as `({ createInvoice } = billing)`, which
+  assigns to names that exist already.
+- A JSDoc type, such as `@type {import('./invoice').Invoice}`.
+
+So `complete-within-scope` means that the helper found no unresolved entry. It is
+not proof that the references are complete.
 
 The helper saves:
 
@@ -450,7 +470,7 @@ The helper saves:
 | `scope` | `graphContext`, the ID of the import pass; `graphContextRef`, a JSON Pointer to it in `graph-profile.json`; and `files`, the files that the query searched. |
 | `tool` | The parser record of `source-sites.json` with the name of the type checker: the versions of Node, ts-morph and its TypeScript, and the digests of the tool files. |
 | `virtualRoot` | `/repo`, the snapshot root as the project sees it. |
-| `completeness` | `partial` when `unresolved` has an entry, else `complete-within-scope`. Neither value covers the files outside the scope or the uses that the helper does not follow. |
+| `completeness` | `partial` when `unresolved` has an entry, else `complete-within-scope`: the helper found no unresolved entry. Neither value is proof of completeness: they do not cover the files outside the scope or the uses that the helper does not find. |
 | `declarations` | The declarations of the symbol after its aliases: `path` and `range`. A declaration is not a reference. |
 | `references` | Each site outside the declarations, by path and in source order: `path`, `range`, `kind` and `localName`. |
 | `unresolved` | Each loading site of the scope that the helper does not follow: `siteRef` (a JSON Pointer into `source-sites.json`, or `null` when no saved site matches), `path`, `lines`, `kind`, `expression` and `reason`. |
