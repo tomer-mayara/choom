@@ -122,7 +122,53 @@ These rules depend on the cookbook prompts and are not checked by code:
 
 Revision 3, 2026-11-15. This plan closes gaps G1–G12. The owner made the
 decisions in the log below. Revision 3 corrects the errors that the review of
-revision 2 found (see "What changed in revision 3").
+revision 2 found (see "What changed in revision 3"). "Changes during
+implementation" records what changed after work started.
+
+### Changes during implementation
+
+Each ticket is a draft PR. Each PR targets the branch of the PR before it.
+
+| Ticket | PR | State |
+|---|---|---|
+| Report | tomer-mayara/choom#57 | Draft |
+| GA-03a | tomer-mayara/choom#58 | Draft |
+| GA-01c | tomer-mayara/choom#59 | Draft |
+| GA-11a | tomer-mayara/choom#60 | Draft. CR-004 text needs owner approval before GA-11b starts. |
+| GA-DOC | tomer-mayara/choom#61 | Draft |
+| GA-00a | tomer-mayara/choom#62 | Draft |
+| GA-00b | tomer-mayara/choom#63 | Draft |
+| GA-00d | tomer-mayara/choom#64 | Draft |
+| GA-03b | tomer-mayara/choom#65 | Draft |
+
+Plan changes:
+
+1. **GA-00b is split.** GA-00b moves the producer without changing behavior.
+   A new ticket, **GA-00b2**, moves the code blocks that Stages 1 and 2 run
+   from saved cookbook copies into source modules. It keeps the saved-copy
+   protection until GA-00e.
+2. **New order for the setup tickets:** GA-00b → GA-00d → GA-03b → GA-00b2 →
+   GA-00e → GA-00c. GA-00d and GA-03b needed nothing else, so they went first.
+   GA-00e now comes before GA-00c, for this reason: today each attempt runs
+   from copies of the producer code that are saved in the attempt folder. A
+   copy in that folder cannot import a workspace package such as
+   `@choom/baseline-model`, and a copy of the package would not stay frozen.
+   GA-00e replaces the saved copies with a code-digest check. Its digest covers
+   `packages/producer/src` and `packages/baseline-model/src`. After that,
+   GA-00c can import the package.
+3. **Symbol-only components (D9 changed).** A version 5 component can own only
+   symbols, with no path (GA-03b). So the producer profile rule "every
+   component has a path" becomes "every component has a path or a symbol".
+   GA-02a makes this change when it adds version 5 to the producer.
+4. **D21, proposed:** a symbol name is any JavaScript identifier name. Reserved
+   words such as `class` pass the syntax check, as `default` does. The viewer
+   checks syntax only, and the producer (GA-02a) refuses a symbol that the
+   file does not declare. No reserved-word list.
+5. **Local browser acceptance.** `bun run test:e2e` can run in the cloud
+   session with the preinstalled Chromium (revision 1243; the project pins
+   1254). One layout scenario, "the full two-line name, both entry counts, and
+   duplication marker fit in the component header", fails locally on the base
+   before any change. CI passes it.
 
 ### How to work every ticket
 
@@ -227,7 +273,7 @@ Tickets with the same order number can run at the same time.
 | 3 | GA-00b Move the producer into `packages/producer` | setup | GA-00a |
 | 4 | GA-00c Producer uses the shared baseline rules | setup | GA-00b |
 | 4 | GA-00d CI `producer` job and `@docker` tag | setup | GA-00b |
-| 4 | GA-00e Record and check the producer code digest | setup | GA-00b |
+| 4 | GA-00e Record and check the producer code digest | setup | GA-00b2 |
 | 4 | GA-DOC Change the design text to match the decisions | docs | — |
 | 5 | GA-12 Do not save hidden reasoning | G12 | GA-00b |
 | 5 | GA-09 Named parsing profile | G9 | GA-00b |
@@ -440,7 +486,8 @@ The second scenario fails today (defect 1).
 
 ### GA-00e Record and check the producer code digest
 
-**Gap:** setup (D7, E7, E8). **Needs:** GA-00b.
+**Gap:** setup (D7, E7, E8). **Needs:** GA-00b2 (see "Changes during
+implementation", item 2).
 
 Add to `recovery.feature`:
 
@@ -464,12 +511,14 @@ digest.
 **Steps:**
 
 1. **U** `producerCodeDigest(root)` is stable for the same files and changes
-   when any file in `packages/producer/src` changes.
+   when any file in `packages/producer/src` or `packages/baseline-model/src`
+   changes.
 2. **U** The receipt has the package version, the digest, and the Git commit or
    `not-available`.
 3. **U** Each stage action compares the current digest with the receipt and
    refuses a difference.
-4. Remove the code that saves source copies in each run.
+4. Remove the code that saves source copies in each run. Later actions run
+   from the checkout after the digest check.
 
 ### GA-DOC Change the design text to match the decisions
 
