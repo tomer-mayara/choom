@@ -48,16 +48,16 @@ export const referencesNotes = [
   'The symbol is an export name of the file (default for the default export, export= for export =), else the name of a ' +
     'top-level declaration of the file. An import is not a declaration of the file. Each alias is followed to the ' +
     'declaration that it names, and declarations lists that declaration. A declaration is not a reference.',
-  'The query follows renamed imports and exports, export * from, namespace imports, default imports, import = and the ' +
-    'JavaScript require calls that the compiler resolves. It does not follow a require call in a TypeScript file ' +
-    '(unresolved lists it), an import that the compiler settings do not resolve, the local names that a destructured ' +
-    'dynamic import binds in a TypeScript file, or JSDoc types.',
+  'The query follows renamed imports and exports, export * from, namespace imports, default imports, import =, the ' +
+    'JavaScript require calls that the compiler resolves, and the local names that a destructuring of a module object ' +
+    'binds, such as const { createInvoice } = await import(\'./invoice\'). It does not follow a require call in a ' +
+    'TypeScript file (unresolved lists it), an import that the compiler settings do not resolve, or JSDoc types.',
   'kind is import for an import, import = or JavaScript require that binds a local name to the symbol; re-export for an ' +
     'export list entry, export default, export = or export * from that exports it; type for a use in a type; call for a ' +
-    'call, new expression, tagged template, decorator or JSX element that it starts; and value for any other use. The ' +
-    'closing tag of a JSX element is not listed.',
-  'localName is the name that the site uses for the symbol: the local name that an import binds, the export name of a ' +
-    're-export, or the name expression of another use, such as billing.createInvoice.',
+    'call, new expression, tagged template, decorator or JSX element that it starts; and value for any other use, such ' +
+    'as a destructuring that takes it, whose range is the property name. The closing tag of a JSX element is not listed.',
+  'localName is the name that the site uses for the symbol: the local name that an import or a destructuring binds, the ' +
+    'export name of a re-export, or the name expression of another use, such as billing.createInvoice.',
   'unresolved lists each loading site of source-sites.json in the scope that can load the module of the symbol and that ' +
     'the query does not follow, with its reason: a dynamic import, require, require.resolve or import = site with a ' +
     'computed module name (a null specifier), and a require call with a literal module name in a TypeScript file (.ts, ' +

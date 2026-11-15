@@ -8,15 +8,17 @@ import { type SnapshotProject, snapshotPath, virtualRoot } from './snapshot-proj
 // the default export), else the name of a top-level declaration of the file. Each
 // alias is followed to the declaration that it names: a renamed import or export,
 // export * from, a namespace import, a default import and a JavaScript require that
-// the compiler resolves. The query searches the files that the project holds; the
+// the compiler resolves. The local names that a destructuring of a module object
+// binds are followed too. The query searches the files that the project holds; the
 // compiler can read other indexed files to resolve imports, but they are not searched.
 // Each reference is one site outside the declarations of the symbol:
 // - import: an import, import = or JavaScript require that binds a local name to it;
 // - re-export: an export list entry, export default, export = or export * from that exports it;
 // - type: a use in a type; call: a call, new, tagged template, decorator or JSX element
-//   that it starts; value: any other use.
-// localName is the name that the site uses: the local name of an import, the export
-// name of a re-export, or the name expression of another use, such as billing.createInvoice.
+//   that it starts; value: any other use, such as a destructuring that takes it.
+// localName is the name that the site uses: the local name of an import or a
+// destructuring, the export name of a re-export, or the name expression of another
+// use, such as billing.createInvoice.
 type Ts = typeof TsMorph.ts;
 type Node = TsMorph.ts.Node;
 type SourceFile = TsMorph.ts.SourceFile;
@@ -26,20 +28,26 @@ export type SourceRange = [SourcePosition, SourcePosition];
 export interface SymbolReference { path: string; range: SourceRange; kind: ReferenceKind; localName: string }
 export interface SymbolDeclaration { path: string; range: SourceRange }
 export interface SymbolReferences { declarations: SymbolDeclaration[]; references: SymbolReference[] }
-// The checker and the declared symbol that the query compares each name with.
-interface Query { ts: Ts; checker: TsMorph.ts.TypeChecker; target: TsSymbol }
+// The checker and the declared symbol that the query compares each name with. A
+// destructuring that takes the symbol from a module object binds a local name: the
+// query keeps the binding element and the declared symbol of that local name.
+interface Query {
+  ts: Ts; checker: TsMorph.ts.TypeChecker; target: TsSymbol;
+  destructured: Set<Node>; bindings: Set<TsSymbol>;
+}
+type Checking = Pick<Query, 'ts' | 'checker'>;
 // A site: the node whose range the record saves, its kind and the local name.
 interface Site { node: Node; kind: ReferenceKind; localName: string }
 
 // The declared symbol that a symbol names after its aliases, or undefined when an alias names nothing.
-function declared({ ts, checker }: Omit<Query, 'target'>, symbol: TsSymbol | undefined): TsSymbol | undefined {
+function declared({ ts, checker }: Checking, symbol: TsSymbol | undefined): TsSymbol | undefined {
   if (symbol === undefined) return undefined;
   const resolved = checker.getExportSymbolOfSymbol(symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol);
   return resolved.declarations?.length ? resolved : undefined;
 }
 
 // The symbol that the query looks for: the export of the file with that name, else its top-level declaration.
-function targetSymbol(query: Omit<Query, 'target'>, source: SourceFile, path: string, name: string): TsSymbol {
+function targetSymbol(query: Checking, source: SourceFile, path: string, name: string): TsSymbol {
   const { ts, checker } = query;
   const module = checker.getSymbolAtLocation(source);
   const exported = module === undefined ? undefined
@@ -51,6 +59,34 @@ function targetSymbol(query: Omit<Query, 'target'>, source: SourceFile, path: st
   assert(target !== undefined && (target.declarations ?? []).every(item => item.getSourceFile().fileName.startsWith(virtualRoot + '/')),
     `The export ${name} of ${path} does not name a declaration in the snapshot.`);
   return target;
+}
+
+// Whether a symbol names the symbol of the query, or a local name that a destructuring binds to it.
+function refersToTarget(query: Query, symbol: TsSymbol | undefined): boolean {
+  const resolved = declared(query, symbol);
+  return resolved !== undefined && (resolved === query.target || query.bindings.has(resolved));
+}
+
+// Keeps each element of an object binding pattern of the file that takes the symbol
+// from a module object, such as const { createInvoice } = await import('./invoice'),
+// and the local name that it binds. A JavaScript require that binds an alias is an import.
+function collectDestructurings(query: Query, source: SourceFile): void {
+  const { ts, checker } = query;
+  const visit = (node: Node): void => {
+    if (ts.isBindingElement(node) && ts.isObjectBindingPattern(node.parent) && ts.isIdentifier(node.name)) {
+      const local = checker.getSymbolAtLocation(node.name);
+      const property = node.propertyName ?? node.name;
+      const name = ts.isIdentifier(property) || ts.isStringLiteral(property) ? property.text : undefined;
+      const taken = name === undefined ? undefined : checker.getPropertyOfType(checker.getTypeAtLocation(node.parent), name);
+      const bound = declared(query, local);
+      if (bound !== undefined && !((local?.flags ?? 0) & ts.SymbolFlags.Alias) && declared(query, taken) === query.target) {
+        query.destructured.add(node);
+        query.bindings.add(bound);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
 }
 
 // The symbol that a name refers to. A shorthand property and an export list entry
@@ -148,9 +184,11 @@ function starSites({ ts, checker, target }: Query, source: SourceFile, statement
 }
 
 // The sites of a file that use the symbol, in source order. The two names of an
-// import or export entry such as createInvoice as ci give one site.
+// import or export entry such as createInvoice as ci give one site. A destructuring
+// that takes the symbol is a value site at the property name, and localName is the
+// local name that it binds.
 function sitesIn(query: Query, source: SourceFile): Site[] {
-  const { ts, target } = query;
+  const { ts, target, destructured } = query;
   const declarationNames = new Set((target.declarations ?? []).map(item => ts.getNameOfDeclaration(item)));
   const sites = new Map<string, Site>();
   const add = (site: Site): void => {
@@ -159,8 +197,10 @@ function sitesIn(query: Query, source: SourceFile): Site[] {
   };
   const visit = (node: Node): void => {
     if (ts.isExportDeclaration(node)) starSites(query, source, node).forEach(add);
+    if (ts.isBindingElement(node) && destructured.has(node))
+      add({ node: node.propertyName ?? node.name, kind: 'value', localName: (node.name as TsMorph.ts.Identifier).text });
     const name = ts.isIdentifier(node) || (ts.isStringLiteral(node) && ts.isElementAccessExpression(node.parent)) ? node : undefined;
-    if (name !== undefined && !declarationNames.has(name) && declared(query, symbolAt(query, name)) === target) {
+    if (name !== undefined && !declarationNames.has(name) && !destructured.has(name.parent) && refersToTarget(query, symbolAt(query, name))) {
       const site = siteOf(query, source, name);
       if (site !== undefined) add(site);
     }
@@ -179,13 +219,13 @@ export function findReferences(snapshot: SnapshotProject, path: string, symbol: 
   const program = snapshot.project.getProgram().compilerObject;
   const checker = program.getTypeChecker();
   const target = targetSymbol({ ts, checker }, program.getSourceFile(file) as SourceFile, path, symbol);
-  const query: Query = { ts, checker, target };
+  const query: Query = { ts, checker, target, destructured: new Set(), bindings: new Set() };
   const declarations = (target.declarations ?? []).map(item =>
     ({ path: snapshotPath(item.getSourceFile().fileName), range: nodeRange(item.getSourceFile(), item) }));
-  const references = searched.flatMap(name => {
-    const source = program.getSourceFile(name) as SourceFile;
-    return sitesIn(query, source).map(({ node, kind, localName }) =>
-      ({ path: snapshotPath(name), range: nodeRange(source, node), kind, localName }));
-  });
+  const sources = searched.map(name => program.getSourceFile(name) as SourceFile);
+  // A local name can be used before its destructuring in the file, or in another file.
+  for (const source of sources) collectDestructurings(query, source);
+  const references = sources.flatMap(source => sitesIn(query, source).map(({ node, kind, localName }) =>
+    ({ path: snapshotPath(source.fileName), range: nodeRange(source, node), kind, localName })));
   return { declarations, references };
 }

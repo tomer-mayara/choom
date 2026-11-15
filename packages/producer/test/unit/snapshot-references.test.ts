@@ -162,6 +162,9 @@ describe("findReferences", () => {
     ]);
   });
 
+});
+
+describe("findReferences through module loading, and the files that it searches", () => {
   test("follows a require call of a JavaScript file and a dynamic import with a literal name", () => {
     const files: Files = {
       [invoicePath]: invoice,
@@ -177,17 +180,43 @@ describe("findReferences", () => {
     ]);
   });
 
-  // The record notes name these limits.
-  test("does not follow a require call in a TypeScript file or the local names of a destructured dynamic import", () => {
+  // The record notes name this limit, and the Stage 4 record lists the call as unresolved.
+  test("does not follow a require call in a TypeScript file", () => {
     const files: Files = {
       [invoicePath]: invoice,
       "src/required.cts": "const { createInvoice } = require('./invoice');\n\ncreateInvoice('required');\n",
-      "src/unpacked.ts": "export async function later() {\n  const { createInvoice: make } = await import('./invoice');\n" +
-        "  const { createInvoice } = await import('./invoice');\n  return [make('later'), createInvoice('again')];\n}\n",
     };
     expectReferences(files, referencesIn(files, invoicePath, "createInvoice"), [
       { path: invoicePath, kind: "call", localName: "createInvoice", at: "draft = «createInvoice»" },
-      { path: "src/unpacked.ts", kind: "value", localName: "createInvoice", at: "{ «createInvoice»: make }" },
+    ]);
+  });
+
+  // Changed on purpose: the shorthand form is a site too, and the uses of the local names are followed.
+  test("follows the local names that a destructuring of a module object binds, also in another file", () => {
+    const files: Files = {
+      [invoicePath]: invoice,
+      "src/unpacked.ts": "export async function later() {\n  const { createInvoice: make } = await import('./invoice');\n" +
+        "  const { createInvoice } = await import('./invoice');\n  return [make('later'), createInvoice('again')];\n}\n",
+      "src/lazy.js": "export async function lazy() {\n  const { createInvoice } = await import('./invoice');\n" +
+        "  return createInvoice('lazy');\n}\n",
+      "src/early.ts": "export const { createInvoice: early } = await import('./invoice');\n",
+      "src/user.ts": "import { early } from './early';\n\nearly('user');\n",
+      "src/legacy.js": "const { createInvoice } = require('./invoice');\n\ncreateInvoice('legacy');\n",
+    };
+    const options = { compilerOptions: { allowJs: true, module: 99, moduleResolution: 100, target: 99 } };
+    expectReferences(files, referencesIn(files, invoicePath, "createInvoice", options), [
+      { path: "src/early.ts", kind: "value", localName: "early", at: "{ «createInvoice»: early }" },
+      { path: invoicePath, kind: "call", localName: "createInvoice", at: "draft = «createInvoice»" },
+      { path: "src/lazy.js", kind: "value", localName: "createInvoice", at: "const { «createInvoice» }" },
+      { path: "src/lazy.js", kind: "call", localName: "createInvoice", at: "return «createInvoice»" },
+      { path: "src/legacy.js", kind: "import", localName: "createInvoice", at: "const { «createInvoice» }" },
+      { path: "src/legacy.js", kind: "call", localName: "createInvoice", at: "«createInvoice»('legacy')" },
+      { path: "src/unpacked.ts", kind: "value", localName: "make", at: "{ «createInvoice»: make }" },
+      { path: "src/unpacked.ts", kind: "value", localName: "createInvoice", at: "  const { «createInvoice» } = await" },
+      { path: "src/unpacked.ts", kind: "call", localName: "make", at: "«make»('later')" },
+      { path: "src/unpacked.ts", kind: "call", localName: "createInvoice", at: "«createInvoice»('again')" },
+      { path: "src/user.ts", kind: "import", localName: "early", at: "import { «early» }" },
+      { path: "src/user.ts", kind: "call", localName: "early", at: "«early»('user')" },
     ]);
   });
 
