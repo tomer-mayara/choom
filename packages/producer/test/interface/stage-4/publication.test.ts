@@ -23,6 +23,15 @@ function result(output: { status: number | null; stdout: string; stderr: string 
 }
 
 describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
+  // The source collection writes the review prompt that the operator gives to the LLM.
+  test("the Stage 4 review prompt asks for the visible response only", () => {
+    withPublication((fixture) => {
+      const prompt = readFileSync(join(fixture.attempt, "review-prompt.md"), "utf8");
+      expect(prompt).toContain("Save the complete visible LLM response and call metadata with hiddenReasoning: not-saved.");
+      expect(prompt).toContain("Do not save hidden reasoning.");
+    });
+  }, 60_000);
+
   test("checks the packet, publishes it, and verifies the published run", () => {
     withPublication((fixture) => {
       expect(result(publishStageFour(fixture, "check")))
