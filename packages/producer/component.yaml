@@ -9,6 +9,7 @@ artifacts:
     - path: ../../cookbook/behavior/producer/git-identity.feature
     - path: ../../cookbook/behavior/producer/snapshot-search.feature
     - path: ../../cookbook/behavior/producer/source-structure.feature
+    - path: ../../cookbook/behavior/producer/module-kinds.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
