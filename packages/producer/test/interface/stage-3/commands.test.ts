@@ -89,7 +89,8 @@ const scope = [source("app.ts", app), source("broken.ts", "export const = 1;\n")
   ...generated.map((path) => source(path, required)), source("jobs/start.mjs", job), source("lib/helper.ts", helper)];
 
 const sharedLimits = ["Tool content reads and syntactic candidates only. They do not record LLM source review.",
-  "No project load, binding, alias or type resolution, config execution, or reachability analysis.",
+  "Syntax only: the snapshot project parses each file without compiler settings. No binding, alias or type resolution, " +
+    "config execution, or reachability analysis.",
   "Names can be shadowed. Computed expressions, templates and aliases are not resolved.",
   "Native code, excluded inputs and all files outside the recorded scope were outside the query.",
   "Parser recovery can affect matches in files with diagnostics. A completed no-match describes this query only."];
@@ -173,7 +174,7 @@ describe("Stage 3 collect", () => {
       diagnostics: [1, 2].map((index) => ({ path: "broken.ts", code: 1134, at: { line: 1, column: 12 + 2 * index },
         message: "Variable declaration expected." })),
       limits: sharedLimits,
-      query: { profile: "stage-3-loading-syntax-v2", parser: "TypeScript createSourceFile (Latest)",
+      query: { profile: "stage-3-loading-syntax-v3", parser: "ts-morph snapshot project (TypeScript parser, Latest)",
         selection: "all indexed regular files with a JavaScript or TypeScript source extension",
         extensions: "\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$", maxExpressionCodeUnits: 4096, versions: "checked above",
         candidateKinds: ["import-literal", "import-computed", "require", "require.resolve", "import.meta.glob", "new Worker",
@@ -325,10 +326,10 @@ describe("Stage 3 collect of other source forms", () => {
     expect({ matches: loading.matches, diagnostics: loading.diagnostics }).toEqual({ diagnostics: [], matches: [
       found("legacy.cts", "require", "require('node:fs')"), found("module.mts", "import.meta.glob", "import.meta.glob('./pages/*.ts')"),
       found("page.tsx", "import-literal", "import('./chart.tsx')"), found("view.jsx", "require", "require('./style.css')")] });
-    // TypeScript reads the byte order mark as the first character of line 1.
+    // The snapshot project leaves the byte order mark out of the text, so the columns of line 1 do not count it.
     const targets = (attempt("symbol-mentions.json").targets as Json[]).map(({ name, mentions }) => ({ name, mentions }));
     expect(targets).toEqual([
-      { name: "helper", mentions: [mention("bom.ts", bom, "ImportSpecifier", 1, [11, 17]), mention("bom.ts", bom, "CallExpression", 2, [22, 28]),
+      { name: "helper", mentions: [mention("bom.ts", bom, "ImportSpecifier", 1, [10, 16]), mention("bom.ts", bom, "CallExpression", 2, [22, 28]),
         mention("lib/helper.ts", helper, "FunctionDeclaration", 1, [17, 23]),
         mention("types.d.ts", text("types.d.ts"), "FunctionDeclaration", 1, [18, 24])] },
       { name: "Unused", mentions: [mention("lib/helper.ts", helper, "TypeAliasDeclaration", 4, [13, 19])] },
@@ -341,7 +342,7 @@ describe("Stage 3 collect of other source forms", () => {
       () => {}, "The encoded data was not valid for encoding utf-8"],
     ["an indexed source file that changed after start", forms,
       (root: string) => writeFileSync(join(root, "lib/helper.ts"), helper.replace("number", "bigint")),
-      "Changed indexed source: lib/helper.ts"],
+      "Snapshot integrity check failed: lib/helper.ts"],
   ])("stops at %s, with a failed receipt and no saved search", (name, files, change, message) => {
     const run = name.replaceAll(" ", "-");
     expect(collected(run, files, change)).toEqual({ status: 1, stdout: "", stderr: message + "\n" });
