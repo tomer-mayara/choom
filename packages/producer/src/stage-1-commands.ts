@@ -6,10 +6,12 @@ import { appendFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpa
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 
-// The Stage 1 helper. Every action runs from the trusted tool checkout. Later
-// actions refuse a helper that differs from the copy that start saved.
+// The Stage 1 helper. Every action runs from the trusted tool checkout. Start
+// records the producer code, and each later action refuses the run when the
+// code in the checkout differs from that record.
 // Saved JSON and YAML stay unchecked values until the checks below read them.
 type Fields = Record<string, unknown>;
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
@@ -35,14 +37,8 @@ const [action, ...args] = process.argv.slice(2);
 const self = fileURLToPath(import.meta.url);
 const tools = realpathSync(process.env.CHOOM_TOOLS ?? '');
 assert(self === join(tools, 'packages/producer/src/stage-1-commands.ts'), 'Use the trusted Stage 1 helper.');
-// Saved copies of TypeScript files end in .mts, so Node runs them as ES modules in any folder.
-const savedHelper = 'evidence/stage-1-commands.mts';
-// Start saves the settings collector. Capture copies that saved copy to the
-// collector that the settings action runs and finish registers.
-const savedCollector = 'evidence/stage-1-settings.mts';
-const collector = 'settings.mts';
-const layoutHelper = 'run-layout.mjs';
-const layoutSource = join(dirname(self), layoutHelper);
+// The settings action runs the settings collector in the tool checkout.
+const collector = join(dirname(self), 'stage-1-settings.ts');
 assert(isAbsolute(process.env.CHOOM_WORK ?? ''), 'Set CHOOM_WORK to a new absolute path.');
 const work = resolve(process.env.CHOOM_WORK ?? '');
 const require = createRequire(join(tools, 'package.json'));
@@ -151,11 +147,10 @@ function startRun(): void {
     baselineId: process.env.CHOOM_BASELINE_ID };
   for (const [key, prefix] of [['runRef', 'run'], ['snapshotRef', 'snapshot'], ['baselineId', 'baseline']] as const)
     assert(new RegExp('^' + prefix + '-[a-z0-9]+(?:-[a-z0-9]+)*$').test(ids[key] ?? ''), 'Set ' + key + ' to a simple new ID.');
+  const producer = producerReceipt(tools);
   mkdirSync(work); mkdirSync(join(work, 'snapshot')); mkdirSync(join(work, 'evidence'));
   saveJson('evidence/stage1-inputs.json', { formatVersion: 1, ...ids, target, tools, ...layout, startedAt: utc() });
-  save(savedHelper, readFileSync(self));
-  save('evidence/' + layoutHelper, readFileSync(layoutSource));
-  save(savedCollector, readFileSync(join(dirname(self), 'stage-1-settings.ts')));
+  saveJson(producerRecordPath, producer);
   // A record of the instructions and prompts for this run. No code reads it.
   save('evidence/cookbook.md', readFileSync(join(tools, 'docs/design/app-a/step-1-cookbook.md')));
   saveJson('evidence/tools.json', { node: process.version, tsMorph: require('ts-morph/package.json').version,
@@ -211,7 +206,6 @@ function capture(inputs: StageOneInputs): void {
   saveJson('evidence/capture-scope.json', { formatVersion: 1, snapshotRef: inputs.snapshotRef, ...layout,
     exclusionsSha256: hash(exclusions), scopeNotesSha256: hash(scopeNotes) });
   save('inventory.mjs', inventoryHelper(inputs.snapshotRef));
-  save(collector, read(savedCollector));
   console.log(`Captured ${inventory.files.length} regular files. Atomic capture is not proven.`);
 }
 
@@ -226,14 +220,14 @@ function collectSettings(inputs: StageOneInputs): void {
   const n = Math.max(0, ...prior) + 1;
   const stem = 'evidence/settings-probes/probe-' + String(n).padStart(3, '0');
   save(stem + '.extra-configs.json', read('evidence/extra-configs.json'));
-  const bytes = command(process.execPath, [join(work, collector)], stem, { timeout: 60_000 });
+  const bytes = command(process.execPath, [collector], stem, { timeout: 60_000 });
   const result = JSON.parse(bytes.toString()); assert(result.snapshotId === inputs.snapshotRef, 'Wrong settings snapshot.');
   save(stem + '.result.json', bytes);
   writeFileSync(join(work, 'evidence/settings.json'), bytes);
   writeFileSync(join(work, 'evidence/settings-selection.json'), JSON.stringify({ formatVersion: 1,
     snapshotRef: inputs.snapshotRef, probe: stem, settingsSha256: hash(bytes),
     extraConfigsSha256: hash(read('evidence/extra-configs.json')),
-    collectorSha256: hash(read(collector)) }, null, 2) + '\n');
+    collectorSha256: hash(readFileSync(collector)) }, null, 2) + '\n');
   console.log('Settings collected. Evidence ID for this probe: ' + artifactId(stem + '.result.json'));
 }
 
@@ -263,7 +257,7 @@ function checkCapturedInputs(inputs: StageOneInputs): void {
     selection.settingsSha256 === hash(read(selection.probe + '.result.json')) &&
     selection.extraConfigsSha256 === hash(read('evidence/extra-configs.json')) &&
     selection.extraConfigsSha256 === hash(read(selection.probe + '.extra-configs.json')) &&
-    selection.collectorSha256 === hash(read(collector)) && json(selection.probe + '.json').exitCode === 0,
+    selection.collectorSha256 === hash(readFileSync(collector)) && json(selection.probe + '.json').exitCode === 0,
   'Settings do not match the selected successful probe and current extra paths. Rerun settings before review.');
 }
 
@@ -379,7 +373,7 @@ function publish(inputs: StageOneInputs, bytes: Map<string, Buffer>, review: Rev
     components: [], interfaces: [], resources: [], rules: [] }));
   save('discovery.yaml', stringify(discovery));
   appendFileSync(join(work, 'evidence/commands.md'), '\nCompleted Stage 1 review and verification at ' + utc() + '.\n');
-  const all = [...enumerate('evidence'), 'exclusions.txt', 'inventory.mjs', collector];
+  const all = [...enumerate('evidence'), 'exclusions.txt', 'inventory.mjs'];
   const registry = Object.fromEntries(all.map(path => [artifactId(path), { path, sha256: hash(read(path)) }]));
   assert(Object.keys(registry).length === all.length, 'Duplicate artifact IDs.');
   save('run.yaml', stringify({ formatVersion: 1, id: inputs.runRef, mode: 'A', status: 'in-progress',
@@ -420,10 +414,10 @@ function verify(inputs: StageOneInputs): void {
 
 function continueRun(): void {
   assert(realpathSync(work) === work, 'Use the canonical working-folder path.');
+  refuseChangedProducerCode(work, tools);
   const inputs: StageOneInputs = json('evidence/stage1-inputs.json');
-  assert(inputs.tools === tools && read(savedHelper).equals(readFileSync(self)) &&
-    read('evidence/' + layoutHelper).equals(readFileSync(layoutSource)),
-    'The trusted helper changed since start. Use the saved tool checkout version.');
+  assert(inputs.tools === tools,
+    'The tool checkout path changed since start. Set CHOOM_TOOLS to the checkout that started this run.');
   if (action !== 'verify') assert(!present('run.yaml'), 'Stage 1 is already published. Use verify, not a repeated stage.');
   if (action === 'capture') capture(inputs);
   else if (action === 'settings') collectSettings(inputs);

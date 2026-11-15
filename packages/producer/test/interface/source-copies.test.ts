@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { producerReceipt } from "../../src/producer-code.ts";
 import { producerDocuments, producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
 import { stagedRun, stagedSnapshotRef as snapshotRef } from "../support/staged-run.ts";
 
@@ -30,7 +31,7 @@ function json(path: string): unknown {
 }
 
 describe("stage starts save their source copies", () => {
-  test("Stage 1 saves its helper, the run layout, the settings collector and its cookbook", () => {
+  test("Stage 1 saves its cookbook and the producer code record, and no producer code", () => {
     withScratch((scratch) => {
       const target = join(scratch, "target");
       const work = join(scratch, "run");
@@ -40,9 +41,9 @@ describe("stage starts save their source copies", () => {
         CHOOM_TARGET: target, CHOOM_RUN_ID: "run-check", CHOOM_SNAPSHOT_ID: snapshotRef, CHOOM_BASELINE_ID: "baseline-check" });
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toBe("Working folder prepared. Review exclusions.txt and scope-notes.md before capture.\n");
-      expectCopies(join(work, "evidence"), { "stage-1-commands.mts": code("stage-1-commands.ts"),
-        "run-layout.mjs": code("run-layout.mjs"), "stage-1-settings.mts": code("stage-1-settings.ts"),
-        "cookbook.md": documents("step-1-cookbook.md") });
+      expectCopies(join(work, "evidence"), { "cookbook.md": documents("step-1-cookbook.md") });
+      expect(readdirSync(work, { recursive: true }).filter((name) => /\.(?:m?ts|mjs|py)$/.test(String(name)))).toEqual([]);
+      expect(json(join(work, "evidence/producer.json"))).toEqual(producerReceipt(toolsRoot));
       expect(json(join(work, "evidence/stage1-inputs.json"))).toMatchObject({ tools: toolsRoot, target, workLayout: "separate" });
       expect(Object.keys(json(join(work, "evidence/tools.json")) as object)).toEqual(["node", "tsMorph", "typescript", "yaml"]);
     });

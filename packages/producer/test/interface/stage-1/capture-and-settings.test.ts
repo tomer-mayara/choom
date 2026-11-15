@@ -1,13 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { parse } from "yaml";
-import { producerCommands } from "../../../src/cli.ts";
-import { withScratch } from "../../support/commands.ts";
-import { type Excerpt, reviewPacket, savedHelper, stageOne, stageOneRun, type StageOneRun,
-  writeReview } from "../../support/stage-1-run.ts";
-import { breakProducerFiles, copyToolCheckout } from "../../support/tool-checkout.ts";
+import { producerSource, withScratch } from "../../support/commands.ts";
+import { changeBaselineModelCode, changedCodeMessage, folderState } from "../../support/producer-record.ts";
+import { type Excerpt, reviewPacket, stageOne, stageOneRun, type StageOneRun, writeReview } from "../../support/stage-1-run.ts";
+import { copyToolCheckout } from "../../support/tool-checkout.ts";
 import { pathWithDoubles } from "../../support/tool-doubles.ts";
 
 // Stage 1 runs through the command line with an rsync test double. The expected
@@ -27,6 +26,8 @@ const firstProbeSettings: SettingsRecord = {
   configs: expectedSettings.configs.filter(({ path }) => path !== "/repo/" + extraConfig),
   contentReads: expectedSettings.contentReads.filter(({ path }) => path !== extraConfig),
 };
+// The settings action runs the collector in the tool checkout.
+const collector = join(producerSource, "stage-1-settings.ts");
 
 function readJson<T>(work: string, path: string): T {
   return JSON.parse(readFileSync(join(work, path), "utf8")) as T;
@@ -36,21 +37,21 @@ function expectSuccess(result: { status: number | null; stderr: string }): void 
   expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
 }
 
-// The settings action runs this saved program; the probe record names it.
+// The program that a settings probe ran; the probe record names it.
 function collectorPath(work: string, probe = "evidence/settings-probes/probe-001"): string {
-  const [collector] = readJson<ProbeCommand>(work, probe + ".json").args;
-  if (collector === undefined) throw new Error("The probe record names no collector.");
-  return collector;
+  const [program] = readJson<ProbeCommand>(work, probe + ".json").args;
+  if (program === undefined) throw new Error("The probe record names no collector.");
+  return program;
 }
 
 function captureAndCollect(run: StageOneRun): void {
   for (const action of ["start", "capture", "settings"]) expectSuccess(stageOne(run, action));
 }
 
-function finishWithReview(run: StageOneRun): ReturnType<typeof stageOne> {
+function reviewFolder(run: StageOneRun): string {
   const excerpt = stageOne(run, "excerpt", "package.json", "1", "5", "Check the workspace patterns.");
   expectSuccess(excerpt);
-  return stageOne(run, "finish", writeReview(run, reviewPacket(JSON.parse(excerpt.stdout) as Excerpt)));
+  return writeReview(run, reviewPacket(JSON.parse(excerpt.stdout) as Excerpt));
 }
 
 describe("Stage 1 capture, settings and save", () => {
@@ -68,79 +69,71 @@ describe("Stage 1 capture, settings and save", () => {
       expect(readJson(run.work, "evidence/settings.json")).toEqual(expectedSettings);
       expect(readJson(run.work, "evidence/settings-probes/probe-001.result.json")).toEqual(firstProbeSettings);
 
-      const finish = finishWithReview(run);
+      const finish = stageOne(run, "finish", reviewFolder(run));
       expectSuccess(finish);
       expect(finish.stdout).toBe("Stage 1 saved. Run verify, then continue to Stage 2.\n");
       const verify = stageOne(run, "verify");
       expectSuccess(verify);
       expect(JSON.parse(verify.stdout)).toMatchObject({ status: "stage1-inputs-verified", files: 10, writes: [] });
 
-      // Both programs that later checks run from the run folder are registered with their digests.
+      // The run registers the producer code record and the generated inventory program, and no producer code.
       const saved = parse(readFileSync(join(run.work, "run.yaml"), "utf8")) as SavedRun;
       const registered = new Map(Object.values(saved.artifacts).map(({ path, sha256: digest }) => [path, digest]));
       for (const [path, digest] of registered) expect({ path, digest }).toEqual({ path, digest: sha256(readFileSync(join(run.work, path))) });
-      const selection = readJson<Selection>(run.work, "evidence/settings-selection.json");
-      const collector = relative(run.work, collectorPath(run.work, selection.probe));
-      expect(registered.get(collector)).toBe(selection.collectorSha256);
+      expect(saved.artifacts["s1-file@evidence%2Fproducer.json"]?.path).toBe("evidence/producer.json");
       expect(registered.has("inventory.mjs")).toBe(true);
+      expect([...registered.keys()].filter((path) => /\.m?ts$/.test(path))).toEqual([]);
+      // Each probe ran the collector in the tool checkout, and the selection records its digest.
+      const selection = readJson<Selection>(run.work, "evidence/settings-selection.json");
+      expect([collectorPath(run.work), collectorPath(run.work, selection.probe)]).toEqual([collector, collector]);
+      expect(selection.collectorSha256).toBe(sha256(readFileSync(collector)));
       expect(saved.progress).toEqual({ inventory: "complete", baselineRecovery: "pending" });
     });
   }, 60_000);
 
-  test("a later action refuses a Stage 1 helper that changed after start", () => {
-    withScratch((scratch) => {
-      const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) });
-      expectSuccess(stageOne(run, "start"));
-      appendFileSync(savedHelper(run.work), "// changed\n");
-      const capture = stageOne(run, "capture");
-      expect({ status: capture.status, stderr: capture.stderr }).toEqual({ status: 1,
-        stderr: "The trusted helper changed since start. Use the saved tool checkout version.\n" });
-      expect(existsSync(join(run.work, "evidence/inventory.json"))).toBe(false);
-    });
-  });
-
-  test("settings runs the collector copy in the run folder", () => {
+  test("settings runs the collector in the tool checkout, not a program in the run folder", () => {
     withScratch((scratch) => {
       const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) });
       expectSuccess(stageOne(run, "start"));
       expectSuccess(stageOne(run, "capture"));
-      const record = { formatVersion: 1, snapshotId: "snapshot-check", configs: [], packages: [], marker: "saved copy" };
-      const collector = "settings.mts";
-      writeFileSync(join(run.work, collector), `console.log(JSON.stringify(${JSON.stringify(record)}));\n`);
+      expect(existsSync(join(run.work, "settings.mts"))).toBe(false);
+      writeFileSync(join(run.work, "settings.mts"), `console.log(JSON.stringify({ marker: "run folder" }));\n`);
       expectSuccess(stageOne(run, "settings"));
-      expect(readJson(run.work, "evidence/settings.json")).toEqual(record);
-      expect(collectorPath(run.work)).toBe(join(run.work, collector));
+      expect(readJson(run.work, "evidence/settings.json")).toEqual(firstProbeSettings);
+      expect(collectorPath(run.work)).toBe(collector);
     });
   });
+});
 
-  test("finish refuses a collector that changed after the selected probe and saves nothing", () => {
-    withScratch((scratch) => {
-      const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) });
-      captureAndCollect(run);
-      appendFileSync(collectorPath(run.work), "// changed\n");
-      mkdirSync(run.review);
-      const finish = stageOne(run, "finish", run.review);
-      expect({ status: finish.status, stderr: finish.stderr }).toEqual({ status: 1, stderr:
-        "Settings do not match the selected successful probe and current extra paths. Rerun settings before review.\n" });
-      expect(["run.yaml", "baseline.yaml", "discovery.yaml"].filter((name) => existsSync(join(run.work, name)))).toEqual([]);
-    });
-  });
-
-  // Start saves the code that capture and settings run. Later changes to the
-  // checkout's documents and producer code, other than the helper that each
-  // action compares with its saved copy, do not reach the run.
-  test("capture and settings use the code that start saved, not the current tool checkout", () => {
+describe("Stage 1 after the producer code changed", () => {
+  test("each later action refuses the run after a baseline-model file changed, and changes nothing", () => {
     withScratch((scratch) => {
       const tools = copyToolCheckout(scratch);
       const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) }, tools);
       expectSuccess(stageOne(run, "start"));
-      const helper = producerCommands.get("stage-1")?.helper ?? "";
-      expect(breakProducerFiles(tools, ["cli.ts", helper, "run-layout.mjs"])).toContain("step-1-cookbook.md");
-      expectSuccess(stageOne(run, "capture"));
-      expectSuccess(stageOne(run, "settings"));
-      expect(readJson(run.work, "evidence/settings.json")).toEqual(firstProbeSettings);
-      expectSuccess(finishWithReview(run));
-      expectSuccess(stageOne(run, "verify"));
+      changeBaselineModelCode(tools);
+      const before = folderState(run.work);
+      const actions = [["capture"], ["settings"], ["excerpt", "app.ts", "1", "1", "Check the entry."],
+        ["finish", run.review], ["verify"]];
+      for (const [action = "", ...args] of actions) {
+        const result = stageOne(run, action, ...args);
+        expect({ action, status: result.status, stdout: result.stdout, stderr: result.stderr })
+          .toEqual({ action, status: 1, stdout: "", stderr: changedCodeMessage(run.work) });
+      }
+      expect(folderState(run.work)).toEqual(before);
+    });
+  }, 60_000);
+
+  test("finish refuses the run after the settings collector changed, and saves nothing", () => {
+    withScratch((scratch) => {
+      const tools = copyToolCheckout(scratch);
+      const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) }, tools);
+      captureAndCollect(run);
+      const review = reviewFolder(run);
+      appendFileSync(join(tools, "packages/producer/src/stage-1-settings.ts"), "// changed\n");
+      const finish = stageOne(run, "finish", review);
+      expect({ status: finish.status, stderr: finish.stderr }).toEqual({ status: 1, stderr: changedCodeMessage(run.work) });
+      expect(["run.yaml", "baseline.yaml", "discovery.yaml"].filter((name) => existsSync(join(run.work, name)))).toEqual([]);
     });
   }, 60_000);
 });

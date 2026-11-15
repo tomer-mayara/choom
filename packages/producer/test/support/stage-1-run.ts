@@ -47,11 +47,6 @@ export function stageOne(run: StageOneRun, action: string, ...args: string[]): C
   return runCli(["stage-1", action, ...args], run.env, run.tools);
 }
 
-// The helper copy that start saved for the later comparison.
-export function savedHelper(work: string): string {
-  return join(work, "evidence", "stage-1-commands.mts");
-}
-
 export interface Excerpt { id: string; artifactRef: string; snapshotRef: string; path: string; sha256: string; lines: number[] }
 type Fields = Record<string, unknown>;
 export interface ReviewPacket { review: Fields; scope: Fields; call: Fields; prompt: string; response?: string }

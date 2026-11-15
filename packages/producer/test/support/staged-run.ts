@@ -2,17 +2,21 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
+import { producerReceipt } from "../../src/producer-code.ts";
+import { toolsRoot } from "./commands.ts";
 
 export const stagedSnapshotRef = "snapshot-check";
 const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
 
 // A saved snapshot file. A "symlink" record is listed in the inventory only.
 export interface SnapshotFile { path: string; text: string; kind?: "file" | "symlink" }
-export interface StagedRunOptions { snapshot?: SnapshotFile[]; questions?: unknown[] }
+// `tools` is the tool checkout whose producer code record the run gets.
+export interface StagedRunOptions { snapshot?: SnapshotFile[]; questions?: unknown[]; tools?: string }
 
 const defaultSnapshot: SnapshotFile[] = [{ path: "app.ts", text: "export const value = 1;\n" }];
 
-// Writes the drafts and registered records that a run has after Stage 1, 2 or 3.
+// Writes the drafts and registered records that a run has after Stage 1, 2 or 3,
+// with the producer code record that Stage 1 start saves and publication registers.
 // Each stage start checks only part of them; the values are the smallest that pass.
 export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: StagedRunOptions = {}): void {
   const snapshotRef = stagedSnapshotRef;
@@ -29,6 +33,8 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: Stage
   const inventory = JSON.stringify({ formatVersion: 1, snapshotId: snapshotRef, files }, null, 2) + "\n";
   save("evidence/inventory.json", inventory, "inventory-001");
   save("inventory.mjs", `process.stdout.write(${JSON.stringify(inventory)});\n`, "s1-file@inventory.mjs");
+  save("evidence/producer.json", JSON.stringify(producerReceipt(options.tools ?? toolsRoot), null, 2) + "\n",
+    "s1-file@evidence%2Fproducer.json");
   const progress: Record<string, string> = { inventory: "complete", baselineRecovery: "pending" };
   const discovery: Record<string, unknown> = { formatVersion: 1, kind: "architecture-discovery", runRef: "run-check",
     questions: options.questions ?? [], gaps: [] };

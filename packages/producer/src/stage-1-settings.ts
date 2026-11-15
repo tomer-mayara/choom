@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve, posix } from 'node:path';
 
-// The Stage 1 settings collector. Stage 1 start saves a copy in the run, capture
-// copies it to settings.mts and the settings action runs that copy. It reads
+// The Stage 1 settings collector. The Stage 1 settings action runs it in the tool
+// checkout; the recovery capture runs a settings.mts copy in its new run. It reads
 // package manifests and compiler settings through a snapshot-backed file system
 // and prints the settings record. It runs no target code.
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
