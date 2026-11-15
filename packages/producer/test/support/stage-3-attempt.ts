@@ -5,7 +5,7 @@ import { parse, stringify } from "yaml";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
 import { finishAttempt, type JsonRecord, runAttempt, stageOneRun, stageTwoAttempt, writePacket }
   from "./stage-2-attempt.ts";
-import { stagedSnapshotRef } from "./staged-run.ts";
+import { type SnapshotFile, stagedSnapshotRef } from "./staged-run.ts";
 
 // Helpers that run a Stage 3 attempt the way the step-3 cookbook does, on a run
 // that finished Stage 2 through its commands, with an LLM packet written by the test.
@@ -16,10 +16,11 @@ const stageTwoId = "s2-check";
 const app = { path: "app.ts", text: "export const value = 1;\n" };
 
 // Saves a Stage 1 run and finishes one Stage 2 attempt on it through the command
-// line. The snapshot has no package manifest, so Stage 2 skips Knip.
-export function stageTwoRun(scratch: string): string {
+// line. The snapshot must hold app.ts, the entry of the Stage 2 plan, and no
+// package manifest, so Stage 2 skips Knip.
+export function stageTwoRun(scratch: string, snapshot: SnapshotFile[] = [app]): string {
   const work = join(scratch, "stage-2-run");
-  stageOneRun(work, [app]);
+  stageOneRun(work, snapshot);
   const attempt = stageTwoAttempt(work, stageTwoId);
   const results = { ...runAttempt(attempt, scratch), ...finishAttempt(attempt, scratch) };
   for (const [action, result] of Object.entries(results))

@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { choomDefaultProfile } from "../../src/parsing-profile.ts";
 import { producerReceipt } from "../../src/producer-code.ts";
+import { defaultCaptureExclusions } from "../../src/stage-1-exclusions.ts";
 import { noProjectSettingsGap } from "../../src/stage-1-settings.ts";
 import { toolsRoot } from "./commands.ts";
 
@@ -21,7 +22,8 @@ const defaultSnapshot: SnapshotFile[] = [{ path: "app.ts", text: "export const v
 const sourceFile = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
 // Writes the drafts and registered records that a run has after Stage 1, 2 or 3,
-// with the producer code record that Stage 1 start saves and publication registers.
+// with the producer code record that Stage 1 start saves and the capture exclusion
+// rules, which Stage 1 finish registers and run.yaml names.
 // Each stage start checks only part of them; the values are the smallest that pass.
 export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: StagedRunOptions = {}): void {
   const snapshotRef = stagedSnapshotRef;
@@ -40,6 +42,7 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: Stage
   save("inventory.mjs", `process.stdout.write(${JSON.stringify(inventory)});\n`, "s1-file@inventory.mjs");
   save("evidence/producer.json", JSON.stringify(producerReceipt(options.tools ?? toolsRoot), null, 2) + "\n",
     "s1-file@evidence%2Fproducer.json");
+  save("exclusions.txt", defaultCaptureExclusions, "exclusions-001");
   const progress: Record<string, string> = { inventory: "complete", baselineRecovery: "pending" };
   const discovery: Record<string, unknown> = { formatVersion: 1, kind: "architecture-discovery", runRef: "run-check",
     questions: options.questions ?? [], gaps: [] };
@@ -68,7 +71,7 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: Stage
     }
   }
   save("run.yaml", stringify({ formatVersion: 1, id: "run-check", mode: "A", status: "in-progress", progress,
-    snapshot: { id: snapshotRef, root: "snapshot", inventoryRef: "inventory-001" }, artifacts }));
+    snapshot: { id: snapshotRef, root: "snapshot", inventoryRef: "inventory-001", exclusions: "exclusions.txt" }, artifacts }));
   save("discovery.yaml", stringify(discovery));
   save("baseline.yaml", stringify({ formatVersion: 1, id: "baseline-check", parentId: null,
     components: [], interfaces: [], resources: [], rules: [] }));
