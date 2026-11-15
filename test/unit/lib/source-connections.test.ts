@@ -49,14 +49,14 @@ test("source mode never falls back to or unions permissions", () => {
   expect(interfaceArcs(sourceConnectionBaseline("different permission")).map(({ consumerId }) => consumerId)).toEqual(["checkout"]);
 });
 
-test("version 4 draws only recorded source consumers", () => {
-  const baseline = { ...sourceConnectionBaseline("different permission"), formatVersion: 4 as const };
+test.each([4, 5] as const)("version %i draws only recorded source consumers", (formatVersion) => {
+  const baseline = { ...sourceConnectionBaseline("different permission"), formatVersion };
   expect(interfaceArcs(baseline).map(({ consumerId }) => consumerId)).toEqual(["checkout"]);
 });
 
-test("version 4 with no source data neither draws permission arrows nor reports unknown permission", () => {
+test.each([4, 5] as const)("version %i with no source data neither draws permission arrows nor reports unknown permission", (formatVersion) => {
   const { sourceUsage: _sourceUsage, ...baseline } = sourceUsageBaseline();
-  const input = { ...baseline, formatVersion: 4 as const };
+  const input = { ...baseline, formatVersion };
   input.interfaces.push({ ...structuredClone(fixtureItem(input.interfaces)), id: "permitted-api", allowedConsumers: proposed(["checkout"]) });
   expect(interfaceArcs(input)).toEqual([]);
   expect(incompleteInterfaceCount(input)).toBe(0);

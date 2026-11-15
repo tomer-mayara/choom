@@ -99,6 +99,66 @@
             "type": "string",
             "pattern": "\\S"
         },
+        "BaselineSymbolSelector": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineSymbolSelector.json",
+            "type": "object",
+            "properties": {
+                "path": {
+                    "$ref": "baselineSymbolPath.json"
+                },
+                "symbol": {
+                    "$ref": "baselineSymbolName.json"
+                }
+            },
+            "required": [
+                "path",
+                "symbol"
+            ],
+            "additionalProperties": false
+        },
+        "baselineSymbolPath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "baselineSymbolPath.json",
+            "type": "string",
+            "pattern": "\\S"
+        },
+        "baselineSymbolName": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "baselineSymbolName.json",
+            "type": "string",
+            "pattern": "\\S"
+        },
+        "BaselineMembershipV5": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineMembershipV5.json",
+            "type": "object",
+            "properties": {
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineSelector.json"
+                    }
+                },
+                "excludePaths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineSelector.json"
+                    }
+                },
+                "symbols": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineSymbolSelector.json"
+                    },
+                    "uniqueItems": true
+                }
+            },
+            "required": [
+                "paths"
+            ],
+            "additionalProperties": false
+        },
         "BaselinePromises": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "BaselinePromises.json",
@@ -389,6 +449,64 @@
             "properties": {
                 "value": {
                     "$ref": "BaselineMembership.json"
+                },
+                "status": {
+                    "type": "string",
+                    "const": "accepted"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs",
+                "acceptanceRef"
+            ],
+            "additionalProperties": false
+        },
+        "ProposedMembershipV5Statement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ProposedMembershipV5Statement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "$ref": "BaselineMembershipV5.json"
+                },
+                "status": {
+                    "type": "string",
+                    "const": "proposed"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "AcceptedMembershipV5Statement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "AcceptedMembershipV5Statement.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "$ref": "BaselineMembershipV5.json"
                 },
                 "status": {
                     "type": "string",
@@ -767,6 +885,51 @@
                 },
                 {
                     "$ref": "AcceptedComponentReferenceStatement.json"
+                }
+            ]
+        },
+        "BaselineComponentV5": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineComponentV5.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "purpose": {
+                    "$ref": "BaselineTextStatement.json"
+                },
+                "membership": {
+                    "$ref": "BaselineMembershipV5Statement.json"
+                },
+                "groupingReason": {
+                    "$ref": "BaselineTextStatement.json"
+                },
+                "parent": {
+                    "$ref": "BaselineComponentReferenceStatement.json"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "purpose",
+                "membership",
+                "groupingReason"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineMembershipV5Statement": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineMembershipV5Statement.json",
+            "anyOf": [
+                {
+                    "$ref": "ProposedMembershipV5Statement.json"
+                },
+                {
+                    "$ref": "AcceptedMembershipV5Statement.json"
                 }
             ]
         },
@@ -2000,6 +2163,70 @@
             ],
             "additionalProperties": false
         },
+        "BaselineV5": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineV5.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 5
+                },
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "parentId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineComponentV5.json"
+                    }
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineInterface.json"
+                    }
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineResource.json"
+                    }
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineRule.json"
+                    }
+                },
+                "sourceUsage": {
+                    "$ref": "BaselineSourceUsage.json"
+                },
+                "systemEntryPoints": {
+                    "$ref": "BaselineSystemEntryPoints.json"
+                }
+            },
+            "required": [
+                "formatVersion",
+                "id",
+                "parentId",
+                "components",
+                "interfaces",
+                "resources",
+                "rules"
+            ],
+            "additionalProperties": false
+        },
         "Baseline": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "Baseline.json",
@@ -2015,6 +2242,9 @@
                 },
                 {
                     "$ref": "BaselineV4.json"
+                },
+                {
+                    "$ref": "BaselineV5.json"
                 }
             ]
         },
@@ -2233,6 +2463,10 @@
                         {
                             "type": "number",
                             "const": 4
+                        },
+                        {
+                            "type": "number",
+                            "const": 5
                         }
                     ]
                 },

@@ -1,4 +1,5 @@
 import { ArrowLeft, X } from "lucide-react";
+import { supportsSystemEntryPoints } from "@choom/baseline-model/baseline-format";
 import type { Baseline } from "@choom/baseline-model/contracts";
 import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { ArchitectureDetails } from "./architecture-details.tsx";
@@ -29,7 +30,7 @@ function InspectionContent({ baseline, inspection, duplication, counts }: {
       {(counts.components.get(component.id) ?? 0) > 0 ? <Button variant="outline" data-record-id={`duplicates-${component.id}`}
         onClick={(event) => navigate({ kind: "duplicates", componentId: component.id }, event.currentTarget)}>
         Possible duplicates ({counts.components.get(component.id)})</Button> : null}
-      {baseline.formatVersion === 4 && baseline.systemEntryPoints ? <SystemEntryDetails
+      {supportsSystemEntryPoints(baseline) && baseline.systemEntryPoints ? <SystemEntryDetails
         entries={baseline.systemEntryPoints.entries.filter(({ componentId }) => componentId === component.id)}
         interfaces={baseline.interfaces} navigate={navigate} /> : null}
       <ArchitectureRecordList title="Owned interfaces" kind="interface" navigate={navigate}

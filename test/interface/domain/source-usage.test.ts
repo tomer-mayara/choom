@@ -27,7 +27,7 @@ test("version 3 allows absent source usage and rejects unsupported versions", ()
   const { sourceUsage: _sourceUsage, ...input } = sourceUsageBaseline();
   expect(structure(input)).toBe(true);
   expect(baselineSchema.parse(input)).toEqual(input);
-  expect(baselineCodec.decode(stringify({ ...input, formatVersion: 5 }))).toMatchObject({
+  expect(baselineCodec.decode(stringify({ ...input, formatVersion: 6 }))).toMatchObject({
     status: "failure", code: "unsupported-version",
   });
 });

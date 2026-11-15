@@ -1,14 +1,15 @@
 import { useState, type ReactNode, type RefObject } from "react";
 import type {
-  Baseline, BaselineComponent, BaselineResource, BaselineRule,
+  Baseline, BaselineComponent, BaselineComponentV5, BaselineResource, BaselineRule, BaselineSymbolSelector,
   BaselineAccessPointsStatement, BaselineComponentReferenceStatement, BaselineConsumersStatement,
-  BaselineMembershipStatement, BaselineNullableTextStatement, BaselinePromisesStatement, BaselineRuleObjectStatement, BaselineTextStatement,
+  BaselineMembershipStatement, BaselineMembershipV5Statement, BaselineNullableTextStatement, BaselinePromisesStatement,
+  BaselineRuleObjectStatement, BaselineTextStatement,
 } from "@choom/baseline-model/contracts";
 import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { InterfaceDetails } from "./interface-details.tsx";
 import type { InterfaceReadingState } from "./interface-reading-state.ts";
 import { systemEntryReview } from "../lib/system-entry-points.ts";
-import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
+import { supportsSourceUsage, supportsSymbolSelectors } from "@choom/baseline-model/baseline-format";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
   | { kind: "interface"; interfaceId: string; entryId?: string }
@@ -16,8 +17,9 @@ export type ArchitecturePanel = { kind: "component"; componentId: string }
   | { kind: "duplicates"; componentId?: string; interfaceId?: string }
   | { kind: "duplicate"; findingId: string };
 
-type Statement = ReadonlyData<BaselineTextStatement | BaselineMembershipStatement | BaselineComponentReferenceStatement
-  | BaselineAccessPointsStatement | BaselineConsumersStatement | BaselineNullableTextStatement | BaselinePromisesStatement | BaselineRuleObjectStatement>;
+type Statement = ReadonlyData<BaselineTextStatement | BaselineMembershipStatement | BaselineMembershipV5Statement
+  | BaselineComponentReferenceStatement | BaselineAccessPointsStatement | BaselineConsumersStatement | BaselineNullableTextStatement
+  | BaselinePromisesStatement | BaselineRuleObjectStatement>;
 
 function RecordedValue({ value }: { value: unknown }) {
   if (value === undefined) return <p className="text-muted-foreground">Not recorded</p>;
@@ -42,12 +44,23 @@ function StatementDetails({ name, statement, children }: { name: string; stateme
   </Field>;
 }
 
-function ComponentFields({ item }: { item: ReadonlyData<BaselineComponent> }) {
+function SymbolSelectors({ symbols }: { symbols: readonly ReadonlyData<BaselineSymbolSelector>[] | undefined }) {
+  if (!symbols?.length) return <RecordedValue value={symbols} />;
+  return <ul className="space-y-1 text-sm">
+    {symbols.map(({ path, symbol }) => <li key={JSON.stringify([path, symbol])}><code>{symbol}</code> in <code>{path}</code></li>)}
+  </ul>;
+}
+
+function ComponentFields({ item, symbolFormat }: { item: ReadonlyData<BaselineComponent | BaselineComponentV5>; symbolFormat: boolean }) {
+  const membership = item.membership.value;
   return <>
     <StatementDetails name="Purpose" statement={item.purpose} />
     <StatementDetails name="Membership" statement={item.membership}>
-      <Field name="Paths"><RecordedValue value={item.membership.value.paths} /></Field>
-      <Field name="Excluded paths"><RecordedValue value={item.membership.value.excludePaths} /></Field>
+      <Field name="Paths"><RecordedValue value={membership.paths} /></Field>
+      <Field name="Excluded paths"><RecordedValue value={membership.excludePaths} /></Field>
+      {symbolFormat ? <Field name="Symbols">
+        <SymbolSelectors symbols={"symbols" in membership ? membership.symbols : undefined} />
+      </Field> : null}
     </StatementDetails>
     <StatementDetails name="Grouping reason" statement={item.groupingReason} />
     {item.parent ? <StatementDetails name="Parent" statement={item.parent} /> : <Field name="Parent"><RecordedValue value={undefined} /></Field>}
@@ -126,7 +139,7 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
     <section className="space-y-4 wrap-anywhere">
       {showHeading ? <h2 className="text-lg font-semibold">{item.name}</h2> : null}
       <Field name={`${kind} ID`}><RecordedValue value={item.id} /></Field>
-      {"purpose" in item ? <ComponentFields item={item} /> : <ResourceFields item={item} />}
+      {"purpose" in item ? <ComponentFields item={item} symbolFormat={supportsSymbolSelectors(baseline)} /> : <ResourceFields item={item} />}
     </section>
   );
 }

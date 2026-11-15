@@ -5,14 +5,24 @@ import { baselineSourceUsageSchema, validateBaselineSourceUsage } from "./baseli
 import { baselineSystemEntryPointsSchema, validateBaselineSystemEntryPoints } from "./baseline-system-entry-points.ts";
 import type { Baseline, BaselineRuleValue } from "./generated/contracts.ts";
 
+function isExactPath(value: string): boolean {
+  return /\S/.test(value) && !/^[A-Za-z]:/.test(value)
+    && !/[\\\u0000-\u001f\u007f?*\[\]{}#]/.test(value)
+    && value.split("/").every((part) => part !== "" && part !== "." && part !== "..");
+}
+
 function isSelector(value: string): boolean {
-  const base = value.endsWith("/**") ? value.slice(0, -3) : value;
-  return /\S/.test(base) && !/^[A-Za-z]:/.test(base)
-    && !/[\\\u0000-\u001f\u007f?*\[\]{}#]/.test(base)
-    && base.split("/").every((part) => part !== "" && part !== "." && part !== "..");
+  return isExactPath(value.endsWith("/**") ? value.slice(0, -3) : value);
 }
 
 const selector = text.refine(isSelector, { message: "Expected a safe relative path or a subtree ending in '/**'." });
+// ECMAScript IdentifierName characters. The check does not refuse reserved words, so `default` passes.
+const symbolName = text.regex(/^[\p{ID_Start}$_][\p{ID_Continue}$\u200C\u200D]*$/u,
+  "Expected a JavaScript identifier name, such as computePrice or default.");
+const symbolSelector = z.strictObject({
+  path: text.refine(isExactPath, { message: "Expected a safe relative file path. A symbol path cannot name a subtree." }),
+  symbol: symbolName,
+});
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
@@ -68,6 +78,21 @@ function isRuleObject(value: unknown): value is Record<string, BaselineRuleValue
 
 const componentReference = statement(itemId.nullable());
 const membership = z.strictObject({ paths: z.array(selector).min(1), excludePaths: z.array(selector).optional() });
+const membershipV5 = z.strictObject({
+  paths: z.array(selector), excludePaths: z.array(selector).optional(), symbols: z.array(symbolSelector).optional(),
+}).superRefine(({ paths, symbols = [] }, context) => {
+  if (paths.length === 0 && symbols.length === 0) {
+    context.addIssue({ code: "custom", message: "A membership needs at least one path or symbol." });
+  }
+  const selectors = new Set<string>();
+  symbols.forEach(({ path, symbol }, index) => {
+    const key = JSON.stringify([path, symbol]);
+    if (selectors.has(key)) context.addIssue({
+      code: "custom", path: ["symbols", index], message: "Symbol selectors must be distinct within the component.",
+    });
+    selectors.add(key);
+  });
+});
 const promises = z.strictObject({
   behavior: text.nullable(), data: text.nullable(), errors: text.nullable(), lifecycle: text.nullable(),
 });
@@ -90,6 +115,7 @@ const component = z.strictObject({
   id: itemId, name: text, purpose: statement(text), membership: statement(membership),
   groupingReason: statement(text), parent: componentReference.optional(),
 });
+const componentV5 = component.extend({ membership: statement(membershipV5) });
 const interfaceItem = z.strictObject({
   id: itemId, name: text, owner: componentReference, publicAccess: statement(z.array(text).min(1).nullable()),
   allowedConsumers: statement(consumers.nullable()), promises: statement(promises.nullable()),
@@ -167,7 +193,8 @@ const baselineV2 = baselineV1.extend({
 });
 const baselineV3 = baselineV2.extend({ formatVersion: z.literal(3), sourceUsage: baselineSourceUsageSchema.optional() });
 const baselineV4 = baselineV3.extend({ formatVersion: z.literal(4), systemEntryPoints: baselineSystemEntryPointsSchema.optional() });
+const baselineV5 = baselineV4.extend({ formatVersion: z.literal(5), components: z.array(componentV5) });
 
-export const baselineSchema = z.discriminatedUnion("formatVersion", [baselineV1, baselineV2, baselineV3, baselineV4])
+export const baselineSchema = z.discriminatedUnion("formatVersion", [baselineV1, baselineV2, baselineV3, baselineV4, baselineV5])
   .superRefine(validateReferences).superRefine(validateBaselineDocumentation).superRefine(validateBaselineSourceUsage)
   .superRefine(validateBaselineSystemEntryPoints) satisfies z.ZodType<Baseline>;

@@ -4,6 +4,7 @@ import { stringify } from "yaml";
 import { decodeBaselineYaml } from "../../../src/lib/baseline-yaml.ts";
 import { baselineExample, invalidBaseline, reviewedBaseline } from "../../support/baseline-fixtures.ts";
 import { excessiveDocumentation } from "../../support/interface-documentation-fixtures.ts";
+import { symbolMembershipBaseline, symbolMembershipPath } from "../../support/symbol-membership-fixtures.ts";
 
 test.each(["empty", "full"] as const)("decodes the reviewed %s baseline without changing its records", (example) => {
   const text = readFileSync(`test/fixtures/baseline-viewer/${example}.yaml`, "utf8");
@@ -26,8 +27,14 @@ test("accepts a byte order mark, CRLF, and non-ASCII statement text", () => {
   expect(outcome).toMatchObject({ status: "success", baseline });
 });
 
+test("decodes a version 5 baseline with its symbol selectors", () => {
+  expect(decodeBaselineYaml(readFileSync(symbolMembershipPath, "utf8"))).toMatchObject({
+    status: "success", baseline: symbolMembershipBaseline(),
+  });
+});
+
 test("identifies an unsupported baseline format version", () => {
-  const text = stringify({ ...baselineExample(), formatVersion: 5 });
+  const text = stringify({ ...baselineExample(), formatVersion: 6 });
   expect(decodeBaselineYaml(text)).toMatchObject({
     status: "failure", stage: "decoding", code: "unsupported-version",
   });
@@ -46,7 +53,7 @@ test("rejects legacy diagram content", () => {
   expect(outcome.status).toBe("failure");
   expect(outcome).toMatchObject({
     status: "failure", stage: "decoding", code: "invalid-document",
-    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, 3, or 4.",
+    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, 3, 4, or 5.",
   });
 });
 

@@ -4,6 +4,7 @@ import {
   baselineBoundedReferenceSchema as reference, baselineSourceLocationSchema,
   baselineSourcePathSchema,
 } from "./baseline-documentation.ts";
+import { supportsSystemEntryPoints } from "./baseline-format.ts";
 import type { Baseline } from "./generated/contracts.ts";
 
 const encoder = new TextEncoder();
@@ -24,7 +25,7 @@ export const baselineSystemEntryPointsSchema = z.strictObject({
 });
 
 export function validateBaselineSystemEntryPoints(baseline: Baseline, context: z.RefinementCtx): void {
-  if (baseline.formatVersion !== 4 || !baseline.systemEntryPoints) return;
+  if (!supportsSystemEntryPoints(baseline) || !baseline.systemEntryPoints) return;
   const assessment = baseline.systemEntryPoints;
   const issue = (path: (string | number)[], message: string) => context.addIssue({
     code: "custom", path: ["systemEntryPoints", ...path], message,

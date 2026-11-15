@@ -17,6 +17,14 @@ scalar baselineText extends string;
 // Runtime validation checks safe relative paths and the optional /** suffix.
 scalar baselineSelector extends baselineText;
 
+// Runtime validation checks one safe relative file path. A symbol path cannot
+// name a subtree.
+scalar baselineSymbolPath extends baselineText;
+
+// Runtime validation checks a JavaScript identifier name. `default` names the
+// default export.
+scalar baselineSymbolName extends baselineText;
+
 // Rule data is JSON-compatible saved data. The viewer does not run expressions.
 union BaselineRuleValue {
   string,
@@ -42,6 +50,24 @@ model BaselineMembership {
   paths: baselineSelector[];
 
   excludePaths?: baselineSelector[];
+}
+
+// Version 5 names one top-level symbol in one file.
+@extension("additionalProperties", false)
+model BaselineSymbolSelector {
+  path: baselineSymbolPath;
+  symbol: baselineSymbolName;
+}
+
+// Version 5 membership. `paths` can be empty when `symbols` is not. Runtime
+// validation requires at least one path or symbol.
+@extension("additionalProperties", false)
+model BaselineMembershipV5 {
+  paths: baselineSelector[];
+  excludePaths?: baselineSelector[];
+
+  @uniqueItems
+  symbols?: BaselineSymbolSelector[];
 }
 
 @extension("additionalProperties", false)
@@ -150,6 +176,31 @@ model AcceptedMembershipStatement {
 union BaselineMembershipStatement {
   ProposedMembershipStatement,
   AcceptedMembershipStatement,
+}
+
+@extension("additionalProperties", false)
+model ProposedMembershipV5Statement {
+  value: BaselineMembershipV5;
+  status: "proposed";
+
+  @minItems(1)
+  evidenceRefs: baselineText[];
+}
+
+@extension("additionalProperties", false)
+model AcceptedMembershipV5Statement {
+  value: BaselineMembershipV5;
+  status: "accepted";
+
+  @minItems(1)
+  evidenceRefs: baselineText[];
+
+  acceptanceRef: baselineText;
+}
+
+union BaselineMembershipV5Statement {
+  ProposedMembershipV5Statement,
+  AcceptedMembershipV5Statement,
 }
 
 @extension("additionalProperties", false)
@@ -263,6 +314,16 @@ model BaselineComponent {
 }
 
 @extension("additionalProperties", false)
+model BaselineComponentV5 {
+  id: baselineId;
+  name: baselineText;
+  purpose: BaselineTextStatement;
+  membership: BaselineMembershipV5Statement;
+  groupingReason: BaselineTextStatement;
+  parent?: BaselineComponentReferenceStatement;
+}
+
+@extension("additionalProperties", false)
 model BaselineInterfaceV1 {
   id: baselineId;
   name: baselineText;
@@ -350,9 +411,24 @@ model BaselineV4 {
   systemEntryPoints?: BaselineSystemEntryPoints;
 }
 
+// Version 5 is version 4 plus symbol selectors in component membership.
+@extension("additionalProperties", false)
+model BaselineV5 {
+  formatVersion: 5;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: BaselineComponentV5[];
+  interfaces: BaselineInterface[];
+  resources: BaselineResource[];
+  rules: BaselineRule[];
+  sourceUsage?: BaselineSourceUsage;
+  systemEntryPoints?: BaselineSystemEntryPoints;
+}
+
 union Baseline {
   BaselineV1,
   BaselineV2,
   BaselineV3,
   BaselineV4,
+  BaselineV5,
 }

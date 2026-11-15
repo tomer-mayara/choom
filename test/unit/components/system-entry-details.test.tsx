@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { ArchitectureDiagram } from "../../../src/components/architecture-diagram.tsx";
 import { SystemEntryDetails } from "../../../src/components/system-entry-details.tsx";
 import { componentControlHeight } from "../../../src/lib/component-geometry.ts";
@@ -7,7 +8,7 @@ import { systemEntryDetailsBaseline } from "../../support/system-entry-details-f
 
 afterEach(cleanup);
 
-function openCheckout(baseline = systemEntryDetailsBaseline()) {
+function openCheckout(baseline: Baseline = systemEntryDetailsBaseline()) {
   render(<ArchitectureDiagram baseline={baseline} layout={{ nodes: baseline.components.map(({ id }, index) => ({
     id, position: { x: index * 260, y: 0 }, width: 240, height: componentControlHeight,
   })) }} />);
@@ -34,6 +35,12 @@ test("component details keep every saved entry, group order, paths, evidence, an
   expect(rows[1]?.textContent).toContain("Lines 3–14");
   expect(rows[20]?.textContent).toContain("checkout/routes/route-20.ts");
   expect(rows[20]?.textContent).not.toContain("Lines");
+});
+
+test("version 5 component details keep the saved entries", () => {
+  const panel = openCheckout({ ...systemEntryDetailsBaseline(), formatVersion: 5 as const });
+  const list = within(panel).getByRole("region", { name: "System entry points" });
+  expect(list.querySelectorAll("li[data-system-entry-id]")).toHaveLength(21);
 });
 
 test("an operation link opens the exact second entry across owners and Back restores focus and scroll", () => {

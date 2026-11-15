@@ -16,7 +16,7 @@ describe("baseline field shapes", () => {
   });
 
   test.each([
-    { formatVersion: 5 }, { id: "Bad_ID" }, { parentId: " " }, { viewport: {} },
+    { formatVersion: 6 }, { id: "Bad_ID" }, { parentId: " " }, { viewport: {} },
     { components: undefined }, { interfaces: undefined }, { resources: undefined }, { rules: undefined },
   ])("rejects invalid top-level fields: %j", (change) => {
     expect(baselineSchema.safeParse({ ...baselineExample(), ...change }).success).toBe(false);

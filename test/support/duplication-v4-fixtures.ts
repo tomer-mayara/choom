@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { duplicationV3Fixture } from "./interface-duplication-fixtures.ts";
 
-/** Synthetic version 4 report pair for the reader boundary. */
-export function duplicationV4Fixture() {
+/** Synthetic version 4 report pair for the reader boundary. Version 5 keeps the same records. */
+export function duplicationV4Fixture(formatVersion: 4 | 5 = 4) {
   const fixture = duplicationV3Fixture();
   const baseline = {
-    ...fixture.baseline, formatVersion: 4 as const,
+    ...fixture.baseline, formatVersion,
     systemEntryPoints: {
       snapshotRef: fixture.baseline.sourceUsage.snapshotRef,
       mappingRef: fixture.baseline.sourceUsage.mappingRef,
@@ -18,6 +18,6 @@ export function duplicationV4Fixture() {
   };
   const baselineText = `${JSON.stringify(baseline, null, 2)}\n`;
   const sha256 = createHash("sha256").update(baselineText).digest("hex");
-  const report = { ...fixture.report, baseline: { id: baseline.id, formatVersion: 4 as const, sha256 } };
+  const report = { ...fixture.report, baseline: { id: baseline.id, formatVersion, sha256 } };
   return { baseline, baselineText, report, sha256 };
 }

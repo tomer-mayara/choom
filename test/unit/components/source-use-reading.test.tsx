@@ -6,7 +6,7 @@ import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
 import { sourceUseReadingBaseline } from "../../support/source-use-reading-fixtures.ts";
 
 afterEach(cleanup);
-function view(variant = "complete", formatVersion: 3 | 4 = 3) {
+function view(variant = "complete", formatVersion: 3 | 4 | 5 = 3) {
   const baseline = { ...sourceUseReadingBaseline(variant), formatVersion };
   const mounted = render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: "invoice-api" }} />);
   return { baseline, ...mounted };
@@ -14,7 +14,7 @@ function view(variant = "complete", formatVersion: 3 | 4 = 3) {
 const uses = () => screen.getByRole("region", { name: "Used by" });
 function expand(name: string) { fireEvent.click(screen.getByText(name, { selector: "summary" })); }
 
-test.each([3, 4] as const)("version %i Used by groups all primary sites and keeps permission separate", (formatVersion) => {
+test.each([3, 4, 5] as const)("version %i Used by groups all primary sites and keeps permission separate", (formatVersion) => {
   view("complete", formatVersion);
   const region = uses();
   expect(region.textContent).toContain("Interface-wide source use");

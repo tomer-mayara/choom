@@ -1,22 +1,17 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+import type { BaselineV5 } from "@choom/baseline-model/contracts";
 import { fixtureItem } from "./baseline-fixtures.ts";
 
 /** The reviewed version 5 example: Pricing owns one symbol in a file that Billing owns by path. */
 export const symbolMembershipPath = fileURLToPath(new URL("../fixtures/baseline-viewer/symbol-membership.yaml", import.meta.url));
 
-interface SymbolSelectorRecord { path: string; symbol: string }
-interface SymbolMembershipRecord {
-  formatVersion: number;
-  components: Array<{ id: string; membership: { value: { paths: string[]; symbols?: SymbolSelectorRecord[] } } }>;
-}
-
-export function symbolMembershipBaseline(): SymbolMembershipRecord {
+export function symbolMembershipBaseline(): BaselineV5 {
   return parse(readFileSync(symbolMembershipPath, "utf8"));
 }
 
-export function pricingMembership(baseline: SymbolMembershipRecord) {
+export function pricingMembership(baseline: Pick<BaselineV5, "components">) {
   const pricing = fixtureItem(baseline.components, 1);
   if (pricing.id !== "pricing") throw new Error("The symbol fixture needs Pricing as its second component.");
   return pricing.membership.value;
@@ -24,9 +19,9 @@ export function pricingMembership(baseline: SymbolMembershipRecord) {
 
 const pricingMembershipPath = "components.1.membership.value";
 
-export function versionFourSymbolMembership(): { input: SymbolMembershipRecord; path: string } {
-  const input = symbolMembershipBaseline();
-  input.formatVersion = 4;
+/** Pricing also keeps a path, so the symbol list is the only version 4 problem. */
+export function versionFourSymbolMembership() {
+  const input = { ...symbolMembershipBaseline(), formatVersion: 4 as const };
   pricingMembership(input).paths = ["pricing/**"];
   return { input, path: pricingMembershipPath };
 }

@@ -11,11 +11,11 @@ import { duplicationFixture } from "../../support/duplication-fixtures.ts";
 import { duplicationV3Fixture } from "../../support/interface-duplication-fixtures.ts";
 import { duplicationV4Fixture } from "../../support/duplication-v4-fixtures.ts";
 
-test("generated and runtime report contracts bind to an exact version 4 baseline", () => {
-  const { baselineText, report, sha256 } = duplicationV4Fixture();
+test.each([4, 5] as const)("generated and runtime report contracts bind to an exact version %i baseline", (formatVersion) => {
+  const { baselineText, report, sha256 } = duplicationV4Fixture(formatVersion);
   const baseline = decodeBaselineYaml(baselineText);
   expect(baseline.status).toBe("success");
-  if (baseline.status !== "success") throw new Error("Invalid version 4 baseline fixture.");
+  if (baseline.status !== "success") throw new Error(`Invalid version ${formatVersion} baseline fixture.`);
   expect(baselineText).not.toBe(JSON.stringify(baseline.baseline));
   expect(createHash("sha256").update(baselineText).digest("hex")).toBe(sha256);
   const schemas = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }));
@@ -56,7 +56,7 @@ test("generated and runtime report contracts accept a version 3 baseline binding
 
 test("version 3 reports still require supported versions, exact bytes and resolvable facts", () => {
   const { baseline, report, sha256 } = duplicationV3Fixture();
-  expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: { ...report.baseline, formatVersion: 5 } }), baseline, sha256))
+  expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: { ...report.baseline, formatVersion: 6 } }), baseline, sha256))
     .toMatchObject({ status: "failure", code: "invalid-document" });
   for (const changed of [
     { ...report, findings: report.findings.map((finding) => ({ ...finding, facts: [{

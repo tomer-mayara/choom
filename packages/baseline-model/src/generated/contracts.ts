@@ -49,6 +49,13 @@ export interface AcceptedMembershipStatement {
   acceptanceRef: baselineText;
 }
 
+export interface AcceptedMembershipV5Statement {
+  value: BaselineMembershipV5;
+  status: "accepted";
+  evidenceRefs: Array<baselineText>;
+  acceptanceRef: baselineText;
+}
+
 export interface AcceptedNullableTextStatement {
   value: baselineText | null;
   status: "accepted";
@@ -77,7 +84,7 @@ export interface AcceptedTextStatement {
   acceptanceRef: baselineText;
 }
 
-export type Baseline = BaselineV1 | BaselineV2 | BaselineV3 | BaselineV4;
+export type Baseline = BaselineV1 | BaselineV2 | BaselineV3 | BaselineV4 | BaselineV5;
 
 export type BaselineAccessPoints = Array<baselineText>;
 
@@ -93,6 +100,15 @@ export interface BaselineComponent {
 }
 
 export type BaselineComponentReferenceStatement = ProposedComponentReferenceStatement | AcceptedComponentReferenceStatement;
+
+export interface BaselineComponentV5 {
+  id: baselineId;
+  name: baselineText;
+  purpose: BaselineTextStatement;
+  membership: BaselineMembershipV5Statement;
+  groupingReason: BaselineTextStatement;
+  parent?: BaselineComponentReferenceStatement;
+}
 
 export type BaselineConsumers = Array<baselineId>;
 
@@ -175,6 +191,14 @@ export interface BaselineMembership {
 
 export type BaselineMembershipStatement = ProposedMembershipStatement | AcceptedMembershipStatement;
 
+export interface BaselineMembershipV5 {
+  paths: Array<baselineSelector>;
+  excludePaths?: Array<baselineSelector>;
+  symbols?: Array<BaselineSymbolSelector>;
+}
+
+export type BaselineMembershipV5Statement = ProposedMembershipV5Statement | AcceptedMembershipV5Statement;
+
 export type BaselineNullableTextStatement = ProposedNullableTextStatement | AcceptedNullableTextStatement;
 
 export interface BaselinePromises {
@@ -250,6 +274,11 @@ export interface BaselineSourceUse {
   entryId?: baselineId;
 }
 
+export interface BaselineSymbolSelector {
+  path: baselineSymbolPath;
+  symbol: baselineSymbolName;
+}
+
 export interface BaselineSystemEntryPoint {
   id: baselineId;
   kind: "startup" | "external";
@@ -321,6 +350,18 @@ export interface BaselineV4 {
   systemEntryPoints?: BaselineSystemEntryPoints;
 }
 
+export interface BaselineV5 {
+  formatVersion: 5;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: Array<BaselineComponentV5>;
+  interfaces: Array<BaselineInterface>;
+  resources: Array<BaselineResource>;
+  rules: Array<BaselineRule>;
+  sourceUsage?: BaselineSourceUsage;
+  systemEntryPoints?: BaselineSystemEntryPoints;
+}
+
 export interface ProposedAccessPointsStatement {
   value: Array<baselineText> | null;
   status: "proposed";
@@ -363,6 +404,12 @@ export interface ProposedMembershipStatement {
   evidenceRefs: Array<baselineText>;
 }
 
+export interface ProposedMembershipV5Statement {
+  value: BaselineMembershipV5;
+  status: "proposed";
+  evidenceRefs: Array<baselineText>;
+}
+
 export interface ProposedNullableTextStatement {
   value: baselineText | null;
   status: "proposed";
@@ -394,5 +441,9 @@ export type baselineSelector = baselineText;
 export type baselineSourceDigest = string;
 
 export type baselineSourceLine = number;
+
+export type baselineSymbolName = baselineText;
+
+export type baselineSymbolPath = baselineText;
 
 export type baselineText = string;
