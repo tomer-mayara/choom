@@ -27,7 +27,7 @@ export const producerCommands: ReadonlyMap<string, ProducerCommand> = new Map([
   ["stage-4-5-publish", { helper: "stage-4-5-publish.ts", use: "Check, publish or verify a Stage 4 or Stage 5 review." }],
   ["stage-5", { helper: "stage-5-commands.ts", use: "Collect and review the remaining code." }],
   ["stage-6", { helper: "stage-6-commands.mjs", use: "Save and verify the fixed baseline and discovery result." }],
-  ["baseline", { helper: "baseline-commands.ts", use: "Record human decisions about the published baseline of a run." }],
+  ["baseline", { helper: "baseline-commands.ts", use: "Record human decisions about the published baseline of a run, and make the next version." }],
   ["duplication", { helper: "duplication-commands.mjs", use: "Run the separate duplication assessment." }],
   ["recover-capture", { helper: "recover-capture.ts", use: "Recover inputs from a damaged earlier capture." }],
   ["inventory-view", { helper: "inventory-view.py", use: "Prepare, verify or consolidate inventory-only input copies." }],

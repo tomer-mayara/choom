@@ -15,7 +15,7 @@ import { folderState } from "../../support/producer-record.ts";
 const model = "Fictional Model 7";
 const callRecord = `evidence/${stageSixAttempt}/llm/analysis-call.yaml`;
 const recordPath = "decisions/decisions-001.yaml";
-const usage = "Use baseline decide --run RUN_FOLDER DECISION_FILE.\n";
+const usage = "Use baseline decide --run RUN_FOLDER DECISION_FILE, or baseline next --run RUN_FOLDER --decisions DECISION_ID.\n";
 const sha256 = (bytes: Buffer | string): string => createHash("sha256").update(bytes).digest("hex");
 let published: CompletedRunFixture;
 

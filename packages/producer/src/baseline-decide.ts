@@ -62,7 +62,7 @@ function readDecisionFile(run: CompletedRun, path: string): { bytes: Buffer; val
 // The published baseline after the checks of its registered digest, the bounded
 // YAML profile and the shared baseline rules. Its digest is the SHA-256 of the
 // saved file bytes, which Stage 6 registered in run.yaml.
-function publishedBaseline(run: CompletedRun): SavedBaseline {
+export function publishedBaseline(run: CompletedRun): SavedBaseline {
   const parsed = baselineSchema.safeParse(readBaselineYaml(readRegisteredFile(run, run.baseline, baselineLimit), yaml));
   if (!parsed.success) {
     const [issue] = parsed.error.issues;
