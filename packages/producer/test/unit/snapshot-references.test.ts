@@ -180,6 +180,26 @@ describe("findReferences through module loading, and the files that it searches"
     ]);
   });
 
+  // Under NodeNext, a .ts file of a package of type module is an ES module, and its relative imports need an extension.
+  test("resolves the imports of each searched file in the module format that the compiler gives it", () => {
+    const files: Files = {
+      "package.json": "{ \"type\": \"module\" }\n",
+      [invoicePath]: invoice,
+      "src/plain.ts": "import { createInvoice } from './invoice';\n\ncreateInvoice('plain');\n",
+      "src/named.ts": "import { createInvoice } from './invoice.js';\n\ncreateInvoice('named');\n",
+      "src/old.cts": "import { createInvoice } from './invoice';\n\ncreateInvoice('old');\n",
+    };
+    const searched = Object.keys(files).filter((path) => path !== "package.json");
+    expectReferences(files, referencesIn(files, invoicePath, "createInvoice", { searched,
+      compilerOptions: { module: 199, moduleResolution: 99, target: 99 } }), [
+      { path: invoicePath, kind: "call", localName: "createInvoice", at: "draft = «createInvoice»" },
+      { path: "src/named.ts", kind: "import", localName: "createInvoice", at: "import { «createInvoice» }" },
+      { path: "src/named.ts", kind: "call", localName: "createInvoice", at: "«createInvoice»('named')" },
+      { path: "src/old.cts", kind: "import", localName: "createInvoice", at: "import { «createInvoice» }" },
+      { path: "src/old.cts", kind: "call", localName: "createInvoice", at: "«createInvoice»('old')" },
+    ]);
+  });
+
   // The record notes name this limit, and the Stage 4 record lists the call as unresolved.
   test("does not follow a require call in a TypeScript file", () => {
     const files: Files = {

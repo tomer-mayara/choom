@@ -210,13 +210,29 @@ function sitesIn(query: Query, source: SourceFile): Site[] {
   return [...sites.values()].sort((a, b) => a.node.getStart(source) - b.node.getStart(source));
 }
 
+// The compiler program of the files that the project holds. The compiler gives each
+// file the module format of its extension, and under Node16 and NodeNext of the type
+// of its nearest package.json, and resolves its imports in that format. ts-morph leaves
+// the format unset, which the compiler reads as CommonJS, so the query sets it before
+// the program exists. A file that the compiler reads only to resolve an import has no format.
+function referenceProgram({ ts, project }: SnapshotProject): TsMorph.ts.Program {
+  const options = project.compilerOptions.get();
+  const packageFiles = ts.createModuleResolutionCache(virtualRoot, name => name, options).getPackageJsonInfoCache();
+  for (const file of project.getSourceFiles()) {
+    const source = file.compilerNode;
+    source.impliedNodeFormat ??= ts.getImpliedNodeFormatForFile(source.fileName, packageFiles, project.getModuleResolutionHost(),
+      options);
+  }
+  return project.getProgram().compilerObject;
+}
+
 // The declarations of the symbol named in the file at path, and its references in
 // the files that the project holds, by path and then in source order.
 export function findReferences(snapshot: SnapshotProject, path: string, symbol: string): SymbolReferences {
   const { ts } = snapshot;
   const file = snapshot.sourceFile(path).getFilePath();
   const searched = snapshot.project.getSourceFiles().map(item => item.getFilePath() as string).sort();
-  const program = snapshot.project.getProgram().compilerObject;
+  const program = referenceProgram(snapshot);
   const checker = program.getTypeChecker();
   const target = targetSymbol({ ts, checker }, program.getSourceFile(file) as SourceFile, path, symbol);
   const query: Query = { ts, checker, target, destructured: new Set(), bindings: new Set() };
