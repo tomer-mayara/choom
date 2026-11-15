@@ -6,16 +6,18 @@ import { type SavedBaseline, validateDecisions } from '@choom/baseline-model/bas
 import type { BaselineDecider, BaselineDecisions } from '@choom/baseline-model/contracts';
 import { type CompletedRun, readCompletedRun, readRegisteredFile } from './completed-run.ts';
 import { checkDecider, runModelCalls } from './decider-check.ts';
+import { checkDecisionFileSize, decisionRecordPath, parseDecisionYaml, readDecisionRecord } from './decision-record.ts';
 import { assert, hash } from './record-checks.ts';
 import { pathsOverlap } from './run-layout.mjs';
 import { readBaselineYaml } from './stage-6-records.ts';
 
 // The decide action of the baseline command. It records the human decisions of a
-// decision file for the published baseline of a run that Stage 6 completed. It
-// checks the file with the shared rules of @choom/baseline-model and checks the
-// decider against the run's LLM call records. Then it saves the exact bytes of the
-// file once, as decisions/<ID>.json in the run folder. It changes no other file:
-// the baseline, the discovery result and run.yaml stay as they are.
+// YAML decision file for the published baseline of a run that Stage 6 completed.
+// It reads the file with the producer's bounded YAML profile, checks it with the
+// shared rules of @choom/baseline-model and checks the decider against the run's
+// LLM call records. Then it saves the exact bytes of the file once, as
+// decisions/<ID>.yaml in the run folder. It changes no other file: the baseline,
+// the discovery result and run.yaml stay as they are.
 
 export interface RecordedDecisions {
   status: 'decisions-recorded';
@@ -33,7 +35,7 @@ export interface RecordedDecisions {
   writes: string[];
 }
 
-const fileLimit = 16 * 1024 * 1024;
+const baselineLimit = 16 * 1024 * 1024;
 const limits = [
   'The decider check compares the decider name with the model names in the LLM call records of the run. ' +
     'It is a process rule: it does not prove that a person made the decisions.',
@@ -44,33 +46,24 @@ function refuse(problems: readonly string[]): never {
   throw new Error('The decisions are refused:\n' + problems.map(problem => '- ' + problem).join('\n'));
 }
 
-// The decision file is UTF-8 JSON of at most 16 MiB, outside the run folder.
+// The decision file is a YAML file outside the run folder. The size check comes
+// before the file is read.
 function readDecisionFile(run: CompletedRun, path: string): { bytes: Buffer; value: unknown } {
   assert(lstatSync(path, { throwIfNoEntry: false }) !== undefined, 'The decision file does not exist: ' + path);
   const file = realpathSync(path);
   const entry = lstatSync(file);
   assert(entry.isFile(), 'The decision file is not a regular file: ' + path);
   assert(!pathsOverlap(run.folder, file), 'Keep the decision file outside the run folder. The command saves its copy in decisions/.');
-  assert(entry.size <= fileLimit, 'The decision file is larger than 16 MiB.');
+  checkDecisionFileSize(entry.size);
   const bytes = readFileSync(file);
-  let text: string;
-  try {
-    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    throw new Error('The decision file is not UTF-8 text.');
-  }
-  try {
-    return { bytes, value: JSON.parse(text) };
-  } catch (error) {
-    throw new Error('The decision file is not valid JSON: ' + (error as Error).message);
-  }
+  return { bytes, value: parseDecisionYaml(bytes) };
 }
 
 // The published baseline after the checks of its registered digest, the bounded
 // YAML profile and the shared baseline rules. Its digest is the SHA-256 of the
 // saved file bytes, which Stage 6 registered in run.yaml.
 function publishedBaseline(run: CompletedRun): SavedBaseline {
-  const parsed = baselineSchema.safeParse(readBaselineYaml(readRegisteredFile(run, run.baseline, fileLimit), yaml));
+  const parsed = baselineSchema.safeParse(readBaselineYaml(readRegisteredFile(run, run.baseline, baselineLimit), yaml));
   if (!parsed.success) {
     const [issue] = parsed.error.issues;
     throw new Error(`The published baseline ${run.baseline.path} does not pass the shared baseline rules` +
@@ -80,12 +73,12 @@ function publishedBaseline(run: CompletedRun): SavedBaseline {
 }
 
 // Saves the bytes once. A record with the same ID is never replaced, also when
-// the content is the same.
+// the content is the same. The saved record is read back as a later reader does.
 function saveRecord(run: CompletedRun, id: string, bytes: Buffer): string {
   const folder = join(run.folder, 'decisions');
   if (lstatSync(folder, { throwIfNoEntry: false }) === undefined) mkdirSync(folder, { recursive: true });
   assert(lstatSync(folder).isDirectory(), 'decisions in the run folder is not a folder.');
-  const path = `decisions/${id}.json`;
+  const path = decisionRecordPath(id);
   try {
     writeFileSync(join(run.folder, path), bytes, { flag: 'wx' });
   } catch (error) {
@@ -93,7 +86,7 @@ function saveRecord(run: CompletedRun, id: string, bytes: Buffer): string {
     throw new Error(`The decision record ${id} is saved already: ${path}. A saved decision record does not change. ` +
       'Give new decisions a new ID.');
   }
-  assert(hash(readFileSync(join(run.folder, path))) === hash(bytes), 'The saved decision record changed while it was saved: ' + path);
+  assert(readDecisionRecord(run, id).sha256 === hash(bytes), 'The saved decision record changed while it was saved: ' + path);
   return path;
 }
 

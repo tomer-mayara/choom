@@ -14,7 +14,7 @@ interface Entry { action: string; itemId: string; field: string; oldValue?: unkn
 
 const model = "Fictional Model 7";
 const callRecord = `evidence/${stageSixAttempt}/llm/analysis-call.yaml`;
-const recordPath = "decisions/decisions-001.json";
+const recordPath = "decisions/decisions-001.yaml";
 const usage = "Use baseline decide --run RUN_FOLDER DECISION_FILE.\n";
 const sha256 = (bytes: Buffer | string): string => createHash("sha256").update(bytes).digest("hex");
 let published: CompletedRunFixture;
@@ -35,12 +35,19 @@ function baselineDigest(work: string): string {
   return sha256(readFileSync(join(work, published.baselinePath)));
 }
 
-// Writes a decision file for the published baseline outside the run folder.
+// The YAML text of a decision file for the published baseline. It starts with a
+// YAML comment that names the baseline, as a copied entry does.
+function decisionYaml(work: string, entries: Entry[], change: Record<string, unknown> = {}): string {
+  const digest = baselineDigest(work);
+  return `# Baseline ${published.baselineId}, SHA-256 ${digest}\n` + stringify({ formatVersion: 1, id: "decisions-001",
+    baselineRef: published.baselineId, baselineDigest: digest, decider: { name: "Ada Example", kind: "human" },
+    decidedAt: "2026-11-15T10:30:00Z", entries, ...change });
+}
+
+// Writes a decision file outside the run folder.
 function decisionFile(scratch: string, work: string, entries: Entry[], change: Record<string, unknown> = {}): string {
-  const path = join(scratch, "decisions.json");
-  writeFileSync(path, JSON.stringify({ formatVersion: 1, id: "decisions-001", baselineRef: published.baselineId,
-    baselineDigest: baselineDigest(work), decider: { name: "Ada Example", kind: "human" }, decidedAt: "2026-11-15T10:30:00Z",
-    entries, ...change }, null, 2) + "\n");
+  const path = join(scratch, "decisions.yaml");
+  writeFileSync(path, decisionYaml(work, entries, change));
   return path;
 }
 
@@ -141,26 +148,40 @@ describe("baseline decide", () => {
   test("refuses a decision file in the run folder", () => {
     withScratch((scratch) => {
       const work = copiedRun(scratch);
-      const inside = join(work, "decisions.json");
+      const inside = join(work, "decisions.yaml");
       writeFileSync(inside, readFileSync(decisionFile(scratch, work, [acceptPurpose])));
       expectRefused(work, inside, "Keep the decision file outside the run folder. The command saves its copy in decisions/.\n");
     });
   });
 
-  test.each([
-    ["not JSON", "{ formatVersion: 1 }\n", /^The decision file is not valid JSON: /],
-    ["not UTF-8 text", Buffer.from([0x7b, 0xff, 0x7d]), /^The decision file is not UTF-8 text\.\n$/],
-    ["larger than 16 MiB", " ".repeat(16 * 1024 * 1024 + 1), /^The decision file is larger than 16 MiB\.\n$/],
-  ])("refuses a decision file that is %s", (_name, content, stderr) => {
+  // The decision file is read with the producer's bounded YAML profile, as a baseline is.
+  test.each<[string, (work: string) => string | Buffer, string]>([
+    ["YAML that is not valid", () => "id: [decisions-001\n", "Decision file must contain valid YAML.\n"],
+    ["a merge key with an alias", (work) => decisionYaml(work, [acceptPurpose]) + "person: &person {kind: human}\nother:\n  <<: *person\n",
+      "Decision file YAML anchors and explicit tags are unsupported.\n"],
+    ["a custom tag", (work) => decisionYaml(work, [acceptPurpose]).replace("id: decisions-001", "id: !decision decisions-001"),
+      "Decision file YAML anchors and explicit tags are unsupported.\n"],
+    ["an alias", (work) => decisionYaml(work, [acceptPurpose]) + "copy: *person\n",
+      "Decision file YAML aliases and syntax errors are unsupported.\n"],
+    ["a duplicate key", (work) => decisionYaml(work, [acceptPurpose]) + "id: decisions-002\n",
+      "Decision file YAML mapping keys must be unique strings.\n"],
+    ["bytes that are not UTF-8", () => Buffer.from([0x69, 0x64, 0x3a, 0x20, 0xff, 0x0a]), "Decision file must use UTF-8.\n"],
+    ["more than 16 MiB", () => " ".repeat(16 * 1024 * 1024 + 1), "Decision file exceeds the 16 MiB file limit.\n"],
+  ])("refuses a decision file with %s, and writes nothing", (_name, content, stderr) => {
     withScratch((scratch) => {
       const work = copiedRun(scratch);
-      const file = join(scratch, "decisions.json");
-      writeFileSync(file, content);
-      const before = folderState(work);
-      const result = decide(work, file);
-      expect(result.status).toBe(1);
-      expect(result.stderr).toMatch(stderr);
-      expect(folderState(work)).toEqual(before);
+      const file = join(scratch, "decisions.yaml");
+      writeFileSync(file, content(work));
+      expectRefused(work, file, stderr);
+    });
+  });
+
+  test("does not merge a merge key without an alias: the contract refuses it as an unknown key", () => {
+    withScratch((scratch) => {
+      const work = copiedRun(scratch);
+      const file = join(scratch, "decisions.yaml");
+      writeFileSync(file, decisionYaml(work, [acceptPurpose]) + "<<: {id: decisions-002}\n");
+      expectRefused(work, file, 'The decisions are refused:\n- The decision file is invalid: Unrecognized key: "<<"\n');
     });
   });
 
