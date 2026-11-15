@@ -20,6 +20,7 @@ import { useArchitectureInspection } from "./use-architecture-inspection.ts";
 import { useComponentGestures, type ComponentGestures } from "./use-component-gestures.ts";
 import { Button } from "./ui/button.tsx";
 import { duplicationCounts, type DuplicationControls } from "./duplication-view.ts";
+import { supportsSourceUsage } from "../domain/baseline-format.ts";
 import "@xyflow/react/dist/style.css";
 
 type ArchitectureNode = Node<{
@@ -242,7 +243,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           Show self-connections
         </label>
       </fieldset>
-      {baseline.formatVersion === 3 ? <div>
+      {supportsSourceUsage(baseline) ? <div>
         <p>Arrow: component uses the interface in saved source.</p>
         <p>The canvas shows application and tooling value references. Type and test references stay in details. Source use does not prove runtime execution.</p>
       </div> : <p>Arrow: consumer may use the owner's interface.</p>}
@@ -268,7 +269,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
 }
 
 function SourceReviewNotice({ baseline }: { baseline: ReadonlyData<Baseline> }) {
-  if (baseline.formatVersion !== 3 || baseline.interfaces.length === 0) return null;
+  if (!supportsSourceUsage(baseline) || baseline.interfaces.length === 0) return null;
   const message = !baseline.sourceUsage ? "Source use not recorded."
     : baseline.sourceUsage.assessments.length === 0 ? "No interface source assessments recorded."
       : "Source review is partial. See interface details for scope and gaps.";

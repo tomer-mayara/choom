@@ -89,7 +89,7 @@ Interfaces and resources have no separate nodes. In versions 1 and 2, interface
 arcs run from each recorded allowed consumer to the recorded owner. They show
 permission to use the interface, not observed calls.
 
-Version 3 uses only its saved source-use records. Application and tooling value
+Versions 3 and 4 use only saved source-use records. Application and tooling value
 references connect the directly mapped consumer to the interface owner when
 both are known. Type, test, unknown-context, and unmapped references create no
 canvas arrow. Several sites combine into one arc per interface and endpoints;
@@ -268,7 +268,7 @@ general behavior, so the legacy contract stays visible when the description and
 interaction are absent. Original record keeps the complete signature statement.
 
 Overview, Example, and Sources use standard keyboard tabs in the existing inspector width.
-For version 3, Overview's **Used by** list groups application and tooling value
+For versions 3 and 4, Overview's **Used by** list groups application and tooling value
 references by direct consumer ID. Duplicate component names retain their IDs.
 Each saved site keeps its kind, context, description, and optional entry binding.
 The list covers the interface and does not change when an entry is selected.
@@ -281,7 +281,7 @@ inline disclosure for the saved note and location; it does not navigate or fetch
 Missing source data, missing assessment, and assessed empty uses have distinct
 messages. The source notice describes absent data, no assessments, or partial
 review. It does not count permission gaps as unknown callers. Omit the notice
-when no interfaces exist. Version 3 labels the header status **Interface statement
+when no interfaces exist. Versions 3 and 4 label the header status **Interface statement
 status**, separately from source use. Access rule remains permission only.
 
 Sources also shows the assessment's scope and limits, shared snapshot and

@@ -6,16 +6,16 @@ import { selectInterfaceTab } from "../../support/interface-details-dom.ts";
 import { sourceUseReadingBaseline } from "../../support/source-use-reading-fixtures.ts";
 
 afterEach(cleanup);
-function view(variant = "complete") {
-  const baseline = sourceUseReadingBaseline(variant);
+function view(variant = "complete", formatVersion: 3 | 4 = 3) {
+  const baseline = { ...sourceUseReadingBaseline(variant), formatVersion };
   const mounted = render(<ArchitectureDetails baseline={baseline} panel={{ kind: "interface", interfaceId: "invoice-api" }} />);
   return { baseline, ...mounted };
 }
 const uses = () => screen.getByRole("region", { name: "Used by" });
 function expand(name: string) { fireEvent.click(screen.getByText(name, { selector: "summary" })); }
 
-test("Used by groups all primary sites and keeps permission separate", () => {
-  view();
+test.each([3, 4] as const)("version %i Used by groups all primary sites and keeps permission separate", (formatVersion) => {
+  view("complete", formatVersion);
   const region = uses();
   expect(region.textContent).toContain("Interface-wide source use");
   expect(region.textContent).toContain("Checkout");
@@ -42,6 +42,16 @@ test.each([
     expect(uses().textContent).toContain("Reviewed the checkout caller and invoice declaration.");
     expect(uses().textContent).toContain("Other callers were not reviewed.");
   }
+});
+
+test("version 4 keeps source review and intent separate in the Sources tab", () => {
+  view("complete", 4);
+  expect(screen.getByRole("group", { name: "Interface statement status" })).toBeTruthy();
+  selectInterfaceTab("Sources");
+  expect(screen.getByRole("heading", { name: "Source-use review" })).toBeTruthy();
+  expand("Evidence references");
+  expect(screen.getAllByText("Intent statements").length).toBeGreaterThan(0);
+  expect(screen.queryByText("Cited by")).toBeNull();
 });
 
 test("legacy interfaces do not turn permitted components into source uses", () => {

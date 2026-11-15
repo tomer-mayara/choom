@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { interfaceArcs } from "../../../src/lib/interface-arcs.ts";
+import { incompleteInterfaceCount, interfaceArcs } from "../../../src/lib/interface-arcs.ts";
 import { fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { sourceUsageBaseline } from "../../support/source-usage-fixtures.ts";
 import { sourceConnectionBaseline } from "../../support/source-connection-fixtures.ts";
@@ -47,6 +47,19 @@ test("unknown providers suppress only their own source connections", () => {
 test("source mode never falls back to or unions permissions", () => {
   expect(interfaceArcs(sourceConnectionBaseline("no source data"))).toEqual([]);
   expect(interfaceArcs(sourceConnectionBaseline("different permission")).map(({ consumerId }) => consumerId)).toEqual(["checkout"]);
+});
+
+test("version 4 draws only recorded source consumers", () => {
+  const baseline = { ...sourceConnectionBaseline("different permission"), formatVersion: 4 as const };
+  expect(interfaceArcs(baseline).map(({ consumerId }) => consumerId)).toEqual(["checkout"]);
+});
+
+test("version 4 with no source data neither draws permission arrows nor reports unknown permission", () => {
+  const { sourceUsage: _sourceUsage, ...baseline } = sourceUsageBaseline();
+  const input = { ...baseline, formatVersion: 4 as const };
+  input.interfaces.push({ ...structuredClone(fixtureItem(input.interfaces)), id: "permitted-api", allowedConsumers: proposed(["checkout"]) });
+  expect(interfaceArcs(input)).toEqual([]);
+  expect(incompleteInterfaceCount(input)).toBe(0);
 });
 
 test("separate interfaces, opposite directions, consumers and self-use keep their identities", () => {

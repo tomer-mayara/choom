@@ -1,5 +1,6 @@
 import type { Baseline } from "../domain/generated/contracts.ts";
 import type { ReadonlyData } from "../domain/readonly-data.ts";
+import { supportsSourceUsage } from "../domain/baseline-format.ts";
 
 export interface InterfaceArc {
   id: string;
@@ -9,7 +10,7 @@ export interface InterfaceArc {
 }
 
 export function interfaceArcs(baseline: ReadonlyData<Baseline>): InterfaceArc[] {
-  if (baseline.formatVersion === 3) {
+  if (supportsSourceUsage(baseline)) {
     const owners = new Map(baseline.interfaces.map((item) => [item.id, item.owner.value]));
     const arcs = new Map<string, InterfaceArc>();
     for (const assessment of baseline.sourceUsage?.assessments ?? []) {
@@ -34,6 +35,6 @@ export function interfaceArcs(baseline: ReadonlyData<Baseline>): InterfaceArc[] 
 }
 
 export function incompleteInterfaceCount(baseline: ReadonlyData<Baseline>): number {
-  if (baseline.formatVersion === 3) return 0;
+  if (supportsSourceUsage(baseline)) return 0;
   return baseline.interfaces.filter(({ owner, allowedConsumers }) => owner.value === null || allowedConsumers.value === null).length;
 }

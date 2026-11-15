@@ -50,8 +50,8 @@ Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri sy
 bun run desktop
 ```
 
-Use **Open Baseline** to select a `formatVersion: 1`, `2`, or `3` baseline in
-the browser or desktop app. The decoder also accepts version `4` saved data.
+Use **Open Baseline** to select a `formatVersion: 1`, `2`, `3`, or `4` baseline in
+the browser or desktop app.
 The input must be valid UTF-8 and at most 16 MiB.
 Version 2 can add saved interface documentation. Version 3 retains those fields
 and can add source-use records with a shared snapshot and code mapping.
@@ -59,7 +59,7 @@ Version 4 can also add a saved [system-entry assessment](cookbook/interfaces/bas
 for reviewed startup and external call boundaries.
 Versions 1 and 2 keep their strict fields. An interface's **Original record** disclosure retains all saved
 values, including documentation and statement references.
-For version 3, **Baseline details → Original source-use data** retains the
+For versions 3 and 4, **Baseline details → Original source-use data** retains the
 complete source-use object when supplied. Reading it does not fetch source
 files or verify their hashes.
 The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
@@ -91,12 +91,12 @@ consumer to the component that owns the interface. It means the consumer may
 use that interface; it does not claim that a call occurs. Several consumers
 produce several arrows without increasing the owner's interface count.
 
-Version 3 instead draws saved source use from each consumer to the interface's
-provider. It includes value references in application and tooling code when
+Versions 3 and 4 draw saved source use from each consumer to the interface's
+provider. They include value references in application and tooling code when
 both components are known. Several sites for the same interface and endpoints
 produce one arrow. Type, test, unknown-context, and unmapped references remain
 in the saved data. A source arrow does not establish permission or execution.
-Without source-use data, version 3 shows no arrows inferred from permission.
+If source-use data is absent, versions 3 and 4 show no arrows.
 
 **Connections: Selected** is the default. The initial view has no arrows.
 Select a component to show only arrows where it is the consumer or owner.
@@ -170,7 +170,7 @@ Unknown facts stay unknown. **Access rule** lists permitted components; it does
 not report actual calls or runtime authorization. Use arrow keys, Home, or End
 to change tabs. A direct interface selection starts a fresh Overview.
 
-In version 3, **Used by** groups saved application and tooling value references
+In versions 3 and 4, **Used by** groups saved application and tooling value references
 by their direct consumer. The list covers the whole interface, even when an
 entry is selected. Each site keeps its entry binding, kind, context, and
 description. **Caller source** shows the saved caller note and location inline.
