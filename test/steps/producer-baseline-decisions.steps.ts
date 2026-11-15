@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
-import { parse } from "yaml";
+import { parse, stringify } from "yaml";
 import { type CommandResult, runCli } from "../../packages/producer/test/support/commands.ts";
 import { completedRun, type CompletedRunFixture, type FixtureBaseline, type FixtureComponent }
   from "../../packages/producer/test/support/completed-run.ts";
@@ -43,7 +43,7 @@ interface DecisionsWorld extends World {
 const runModel = "Fictional Model 7";
 const person = "Ada Example";
 const decidedAt = "2026-11-15T10:30:00Z";
-const recordPath = "decisions/decisions-001.json";
+const recordPath = "decisions/decisions-001.yaml";
 const billingPurpose = "Bill the saved orders.";
 const correctedPurpose = "Bill each saved order once.";
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
@@ -77,15 +77,17 @@ async function savedBaseline(world: DecisionsWorld): Promise<FixtureBaseline> {
   return parse(publishedBytes(world).toString("utf8")) as FixtureBaseline;
 }
 
-// Writes a decision file for the published baseline in a folder outside the run.
+// Writes a YAML decision file for the published baseline in a folder outside the
+// run. It starts with a YAML comment that names the baseline, as a copied entry does.
 function writeDecisions(world: DecisionsWorld, entries: DecisionEntry[], name = person): void {
   const run = currentRun(world);
+  const digest = sha256(publishedBytes(world));
   const file: DecisionFile = { formatVersion: 1, id: "decisions-001", baselineRef: run.baselineId,
-    baselineDigest: sha256(publishedBytes(world)), decider: { name, kind: "human" }, decidedAt, entries };
+    baselineDigest: digest, decider: { name, kind: "human" }, decidedAt, entries };
   const folder = join(run.root, "decision-input");
   mkdirSync(folder, { recursive: true });
-  world.decisionFile = join(folder, "decisions.json");
-  writeFileSync(world.decisionFile, JSON.stringify(file, null, 2) + "\n");
+  world.decisionFile = join(folder, "decisions.yaml");
+  writeFileSync(world.decisionFile, `# Baseline ${run.baselineId}, SHA-256 ${digest}\n${stringify(file)}`);
 }
 
 function lastDecide(world: DecisionsWorld): CommandResult {
@@ -109,7 +111,7 @@ function recorded(world: DecisionsWorld): { output: RecordedDecisions; saved: De
   const after = folderState(work);
   assert.deepEqual(after.filter((entry) => !isRecord(entry)), world.decisionsBefore);
   assert.deepEqual(after.filter(isRecord), [["decisions", "folder"], [recordPath, output.sha256]]);
-  return { output, saved: JSON.parse(bytes.toString("utf8")) as DecisionFile };
+  return { output, saved: parse(bytes.toString("utf8")) as DecisionFile };
 }
 
 After({ tags: "@producer" }, function (this: DecisionsWorld) {
