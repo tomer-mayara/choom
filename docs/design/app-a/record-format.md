@@ -1123,12 +1123,14 @@ The command saves two new files, once, in a new folder:
 The version record links the version to its parent and to its decision record.
 Each link gives the ID, the path in the run folder and the SHA-256 of the saved
 bytes. The parent SHA-256 is the `sha256` of the published baseline in the
-`run.yaml` registry. A later check reads `decisions/<id>.yaml` again and
-compares its SHA-256 with the version record. The command does not change the
-published baseline, the discovery result, `run.yaml` or the decision record.
-`run.yaml` does not register the version, because the version record is enough
-to check the links. The viewer opens the new version as any baseline file; it
-does not read the version record.
+`run.yaml` registry. A later check can read the three files again and compare
+their SHA-256 with the version record; the producer profile of a next version
+already refuses a decision record with another SHA-256. No command makes this
+later check yet. The command does not change the published baseline, the
+discovery result, `run.yaml` or the decision record. `run.yaml` does not
+register the version, because the version record is enough to check the links.
+The viewer opens the new version as any baseline file; it does not read the
+version record.
 
 A second `baseline next` with the same record is refused, because the version
 folder exists: a saved version does not change. A new decision record about the
