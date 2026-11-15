@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { Baseline } from "@choom/baseline-model/contracts";
-import { checkBaselineDocument, validateBaseline, validateDocumentation } from "../../../src/record-baseline.ts";
+import type { Baseline, BaselineDecision, BaselineDecisionValue } from "@choom/baseline-model/contracts";
+import { checkBaselineDocument, validateBaseline, validateDocumentation, type VersionDecisions }
+  from "../../../src/record-baseline.ts";
 
 // The statements of a baseline in the producer's record checks: the order in which
 // the checks visit them, and the statement names in their messages. The checks run
@@ -86,7 +87,8 @@ function discovery(subjects: string[] = []): Fields {
 
 const noSources = { records: new Map(), verify: () => undefined, verified: new Set() };
 
-describe("the check that publication accepts no intent", () => {
+// A first version has no parent, and publication accepts no intent in it.
+describe("the statuses of a first version", () => {
   test.each(statementNames.map((name, index) => [name, index] as const))(
     "names %s when it and every later statement are accepted", (name, index) => {
       const input = accept(documentedBaseline(), statementNames.slice(index));
@@ -95,6 +97,79 @@ describe("the check that publication accepts no intent", () => {
 
   test("accepts a baseline whose statements are all proposed", () => {
     expect(() => checkBaselineDocument(documentedBaseline())).not.toThrow();
+  });
+});
+
+// A next version is made from a saved decision record of the run. Its accepted
+// statements name that record, and the record decides each of them.
+describe("the statuses of a next version", () => {
+  const recordPath = "decisions/decisions-001.yaml";
+  const recordSha256 = "0123456789abcdef".repeat(4);
+  const acceptAll = statementNames.map((name): BaselineDecision => {
+    const [itemId = "", ...field] = name.split(".");
+    return { action: "accept", itemId, field: field.join(".") };
+  });
+
+  // The documented baseline as the next version of base-1, with the named statements accepted.
+  function nextVersion(names: readonly string[], change: Fields = {}): Fields {
+    return { ...accept(documentedBaseline(), names), id: "base-1-decisions-001", parentId: "base-1", ...change };
+  }
+
+  // The decision record that the version record links, and the record that the run holds.
+  function decisionRecord(entries: BaselineDecision[], savedSha256 = recordSha256): VersionDecisions {
+    return { link: { id: "decisions-001", path: recordPath, sha256: recordSha256 }, saved: { sha256: savedSha256, decisions: {
+      formatVersion: 1, id: "decisions-001", baselineRef: "base-1", baselineDigest: "f".repeat(64),
+      decider: { name: "Ada Example", kind: "human" }, decidedAt: "2026-11-15T10:30:00Z", entries } } };
+  }
+
+  test("accepts accepted statements that the decision record accepts, and keeps the others proposed", () => {
+    const decided = statementNames.filter((_name, index) => index % 2 === 0);
+    const version = checkBaselineDocument(nextVersion(decided), decisionRecord(acceptAll.filter((_entry, index) => index % 2 === 0)));
+    expect(statementNames.map((name) => statementOf(version as unknown as Fields, name).status))
+      .toEqual(statementNames.map((name) => (decided.includes(name) ? "accepted" : "proposed")));
+  });
+
+  test("accepts a corrected statement that has the new value of its correction, and refuses another value", () => {
+    const corrected = (newValue: BaselineDecisionValue): BaselineDecision[] =>
+      [{ action: "correct", itemId: "http", field: "purpose", oldValue: "Run the server.", newValue }];
+    const input = nextVersion(["http.purpose"]);
+    expect(() => checkBaselineDocument(input, decisionRecord(corrected("Run http.ts.")))).not.toThrow();
+    expect(() => checkBaselineDocument(input, decisionRecord(corrected("Run the server.")))).toThrow(new Error(
+      `http.purpose is accepted, but its value is not the new value of its correction in ${recordPath}.`));
+  });
+
+  test("refuses an accepted statement that names another decision record", () => {
+    const input = nextVersion(["cli.purpose"]);
+    Object.assign(statementOf(input, "cli.purpose"), { acceptanceRef: "decisions-002" });
+    expect(() => checkBaselineDocument(input, decisionRecord(acceptAll))).toThrow(new Error(
+      `cli.purpose is accepted with the acceptanceRef decisions-002, but the version is made from the decision record ${recordPath}.`));
+  });
+
+  test("refuses an accepted statement that the decision record does not decide", () => {
+    const input = nextVersion(["cli.purpose", "orders.owner"]);
+    expect(() => checkBaselineDocument(input, decisionRecord(acceptAll.slice(0, 1)))).toThrow(new Error(
+      `orders.owner is accepted, but the decision record ${recordPath} has no entry for it.`));
+  });
+
+  test("refuses a saved decision record whose SHA-256 is not the one that the version record gives", () => {
+    const changed = "f".repeat(64);
+    expect(() => checkBaselineDocument(nextVersion(["cli.purpose"]), decisionRecord(acceptAll, changed))).toThrow(new Error(
+      `The decision record ${recordPath} changed after the version was made: its SHA-256 is ${changed}, ` +
+      `but the version record gives ${recordSha256}.`));
+  });
+
+  test.each([["another baseline", "base-0"], ["no baseline", null]])(
+    "refuses a version whose parent is %s, not the baseline of its decision record", (_name, parentId) => {
+      expect(() => checkBaselineDocument(nextVersion(["cli.purpose"], { parentId }), decisionRecord(acceptAll))).toThrow(new Error(
+        `The next version names ${JSON.stringify(parentId)} as its parent, but the decision record ${recordPath} is for ` +
+        "the baseline base-1."));
+    });
+
+  test("refuses a version whose ID is the ID of an item, because the baseline ID is reserved", () => {
+    const input = nextVersion(["cli.purpose"], { id: "orders-api" });
+    expect(() => checkBaselineDocument(input, decisionRecord(acceptAll))).toThrow(new Error(
+      "The ID orders-api of the version is also the ID of the interface orders-api. The baseline ID is reserved. " +
+      "Use another decision record ID."));
   });
 });
 

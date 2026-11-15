@@ -1,6 +1,8 @@
+import { isDeepStrictEqual } from 'node:util';
 import { baselineSchema } from '@choom/baseline-model';
 import { supportsSourceUsage, supportsSystemEntryPoints } from '@choom/baseline-model/baseline-format';
-import type { Baseline, BaselineDocumentation, BaselineInterface, BaselineSourceUse } from '@choom/baseline-model/contracts';
+import type { Baseline, BaselineDecisions, BaselineDocumentation, BaselineInterface, BaselineSourceUse }
+  from '@choom/baseline-model/contracts';
 import { baselineStatements, documentationStatements, type DocumentationStatement, itemStatementFields, type StatementState }
   from '@choom/baseline-model/item-statements';
 import { assert, type Fields, object, oneOf } from './record-checks.ts';
@@ -37,6 +39,16 @@ export interface RunBaselineInputs extends DocumentationInputs {
 }
 // One statement of an interface's documentation, its subject path, and the facts in it that can be null.
 interface DocumentationCheck { path: string; statement: StatementState; facts: [string, unknown][] }
+/**
+ * The decision record that a next baseline version is made from. `link` is what
+ * the version record gives: the ID of the record, its path in the run folder and
+ * the SHA-256 of its bytes when the version was made. `saved` is the record that
+ * the run folder holds: the SHA-256 of its bytes and its checked decisions.
+ */
+export interface VersionDecisions {
+  link: { id: string; path: string; sha256: string };
+  saved: { sha256: string; decisions: BaselineDecisions };
+}
 
 // Reads value?.[key] from an unchecked value.
 const field = (value: unknown, key: string): unknown => (value as Fields | null | undefined)?.[key];
@@ -45,16 +57,30 @@ const items = (baseline: Baseline, key: typeof collectionKeys[number]): Fields[]
 const issueSubjects = (discovery: Fields): Set<unknown> => new Set([...(discovery.questions as Fields[]),
   ...(discovery.gaps as Fields[])].flatMap(issue => issue.subjectRefs as unknown[]));
 
+// The parent of a baseline version. A first version has no parent. A next version
+// has as its parent the baseline that its decision record decides about.
+function checkParent(baseline: unknown, made: VersionDecisions | undefined): void {
+  const parentId = field(baseline, 'parentId');
+  if (made === undefined) {
+    assert(parentId === null, 'Expected a first proposed baseline.');
+    return;
+  }
+  const { link, saved } = made;
+  assert(parentId === saved.decisions.baselineRef, 'The next version names ' + JSON.stringify(parentId) + ' as its parent, ' +
+    'but the decision record ' + link.path + ' is for the baseline ' + saved.decisions.baselineRef + '.');
+}
+
 // The producer profile: what the producer writes, on top of the shared baseline
-// rules. It writes formatVersion 1 to 4 and only the first version of a
-// baseline. The baseline has at least one component. Each component, also a
-// parent that only groups other components, has a purpose, a grouping reason
-// and at least one path. A question or gap does not replace these values. The
-// profile runs first, so that each case has its own message.
-function checkProducerProfile(baseline: unknown): void {
+// rules. It writes formatVersion 1 to 4: a first version of a baseline, or a
+// next version that a decision record makes. The baseline has at least one
+// component. Each component, also a parent that only groups other components,
+// has a purpose, a grouping reason and at least one path. A question or gap does
+// not replace these values. The profile runs first, so that each case has its
+// own message.
+function checkProducerProfile(baseline: unknown, made: VersionDecisions | undefined): void {
   const version = field(baseline, 'formatVersion');
   assert(oneOf(producerVersions, version), 'The producer writes baseline formatVersion 1, 2, 3 or 4, not ' + JSON.stringify(version) + '.');
-  assert(field(baseline, 'parentId') === null, 'Expected a first proposed baseline.');
+  checkParent(baseline, made);
   const components = field(baseline, 'components');
   if (!Array.isArray(components)) return;
   assert(components.length > 0, 'The baseline has no components. The producer needs at least one component.');
@@ -98,10 +124,39 @@ function documentationChecks(itemId: string, documentation: BaselineDocumentatio
   });
 }
 
-// Publication does not accept intent: every statement stays proposed.
+// Publication does not accept intent: every statement of a first version stays proposed.
 function checkProposedIntent(baseline: Baseline): void {
   for (const { itemId, field, statement } of baselineStatements(baseline))
     assert(statement.status === 'proposed', 'Only proposed intent is supported: ' + itemId + '.' + field);
+}
+
+// The ID of a next version is reserved as the ID of a first version is: no item can use it.
+function checkVersionId(baseline: Baseline): void {
+  for (const key of collectionKeys)
+    assert(!items(baseline, key).some(item => item.id === baseline.id), 'The ID ' + baseline.id + ' of the version is also the ID ' +
+      'of the ' + itemKinds.get(key) + ' ' + baseline.id + '. The baseline ID is reserved. Use another decision record ID.');
+}
+
+// A person accepts the statements of a next version. The version names its
+// decision record, and the run folder holds that record with the SHA-256 that
+// the version record gives. Each accepted statement names that record in its
+// acceptanceRef, and the record has an entry for it: accept, or correct with the
+// value of the statement as its new value. A proposed statement needs no entry.
+function checkDecidedStatements(baseline: Baseline, { link, saved }: VersionDecisions): void {
+  assert(saved.sha256 === link.sha256, 'The decision record ' + link.path + ' changed after the version was made: its SHA-256 is ' +
+    saved.sha256 + ', but the version record gives ' + link.sha256 + '.');
+  checkVersionId(baseline);
+  const entries = new Map(saved.decisions.entries.map(entry => [entry.itemId + '.' + entry.field, entry]));
+  for (const { itemId, field, statement } of baselineStatements(baseline)) {
+    if (statement.status === 'proposed') continue;
+    const name = itemId + '.' + field;
+    assert(statement.acceptanceRef === link.id, name + ' is accepted with the acceptanceRef ' + statement.acceptanceRef +
+      ', but the version is made from the decision record ' + link.path + '.');
+    const entry = entries.get(name);
+    assert(entry, name + ' is accepted, but the decision record ' + link.path + ' has no entry for it.');
+    assert(entry.action === 'accept' || isDeepStrictEqual(entry.newValue, statement.value),
+      name + ' is accepted, but its value is not the new value of its correction in ' + link.path + '.');
+  }
 }
 
 // The viewer display limits: 500 records, 2,000 explicit links and 16 component levels.
@@ -120,12 +175,15 @@ function checkDisplayLimits(baseline: Baseline): void {
 }
 
 // The baseline document: the producer profile first, then the shared baseline
-// rules, then the producer rules that need a valid shape.
-export function checkBaselineDocument(value: unknown): Baseline {
-  checkProducerProfile(value);
+// rules, then the producer rules that need a valid shape. Without `made`, the
+// document is a first version, which Stages 4 to 6 publish. With `made`, it is
+// the next version that the decision record of `made` makes.
+export function checkBaselineDocument(value: unknown, made?: VersionDecisions): Baseline {
+  checkProducerProfile(value, made);
   const result = baselineSchema.safeParse(value);
   if (!result.success) throw new Error(sharedRuleMessage(value, result.error.issues[0]));
-  checkProposedIntent(result.data);
+  if (made === undefined) checkProposedIntent(result.data);
+  else checkDecidedStatements(result.data, made);
   checkDisplayLimits(result.data);
   return result.data;
 }
