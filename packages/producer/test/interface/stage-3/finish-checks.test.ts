@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse } from "yaml";
+import { parse, stringify } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 import type { JsonRecord } from "../../support/stage-2-attempt.ts";
@@ -22,6 +22,11 @@ const cases: FinishCase[] = [
     message: "Missing LLM call metadata; use unknown for unexposed settings." },
   { name: "the response does not contain the entry analysis", change: (packet) => { packet.response = "No analysis.\n"; },
     message: "Keep the complete prompt and response, including the exact entry-analysis YAML." },
+  { name: "the call record does not say that hidden reasoning was not saved",
+    change: (packet) => { delete packet.call.hiddenReasoning; }, message: "Record hiddenReasoning: not-saved in llm/analysis-call.yaml." },
+  { name: "the response holds a reasoning block",
+    change: (packet) => { packet.response = "<reasoning>\nKnip was skipped.\n</reasoning>\n\n" + stringify(packet.analysis); },
+    message: "llm/analysis-response.md contains a hidden reasoning block. Save only the visible response." },
   { name: "the review scope names another run", change: (packet) => { packet.scope.runRef = "run-other"; },
     message: "Missing or invalid LLM review scope." },
   { name: "the analysis has an extra field", change: (packet) => { packet.analysis.extra = true; },

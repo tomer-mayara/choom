@@ -1,6 +1,7 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type { Baseline } from '@choom/baseline-model/contracts';
 import type * as Yaml from 'yaml';
+import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
   from './record-baseline.ts';
 import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, strings, text } from './record-checks.ts';
@@ -444,6 +445,8 @@ function checkReadiness(selection: Selection, packet: Map<string, Buffer>): void
     text(saved('llm/analysis-prompt.md').toString('utf8')) &&
     saved('llm/analysis-response.md').toString('utf8').includes(saved('readiness.yaml').toString('utf8').trimEnd()),
   'Incomplete readiness prompt, response or call metadata.');
+  checkReasoningNotSaved(call, 'llm/analysis-call.yaml');
+  checkVisibleResponse(saved('llm/analysis-response.md').toString('utf8'), 'llm/analysis-response.md');
 }
 
 function recordCounts({ source, graph, mapping, baseline, entry, discovery, access, count }: Selection, mapped: Map<unknown, unknown>): RecordCounts {

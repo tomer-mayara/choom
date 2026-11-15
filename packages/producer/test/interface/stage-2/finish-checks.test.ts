@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { cpSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
-import { analysisPacket, candidate, entryAnalysis, finishAttempt, priorQuestion, runAttempt, stageOneRun, stageTwo,
-  stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
+import { analysisPacket, candidate, entryAnalysis, finishAttempt, priorQuestion, runAttempt, savedJson, stageOneRun,
+  stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
 
 // Finish checks the complete attempt before it changes either draft. The
 // prepared attempt has no package manifest, so preflight skips Knip. Each case
@@ -88,6 +88,23 @@ describe("Stage 2 finish checks", () => {
     expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
       .toEqual({ status: 1, stdout: "", stderr: message + "\n" });
     expect(drafts(prepared)).toEqual(before);
+  });
+
+  // The design rule "Do not save hidden reasoning": save-review checks the LLM part of the packet.
+  test.each([
+    ["the response holds a reasoning block", "llm/analysis-response.md",
+      (text: string) => "<thinking>\nKnip did not run.\n</thinking>\n\n" + text,
+      "llm/analysis-response.md contains a hidden reasoning block. Save only the visible response."],
+    ["the call record does not say that hidden reasoning was not saved", "llm/analysis-call.yaml",
+      (text: string) => text.replace("hiddenReasoning: not-saved\n", ""), "Record hiddenReasoning: not-saved in llm/analysis-call.yaml."],
+  ])("save-review refuses a packet in which %s and saves no packet file", (_name, file, change, message) => {
+    const prepared = restoredAttempt();
+    const review = analysisPacket(join(scratch, `${id}-review`), id, entryAnalysis(id));
+    writeFileSync(join(review, file), change(readFileSync(join(review, file), "utf8")));
+    const result = stageTwo(prepared, "save-review", [review]);
+    expect({ status: result.status, error: savedJson(prepared, "operator-save-review.json").error })
+      .toEqual({ status: 1, error: message });
+    expect(existsSync(join(prepared.folder, "entry-analysis.yaml"))).toBe(false);
   });
 
   test("refuses to finish before the analysis packet is saved", () => {

@@ -6,6 +6,7 @@ import { appendFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpa
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 
@@ -279,6 +280,8 @@ function readReview(reviewDir: string, inputs: StageOneInputs): { bytes: Map<str
   assert(packet.every(name => file(name).length), 'Empty review packet file.');
   assert(file('llm-response.md').toString().includes(file('review.yaml').toString().trim()),
     'Save the complete final review YAML in the LLM response.');
+  checkReasoningNotSaved(call, 'llm-call.yaml');
+  checkVisibleResponse(file('llm-response.md').toString(), 'llm-response.md');
   return { bytes, review };
 }
 

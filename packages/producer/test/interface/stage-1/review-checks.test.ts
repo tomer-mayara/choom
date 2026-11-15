@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { stringify } from "yaml";
 import { withScratch } from "../../support/commands.ts";
 import { capturedStageOneRun, type ReviewPacket, reviewPacket, stageOne, writeReview } from "../../support/stage-1-run.ts";
 
@@ -21,6 +22,11 @@ const reviewCases: ReviewCase[] = [
     message: "Record LLM provider, model, date and settings; use unknown for unavailable metadata." },
   { name: "the response does not contain the review", change: (packet) => { packet.response = "No review.\n"; },
     message: "Save the complete final review YAML in the LLM response." },
+  { name: "the call record does not say that hidden reasoning was not saved",
+    change: (packet) => { delete packet.call.hiddenReasoning; }, message: "Record hiddenReasoning: not-saved in llm-call.yaml." },
+  { name: "the response holds a reasoning block",
+    change: (packet) => { packet.response = "<thinking>\nCheck the workspaces first.\n</thinking>\n\n" + stringify(packet.review); },
+    message: "llm-response.md contains a hidden reasoning block. Save only the visible response." },
   { name: "a packet file is empty", change: (packet) => { packet.prompt = ""; }, message: "Empty review packet file." },
   { name: "a reviewed source has no exact excerpt", change: (packet) => { listItem(packet, "reviewedFiles").lines = [1, 4]; },
     message: "No exact supplied excerpt supports source record: s1-source-001" },

@@ -287,15 +287,16 @@ describe("validateRecords with a Stage 6 readiness packet", () => {
   const readiness = { ...identity, status: "ready-with-gaps", draftDigests, selectedRefs: selected,
     checks: [{ id: "review-complete", text: "Checked the saved launch settings.", evidenceRefs }], limits: ["l"] };
 
-  function packet(changes: { readiness?: object; response?: string } = {}): Map<string, Buffer> {
+  const call = { provider: "fixture", model: "fixture", date: "2026-01-01", settings: "unknown", hiddenReasoning: "not-saved" };
+
+  function packet(changes: { readiness?: object; response?: string; call?: object } = {}): Map<string, Buffer> {
     const readinessText = JSON.stringify({ ...readiness, ...changes.readiness });
     return new Map(Object.entries({
       "readiness.yaml": readinessText,
       "review-scope.json": JSON.stringify({ ...identity, suppliedArtifactRefs: evidenceRefs, limits: ["l"] }),
       "llm/analysis-prompt.md": "Review the saved launch evidence.\n",
       "llm/analysis-response.md": changes.response ?? readinessText,
-      "llm/analysis-call.yaml": JSON.stringify({ provider: "fixture", model: "fixture", date: "2026-01-01", settings: "unknown",
-        hiddenReasoning: "not-saved" }),
+      "llm/analysis-call.yaml": JSON.stringify(changes.call ?? call),
     }).map(([name, text]) => [name, Buffer.from(text)]));
   }
 
@@ -311,6 +312,19 @@ describe("validateRecords with a Stage 6 readiness packet", () => {
   test("refuses a response that does not contain the readiness record", () => {
     expect(() => validateRecords({ ...recordInputs(), packet: packet({ response: "Summary only." }), draftDigests }))
       .toThrow("Incomplete readiness prompt, response or call metadata.");
+  });
+
+  // The design rule "Do not save hidden reasoning".
+  test("refuses a response that holds a reasoning block", () => {
+    const response = "<thinking>\nCheck the launch settings.\n</thinking>\n" + JSON.stringify(readiness);
+    expect(() => validateRecords({ ...recordInputs(), packet: packet({ response }), draftDigests }))
+      .toThrow("llm/analysis-response.md contains a hidden reasoning block. Save only the visible response.");
+  });
+
+  test("refuses a call record that does not say that hidden reasoning was not saved", () => {
+    const { hiddenReasoning: _saved, ...withoutField } = call;
+    expect(() => validateRecords({ ...recordInputs(), packet: packet({ call: withoutField }), draftDigests }))
+      .toThrow("Record hiddenReasoning: not-saved in llm/analysis-call.yaml.");
   });
 });
 

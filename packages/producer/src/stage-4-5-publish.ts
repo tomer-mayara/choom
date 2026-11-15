@@ -6,6 +6,7 @@ import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import type * as Yaml from 'yaml';
+import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import type { Artifact, Fields } from './record-checks.ts';
 import { runLayout } from './run-layout.mjs';
@@ -258,6 +259,8 @@ function reviewMetadata(packet: Packet, state: State): void {
   assert(text((packet.get('llm/analysis-prompt.md') as Buffer).toString('utf8')) &&
     recordFiles.every(name => response.includes((packet.get(name) as Buffer).toString('utf8').trimEnd())),
   'Save the complete prompt and response, including the exact five candidate records.');
+  checkReasoningNotSaved(call, 'llm/analysis-call.yaml');
+  checkVisibleResponse(response, 'llm/analysis-response.md');
 }
 
 function candidate(state: State, packet: Packet): Candidate {

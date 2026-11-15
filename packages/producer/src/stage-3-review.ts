@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { assert, exact, type Fields, object, strings, text } from './record-checks.ts';
 
 // The checks of the Stage 3 entry analysis and its LLM review packet against the
@@ -199,6 +200,8 @@ function checkPacket({ id, run, snapshotRef, buffers, saved }: ReviewInputs, evi
   assert(text(savedText('llm/analysis-prompt.md', 'LLM prompt')) && savedText('llm/analysis-response.md', 'LLM response')
     .includes(utf8(buffers.get(id + '-entry-analysis') as Buffer, 'entry analysis').trimEnd()),
   'Keep the complete prompt and response, including the exact entry-analysis YAML.');
+  checkReasoningNotSaved(call, 'llm/analysis-call.yaml');
+  checkVisibleResponse(savedText('llm/analysis-response.md', 'LLM response'), 'llm/analysis-response.md');
   assert(scope.formatVersion === 1 && scope.runRef === run.id && scope.snapshotRef === snapshotRef &&
     strings(scope.suppliedArtifactRefs) && strings(scope.limits), 'Missing or invalid LLM review scope.');
   evidence({ evidenceRefs: scope.suppliedArtifactRefs });

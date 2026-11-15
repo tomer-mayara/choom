@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 
 // The Stage 2 driver. Every action runs from the tool checkout, after it checks
@@ -337,6 +338,9 @@ function checkPacket(packet: Map<string, Buffer>, names: string[], current: RunS
   const call = parse(file('llm/' + prefix + '-call.yaml').toString());
   assert(object(call) && ['provider', 'model', 'date'].every(key => text(call[key])) &&
     (call.settings === 'unknown' || object(call.settings)), 'Record LLM call metadata; use unknown for unexposed values.');
+  checkReasoningNotSaved(call, 'llm/' + prefix + '-call.yaml');
+  const response = 'llm/' + prefix + (action === 'plan' ? '-response.json' : '-response.md');
+  checkVisibleResponse(file(response).toString(), response);
   const scope = JSON.parse(file(action === 'plan' ? 'llm/plan-scope.json' : 'llm/review-scope.json').toString());
   assert(scope?.formatVersion === 1 && scope.snapshotRef === current.inventory.snapshotId && scope.attemptId === id &&
     strings(scope.suppliedArtifactRefs) && scope.suppliedArtifactRefs.length && strings(scope.limits),
