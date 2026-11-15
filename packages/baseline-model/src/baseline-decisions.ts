@@ -1,7 +1,10 @@
 import { z } from "zod";
+import { baselineSchema } from "./baseline.ts";
 import { baselineId, baselineText } from "./baseline-statements.ts";
-import type { Baseline, BaselineDecisions, BaselineDecisionValue, BaselineDocumentation } from "./generated/contracts.ts";
-import { isJsonData } from "./json-data.ts";
+import type {
+  Baseline, BaselineCorrectDecision, BaselineDecision, BaselineDecisions, BaselineDecisionValue, BaselineDocumentation,
+} from "./generated/contracts.ts";
+import { isJsonData, sameJsonData } from "./json-data.ts";
 import type { ReadonlyData } from "./readonly-data.ts";
 
 // The decision file: human decisions that accept or correct statements of one
@@ -92,10 +95,66 @@ export function baselineStatements(baseline: ReadonlyData<Baseline>): BaselineSt
 }
 
 const statementName = ({ itemId, field }: { itemId: string; field: string }): string => `${itemId}.${field}`;
+const isCorrection = (entry: BaselineDecision): entry is BaselineCorrectDecision => entry.action === "correct";
+const itemKinds: Readonly<Record<string, string>> = { components: "component", interfaces: "interface", resources: "resource",
+  rules: "rule" };
+const shownLength = 200;
+
+// A value as JSON text for a message, shortened after 200 characters.
+function shown(value: unknown): string {
+  let text: string | undefined;
+  try {
+    text = JSON.stringify(value);
+  } catch {
+    return "(a value that cannot be shown)";
+  }
+  return text === undefined ? String(value) : text.length > shownLength ? text.slice(0, shownLength) + "..." : text;
+}
 
 function shapeProblem({ path, message }: z.core.$ZodIssue): string {
   return path.length > 0 ? `The decision file is invalid at ${path.map(String).join(".")}: ${message}`
     : `The decision file is invalid: ${message}`;
+}
+
+function collectionItems(baseline: ReadonlyData<Baseline>, collection: PropertyKey | undefined): readonly { readonly id: string }[] {
+  switch (collection) {
+    case "components": return baseline.components;
+    case "interfaces": return baseline.interfaces;
+    case "resources": return baseline.resources;
+    case "rules": return baseline.rules;
+    default: return [];
+  }
+}
+
+// A problem of the corrected baseline: the path, the item that it is in, and the rule.
+function correctedProblem(baseline: ReadonlyData<Baseline>, { path, message }: z.core.$ZodIssue): string {
+  const [collection, index] = path;
+  const item = typeof index === "number" ? collectionItems(baseline, collection)[index] : undefined;
+  const place = path.map(String).join(".") + (item ? ` (${itemKinds[String(collection)]} ${item.id})` : "");
+  return place ? `After the corrections, the baseline is invalid at ${place}: ${message}`
+    : `After the corrections, the baseline is invalid: ${message}`;
+}
+
+// A correction names the current value as its old value, and changes it.
+function correctionProblem(at: string, name: string, { oldValue, newValue }: BaselineCorrectDecision, current: unknown): string[] {
+  if (!sameJsonData(oldValue, current)) return [`${at}: the old value of ${name} is not the current value. ` +
+    `Expected oldValue: ${shown(current)}. Given oldValue: ${shown(oldValue)}.`];
+  if (sameJsonData(newValue, oldValue))
+    return [`${at}: the correction of ${name} gives the current value as the new value. Use accept to keep a value.`];
+  return [];
+}
+
+// The new values keep the baseline valid under the shared baseline rules, also
+// together, as the next baseline version will have them.
+function correctedBaselineProblems({ entries }: BaselineDecisions, baseline: ReadonlyData<Baseline>): string[] {
+  const corrections = entries.filter(isCorrection);
+  if (corrections.length === 0) return [];
+  const corrected = structuredClone(baseline);
+  const statements = new Map(baselineStatements(corrected).map((item) => [statementName(item), item.statement]));
+  // The copy belongs to this check, so the check can change its statements.
+  for (const entry of corrections) Object.assign(statements.get(statementName(entry)) ?? {}, { value: entry.newValue });
+  const result = baselineSchema.safeParse(corrected);
+  return result.success ? [] : result.error.issues.map((issue) => correctedProblem(corrected, issue));
 }
 
 function bindingProblems(decisions: BaselineDecisions, { baseline, sha256 }: SavedBaseline): string[] {
@@ -107,21 +166,23 @@ function bindingProblems(decisions: BaselineDecisions, { baseline, sha256 }: Sav
   return problems;
 }
 
-// Each entry names one proposed statement of the baseline, and no other entry names it.
+// Each entry names one proposed statement of the baseline, and no other entry
+// names it. A correction names the current value and changes it.
 function entryProblems({ entries }: BaselineDecisions, baseline: ReadonlyData<Baseline>): string[] {
   const statements = new Map(baselineStatements(baseline).map((item) => [statementName(item), item.statement]));
   const decided = new Map<string, number>();
   const problems: string[] = [];
   entries.forEach((entry, index) => {
-    const name = statementName(entry);
+    const [at, name] = [`entries.${index}`, statementName(entry)];
     const statement = statements.get(name);
     const first = decided.get(name);
     if (first === undefined) decided.set(name, index);
-    if (statement === undefined) problems.push(`entries.${index}: ${name} is not a statement of baseline ${baseline.id}.`);
+    if (statement === undefined) problems.push(`${at}: ${name} is not a statement of baseline ${baseline.id}.`);
     else if (first !== undefined)
-      problems.push(`entries.${index}: ${name} already has a decision in entries.${first}. Give one entry for each statement.`);
-    else if (statement.status !== "proposed") problems.push(`entries.${index}: ${name} is accepted already ` +
+      problems.push(`${at}: ${name} already has a decision in entries.${first}. Give one entry for each statement.`);
+    else if (statement.status !== "proposed") problems.push(`${at}: ${name} is accepted already ` +
       `(acceptanceRef ${statement.acceptanceRef}). Only a proposed statement can be decided.`);
+    else if (isCorrection(entry)) problems.push(...correctionProblem(at, name, entry, statement.value));
   });
   return problems;
 }
@@ -129,7 +190,9 @@ function entryProblems({ entries }: BaselineDecisions, baseline: ReadonlyData<Ba
 /**
  * Checks a decision file against one saved baseline. It reads no file and knows
  * no run, so the viewer and the producer can both use it. It returns the typed
- * decisions, or every problem that it found.
+ * decisions, or every problem that it found. The checks stop after a problem of
+ * the shape or of the baseline binding. The new values are checked together
+ * when every entry names a proposed statement with its current value.
  */
 export function validateDecisions(input: unknown, saved: SavedBaseline): DecisionsCheck {
   const parsed = baselineDecisionsSchema.safeParse(input);
@@ -137,5 +200,6 @@ export function validateDecisions(input: unknown, saved: SavedBaseline): Decisio
   const decisions = parsed.data;
   const problems = bindingProblems(decisions, saved);
   if (problems.length === 0) problems.push(...entryProblems(decisions, saved.baseline));
+  if (problems.length === 0) problems.push(...correctedBaselineProblems(decisions, saved.baseline));
   return problems.length > 0 ? { status: "invalid", problems } : { status: "valid", decisions };
 }

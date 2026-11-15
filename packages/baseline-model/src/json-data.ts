@@ -54,3 +54,22 @@ export function isJsonData(value: unknown): boolean {
   }
   return true;
 }
+
+// True when two values of JSON data are the same data. The keys of an object can
+// be in another order; the items of an array cannot.
+export function sameJsonData(first: unknown, second: unknown): boolean {
+  const pending: [unknown, unknown][] = [[first, second]];
+  for (let pair = pending.pop(); pair !== undefined; pair = pending.pop()) {
+    const [left, right] = pair;
+    if (left === right) continue;
+    if (Array.isArray(left)) {
+      if (!Array.isArray(right) || left.length !== right.length) return false;
+      left.forEach((item, index) => pending.push([item, right[index]]));
+    } else if (isPlainRecord(left) && isPlainRecord(right)) {
+      const keys = Object.keys(left);
+      if (keys.length !== Object.keys(right).length || !keys.every((key) => Object.hasOwn(right, key))) return false;
+      for (const key of keys) pending.push([left[key], right[key]]);
+    } else return false;
+  }
+  return true;
+}

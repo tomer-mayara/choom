@@ -166,3 +166,80 @@ describe("entries that do not name one proposed statement", () => {
     ]);
   });
 });
+
+describe("corrections", () => {
+  test("refuse an old value that is not the current value, and name the statement, the expected and the given value", () => {
+    expect(problems(decisionFile([correct("billing", "purpose", "Prepare the invoices", "Send invoices")]))).toEqual([
+      'entries.0: the old value of billing.purpose is not the current value. Expected oldValue: "Prepare invoices". ' +
+        'Given oldValue: "Prepare the invoices".',
+    ]);
+  });
+
+  test.each<[string, string, string, BaselineDecisionValue]>([
+    ["the old value of another statement", "billing", "purpose", "Invoice rules change together"],
+    ["text for a list", "invoice-api", "publicAccess", "createInvoice"],
+    ["a number for text", "billing", "purpose", 1],
+    ["null for an empty object", "invoice-access", "subject", null],
+    ["an object with one more key", "invoice-access", "expected", { expression: "Only permitted consumers may use Invoice API", x: 1 }],
+    ["a list in another order", "billing", "membership", { paths: ["billing/tax.ts", "billing/invoice.ts"] }],
+  ])("compare the old value as JSON data: they refuse %s", (_name, itemId, field, oldValue) => {
+    const baseline = baselineExample();
+    fixtureItem(baseline.components, 1).membership.value.paths.push("billing/tax.ts");
+    const found = problems(decisionFile([correct(itemId, field, oldValue, "Changed")]), baseline);
+    expect(found).toEqual([expect.stringContaining(`entries.0: the old value of ${itemId}.${field} is not the current value.`)]);
+  });
+
+  test("refuse a correction whose new value is the current value, also with the keys in another order", () => {
+    const promises = { behavior: "Create an invoice", data: null, errors: null, lifecycle: null };
+    const input = decisionFile([correct("billing", "purpose", "Prepare invoices", "Prepare invoices"),
+      correct("invoice-api", "promises", promises, { lifecycle: null, errors: null, data: null, behavior: "Create an invoice" })]);
+    expect(problems(input)).toEqual([
+      "entries.0: the correction of billing.purpose gives the current value as the new value. Use accept to keep a value.",
+      "entries.1: the correction of invoice-api.promises gives the current value as the new value. Use accept to keep a value.",
+    ]);
+  });
+
+  test.each<[string, BaselineDecision, string]>([
+    ["blank text", correct("billing", "purpose", "Prepare invoices", " "), "components.1.purpose.value (component billing)"],
+    ["null for a required text", correct("billing", "purpose", "Prepare invoices", null),
+      "components.1.purpose.value (component billing)"],
+    ["an unknown owner", correct("invoice-api", "owner", "billing", "payments"), "interfaces.0.owner.value (interface invoice-api)"],
+    ["a path selector with #", correct("billing", "membership", { paths: ["billing/invoice.ts"] },
+      { paths: ["billing/invoice.ts#create"] }), "components.1.membership.value.paths.0 (component billing)"],
+    ["rule data that is not an object", correct("invoice-access", "check", null, ["run the check"]),
+      "rules.0.check.value (rule invoice-access)"],
+  ])("refuse a new value that the baseline rules refuse: %s", (_name, entry, place) => {
+    const found = problems(decisionFile([entry]));
+    expect(found).toEqual([expect.stringMatching(new RegExp(`^After the corrections, the baseline is invalid at ${
+      place.replaceAll(".", "\\.").replaceAll("(", "\\(").replaceAll(")", "\\)")}: .`))]);
+  });
+
+  test("check the new values together: two parents that are each valid make a cycle", () => {
+    const baseline = baselineExample();
+    for (const component of baseline.components) Object.assign(component, { parent: proposed(null) });
+    const input = decisionFile([correct("checkout", "parent", null, "billing"), correct("billing", "parent", null, "checkout")]);
+    expect(problems(decisionFile([fixtureItem(input.entries as BaselineDecision[])]), baseline)).toEqual([]);
+    expect(problems(input, baseline)).toContain(
+      "After the corrections, the baseline is invalid at components.0.parent.value (component checkout): " +
+        "Component parents must not form a cycle.");
+  });
+
+  test("report the problems of all entries, and check the new values only when every entry is correct", () => {
+    const input = decisionFile([accept("payments", "purpose"), correct("billing", "purpose", "Prepare invoices", " "),
+      correct("billing", "groupingReason", "Invoices", "Tax"), accept("payments", "purpose")]);
+    expect(problems(input)).toEqual([
+      "entries.0: payments.purpose is not a statement of baseline baseline-example.",
+      'entries.2: the old value of billing.groupingReason is not the current value. Expected oldValue: ' +
+        '"Invoice rules change together". Given oldValue: "Invoices".',
+      "entries.3: payments.purpose is not a statement of baseline baseline-example.",
+    ]);
+  });
+
+  test("shorten a long value in a message after 200 characters", () => {
+    const current = "Prepare invoices".padEnd(300, "x");
+    const baseline = baselineExample();
+    fixtureItem(baseline.components, 1).purpose.value = current;
+    const [found] = problems(decisionFile([correct("billing", "purpose", "Other", "New")]), baseline);
+    expect(found).toEndWith(`Expected oldValue: ${JSON.stringify(current).slice(0, 200)}.... Given oldValue: "Other".`);
+  });
+});
