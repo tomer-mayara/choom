@@ -39,6 +39,11 @@ export type DecisionsCheck =
   | { readonly status: "valid"; readonly decisions: BaselineDecisions }
   | { readonly status: "invalid"; readonly problems: readonly string[] };
 
+/** The next baseline version that a decision file makes, with the checked decisions, or every problem that the checks found. */
+export type NextVersion =
+  | { readonly status: "valid"; readonly baseline: Baseline; readonly decisions: BaselineDecisions }
+  | { readonly status: "invalid"; readonly problems: readonly string[] };
+
 const statementName = ({ itemId, field }: { itemId: string; field: string }): string => `${itemId}.${field}`;
 const isCorrection = (entry: BaselineDecision): entry is BaselineCorrectDecision => entry.action === "correct";
 const itemKinds: Readonly<Record<string, string>> = { components: "component", interfaces: "interface", resources: "resource",
@@ -89,17 +94,22 @@ function correctionProblem(at: string, name: string, { oldValue, newValue }: Bas
   return [];
 }
 
-// The new values keep the baseline valid under the shared baseline rules, also
-// together, as the next baseline version will have them.
-function correctedBaselineProblems({ entries }: BaselineDecisions, baseline: ReadonlyData<Baseline>): string[] {
-  const corrections = entries.filter(isCorrection);
-  if (corrections.length === 0) return [];
-  const corrected = structuredClone(baseline);
-  const statements = new Map(baselineStatements(corrected).map((item) => [statementName(item), item.statement]));
-  // The copy belongs to this check, so the check can change its statements.
-  for (const entry of corrections) Object.assign(statements.get(statementName(entry)) ?? {}, { value: entry.newValue });
-  const result = baselineSchema.safeParse(corrected);
-  return result.success ? [] : result.error.issues.map((issue) => correctedProblem(corrected, issue));
+// The baseline as the decisions change it, before the shared rules check it. The
+// ID of the next version is the ID of the baseline, a hyphen and the ID of the
+// decision record. Both are lowercase IDs with hyphens, so the new ID is one too,
+// and it is longer than the ID of its parent. Each decided statement is accepted
+// with the ID of the decision record as its acceptance reference, and a
+// correction also replaces its value. All other values stay the same.
+function decidedCopy(baseline: ReadonlyData<Baseline>, decisions: BaselineDecisions): ReadonlyData<Baseline> {
+  const copy = structuredClone(baseline);
+  // The copy belongs to this function, so it can change its fields and statements.
+  Object.assign(copy, { id: `${baseline.id}-${decisions.id}`, parentId: baseline.id });
+  const statements = new Map(baselineStatements(copy).map((item) => [statementName(item), item.statement]));
+  for (const entry of decisions.entries) {
+    const value = isCorrection(entry) ? { value: entry.newValue } : {};
+    Object.assign(statements.get(statementName(entry)) ?? {}, value, { status: "accepted", acceptanceRef: decisions.id });
+  }
+  return copy;
 }
 
 function bindingProblems(decisions: BaselineDecisions, { baseline, sha256 }: SavedBaseline): string[] {
@@ -133,18 +143,42 @@ function entryProblems({ entries }: BaselineDecisions, baseline: ReadonlyData<Ba
 }
 
 /**
- * Checks a decision file against one saved baseline. It reads no file and knows
- * no run, so the viewer and the producer can both use it. It returns the typed
- * decisions, or every problem that it found. The checks stop after a problem of
- * the shape or of the baseline binding. The new values are checked together
- * when every entry names a proposed statement with its current value.
+ * Makes the next version of a saved baseline from a decision file. It reads no
+ * file and changes neither the parent nor the decision file. First it checks the
+ * decision file, with the problems that validateDecisions gives: the shape, the
+ * baseline binding, the entries, and then the new values together in the next
+ * version under the shared baseline rules. It returns the version only when all
+ * checks pass.
+ *
+ * The version has the ID `<parent ID>-<decision record ID>` and names the parent
+ * in `parentId`. Each decided statement is `accepted`, with the decision record
+ * ID as its `acceptanceRef`, and a correction also replaces its value. All other
+ * fields and statements stay as in the parent, with the items and list entries
+ * in the same order. The version shares no object with the parent or the file.
  */
-export function validateDecisions(input: unknown, saved: SavedBaseline): DecisionsCheck {
+export function nextBaselineVersion(parent: SavedBaseline, input: unknown): NextVersion {
   const parsed = baselineDecisionsSchema.safeParse(input);
   if (!parsed.success) return { status: "invalid", problems: parsed.error.issues.map(shapeProblem) };
   const decisions = parsed.data;
-  const problems = bindingProblems(decisions, saved);
-  if (problems.length === 0) problems.push(...entryProblems(decisions, saved.baseline));
-  if (problems.length === 0) problems.push(...correctedBaselineProblems(decisions, saved.baseline));
-  return problems.length > 0 ? { status: "invalid", problems } : { status: "valid", decisions };
+  const problems = bindingProblems(decisions, parent);
+  if (problems.length === 0) problems.push(...entryProblems(decisions, parent.baseline));
+  if (problems.length > 0) return { status: "invalid", problems };
+  // The new values keep the baseline valid under the shared baseline rules, also together.
+  const copy = decidedCopy(parent.baseline, decisions);
+  const result = baselineSchema.safeParse(copy);
+  return result.success ? { status: "valid", baseline: result.data, decisions }
+    : { status: "invalid", problems: result.error.issues.map((issue) => correctedProblem(copy, issue)) };
+}
+
+/**
+ * Checks a decision file against one saved baseline. It reads no file and knows
+ * no run, so the viewer and the producer can both use it. It returns the typed
+ * decisions, or every problem that it found. These are the checks of
+ * nextBaselineVersion: the checks stop after a problem of the shape or of the
+ * baseline binding, and the new values are checked together when every entry
+ * names a proposed statement with its current value.
+ */
+export function validateDecisions(input: unknown, saved: SavedBaseline): DecisionsCheck {
+  const next = nextBaselineVersion(saved, input);
+  return next.status === "valid" ? { status: "valid", decisions: next.decisions } : next;
 }

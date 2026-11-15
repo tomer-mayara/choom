@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { type SavedBaseline, validateDecisions } from "../../src/baseline-decisions.ts";
+import { baselineSchema } from "../../src/baseline.ts";
+import { type NextVersion, nextBaselineVersion, type SavedBaseline, validateDecisions } from "../../src/baseline-decisions.ts";
 import type { Baseline, BaselineDecision, BaselineDecisionValue } from "../../src/generated/contracts.ts";
+import { baselineStatements } from "../../src/item-statements.ts";
 import { baselineExample, fixtureItem, proposed } from "../../../../test/support/baseline-fixtures.ts";
 import { baselineWithSignature } from "../../../../test/support/interface-documentation-fixtures.ts";
 
@@ -210,5 +212,97 @@ describe("corrections", () => {
     fixtureItem(baseline.components, 1).purpose.value = current;
     const [found] = problems(decisionFile([correct("billing", "purpose", "Other", "New")]), baseline);
     expect(found).toEndWith(`Expected oldValue: ${JSON.stringify(current).slice(0, 200)}.... Given oldValue: "Other".`);
+  });
+});
+
+// The next version that a decision file makes from its parent. The function reads
+// no file: the caller gives the parent with the SHA-256 of its saved file.
+describe("the next baseline version", () => {
+  function made(outcome: NextVersion): Baseline {
+    if (outcome.status === "invalid") throw new Error(outcome.problems.join("\n"));
+    return outcome.baseline;
+  }
+
+  // The parent with the ID and parent of the next version. Each named statement is
+  // accepted with the decision record ID, and gets its new value when one is given.
+  function expectedVersion(parent: Baseline, decided: Record<string, { value: unknown } | object>): Baseline {
+    const version = structuredClone(parent);
+    Object.assign(version, { id: `${parent.id}-decisions-001`, parentId: parent.id });
+    const statements = new Map(baselineStatements(version).map(({ itemId, field, statement }) => [`${itemId}.${field}`, statement]));
+    for (const [name, change] of Object.entries(decided))
+      Object.assign(statements.get(name) ?? {}, change, { status: "accepted", acceptanceRef: "decisions-001" });
+    return version;
+  }
+
+  test.each([["has a parent", "baseline-example", "baseline-previous"], ["is a first version", "baseline-001", null]])(
+    "has the parent ID and the decision record ID as its ID, and the parent as its parent, when the parent %s",
+    (_name, parentId, grandparentId) => {
+      const parent = { ...baselineExample(), id: parentId, parentId: grandparentId };
+      const input = decisionFile([accept("billing", "purpose")], { baselineRef: parentId });
+      const outcome = nextBaselineVersion(saved(parent), input);
+      expect(outcome).toMatchObject({ status: "valid", decisions: input });
+      expect([made(outcome).id, made(outcome).parentId]).toEqual([`${parentId}-decisions-001`, parentId]);
+    });
+
+  test("passes the shared baseline rules, so its new ID fits the ID rules of the baseline contract", () => {
+    const version = made(nextBaselineVersion(saved(), decisionFile([accept("billing", "purpose")])));
+    expect(baselineSchema.safeParse(version)).toEqual({ success: true, data: version });
+    expect(version.id).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  });
+
+  test("is the parent in which only the decided statements change: each is accepted, and a correction also replaces the value", () => {
+    const parent = baselineExample();
+    const oldPromises = { behavior: "Create an invoice", data: null, errors: null, lifecycle: null };
+    const promises = { ...oldPromises, data: "An order with items" };
+    const input = decisionFile([accept("billing", "purpose"), correct("invoice-api", "promises", oldPromises, promises),
+      accept("invoice-store", "owner"), correct("invoice-access", "check", null, { method: "Review the consumers of Invoice API." })]);
+    expect(made(nextBaselineVersion(saved(parent), input))).toStrictEqual(expectedVersion(parent, {
+      "billing.purpose": {}, "invoice-api.promises": { value: promises }, "invoice-store.owner": {},
+      "invoice-access.check": { value: { method: "Review the consumers of Invoice API." } },
+    }));
+  });
+
+  test("decides documentation statements by their field paths, and keeps the order of the documentation", () => {
+    const { input: parent } = baselineWithSignature();
+    const entry = "invoice-api.documentation.entries.create-invoice";
+    const input = decisionFile([accept("invoice-api", "documentation.summary"),
+      correct("invoice-api", "documentation.entries.create-invoice.description", "Validate an order and create its invoice.",
+        "Create the invoice of a valid order."), accept("invoice-api", "documentation.entries.create-invoice.examples.valid-order.content")]);
+    expect(made(nextBaselineVersion(saved(parent), input))).toStrictEqual(expectedVersion(parent, {
+      "invoice-api.documentation.summary": {}, [`${entry}.description`]: { value: "Create the invoice of a valid order." },
+      [`${entry}.examples.valid-order.content`]: {},
+    }));
+  });
+
+  test("keeps a corrected rule value with a reserved key", () => {
+    const newValue = JSON.parse('{"__proto__":{"recorded":true},"expression":"Only checkout"}') as BaselineDecisionValue;
+    const version = made(nextBaselineVersion(saved(), decisionFile([correct("invoice-access", "expected",
+      { expression: "Only permitted consumers may use Invoice API" }, newValue)])));
+    expect(Object.hasOwn(fixtureItem(version.rules).expected.value ?? {}, "__proto__")).toBe(true);
+  });
+
+  test.each<[string, unknown]>([
+    ["another shape", decisionFile([accept("billing", "purpose")], { formatVersion: 2 })],
+    ["the digest of another baseline file", decisionFile([accept("billing", "purpose")], { baselineDigest: "f".repeat(64) })],
+    ["an entry for an accepted statement", decisionFile([accept("checkout", "groupingReason")])],
+    ["an old value that is not the current value", decisionFile([correct("billing", "purpose", "Prepare the invoices", "Send")])],
+    ["a new value that the shared baseline rules refuse", decisionFile([correct("billing", "purpose", "Prepare invoices", " ")])],
+  ])("refuses a decision file with %s, with the problems that validateDecisions finds", (_name, input) => {
+    const outcome = nextBaselineVersion(saved(), input);
+    expect(outcome.status).toBe("invalid");
+    expect<unknown>(outcome).toEqual(validateDecisions(input, saved()));
+  });
+
+  test("changes neither the parent nor the decision file, and shares no value with them", () => {
+    const parent = baselineExample();
+    const expected = { expression: "Only checkout", consumers: ["checkout"] };
+    const input = decisionFile([accept("billing", "membership"),
+      correct("invoice-access", "expected", { expression: "Only permitted consumers may use Invoice API" }, expected)]);
+    const [parentBefore, inputBefore] = [structuredClone(parent), structuredClone(input)];
+    const version = made(nextBaselineVersion(saved(parent), input));
+    expect([parent, input]).toEqual([parentBefore, inputBefore]);
+    fixtureItem(version.components, 1).membership.value.paths.push("billing/tax.ts");
+    (fixtureItem(version.rules).expected.value?.consumers as string[]).push("billing");
+    expect([parent, input]).toEqual([parentBefore, inputBefore]);
   });
 });
