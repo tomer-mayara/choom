@@ -1,0 +1,18 @@
+# The pinned list of Choom behavior entry rules. Stage 4 start saves a copy of this
+# file and its SHA-256, and Stage 4 collect applies the rules to the source files of
+# the graph scope. The contract is cookbook/interfaces/behavior-entry-rules.tsp.
+# A rule that changes keeps its ID and gets the next version.
+formatVersion: 1
+rules:
+  # The get routes of an Express app, such as app.get('/orders', listOrders) after
+  # const app = express(). The path is the name and the last argument is the handler.
+  # A get call with only one argument reads a setting of the app, so it is not a match.
+  - id: express-route-get
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().get
+    nameArgument: 0
+    handlerArgument: last

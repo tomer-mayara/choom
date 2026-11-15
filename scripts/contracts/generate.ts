@@ -16,7 +16,7 @@ const sourceDirectory = resolve(root, "cookbook/interfaces");
 const schemaDirectory = "cookbook/interfaces/generated";
 const generatedDirectories = [
   schemaDirectory, "packages/baseline-model/src/generated", "src/domain/generated", "src/platform/generated",
-  "src/architecture/generated", "src/lib/generated",
+  "src/architecture/generated", "src/lib/generated", "packages/producer/src/generated",
 ];
 
 function requireNoDiagnostics(diagnostics: readonly Diagnostic[]): void {

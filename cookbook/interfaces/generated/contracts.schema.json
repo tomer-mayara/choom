@@ -3509,6 +3509,206 @@
             "type": "string",
             "maxLength": 16777216
         },
+        "BehaviorEntryCallRule": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BehaviorEntryCallRule.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "behaviorEntryRuleId.json"
+                },
+                "version": {
+                    "$ref": "behaviorEntryRuleVersion.json"
+                },
+                "library": {
+                    "$ref": "behaviorEntryText.json"
+                },
+                "entryKind": {
+                    "$ref": "behaviorEntryKind.json"
+                },
+                "kind": {
+                    "type": "string",
+                    "const": "call"
+                },
+                "importName": {
+                    "$ref": "behaviorEntryModuleName.json"
+                },
+                "callPath": {
+                    "$ref": "behaviorEntryCallPath.json"
+                },
+                "nameArgument": {
+                    "anyOf": [
+                        {
+                            "$ref": "behaviorEntryArgument.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "handlerArgument": {
+                    "anyOf": [
+                        {
+                            "$ref": "behaviorEntryArgument.json"
+                        },
+                        {
+                            "type": "string",
+                            "const": "last"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "version",
+                "library",
+                "entryKind",
+                "kind",
+                "importName",
+                "callPath",
+                "nameArgument",
+                "handlerArgument"
+            ],
+            "additionalProperties": false
+        },
+        "behaviorEntryRuleId": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryRuleId.json",
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "behaviorEntryRuleVersion": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryRuleVersion.json",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+        },
+        "behaviorEntryText": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryText.json",
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "\\S"
+        },
+        "behaviorEntryKind": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryKind.json",
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "behaviorEntryModuleName": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryModuleName.json",
+            "type": "string",
+            "pattern": "^(?:node:)?(?:@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*(?:/[a-z0-9._~-]+)*$"
+        },
+        "behaviorEntryCallPath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryCallPath.json",
+            "type": "string",
+            "pattern": "^(?:new )?[A-Za-z_$][A-Za-z0-9_$]*(?:(?:\\(\\))*\\.[A-Za-z_$][A-Za-z0-9_$]*)*$"
+        },
+        "behaviorEntryArgument": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryArgument.json",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "BehaviorEntrySettingsLiteralRule": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BehaviorEntrySettingsLiteralRule.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "behaviorEntryRuleId.json"
+                },
+                "version": {
+                    "$ref": "behaviorEntryRuleVersion.json"
+                },
+                "library": {
+                    "$ref": "behaviorEntryText.json"
+                },
+                "entryKind": {
+                    "$ref": "behaviorEntryKind.json"
+                },
+                "kind": {
+                    "type": "string",
+                    "const": "settings-literal"
+                },
+                "fileGlob": {
+                    "$ref": "behaviorEntryFileGlob.json"
+                },
+                "propertyPath": {
+                    "$ref": "behaviorEntryPropertyPath.json"
+                }
+            },
+            "required": [
+                "id",
+                "version",
+                "library",
+                "entryKind",
+                "kind",
+                "fileGlob",
+                "propertyPath"
+            ],
+            "additionalProperties": false
+        },
+        "behaviorEntryFileGlob": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryFileGlob.json",
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[^/\\s\\\\][^\\s\\\\]*$"
+        },
+        "behaviorEntryPropertyPath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryPropertyPath.json",
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*$"
+        },
+        "BehaviorEntryRuleList": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BehaviorEntryRuleList.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 1
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BehaviorEntryRule.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "formatVersion",
+                "rules"
+            ],
+            "additionalProperties": false
+        },
+        "BehaviorEntryRule": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BehaviorEntryRule.json",
+            "anyOf": [
+                {
+                    "$ref": "BehaviorEntryCallRule.json"
+                },
+                {
+                    "$ref": "BehaviorEntrySettingsLiteralRule.json"
+                }
+            ]
+        },
         "ReadDocumentFileRequest": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "ReadDocumentFileRequest.json",

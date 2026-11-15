@@ -27,6 +27,7 @@ const targets: readonly Target[] = [
     module: "@choom/baseline-model/contracts",
   },
   { namespace: "Choom.Domain", path: "src/domain/generated/contracts.ts" },
+  { namespace: "Choom.Producer", path: "packages/producer/src/generated/contracts.ts" },
   { namespace: "Choom.Desktop", path: "src/platform/generated/contracts.ts" },
   { namespace: "Choom.Documents", path: "src/lib/generated/contracts.ts" },
   { namespace: "Choom.Workspace", path: "src/architecture/generated/workflow.ts" },

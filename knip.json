@@ -30,7 +30,7 @@
     "packages/producer": {
       "bun": false,
       "ignoreDependencies": ["dependency-cruiser", "picomatch"],
-      "entry": ["src/*.{ts,mjs}", "test/**/*.test.{ts,mjs}"],
+      "entry": ["src/*.{ts,mjs}", "src/generated/contracts.ts", "test/**/*.test.{ts,mjs}"],
       "project": ["src/**/*.{ts,mjs}", "test/**/*.{ts,mjs}"]
     }
   }
