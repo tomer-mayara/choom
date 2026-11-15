@@ -1,6 +1,6 @@
 import { assert, type Fields, object } from './record-checks.ts';
 import { listExports } from './snapshot-exports.ts';
-import { openSnapshotProject, type ProjectSettings, type ProjectTools, virtualRoot } from './snapshot-project.ts';
+import { openSnapshotProject, type ProjectSettings, type ProjectTools, snapshotPath, virtualRoot } from './snapshot-project.ts';
 import { sourceExtensions } from './stage-3-collect.ts';
 import { type IndexedFile, safePath, type StageState } from './stage-3-inputs.ts';
 import { type CompilerContext, compilerContexts } from './stage-4-graph-profile.ts';
@@ -75,7 +75,7 @@ function compilerSettings(settings: Fields, file: IndexedFile): Settings {
     const configPath = String(config.path);
     const compilerOptions = object(config.compilerOptions) ? config.compilerOptions : {};
     return { ref, project: { ref, configPath, files: strings((config.declared as Fields | undefined)?.files), compilerOptions },
-      record: { source: 'configuration', configPath: configPath.slice(virtualRoot.length + 1),
+      record: { source: 'configuration', configPath: snapshotPath(configPath),
         reason: 'The first fully parsed configuration of ' + settingsRef + ' that selects the file.', compilerOptions,
         otherContextRefs } };
   }

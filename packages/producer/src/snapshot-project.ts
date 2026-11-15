@@ -44,7 +44,8 @@ const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const readOnly = (): Error => new Error('The snapshot project is read-only.');
 const standard = (path: string): string => posix.resolve(virtualRoot, path);
 // The snapshot path of a project path, or the project path when it is outside the virtual root.
-const snapshotPath = (path: string): string => path.startsWith(virtualRoot + '/') ? path.slice(virtualRoot.length + 1) : path;
+export const snapshotPath = (path: string): string =>
+  path.startsWith(virtualRoot + '/') ? path.slice(virtualRoot.length + 1) : path;
 // The file names that a reference path directive without an extension can name, as TypeScript tries them.
 const referenceExtensions = ['.ts', '.tsx', '.d.ts'];
 const missingFile = 'but the snapshot does not hold that file.';
@@ -153,8 +154,9 @@ function settingsGaps(settings: ProjectSettings, files: SnapshotFileSystem, proj
   const named = settings.ref === null ? config : `${config} (${settings.ref})`;
   const gaps: ProjectGap[] = [];
   for (const entry of settings.files) {
-    const missing = snapshotPath(posix.resolve(folder, entry));
-    if (files.indexed.has(posix.resolve(folder, entry))) continue;
+    const target = posix.resolve(folder, entry);
+    if (files.indexed.has(target)) continue;
+    const missing = snapshotPath(target);
     gaps.push({ kind: 'missing-compiler-input', input: 'files', missing, subjectRefs: [config, missing],
       reason: `${named} names ${missing} in its files list, ${missingFile} ${openedWithout}` });
   }
