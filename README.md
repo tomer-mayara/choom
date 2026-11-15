@@ -373,7 +373,18 @@ bun run test:e2e --tags @interface-duplication
 bun run test:behavior:packaged --tags @interface-duplication
 ```
 
-The producer interface tests also run in `check:contracts`. They execute the
+Run the Stage 6 system-entry publication check with:
+
+```sh
+bun test ./test/interface/entry-points/producer-publication.test.mjs
+```
+
+It opens the fixed version 4 baseline through the public decoder and checks the
+producer's mapping and evidence rules against a frozen Stage 5 packet. The
+[record format](docs/design/app-a/record-format.md#version-4-system-entry-points)
+describes the review and publication requirements.
+
+The producer interface tests also run in `check:contracts`. The duplication tests execute the
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require
 the native driver setup described below.

@@ -215,7 +215,7 @@ function validateDocumentation({ baseline, discovery, evidence, source, reviewed
 function validateSourceUsage({ baseline, discovery, snapshotRef, componentIds, mapped, evidence, source, reviewedRanges }) {
   if (!Object.hasOwn(baseline, 'sourceUsage')) return;
   const usage = baseline.sourceUsage;
-  assert(baseline.formatVersion === 3 && exact(usage, ['snapshotRef', 'mappingRef', 'assessments']) &&
+  assert([3, 4].includes(baseline.formatVersion) && exact(usage, ['snapshotRef', 'mappingRef', 'assessments']) &&
     boundedText(usage.snapshotRef, 4096) && boundedText(usage.mappingRef, 4096) && Array.isArray(usage.assessments),
   'Invalid sourceUsage record.');
   assert(usage.snapshotRef === snapshotRef, 'sourceUsage.snapshotRef differs from the run snapshot.');
@@ -291,6 +291,53 @@ function validateSourceUsage({ baseline, discovery, snapshotRef, componentIds, m
     for (const use of assessment.uses)
       for (const ref of use.evidenceRefs)
         assert(located.has(ref), 'Source use needs a located note for every evidence reference: ' + use.id + ': ' + ref);
+  }
+}
+
+function validateSystemEntryPoints({ baseline, discovery, snapshotRef, mapped, componentIds, evidence, source }) {
+  if (!Object.hasOwn(baseline, 'systemEntryPoints')) return;
+  const assessment = baseline.systemEntryPoints;
+  assert(exact(assessment, ['snapshotRef', 'mappingRef', 'scope', 'evidenceRefs', 'limitations', 'entries']) &&
+    boundedText(assessment.snapshotRef, 4096) && boundedText(assessment.mappingRef, 4096) &&
+    boundedText(assessment.scope) && Array.isArray(assessment.limitations) &&
+    assessment.limitations.every(value => boundedText(value)) && Array.isArray(assessment.entries),
+  'Invalid systemEntryPoints assessment.');
+  assert(assessment.snapshotRef === snapshotRef, 'systemEntryPoints.snapshotRef differs from the run snapshot.');
+  assert(assessment.mappingRef === discovery.codeMappingRef,
+    'systemEntryPoints.mappingRef differs from the selected candidate mapping.');
+  assert(assessment.entries.length <= 2000, 'systemEntryPoints exceeds the 2,000-entry limit.');
+  assert(Buffer.byteLength(JSON.stringify(assessment), 'utf8') <= 2 * 1024 * 1024,
+    'systemEntryPoints exceeds the 2 MiB byte limit.');
+  function entryEvidence(record) {
+    assert(strings(record.evidenceRefs) && new Set(record.evidenceRefs).size === record.evidenceRefs.length &&
+      record.evidenceRefs.every(ref => boundedText(ref, 4096)), 'Invalid system-entry evidence: ' + (record.id ?? 'scope'));
+    evidence(record);
+  }
+  entryEvidence(assessment);
+  const interfaces = new Map(baseline.interfaces.map(item => [item.id, item]));
+  const ids = new Set();
+  const id = value => plainId(value) && boundedText(value, 4096);
+  for (const entry of assessment.entries) {
+    assert(fields(entry, ['id', 'kind', 'label', 'path', 'componentId', 'evidenceRefs'], ['source', 'interfaceId', 'entryId']) &&
+      id(entry.id) && !ids.has(entry.id) && ['startup', 'external'].includes(entry.kind) && boundedText(entry.label) &&
+      boundedText(entry.path, 4096) && safe(entry.path) && !/^[A-Za-z]:/.test(entry.path) && id(entry.componentId) &&
+      componentIds.has(entry.componentId), 'Invalid or duplicate system entry: ' + entry?.id);
+    ids.add(entry.id);
+    assert(mapped.get(entry.path) === entry.componentId, 'System entry differs from the direct mapped owner: ' + entry.id);
+    entryEvidence(entry);
+    if (Object.hasOwn(entry, 'interfaceId'))
+      assert(id(entry.interfaceId) && interfaces.has(entry.interfaceId), 'Unknown system-entry interface: ' + entry.id);
+    if (Object.hasOwn(entry, 'entryId'))
+      assert(id(entry.entryId) && interfaces.get(entry.interfaceId)?.documentation?.entries.some(item => item.id === entry.entryId),
+        'Unknown system-entry interface operation: ' + entry.id);
+    if (Object.hasOwn(entry, 'source')) {
+      const located = entry.source;
+      assert(exact(located, ['evidenceRef', 'location']) && boundedText(located.evidenceRef, 4096) &&
+        !located.evidenceRef.includes('#') && entry.evidenceRefs.includes(located.evidenceRef) &&
+        located.location?.snapshotRef === snapshotRef && located.location.path === entry.path,
+      'Invalid system-entry source: ' + entry.id);
+      validateSourceLocation(located, source);
+    }
   }
 }
 
@@ -379,8 +426,9 @@ function sourcesFor({ artifacts, document, snapshotRef, inventory, readSource })
 
 function validateBaseline({ baseline, discovery, claim, evidence }) {
   const keys = ['formatVersion', 'id', 'parentId', ...collectionKeys,
-    ...(baseline?.formatVersion === 3 && Object.hasOwn(baseline, 'sourceUsage') ? ['sourceUsage'] : [])];
-  assert(exact(baseline, keys) && [1, 2, 3].includes(baseline.formatVersion) &&
+    ...([3, 4].includes(baseline?.formatVersion) && Object.hasOwn(baseline, 'sourceUsage') ? ['sourceUsage'] : []),
+    ...(baseline?.formatVersion === 4 && Object.hasOwn(baseline, 'systemEntryPoints') ? ['systemEntryPoints'] : [])];
+  assert(exact(baseline, keys) && [1, 2, 3, 4].includes(baseline.formatVersion) &&
     plainId(baseline.id) && baseline.parentId === null, 'Expected a first proposed baseline.');
   validateDisplayLimits(baseline);
   const componentIds = new Set(list(baseline.components, 'components').map(item => item.id));
@@ -403,7 +451,7 @@ function validateBaseline({ baseline, discovery, claim, evidence }) {
     for (const item of list(baseline[key], key)) {
       const keys = [...required,
         ...(key === 'components' && Object.hasOwn(item, 'parent') ? ['parent'] : []),
-        ...(key === 'interfaces' && [2, 3].includes(baseline.formatVersion) && Object.hasOwn(item, 'documentation') ? ['documentation'] : [])];
+        ...(key === 'interfaces' && [2, 3, 4].includes(baseline.formatVersion) && Object.hasOwn(item, 'documentation') ? ['documentation'] : [])];
       assert(exact(item, keys) && plainId(item.id) && text(item.name), 'Invalid baseline item: ' + item?.id);
       claim(item.id);
       for (const [name, statement] of Object.entries(item)) {
@@ -636,6 +684,7 @@ export function validateRecords({ run, discovery, baseline, inventory, artifacts
     mapped.set(unit.path, unit.owner);
   }
   validateSourceUsage({ baseline, discovery, snapshotRef, componentIds, mapped, evidence, source, reviewedRanges });
+  validateSystemEntryPoints({ baseline, discovery, snapshotRef, mapped, componentIds, evidence, source });
 
   const plan = document(entry.planRef);
   const runs = document(entry.knipRunsRef);

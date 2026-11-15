@@ -21,7 +21,8 @@ not mean the example ran. Stage 6 checks the complete viewer bounds and preserve
 the published baseline bytes. It does not fill missing documentation or migrate
 an older baseline.
 
-For version 3, also review the [source-use assessments](record-format.md#version-3-source-use-assessments).
+Review any [source-use assessments](record-format.md#version-3-source-use-assessments)
+and [system entry points](record-format.md#version-4-system-entry-points) in the proposal.
 Keep the selected Stage 5 mapping and all source records unchanged. Source use,
 permission policy, and runtime execution remain separate. Partial scope and
 unknown consumers are allowed when explained; missing evidence is not a gap
@@ -75,6 +76,15 @@ Check whether the overview, proposed memberships and inspected paths agree
 with their cited evidence. Distinguish source ownership, runtime resource
 ownership, test placement and source inspection. Keep observations separate
 from intended access policy. Preserve unknown owners and partial coverage.
+
+Check systemEntryPoints against this run's snapshot and the selected Stage 5
+mapping. Confirm each start path and callable operation in the stated scope
+against its saved launch or registration evidence. Check its directly mapped
+owner, any cited source range, and any interface or operation link. Check that
+shared handlers retain distinct operations. Review the scope limitations and
+keep unresolved candidates in discovery. Save version 4 when the assessment
+is present. The publication helper verifies the selected proposal and saves
+its exact bytes.
 
 Check sourceUsage against this run's snapshot and the selected Stage 5 mapping.
 For every use, verify the direct caller owner, actual interface/entry binding,

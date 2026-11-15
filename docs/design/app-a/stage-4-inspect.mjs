@@ -265,7 +265,12 @@ function prompt(state) {
     `Keep each graph context separate. Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
     `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
     `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n` +
-    `Use formatVersion: 3 for source-use assessments; retain version 2 interface documentation and its meanings. ` +
+    `Review saved launch settings and behavior entries for system entry points. Inspect each external operation's ` +
+    `registration or host binding. Trace built files to source only with saved evidence. Use the candidate file mapping ` +
+    `for direct start and handler owners. Preserve separate operations that share a handler. Keep unresolved candidates ` +
+    `in discovery. Graph roots and publicAccess strings are leads for review. Follow record-format.md for scope, ` +
+    `evidence, limits, and optional interface links. Use formatVersion: 4 when systemEntryPoints is present. ` +
+    `Otherwise choose the version required by the saved fields. Retain version 2 interface documentation and its meanings. ` +
     `For each function or method entry (kind: function), ` +
     `record a signature statement with its own status and evidence references. Copy the supported declaration with parameters ` +
     `and return type, without the body or opening brace. Do not invent types, void, defaults or parameters, or derive types from prose. ` +

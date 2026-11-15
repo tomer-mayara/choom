@@ -43,9 +43,13 @@ Knip reuse, and an empty initial baseline. It saves checkpoints and copies the
 tools into the new attempt. Later evidence commands use these saved copies.
 The publication commands in section 6 use the matching trusted checkout helper.
 The input remains the empty version 1 seed. Versions 1 and 2 remain readable.
-Use version 3 for [source-use assessments](record-format.md#version-3-source-use-assessments),
-with the structured [interface documentation](record-format.md#version-2-interface-documentation)
-and signatures from version 2.
+Use version 3 for [source-use assessments](record-format.md#version-3-source-use-assessments)
+without a system-entry assessment. Use version 4 when a
+[system-entry assessment](record-format.md#version-4-system-entry-points)
+is present. Both formats retain version 2
+[interface documentation](record-format.md#version-2-interface-documentation)
+and signatures. When both assessments are present, they must name the same
+snapshot and candidate mapping.
 Keep unknown facts explicit. Review a source range before claiming that it
 supports an example; a collected excerpt alone is insufficient. Check the full
 baseline against the reader limits before publication.
@@ -295,7 +299,12 @@ Verify the registered inputs and proposed artifact digests before analysis.
 Use the stage 3 inspection priorities and the separate graph contexts.
 Request additional numbered source excerpts when needed.
 Recover the apparent intended architecture; do not recommend redesigns.
-Use version 3 for source-use assessments, separately from allowedConsumers.
+Keep source-use assessments separate from allowedConsumers.
+Review launch settings, behavior entries and each external operation's
+registration or host binding. Use the candidate file mapping for the direct
+owner of the start or handler. Keep unresolved paths and owners in discovery.
+Use version 4 for systemEntryPoints, or the version required by the other
+saved fields when there is no entry assessment.
 Use one selected mapping and reviewed caller/binding evidence with partial scope.
 Retain structured interface documentation. For each function or method entry
 (`kind: function`), record a signature statement with its own
