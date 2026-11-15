@@ -1,5 +1,3 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import * as yaml from 'yaml';
 import { nextBaselineVersion, type SavedBaseline } from '@choom/baseline-model/baseline-decisions';
@@ -11,6 +9,7 @@ import { type DecisionRecord, readDecisionRecord } from './decision-record.ts';
 import { checkBaselineDocument, type VersionDecisions } from './record-baseline.ts';
 import { assert, hash } from './record-checks.ts';
 import { readBaselineYaml } from './stage-6-records.ts';
+import { saveVersionFolder } from './version-folder.ts';
 
 // The next action of the baseline command. It makes the next version of the
 // published baseline of a run that Stage 6 completed, from a decision record that
@@ -18,12 +17,12 @@ import { readBaselineYaml } from './stage-6-records.ts';
 // @choom/baseline-model accepts the decided statements. The command checks the
 // decider as baseline decide does. It checks the YAML text of the version with the
 // bounded YAML profile, the shared baseline rules and the producer profile of a
-// next version. Then it saves the version once as baselines/<version ID>/baseline.yaml,
-// and last its version record baselines/<version ID>/version.json, which links
-// the version to its parent and its decision record by path and SHA-256. No other
-// file of the run changes: the published baseline, the discovery result, run.yaml
-// and the decision record stay as they are. The new version has no discovery
-// result until a new run maps it.
+// next version. Then it saves the folder baselines/<version ID> once, all or
+// nothing (version-folder.ts): the version as baseline.yaml, and its version record
+// version.json, which links the version to its parent and its decision record by
+// path and SHA-256. No other file of the run changes: the published baseline, the
+// discovery result, run.yaml and the decision record stay as they are. The new
+// version has no discovery result until a new run maps it.
 
 /** A saved file of the run: its ID, its path in the run folder and the SHA-256 of its bytes. */
 export interface FileLink { id: string; path: string; sha256: string }
@@ -91,23 +90,6 @@ function versionText(record: DecisionRecord, version: Baseline, made: VersionDec
   return bytes;
 }
 
-// Saves the files once, in a new folder for the version. A saved version is never
-// replaced, also when the content is the same. The last file is the version record.
-function saveVersion(run: CompletedRun, id: string, files: readonly (readonly [string, Buffer])[]): void {
-  const folder = `baselines/${id}`;
-  try {
-    mkdirSync(join(run.folder, folder));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw new Error(`Cannot make the folder ${folder}: ${(error as Error).message}`);
-    throw new Error(`The baseline version ${id} is saved already: ${folder}. A saved version does not change. ` +
-      'Make another version from a new decision record.');
-  }
-  for (const [path, bytes] of files) {
-    writeFileSync(join(run.folder, path), bytes, { flag: 'wx' });
-    assert(hash(readFileSync(join(run.folder, path))) === hash(bytes), 'The saved file changed while it was saved: ' + path);
-  }
-}
-
 export function makeNextVersion(runFolder: string, decisionsId: string): MadeVersion {
   const run = readCompletedRun(runFolder);
   const record = readDecisionRecord(run, decisionsId);
@@ -119,11 +101,11 @@ export function makeNextVersion(runFolder: string, decisionsId: string): MadeVer
   const versionRecord: VersionRecord = { formatVersion: 1, baseline: { id: version.id, path: `${folder}/baseline.yaml`, sha256: hash(bytes) },
     parent: { id: parent.baseline.id, path: run.baseline.path, sha256: parent.sha256 }, decisions: link };
   const recordBytes = Buffer.from(JSON.stringify(versionRecord, null, 2) + '\n');
-  const files = [[versionRecord.baseline.path, bytes], [`${folder}/version.json`, recordBytes]] as const;
-  saveVersion(run, version.id, files);
+  const files = [{ name: 'baseline.yaml', bytes }, { name: 'version.json', bytes: recordBytes }];
+  saveVersionFolder(run.folder, version.id, files);
   return { status: 'version-made', id: version.id, path: versionRecord.baseline.path, sha256: versionRecord.baseline.sha256,
     parent: versionRecord.parent, decisions: link, versionRecord: { path: `${folder}/version.json`, sha256: hash(recordBytes) },
     statements: decisions.entries.map(({ action, itemId, field }) => ({ action, statement: `${itemId}.${field}` })),
     deciderCheck: { llmCallRecords: calls.map(call => call.path), models: [...new Set(calls.map(call => call.model))] },
-    limits, writes: files.map(([path]) => path) };
+    limits, writes: files.map(({ name }) => `${folder}/${name}`) };
 }
