@@ -1,9 +1,9 @@
-import { assert, type Fields, object } from './record-checks.ts';
+import { fileSettings, savedSettings, settingsRef } from './compiler-settings.ts';
+import { assert, type Fields } from './record-checks.ts';
 import { listExports } from './snapshot-exports.ts';
-import { openSnapshotProject, type ProjectSettings, type ProjectTools, snapshotPath, virtualRoot } from './snapshot-project.ts';
+import { openSnapshotProject, type ProjectTools, virtualRoot } from './snapshot-project.ts';
 import { sourceExtensions } from './stage-3-collect.ts';
 import { type IndexedFile, safePath, type StageState } from './stage-3-inputs.ts';
-import { type CompilerContext, compilerContexts } from './stage-4-graph-profile.ts';
 
 // The Stage 3 exports action: the exports of one indexed source file, read with
 // the snapshot project and the compiler settings that apply to the file. The
@@ -14,10 +14,6 @@ export interface ExportsInput {
   attemptId: string; state: StageState; path: string; tsMorph: ProjectTools;
   versions: { tsMorph: string; typescript: string };
 }
-interface Settings { ref: string | null; project: ProjectSettings; record: Fields }
-
-// Stage 1 finish registers the selected settings record with this ID.
-const settingsRef = 'settings-001';
 
 // What each record covers and what it does not, in the words of the record.
 export const exportsNotes = [
@@ -53,48 +49,10 @@ function sourceFile(state: StageState, path: string): IndexedFile {
   return file;
 }
 
-// The settings record that Stage 1 registered for this snapshot.
-function settingsRecord(state: StageState): Fields {
-  const artifact = state.artifacts.get(settingsRef);
-  assert(artifact, 'The run has no registered settings record ' + settingsRef + '.');
-  const settings = JSON.parse(artifact.bytes.toString()) as unknown;
-  assert(object(settings) && settings.snapshotId === state.facts.snapshotRef,
-    'The settings record ' + settingsRef + ' does not describe this snapshot.');
-  return settings;
-}
-
-const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter(item => typeof item === 'string') : [];
-
-// The compiler settings of the first compiler context of the file, by the rule of the Stage 4 graph groups.
-function compilerSettings(settings: Fields, file: IndexedFile): Settings {
-  const { groups, parsingProfile } = compilerContexts(settings, [{ path: file.path, sha256: file.sha256 }], settingsRef);
-  const [context, ...others] = groups as [CompilerContext, ...CompilerContext[]];
-  const otherContextRefs = others.map(other => other.ref);
-  const { config, ref } = context;
-  if (config !== null) {
-    const configPath = String(config.path);
-    const compilerOptions = object(config.compilerOptions) ? config.compilerOptions : {};
-    return { ref, project: { ref, configPath, files: strings((config.declared as Fields | undefined)?.files), compilerOptions },
-      record: { source: 'configuration', configPath: snapshotPath(configPath),
-        reason: 'The first fully parsed configuration of ' + settingsRef + ' that selects the file.', compilerOptions,
-        otherContextRefs } };
-  }
-  const noConfig = 'No parsed configuration of ' + settingsRef + ' selects the file, and the record names ';
-  if (parsingProfile !== null) {
-    const compilerOptions = { ...parsingProfile.compilerOptions };
-    return { ref, project: { ref, configPath: null, files: [], compilerOptions },
-      record: { source: 'parsing-profile', profileId: parsingProfile.id, reason: noConfig + 'the Choom parsing profile.',
-        compilerOptions, otherContextRefs } };
-  }
-  return { ref: null, project: { ref: null, configPath: null, files: [], compilerOptions: {} },
-    record: { source: 'fallback', reason: noConfig + 'no parsing profile. The project uses no compiler settings, as the ' +
-      'configuration-free fallback of the Stage 4 graph profile does.', compilerOptions: {}, otherContextRefs } };
-}
-
 // The exports record of one source file.
 export function exportsRecord({ attemptId, state, path, tsMorph, versions }: ExportsInput): Fields {
   const file = sourceFile(state, path);
-  const settings = compilerSettings(settingsRecord(state), file);
+  const settings = fileSettings(savedSettings(state.artifacts.get(settingsRef)?.bytes, state.facts.snapshotRef), file);
   const project = openSnapshotProject({ files: [...state.files.values()], snapshotRoot: state.facts.snapshot.path },
     settings.project, tsMorph);
   const exports = listExports(project, path);
