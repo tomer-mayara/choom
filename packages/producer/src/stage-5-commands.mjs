@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { runLayout } from './run-layout.mjs';
-import * as query from './stage-5-query.mjs';
+import * as query from './stage-5-query.ts';
 
 const self = fileURLToPath(import.meta.url);
 const [action, ...args] = process.argv.slice(2);
