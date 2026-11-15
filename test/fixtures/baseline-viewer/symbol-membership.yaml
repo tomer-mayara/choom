@@ -1,0 +1,23 @@
+formatVersion: 5
+id: symbol-membership-example
+parentId: null
+components:
+  - id: billing
+    name: Billing
+    purpose: { value: Prepare invoices, status: proposed, evidenceRefs: [reviewed-billing-files] }
+    membership: { value: { paths: [billing/**] }, status: proposed, evidenceRefs: [reviewed-billing-files] }
+    groupingReason: { value: Invoice rules change together, status: proposed, evidenceRefs: [reviewed-billing-files] }
+  - id: pricing
+    name: Pricing
+    purpose: { value: Calculate order prices, status: proposed, evidenceRefs: [reviewed-price-function] }
+    membership:
+      value:
+        paths: []
+        symbols:
+          - { path: billing/invoice.ts, symbol: computePrice }
+      status: proposed
+      evidenceRefs: [reviewed-price-function]
+    groupingReason: { value: Price rules change apart from invoice rules, status: proposed, evidenceRefs: [reviewed-price-function] }
+interfaces: []
+resources: []
+rules: []
