@@ -1,11 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { collect, loadTools } from "../../../src/stage-4-graph.ts";
 import { commonJsTypeScript, esModulePackage, type ModuleKindPackage, nodeNextPackage }
   from "../../fixtures/module-kinds/packages.ts";
-import { makeScratch, removeScratch, runCli, toolsRoot } from "../../support/commands.ts";
-import { stagedRun } from "../../support/staged-run.ts";
+import { packageGraph } from "../../support/module-kind-graph.ts";
 
 // Stage 4 start saves the graph profile of a small saved package. Then collect runs
 // the graph helper with the checkout's dependency-cruiser on the saved snapshot, as
@@ -27,8 +23,6 @@ interface PinnedEdge {
   preCompilationOnly: boolean | null; dynamic: boolean | null;
 }
 
-const attemptId = "s4-check";
-const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const graphTimeout = 120_000;
 const importPass = { conditionNames: ["import", "default"], moduleSystems: ["es6", "tsd"] };
 const requirePass = { conditionNames: ["require", "default"], moduleSystems: ["cjs"] };
@@ -43,33 +37,14 @@ function depEdge(from: string, to: string, kind: string, flags: { preCompilation
     preCompilationOnly, dynamic: flags.dynamic ?? false };
 }
 
-// The settings record of a package with compiler options: one parsed configuration
-// that selects every source file. Without options, the run keeps the settings record
-// of a snapshot without compiler settings, which names the Choom parsing profile.
-function settingsOf({ snapshot, compilerOptions }: ModuleKindPackage): Record<string, unknown> | undefined {
-  if (compilerOptions === null) return undefined;
-  const fileNames = snapshot.map(({ path }) => path).filter((path) => sourceExtension.test(path)).map((path) => "/repo/" + path);
-  return { configs: [{ path: "/repo/tsconfig.json", status: "parsed", fileNames, compilerOptions }], parsingProfile: null, gaps: [] };
-}
-
 async function graphContexts(fixture: ModuleKindPackage): Promise<PinnedContext[]> {
-  const scratch = makeScratch();
-  try {
-    const work = join(scratch, "run");
-    stagedRun(work, 3, { snapshot: fixture.snapshot, settings: settingsOf(fixture) });
-    const start = runCli(["stage-4", "start"], { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE4_ID: attemptId });
-    expect({ status: start.status, stderr: start.stderr }).toEqual({ status: 0, stderr: "" });
-    const profile: unknown = JSON.parse(readFileSync(join(work, "evidence", attemptId, "graph-profile.json"), "utf8"));
-    const graph = await collect(profile, await loadTools(toolsRoot), join(work, "snapshot"));
-    expect(graph.status).toBe("completed");
-    return graph.contexts.map(({ id, status, conditionNames, moduleSystems, scanFiles, edges }) => ({
-      id, status, conditionNames, moduleSystems, scanFiles,
-      edges: edges.map(({ from, specifier, to, targetKind, dependencyTypes, preCompilationOnly, dynamic }) =>
-        ({ from, specifier, to, targetKind, dependencyTypes, preCompilationOnly, dynamic })),
-    }));
-  } finally {
-    removeScratch(scratch);
-  }
+  const { graph } = await packageGraph(fixture);
+  expect(graph.status).toBe("completed");
+  return graph.contexts.map(({ id, status, conditionNames, moduleSystems, scanFiles, edges }) => ({
+    id, status, conditionNames, moduleSystems, scanFiles,
+    edges: edges.map(({ from, specifier, to, targetKind, dependencyTypes, preCompilationOnly, dynamic }) =>
+      ({ from, specifier, to, targetKind, dependencyTypes, preCompilationOnly, dynamic })),
+  }));
 }
 
 describe("the Stage 4 graph passes of today", () => {
