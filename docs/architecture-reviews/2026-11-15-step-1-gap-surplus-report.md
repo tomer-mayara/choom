@@ -144,6 +144,8 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-00b2 | tomer-mayara/choom#67 | Draft |
 | GA-00e | tomer-mayara/choom#68 | Draft |
 | GA-00c | tomer-mayara/choom#69 | Draft. This PR also records plan changes 6 and 7. |
+| GA-12 | tomer-mayara/choom#70 | Draft |
+| GA-09 | tomer-mayara/choom#71 | Draft. This PR also records plan change 8. |
 
 Plan changes:
 
@@ -191,6 +193,13 @@ Plan changes:
    one, in its readiness packet, which the ticket did not list. There is no
    provider JSON file in any packet, so `checkVisibleResponse` checks only
    the saved response text. GA-12 below shows the changed steps.
+8. **Gaps that a tool finds are added by `finish`.** GA-09 records the
+   "no project settings" gap in the Stage 1 settings record, which is now
+   `formatVersion: 2`. Stage 1 `finish` adds each gap of a tool record to the
+   discovery gaps itself (`toolGaps` in `stage-1-gaps.ts`). The reviewer does
+   not copy them. The IDs are `s1-<record>-gap-NNN`, and the review cannot
+   use them. `verify` refuses a saved discovery that lacks one. GA-04 uses
+   the same function for its Git gap (step 5 below).
 
 ### How to work every ticket
 
@@ -665,7 +674,8 @@ Feature: Save Git identity with a snapshot
    with Git's message. It does not stop the capture.
 4. **N** Run it on a temporary real repository. The record is saved by digest
    and appears in the tool-call record.
-5. **U** Stage 1 `finish` adds the `git-unavailable` gap when needed.
+5. **U** Stage 1 `finish` adds the `git-unavailable` gap when needed, with
+   `toolGaps` from GA-09 (plan change 8).
 
 ### GA-05 Search the snapshot with ripgrep
 
