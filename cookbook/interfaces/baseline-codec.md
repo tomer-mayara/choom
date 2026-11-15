@@ -22,7 +22,7 @@ CR, or CRLF pair counts as one line break. The parser checks bounds before
 model validation. See [documents.md](documents.md#yaml-encoding) for the shared
 parser rules.
 
-A numeric `formatVersion` other than 1, 2, or 3 returns `unsupported-version`. Missing
+A numeric `formatVersion` other than 1, 2, 3, or 4 returns `unsupported-version`. Missing
 or invalid model fields return `invalid-document`, with the field path when
 available. YAML syntax and unsupported YAML constructs return
 `invalid-encoding`; exceeded bounds return `limit-exceeded`. Error messages do
@@ -30,7 +30,7 @@ not contain raw input values, unknown field names, or parser exception text.
 Every result includes a nonnegative duration in milliseconds. These local
 results do not establish a production reliability or latency claim.
 
-Version 2/3 documentation has these additional limits. They do not restrict old
+Version 2/3/4 documentation has these additional limits. They do not restrict old
 architecture fields in any supported version.
 
 | Value | Limit |
@@ -53,7 +53,7 @@ path and a useful limit message. This differs from the existing YAML parser
 `limit-exceeded` failure. Both failures keep the previous view and inspection.
 Documentation does not change the existing display limits.
 
-Version 3 source-use data has separate limits:
+Version 3/4 source-use data has separate limits:
 
 | Value | Limit |
 | --- | --- |
@@ -68,7 +68,23 @@ all metadata and repeated strings. Source notes retain the existing safe path,
 SHA-256, and positive inclusive line-range rules. Source-use shape, reference,
 count, and byte failures return `invalid-document` with an affected field and
 useful reason. Exact limits pass; one record or byte over fails. All version 2
-documentation refinements and budgets apply to version 3 independently.
+documentation refinements and budgets apply to versions 3 and 4 independently.
+
+Version 4 system-entry data has its own limits:
+
+| Value | Limit |
+| --- | --- |
+| Entries in the assessment | 2,000 |
+| Each new ID, evidence reference, or source path | 4 KiB of UTF-8 |
+| Each label, scope, or limitation | 8 KiB of UTF-8 |
+| The complete `systemEntryPoints` object | 2 MiB of UTF-8 |
+
+The total is the byte size of compact `JSON.stringify(systemEntryPoints)`.
+It includes metadata and repeated strings. A failure returns
+`invalid-document` with the affected field. Entry records add no architecture
+node or link. Their count and byte limits do not reduce the source-use or
+documentation budgets. See the [baseline validation contract](baseline.md) for
+the entry links and shared snapshot and mapping rule.
 
 The existing 500 architecture records, 2,000 explicit permission/owner links,
 and 16-level hierarchy limits remain unchanged. Source uses are not added to

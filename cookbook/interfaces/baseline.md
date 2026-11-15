@@ -4,7 +4,8 @@ The architecture-model component owns the baseline viewer profile in
 [baseline.tsp](baseline.tsp). `baselineSchema` in
 [`src/domain/baseline.ts`](../../src/domain/baseline.ts) validates an unknown value
 and returns the generated `Baseline` data type. Use `safeParse` to get field paths
-for invalid input. The viewer accepts `formatVersion: 1`, `formatVersion: 2`, and `formatVersion: 3`.
+for invalid input. The reader accepts `formatVersion: 1`, `formatVersion: 2`,
+`formatVersion: 3`, and `formatVersion: 4`.
 Version 1 keeps its original strict fields. Version 2 adds optional interface
 documentation, defined in [baseline-documentation.tsp](baseline-documentation.tsp).
 The viewer does not upgrade a file or accept the legacy diagram format.
@@ -54,7 +55,7 @@ matching location note. This checks the saved link only. External publication
 must verify the source review; the viewer does not open source files or verify
 the claim. An `illustrative` example does not claim source review.
 
-Version 3 retains all version 2 fields and validation. It can add optional
+Versions 3 and 4 retain all version 2 fields and validation. They can add optional
 `sourceUsage`, defined in [baseline-source-usage.tsp](baseline-source-usage.tsp).
 Versions 1/2 reject that field. A source-use object names one saved snapshot and
 one code mapping. Its assessments describe reviewed scope, evidence, limitations,
@@ -78,6 +79,26 @@ It does not fetch files, verify digests, infer consumers, or prove execution.
 Source observations never replace `allowedConsumers`, which remains a permission
 statement. Baseline details exposes the complete **Original source-use data**.
 
+Version 4 can also add optional `systemEntryPoints`, defined in
+[baseline-system-entry-points.tsp](baseline-system-entry-points.tsp).
+Its absence means entry points were not recorded. A present object records a
+review scope, at least one scope evidence reference, limits of that review, and
+an entry list. An empty list means no supported entry was found in that scope.
+Each entry identifies one startup or external call boundary, its saved file
+path, and the component that directly owns that file. Its label identifies the
+start command or call selector. A system can have many entries of either kind.
+
+Entry IDs are unique within the assessment. Component and optional interface
+links must name saved records. An optional `entryId` must name a documented
+entry in the linked interface. Entry evidence is nonempty and distinct. If a
+source range is present, its direct reference must be in that entry's evidence;
+its snapshot and path must match the assessment and entry. The source location
+uses the same path, digest, and line-range rules as documentation. When version
+4 has both `systemEntryPoints` and `sourceUsage`, their snapshot and mapping
+references must match. The reader checks these internal links. It does not
+open the source checkout or evidence bundle, or verify deployment and calls.
+Versions 1 to 3 reject `systemEntryPoints`.
+
 Rule values are JSON objects or null. Keep nested values and all own keys,
 including `__proto__`, without running expressions. Reject non-JSON values and
 cycles. No field is silently discarded. Byte and YAML limits belong to the
@@ -99,9 +120,11 @@ Run the focused checks:
 bun run test:behavior --tags @bv-01
 bun run test:behavior --tags @br-10a
 bun run test:behavior --tags @br-11a
+bun run test:behavior --tags @ep-01
 bun run test:e2e --tags @br-11a
 bun test ./test/unit/domain/source-usage.test.ts ./test/unit/domain/source-usage-limits.test.ts
 bun test ./test/interface/domain/source-usage.test.ts
+bun test ./test/interface/domain/system-entry-points.test.ts
 bun run test:e2e --tags @br-10a
 bun test ./test/unit/domain/baseline.test.ts
 bun test ./test/unit/domain/interface-documentation.test.ts ./test/unit/domain/interface-documentation-limits.test.ts

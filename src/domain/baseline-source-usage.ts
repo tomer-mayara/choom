@@ -69,7 +69,7 @@ function validateAssessment(assessment: BaselineSourceAssessment, snapshotRef: s
 }
 
 export function validateBaselineSourceUsage(baseline: Baseline, context: z.RefinementCtx): void {
-  if (baseline.formatVersion !== 3 || !baseline.sourceUsage) return;
+  if ((baseline.formatVersion !== 3 && baseline.formatVersion !== 4) || !baseline.sourceUsage) return;
   const source = baseline.sourceUsage;
   const counts = source.assessments.reduce((counts, item) => ({
     uses: counts.uses + item.uses.length, notes: counts.notes + item.sourceNotes.length,

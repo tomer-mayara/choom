@@ -10,8 +10,10 @@ function invalidBaselineMessage(issue: { path: PropertyKey[]; code: string; mess
     && (issue.path.length === 1 || issue.path[2] === "documentation")
     && (issue.code === "custom" || issue.code === "too_big");
   const sourceUsageIssue = issue.path[0] === "sourceUsage";
+  const systemEntryIssue = issue.path[0] === "systemEntryPoints";
   const detail = sourceUsageIssue && issue.code === "unrecognized_keys" ? " Unexpected source-use fields."
-    : documentationIssue || sourceUsageIssue ? ` ${issue.message}` : "";
+    : systemEntryIssue && issue.code === "unrecognized_keys" ? " Unexpected system-entry fields."
+      : documentationIssue || sourceUsageIssue || systemEntryIssue ? ` ${issue.message}` : "";
   return `The baseline is invalid at ${path}.${detail}`;
 }
 
@@ -21,12 +23,12 @@ export function decodeBaselineYaml(text: string): DecodeBaselineOutcome {
     const value = readYamlData(text);
     const version: unknown = typeof value === "object" && value !== null
       ? Object.getOwnPropertyDescriptor(value, "formatVersion")?.value : undefined;
-    if (typeof version === "number" && version !== 1 && version !== 2 && version !== 3) {
+    if (typeof version === "number" && version !== 1 && version !== 2 && version !== 3 && version !== 4) {
       throw new CodecProblem("unsupported-version", "The baseline format version is unsupported.");
     }
     if (typeof value === "object" && value !== null && !Object.hasOwn(value, "formatVersion")
       && Object.getOwnPropertyDescriptor(value, "schemaVersion")?.value === 1) {
-      throw new CodecProblem("invalid-document", "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, or 3.");
+      throw new CodecProblem("invalid-document", "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, 3, or 4.");
     }
     const result = baselineSchema.safeParse(value);
     if (!result.success) {

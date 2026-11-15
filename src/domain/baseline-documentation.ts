@@ -11,6 +11,8 @@ const boundedText = (schema: z.ZodString, limit: number) => schema.refine(
 const reference = boundedText(baselineText, 4 * 1024);
 const localId = boundedText(baselineId, 4 * 1024);
 const description = boundedText(baselineText, 8 * 1024);
+export { reference as baselineBoundedReferenceSchema, localId as baselineBoundedIdSchema,
+  description as baselineBoundedDescriptionSchema };
 const sampleText = boundedText(baselineText, 16 * 1024);
 const nullableTextStatement = baselineStatement(description.nullable(), reference);
 
@@ -33,16 +35,19 @@ const entry = z.strictObject({
   interaction: baselineStatement(interaction, reference).optional(),
   examples: z.array(example).max(8, "The limit is 8 examples per entry."),
 });
+const sourcePath = reference.refine((path) => !/^[A-Za-z]:/.test(path) && !/[\\\u0000-\u001f\u007f]/.test(path)
+  && path.split("/").every((part) => part !== "" && part !== "." && part !== ".."), "Expected a safe snapshot-relative path.");
+export { sourcePath as baselineSourcePathSchema };
 const location = z.strictObject({
   snapshotRef: reference,
-  path: reference.refine((path) => !/^[A-Za-z]:/.test(path) && !/[\\\u0000-\u001f\u007f]/.test(path)
-    && path.split("/").every((part) => part !== "" && part !== "." && part !== ".."), "Expected a safe snapshot-relative path."),
+  path: sourcePath,
   sha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
   lines: z.array(z.number().int().positive().max(Number.MAX_SAFE_INTEGER)).length(2),
 }).refine(({ lines }) => {
   const [first, last] = lines;
   return first !== undefined && last !== undefined && first <= last;
 }, { path: ["lines"], message: "The source range must end at or after its first line." });
+export { location as baselineSourceLocationSchema };
 export const baselineSourceNoteSchema = z.strictObject({ evidenceRef: reference, description, location: location.optional() });
 
 export const baselineDocumentationSchema = z.strictObject({
