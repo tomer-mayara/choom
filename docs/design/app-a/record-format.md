@@ -3,11 +3,12 @@
 Read this with the [stage 4 cookbook](step-4-cookbook.md) or
 [stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
 to the shared publisher. The publisher is a trusted tool. Review folders contain
-data only; do not generate or execute a run-specific save script. The last three
+data only; do not generate or execute a run-specific save script. The last four
 sections define the [settings record](#settings-record) that Stage 1 saves and
 Stage 4 reads, the [Git identity record](#git-identity-record) that the Stage 1
-capture saves, and the [producer code record](#producer-code-record) that every
-stage checks.
+capture saves, the [producer code record](#producer-code-record) that every
+stage checks, and the [decision record](#decision-record) of human decisions
+after Stage 6.
 
 ## Review folder
 
@@ -121,7 +122,8 @@ their saved version.
 An intent statement has exactly `value`, `status: proposed`, and `evidenceRefs`.
 Unknown intent uses `value: null` and a question or gap whose `subjectRefs`
 includes the item ID or a field such as `interface-id.allowedConsumers`.
-Publication does not accept intent.
+Publication does not accept intent. After Stage 6, a person can accept or
+correct statements in a [decision record](#decision-record).
 
 | Collection | Exact item fields |
 | --- | --- |
@@ -908,3 +910,106 @@ The programs that a stage action starts after its check, such as the Stage 2
 modules, `inventory-view.py`, `check-knip-image.mjs` and `stage-4-graph.ts`, do
 not check again. The duplication assessment, the input consolidation command and
 the recovery capture do not use the record.
+
+## Decision record
+
+Stage 6 publishes a baseline whose statements are all `proposed`. After Stage 6,
+a person can accept or correct statements. The person writes a decision file,
+and `baseline decide` checks it and saves it in the run folder as a decision
+record. The record does not change the baseline. Ticket GA-01b makes the next
+baseline version from saved decision records. The
+[TypeSpec contract](../../../cookbook/interfaces/baseline-decisions.tsp) in
+`@choom/baseline-model` defines the file, so the viewer can use it too.
+
+```json
+{
+  "formatVersion": 1,
+  "id": "decisions-001",
+  "baselineRef": "baseline-001",
+  "baselineDigest": "<64 lowercase hexadecimal characters>",
+  "decider": { "name": "Ada Example", "kind": "human" },
+  "decidedAt": "2026-11-15T10:30:00Z",
+  "entries": [
+    { "action": "accept", "itemId": "cli", "field": "purpose" },
+    { "action": "correct", "itemId": "billing", "field": "purpose",
+      "oldValue": "Bill the saved orders.", "newValue": "Bill each saved order once." }
+  ]
+}
+```
+
+| Field | Value |
+| --- | --- |
+| `formatVersion` | `1`. |
+| `id` | The ID of the record: lowercase letters, digits and hyphens, at most 128 characters. The record is saved as `decisions/<id>.json`. |
+| `baselineRef` | The ID of the published baseline. |
+| `baselineDigest` | The SHA-256 of the published baseline file, as 64 lowercase hexadecimal characters. It is the `sha256` of the baseline in the `run.yaml` registry, which Stage 6 computes from the saved bytes. The viewer computes the same digest of the file that it opens. |
+| `decider` | `name` of the person who decided, and `kind: human`. |
+| `decidedAt` | When the person decided: an RFC 3339 time in UTC, such as `2026-11-15T10:30:00Z`. |
+| `entries` | At least one decision. `{action: accept, itemId, field}` accepts a statement with its current value. `{action: correct, itemId, field, oldValue, newValue}` replaces the value; `oldValue` is the current value. Values are JSON data. There is no reject action: a statement without a decision stays proposed. |
+
+An entry names one statement: an item field with `value`, `status` and
+`evidenceRefs`. `itemId` is the ID of a component, interface, resource or rule.
+`field` is the path of the statement in the item, as in a discovery subject:
+
+| Item | Fields |
+| --- | --- |
+| Component | `purpose`, `membership`, `groupingReason`, and `parent` when the component has one. |
+| Interface | `owner`, `publicAccess`, `allowedConsumers`, `promises`; in versions 2 to 5 also `documentation.summary`, and for each documentation entry `documentation.entries.<entry-id>.kind`, `.description`, `.signature` and `.interaction` when present, and `.examples.<example-id>.content`. |
+| Resource | `identity`, `owner`, `accessRules`. |
+| Rule | `subject`, `expected`, `check`. |
+
+The statement name is `<itemId>.<field>`, such as `billing.purpose`. A part of a
+value, such as `promises.behavior`, is not a statement.
+
+`validateDecisions` in `@choom/baseline-model` checks the file against the
+baseline and its digest. It reads no file, and it refuses:
+
+- a file that does not match the contract;
+- a `baselineRef` or `baselineDigest` of another baseline;
+- an entry that names no statement of the baseline, and a second entry for
+  one statement;
+- an entry for a statement that is not `proposed`. No document lets a decision
+  change an accepted statement;
+- a correction whose `oldValue` is not the current value. The values are
+  compared as JSON data: the keys of an object can be in another order, the
+  items of an array cannot. The refusal names the statement, the expected value
+  and the given value;
+- a correction whose `newValue` is the current value. Use `accept`;
+- new values that make the baseline invalid under the shared baseline rules,
+  together, as the next version will have them.
+
+Set `CHOOM_DECISIONS` to the decision file, outside the run folder. Record the
+decisions with:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline decide --run "$CHOOM_WORK" "$CHOOM_DECISIONS"
+```
+
+The command reads `run.yaml`, which must report `completed` with
+`baselineRecovery: complete` and name the published baseline. It checks the
+registered SHA-256, the bounded YAML profile and the shared rules of the
+published baseline, and reads the decision file: UTF-8 JSON of at most 16 MiB.
+After `validateDecisions` and the decider check below, it saves the exact bytes
+of the file once, as `decisions/<id>.json`. A second save with the same ID is
+refused, also when the content is the same. The baseline, the discovery result,
+`run.yaml` and every other file of the run stay unchanged, so `run.yaml` does
+not register the record. The output is JSON: the record path and its SHA-256,
+the baseline, the decider, the time, each decided statement, and the call
+records and models that the decider check compared. Keep the SHA-256 with the
+run notes. The command is not a stage action: it does not check the producer
+code record, because a person can decide after the run with a later producer.
+
+The decider check is a process rule, not proof (decision D10). The command
+compares `decider.name` with the `model` value of each LLM call record of the
+run: each file that `run.yaml` registers under `evidence/` whose name ends with
+`-call.yaml`. These are `evidence/llm-call.yaml` of Stage 1, and
+`llm/plan-call.yaml` and `llm/analysis-call.yaml` in the attempt folders of
+Stages 2 to 6. It compares the names after it removes white space at their
+start and end and changes all letters to lower case, and refuses a match. It
+also refuses a run that registers no call record, because the check cannot run;
+every completed run has the call records of its stages. A model value
+`unknown` is compared too, but it names no model. Files that `run.yaml` does not
+register, such as a failed attempt, are not compared. Code cannot prove that a
+person made the decisions: any writer can give a person's name. The check stops
+a decision file that names a model of the run, and the named person stays
+responsible for the decisions.

@@ -16,5 +16,5 @@ artifacts:
   architecture:
     - path: ../../.dependency-cruiser.cjs
   contracts:
-    # The Stage 4 and 5 review records, the Stage 1 settings and Git identity records and the version 4 publication rules.
+    # The Stage 4 and 5 review records, the Stage 1 settings and Git identity records, the version 4 publication rules and the decision record.
     - path: ../../docs/design/app-a/record-format.md

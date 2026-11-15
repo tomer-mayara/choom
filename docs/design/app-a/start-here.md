@@ -46,6 +46,7 @@ analysis-run-001/
   discovery.yaml                      Working discovery; later matches fixed result
   baselines/baseline-001/baseline.yaml  Fixed proposed architecture
   runs/run-001/discovery.yaml          Fixed discovery with evidence references
+  decisions/decisions-001.json         Optional human decisions, saved after Stage 6
   run-takeaways.md                     Optional operator/reviewer log
   run-notes.md                         Optional handoff notes and dated corrections
 ```
@@ -572,6 +573,8 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
 | `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |
+| `baseline-commands.ts`, `baseline-decide.ts` | The baseline command (`baseline decide`): check a decision file against the published baseline of a completed run, and save it once as `decisions/<id>.json`. See the [decision record](record-format.md#decision-record) |
+| `completed-run.ts`, `decider-check.ts` | A run that Stage 6 completed, read with the digests of its registry; and the check that the decider is not a model in the run's LLM call records |
 | [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |
 | `check-knip-image.mjs` | Validate the controlled Knip tool image |
 | `inventory-view.py` | Prepare and verify inventory-only tool input copies |

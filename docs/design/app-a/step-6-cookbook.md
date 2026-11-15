@@ -34,6 +34,7 @@ that can bypass validation.
 - [2. Prepare the saved result](#2-prepare-the-saved-result)
 - [3. Publish the fixed records](#3-publish-the-fixed-records)
 - [4. Verify the completed result](#4-verify-the-completed-result)
+- [5. Record human decisions](#5-record-human-decisions)
 - [Saved state](#saved-state)
 
 ## 1. Review the complete result
@@ -290,6 +291,28 @@ change after Stage 5. Updating this helper fixes future runs; it does not
 rewrite a completed run, and the producer code check refuses a changed helper for
 an existing run.
 
+## 5. Record human decisions
+
+Saving the baseline does not accept its statements. After the verified result,
+a person can accept or correct proposed statements. That person is the decider;
+a model cannot decide. Write the decision file outside the run folder, as the
+[record format](record-format.md#decision-record) describes. Its
+`baselineDigest` is the `sha256` of the published baseline in the `run.yaml`
+registry. Then run:
+
+```sh
+export CHOOM_DECISIONS="/absolute/path/to/decisions.json"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline decide --run "$CHOOM_WORK" "$CHOOM_DECISIONS"
+```
+
+The command checks the decisions against the published baseline. It refuses a
+decider who has the name of a model in the run's LLM call records. This check is
+a process rule: it does not prove that a person decided. The command saves the
+file once as `decisions/<id>.json` and prints its SHA-256; keep it with the run
+notes. It does not change the baseline or another file of the run. Use a new ID
+for new decisions. Ticket GA-01b makes the next baseline version from saved
+decisions.
+
 ## Saved state
 
 | Point | Baseline | Discovery and run |
@@ -298,3 +321,4 @@ an existing run.
 | After `start` | Same proposal; fixed output is prepared. | Checkpoints, review and validation are saved. Working drafts are unchanged. |
 | After `finish` | Fixed version saved by digest. Statements remain proposed. | Fixed discovery selects that baseline. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
 | After `verify` | Unchanged. | Read-only verification reports the saved result and its limits. |
+| After `baseline decide` | Unchanged. Statements stay proposed. | `decisions/<id>.json` holds the decision file. The discovery and the manifest do not change. |

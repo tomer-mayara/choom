@@ -379,6 +379,7 @@ Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
 starts the `node` on `PATH` and requires the major version in `.node-version`.
 It also runs `packages/producer/test/integration/records`, where the producer
 record validator runs with the shared baseline rules of `@choom/baseline-model`.
+The same folder holds the suite of the `baseline decide` command.
 Run all suites from the repository root.
 `bun run test:producer:docker` runs `packages/producer/test/integration/docker`
 and the `docker` Cucumber profile. These suites need a Docker engine and stop
@@ -654,6 +655,28 @@ bun test ./packages/producer/test/unit/producer-code.test.ts ./packages/producer
 bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2/producer-code.test.ts
 ```
 
+After Stage 6, `bun run producer baseline decide --run RUN_FOLDER DECISION_FILE`
+records human decisions about the published baseline: a person accepts or
+corrects proposed statements. `validateDecisions` in `@choom/baseline-model`
+checks the decision file against the baseline and the SHA-256 of its file. The
+producer refuses a decider who has the name of a model in the run's LLM call
+records. That check is a process rule; it does not prove that a person decided.
+The command saves the file once as `decisions/<id>.json` and changes no other
+file of the run. The [record format](docs/design/app-a/record-format.md#decision-record)
+gives the fields and the checks. The `@producer` scenarios record an accept and a
+correction for a run that the Stage 6 command line completed, and refuse a decider
+that is the model of the run and a correction of a value that the baseline does
+not have. The unit suites check the decision contract rules, the statements of a
+baseline, the completed run reader and the decider check; the interface suite
+checks the contract; the integration suite runs the command. Run them with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/baseline-model/test/unit/baseline-decisions.test.ts ./test/interface/domain/baseline-decisions.test.ts
+bun test ./packages/producer/test/unit/completed-run.test.ts ./packages/producer/test/unit/decider-check.test.ts
+bun test ./packages/producer/test/integration/records/baseline-decide.test.ts
+```
+
 The normal browser opening test uses the real app, file reader, decoder, layout,
 and component view. Controlled workflow tests cover failures, cancellation,
 concurrent requests, and late results. Browser tests and IPC doubles do not
@@ -799,6 +822,8 @@ too, for the baseline shape, and adds its stricter profile and its run checks
 (see the [record format](docs/design/app-a/record-format.md#baseline)). Its exports are `.` (the validator), `./contracts`,
 `./baseline-format`, and `./readonly-data`. It uses only TypeScript that Node
 can remove, so a Node process imports it with no build step.
+The `./baseline-decisions` export checks a decision file against a saved
+baseline (`validateDecisions`).
 
 The [producer](packages/producer/component.yaml) is the `@choom/producer` Bun
 workspace. It holds the manual Stage 1 to 6 helpers, the duplication helpers,
@@ -843,6 +868,9 @@ reserved IDs and the checks against the saved run records. `llm-response.ts`
 holds the design rule "Do not save hidden reasoning": every stage that saves an
 LLM call record checks that the response holds only the visible answer and that
 the call record has `hiddenReasoning: not-saved`.
+The baseline command (`baseline-commands.ts`) records human decisions after
+Stage 6: `baseline-decide.ts` reads the completed run with `completed-run.ts`
+and checks the decider with `decider-check.ts`.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model

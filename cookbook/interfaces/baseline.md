@@ -131,6 +131,15 @@ cycles. No field is silently discarded. Byte and YAML limits belong to the
 [input boundary](baseline-codec.md); display limits belong to the
 [workspace](workspace.md).
 
+The [decision contract](baseline-decisions.tsp) defines a decision file: human
+decisions that accept or correct statements of one saved baseline. Import
+`validateDecisions` from `@choom/baseline-model/baseline-decisions`. It takes the
+file and the baseline with the SHA-256 of its saved bytes, reads no file, and
+returns the typed decisions or every problem that it found. A statement is an
+item field with `value`, `status` and `evidenceRefs`; `baselineStatements` lists
+them. The [record format](../../docs/design/app-a/record-format.md#decision-record)
+gives the fields, the statements that can be decided and the checks.
+
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
 copies of the reviewed empty and full `work-choom` baselines. Tests use repository
 paths and need no external checkout or companion records. The version 5 example
@@ -166,6 +175,7 @@ bun test ./packages/baseline-model/test/unit/baseline.test.ts
 bun test ./packages/baseline-model/test/unit/interface-documentation.test.ts ./packages/baseline-model/test/unit/interface-documentation-limits.test.ts
 bun test ./test/interface/domain/baseline.test.ts
 bun test ./test/interface/domain/interface-documentation.test.ts
+bun test ./packages/baseline-model/test/unit/baseline-decisions.test.ts ./test/interface/domain/baseline-decisions.test.ts
 bun run test:integration
 bun run check:contracts
 ```
