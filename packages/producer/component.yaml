@@ -13,6 +13,7 @@ artifacts:
     - path: ../../cookbook/behavior/producer/source-structure.feature
     - path: ../../cookbook/behavior/producer/module-kinds.feature
     - path: ../../cookbook/behavior/producer/symbol-references.feature
+    - path: ../../cookbook/behavior/producer/behavior-entries.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
