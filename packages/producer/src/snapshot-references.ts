@@ -35,12 +35,12 @@ interface Query {
   ts: Ts; checker: TsMorph.ts.TypeChecker; target: TsSymbol;
   destructured: Set<Node>; bindings: Set<TsSymbol>;
 }
-type Checking = Pick<Query, 'ts' | 'checker'>;
+export type Checking = Pick<Query, 'ts' | 'checker'>;
 // A site: the node whose range the record saves, its kind and the local name.
 interface Site { node: Node; kind: ReferenceKind; localName: string }
 
 // The declared symbol that a symbol names after its aliases, or undefined when an alias names nothing.
-function declared({ ts, checker }: Checking, symbol: TsSymbol | undefined): TsSymbol | undefined {
+export function declared({ ts, checker }: Checking, symbol: TsSymbol | undefined): TsSymbol | undefined {
   if (symbol === undefined) return undefined;
   const resolved = checker.getExportSymbolOfSymbol(symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol);
   return resolved.declarations?.length ? resolved : undefined;
@@ -215,7 +215,7 @@ function sitesIn(query: Query, source: SourceFile): Site[] {
 // of its nearest package.json, and resolves its imports in that format. ts-morph leaves
 // the format unset, which the compiler reads as CommonJS, so the query sets it before
 // the program exists. A file that the compiler reads only to resolve an import has no format.
-function referenceProgram({ ts, project }: SnapshotProject): TsMorph.ts.Program {
+export function referenceProgram({ ts, project }: SnapshotProject): TsMorph.ts.Program {
   const options = project.compilerOptions.get();
   const packageFiles = ts.createModuleResolutionCache(virtualRoot, name => name, options).getPackageJsonInfoCache();
   for (const file of project.getSourceFiles()) {
