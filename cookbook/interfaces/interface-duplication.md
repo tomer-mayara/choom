@@ -2,7 +2,7 @@
 
 [interface-duplication.tsp](interface-duplication.tsp) owns the saved report.
 [interface-duplication-codec.tsp](interface-duplication-codec.tsp) owns decoding
-outcomes. Report version 1 supports baseline versions 1, 2 and 3. The viewer
+outcomes. Report version 1 supports baseline versions 1, 2, 3 and 4. The viewer
 reads saved judgments; it does not run a detector or fetch cited source files.
 
 `decodeDuplicationReportYaml(text, baseline, baselineSha256)` reads strict YAML,
@@ -17,7 +17,7 @@ or `baseline-mismatch`. Failed decoding does not change a workspace.
 Each finding records two supported public endpoints. An `interface-pair` groups
 all observations for two different interfaces. Entry-level observations keep
 their exact entry IDs within that finding. An `entry-pair` names two different
-documented entries of the same interface in baseline version 2 or 3. Entry IDs
+documented entries of the same interface in baseline version 2, 3 or 4. Entry IDs
 are local to an interface.
 An interface paired with itself or its own entry is not a finding.
 
@@ -55,10 +55,11 @@ Foreign interfaces, foreign entries and unresolved baseline field references
 are rejected. Version 1 has no entry IDs. Owners and display names come from the
 bound baseline; unknown owners remain valid.
 
-Version 3 retains version 2 documentation, including signatures and entry
+Versions 3 and 4 retain version 2 documentation, including signatures and entry
 interaction statements. Comparisons use those same saved fields and names.
 Source-use assessments do not replace contract facts or change a duplication
-judgment. A report still binds to the exact version and bytes of its baseline.
+judgment. Version 4 system-entry records do not change a duplication judgment.
+A report still binds to the exact ID, version and original bytes of its baseline.
 
 Source references use safe snapshot-relative paths, file SHA-256, positive
 inclusive line ranges and evidence references. Their snapshot must match the
@@ -81,6 +82,8 @@ Focused checks:
 ```sh
 bun run test:behavior --tags @duplication-report-codec
 bun test ./test/interface/lib/interface-duplication-yaml.test.ts ./test/interface/lib/duplication-report-limits.test.ts
+bun test ./test/unit/architecture/duplication-v4.test.ts
 bun test ./test/unit/domain/interface-duplication.test.ts
+bun run test:e2e --tags @ep-04
 bun run check:contracts
 ```

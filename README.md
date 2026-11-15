@@ -232,6 +232,7 @@ Choom does not load referenced files or execute recorded checks.
 After opening a saved baseline, choose **Duplicates**, then **Open duplication
 report** (**Open report** in narrow windows). Select the report published by the external assessment. Its baseline
 ID, format version and SHA-256 must match the original baseline file bytes.
+Report version 1 can bind to baseline versions 1 through 4.
 Reformatting a baseline requires a new bound report. Browser file reading needs
 HTTPS or loopback for SHA-256; the desktop reader hashes the bytes locally.
 
@@ -368,6 +369,7 @@ node --test test/interface/duplication/*.test.mjs
 bun run test:behavior --tags '@interface-duplication or @duplication-report-codec or @di-02-03'
 bun test ./test/unit/architecture/duplication-workflow.test.ts ./test/unit/domain/interface-duplication.test.ts
 bun test ./test/interface/lib/interface-duplication-yaml.test.ts ./test/interface/lib/duplication-report-limits.test.ts
+bun test ./test/unit/architecture/duplication-v4.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/interface-duplication.test.tsx ./test/unit/components/duplication-comparison.test.tsx ./test/unit/components/duplication-navigation.test.tsx
 bun run test:e2e --tags @interface-duplication
 bun run test:behavior:packaged --tags @interface-duplication

@@ -3,6 +3,14 @@ Feature: Read a saved duplication assessment
   The reader can inspect recorded interface findings without a source checkout
   or an analyzer in the viewer.
 
+  @ep-04
+  Scenario: Attach a report to its exact version 4 baseline
+    Given a version 4 baseline is open for the duplication reader
+    And its duplication report names the baseline ID, version and original-byte digest
+    When the reader opens the version 4 duplication report
+    Then its saved findings are available
+    And reading the assessment has not changed either selected file
+
   @br-11 @br-11a @br-11-duplication
   Scenario: Read and inspect documented comparisons from a version 3 baseline
     Given a version 3 baseline and its matching duplication assessment are available offline

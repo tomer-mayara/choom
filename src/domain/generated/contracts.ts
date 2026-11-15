@@ -323,7 +323,7 @@ export interface BaselineV4 {
 
 export interface DuplicationBaselineBinding {
   id: duplicationReference;
-  formatVersion: 1 | 2 | 3;
+  formatVersion: 1 | 2 | 3 | 4;
   sha256: duplicationDigest;
 }
 
