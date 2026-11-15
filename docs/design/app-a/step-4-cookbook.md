@@ -396,15 +396,24 @@ exports (`import { createInvoice as ci }` and
 `export { createInvoice as make } from './invoice'`), `export * from`, namespace
 imports (`billing.createInvoice()`), default imports, `import =` and the
 JavaScript `require` calls that the compiler resolves. It does not follow a
-`require` call in a TypeScript file, an import that the compiler settings do not
-resolve, the local names that a destructured dynamic import binds in a TypeScript
-file, or JSDoc types.
+`require` call in a TypeScript file (`unresolved` lists it), an import that the
+compiler settings do not resolve, the local names that a destructured dynamic
+import binds in a TypeScript file, or JSDoc types.
 
-A loading site of `source-sites.json` in the scope with a computed module name
-(`specifier: null`) can load the module of the symbol. The helper lists each
-`dynamic-import`, `require-candidate`, `require-resolve-candidate` and
-`import-equals` site of this kind in `unresolved`, as a possible use that it does
-not resolve. Then the references can be incomplete.
+Some loading sites of `source-sites.json` in the scope can load the module of the
+symbol, but the helper does not follow them. It lists each one in `unresolved`
+with a `reason`, as a possible use that it does not resolve:
+
+- A `dynamic-import`, `require-candidate`, `require-resolve-candidate` or
+  `import-equals` site with a computed module name (`specifier: null`). The helper
+  cannot tell which module the site names.
+- A `require-candidate` site with a literal module name in a TypeScript file
+  (`.ts`, `.tsx`, `.mts` or `.cts`). TypeScript does not follow a `require` call
+  in a TypeScript file.
+
+The type checker follows a literal `require` call in a JavaScript file, and a
+`require.resolve` call with a literal module name loads nothing, so the helper
+does not list them. With an unresolved entry, the references can be incomplete.
 
 The helper saves:
 
@@ -425,7 +434,7 @@ The helper saves:
 | `completeness` | `partial` when `unresolved` has an entry, else `complete-within-scope`. Neither value covers the files outside the scope or the uses that the helper does not follow. |
 | `declarations` | The declarations of the symbol after its aliases: `path` and `range`. A declaration is not a reference. |
 | `references` | Each site outside the declarations, by path and in source order: `path`, `range`, `kind` and `localName`. |
-| `unresolved` | Each loading site of the scope with a computed module name: `siteRef` (a JSON Pointer into `source-sites.json`), `path`, `lines`, `kind` and `expression`. |
+| `unresolved` | Each loading site of the scope that the helper does not follow: `siteRef` (a JSON Pointer into `source-sites.json`), `path`, `lines`, `kind`, `expression` and `reason`. |
 | `gaps`, `outsideReads` | As in the Stage 3 exports record, for all files of the scope. |
 | `notes` | What the list covers and does not cover, in plain text. |
 
@@ -449,9 +458,9 @@ another use, such as `ci` or `billing.createInvoice`. A `range` has 1-based line
 and columns, as in the Stage 3 exports record. A byte order mark is not counted.
 
 A request for `createInvoice` in a small snapshot saves this record. Two users
-import it, one through a `paths` alias of `tsconfig.json`, and `src/plugins.ts`
-loads a module by a computed name. The snapshot ID is an example, and the tool
-digests and `notes` are cut:
+import it, one through a `paths` alias of `tsconfig.json`. `src/legacy.cts` takes
+it with a `require` call, and `src/plugins.ts` loads a module by a computed name.
+The snapshot ID is an example, and the tool digests and `notes` are cut:
 
 ```json
 {
@@ -476,7 +485,7 @@ digests and `notes` are cut:
   "scope": {
     "graphContext": "compiler-1-import",
     "graphContextRef": "s4-001-file@graph-profile.json#/contexts/0",
-    "files": ["src/billing/invoice.ts", "src/orders.ts", "src/plugins.ts", "src/refunds.ts"]
+    "files": ["src/billing/invoice.ts", "src/legacy.cts", "src/orders.ts", "src/plugins.ts", "src/refunds.ts"]
   },
   "tool": { "name": "ts-morph snapshot project (TypeScript type checker)", "node": "v26.13.0", "tsMorph": "28.0.0",
     "typescript": "6.0.2", "modules": { "ts-morph/dist/ts-morph.js": "a86ac69a892c87c860e842c755543bd9600b9b13c26be44495cdcf4ef8fb7307" } },
@@ -496,8 +505,12 @@ digests and `notes` are cut:
       "kind": "call", "localName": "invoiceFor" }
   ],
   "unresolved": [
-    { "siteRef": "s4-001-file@source-sites.json#/sites/1", "path": "src/plugins.ts", "lines": [2, 2],
-      "kind": "dynamic-import", "expression": "import('./billing/' + name)" }
+    { "siteRef": "s4-001-file@source-sites.json#/sites/0", "path": "src/legacy.cts", "lines": [1, 1],
+      "kind": "require-candidate", "expression": "require('./billing/invoice')",
+      "reason": "TypeScript does not follow a require call in a TypeScript file. The call can load the module of the symbol." },
+    { "siteRef": "s4-001-file@source-sites.json#/sites/2", "path": "src/plugins.ts", "lines": [2, 2],
+      "kind": "dynamic-import", "expression": "import('./billing/' + name)",
+      "reason": "The module name is computed. The query cannot tell which module the site names, so it can name the module of the symbol." }
   ],
   "gaps": [],
   "outsideReads": [

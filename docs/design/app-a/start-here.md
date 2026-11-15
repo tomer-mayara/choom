@@ -570,7 +570,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-4-module-kinds.ts` | The module kind of the code that runs for each file of a compiler context, from its extension, the compiler `module` setting and the nearest indexed `package.json`. Files that compile to CommonJS get a CommonJS pass |
 | `stage-4-graph.ts` | Dependency extraction in the graph container. The container gets only this file, as `/producer/stage-4-graph.mts` |
 | `stage-4-inspect.ts`, `stage-4-source-sites.ts`, `stage-4-review-prompt.ts` | Bounded source evidence (`stage-4-inspect` command): the checked attempt, the first excerpts, the excerpt action and the references action; the source sites; and the Stage 4 review prompt |
-| `stage-4-references.ts` | The record of the Stage 4 references action: the import pass of the graph group of the file, its compiler settings, the references, the computed loading sites as unresolved entries, and the completeness |
+| `stage-4-references.ts` | The record of the Stage 4 references action: the import pass of the graph group of the file, its compiler settings, the references, the loading sites that it does not follow as unresolved entries, and the completeness |
 | `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |

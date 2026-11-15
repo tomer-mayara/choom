@@ -662,8 +662,9 @@ same rule as Stage 3 `exports`. The TypeScript type checker follows renamed
 imports and exports, `export * from`, namespace imports and the other aliases to
 the declaration. Each request saves `references-NNN.json` with the settings, the
 scope, the tool versions, the declarations, each reference with its kind, range
-and local name, and the loading sites of the scope with a computed module name as
-unresolved entries; `completeness` is `partial` when there is one. The
+and local name, and as unresolved entries, each with its reason, the loading sites
+of the scope with a computed module name and the `require` calls of its TypeScript
+files; `completeness` is `partial` when there is one. The
 [Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-references-to-a-symbol)
 gives the fields. Run the focused checks of the references with:
 
