@@ -213,7 +213,8 @@ function readStageFive({ drafts, packet, records, yaml }) {
   const refs = checkedIds(run, baseline);
   const attemptRecords = [...checkpoints, ...toolsToFreeze, ...records.packetFiles, ...candidateNames,
     'handoff.json', 'validation.json', 'commands.md', startReceiptName, finishStartedName, finishReceiptName];
-  const reservedIds = [refs.baselineRef, refs.discoveryRef, ...attemptRecords.map(artifactId)];
+  // The record validator reserves the baseline ID itself, as it does for Stages 4 and 5.
+  const reservedIds = [refs.discoveryRef, ...attemptRecords.map(artifactId)];
   const counts = records.validateRecords({ run, baseline, discovery, artifacts, packet, draftDigests, reservedIds,
     inventory: verified.inventory, parse: yaml.parse, readSource: verified.readSource });
   assert(!artifacts.has(refs.baselineRef) && !artifacts.has(refs.discoveryRef) &&

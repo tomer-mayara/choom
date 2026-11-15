@@ -1,7 +1,7 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type * as Yaml from 'yaml';
 import { validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints } from './record-baseline.ts';
-import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, strings, text } from './record-checks.ts';
+import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, plainId, strings, text } from './record-checks.ts';
 import { validateGraph } from './record-graph.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
 
@@ -31,6 +31,7 @@ export interface RecordInputs {
 export type RecordCounts = Record<string, number>;
 interface References {
   claim(id: unknown): void;
+  reserve(id: unknown, use: string): void;
   resolve(ref: unknown): unknown;
   evidence(record: unknown): void;
   count(): number;
@@ -160,14 +161,21 @@ function documentReader(artifacts: Map<string, Artifact>, parse: (text: string) 
   };
 }
 
-// Model IDs must not collide with artifact IDs, source-range IDs or other model
-// IDs, and evidence references must resolve against the saved records.
+// Model IDs must not collide with artifact IDs, source-range IDs, reserved IDs or
+// other model IDs, and evidence references must resolve against the saved records.
 function references(artifacts: Map<string, Artifact>, source: SourceRecords, document: (id: unknown) => unknown): References {
   const occupied = new Set<unknown>([...artifacts.keys(), ...source.records.keys()]);
+  const reserved = new Map<unknown, string>();
   let refs = 0;
   function claim(id: unknown): void {
+    assert(!reserved.has(id), 'The ID ' + id + ' is reserved for ' + reserved.get(id) + '. Use a different model ID.');
     assert(text(id) && !occupied.has(id), 'Invalid or colliding model ID: ' + id);
     occupied.add(id);
+  }
+  // An ID that publication gives to a record it saves. No model record can use it.
+  function reserve(id: unknown, use: string): void {
+    claim(id);
+    reserved.set(id, use);
   }
   function resolve(ref: unknown): unknown {
     assert(text(ref), 'Empty evidence reference.');
@@ -194,7 +202,18 @@ function references(artifacts: Map<string, Artifact>, source: SourceRecords, doc
     assert(strings(fields.evidenceRefs), 'Missing evidence for ' + (fields.id ?? 'record'));
     fields.evidenceRefs.forEach(resolve);
   }
-  return { claim, resolve, evidence, count: () => refs };
+  return { claim, reserve, resolve, evidence, count: () => refs };
+}
+
+// The reserved-ID rule of every publication stage. Stage 6 saves the fixed
+// baseline under the baseline ID, so Stages 4 and 5 refuse that ID too, while
+// the operator can still correct the draft. Each stage adds the IDs of the
+// records that its own publication saves.
+function reserveRecordIds(refs: References, baseline: unknown, publicationIds: readonly unknown[]): void {
+  const baselineId = (baseline as Fields | null | undefined)?.id;
+  // The baseline checks refuse an ID that is not a plain ID.
+  if (plainId(baselineId)) refs.reserve(baselineId, 'the baseline');
+  for (const id of publicationIds) refs.reserve(id, 'a record that this publication saves');
 }
 
 function checkWorkingDiscovery(discovery: unknown, run: RunRecord): asserts discovery is Fields {
@@ -218,7 +237,7 @@ function select(inputs: RecordInputs): Selection {
     'A selected fact belongs to a different snapshot.');
   const source = sourcesFor({ artifacts, document, snapshotRef, inventory, readSource });
   const refs = references(artifacts, source, document);
-  (inputs.reservedIds ?? []).forEach(refs.claim);
+  reserveRecordIds(refs, inputs.baseline, inputs.reservedIds ?? []);
   return { ...refs, inputs, discovery, baseline: inputs.baseline as Fields, snapshotRef, indexed, document, source,
     entry, mapping, graph, access };
 }

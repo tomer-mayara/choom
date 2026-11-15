@@ -246,14 +246,23 @@ describe("validateDiscoveryRecords", () => {
     expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(message);
   });
 
-  // Defect 1: the Stage 4/5 publisher does not reserve the baseline ID, so this passes there.
-  // Stage 6 reserves it and refuses the same records after Stage 5 can no longer change.
-  test("accepts a component ID equal to the baseline ID with the publisher's reserved IDs only", () => {
+  // Defect 1: Stage 6 saves the fixed baseline under the baseline ID. The validator reserves that ID
+  // for every stage, so Stages 4 and 5 refuse it while the operator can still correct the draft.
+  test("refuses a component ID equal to the baseline ID with the Stage 4/5 and the Stage 6 reserved IDs", () => {
     const change = (records: Records): void => { records.baseline.id = "cli"; };
-    expect(validateDiscoveryRecords({ ...recordInputs(change), reservedIds: [`${stage}-file@publication.json`] }))
-      .toMatchObject({ components: 2 });
-    expect(() => validateDiscoveryRecords({ ...recordInputs(change), reservedIds: ["cli", "s6-x-discovery"] }))
-      .toThrow("Invalid or colliding model ID: cli");
+    const message = "The ID cli is reserved for the baseline. Use a different model ID.";
+    expect(() => validateDiscoveryRecords({ ...recordInputs(change), reservedIds: [`${stage}-file@publication.json`] }))
+      .toThrow(message);
+    expect(() => validateDiscoveryRecords({ ...recordInputs(change), reservedIds: ["s6-x-discovery"] })).toThrow(message);
+  });
+
+  test("refuses a model ID that the publication reserves for one of its own records", () => {
+    const receipt = `${stage}-file@publication.json`;
+    const change = (records: Records): void => {
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.forEach((gap) => { gap.id = receipt; });
+    };
+    expect(() => validateDiscoveryRecords({ ...recordInputs(change), reservedIds: [receipt] }))
+      .toThrow(`The ID ${receipt} is reserved for a record that this publication saves. Use a different model ID.`);
   });
 });
 
