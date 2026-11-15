@@ -32,7 +32,7 @@ export CHOOM_STAGE3="$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID"
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 start
 ```
 
-The [manual helper](../../../packages/producer/src/stage-3-commands.mjs) first checks the
+The [manual helper](../../../packages/producer/src/stage-3-commands.ts) first checks the
 [producer code record](record-format.md#producer-code-record) of the run. It then
 checks the saved manifest, discovery, empty baseline, and registered artifact
 digests. The manifest must mark entry analysis complete. Discovery must select a

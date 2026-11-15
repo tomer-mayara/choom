@@ -71,7 +71,7 @@ describe("stage starts save their documents and no producer code", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stagedRun(work, 2);
-      const result = runHelper(code("stage-3-commands.mjs"), ["start"],
+      const result = runHelper(code("stage-3-commands.ts"), ["start"],
         { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE3_ID: "s3-new" });
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toContain(`Saved s3-new for ${snapshotRef}.`);

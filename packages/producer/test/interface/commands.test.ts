@@ -19,7 +19,7 @@ const usageCases: UsageCase[] = [
     message: "Use start, capture, settings, excerpt PATH FIRST LAST REASON, finish REVIEW_FOLDER, or verify." },
   { helper: "stage-2-commands.ts", args: [], attempt: { CHOOM_STAGE2_ID: "s2-check" }, status: 1,
     message: "Use start, excerpt PATH FIRST LAST REASON, plan REVIEW_DIR, prepare, toolchain, run, save-review REVIEW_DIR, or finish." },
-  { helper: "stage-3-commands.mjs", args: [], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
+  { helper: "stage-3-commands.ts", args: [], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
     message: "Use start, collect, excerpt PATH FIRST LAST, or save-review REVIEW_DIR." },
   { helper: "stage-3-finish.ts", args: ["unknown"], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
     message: "Run the Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3." },
