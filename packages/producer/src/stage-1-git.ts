@@ -33,10 +33,11 @@ export const gitIdentityRef = 'git-identity-001';
 
 // Each Git call starts with these arguments and has these variables, and no
 // other GIT_* variable. They turn off the target settings that can run a
-// program (fsmonitor, hooks and a pager), the system and user Git settings,
-// prompts, and every transport, so that a lazy fetch of a partial clone cannot
-// run a remote command. They also turn off replacement objects, so that the
-// listed tree is the tree of the recorded commit.
+// program (fsmonitor, hooks and a pager), the system and user Git settings and
+// prompts. They also turn off every transport and the lazy fetch: in a partial
+// clone that misses an object, a fetch runs commands of the target settings,
+// such as remote.<name>.uploadpack. Last, they turn off replacement objects, so
+// that the listed tree is the tree of the recorded commit.
 const settingArguments = ['--no-pager', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null'];
 const settingVariables = { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0',
   GIT_TERMINAL_PROMPT: '0', GIT_ALLOW_PROTOCOL: '', GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1' };
