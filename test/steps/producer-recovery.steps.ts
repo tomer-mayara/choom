@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, realpathSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync,
+  writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
+import { copyToolCheckout } from "../../packages/producer/test/support/tool-checkout.ts";
+import { pathWithDoubles } from "../../packages/producer/test/support/tool-doubles.ts";
 
 interface FixtureComponent {
   id: string;
@@ -31,11 +35,15 @@ interface SavedRun {
 }
 interface PublishedPaths { status: string; baselinePath: string; discoveryPath: string }
 interface Statement { value: unknown; status: string; evidenceRefs: unknown }
+// A new Stage 1 run in a scratch folder: a small target, the run folder and the tool checkout.
+interface StageOneRun { root: string; target: string; work: string; tools: string }
 
 interface RecoveryWorld extends World {
   producerRun?: ProducerFixture;
   savedFilesBefore?: [string, string][];
   saveCommands?: SpawnSyncReturns<string>[];
+  stageOneRun?: StageOneRun;
+  stageOneCommand?: SpawnSyncReturns<string>;
 }
 
 const tools = realpathSync(fileURLToPath(new URL("../../", import.meta.url)));
@@ -60,6 +68,49 @@ function stageSixCommand(run: ProducerFixture, action: string, ...args: string[]
   return result;
 }
 
+function newStageOneRun(root: string, checkout = tools): StageOneRun {
+  const target = join(root, "target");
+  mkdirSync(target);
+  writeFileSync(join(target, "app.ts"), "export const value = 1;\n");
+  return { root, target, work: join(root, "run"), tools: checkout };
+}
+
+function scratchFolder(): string {
+  return mkdtempSync(join(realpathSync(tmpdir()), "choom-producer-code-"));
+}
+
+function stageOneCommand(run: StageOneRun, action: string, env: Record<string, string> = {}): SpawnSyncReturns<string> {
+  const result = spawnSync("node", [join(run.tools, "packages/producer/src/cli.ts"), "stage-1", action], {
+    encoding: "utf8",
+    env: { ...process.env, CHOOM_TOOLS: run.tools, CHOOM_WORK: run.work, CHOOM_TARGET: run.target,
+      CHOOM_RUN_ID: "run-acceptance", CHOOM_SNAPSHOT_ID: "snapshot-acceptance", CHOOM_BASELINE_ID: "baseline-acceptance",
+      ...env },
+  });
+  assert.ifError(result.error);
+  return result;
+}
+
+// The code digest that the record format defines: SHA-256 over one "<file SHA-256>  <path>" line
+// for each regular file in the two code folders, in byte order of the paths.
+function codeDigest(root: string): string {
+  const paths = ["packages/producer/src", "packages/baseline-model/src"].flatMap((folder) =>
+    readdirSync(join(root, folder), { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile())
+      .map((entry) => relative(root, join(entry.parentPath, entry.name))));
+  paths.sort((first, second) => Buffer.compare(Buffer.from(first), Buffer.from(second)));
+  return sha256(Buffer.from(paths.map((path) => `${sha256(readFileSync(join(root, path)))}  ${path}\n`).join("")));
+}
+
+function gitCommit(root: string): string {
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" });
+  return head.status === 0 ? head.stdout.trim() : "not-available";
+}
+
+function producerRecord(run: StageOneRun): Record<string, unknown> {
+  const path = join(run.work, "evidence/producer.json");
+  assert.ok(existsSync(path), "The run has no producer code record.");
+  return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+}
+
 // Every saved directory and file digest, so a refused save can show that nothing changed.
 function savedFiles(root: string, prefix = ""): [string, string][] {
   return readdirSync(join(root, prefix), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
@@ -75,6 +126,16 @@ function statements(value: unknown): Statement[] {
   if (value === null || typeof value !== "object") return [];
   if (["value", "status", "evidenceRefs"].every((key) => Object.hasOwn(value, key))) return [value as Statement];
   return Object.values(value).flatMap(statements);
+}
+
+function currentStageOneRun(world: RecoveryWorld): StageOneRun {
+  assert.ok(world.stageOneRun, "Prepare a new run first.");
+  return world.stageOneRun;
+}
+
+function lastStageOneCommand(world: RecoveryWorld): SpawnSyncReturns<string> {
+  assert.ok(world.stageOneCommand, "Run a Stage 1 action first.");
+  return world.stageOneCommand;
 }
 
 function currentRun(world: RecoveryWorld): ProducerFixture {
@@ -95,6 +156,7 @@ function publishedPaths(world: RecoveryWorld): PublishedPaths {
 
 After({ tags: "@producer" }, function (this: RecoveryWorld) {
   if (this.producerRun) rmSync(this.producerRun.root, { recursive: true, force: true });
+  if (this.stageOneRun) rmSync(this.stageOneRun.root, { recursive: true, force: true });
 });
 
 Given("a reviewed Stage 5 draft for a small fixture repository", async function (this: RecoveryWorld) {
@@ -166,4 +228,51 @@ Then("the operator is told which file has two owners", function (this: RecoveryW
   const message = this.saveCommands?.[0]?.stderr ?? "";
   assert.match(message, /\bcli\.ts\b/);
   assert.doesNotMatch(message, /\b(http|mcp)\.ts\b/);
+});
+
+Given("a new run", function (this: RecoveryWorld) {
+  this.stageOneRun = newStageOneRun(scratchFolder());
+});
+
+When("the operator starts Stage 1", function (this: RecoveryWorld) {
+  this.stageOneCommand = stageOneCommand(currentStageOneRun(this), "start");
+});
+
+Then("the run records the producer version and a digest of its code", function (this: RecoveryWorld) {
+  const run = currentStageOneRun(this);
+  const started = lastStageOneCommand(this);
+  assert.equal(started.status, 0, started.stderr);
+  const manifest = JSON.parse(readFileSync(join(run.tools, "packages/producer/package.json"), "utf8")) as { version: string };
+  assert.deepEqual(producerRecord(run), { formatVersion: 1, package: "@choom/producer", version: manifest.version,
+    codeDigest: codeDigest(run.tools), commit: gitCommit(run.tools) });
+});
+
+Given("a run that started with one version of the producer code", function (this: RecoveryWorld) {
+  const root = scratchFolder();
+  this.stageOneRun = newStageOneRun(root, copyToolCheckout(root));
+  const started = stageOneCommand(this.stageOneRun, "start");
+  assert.equal(started.status, 0, started.stderr);
+});
+
+Given("the producer code has changed since then", function (this: RecoveryWorld) {
+  appendFileSync(join(currentStageOneRun(this).tools, "packages/baseline-model/src/baseline.ts"), "// A later change.\n");
+});
+
+When("the operator starts the next stage action", function (this: RecoveryWorld) {
+  const run = currentStageOneRun(this);
+  this.savedFilesBefore = savedFiles(run.work);
+  // The rsync double lets the capture run on a computer without rsync.
+  this.stageOneCommand = stageOneCommand(run, "capture", { PATH: pathWithDoubles(run.root) });
+});
+
+Then("the action is refused", function (this: RecoveryWorld) {
+  const action = lastStageOneCommand(this);
+  assert.equal(action.status, 1, action.stdout);
+  assert.deepEqual(savedFiles(currentStageOneRun(this).work), this.savedFilesBefore);
+});
+
+Then("the operator is told that the producer code changed", function (this: RecoveryWorld) {
+  const message = lastStageOneCommand(this).stderr;
+  assert.match(message, /^The producer code changed after this run started\./);
+  assert.ok(message.includes(`commit ${String(producerRecord(currentStageOneRun(this)).commit)}`), message);
 });

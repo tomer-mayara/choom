@@ -14,3 +14,15 @@ Feature: Recover an architecture baseline with the producer
     When the operator saves the result
     Then nothing is saved
     And the operator is told which file has two owners
+
+  Scenario: The run records which producer code ran
+    Given a new run
+    When the operator starts Stage 1
+    Then the run records the producer version and a digest of its code
+
+  Scenario: A changed producer cannot continue a run
+    Given a run that started with one version of the producer code
+    And the producer code has changed since then
+    When the operator starts the next stage action
+    Then the action is refused
+    And the operator is told that the producer code changed

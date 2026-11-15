@@ -2,14 +2,18 @@ import { cpSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node
 import { join } from "node:path";
 import { toolsRoot } from "./commands.ts";
 
-// A test copy of the tool checkout: the root package.json, the producer code and
-// the producer documents. node_modules links to this checkout's installed packages.
+// A test copy of the tool checkout: the root package.json, the producer package
+// and code, the baseline-model code and the producer documents. node_modules
+// links to this checkout's installed packages.
 export function copyToolCheckout(scratch: string): string {
   const tools = join(scratch, "tools");
   mkdirSync(join(tools, "docs/design"), { recursive: true });
   mkdirSync(join(tools, "packages/producer"), { recursive: true });
+  mkdirSync(join(tools, "packages/baseline-model"), { recursive: true });
   cpSync(join(toolsRoot, "package.json"), join(tools, "package.json"));
+  cpSync(join(toolsRoot, "packages/producer/package.json"), join(tools, "packages/producer/package.json"));
   cpSync(join(toolsRoot, "packages/producer/src"), join(tools, "packages/producer/src"), { recursive: true });
+  cpSync(join(toolsRoot, "packages/baseline-model/src"), join(tools, "packages/baseline-model/src"), { recursive: true });
   cpSync(join(toolsRoot, "docs/design/app-a"), join(tools, "docs/design/app-a"), { recursive: true });
   symlinkSync(join(toolsRoot, "node_modules"), join(tools, "node_modules"));
   return tools;
