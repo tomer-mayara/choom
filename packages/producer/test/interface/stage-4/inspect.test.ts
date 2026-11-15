@@ -218,8 +218,11 @@ describe("Stage 4 collect", () => {
     const prompt = readFileSync(join(fixture.attempt, "review-prompt.md"), "utf8");
     expect(prompt).toStartWith(`# Stage 4 component recovery review\n\nRun: run-check\nSnapshot: ${snapshotRef}\nAttempt: ${id}\n` +
       `Working folder: ${work}\nSaved attempt: ${fixture.attempt}\n\n`);
+    // The LLM can ask for the references to a symbol.
+    expect(prompt).toContain("To find where a top-level symbol is used, request its references with a snapshot-relative path " +
+      "and the symbol name.");
     // The digest of the prompt text without the working folder: the text itself does not change.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("edf332f2b0e9895a8580b483fd9781aab105f4637f3183d981a2dc33d8894381");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("7bc7cac678add6338849b750b913e38cec1bfaab831fbd1f924fbe498d0ec06c");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);
