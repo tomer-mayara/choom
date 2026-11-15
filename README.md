@@ -677,6 +677,16 @@ bun test ./packages/producer/test/unit/completed-run.test.ts ./packages/producer
 bun test ./packages/producer/test/integration/records/baseline-decide.test.ts
 ```
 
+The decision checks, the producer record checks and the viewer's **Recorded
+statements** use one list of the statements of a baseline and their paths:
+`item-statements.ts` in `@choom/baseline-model`. Run the checks of the list and
+of its users with:
+
+```sh
+bun test ./packages/baseline-model/test/unit/item-statements.test.ts
+bun test ./packages/producer/test/integration/records/record-baseline.test.ts ./test/unit/lib/interface-provenance.test.ts
+```
+
 The normal browser opening test uses the real app, file reader, decoder, layout,
 and component view. Controlled workflow tests cover failures, cancellation,
 concurrent requests, and late results. Browser tests and IPC doubles do not
@@ -823,7 +833,9 @@ too, for the baseline shape, and adds its stricter profile and its run checks
 `./baseline-format`, and `./readonly-data`. It uses only TypeScript that Node
 can remove, so a Node process imports it with no build step.
 The `./baseline-decisions` export checks a decision file against a saved
-baseline (`validateDecisions`).
+baseline (`validateDecisions`). The `./item-statements` export lists the
+statements of a baseline with their paths, for the decision checks, the
+producer record checks and the viewer's Recorded statements.
 
 The [producer](packages/producer/component.yaml) is the `@choom/producer` Bun
 workspace. It holds the manual Stage 1 to 6 helpers, the duplication helpers,

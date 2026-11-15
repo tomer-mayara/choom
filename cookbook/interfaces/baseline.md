@@ -136,8 +136,10 @@ decisions that accept or correct statements of one saved baseline. Import
 `validateDecisions` from `@choom/baseline-model/baseline-decisions`. It takes the
 file and the baseline with the SHA-256 of its saved bytes, reads no file, and
 returns the typed decisions or every problem that it found. A statement is an
-item field with `value`, `status` and `evidenceRefs`; `baselineStatements` lists
-them. The [record format](../../docs/design/app-a/record-format.md#decision-record)
+item field with `value`, `status` and `evidenceRefs`. `baselineStatements` in
+`@choom/baseline-model/item-statements` lists them with their paths, and the
+producer record checks and the viewer's Recorded statements use the same list.
+The [record format](../../docs/design/app-a/record-format.md#decision-record)
 gives the fields, the statements that can be decided and the checks.
 
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
@@ -176,6 +178,7 @@ bun test ./packages/baseline-model/test/unit/interface-documentation.test.ts ./p
 bun test ./test/interface/domain/baseline.test.ts
 bun test ./test/interface/domain/interface-documentation.test.ts
 bun test ./packages/baseline-model/test/unit/baseline-decisions.test.ts ./test/interface/domain/baseline-decisions.test.ts
+bun test ./packages/baseline-model/test/unit/item-statements.test.ts
 bun run test:integration
 bun run check:contracts
 ```
