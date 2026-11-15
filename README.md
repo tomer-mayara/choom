@@ -462,7 +462,8 @@ a gap of an open project. The unit suites check the producer code digest and rec
 command mapping, the check of the visible LLM response and the call record, the
 parsing profile, the settings collector, the Git identity, the capture exclusion
 rules, the installed ripgrep program, the text search, the snapshot project, the
-export list, the Stage 4 graph profile and the skip reasons of the Stage 5 syntax
+export list, the Stage 4 graph profile, the profile checks of the Stage 4 graph
+helper and the skip reasons of the Stage 5 syntax
 query. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
@@ -521,6 +522,26 @@ Run the checks of the shared baseline rules in the producer with:
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/integration/records ./packages/producer/test/interface/stage-4
 bun test ./packages/producer/test/interface/entry-points/producer-publication.test.mjs
+```
+
+The Stage 4 graph helper `stage-4-graph.ts` is TypeScript. The graph container
+gets only this file, as `/producer/stage-4-graph.mts`, and Node runs it as an ES
+module with type stripping. The graph helper suite runs it as a command: the
+usage and tool folder refusals, and that a graph profile run always uses the tool
+folder of the image. The local checks run its fixture with the checkout's
+dependency-cruiser, also from a copy of the helper alone in a folder with no
+`package.json`, as the container gets it. The graph passes suite runs Stage 4
+start and the helper's `collect` on three small packages whose dependency has
+separate import and require targets (`test/fixtures/module-kinds/`). It records
+the passes and edges of today, including the import targets that TypeScript files
+whose compiled code is CommonJS get. A unit suite records the profile checks of
+the helper. The Docker suite checks that the image runs the helper with no
+stderr. Run the graph helper checks with:
+
+```sh
+bun test ./packages/producer/test/unit/stage-4-graph.test.ts ./packages/producer/test/interface/stage-4/graph-helper.test.ts
+bun test ./packages/producer/test/interface/stage-4/graph-passes.test.ts ./packages/producer/test/interface/local-checks.test.ts
+bun run test:producer:docker
 ```
 
 The Stage 5 suite publishes the Stage 4 fixture with more snapshot files, then

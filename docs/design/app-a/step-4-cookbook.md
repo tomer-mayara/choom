@@ -121,10 +121,11 @@ tool loading. The build has no target repository mount. It can require network
 access to obtain the tool image and packages.
 
 The helper records the image ID, package lock, versions, command outcomes, and
-fixture result. The fixture checks aliases, type-only imports, dynamic imports,
-conditional package imports, overlapping scan contexts, unresolved targets and
-configuration traps. A fixture pass covers those cases; it does not prove
-complete target coverage.
+fixture result. The image runs the fixture with the graph helper at the same
+container path as the graph run. The fixture checks aliases, type-only imports,
+dynamic imports, conditional package imports, overlapping scan contexts,
+unresolved targets and configuration traps. A fixture pass covers those cases;
+it does not prove complete target coverage.
 
 The graph engine uses the API and its built-in JSON reporter. It passes
 Choom-owned data directly. It does not load a target rule file, custom reporter,
@@ -143,8 +144,11 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4 run
 The input helper prepares or verifies the shared inventory-only copy. Its path
 uses the inventory digest; stage 2 and stage 4 can reuse the same verified copy.
 The graph container receives that copy at `/repo`, read-only. It also receives
-the saved control files at `/control` and the graph helper from the tool checkout,
-read-only. It has no network and cannot see the live
+the saved control files at `/control` and the graph helper `stage-4-graph.ts`
+from the tool checkout as `/producer/stage-4-graph.mts`, read-only. Node runs a
+`.mts` file as an ES module and removes its TypeScript types, so the image needs
+no compiler and no `package.json` for the helper. The helper imports only Node
+built-ins. The container has no network and cannot see the live
 checkout or excluded source inputs. The helper requires a local Docker endpoint
 and records the selected image and command. It verifies the input copy again
 after the run.
