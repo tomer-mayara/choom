@@ -70,7 +70,7 @@ describe("local producer tool checks", () => {
         artifacts: { "inventory-001": { path: "evidence/inventory.json", sha256: digest },
           "exclusions-001": { path: "exclusions.txt", sha256: sha256("node_modules\n") } } }));
       const recovered = join(scratch, "recovered");
-      const result = runHelper(helper("recover-capture.mjs"), ["--check"], { CHOOM_TOOLS: toolsRoot,
+      const result = runHelper(helper("recover-capture.ts"), ["--check"], { CHOOM_TOOLS: toolsRoot,
         CHOOM_PREVIOUS_WORK: previous, CHOOM_WORK: recovered, CHOOM_RUN_ID: "run-new", CHOOM_SNAPSHOT_ID: "snapshot-new" });
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(JSON.parse(result.stdout)).toMatchObject({ status: "retained-inputs-verified", runRef: "run-new",

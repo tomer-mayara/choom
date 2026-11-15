@@ -14,9 +14,9 @@ interface UsageCase {
 }
 
 const usageCases: UsageCase[] = [
-  { helper: "stage-1-commands.mjs", args: [], status: 1,
+  { helper: "stage-1-commands.ts", args: [], status: 1,
     message: "Use start, capture, settings, excerpt PATH FIRST LAST REASON, finish REVIEW_FOLDER, or verify." },
-  { helper: "stage-2-commands.mjs", args: [], attempt: { CHOOM_STAGE2_ID: "s2-check" }, status: 1,
+  { helper: "stage-2-commands.ts", args: [], attempt: { CHOOM_STAGE2_ID: "s2-check" }, status: 1,
     message: "Use start, excerpt PATH FIRST LAST REASON, plan REVIEW_DIR, prepare, toolchain, run, save-review REVIEW_DIR, or finish." },
   { helper: "stage-3-commands.mjs", args: [], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
     message: "Use start, collect, excerpt PATH FIRST LAST, or save-review REVIEW_DIR." },
@@ -35,7 +35,7 @@ const usageCases: UsageCase[] = [
     message: "Use preflight REVIEW_DIR, start REVIEW_DIR, check, finish, or verify." },
   { helper: "duplication-commands.mjs", args: [], status: 1,
     message: "Use start RUN OUTPUT ID, collect OUTPUT, skip OUTPUT REASON, review OUTPUT INPUT_JSON, or publish OUTPUT." },
-  { helper: "recover-capture.mjs", args: ["unknown"], status: 1,
+  { helper: "recover-capture.ts", args: ["unknown"], status: 1,
     message: "Use no argument to capture, or --check for read-only verification." },
   { helper: "inventory-view.py", args: [], status: 2, message: "the following arguments are required: operation, work, " +
     "inventory, inventory_sha256, snapshot_id, attempt_id" },

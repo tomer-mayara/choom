@@ -17,15 +17,15 @@ export interface HelperCall {
 }
 
 export const producerCommands: ReadonlyMap<string, ProducerCommand> = new Map([
-  ["stage-1", { helper: "stage-1-commands.mjs", use: "Capture the snapshot and review its settings." }],
-  ["stage-2", { helper: "stage-2-commands.mjs", use: "Start the entry analysis." }],
+  ["stage-1", { helper: "stage-1-commands.ts", use: "Capture the snapshot and review its settings." }],
+  ["stage-2", { helper: "stage-2-commands.ts", use: "Start the entry analysis." }],
   ["stage-3", { helper: "stage-3-commands.mjs", use: "Start the loading and symbol search." }],
   ["stage-4", { helper: "stage-4-commands.mjs", use: "Start the component recovery." }],
   ["stage-4-5-publish", { helper: "stage-4-5-publish.mjs", use: "Check, publish or verify a Stage 4 or Stage 5 review." }],
   ["stage-5", { helper: "stage-5-commands.mjs", use: "Collect and review the remaining code." }],
   ["stage-6", { helper: "stage-6-commands.mjs", use: "Save and verify the fixed baseline and discovery result." }],
   ["duplication", { helper: "duplication-commands.mjs", use: "Run the separate duplication assessment." }],
-  ["recover-capture", { helper: "recover-capture.mjs", use: "Recover inputs from a damaged earlier capture." }],
+  ["recover-capture", { helper: "recover-capture.ts", use: "Recover inputs from a damaged earlier capture." }],
   ["inventory-view", { helper: "inventory-view.py", use: "Prepare, verify or consolidate inventory-only input copies." }],
 ]);
 

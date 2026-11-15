@@ -221,10 +221,10 @@ Then follow all six stages again. Do not reuse old tool reports as results for
 the new snapshot. The new source path and explicit scope distinguish this capture
 from a fresh capture of the live repository.
 
-[recover-capture.mjs](../../../packages/producer/src/recover-capture.mjs) is an exceptional utility retained for
+[recover-capture.ts](../../../packages/producer/src/recover-capture.ts) is an exceptional utility retained for
 the historical prototype. It verifies and copies a specific retained subset,
 but writes a legacy capture layout. Its output is not a ready-to-finish input for
-`stage-1-commands.mjs`. It needs a separate reviewed publication process. Do not
+`stage-1-commands.ts`. It needs a separate reviewed publication process. Do not
 use that utility as a shortcut through the standard instructions above.
 
 ## 4. Collect source evidence

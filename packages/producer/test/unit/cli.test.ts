@@ -7,15 +7,15 @@ import { producerSource } from "../support/commands.ts";
 describe("producer command line mapping", () => {
   test("names the commands that operators run from the tool checkout", () => {
     expect([...producerCommands].map(([name, { helper }]) => [name, helper])).toEqual([
-      ["stage-1", "stage-1-commands.mjs"],
-      ["stage-2", "stage-2-commands.mjs"],
+      ["stage-1", "stage-1-commands.ts"],
+      ["stage-2", "stage-2-commands.ts"],
       ["stage-3", "stage-3-commands.mjs"],
       ["stage-4", "stage-4-commands.mjs"],
       ["stage-4-5-publish", "stage-4-5-publish.mjs"],
       ["stage-5", "stage-5-commands.mjs"],
       ["stage-6", "stage-6-commands.mjs"],
       ["duplication", "duplication-commands.mjs"],
-      ["recover-capture", "recover-capture.mjs"],
+      ["recover-capture", "recover-capture.ts"],
       ["inventory-view", "inventory-view.py"],
     ]);
   });
@@ -33,7 +33,7 @@ describe("producer command line mapping", () => {
     expect(helperCall(["stage-6", "verify"])?.program).toBe(process.execPath);
   });
 
-  test.each([[[]], [["unknown"]], [["constructor"]], [["__proto__"]], [["STAGE-1"]], [["stage-1-commands.mjs"]],
+  test.each([[[]], [["unknown"]], [["constructor"]], [["__proto__"]], [["STAGE-1"]], [["stage-1-commands.ts"]],
     [["stage-3-finish"]], [["stage-4-inspect"]]])("has no helper for %p", (argv: string[]) => {
     expect(helperCall(argv)).toBeUndefined();
   });

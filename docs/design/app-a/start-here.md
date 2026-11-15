@@ -147,7 +147,8 @@ The cookbooks start the trusted helpers through the producer command line,
 from any directory. In the tool checkout, `bun run producer <command> <action>`
 runs the same command. It runs the helper in `packages/producer/src/` with the
 same arguments and environment. When a cookbook runs a helper copy saved in an
-attempt folder, use that saved copy as the cookbook shows.
+attempt folder, use that saved copy as the cookbook shows. A saved copy of a
+TypeScript helper ends in `.mts`, so Node runs it as an ES module in any folder.
 
 Choose a new working folder whose parent exists. For a checkout-local run, create
 the parent with `mkdir -p "$CHOOM_TOOLS/work-choom"` and set
@@ -522,7 +523,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `step-1-cookbook.md` through `step-6-cookbook.md` | Stage instructions, LLM prompts, checks and next handoff |
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
-| `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
+| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
 | `stage-3-finish.mjs` | Validate, save and verify the latest completed Stage 3 state |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5 |
 | `stage-4-5-publish.mjs` | Check, publish and verify the Stage 4 or Stage 5 review |
@@ -532,7 +533,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |
 | `check-knip-image.mjs` | Validate the controlled Knip tool image |
 | `inventory-view.py` | Prepare and verify inventory-only tool input copies |
-| `recover-capture.mjs` | Recovery helper for a damaged earlier capture; not the normal starting command |
+| `recover-capture.ts` | Recovery helper for a damaged earlier capture; not the normal starting command |
 
 Do not use an old analysis attempt as a template to edit in place. Start with
 [Stage 1](step-1-cookbook.md) and a fresh working folder.

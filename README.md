@@ -611,7 +611,10 @@ and `cli.ts`, which `bun run producer` runs on Node 26. The cookbooks, the
 [record format](docs/design/app-a/record-format.md), and the duplication guide
 stay in `docs/design/app-a/`. Stage 1 and Stage 2 still run code blocks from
 their saved cookbook copies, and each stage still saves copies of the files it
-uses, under the same names as before.
+uses. The Stage 1 and Stage 2 helpers and the recovery helper are TypeScript; a
+saved copy of a TypeScript file ends in `.mts`, so Node runs it as an ES module
+in any folder. `run-layout.d.mts` gives TypeScript callers the types of
+`run-layout.mjs`.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model

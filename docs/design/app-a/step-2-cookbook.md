@@ -23,7 +23,7 @@ components, trace behavior paths, compute reachability, or investigate smells.
 ## Run the saved commands
 
 This is the standard path for both a first run and a new attempt. It uses the
-[manual driver](../../../packages/producer/src/stage-2-commands.mjs). Keep `CHOOM_WORK` and `CHOOM_TOOLS` from
+[manual driver](../../../packages/producer/src/stage-2-commands.ts). Keep `CHOOM_WORK` and `CHOOM_TOOLS` from
 stage 1. Use a new attempt ID, such as `s2-001`; never reuse an attempt directory.
 Run one command at a time and check its result before continuing.
 Before the one-shot toolchain phase, check local Docker access from the actual
@@ -39,12 +39,13 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 start
 
 `start` verifies stage 1, saves checkpoints and freezes this cookbook and the
 helpers. It does not require an entry plan yet. After start, use the saved driver
-inside `CHOOM_STAGE2`. Read [section 2](#2-ask-the-llm-for-an-entry-plan), provide
+inside `CHOOM_STAGE2`. A saved copy of a TypeScript file ends in `.mts`, so Node
+runs it as an ES module in any folder. Read [section 2](#2-ask-the-llm-for-an-entry-plan), provide
 the saved evidence, and follow [Choose source ranges](start-here.md#choose-source-ranges)
 before collecting a requested source range:
 
 ```sh
-node "$CHOOM_STAGE2/stage-2-commands.mjs" excerpt \
+node "$CHOOM_STAGE2/stage-2-commands.mts" excerpt \
   package.json 1 20 "Check declared package entries and scripts."
 ```
 
@@ -58,10 +59,10 @@ Save the complete plan packet described in section 2 outside `CHOOM_WORK`, then:
 
 ```sh
 export CHOOM_STAGE2_PLAN="/absolute/path/to/stage-2-plan"
-node "$CHOOM_STAGE2/stage-2-commands.mjs" plan "$CHOOM_STAGE2_PLAN"
-node "$CHOOM_STAGE2/stage-2-commands.mjs" prepare
-node "$CHOOM_STAGE2/stage-2-commands.mjs" toolchain
-node "$CHOOM_STAGE2/stage-2-commands.mjs" run
+node "$CHOOM_STAGE2/stage-2-commands.mts" plan "$CHOOM_STAGE2_PLAN"
+node "$CHOOM_STAGE2/stage-2-commands.mts" prepare
+node "$CHOOM_STAGE2/stage-2-commands.mts" toolchain
+node "$CHOOM_STAGE2/stage-2-commands.mts" run
 ```
 
 `prepare` creates the fixed profile and verified inventory-only input.
@@ -81,8 +82,8 @@ results and prepare its complete analysis packet outside `CHOOM_WORK`, then:
 
 ```sh
 export CHOOM_STAGE2_REVIEW="/absolute/path/to/stage-2-entry-review"
-node "$CHOOM_STAGE2/stage-2-commands.mjs" save-review "$CHOOM_STAGE2_REVIEW"
-node "$CHOOM_STAGE2/stage-2-commands.mjs" finish
+node "$CHOOM_STAGE2/stage-2-commands.mts" save-review "$CHOOM_STAGE2_REVIEW"
+node "$CHOOM_STAGE2/stage-2-commands.mts" finish
 ```
 
 The driver saves commands, UTC times, evidence packets, digests and tool outcomes.

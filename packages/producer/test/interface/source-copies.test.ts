@@ -6,7 +6,8 @@ import { producerDocuments, producerSource, runHelper, toolsRoot, withScratch } 
 import { stagedRun, stagedSnapshotRef as snapshotRef } from "../support/staged-run.ts";
 
 // A stage start saves copies of the files it uses in the run, under fixed names.
-// Each case states where every saved name comes from in the tool checkout.
+// Each case states where every saved name comes from in the tool checkout. A
+// saved copy of a TypeScript file ends in .mts, so Node runs it as an ES module.
 type SourceMap = Record<string, string>;
 
 interface ProducerFixture { root: string; work: string; review: string }
@@ -35,11 +36,11 @@ describe("stage starts save their source copies", () => {
       const work = join(scratch, "run");
       mkdirSync(target);
       writeFileSync(join(target, "app.ts"), "export const value = 1;\n");
-      const result = runHelper(code("stage-1-commands.mjs"), ["start"], { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work,
+      const result = runHelper(code("stage-1-commands.ts"), ["start"], { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work,
         CHOOM_TARGET: target, CHOOM_RUN_ID: "run-check", CHOOM_SNAPSHOT_ID: snapshotRef, CHOOM_BASELINE_ID: "baseline-check" });
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toBe("Working folder prepared. Review exclusions.txt and scope-notes.md before capture.\n");
-      expectCopies(join(work, "evidence"), { "stage-1-commands.mjs": code("stage-1-commands.mjs"),
+      expectCopies(join(work, "evidence"), { "stage-1-commands.mts": code("stage-1-commands.ts"),
         "run-layout.mjs": code("run-layout.mjs"), "cookbook.md": documents("step-1-cookbook.md") });
       expect(json(join(work, "evidence/stage1-inputs.json"))).toMatchObject({ tools: toolsRoot, target, workLayout: "separate" });
       expect(Object.keys(json(join(work, "evidence/tools.json")) as object)).toEqual(["node", "tsMorph", "typescript", "yaml"]);
@@ -50,12 +51,12 @@ describe("stage starts save their source copies", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stagedRun(work, 1);
-      const result = runHelper(code("stage-2-commands.mjs"), ["start"],
+      const result = runHelper(code("stage-2-commands.ts"), ["start"],
         { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE2_ID: "s2-new" });
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toContain("Prepared the attempt.");
       const attempt = join(work, "evidence/s2-new");
-      const sources = { "cookbook.md": documents("step-2-cookbook.md"), "stage-2-commands.mjs": code("stage-2-commands.mjs"),
+      const sources = { "cookbook.md": documents("step-2-cookbook.md"), "stage-2-commands.mts": code("stage-2-commands.ts"),
         "check-knip-image.mjs": code("check-knip-image.mjs"), "inventory-view.py": code("inventory-view.py") };
       expectCopies(attempt, sources);
       expect(Object.keys((json(join(attempt, "operator-start.json")) as Receipt).digests)).toEqual(

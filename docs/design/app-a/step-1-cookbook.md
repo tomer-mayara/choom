@@ -422,7 +422,7 @@ JS
 
 ## Recovery from a damaged older capture
 
-`recover-capture.mjs` is an exceptional recovery utility for the original manual
+`recover-capture.ts` is an exceptional recovery utility for the original manual
 profile. It creates a new snapshot from surviving regular files in an older run,
 excluding the fixed root folders `src-tauri/target/`, `dist/`, `reports/` and
 `test-results/`. It verifies retained files against the old inventory; it never
