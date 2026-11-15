@@ -202,7 +202,7 @@ export class InstalledBaselineDriver {
   }
 
   async selectedEntry(): Promise<string | null> {
-    const entry = this.session().$('[role="dialog"] [aria-label="Entry points"] button[aria-pressed="true"]');
+    const entry = this.session().$('[role="dialog"] [aria-label="Interface entries"] button[aria-pressed="true"]');
     return entry.getAttribute("aria-label");
   }
 

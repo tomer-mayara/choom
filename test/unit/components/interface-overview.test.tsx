@@ -34,6 +34,7 @@ function renderDocumented(variant = "complete") {
 
 test("saved entry order and selection keep each contract and unmatched reference distinct", () => {
   const { overview } = renderDocumented();
+  expect(overview.getByRole("region", { name: "Interface entries" })).toBeTruthy();
   expect(overview.getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
     "Create invoice, create-invoice", "Invoice type, invoice-type", "Invoice data, invoice-data",
   ]);

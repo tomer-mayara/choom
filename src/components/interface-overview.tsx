@@ -108,8 +108,8 @@ export function InterfaceOverview({ baseline, item, entry, selectEntry, disclosu
     {item.documentation ? <Fact name="Purpose"><SavedText value={item.documentation.summary.value} /><RecordedStatus status={item.documentation.summary.status} /></Fact> : null}
     <InterfaceUsedBy baseline={baseline} item={item} assessment={assessment} disclosure={disclosure} />
     {!entry ? <LegacyContract item={item} disclosure={disclosure} /> : null}
-    <section aria-label="Entry points" className="space-y-3">
-      <h3 className="font-semibold">Entry points</h3>
+    <section aria-label="Interface entries" className="space-y-3">
+      <h3 className="font-semibold">Interface entries</h3>
       {entries.length ? <div className="flex flex-col gap-2">{entries.map((candidate) => <Button key={candidate.id} variant="outline"
         aria-label={`${candidate.name}, ${candidate.id}`} aria-pressed={entry?.id === candidate.id}
         className="h-auto justify-start whitespace-normal text-left wrap-anywhere aria-pressed:border-primary aria-pressed:bg-muted"

@@ -14,7 +14,7 @@ export function interfaceSourceStatements(item: ReadonlyData<BaselineInterface>)
       ...(statement.status === "accepted" ? { acceptanceRef: statement.acceptanceRef } : {}) });
   }
   add("owner", "Provider", item.owner);
-  add("publicAccess", "Entry points", item.publicAccess);
+  add("publicAccess", "Interface entries", item.publicAccess);
   add("allowedConsumers", "Access rule", item.allowedConsumers);
   add("promises", "Interface-wide contract", item.promises);
   const docs = item.documentation;

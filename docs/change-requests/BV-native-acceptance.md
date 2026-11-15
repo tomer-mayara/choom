@@ -169,6 +169,22 @@ returned typed request errors. Keep that product identity separate from the
 new harness hashes and final BV-07 package identity.
 The complete identities belong in the [verification record](BV-baseline-viewer-evidence.md).
 
+## Installed system entry details
+
+The `@ep-06` journey writes one standalone version 4 baseline. Installed Choom
+opens it through the native file picker without source files or an evidence
+bundle. Component details must keep all 21 saved entries and paths. The first
+External entry opens Billing's second documented operation; Back restores
+Checkout and the entry link's focus.
+
+```sh
+xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @ep-06
+```
+
+This automated driver runs on Linux/X11. On macOS, observe the same journey in
+an installed app and record the package identity and result. Browser acceptance
+checks keyboard activation and the 320-pixel layout separately.
+
 ## Installed duplication assessment
 
 Use the same installed executable and Linux/X11 setup for the duplication

@@ -8,6 +8,7 @@ import { Button } from "./ui/button.tsx";
 import { DuplicationList } from "./duplication-list.tsx";
 import { DuplicationComparison } from "./duplication-comparison.tsx";
 import type { duplicationCounts, DuplicationControls } from "./duplication-view.ts";
+import { SystemEntryDetails } from "./system-entry-details.tsx";
 
 function InspectionContent({ baseline, inspection, duplication, counts }: {
   baseline: ReadonlyData<Baseline>; inspection: ArchitectureInspection;
@@ -28,6 +29,9 @@ function InspectionContent({ baseline, inspection, duplication, counts }: {
       {(counts.components.get(component.id) ?? 0) > 0 ? <Button variant="outline" data-record-id={`duplicates-${component.id}`}
         onClick={(event) => navigate({ kind: "duplicates", componentId: component.id }, event.currentTarget)}>
         Possible duplicates ({counts.components.get(component.id)})</Button> : null}
+      {baseline.formatVersion === 4 && baseline.systemEntryPoints ? <SystemEntryDetails
+        entries={baseline.systemEntryPoints.entries.filter(({ componentId }) => componentId === component.id)}
+        interfaces={baseline.interfaces} navigate={navigate} /> : null}
       <ArchitectureRecordList title="Owned interfaces" kind="interface" navigate={navigate}
         items={baseline.interfaces.filter(({ owner }) => owner.value === component.id)} duplicateCounts={counts.interfaces} />
       <details data-section="resources" open={sections.includes("resources")}>
