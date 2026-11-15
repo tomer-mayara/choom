@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import * as yaml from "yaml";
 
 // Characterization of the shared record validator that Stages 4, 5 and 6 use.
 // The records are small in-memory copies modeled on the Stage 6 producer fixture.
@@ -33,8 +34,38 @@ interface MappingUnit {
   membershipRef: string | null;
   evidenceRefs: string[];
 }
+interface SourceNote { evidenceRef: string; description: string; location?: object }
+interface Example { id: string; name: string; basis: string; content: Statement<{ text: string }> }
+interface DocumentationEntry {
+  id: string;
+  name: string;
+  accessPoint: string;
+  kind: Statement<string>;
+  description: Statement<string | null>;
+  examples: Example[];
+}
+interface Documentation { summary: Statement<string>; entries: DocumentationEntry[]; sourceNotes: SourceNote[] }
+interface SourceUse {
+  id: string;
+  consumerId: string | null;
+  kind: string;
+  context: string;
+  description: string;
+  callerRef: string;
+  evidenceRefs: string[];
+}
+interface SourceAssessment {
+  interfaceId: string;
+  scope: string;
+  evidenceRefs: string[];
+  limitations: string[];
+  uses: SourceUse[];
+  sourceNotes: SourceNote[];
+}
+interface SourceUsage { snapshotRef: string; mappingRef: string; assessments: SourceAssessment[] }
 interface Records {
-  baseline: { formatVersion: number; id: string; parentId: null; components: Component[]; interfaces: []; resources: []; rules: [] };
+  baseline: { formatVersion: number; id: string; parentId: string | null; components: Component[]; interfaces: unknown[];
+    resources: []; rules: unknown[]; sourceUsage?: SourceUsage };
   discovery: { gaps: Issue[]; inspectedPaths: InspectedPath[]; baselineRef?: string } & Record<string, unknown>;
   entry: { gaps: Issue[]; behaviorEntries: unknown[] } & Record<string, unknown>;
   mapping: { scope: { unitKind: string } & Record<string, unknown>; units: MappingUnit[] } & Record<string, unknown>;
@@ -65,11 +96,12 @@ interface RecordCounts {
 interface RecordsModule {
   validateRecords(inputs: RecordInputs): RecordCounts;
   validateDiscoveryRecords(inputs: RecordInputs): RecordCounts;
+  readBaselineYaml(bytes: Buffer, yamlModule: typeof yaml): unknown;
 }
 
 // The validator is JavaScript. This local type states only what these tests use.
 const recordsModule = new URL("../../src/stage-6-records.mjs", import.meta.url);
-const { validateDiscoveryRecords, validateRecords } = (await import(recordsModule.href)) as RecordsModule;
+const { readBaselineYaml, validateDiscoveryRecords, validateRecords } = (await import(recordsModule.href)) as RecordsModule;
 
 const digest = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
 const snapshotRef = "snap";
@@ -284,5 +316,124 @@ describe("validateRecords with a Stage 6 readiness packet", () => {
   test("refuses a response that does not contain the readiness record", () => {
     expect(() => validateRecords({ ...recordInputs(), packet: packet({ response: "Summary only." }), draftDigests }))
       .toThrow("Incomplete readiness prompt, response or call metadata.");
+  });
+});
+
+// A version 4 baseline with one documented interface and one source-use assessment.
+// The use and its note cite the reviewed handler range; http owns http.ts.
+const unreadLocation = { snapshotRef, path: "cli.ts", sha256: digest(files["cli.ts"] ?? ""), lines: [1, 1] };
+const cited = <T>(value: T, refs: string[]): Statement<T> => ({ value, status: "proposed", evidenceRefs: refs });
+
+function ordersDocumentation(records: Records): Documentation {
+  const item = records.baseline.interfaces[0] as { documentation: Documentation } | undefined;
+  if (!item) throw new Error("Add the orders interface first.");
+  return item.documentation;
+}
+
+function ordersUse(records: Records): { assessment: SourceAssessment; use: SourceUse } {
+  const assessment = records.baseline.sourceUsage?.assessments[0];
+  const use = assessment?.uses[0];
+  if (!assessment || !use) throw new Error("Add the orders source use first.");
+  return { assessment, use };
+}
+
+function withOrdersInterface(records: Records): void {
+  records.baseline.formatVersion = 4;
+  records.baseline.interfaces = [{ id: "orders-api", name: "Orders API", owner: statement("cli"),
+    publicAccess: statement(["GET /orders"]), allowedConsumers: statement(["http"]),
+    promises: statement({ behavior: "List orders.", data: "Orders.", errors: "Request errors.", lifecycle: "Active." }),
+    documentation: { summary: statement("Order operations."), sourceNotes: [], entries: [{ id: "list-orders",
+      name: "List orders", accessPoint: "GET /orders", kind: statement("command"),
+      description: statement<string | null>("Return the saved orders."), examples: [] }] } }];
+  records.baseline.sourceUsage = { snapshotRef, mappingRef: selected.codeMappingRef, assessments: [{
+    interfaceId: "orders-api", scope: "The saved HTTP handler.", evidenceRefs: ["orders-handler"], limitations: [],
+    uses: [{ id: "http-lists-orders", consumerId: "http", kind: "value", context: "application",
+      description: "The handler lists the orders.", callerRef: "orders-handler", evidenceRefs: ["orders-handler"] }],
+    sourceNotes: [{ evidenceRef: "orders-handler", description: "The saved handler range.", location }] }] };
+}
+
+function documented(change: (records: Records) => void) {
+  return (records: Records): void => {
+    withOrdersInterface(records);
+    change(records);
+  };
+}
+
+const usePath = "orders-api.sourceUsage.uses.http-lists-orders";
+const runCheckCases: [string, (records: Records) => void, string][] = [
+  ["a null documentation fact that no question or gap names", documented((records) => {
+    const entry = ordersDocumentation(records).entries[0];
+    if (entry) entry.description.value = null;
+  }), "Invalid or unexplained documentation fact: orders-api.documentation.entries.list-orders.description"],
+  ["a source-reviewed example that cites a range outside the review history", documented((records) => {
+    const documentation = ordersDocumentation(records);
+    documentation.sourceNotes.push({ evidenceRef: "unread-cli", description: "The CLI range.", location: unreadLocation });
+    documentation.entries[0]?.examples.push({ id: "start-example", name: "Start", basis: "source-reviewed",
+      content: cited({ text: "start()" }, ["unread-cli"]) });
+  }), "Source-reviewed example needs its own reviewed range and location note: " +
+    "orders-api.documentation.entries.list-orders.examples.start-example"],
+  ["a source note whose location differs from its saved source record", documented((records) => {
+    const note = ordersUse(records).assessment.sourceNotes[0];
+    if (note) note.location = { ...location, lines: [1, 2] };
+  }), "Source note differs from its saved source record: orders-handler"],
+  ["a source use whose consumer is not the mapped owner of the caller", documented((records) => {
+    ordersUse(records).use.consumerId = "cli";
+  }), `Source consumer differs from the direct mapped caller owner: ${usePath}`],
+  ["a source use with an unknown context that no question or gap names", documented((records) => {
+    ordersUse(records).use.context = "unknown";
+  }), `Missing exact discovery subject for unresolved source use: ${usePath}.context`],
+  ["a source use outside the review history", documented((records) => {
+    const { assessment, use } = ordersUse(records);
+    Object.assign(use, { callerRef: "unread-cli", evidenceRefs: ["unread-cli"] });
+    assessment.sourceNotes.push({ evidenceRef: "unread-cli", description: "The CLI range.", location: unreadLocation });
+  }), `Source use is outside the selected source review history: ${usePath}: unread-cli`],
+  ["a source-use assessment of another mapping", documented((records) => {
+    if (records.baseline.sourceUsage) records.baseline.sourceUsage.mappingRef = "old-mapping";
+  }), "sourceUsage.mappingRef differs from the selected candidate mapping."],
+  ["more than 500 architecture records", (records) => {
+    records.baseline.rules = Array.from({ length: 499 }, (_, index) => ({ id: `rule-${index}`, name: "Rule",
+      subject: statement(null), expected: statement(null), check: statement(null) }));
+  }, "Baseline exceeds the 500-record display limit."],
+  ["more than 16 component levels", (records) => {
+    const chain = Array.from({ length: 17 }, (_, index): Component => ({ id: `level-${index}`, name: "Level",
+      purpose: statement("Group the level."), membership: statement({ paths: [`level-${index}/**`] }),
+      groupingReason: statement("One level."), ...(index > 0 ? { parent: statement(`level-${index - 1}`) } : {}) }));
+    records.baseline.components.push(...chain);
+  }, "Baseline exceeds the 16-parent-level display limit."],
+  ["a baseline with a parent version", (records) => {
+    records.baseline.parentId = "base-0";
+  }, "Expected a first proposed baseline."],
+  ["a version 5 baseline", (records) => {
+    records.baseline.formatVersion = 5;
+  }, "Expected a first proposed baseline."],
+];
+
+describe("run checks of the baseline against the saved records", () => {
+  test("accepts a version 4 baseline with interface documentation and source use", () => {
+    expect(validateDiscoveryRecords(recordInputs(withOrdersInterface))).toMatchObject({ mappedFiles: 2, components: 2 });
+  });
+
+  test.each(runCheckCases)("refuses %s", (_name, change, message) => {
+    expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(message);
+  });
+});
+
+describe("readBaselineYaml", () => {
+  test("reads one YAML document as JSON-compatible data", () => {
+    expect(readBaselineYaml(Buffer.from("formatVersion: 1\nid: base-1\nparentId: null\n"), yaml))
+      .toEqual({ formatVersion: 1, id: "base-1", parentId: null });
+  });
+
+  test.each([
+    ["an anchor and an alias", "a: &shared 1\nb: *shared\n", "Baseline YAML anchors and explicit tags are unsupported."],
+    ["a repeated mapping key", "a: 1\na: 2\n", "Baseline YAML mapping keys must be unique strings."],
+    ["two documents", "a: 1\n---\nb: 2\n", "Baseline must contain one YAML document."],
+    ["an explicit tag", "a: !!str 1\n", "Baseline YAML anchors and explicit tags are unsupported."],
+  ])("refuses %s", (_name, text, message) => {
+    expect(() => readBaselineYaml(Buffer.from(text), yaml)).toThrow(message);
+  });
+
+  test("refuses bytes that are not UTF-8", () => {
+    expect(() => readBaselineYaml(Buffer.from([0x61, 0x3a, 0x20, 0xff, 0x0a]), yaml)).toThrow("Baseline must use UTF-8.");
   });
 });
