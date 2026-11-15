@@ -148,6 +148,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-09 | tomer-mayara/choom#71 | Draft. This PR also records plan change 8. |
 | GA-04 | tomer-mayara/choom#72 | Draft. This PR also records plan change 9. |
 | GA-05 | tomer-mayara/choom#73 | Draft. This PR also records plan changes 10 and 11. |
+| GA-06a | tomer-mayara/choom#74 | Draft. This PR also records plan changes 12 and 13. |
 
 Plan changes:
 
@@ -230,6 +231,16 @@ Plan changes:
     (rule 5) and replaces their parser calls. Each PR then stays small
     enough to review. GA-02a and GA-07f, which work in Stages 4 and 5, now
     also need GA-06a2.
+12. **GA-06a2 also converts `stage-5-commands.mjs`.** Stage 5 loads its
+    parser in `stage-5-commands.mjs` and gives it to `stage-5-query.mjs`.
+    To use the snapshot project, Stage 5 must load ts-morph there instead,
+    which changes the logic of that file. Rule 5 then requires that it
+    becomes TypeScript first.
+13. **The Stage 3 loading search record changed (GA-06a).** Its profile is
+    now `stage-3-loading-syntax-v3`, and its parser is the snapshot project.
+    The matches are the same. The line-1 columns of a file with a byte
+    order mark are one less, because ts-morph does not count that mark.
+    GA-06a2 must keep the lines of Stages 4 and 5 the same.
 
 ### How to work every ticket
 
@@ -790,13 +801,15 @@ The characterization tests are the acceptance check.
 
 **Steps:**
 
-1. **N** Add characterization tests for `stage-4-inspect.mjs` and
-   `stage-5-query.mjs` where they are missing. They pass on the `.mjs` files.
-2. Convert both files to TypeScript with no behavior change (rule 5). The
-   tests pass before and after.
-3. Replace their `ts.createSourceFile` calls with the snapshot project of
-   GA-06a. The matches stay the same. Only the field that names the parser
-   changes.
+1. **N** Add characterization tests for `stage-4-inspect.mjs`,
+   `stage-5-query.mjs` and `stage-5-commands.mjs` where they are missing.
+   They pass on the `.mjs` files.
+2. Convert the three files to TypeScript with no behavior change (rule 5,
+   plan change 12). The tests pass before and after.
+3. Replace the `ts.createSourceFile` calls of Stage 4 inspect and Stage 5
+   query with the snapshot project of GA-06a, and load ts-morph as a
+   trusted tool of both stages. The matches and their lines stay the same.
+   Only the fields that name the parser and the tools change.
 
 ### GA-06b Definition and reference queries
 
