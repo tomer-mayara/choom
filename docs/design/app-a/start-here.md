@@ -276,7 +276,8 @@ decision within the run's existing authorization.
 
 For a large packet, you can review candidate data files as they become ready. Keep
 these drafts outside the run. This can catch factual errors before the worker
-assembles the full response, but the complete final packet still needs review.
+assembles the complete visible response, but the complete final packet still
+needs review.
 
 - Check representative source claims, exact saved ranges and omitted evidence.
   Inventory, syntax queries and available excerpts do not establish LLM review.
@@ -299,6 +300,8 @@ assembles the full response, but the complete final packet still needs review.
 - Read execution statuses and coverage limits. A successful command can save a
   skipped result. Gaps can include historical resolutions; their count is not a
   count of defects. Observed callers do not define an allowed-consumer policy.
+- Check that each saved LLM response holds only the visible answer and that each
+  call record has `hiddenReasoning: not-saved`. Do not save hidden reasoning.
 
 Resolve discrepancies before publication and keep corrected responses separately.
 When comparing stages, apply that stage's preservation rules to tool inputs,
@@ -345,7 +348,8 @@ current summaries. Keep architectural intent proposed.
 Leave findings, redesign and acceptance decisions to later design steps.
 
 Produce the complete packet as data in a folder outside CHOOM_WORK. Save the
-exact prompt, full response and exposed call metadata. Use unknown for
+exact prompt, the complete visible response and the exposed call metadata with
+hiddenReasoning: not-saved. Do not save hidden reasoning. Use unknown for
 unavailable metadata. Keep earlier and corrected responses separately. Stop
 before the final packet save identified under Review before publication.
 Return the packet path, evidence and receipt paths, commands and check results,
@@ -451,10 +455,10 @@ workflow. Fixed records and registered evidence stay unchanged.
 
 ## Record a correction
 
-Before publication, correct the external packet and its full response, then
-repeat the required review and checks. Fix helper-generated output in the trusted
-tools for a new run; do not edit a saved file or the producer code record to make
-a digest pass.
+Before publication, correct the external packet and its complete visible
+response, then repeat the required review and checks. Fix helper-generated
+output in the trusted tools for a new run; do not edit a saved file or the
+producer code record to make a digest pass.
 
 After publication, a minor explanatory error can be recorded in `run-notes.md`
 at the run root. Keep it outside immutable attempt directories and the artifact
@@ -546,6 +550,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-5-query.mjs` | Remaining-code and inspection-coverage queries |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
+| `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |
 | [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |
 | `check-knip-image.mjs` | Validate the controlled Knip tool image |
 | `inventory-view.py` | Prepare and verify inventory-only tool input copies |

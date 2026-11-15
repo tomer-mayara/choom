@@ -138,9 +138,10 @@ does not require a new snapshot; adding source that was not captured does.
 ## 3. Ask the LLM to review the evidence
 
 Invoke the LLM with `review-prompt.md`. It can read and check the saved evidence.
-Save the prompt, complete response, and call record before finalization. A call
-record from an interactive session must say so; do not invent a provider request
-ID, model identifier, timing, or token count that the session does not expose.
+Save the prompt, the complete visible response, and the call record before
+finalization. Do not save hidden reasoning. A call record from an interactive
+session must say so; do not invent a provider request ID, model identifier,
+timing, or token count that the session does not expose.
 
 The helper fills the following template. It supplies the current entry analysis
 through the manifest, so the operator does not classify files or write records.
@@ -246,10 +247,10 @@ Return a complete result with explicit limits even when some questions remain.
 ```
 <!-- stage3-review-prompt:end -->
 
-Save the complete response as `entry-analysis.yaml` in the external review
-folder described below. Keep corrected responses and their call records as
-separate external review packets. Do not patch individual analysis records by
-hand to make a validator pass.
+Save the YAML result of the complete visible response as `entry-analysis.yaml`
+in the external review folder described below. Keep corrected responses and
+their call records as separate external review packets. Do not patch individual
+analysis records by hand to make a validator pass.
 
 Before copying anything into the attempt, prepare a new review folder outside
 `CHOOM_WORK`. Ask the LLM to prepare the following files. The operator supplies
@@ -260,13 +261,16 @@ classification is needed.
 | --- | --- |
 | `entry-analysis.yaml` | The complete YAML response described above. |
 | `llm/analysis-prompt.md` | The exact prompt and any follow-up directions used for the review. |
-| `llm/analysis-response.md` | The complete response, including the exact entry-analysis YAML. |
-| `llm/analysis-call.yaml` | `provider`, `model`, `date`, and `settings`. Use `unknown` for values the session does not expose; settings can be an object or `unknown`. |
+| `llm/analysis-response.md` | The complete visible response, including the exact entry-analysis YAML. Do not save hidden reasoning. |
+| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`, and `hiddenReasoning: not-saved`. Use `unknown` for values the session does not expose; settings can be an object or `unknown`. |
 | `llm/review-scope.json` | `formatVersion: 1`, `runRef`, `snapshotRef`, `suppliedArtifactRefs`, and `limits`. Both lists must be nonempty. References identify supplied saved evidence; limits describe unavailable inputs and use of earlier reviews. |
 
 Do not invent provider IDs, timestamps or token counts. Use the real call date
-when available. The response and reviewed ranges record the LLM's work; the
-collector's file list is not a list of files read by the LLM.
+when available. The finalizer refuses a response with a hidden reasoning block,
+such as a `<thinking>` block or a raw provider response with thinking content,
+and a call record without `hiddenReasoning: not-saved`. The response and reviewed
+ranges record the LLM's work; the collector's file list is not a list of files
+read by the LLM.
 
 Review the complete packet for meaning before `save-review` and publication.
 Check that conclusions have source context, reviewed ranges were actually read,

@@ -11,7 +11,8 @@ defines the [producer code record](#producer-code-record) that every stage check
 The LLM prepares these **nine files**, in a new folder outside `CHOOM_WORK`.
 The operator saves them if the LLM cannot write there. Do not ask the operator
 to classify source files or fill analysis records. Return complete records,
-not patches, ellipses, or example IDs. Keep the full prompt and response.
+not patches, ellipses, or example IDs. Keep the full prompt and the complete
+visible response. Do not save hidden reasoning.
 
 | File | Contents |
 | --- | --- |
@@ -21,12 +22,16 @@ not patches, ellipses, or example IDs. Keep the full prompt and response.
 | `code-mapping.json` | Every inventory file, with one owner or an explicit unknown owner. |
 | `resource-access.json` | Source-supported resource observations. |
 | `llm/analysis-prompt.md` | Full instructions supplied to the LLM. |
-| `llm/analysis-response.md` | Full response, including the exact text of all five candidate records above. |
-| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`. Use `unknown` for values not exposed; settings can be a mapping or `unknown`. |
+| `llm/analysis-response.md` | Complete visible response, including the exact text of all five candidate records above. No thinking or reasoning blocks and no raw provider output. |
+| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`, `hiddenReasoning: not-saved`. Use `unknown` for values not exposed; settings can be a mapping or `unknown`. |
 | `llm/review-scope.json` | `formatVersion: 1`, `runRef`, `snapshotRef`, `attemptId`, `suppliedArtifactRefs`, `limits`. The last two are nonempty string arrays. |
 
-The folder must contain exactly these files. The full response can use fenced
+The folder must contain exactly these files. The visible response can use fenced
 blocks for the five records. Their contents must match the individual files.
+The publisher refuses a response in which a line outside a fenced block starts
+with a `<thinking`, `<reasoning` or `<redacted_thinking` tag, and a response
+that is a raw provider JSON response with a `thinking`, `redacted_thinking` or
+`reasoning` block. It also refuses a call record without `hiddenReasoning: not-saved`.
 Do not write into the attempt or change the working drafts before publication.
 
 ## IDs and evidence

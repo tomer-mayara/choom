@@ -447,9 +447,11 @@ the producer command line, and open the saved baseline with the viewer's decoder
 and display limits. They refuse a Stage 4 draft that uses the baseline ID as a
 model ID. They also check that Stage 1 start records the
 producer code, and that a later action refuses the run after that code changed.
-The unit suites check the producer code digest and record, and the command
-mapping. The integration suite checks the shared record validator with the
-shared baseline rules of `@choom/baseline-model`: the producer profile, the
+They refuse a Stage 1 review whose saved LLM response holds a hidden reasoning
+block, and accept a visible response. The unit suites check the producer code
+digest and record, the command mapping, and the check of the visible LLM response
+and the call record. The integration suite checks the shared record validator
+with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
 reader. The interface suites run each helper with no
 action or an unknown action, check that each stage start saves its documents and
@@ -470,6 +472,14 @@ file changed in a copied tool checkout. Run them with:
 bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2
 ```
 
+The Stage 3 suite finishes a Stage 2 attempt through its commands, then runs
+Stage 3 start, collect, save-review and the finalizer. It records a published
+attempt, verify, and the finalizer refusals. Run it with:
+
+```sh
+bun test ./packages/producer/test/interface/stage-3
+```
+
 The Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
 and the source collection, and writes the toolchain and graph receipts that need
 Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
@@ -480,6 +490,18 @@ Run the checks of the shared baseline rules in the producer with:
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/integration/records ./packages/producer/test/interface/stage-4
 bun test ./packages/producer/test/interface/entry-points/producer-publication.test.mjs
+```
+
+Each stage that saves an LLM call record refuses a saved response with a hidden
+reasoning block and a call record without `hiddenReasoning: not-saved`: Stage 1
+finish, Stage 2 plan and save-review, the Stage 3 finalizer, the Stage 4/5
+publisher and the Stage 6 readiness review. Run the focused checks of the visible
+LLM response with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/llm-response.test.ts ./packages/producer/test/integration/records
+bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2 ./packages/producer/test/interface/stage-3 ./packages/producer/test/interface/stage-4
 ```
 
 Run the focused checks of the producer code record with:
@@ -658,7 +680,10 @@ from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types o
 (`stage-6-records.ts` with `record-baseline.ts`, `record-sources.ts`,
 `record-graph.ts` and `record-checks.ts`) checks the baseline shape with
 `@choom/baseline-model`, as the viewer does, and adds the producer profile, the
-reserved IDs and the checks against the saved run records.
+reserved IDs and the checks against the saved run records. `llm-response.ts`
+holds the design rule "Do not save hidden reasoning": every stage that saves an
+LLM call record checks that the response holds only the visible answer and that
+the call record has `hiddenReasoning: not-saved`.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model

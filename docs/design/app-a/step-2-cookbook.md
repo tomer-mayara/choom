@@ -173,6 +173,9 @@ call. Use UTF-8 filenames.
 Prepare each LLM packet outside the run. The `plan` and `save-review` commands
 copy it into the attempt and record its digests. Keep earlier LLM exchanges in
 the packet's prompt history; use `unknown` for unexposed call metadata.
+Do not save hidden reasoning. Save only the visible response, and record
+`hiddenReasoning: not-saved` in each call record. Both commands refuse a
+response with a hidden reasoning block and a call record without this field.
 
 Keep earlier attempts and their registered IDs when you start a new attempt.
 A stage 1 artifact whose path was corrected during preparation keeps its ID.
@@ -270,8 +273,8 @@ Ask the LLM to prepare a complete plan packet in a separate review folder:
 | --- | --- |
 | `entry-plan.json` | The complete final plan. |
 | `llm/plan-prompt.md` | Filled prompt, all supplied artifact IDs, and earlier requests/responses if there were any. |
-| `llm/plan-response.json` | Exact final JSON response; it must match the plan. |
-| `llm/plan-call.yaml` | `provider`, `model`, `date`, `settings`; use `unknown` when unexposed. |
+| `llm/plan-response.json` | Exact final visible JSON response; it must match the plan. Do not save hidden reasoning. |
+| `llm/plan-call.yaml` | `provider`, `model`, `date`, `settings`, and `hiddenReasoning: not-saved`; use `unknown` when unexposed. |
 | `llm/plan-scope.json` | `formatVersion: 1`, `snapshotRef`, `attemptId`, `suppliedArtifactRefs`, `limits`. |
 
 The scope lists every supplied artifact, including uncited inputs and any
@@ -532,8 +535,8 @@ Ask the LLM to prepare a complete analysis packet outside the run:
 | --- | --- |
 | `entry-analysis.yaml` | Complete final YAML. |
 | `llm/analysis-prompt.md` | Filled prompt, all supplied inputs and prior exchanges. |
-| `llm/analysis-response.md` | Complete response containing the exact final YAML. |
-| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`; unknown values stay `unknown`. |
+| `llm/analysis-response.md` | Complete visible response containing the exact final YAML. Do not save hidden reasoning. |
+| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`, and `hiddenReasoning: not-saved`; unknown values stay `unknown`. |
 | `llm/review-scope.json` | `formatVersion: 1`, `snapshotRef`, `attemptId`, `suppliedArtifactRefs`, `limits`. |
 
 Use `save-review REVIEW_DIR`, then `finish`, as shown above. Source records use

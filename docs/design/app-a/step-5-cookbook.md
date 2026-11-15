@@ -248,8 +248,9 @@ this run and start a new run with a new capture and corrected settings. These
 helpers cannot rewind a published stage or rerun an earlier stage in this run.
 
 Prepare the exact nine-file data packet from record-format.md in a new review
-folder outside the saved run. Include the complete review response, actual
-supplied evidence, exact inspected source ranges and exposed model metadata.
+folder outside the saved run. Include the complete visible review response,
+actual supplied evidence, exact inspected source ranges and exposed model
+metadata with hiddenReasoning: not-saved. Do not save hidden reasoning.
 Keep the working drafts and earlier attempts unchanged. Do not generate a save
 script. Do not publish until the complete review is validated.
 ```

@@ -346,7 +346,7 @@ The following table explains their purpose:
 | Resource observations | Inspected access sites, access kind, target identity or explicit unknown target, context, and source evidence. Observed access does not establish permission. |
 | Entry analysis update | Preserve entry history and Knip limits. Add supported behavior entries and references to the separate graph reachability results. |
 | Discovery update | Overview, completed inspected paths, proposed fact references, questions, and gaps. `baselineRef` stays unset until the fixed baseline is saved in stage 6. |
-| Review record | The prompt, response, supplied evidence, exposed model metadata, and exact source ranges actually inspected. Do not invent unavailable API metadata. |
+| Review record | The prompt, the complete visible response, supplied evidence, exposed model metadata with `hiddenReasoning: not-saved`, and exact source ranges actually inspected. Do not save hidden reasoning. Do not invent unavailable API metadata. |
 
 Keep the dependency facts from the graph separate from the proposed model.
 Do not turn every observed import into an allowed-access rule. Keep intended

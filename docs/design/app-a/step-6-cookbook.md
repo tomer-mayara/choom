@@ -121,10 +121,10 @@ every sentence is consistent. A missing required artifact or wrong selected
 model is not a minor explanatory defect.
 Otherwise prepare a readiness record bound to the current three draft digests
 and selected fact references. Record semantic checks with supporting evidence,
-remaining limits, the complete prompt and response, supplied evidence, and
-exposed model metadata. Produce all five files listed below; include the exact
-readiness.yaml text in the full analysis-response.md. Do not claim new source
-inspection when reusing earlier reviews. The operator does not need to classify
+remaining limits, the complete prompt and visible response, supplied evidence,
+and exposed model metadata. Produce all five files listed below; include the exact
+readiness.yaml text in the complete visible analysis-response.md. Do not save
+hidden reasoning. Do not claim new source inspection when reusing earlier reviews. The operator does not need to classify
 files or fill analysis records. Do not generate or execute a save script.
 ```
 
@@ -136,8 +136,8 @@ the helper does not execute its contents.
 | `readiness.yaml` | Run, snapshot and baseline IDs; `status: ready-with-gaps`; the three draft digests; selected fact references; semantic checks and limits. |
 | `review-scope.json` | Run, snapshot and baseline IDs; supplied artifact references; review limits. |
 | `llm/analysis-prompt.md` | The complete review prompt and any additional directions used for this review. |
-| `llm/analysis-response.md` | The complete review response, including the exact readiness record. |
-| `llm/analysis-call.yaml` | Exposed provider, model, date and settings; optional `mode` describes the review process. Use `unknown` for settings that were not exposed. |
+| `llm/analysis-response.md` | The complete visible review response, including the exact readiness record. Do not save hidden reasoning. |
+| `llm/analysis-call.yaml` | Exposed provider, model, date and settings, and `hiddenReasoning: not-saved`; optional `mode` describes the review process. Use `unknown` for settings that were not exposed. |
 
 `readiness.yaml` has these top-level fields:
 

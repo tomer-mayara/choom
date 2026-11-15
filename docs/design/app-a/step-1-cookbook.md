@@ -250,17 +250,22 @@ Do not claim a file was read just because its inventory entry was supplied.
 ```
 
 Also save `llm-prompt.md` (the filled prompt and evidence IDs),
-`llm-response.md` (the complete final response), and `llm-call.yaml` with these
-fields:
+`llm-response.md` (the complete visible final response), and `llm-call.yaml`
+with these fields:
 
 ```yaml
 provider: unknown
 model: unknown
 date: unknown
 settings: unknown
+hiddenReasoning: not-saved
 ```
 
 Replace metadata with observed values; leave unavailable metadata `unknown`.
+Do not save hidden reasoning. Save only the visible response: no thinking or
+reasoning blocks and no raw provider output. `hiddenReasoning: not-saved` records
+this. `finish` refuses a response with a hidden reasoning block and a call record
+without `hiddenReasoning: not-saved`.
 Keep earlier prompts, responses and call records in a `history/` directory under
 `$CHOOM_WORK/evidence/`. Never overwrite a response after a correction. The final
 prompt must name all supplied evidence, including evidence that the answer did
