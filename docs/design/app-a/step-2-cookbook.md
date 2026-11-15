@@ -357,7 +357,9 @@ unavailable, record a gap and continue. Do not ask the operator to write records
 Find evidence for file entry candidates in package fields, scripts, conventions,
 and source. Consider application starts, workers, commands, migrations, tests,
 and published APIs with consumers outside the repository. Keep the declared
-expression. A generated or declaration entry does not prove a source entry.
+expression. Keep one file candidate even if that file registers several HTTP
+routes or MCP tools. Review those operations in Stages 4 and 5. A generated
+or declaration entry does not prove a source entry.
 Do not infer production use from compiler inclusion or a directory name.
 This profile uses Knip 6.44.1 with all framework plugins disabled. Do not rely
 on those plugins to discover entries; metadata and script discovery still apply.

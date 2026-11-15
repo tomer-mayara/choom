@@ -63,16 +63,20 @@ described as future work beside a newly appended correction.
 ## Baseline
 
 All versions have `formatVersion`, `id`, `parentId: null`,
-`components`, `interfaces`, `resources`, and `rules`. Version 3 also permits
-`sourceUsage`; no other top-level fields are allowed. Keep the initial baseline
+`components`, `interfaces`, `resources`, and `rules`. Versions 3 and 4
+permit `sourceUsage`. Version 4 also permits `systemEntryPoints`. The
+top-level fields are strict in every version. Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
 
 Stage 1 still creates the empty version 1 seed. Versions 1 and 2 remain strict:
 version 1 has no interface `documentation`, and neither permits `sourceUsage`.
-Use `formatVersion: 3` for source-use assessments. It retains version 2
-documentation, signatures, semantic checks, and limits. Stage 6 validates the
-selected version and saves its exact bytes. There is no automatic migration.
+Use `formatVersion: 4` when recording a system-entry assessment. When it is
+absent, use version 3 for source use, version 2 for interface documentation,
+or version 1 for the original fields. Version 4 retains version 2 interface
+documentation and version 3 source use, with their checks and limits. Stage 6
+validates the selected version and saves its exact bytes. Completed runs keep
+their saved version.
 
 An intent statement has exactly `value`, `status: proposed`, and `evidenceRefs`.
 Unknown intent uses `value: null` and a question or gap whose `subjectRefs`
@@ -239,7 +243,7 @@ documentation:
 
 ### Version 3 source-use assessments
 
-Version 3 can add one top-level `sourceUsage` object. It records reviewed source
+Versions 3 and 4 can add one top-level `sourceUsage` object. It records reviewed source
 use independently from permission. It has no statement status or execution
 flag. Component assignments depend on the selected mapping, which can remain
 proposed. Keep owner and permission statements unchanged unless separate intent
@@ -395,10 +399,47 @@ uses to the permission-link total or ignore data hidden by a view filter.
 
 Before publishing, review the documentation's meaning with its exact saved
 source ranges. Keep the review in `llm/analysis-response.md`. The nine-file packet
-does not change. During tool development, check versions 1, 2, and 3
+does not change. During tool development, check versions 1 through 4
 with the public reader and display boundary, and record those
 results outside the publication packet. Reader success does not replace source
 review or the publisher's provenance checks.
+
+## Version 4 system entry points
+
+The optional `systemEntryPoints` object has exactly `snapshotRef`,
+`mappingRef`, `scope`, `evidenceRefs`, `limitations`, and `entries`.
+Use the selected run snapshot and `discovery.codeMappingRef`. If `sourceUsage`
+is present, both assessments use those same refs. Describe what was reviewed
+in `scope`. Record coverage limits in `limitations`, which can be empty.
+An absent assessment means the producer did not record a review. An empty
+`entries` list means the review found no supported entries in its stated scope.
+
+Each entry has a local `id` unique in the assessment, `kind` of `startup` or
+`external`, `label`, snapshot-relative file `path`, directly mapped
+`componentId`, and `evidenceRefs`. Save one startup per distinct start path
+and one external entry per callable operation. Use descriptive labels such as
+`CLI choom serve`, `HTTP POST /orders`, or `MCP tool search`. Earlier file
+candidates and behavior entries can supply evidence. Review launch settings,
+registration, or host binding. Keep unresolved candidates in discovery.
+These entries record the saved review and carry no intent status.
+
+Evidence lists for both scope and entries must be nonempty and distinct.
+Each reference must resolve in the saved registry. Add optional
+`source: { evidenceRef, location }` when a single reviewed range identifies
+the boundary. The direct source record reference has no fragment and must
+occur in the entry evidence. Its location uses the same snapshot, exact entry
+path, SHA-256, and inclusive line pair as the saved source range. Evidence of
+registration can refer to another file.
+
+Optional `interfaceId` names a modeled interface. Optional `entryId` requires
+`interfaceId` and names one of that interface's documentation entries. The
+interface owner can differ from the start or handler owner.
+
+Limit the assessment to 2,000 entries and 2 MiB of compact JSON. IDs, evidence
+references, and source paths have a 4 KiB UTF-8 limit. Scope, labels, and
+limitations have an 8 KiB UTF-8 limit. Use nonblank text and safe relative
+paths. The architecture record and link budgets count their existing
+collections separately.
 
 ## Entry analysis
 

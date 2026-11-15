@@ -52,10 +52,13 @@ analysis-run-001/
 
 The baseline describes components, membership, interfaces, resources and rules.
 Stage 1 creates an empty version 1 baseline. Use version 3 in Stages 4 and 5
-for [source-use assessments](record-format.md#version-3-source-use-assessments).
-It retains version 2's [interface documentation](record-format.md#version-2-interface-documentation)
-and signatures. Versions 1 and 2 remain strict and readable; they are not
-silently upgraded. Follow the record contract and its reader limits.
+for [source-use assessments](record-format.md#version-3-source-use-assessments)
+without a system-entry assessment. Use version 4 when the review records
+[system entry points](record-format.md#version-4-system-entry-points). Both formats
+retain version 2's [interface documentation](record-format.md#version-2-interface-documentation)
+and signatures. Stage 6
+publishes the verified Stage 5 proposal at its selected version. Follow the
+record contract and its reader limits.
 
 Record the direct components that use each interface in reviewed source,
 separately from those permitted to use it. Keep the shared snapshot and selected

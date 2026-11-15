@@ -37,8 +37,10 @@ node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" start
 The helper requires completed component recovery and its published working
 drafts. The baseline must still be proposed, before Stage 6 saves a fixed version.
 Versions 1, 2, and 3 keep their own strict fields. Use version 3 for
-[source-use assessments](record-format.md#version-3-source-use-assessments).
-It retains the [interface documentation](record-format.md#version-2-interface-documentation)
+[source-use assessments](record-format.md#version-3-source-use-assessments)
+without a system-entry assessment. Use version 4 when `systemEntryPoints`
+is present. Both formats retain the
+[interface documentation](record-format.md#version-2-interface-documentation)
 and signatures from version 2.
 It verifies the registered artifacts, the selected Stage 4 facts,
 the published draft pair, and every indexed snapshot file. It saves the three
@@ -168,7 +170,21 @@ and discovery records. Keep continuing component IDs. Keep all inferred intent
 proposed. Retain an unknown owner with a specific reason where evidence is
 insufficient. Do not create a utilities group to eliminate unknowns.
 
-Use formatVersion: 3 for source-use assessments. Retain structured interface
+Review the saved system scope for launch paths and externally callable
+operations. Use saved launch settings and behavior entries. Read each
+operation's registration or host binding. Trace built entry files to source
+only when the saved evidence supports the link. Reuse entry evidence and
+verify the direct owner of each start or handler in the candidate file mapping.
+Keep each operation distinct, including routes that share a handler. Keep
+uncertain triggers, paths, and owners in discovery. Record exclusions and
+unresolved candidates in the assessment limits or discovery gaps. Verify any
+interface link against the current baseline. Treat a graph root or publicAccess
+value as a lead for review.
+
+Use formatVersion: 4 with systemEntryPoints. Set its snapshotRef to this run's
+snapshot and mappingRef to the candidate discovery.codeMappingRef, including
+when carrying entries from Stage 4. With no entry assessment, use the version
+required by the other fields (version 3 for sourceUsage). Retain structured interface
 documentation and its meanings. For each function or method entry
 (`kind: function`), record a signature statement with its own
 status and evidence references. Copy the supported declaration with parameters
