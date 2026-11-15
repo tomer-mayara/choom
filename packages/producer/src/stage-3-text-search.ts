@@ -174,7 +174,8 @@ export const textSearchNotes = [
     '.gitignore name (--hidden --no-ignore). The capture exclusions decided which files the snapshot holds.',
   'ripgrep does not follow symbolic links and does not decompress files (its defaults; --no-follow --no-search-zip). ' +
     'scope.symbolicLinks counts the symbolic links that the inventory lists; their targets were not searched.',
-  'ripgrep stops reading a file at its first NUL byte and reports no match in it (its rule for binary files).',
+  'ripgrep reads each file in blocks and stops at the first block that has a NUL byte (its rule for binary files). ' +
+    'It reports only the matches in the blocks before that one, so a small file with a NUL byte has no match.',
   'The match is case-sensitive and does not span lines. A fixed-string query matches its text exactly; a pattern ' +
     'uses the ripgrep regular expression syntax. ripgrep reads UTF-8, and UTF-16 with a byte order mark. ' +
     'A line that is not valid UTF-8 has U+FFFD in place of each invalid byte (validUtf8: false).',

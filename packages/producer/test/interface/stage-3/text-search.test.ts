@@ -138,6 +138,15 @@ describe("Stage 3 text-search", () => {
       .toEqual({ outcome: "truncated", filesAtMatchLimit: ["many.txt"], many: Array.from({ length: 20 }, (_, index) => index + 1) });
   });
 
+  test("reports the matches of a file before the block with its first NUL byte, and none after it", () => {
+    const late = join(scratch, "late-nul");
+    const text = Buffer.concat([Buffer.from(`${script}\n`), Buffer.alloc(300_000, "x\n"), Buffer.from(`\0\n${script}\n`)]);
+    stagedRun(late, 2, { snapshot: [{ path: "late.bin", text }, file("binary.bin")] });
+    expect(started(late, "s3-nul")(script).status).toBe(0);
+    expect(saved(late, "s3-nul", "text-search-001.json")).toMatchObject({ outcome: "match", matchedLines: 1,
+      matches: [{ path: "late.bin", sha256: sha256(text), line: 1, text: script }], scope: { searchedFiles: 2 } });
+  });
+
   test("refuses a query that it cannot search, with a failed receipt and no record", () => {
     const search = started(work, "s3-refused");
     const refusals: [string[], string][] = [

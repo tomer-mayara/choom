@@ -174,7 +174,9 @@ arguments, with `--fixed-strings` only for fixed text:
   `--follow` or `--search-zip`.
 - The snapshot root is the only path, after `--`. The text is the value of
   `--regexp`, so a text that starts with a dash is not an option.
-- ripgrep stops reading a file at its first NUL byte and reports no match in it.
+- ripgrep reads each file in blocks and stops at the first block that has a NUL
+  byte (its rule for binary files). It reports only the matches in the blocks
+  before that one, so a small file with a NUL byte has no match.
 
 After ripgrep finishes, the helper checks that each match is in an indexed
 regular file, that ripgrep searched as many files as the inventory lists, and
