@@ -9,6 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
+import { defaultCaptureExclusions } from './stage-1-exclusions.ts';
 import { type DiscoveryGap, toolGaps } from './stage-1-gaps.ts';
 
 // The Stage 1 helper. Every action runs from the trusted tool checkout. Start
@@ -158,8 +159,7 @@ function startRun(): void {
   saveJson('evidence/tools.json', { node: process.version, tsMorph: require('ts-morph/package.json').version,
     typescript: require('ts-morph').ts.version, yaml: require('yaml/package.json').version });
   const protectedRule = layout.requiredExclusion ? layout.requiredExclusion + '\n' : '';
-  save('exclusions.txt', protectedRule +
-    '.*/\n.git\nnode_modules\n.env\n.env.*\n.npmrc\n.yarnrc*\n*.pem\n*.key\n/dist/\n/coverage/\n/reports/\n/test-results/\n/target/\n/src-tauri/target/\n');
+  save('exclusions.txt', protectedRule + defaultCaptureExclusions);
   save('evidence/scope-notes.md', 'The initial capture excludes dot-prefixed directories, dependencies, common credential files, and listed root build/report folders. Hidden CI and tool settings may be missing. Generated source outside the listed folders remains eligible. Review and amend these exclusions before capture.\n' +
     '\nWorking folder layout: ' + layout.workLayout + '.\n' +
     (protectedRule ? 'The required ' + layout.requiredExclusion + ' exclusion keeps the entire local run area out of the captured tool checkout.\n' : ''));
