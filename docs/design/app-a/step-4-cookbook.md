@@ -75,8 +75,13 @@ The profile scans every regular JavaScript and TypeScript file in the saved
 stage 3 scope, including sources outside conventional `src/` directories. Each
 fully parsed compiler configuration uses its saved `fileNames` selection. If a
 file belongs to several configurations, each context keeps that file separately.
-Files without a supported compiler selection use a named configuration-free
-fallback. A repository without compiler configuration can use that fallback.
+In a snapshot with project settings, files without a supported compiler
+selection use a named configuration-free fallback with no compiler options. A
+snapshot without project settings has a settings record that names the Choom
+parsing profile (see the [record format](record-format.md#settings-record)). Its
+source uses one group named after the profile, such as `choom-default-v1`, with
+the profile's options and `compilerSettingsRef: settings-001#/parsingProfile`.
+The helper refuses a settings record that names an unknown profile.
 
 Each group has separate import and CommonJS passes with platform-neutral
 `import`/`require` and `default` conditions. Browser, Node, Bun, custom and

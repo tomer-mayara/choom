@@ -448,9 +448,12 @@ and display limits. They refuse a Stage 4 draft that uses the baseline ID as a
 model ID. They also check that Stage 1 start records the
 producer code, and that a later action refuses the run after that code changed.
 They refuse a Stage 1 review whose saved LLM response holds a hidden reasoning
-block, and accept a visible response. The unit suites check the producer code
-digest and record, the command mapping, and the check of the visible LLM response
-and the call record. The integration suite checks the shared record validator
+block, and accept a visible response. They check that the Stage 1 settings record
+of a snapshot without compiler settings names the Choom parsing profile, its
+assumptions and a gap. The unit suites check the producer code
+digest and record, the command mapping, the check of the visible LLM response
+and the call record, the parsing profile, the settings collector and the Stage 4
+graph profile. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
 reader. The interface suites run each helper with no
@@ -480,7 +483,10 @@ attempt, verify, and the finalizer refusals. Run it with:
 bun test ./packages/producer/test/interface/stage-3
 ```
 
-The Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
+The Stage 4 start suite records the graph profile for parsed compiler settings,
+for the Choom parsing profile and for the configuration-free fallback, the
+snapshot preflight, and the toolchain and graph refusals without Docker. The
+Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
 and the source collection, and writes the toolchain and graph receipts that need
 Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
 packet, and refuses a component ID equal to the baseline ID without writing.
@@ -502,6 +508,18 @@ LLM response with:
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/llm-response.test.ts ./packages/producer/test/integration/records
 bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2 ./packages/producer/test/interface/stage-3 ./packages/producer/test/interface/stage-4
+```
+
+Without project settings, Stage 1 names the Choom parsing profile
+`choom-default-v1` in the settings record, with its assumptions and a
+`no-project-settings` gap, and Stage 4 start parses the source with its options.
+The [record format](docs/design/app-a/record-format.md#settings-record) gives the
+fields. Run the focused checks of the named parsing profile with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/parsing-profile.test.ts ./packages/producer/test/unit/stage-1-settings.test.ts ./packages/producer/test/unit/stage-4-graph-profile.test.ts
+bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/recover-capture.test.ts ./packages/producer/test/interface/stage-4
 ```
 
 Run the focused checks of the producer code record with:

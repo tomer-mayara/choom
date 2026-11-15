@@ -120,6 +120,15 @@ diagnostics. An 8 MiB per-configuration limit is explicit.
 A successful parse describes this collector's settings result; it does not
 establish behavior under the target's declared compiler version or build command.
 
+A snapshot without project settings has no `tsconfig*.json` or `jsconfig*.json`
+file, and no extra compiler settings are named (see below). Its settings record
+names the Choom parsing profile `choom-default-v1` in `parsingProfile`, with the
+profile's options and its assumptions in plain text. `gaps` then has a
+`no-project-settings` gap. The profile's options are Choom assumptions, not
+settings of the project. Later stages parse the source with them. A snapshot with
+any configuration, also one that does not parse, uses no profile: `parsingProfile`
+is `null`. The [record format](record-format.md#settings-record) gives the fields.
+
 The collector saves an immutable numbered probe under `evidence/settings-probes/`
 and prints its evidence ID. `evidence/settings.json` is a working copy of the
 latest result until stage 1 is saved. `settings-001` will select that final copy.
@@ -199,11 +208,15 @@ or write analysis records.
 
 Review package errors, compiler diagnostics, declarations, configuration
 inheritance and project references. Partial options do not establish valid or
-complete settings. Record missing required inputs and the absence of compiler
-configuration. Do not invent a profile. Inspect workspace declarations without
-assuming every package manifest is an active workspace. Read relevant deployment,
-test, build and architecture files as text. Request additional compiler settings
-as a JSON array of saved relative paths, retaining prior extra paths.
+complete settings. Record missing required inputs. When the settings record
+names the Choom parsing profile, its options are Choom assumptions, not project
+settings. Copy each gap of the settings record into gaps: give it an s1-gap ID,
+keep its kind, subjectRefs and reason, and cite it with its JSON Pointer, such as
+settings-001#/gaps/0. Do not invent another profile. Inspect workspace
+declarations without assuming every package manifest is an active workspace.
+Read relevant deployment, test, build and architecture files as text. Request
+additional compiler settings as a JSON array of saved relative paths, retaining
+prior extra paths.
 
 Assign supported roles with exact file/directory selectors: source, tests,
 generated, configuration, documentation, or unknown. Several roles may apply.
@@ -277,6 +290,8 @@ cannot reconstruct the actual model input or prove the review's meaning.
 Apply the [review before publication](start-here.md#review-before-publication)
 guidance to the complete packet. Check role claims, missing inputs,
 supplied-evidence limits and exact inspected ranges against the saved evidence.
+Check that the review gaps include each gap of the settings record. `finish` does
+not check this.
 
 Set the review folder path, then run:
 
@@ -320,7 +335,9 @@ The collector is
 runs it in the tool checkout after the producer code check, and the settings
 selection records its digest. Review its settings record as section 3 describes;
 do not run the collector separately. The recovery helper below runs a copy of the
-same collector.
+same collector. The collector loads ts-morph and the parsing profile in
+[`parsing-profile.ts`](../../../packages/producer/src/parsing-profile.ts) from the
+tool checkout.
 
 ## Recovery from a damaged older capture
 

@@ -198,14 +198,16 @@ graph evidence. Do not promise an unattended six-stage run in that environment.
 The analysis profile is for JavaScript and TypeScript. Other file types remain
 in the inventory and ownership account, but parser and dependency results do
 not cover their runtime behavior. The cookbooks state the supported settings,
-file limits and fallback profiles. Do not present a fallback as the target's
-actual compiler or runtime configuration.
+file limits, the named Choom parsing profile and the fallback. Do not present
+the profile or a fallback as the target's actual compiler or runtime
+configuration.
 
 This profile requires regular files, at least one supported JS/TS source file,
 and enough evidence to propose at least one component. It stops on captured
 symbolic links; exclude them explicitly in a fresh capture and record the gap.
 The graph profile rejects source filenames with glob metacharacters. It keeps
-compiler contexts separate, uses a recorded fallback for uncovered files, and
+compiler contexts separate, uses the named Choom parsing profile for a snapshot
+without project settings and a recorded fallback for other uncovered files, and
 limits alias and package-condition support. Read the exact limits in
 [Stage 4](step-4-cookbook.md). A repository outside this profile needs additional
 tool support; a gap record cannot replace a required failed stage.
@@ -539,13 +541,15 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
 | `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
-| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
+| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-4-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
 | `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it |
+| `parsing-profile.ts` | The named Choom parsing profile for a snapshot without project settings |
 | `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
-| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5 |
+| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record and the producer code record |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
+| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, traversal roots and limits |
 | `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence (`stage-4-inspect` command) |
 | `stage-5-query.mjs` | Remaining-code and inspection-coverage queries |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |

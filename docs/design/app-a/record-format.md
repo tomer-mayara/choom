@@ -3,8 +3,10 @@
 Read this with the [stage 4 cookbook](step-4-cookbook.md) or
 [stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
 to the shared publisher. The publisher is a trusted tool. Review folders contain
-data only; do not generate or execute a run-specific save script. The last section
-defines the [producer code record](#producer-code-record) that every stage checks.
+data only; do not generate or execute a run-specific save script. The last two
+sections define the [settings record](#settings-record) that Stage 1 saves and
+Stage 4 reads, and the [producer code record](#producer-code-record) that every
+stage checks.
 
 ## Review folder
 
@@ -669,6 +671,56 @@ proposal through its normal publication. A material ownership, interface, root
 or policy correction needs a new run when the next unpublished stage cannot
 handle it. If that run uses a saved snapshot as its source, preserve the original
 capture exclusions and limits in the new scope record.
+
+## Settings record
+
+Stage 1 `settings` saves the settings record as `evidence/settings.json`, and
+Stage 1 `finish` registers the selected record as `settings-001`. Stage 4 start
+reads its compiler configurations and its parsing profile. The record is
+`formatVersion: 2`.
+
+| Field | Meaning |
+| --- | --- |
+| `formatVersion`, `snapshotId` | `2` and the snapshot ID of the inventory. |
+| `virtualRoot`, `limits` | `/repo`, the snapshot root that the compiler sees, and the byte limit for each configuration file. |
+| `packages` | Each `package.json`, with its parsed `data` or its parse `error`. |
+| `configs` | Each `tsconfig*.json`, `jsconfig*.json` and extra compiler configuration, and each project that they reference: `path`, `status` (`parsed`, `partial` or `unavailable`) and `diagnostics`, and for a file that parses, `declared`, `compilerOptions`, `fileNames` and `references`. |
+| `parsingProfile` | `null` when `configs` has an entry. Otherwise the Choom parsing profile: `id`, `declared.compilerOptions`, `compilerOptions` and `assumptions`. |
+| `gaps` | The gaps that the collector found. Each gap has `kind`, `subjectRefs` and `reason`, the fields of a discovery gap without its ID and evidence. The Stage 1 review copies each gap into its gaps with an ID and cites it. |
+| `contentReads`, `contentReadScope` | The snapshot files that the collector read and checked against the inventory, and the limit of that check. |
+
+A snapshot without project settings has no `tsconfig*.json` or `jsconfig*.json`
+file, and no extra compiler settings are named. Its record names the profile
+`choom-default-v1` and has one `no-project-settings` gap:
+
+```json
+{
+  "parsingProfile": {
+    "id": "choom-default-v1",
+    "declared": { "compilerOptions": { "allowJs": true, "jsx": "preserve", "module": "preserve",
+      "moduleResolution": "bundler", "target": "es2025" } },
+    "compilerOptions": { "allowJs": true, "jsx": 1, "module": 200, "moduleResolution": 100, "target": 12 },
+    "assumptions": ["The snapshot has no project settings. Choom chose these options. They are not settings of the project.", "..."]
+  },
+  "gaps": [
+    { "kind": "no-project-settings", "subjectRefs": ["snapshot-001"], "reason": "No project settings were found. ..." }
+  ]
+}
+```
+
+`declared` holds the options as a `tsconfig.json` writes them. `compilerOptions`
+holds the same options as the TypeScript API parses them, with the enum values of
+the pinned TypeScript 6.0.2, as in a configuration entry. These options are Choom
+assumptions, not settings of the project. A configuration that does not parse is
+still project settings, so its record names no profile. A changed option or
+assumption needs a new profile ID.
+
+Stage 4 start puts the source that no parsed compiler selection covers in one
+group. When the record names the profile, the group is named after the profile,
+uses its target, module, moduleResolution and jsx options, and has
+`compilerSettingsRef: settings-001#/parsingProfile`. Otherwise the group is the
+configuration-free fallback with no options. Stage 4 start refuses a record that
+names an unknown profile.
 
 ## Producer code record
 
