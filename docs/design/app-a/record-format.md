@@ -40,8 +40,16 @@ Stage 5 uses the same rule with its own attempt ID.
 
 Keep IDs for continuing components, candidates, mapped units and observations.
 Prefix new analysis IDs with the current attempt ID. Model IDs must not collide
-with artifact IDs, source-range IDs, or other current model IDs. A baseline item
-ID uses lowercase letters, digits and hyphens.
+with artifact IDs, source-range IDs, reserved IDs, or other current model IDs. A
+baseline item ID uses lowercase letters, digits and hyphens.
+
+The baseline ID is reserved. Stage 6 saves the fixed baseline under that ID, so
+no model record can use it: no component, interface, resource, rule, question,
+gap or other record. Stages 4, 5 and 6 refuse it with the same check, so a Stage 4
+or Stage 5 draft that uses it fails before the stage closes. Each publication
+also reserves the IDs of the records that it saves, such as the Stage 4 or 5
+`publication.json` receipt, and the Stage 6 discovery result and attempt files.
+The refusal names the reserved ID.
 
 An `evidenceRefs` field is a nonempty array of registered artifact IDs, proposed
 current-attempt artifact IDs, saved source-range IDs, or exact JSON Pointers into
@@ -71,6 +79,27 @@ to 4 only. The shared reader also accepts version 5, which the producer does
 not write yet; see [Version 5 symbol selectors](#version-5-symbol-selectors). Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
+
+The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
+
+1. The **producer profile**, which is stricter than the shared rules. The
+   producer writes `formatVersion` 1 to 4 and only the first version
+   (`parentId: null`). The baseline has at least one component. Each component,
+   also a parent that only groups other components, has a non-null `purpose`,
+   a non-null `groupingReason` and at least one path in `membership.value.paths`.
+   A question or gap does not make a null purpose or grouping reason valid.
+   Each of these cases has its own message.
+2. The **shared baseline rules**: `baselineSchema` in `@choom/baseline-model`,
+   which the viewer also uses. See the
+   [baseline contract](../../../cookbook/interfaces/baseline.md). A refusal names
+   the path, the item and the rule, for example `The baseline is invalid at
+   components.0.parent.value (component cli): Component parents must not form a
+   cycle.`
+3. Every statement is `proposed`, and the baseline is within the
+   [viewer limits](#reader-limits).
+4. The run checks: model IDs, resolved evidence, a question or gap for each
+   unknown value, the run snapshot and selected mapping, mapped owners, and saved
+   source ranges.
 
 Stage 1 still creates the empty version 1 seed. Versions 1 and 2 remain strict:
 version 1 has no interface `documentation`, and neither permits `sourceUsage`.
@@ -406,10 +435,11 @@ uses to the permission-link total or ignore data hidden by a view filter.
 
 Before publishing, review the documentation's meaning with its exact saved
 source ranges. Keep the review in `llm/analysis-response.md`. The nine-file packet
-does not change. During tool development, check versions 1 through 4
-with the public reader and display boundary, and record those
-results outside the publication packet. Reader success does not replace source
-review or the publisher's provenance checks.
+does not change. The shared baseline rules in `@choom/baseline-model` enforce the
+documentation, source-use and system-entry limits, as the viewer does. The
+publisher and Stage 6 also apply the YAML profile and the display limits above,
+so a published baseline passes the viewer's decoder and display limits. Reader
+success does not replace source review or the publisher's provenance checks.
 
 ## Version 4 system entry points
 
@@ -462,9 +492,9 @@ version 2 to 4 fields, checks, and limits, and the version 3 and 4 arrow rules.
 The reader checks the syntax only. See the
 [baseline contract](../../../cookbook/interfaces/baseline.md) for the full rules.
 
-The producer does not write version 5 yet. The Stage 5 and Stage 6 checks
-refuse it, so a run publishes versions 1 to 4 only. Ticket GA-02a adds symbol
-selectors to the code mapping and the producer.
+The producer does not write version 5 yet. The producer profile in the Stage 4/5
+publisher and Stage 6 refuses it, so a run publishes versions 1 to 4 only.
+Ticket GA-02a adds symbol selectors to the code mapping and the producer.
 
 ## Entry analysis
 

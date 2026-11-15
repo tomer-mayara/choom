@@ -277,7 +277,7 @@ See the [report contract](cookbook/interfaces/interface-duplication.md),
 | `./scripts/run_all_constraints.sh` | Run all four automated constraint validations with a pass/fail summary and diagnostic logs |
 | `bun run check` | TypeSpec and implementation conformance, type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
 | `bun run test` | Native Bun and Happy DOM unit tests in separate processes, then `test:integration` |
-| `bun run test:integration` | Node 26 imports `@choom/baseline-model` with no build step and validates a reviewed baseline |
+| `bun run test:integration` | Node 26 imports `@choom/baseline-model` with no build step and validates a reviewed baseline; the producer record validator runs with the shared baseline rules |
 | `bun run test:producer:docker` | Producer checks that need a Docker engine: the Stage 4 graph image and `@docker` Cucumber scenarios; not part of `bun run check` |
 | `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
 | `bun run check-types` | Alias for the native TypeScript compiler check |
@@ -377,6 +377,8 @@ bun run test:e2e --tags @br-08d
 Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
 `bun run test:integration` runs `packages/baseline-model/test/integration`. It
 starts the `node` on `PATH` and requires the major version in `.node-version`.
+It also runs `packages/producer/test/integration/records`, where the producer
+record validator runs with the shared baseline rules of `@choom/baseline-model`.
 Run all suites from the repository root.
 `bun run test:producer:docker` runs `packages/producer/test/integration/docker`
 and the `docker` Cucumber profile. These suites need a Docker engine and stop
@@ -436,15 +438,20 @@ Run the focused producer checks with:
 
 ```sh
 bun run test:behavior --tags @producer
-bun test ./packages/producer/test/unit ./packages/producer/test/interface
+bun test ./packages/producer/test/unit ./packages/producer/test/integration/records ./packages/producer/test/interface
 bun run producer --help
 ```
 
 The `@producer` scenarios save a Stage 6 result from a reviewed fixture through
-the producer command line. They also check that Stage 1 start records the
+the producer command line, and open the saved baseline with the viewer's decoder
+and display limits. They refuse a Stage 4 draft that uses the baseline ID as a
+model ID. They also check that Stage 1 start records the
 producer code, and that a later action refuses the run after that code changed.
-The unit suites check the shared record validator, the producer code digest and
-record, and the command mapping. The interface suites run each helper with no
+The unit suites check the producer code digest and record, and the command
+mapping. The integration suite checks the shared record validator with the
+shared baseline rules of `@choom/baseline-model`: the producer profile, the
+shared-rule messages, the reserved IDs, the run checks and the bounded YAML
+reader. The interface suites run each helper with no
 action or an unknown action, check that each stage start saves its documents and
 no producer code, refuse each stage action when the run's producer code record is
 missing or does not match, and run the graph fixture, Knip image check, inventory
@@ -461,6 +468,18 @@ file changed in a copied tool checkout. Run them with:
 
 ```sh
 bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2
+```
+
+The Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
+and the source collection, and writes the toolchain and graph receipts that need
+Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
+packet, and refuses a component ID equal to the baseline ID without writing.
+Run the checks of the shared baseline rules in the producer with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/integration/records ./packages/producer/test/interface/stage-4
+bun test ./packages/producer/test/interface/entry-points/producer-publication.test.mjs
 ```
 
 Run the focused checks of the producer code record with:
@@ -611,8 +630,9 @@ reads component records from the selected baseline.
 
 The [baseline model](packages/baseline-model/component.yaml) is a Bun workspace.
 It owns the baseline format rules: `baselineSchema` and the generated `Baseline`
-types. The viewer imports it as `@choom/baseline-model`. The producer will use
-the same package later. Its exports are `.` (the validator), `./contracts`,
+types. The viewer imports it as `@choom/baseline-model`. The producer imports it
+too, for the baseline shape, and adds its stricter profile and its run checks
+(see the [record format](docs/design/app-a/record-format.md#baseline)). Its exports are `.` (the validator), `./contracts`,
 `./baseline-format`, and `./readonly-data`. It uses only TypeScript that Node
 can remove, so a Node process imports it with no build step.
 
@@ -634,12 +654,17 @@ action checks that digest first and refuses a changed producer, so the code
 cannot change during a run. The stage starts save their cookbooks, and Stages 4
 and 5 also the record format, as records; Stages 3 and 5 read their review prompt
 from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types of
-`run-layout.mjs`.
+`run-layout.mjs`. The shared record validator of Stages 4 to 6
+(`stage-6-records.ts` with `record-baseline.ts`, `record-sources.ts`,
+`record-graph.ts` and `record-checks.ts`) checks the baseline shape with
+`@choom/baseline-model`, as the viewer does, and adds the producer profile, the
+reserved IDs and the checks against the saved run records.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model
 imports no app code from `src/` and no package other than `zod`. The producer
-imports no app code either, with one listed exception: the duplication helpers
+imports the baseline rules from `@choom/baseline-model`. It imports no app code,
+with one listed exception: the duplication helpers
 keep their use of the viewer's baseline and report YAML readers and the
 duplication key. The workflow uses
 injected file and layout operations. The platform owns Tauri access. React
@@ -675,8 +700,11 @@ Use `bun run typecheck` to check with the native compiler. Do not replace the co
 
 `packages/producer/package.json` declares the packages that the producer helpers load
 from the tool checkout, at the versions already in `bun.lock`: `yaml`, `picomatch`,
-`typescript`, `ts-morph`, `knip`, `dependency-cruiser`, and `jscpd`. The helpers
+`typescript`, `ts-morph`, `knip`, `dependency-cruiser`, and `jscpd`. It also
+declares `@choom/baseline-model` with `workspace:*`, as the app does. The helpers
 resolve them from the root `node_modules`, which the hoisted linker keeps in place.
+The workspace link resolves to `packages/baseline-model` in the same checkout,
+whose code the producer code digest covers.
 Knip ignores `dependency-cruiser` and `picomatch` in that workspace: the Stage 4
 graph helper loads dependency-cruiser by file path, and Stage 4 loads picomatch by
 a name in a variable, so Knip cannot see either use.

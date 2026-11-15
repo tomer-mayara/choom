@@ -2,7 +2,9 @@
 
 The baseline-model component owns the baseline viewer profile in
 [baseline.tsp](baseline.tsp). It is the `@choom/baseline-model` workspace. The
-viewer uses these rules, and the producer will use the same rules. `baselineSchema` in
+viewer and the producer use these rules. The producer adds a stricter profile
+and its run checks; see the
+[record format](../../docs/design/app-a/record-format.md#baseline). `baselineSchema` in
 [`packages/baseline-model/src/baseline.ts`](../../packages/baseline-model/src/baseline.ts)
 validates an unknown value and returns the generated `Baseline` data type.
 Import it from `@choom/baseline-model`, and the generated types from
@@ -172,6 +174,8 @@ bun run check:contracts
 imports `@choom/baseline-model` through the workspace link, with no build step,
 and validates a reviewed baseline. The package uses only TypeScript that Node can
 remove (type stripping), so it can run in a Node process such as the producer.
+The same command runs the producer record suite, which checks proposed baselines
+with these rules and the producer profile.
 
 The feature and TypeSpec contract are linked from the
 [baseline-model component manifest](../../packages/baseline-model/component.yaml).

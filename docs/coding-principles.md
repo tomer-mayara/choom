@@ -98,7 +98,9 @@ or acceptance journey. Do not add doubles or weaken assertions just to put it in
 unit. Document focused commands in the owning app or workspace. The current
 Bun native runner scans the root `test/unit/`, `packages/baseline-model/test/unit/`
 and `packages/producer/test/unit/` for TypeScript suites and excludes `*.test.tsx`. `test:integration` runs the
-baseline-model integration suite, which starts Node instead of Bun.
+baseline-model integration suite, which starts Node instead of Bun, and the
+producer record suite, which runs the producer validator with the baseline-model
+rules.
 The separate DOM runner selects React suites with `test/preload.ts`.
 `test:e2e` builds once and runs browser Cucumber acceptance using Playwright;
 `test:behavior` runs the browser-free Cucumber profile. Both use feature files
