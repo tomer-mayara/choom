@@ -75,12 +75,17 @@ Stage 6 saves the validated proposal without changing its bytes. Choom reads
 versions 1 to 5 without running source analysis. The producer does not write
 [version 5](record-format.md#version-5-symbol-selectors) yet.
 
-Use one trusted tool revision and the pinned environment for an attempt. A tool
-change needs a fresh attempt. Historical runs keep their saved baselines,
-receipts and tool pins. Verify an old attempt with its matching trusted tools;
-do not edit its pins or run saved scripts without first checking them against
-that trusted revision. New reader compatibility does not permit a new helper
-revision to rewrite an old run.
+Use one trusted tool revision and the pinned environment for a run. Stage 1
+`start` saves the [producer code record](record-format.md#producer-code-record)
+`evidence/producer.json`: the producer version, the Git commit when there is one,
+and one digest of `packages/producer/src` and `packages/baseline-model/src`. Every
+later stage action compares the code in the tool checkout with that digest before
+it reads or writes the run, and stops if the code changed. A producer change
+therefore needs a new run; other tool changes need a fresh attempt. Historical
+runs keep their saved baselines, receipts and tool pins. Verify an old attempt
+with its matching trusted tools; do not edit its pins or run saved scripts without
+first checking them against that trusted revision. New reader compatibility does
+not permit a new helper revision to rewrite an old run.
 Discovery explains the system, inspected behavior paths, file ownership and
 remaining questions. Large inventories and tool results stay in referenced files.
 Keep the complete output folder; the two final YAML files alone are not a
@@ -112,7 +117,7 @@ manager review, report the blocker and stop the handoff.
 Use macOS or Linux with Bash or Zsh. Keep the same run environment values across
 worker terminals. Use canonical absolute paths. On macOS, a folder under `/tmp`
 usually resolves under `/private/tmp`. Keep the trusted tool checkout and its
-dependencies unchanged during an attempt.
+dependencies unchanged during a run.
 
 You need:
 
@@ -142,16 +147,16 @@ export CHOOM_SNAPSHOT_ID="snapshot-001"
 export CHOOM_BASELINE_ID="baseline-001"
 ```
 
-The cookbooks start the trusted helpers through the producer command line,
+The cookbooks run every stage action through the producer command line,
 `node "$CHOOM_TOOLS/packages/producer/src/cli.ts" <command> <action>`. It works
 from any directory. In the tool checkout, `bun run producer <command> <action>`
 runs the same command. It runs the helper in `packages/producer/src/` with the
-same arguments and environment. When a cookbook runs a helper copy saved in an
-attempt folder, use that saved copy as the cookbook shows. A saved copy of a
-TypeScript helper ends in `.mts`, so Node runs it as an ES module in any folder.
-Each stage start saves the code that its later actions run, and those actions
-run the saved copies. The cookbooks contain only the commands to type, the LLM
-prompts and the review steps; there is no code to copy from them.
+same arguments and environment. No action runs code from a run or attempt folder:
+the stage starts save only documents, such as the cookbook, as records. If an
+action reports that the producer code changed, continue with the producer version
+that the message names, or start a new run. The cookbooks contain only the
+commands to type, the LLM prompts and the review steps; there is no code to copy
+from them.
 
 Choose a new working folder whose parent exists. For a checkout-local run, create
 the parent with `mkdir -p "$CHOOM_TOOLS/work-choom"` and set
@@ -303,9 +308,10 @@ references only where the record contract permits them.
 After publication, require the saved packet copies to match the approved bytes.
 Check the selected records, receipts, digests and manifest summaries. Use the
 stage's verification action where available. Stage 3 provides
-`stage-3-finish.mjs verify` for its latest completed state. Leave older frozen
-finalizers unchanged. Semantic review is separate from the verification command.
-Use read-only checks to verify saved state. `finish` writes records.
+`stage-3-finish verify` for its latest completed state. Leave the finalizer
+copies that older attempts saved unchanged. Semantic review is separate from the
+verification command. Use read-only checks to verify saved state. `finish` writes
+records.
 
 ## Worker assignment
 
@@ -447,7 +453,8 @@ workflow. Fixed records and registered evidence stay unchanged.
 
 Before publication, correct the external packet and its full response, then
 repeat the required review and checks. Fix helper-generated output in the trusted
-tools for a fresh attempt; do not edit a saved helper to make its digest pass.
+tools for a new run; do not edit a saved file or the producer code record to make
+a digest pass.
 
 After publication, a minor explanatory error can be recorded in `run-notes.md`
 at the run root. Keep it outside immutable attempt directories and the artifact
@@ -502,10 +509,11 @@ That workflow saves a new manifest and report outside this completed run. Link
 its outcome in the new assessment handoff; do not reopen Step 1 or change its
 artifact registry. A detector's empty result does not replace capability review.
 Keep that trusted revision and its dependencies available for later verification;
-new helper bytes do not update an old attempt's checks. If the checkout has local
-or uncommitted tool files, Git HEAD alone does not identify the version used.
-Point to the saved receipts and artifact entries that identify the cookbook,
-helper and dependency versions. A rehearsal on a repository
+new helper bytes do not update an old run's checks. If the checkout has local
+or uncommitted tool files, Git HEAD alone does not identify the version used; the
+code digest in `evidence/producer.json` does. Point to that record and to the
+saved receipts and artifact entries that identify the cookbook and dependency
+versions. A rehearsal on a repository
 with component declarations does not establish recovery accuracy without them.
 
 Human acceptance and zero unknown owners are not required to complete this first
@@ -526,14 +534,15 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `step-1-cookbook.md` through `step-6-cookbook.md` | Stage instructions, LLM prompts, checks and next handoff |
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
+| `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
 | `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
-| `stage-1-settings.ts` | Stage 1 settings collector; start saves it and the settings action runs its saved copy |
-| `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs from the attempt: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
+| `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it |
+| `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
-| `stage-3-finish.mjs` | Validate, save and verify the latest completed Stage 3 state |
+| `stage-3-finish.mjs` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command) |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5 |
 | `stage-4-5-publish.mjs` | Check, publish and verify the Stage 4 or Stage 5 review |
-| `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence |
+| `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence (`stage-4-inspect` command) |
 | `stage-5-query.mjs` | Remaining-code and inspection-coverage queries |
 | `stage-6-records.mjs` | Shared validation of the architecture records |
 | [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |

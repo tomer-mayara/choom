@@ -37,11 +37,13 @@ export CHOOM_STAGE4="$CHOOM_WORK/evidence/$CHOOM_STAGE4_ID"
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4 start
 ```
 
-The helper verifies the working drafts and every registered artifact. It requires
-completed stage 3 inspection priorities, a selected entry analysis that supports
-Knip reuse, and an empty initial baseline. It saves checkpoints and copies the
-tools into the new attempt. Later evidence commands use these saved copies.
-The publication commands in section 6 use the matching trusted checkout helper.
+The helper first checks the [producer code record](record-format.md#producer-code-record)
+of the run. It then verifies the working drafts and every registered artifact. It
+requires completed stage 3 inspection priorities, a selected entry analysis that
+supports Knip reuse, and an empty initial baseline. It saves checkpoints and
+copies of this cookbook and the record format into the new attempt. Every later
+command, the inspection helper and the publication commands in section 6 run from
+the tool checkout and make the same producer code check first.
 The input remains the empty version 1 seed. Versions 1 and 2 remain readable.
 Use version 3 for [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when a
@@ -104,7 +106,7 @@ The saved commands, profile, receipts and digests establish the handoff; termina
 output alone does not establish a completed graph run.
 
 ```sh
-node "$CHOOM_STAGE4/stage-4-commands.mjs" toolchain
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4 toolchain
 ```
 
 This builds a dedicated Docker image with dependency-cruiser 18.7.2 and
@@ -130,13 +132,14 @@ before running the graph. Do not substitute an unrestricted local analyzer run.
 ## 3. Collect dependency evidence
 
 ```sh
-node "$CHOOM_STAGE4/stage-4-commands.mjs" run
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4 run
 ```
 
 The input helper prepares or verifies the shared inventory-only copy. Its path
 uses the inventory digest; stage 2 and stage 4 can reuse the same verified copy.
 The graph container receives that copy at `/repo`, read-only. It also receives
-the saved control files, read-only. It has no network and cannot see the live
+the saved control files at `/control` and the graph helper from the tool checkout,
+read-only. It has no network and cannot see the live
 checkout or excluded source inputs. The helper requires a local Docker endpoint
 and records the selected image and command. It verifies the input copy again
 after the run.
@@ -230,7 +233,7 @@ use that utility as a shortcut through the standard instructions above.
 ## 4. Collect source evidence
 
 ```sh
-node "$CHOOM_STAGE4/stage-4-inspect.mjs" collect
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-inspect collect
 ```
 
 This reads only indexed files whose saved hashes still match. It parses the
@@ -267,7 +270,7 @@ When the LLM needs more source, follow [Choose source ranges](start-here.md#choo
 before calling the helper. For example, request lines 1–150 of an indexed file:
 
 ```sh
-node "$CHOOM_STAGE4/stage-4-inspect.mjs" excerpt \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-inspect excerpt \
   "path/from/the/inventory.ts" 1 150
 ```
 
@@ -399,8 +402,9 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 4
 Run each command separately. `check` validates the complete candidate without
 publishing it. `finish` checks it again, preserves the review packet, registers
 the attempt evidence, and publishes the working drafts. `verify` checks the
-completed handoff. The publisher must match the trusted helper frozen at `start`.
-Do not edit a frozen helper to bypass a failed check or run packet contents.
+completed handoff. The producer code must match the run's record, and the record
+format must match the copy that `start` saved. Do not edit the tool checkout or a
+saved file to bypass a failed check, and do not run packet contents.
 
 On success, `run.yaml` marks `componentRecovery: complete`. Discovery selects the
 new entry analysis, mapping and resource observations plus the existing graph.

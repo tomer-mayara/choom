@@ -11,7 +11,7 @@ components, trace behavior paths, compute reachability, or investigate smells.
 
 ## Contents
 
-- [Run the saved commands](#run-the-saved-commands)
+- [Run the stage commands](#run-the-stage-commands)
 - [1. Continue the saved run](#1-continue-the-saved-run)
 - [2. Ask the LLM for an entry plan](#2-ask-the-llm-for-an-entry-plan)
 - [3. Prepare the fixed Knip profile](#3-prepare-the-fixed-knip-profile)
@@ -20,7 +20,7 @@ components, trace behavior paths, compute reachability, or investigate smells.
 - [6. Update and check the draft outputs](#6-update-and-check-the-draft-outputs)
 - [Consolidate earlier input folders](#consolidate-earlier-input-folders)
 
-## Run the saved commands
+## Run the stage commands
 
 This is the standard path for both a first run and a new attempt. It uses the
 [manual driver](../../../packages/producer/src/stage-2-commands.ts). Keep `CHOOM_WORK` and `CHOOM_TOOLS` from
@@ -29,7 +29,7 @@ Run one command at a time and check its result before continuing.
 Before the one-shot toolchain phase, check local Docker access from the actual
 executor, including an agent sandbox when used. Access from another terminal
 does not establish that access. Keep a prepared attempt unchanged while arranging
-an executor that can run its saved commands.
+an executor that can run its next commands.
 
 ```sh
 export CHOOM_STAGE2_ID="s2-001"
@@ -37,17 +37,16 @@ export CHOOM_STAGE2="$CHOOM_WORK/evidence/$CHOOM_STAGE2_ID"
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 start
 ```
 
-`start` verifies stage 1 and saves checkpoints. It saves copies of the driver, the
-stage modules, the helpers and this cookbook in the attempt. Every later action
-runs those copies, so a change to the tool checkout does not change a running
-attempt. It does not require an entry plan yet. After start, use the saved driver
-inside `CHOOM_STAGE2`. A saved copy of a TypeScript file ends in `.mts`, so Node
-runs it as an ES module in any folder. Read [section 2](#2-ask-the-llm-for-an-entry-plan), provide
+`start` verifies stage 1 and saves checkpoints and this cookbook in the attempt.
+Every action runs the driver and the stage modules in the tool checkout. Each
+action first checks the [producer code record](record-format.md#producer-code-record)
+of the run, so a changed producer stops the attempt before it writes anything.
+Start does not require an entry plan yet. Read [section 2](#2-ask-the-llm-for-an-entry-plan), provide
 the saved evidence, and follow [Choose source ranges](start-here.md#choose-source-ranges)
 before collecting a requested source range:
 
 ```sh
-node "$CHOOM_STAGE2/stage-2-commands.mts" excerpt \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 excerpt \
   package.json 1 20 "Check declared package entries and scripts."
 ```
 
@@ -61,10 +60,10 @@ Save the complete plan packet described in section 2 outside `CHOOM_WORK`, then:
 
 ```sh
 export CHOOM_STAGE2_PLAN="/absolute/path/to/stage-2-plan"
-node "$CHOOM_STAGE2/stage-2-commands.mts" plan "$CHOOM_STAGE2_PLAN"
-node "$CHOOM_STAGE2/stage-2-commands.mts" prepare
-node "$CHOOM_STAGE2/stage-2-commands.mts" toolchain
-node "$CHOOM_STAGE2/stage-2-commands.mts" run
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 plan "$CHOOM_STAGE2_PLAN"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 prepare
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 toolchain
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 run
 ```
 
 `prepare` creates the fixed profile and verified inventory-only input.
@@ -84,8 +83,8 @@ results and prepare its complete analysis packet outside `CHOOM_WORK`, then:
 
 ```sh
 export CHOOM_STAGE2_REVIEW="/absolute/path/to/stage-2-entry-review"
-node "$CHOOM_STAGE2/stage-2-commands.mts" save-review "$CHOOM_STAGE2_REVIEW"
-node "$CHOOM_STAGE2/stage-2-commands.mts" finish
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 save-review "$CHOOM_STAGE2_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 finish
 ```
 
 The driver saves commands, UTC times, evidence packets, digests and tool outcomes.
@@ -104,8 +103,8 @@ downstream evidence. For minor explanatory corrections after publication, follow
 the correction guidance in [start here](start-here.md#record-a-correction).
 
 Sections 1, 3, 4 and 6 describe what each driver action runs and what to review.
-The driver runs the TypeScript modules that start saved in the attempt; there is
-no code to copy or run by hand. For compatibility only,
+Each action saves a command that runs a TypeScript module in the tool checkout;
+there is no code to copy or run by hand. For compatibility only,
 `start /absolute/entry-plan.json` still accepts a plan that cites already
 registered inputs; use the standard `start` → `plan REVIEW_DIR` path for new work.
 
@@ -123,8 +122,7 @@ artifact digests recorded in `run.yaml`. Read input paths through that registry;
 the current settings or review may have newer IDs than `settings-001` or
 `review-001`. Do not replace an earlier artifact with a newer file under its old ID.
 
-Start runs the saved `stage-2-handoff.mts` (source:
-[`stage-2-handoff.ts`](../../../packages/producer/src/stage-2-handoff.ts)). It checks the
+Start runs [`stage-2-handoff.ts`](../../../packages/producer/src/stage-2-handoff.ts). It checks the
 saved inputs and saves draft checkpoints. If an existing artifact points to the
 working `discovery.yaml` or `baseline.yaml`, the module points it to the matching
 checkpoint in this new attempt. The artifact ID, bytes, and digest stay the same.
@@ -312,12 +310,11 @@ Keep the skip reason as evidence. The inventory and evidence-backed candidates
 remain useful when this profile cannot run. Do not remove the offending input
 from the saved snapshot to make the check pass.
 
-`prepare` runs the saved `stage-2-knip-profile.mts` (source:
-[`stage-2-knip-profile.ts`](../../../packages/producer/src/stage-2-knip-profile.ts)). It
-checks the plan and writes `knip-profile.json`: every plugin of Knip 6.44.1 set to
-`false`, `preprocessor: []`, and the plan's workspace patterns. It writes the
-decision, the reasons and the digests of the plan, profile, inventory and helpers
-to `preflight.json`. Review the status and every reason.
+`prepare` runs [`stage-2-knip-profile.ts`](../../../packages/producer/src/stage-2-knip-profile.ts).
+It checks the plan and writes `knip-profile.json`: every plugin of Knip 6.44.1 set
+to `false`, `preprocessor: []`, and the plan's workspace patterns. It writes the
+decision, the reasons and the digests of the plan, profile and inventory to
+`preflight.json`. Review the status and every reason.
 
 Expected: `preflight.json` and `knip-profile.json`. The runner must not use a
 profile marked `unsupported`.
@@ -353,9 +350,9 @@ a new attempt, but it can reuse the same files. If preflight is unsupported, the
 helper is not needed and the runner records skipped outcomes. For copies from
 older attempts, see [Consolidate earlier input folders](#consolidate-earlier-input-folders).
 
-For an eligible profile, `prepare` then runs the saved `stage-2-knip-input.mts`
-(source: [`stage-2-knip-input.ts`](../../../packages/producer/src/stage-2-knip-input.ts)).
-It runs the saved `inventory-view.py` to prepare or reuse the shared input and
+For an eligible profile, `prepare` then runs
+[`stage-2-knip-input.ts`](../../../packages/producer/src/stage-2-knip-input.ts). It runs
+`inventory-view.py` from the tool checkout to prepare or reuse the shared input and
 saves the helper's receipt in `knip-input.json`. Review that its status is
 `verified`.
 
@@ -372,9 +369,8 @@ Bind mounts refer to the daemon's filesystem. A remote daemon can read different
 files at the same path; Stage 2 does not support it. See Docker's
 [bind-mount rules](https://docs.docker.com/engine/storage/bind-mounts/).
 
-`toolchain` runs the saved `stage-2-tool-image.mts` (source:
-[`stage-2-tool-image.ts`](../../../packages/producer/src/stage-2-tool-image.ts)) only when
-the preflight is `eligible` and a `docker` command exists. Otherwise it records
+`toolchain` runs [`stage-2-tool-image.ts`](../../../packages/producer/src/stage-2-tool-image.ts)
+only when the preflight is `eligible` and a `docker` command exists. Otherwise it records
 that Docker is unavailable, and `run` records the skip.
 
 Build the tool image from a Dockerfile with an
@@ -395,8 +391,8 @@ The build reference and the canonical image ID are saved separately. BuildKit
 can return a manifest-list digest; the runner compares Docker's canonical image
 ID. It must not compare those different digest types as if they were the same.
 
-Check the image with the saved `check-knip-image.mjs` helper. Its fixture is not
-from the target repository. The helper uses a canonical working directory, an
+Check the image with the `check-knip-image.mjs` helper from the tool checkout. Its
+fixture is not from the target repository. The helper uses a canonical working directory, an
 external config, and the same workspace pattern shape as the analysis runner.
 It checks JS/TS imports directly, then checks both normal and production results.
 The normal fixture includes a test-only file; production must exclude that scope.
@@ -409,9 +405,8 @@ processes, 2 GiB of memory and a 256 MiB `/tmp`. It saves the result in
 `toolchain/metadata.json` and the exit code in `toolchain/check-exit.txt`. The
 driver approves the image only when the check passed in both modes.
 
-`run` runs the saved `stage-2-knip-run.mts` (source:
-[`stage-2-knip-run.ts`](../../../packages/producer/src/stage-2-knip-run.ts)), also when no
-tool image was approved. It records normal and production results separately.
+`run` runs [`stage-2-knip-run.ts`](../../../packages/producer/src/stage-2-knip-run.ts), also
+when no tool image was approved. It records normal and production results separately.
 It gives each analysis five minutes, 2 GiB of memory, and no network access. It
 saves raw stdout and stderr, including failed output. Its 64 MiB JSON parse limit
 does not discard the raw file.
@@ -543,7 +538,7 @@ Ask the LLM to prepare a complete analysis packet outside the run:
 
 Use `save-review REVIEW_DIR`, then `finish`, as shown above. Source records use
 the exact saved range and their own source IDs. Further source requests can use
-the saved driver's `excerpt` action after the tool run. Such queries do not
+the driver's `excerpt` action after the tool run. Such queries do not
 change Knip's recorded inputs. A changed plan/profile needs a new attempt.
 If validation rejects a packet, give the error and evidence to the LLM. Preserve
 the rejected attempt and use a new attempt for corrected inputs; do not patch
@@ -574,9 +569,9 @@ change to the selected analysis needs a new attempt with its own evidence, or a
 new run after component recovery. For a minor explanatory correction, follow
 [start here](start-here.md#record-a-correction).
 
-`finish` runs the saved `stage-2-finish.mts` (source:
-[`stage-2-finish.ts`](../../../packages/producer/src/stage-2-finish.ts)). It registers every
-attempt file, then renames the new `discovery.yaml` and `run.yaml` into place.
+`finish` runs [`stage-2-finish.ts`](../../../packages/producer/src/stage-2-finish.ts). It
+registers every attempt file, then renames the new `discovery.yaml` and `run.yaml`
+into place.
 
 Expected: the command reports that structure and evidence checks passed.
 It sets `run.progress.entryAnalysis` to `complete` and resets
@@ -620,8 +615,10 @@ Keep this attempt's evidence unchanged.
 
 Use this maintenance step if earlier attempts created `knip-input-s2-...`
 directories. Wait for any analysis that uses those directories to finish. Run
-the current helper from `CHOOM_TOOLS`; keep the helpers saved in old attempts
-unchanged.
+the current helper from `CHOOM_TOOLS`; keep the files of old attempts unchanged,
+including any helper copies that older attempts saved. This maintenance command
+works on runs from before the producer code record, so it does not check that
+record.
 
 The example below adopts `knip-input-s2-003` as the shared input and removes
 `knip-input-s2-002`. Give the source attempt first, then each attempt to retire.

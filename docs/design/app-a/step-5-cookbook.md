@@ -42,12 +42,14 @@ without a system-entry assessment. Use version 4 when `systemEntryPoints`
 is present. Both formats retain the
 [interface documentation](record-format.md#version-2-interface-documentation)
 and signatures from version 2.
-It verifies the registered artifacts, the selected Stage 4 facts,
+It first checks the [producer code record](record-format.md#producer-code-record)
+of the run. It then verifies the registered artifacts, the selected Stage 4 facts,
 the published draft pair, and every indexed snapshot file. It saves the three
-draft checkpoints, its tools, the cookbook, the query scope, and a handoff record.
-It records tool versions and hashes. The working drafts stay unchanged. Use the
-trusted checkout command for every action. Later actions verify the saved tool
-copies and parser files before loading them. A tool change requires a new attempt.
+draft checkpoints, copies of this cookbook and the record format, the query scope,
+and a handoff record. It records parser versions and hashes. The working drafts
+stay unchanged. Use the trusted checkout command for every action. Each later
+action makes the same producer code check and verifies the saved documents and
+parser files before it loads them. A tool change requires a new attempt.
 
 The reported counts depend on the target. Unassigned units include tests,
 contracts, documentation, configuration and assets. The count is not a count of

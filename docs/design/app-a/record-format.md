@@ -3,7 +3,8 @@
 Read this with the [stage 4 cookbook](step-4-cookbook.md) or
 [stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
 to the shared publisher. The publisher is a trusted tool. Review folders contain
-data only; do not generate or execute a run-specific save script.
+data only; do not generate or execute a run-specific save script. The last section
+defines the [producer code record](#producer-code-record) that every stage checks.
 
 ## Review folder
 
@@ -633,3 +634,49 @@ proposal through its normal publication. A material ownership, interface, root
 or policy correction needs a new run when the next unpublished stage cannot
 handle it. If that run uses a saved snapshot as its source, preserve the original
 capture exclusions and limits in the new scope record.
+
+## Producer code record
+
+Stage 1 `start` saves `evidence/producer.json` in the new run. Stage 1 `finish`
+registers it in `run.yaml` as `s1-file@evidence%2Fproducer.json`, so a later
+change to the record is a changed registered artifact.
+
+```json
+{
+  "formatVersion": 1,
+  "package": "@choom/producer",
+  "version": "0.1.0",
+  "codeDigest": "<64 lowercase hexadecimal characters>",
+  "commit": "<40 or 64 lowercase hexadecimal characters, or not-available>"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `formatVersion` | `1`. |
+| `package` | `@choom/producer`. |
+| `version` | The `version` in `packages/producer/package.json`. |
+| `codeDigest` | The code digest below. |
+| `commit` | The Git commit of the tool checkout when the checkout is the top folder of a Git repository; otherwise `not-available`. Local changes are not in the commit; the digest includes them. |
+
+The code digest is the SHA-256 of a text with one line for each regular file in
+`packages/producer/src` and `packages/baseline-model/src`. Each line is the
+file's SHA-256, two spaces and the file's path, and then a line feed. The path is
+relative to the tool checkout and uses `/`. The lines are sorted by the UTF-8 bytes
+of the paths. A symbolic link or another entry that is not a regular file or
+folder stops the digest, and so does a file name with a control character.
+Documents, `package.json` files and installed packages are not part of the digest.
+
+Every stage action after Stage 1 `start` reads the record and computes the digest
+of the tool checkout before it reads or writes the run. It refuses the action and
+writes nothing when:
+
+- The run has no record: it started before the record existed. Start a new run.
+- The record is not valid. Start a new run.
+- The digest is different. The message names the recorded commit and digest.
+  Continue with that producer version, or start a new run.
+
+The programs that a stage action starts after its check, such as the Stage 2
+modules, `inventory-view.py`, `check-knip-image.mjs` and `stage-4-graph.mjs`, do
+not check again. The duplication assessment, the input consolidation command and
+the recovery capture do not use the record.

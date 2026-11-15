@@ -189,13 +189,13 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 start \
   "$CHOOM_STAGE6_REVIEW"
 ```
 
-Use the helper in the trusted checkout for every command. Saved copies are
-provenance records; do not execute them from the attempt.
-Later commands require the same helper bytes, Node version and trusted YAML
-package that `start` recorded.
+Use the helper in the trusted checkout for every command. Each command first
+checks the [producer code record](record-format.md#producer-code-record) of the
+run. Later commands also require the Node version and trusted YAML package that
+`start` recorded. The saved cookbook is a record of the instructions.
 Keep that trusted checkout version available. To verify a run created with older
 helpers, use its matching trusted checkout and tool installation. Do not update
-frozen evidence copies or rehash them to match a new tool version.
+saved evidence copies or rehash them to match a new tool version.
 
 `start` verifies the input identities and review bindings. It checks all
 registered artifact digests and indexed snapshot files, then validates the
@@ -286,8 +286,9 @@ new version or assessment, as described in the
 [design's saved-record rules](../llm-led-architecture-analysis.md#runs-and-saved-evidence).
 For this prototype, follow [record a correction](start-here.md#record-a-correction):
 use separate run notes for a minor prose defect, or a new run for a material
-change after Stage 5. Updating this helper fixes future attempts; it does not
-rewrite a completed run or make its frozen helper compatible with new commands.
+change after Stage 5. Updating this helper fixes future runs; it does not
+rewrite a completed run, and the producer code check refuses a changed helper for
+an existing run.
 
 ## Saved state
 

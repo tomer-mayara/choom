@@ -441,23 +441,34 @@ bun run producer --help
 ```
 
 The `@producer` scenarios save a Stage 6 result from a reviewed fixture through
-the producer command line. The unit suites check the shared record validator and
-the command mapping. The interface suites run each helper with no action or an
-unknown action, check the source copies that each stage saves, and run the graph
-fixture, Knip image check, inventory view, recovery check and duplication start
-without Docker. They need `python3` on `PATH`. Docker-based Knip and graph runs
-are not part of these checks.
+the producer command line. They also check that Stage 1 start records the
+producer code, and that a later action refuses the run after that code changed.
+The unit suites check the shared record validator, the producer code digest and
+record, and the command mapping. The interface suites run each helper with no
+action or an unknown action, check that each stage start saves its documents and
+no producer code, refuse each stage action when the run's producer code record is
+missing or does not match, and run the graph fixture, Knip image check, inventory
+view, recovery check and duplication start without Docker. They need `python3` on
+`PATH`. Docker-based Knip and graph runs are not part of these checks.
 
 The Stage 1 and Stage 2 interface suites run each stage through its commands on
 small fixtures. Python test doubles in `packages/producer/test/support/doubles/`
 take the place of `rsync` and Docker. The suites record the capture, the settings
 record, the Knip profile, the preflight and tool image decisions, the Knip
 receipts, the finish checks, the recovery capture and the input consolidation.
-They also show that a running attempt uses only the code that its start saved.
-Run them with:
+They also show that each action after start refuses the run after a producer code
+file changed in a copied tool checkout. Run them with:
 
 ```sh
 bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2
+```
+
+Run the focused checks of the producer code record with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/producer-code.test.ts ./packages/producer/test/interface/producer-code.test.ts
+bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2/producer-code.test.ts
 ```
 
 The normal browser opening test uses the real app, file reader, decoder, layout,
@@ -615,12 +626,15 @@ ran from their cookbooks is in TypeScript modules: the Stage 1 settings collecto
 (`stage-1-settings.ts`), the Stage 2 steps (`stage-2-handoff.ts`,
 `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`,
 `stage-2-knip-run.ts` and `stage-2-finish.ts`) and the input consolidation command
-(`stage-2-consolidate-inputs.ts`). Each stage start saves copies of the code that
-its later actions run, and those actions run the saved copies, so the code cannot
-change during an attempt. A saved copy of a TypeScript file ends in `.mts`, so
-Node runs it as an ES module in any folder. Stage 1 and Stage 2 still save their
-cookbook as a record of the instructions and prompts; no code reads those copies.
-`run-layout.d.mts` gives TypeScript callers the types of `run-layout.mjs`.
+(`stage-2-consolidate-inputs.ts`). Every stage action runs the code in the tool
+checkout. Stage 1 start saves the producer code record (`producer-code.ts`): the
+package version, the Git commit when there is one, and one digest of
+`packages/producer/src` and `packages/baseline-model/src`. Every later stage
+action checks that digest first and refuses a changed producer, so the code
+cannot change during a run. The stage starts save their cookbooks, and Stages 4
+and 5 also the record format, as records; Stages 3 and 5 read their review prompt
+from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types of
+`run-layout.mjs`.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model

@@ -43,10 +43,14 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 start
 
 Run one command at a time and stop on an error. The helper creates the folder;
 do not create it first. Keep the tool checkout unchanged for this run. It saves
-copies of itself, the run layout helper and the settings collector, this cookbook
-as a record, tool versions, IDs and a command log. Run the helper from the trusted
-checkout for every stage 1 action; each later action refuses a helper that differs
-from its saved copy.
+the producer code record `evidence/producer.json`, this cookbook as a record, tool
+versions, IDs and a command log. The record holds the producer version, the Git
+commit when there is one, and a digest of the producer code; see the
+[record format](record-format.md#producer-code-record). Run the helpers from the
+trusted checkout for every action of every stage. Each later action first compares
+the code in the checkout with the record. If the code changed, the action stops
+before it reads or writes the run. Continue with the recorded producer version, or
+start a new run.
 
 ## 2. Review scope and capture
 
@@ -90,8 +94,7 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 capture
 The helper copies selected files with `rsync`, then performs a checksum dry-run
 comparison. It stops on differences or unsupported filesystem items. An empty
 comparison does not prove atomic capture. The saved manifest keeps that limit.
-The helper then writes the inventory, `inventory.mjs`, and `settings.mts`, a copy
-of the settings collector that start saved.
+The helper then writes the inventory and `inventory.mjs`.
 All later analysis reads the saved snapshot. It includes local and untracked
 files that pass the explicit exclusions; Git ignore rules do not define scope.
 
@@ -105,7 +108,7 @@ capture, rather than removed after inventory publication.
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 settings
 ```
 
-`settings` runs the saved collector `settings.mts` (see
+`settings` runs the settings collector in the tool checkout (see
 [Settings collector](#settings-collector)). The collector reads package manifests
 and conventional `tsconfig*.json` and `jsconfig*.json` files through a
 snapshot-backed filesystem. It follows saved
@@ -281,8 +284,9 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 verify
 `finish` verifies snapshot bytes, the review's structure, IDs, references and
 supplied source ranges. It copies the review packet, saves an empty baseline,
 and creates discovery from the review's questions and gaps. It registers all
-evidence and both saved collectors with computed SHA-256 digests, then writes
-`run.yaml` last. No manual digest entry or analysis-record editing is needed.
+evidence, including the producer code record, and `inventory.mjs` with computed
+SHA-256 digests, then writes `run.yaml` last. No manual digest entry or
+analysis-record editing is needed.
 It saves `evidence/stage1-discovery.yaml` as `discovery-001`; mutable root drafts
 are never registered as immutable evidence.
 
@@ -307,12 +311,11 @@ rerun `finish`.
 ## Settings collector
 
 The collector is
-[`stage-1-settings.ts`](../../../packages/producer/src/stage-1-settings.ts). Start saves
-it as `evidence/stage-1-settings.mts`, capture copies that saved copy to
-`settings.mts`, and `settings` runs that copy, so a later change to the tool
-checkout does not change this run. Review its settings record as section 3
-describes; do not run the collector separately. The recovery helper below runs
-the same collector.
+[`stage-1-settings.ts`](../../../packages/producer/src/stage-1-settings.ts). `settings`
+runs it in the tool checkout after the producer code check, and the settings
+selection records its digest. Review its settings record as section 3 describes;
+do not run the collector separately. The recovery helper below runs a copy of the
+same collector.
 
 ## Recovery from a damaged older capture
 
@@ -330,4 +333,6 @@ copies evidence and collects settings with a `settings.mts` copy of the trusted
 collector. Review its capture receipt before further
 work. Its historical layout requires a separately reviewed stage 1 publication;
 the new driver above does not claim to resume that legacy layout automatically.
+The recovery saves no producer code record, so the stage helpers refuse to
+continue its run.
 For a new third-party run, use the normal capture flow in this cookbook.

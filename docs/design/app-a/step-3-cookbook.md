@@ -32,16 +32,19 @@ export CHOOM_STAGE3="$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID"
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 start
 ```
 
-The [manual helper](../../../packages/producer/src/stage-3-commands.mjs) checks the saved manifest, discovery,
-empty baseline, and registered artifact digests. The manifest must mark entry
-analysis complete. Discovery must select a registered entry analysis.
+The [manual helper](../../../packages/producer/src/stage-3-commands.mjs) first checks the
+[producer code record](record-format.md#producer-code-record) of the run. It then
+checks the saved manifest, discovery, empty baseline, and registered artifact
+digests. The manifest must mark entry analysis complete. Discovery must select a
+registered entry analysis. Every later action and the
+[finalizer](../../../packages/producer/src/stage-3-finish.mjs) run from the tool
+checkout and make the same producer code check first.
 
 The helper creates a new attempt directory and saves:
 
 - `run.before.yaml`, `discovery.before.yaml`, and `baseline.before.yaml`.
-- `handoff.json`, with the selected inputs and helper digests.
-- Copies of this cookbook, the command helper, and the
-  [finalizer](../../../packages/producer/src/stage-3-finish.mjs).
+- `handoff.json`, with the selected inputs and the cookbook digest.
+- A copy of this cookbook. `collect` takes the review prompt from that copy.
 - `commands.md` and command receipts.
 
 It does not change the working drafts or register the new files yet. It does not
@@ -51,14 +54,14 @@ file used by the later queries against the saved inventory.
 ## 2. Collect focused evidence
 
 ```sh
-node "$CHOOM_STAGE3/stage-3-commands.mjs" collect
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 collect
 ```
 
 The deterministic helper and the LLM have separate jobs:
 
 | Part | Deterministic helper | LLM |
 | --- | --- | --- |
-| Input integrity | Check paths, source digests, draft checkpoints, and saved helper digests. | Stop on a failed check; do not repair an old digest. |
+| Input integrity | Check the producer code, paths, source digests, draft checkpoints, and the saved cookbook digest. | Stop on a failed check; do not repair an old digest. |
 | Loading search | Parse saved JS/TS text with the tool installation's TypeScript parser and list matching syntax. | Inspect relevant matches and explain what remains unknown. |
 | Reported symbols | List identifier-name matches for exports and types in the selected Knip reports. | Check consumers and loading limits before interpreting an issue. |
 | Source excerpts | Save numbered lines with paths, digests, and bounded ranges. | Record only the ranges actually read. |
@@ -114,11 +117,11 @@ A bounded or truncated display is not the complete saved artifact; request
 focused ranges for the conclusions that need more context.
 
 If the LLM needs more source, follow [Choose source ranges](start-here.md#choose-source-ranges)
-before calling the saved helper. This example requests lines 201–300 of an
+before calling the helper. This example requests lines 201–300 of an
 indexed file:
 
 ```sh
-node "$CHOOM_STAGE3/stage-3-commands.mjs" excerpt "path/from/the/inventory.ts" 201 300
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 excerpt "path/from/the/inventory.ts" 201 300
 ```
 
 The helper saves each successful request as a new `excerpt-NNN.json` and records
@@ -297,7 +300,7 @@ When `knipAssessment.action` is `reuse`, save the complete review packet:
 
 ```sh
 export CHOOM_REVIEW="/absolute/path/to/stage-3-review"
-node "$CHOOM_STAGE3/stage-3-commands.mjs" save-review "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 save-review "$CHOOM_REVIEW"
 ```
 
 This copies the five files, records their digests and logs the command. It does
@@ -310,7 +313,7 @@ output into the attempt directory: the finalizer registers all files there by
 digest. Do not edit them after successful finalization.
 
 ```sh
-node "$CHOOM_STAGE3/stage-3-finish.mjs"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3-finish
 ```
 
 The finalizer checks the current checkpoints, selected prior analysis, artifact
@@ -342,14 +345,15 @@ After successful publication, while this attempt is still the latest published
 Stage 3 state, run:
 
 ```sh
-node "$CHOOM_STAGE3/stage-3-finish.mjs" verify
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3-finish verify
 ```
 
 Keep `CHOOM_WORK`, `CHOOM_TOOLS`, and `CHOOM_STAGE3_ID` set to the same paths and
-ID used for this attempt, with the trusted YAML dependency still available.
-This action is available only in new attempts that saved a finalizer with this
-action at `start`. An older frozen finalizer does not gain `verify` when the
-tool checkout changes. Do not replace its helper, cookbook, receipts or digests.
+ID used for this attempt, with the trusted YAML dependency still available. The
+producer code must still match the run's record. A run from before the producer
+code record has no record. Verify its attempts with the finalizer copy that each
+attempt saved and the matching trusted checkout. Do not replace an attempt's
+helper, cookbook, receipts or digests.
 
 Verification reuses the finalizer's receipt, source-range, ID, reference,
 history-preservation and evidence checks. It checks every registered artifact
