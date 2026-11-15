@@ -12,6 +12,8 @@ export interface EntryAnalysis { ref: string; analysis: Fields }
 export interface QueryState {
   header: { formatVersion: number; attemptId: string; runRef: unknown; snapshotRef: unknown };
   indexed: Map<string, IndexedFile>;
+  // The folder of the saved snapshot.
+  snapshotRoot: string;
   mapping: Fields; mappingRef: string;
   graph: Fields; graphRef: string;
   sourceSites: Fields; sourceSitesRef: string;

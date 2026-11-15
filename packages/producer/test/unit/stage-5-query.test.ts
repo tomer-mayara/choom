@@ -36,6 +36,7 @@ function stageState(): QueryState {
     [path, { path, kind: "file", bytes: Buffer.byteLength(text), sha256: sha256(text) }]));
   return {
     header: { formatVersion: 1, attemptId: "s5-check", runRef: "run-check", snapshotRef: "snapshot-check" }, indexed,
+    snapshotRoot: snapshot,
     mapping: { units: [...indexed.values()].map(({ path, sha256: digest }) => ({ path, sha256: digest, roles: ["source"], owner: null })) },
     mappingRef: "s4-check-file@code-mapping.json",
     graph: { contexts: [{ id: "context", scanFiles: [...indexed.keys()], edges: [] }] },

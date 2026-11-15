@@ -212,3 +212,33 @@ export function openSnapshotProject(snapshot: SnapshotFiles, settings: ProjectSe
   }
   return { project, ts: tools.ts, sourceFile, outsideReads: () => [...host.outside.values()], gaps: () => [...gaps] };
 }
+
+// A project that reads syntax only: without compiler settings, TypeScript parses
+// each file at the latest language level.
+const syntaxOnly: ProjectSettings = { ref: null, configPath: null, files: [], compilerOptions: {} };
+
+// The parser of the syntax reader, as the records of the source queries name it.
+export const syntaxParser = 'ts-morph snapshot project (TypeScript parser, Latest)';
+
+// Parses one indexed regular file of the snapshot and gives its syntax tree to read.
+export type SyntaxReader =<Result>(path: string, read: (source: TsMorph.ts.SourceFile) => Result) => Result;
+
+// Opens a project without compiler settings on the saved snapshot. Each file is
+// parsed when it is read and forgotten after, so the project holds at most one
+// file. The source queries of Stages 3, 4 and 5 read their files with it.
+export function openSyntaxReader(snapshot: SnapshotFiles, tools: ProjectTools): SyntaxReader {
+  const { sourceFile } = openSnapshotProject(snapshot, syntaxOnly, tools);
+  return (path, read) => {
+    const file = sourceFile(path);
+    try {
+      return read(file.compilerNode);
+    } finally {
+      file.forget();
+    }
+  };
+}
+
+// The parser diagnostics of a parsed file. TypeScript keeps them in an internal field.
+export function parseDiagnostics(source: TsMorph.ts.SourceFile): TsMorph.ts.Diagnostic[] {
+  return (source as TsMorph.ts.SourceFile & { parseDiagnostics?: TsMorph.ts.Diagnostic[] }).parseDiagnostics ?? [];
+}

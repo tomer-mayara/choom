@@ -253,7 +253,8 @@ describe("Stage 5 collect", () => {
 
   test("saves each kind of syntax candidate with its lines, the parser diagnostics, the skipped files and the omissions", () => {
     expect(saved("source-candidates.json")).toEqual({ ...header, graphRef,
-      parser: { name: "typescript", tsMorph: packageVersion("ts-morph"), typescript: ts.version },
+      parser: { name: "ts-morph snapshot project (TypeScript parser, Latest)", tsMorph: packageVersion("ts-morph"),
+        typescript: ts.version },
       scope: scanned.filter((path) => path !== "init/large.js").map((path) => ({ path, sha256: digestOf(path), contextRefs,
         parserDiagnostics: parserDiagnostics[path]?.[0] ?? 0, omittedDiagnostics: parserDiagnostics[path]?.[1] ?? 0 })),
       skipped: [{ path: "init/large.js", reason: "input-byte-limit" }],

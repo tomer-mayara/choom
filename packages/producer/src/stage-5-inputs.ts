@@ -247,7 +247,8 @@ export function readState(parse: Parse, { work, tools, id }: { work: string; too
     indexedRegularFiles: indexed.size, registeredArtifacts: registered.count, registeredArtifactDigests: registered.digests,
     checkpointDigests: Object.fromEntries(draftNames.map(name => [checkpoint(name), hash(drafts.inputs[name] as Buffer)])),
   };
-  return { header, facts, inputs: drafts.inputs, indexed, mapping, mappingRef: refs.mappingRef, graph, graphRef: refs.graphRef,
+  return { header, facts, inputs: drafts.inputs, indexed, snapshotRoot: snapshot, mapping, mappingRef: refs.mappingRef, graph,
+    graphRef: refs.graphRef,
     resourceAccessRef: refs.resourceAccessRef, sourceSites, sourceSitesRef: refs.sourceSitesRef, entryChain,
     readIndexed: (path, maxBytes) => {
       assert(indexed.has(path), 'File is outside the inventory: ' + path);

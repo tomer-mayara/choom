@@ -11,6 +11,7 @@ import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
+import { syntaxParser } from './snapshot-project.ts';
 import { directory, safePath } from './stage-3-inputs.ts';
 import { reviewPrompt } from './stage-4-review-prompt.ts';
 import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
@@ -22,9 +23,9 @@ import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 // run prepared, then saves a receipt and appends its outcome to the command log.
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 // The checked attempt: the handoff, the run, the graph profile, the inventory, the
-// checked reader of indexed snapshot files and the selected entry analysis.
+// snapshot folder, the checked reader of indexed snapshot files and the selected entry analysis.
 interface InspectState {
-  handoff: Fields; run: Fields; profile: Fields; files: Map<string, InventoryFile>; entry: Fields;
+  handoff: Fields; run: Fields; profile: Fields; files: Map<string, InventoryFile>; snapshotRoot: string; entry: Fields;
   source(path: string, maxBytes?: number): Buffer;
 }
 interface OperatorRecord {
@@ -89,7 +90,7 @@ function loadParser(): { tsMorph: typeof TsMorph; parser: Fields } {
   const tsMorph = load('ts-morph') as typeof TsMorph;
   const { version } = load('ts-morph/package.json') as { version: string };
   const loaded = Object.keys(require.cache).filter(path => path.startsWith(modules) && !before.has(path)).sort();
-  return { tsMorph, parser: { name: 'TypeScript createSourceFile', node: process.version, tsMorph: version,
+  return { tsMorph, parser: { name: syntaxParser, node: process.version, tsMorph: version,
     typescript: tsMorph.ts.version, modules: Object.fromEntries(loaded.map(path => [path.slice(modules.length), hash(read(path))])) } };
 }
 const { tsMorph, parser } = loadParser();
@@ -236,7 +237,7 @@ function state(): InspectState {
   const entry = parse(utf8(artifacts.get(discovery.entryAnalysisRef as string) as Buffer, 'selected entry analysis')) as Fields;
   if (lstatSync(join(attempt, 'source-sites.json'), { throwIfNoEntry: false }))
     assert(isDeepStrictEqual(json('source-sites.json').parser, parser), 'Trusted parser changed since collect.');
-  return { handoff, run, profile, files, source, entry };
+  return { handoff, run, profile, files, snapshotRoot: snapshot, source, entry };
 }
 
 function excerpt(current: InspectState, path: string, first: number, last: number, sourceId: string): Fields {
@@ -303,8 +304,12 @@ function artifactMap(): Record<string, { path: string; sha256: string }> {
 }
 
 function collect(current: InspectState): string[] {
-  saveJson('source-sites.json', sourceSites({ ts: tsMorph.ts, parser, attemptId: id, snapshotRef: current.handoff.snapshotRef,
-    sourceFiles: current.profile.sourceFiles as SourceFile[], text: path => utf8(current.source(path), path) }));
+  // The checked read of each source file keeps the messages of a changed file and a file that
+  // is not UTF-8 text. The snapshot project then reads the same checked bytes.
+  saveJson('source-sites.json', sourceSites({ tsMorph, parser, attemptId: id, snapshotRef: current.handoff.snapshotRef,
+    sourceFiles: current.profile.sourceFiles as SourceFile[],
+    snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
+    check: path => { utf8(current.source(path), path); } }));
   saveJson('source-excerpts.json', initialExcerpts(current));
   save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,
     entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt }));

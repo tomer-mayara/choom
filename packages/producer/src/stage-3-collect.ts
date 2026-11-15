@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import type { ts as TypeScript } from 'ts-morph';
 import { assert, type Fields } from './record-checks.ts';
-import { openSnapshotProject, type ProjectSettings, type ProjectTools } from './snapshot-project.ts';
+import { openSyntaxReader, parseDiagnostics, type ProjectTools, syntaxParser } from './snapshot-project.ts';
 import { type Excerpt, numberedExcerpt, type RegisteredArtifact, safePath, type StageState } from './stage-3-inputs.ts';
 
 // The evidence that Stage 3 collect saves: the loading syntax search of every
@@ -27,8 +27,6 @@ const processes = new Set(['spawn', 'spawnSync', 'exec', 'execSync', 'execFile',
 const constructors = ['Worker', 'SharedWorker', 'URL', 'Glob', 'Function'];
 const mentionLimit = 250;
 const expressionLimit = 4096;
-// The loading search reads syntax only. Without compiler settings, TypeScript parses at the latest language level.
-const syntaxOnly: ProjectSettings = { ref: null, configPath: null, files: [], compilerOptions: {} };
 
 // Adds the exports and types of one Knip issue record to the reported symbols.
 function addReportedSymbols(targets: Map<string, Target>, issue: Fields, report: RegisteredArtifact): void {
@@ -126,48 +124,48 @@ function location(source: TypeScript.SourceFile, pos: number): { line: number; c
   return { line: line + 1, column: character + 1 };
 }
 
-// Parses each selected file once with the snapshot project and collects its loading
-// candidates, its parser diagnostics and the identifier mentions of the reported symbols.
+// Collects the parser diagnostics, the loading candidates and the identifier mentions
+// of the reported symbols in one parsed file.
+function scanFile(ts: Ts, source: TypeScript.SourceFile, { path, sha256 }: { path: string; sha256: string }, scan: Scan,
+  targetsByName: Map<string, Target[]>): void {
+  for (const diagnostic of parseDiagnostics(source)) {
+    scan.diagnostics.push({
+      path, code: diagnostic.code, at: location(source, diagnostic.start ?? 0),
+      message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+    });
+  }
+
+  function visit(node: TypeScript.Node): void {
+    const kind = candidate(ts, node);
+    if (kind) {
+      const start = node.getStart(source);
+      const expression = source.text.slice(start, Math.min(node.end, start + expressionLimit));
+      const lines = [location(source, start).line, location(source, node.end - 1).line];
+      scan.matches.push({ path, sha256, kind, lines, expression, truncated: expression.length < node.end - start });
+    }
+    if (ts.isIdentifier(node)) {
+      for (const target of targetsByName.get(node.text) ?? []) {
+        target.mentionCount++;
+        if (target.mentions.length >= mentionLimit) continue;
+        target.mentions.push({ path, sha256, nodeKind: 'Identifier', parentKind: ts.SyntaxKind[node.parent.kind],
+          range: [location(source, node.getStart(source)), location(source, node.end)] });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+}
+
+// Parses each selected file once with the snapshot project, without compiler settings.
 function scanSources(state: StageState, tsMorph: ProjectTools, targetsByName: Map<string, Target[]>): Scan {
-  const { ts } = tsMorph;
   const scan: Scan = { scope: [], matches: [], diagnostics: [] };
-  const project = openSnapshotProject({ files: [...state.files.values()], snapshotRoot: state.facts.snapshot.path },
-    syntaxOnly, tsMorph);
+  const parse = openSyntaxReader({ files: [...state.files.values()], snapshotRoot: state.facts.snapshot.path }, tsMorph);
   const paths = [...state.files.keys()].filter(path => state.files.get(path)?.kind === 'file' &&
     sourceExtensions.test(path)).sort();
   for (const path of paths) {
     const { sha256 } = state.files.get(path) as { sha256: string };
     scan.scope.push({ path, sha256 });
-    const file = project.sourceFile(path);
-    const source = file.compilerNode;
-    for (const diagnostic of (source as TypeScript.SourceFile & { parseDiagnostics: TypeScript.Diagnostic[] }).parseDiagnostics) {
-      scan.diagnostics.push({
-        path, code: diagnostic.code, at: location(source, diagnostic.start ?? 0),
-        message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
-      });
-    }
-
-    function visit(node: TypeScript.Node): void {
-      const kind = candidate(ts, node);
-      if (kind) {
-        const start = node.getStart(source);
-        const expression = source.text.slice(start, Math.min(node.end, start + expressionLimit));
-        const lines = [location(source, start).line, location(source, node.end - 1).line];
-        scan.matches.push({ path, sha256, kind, lines, expression, truncated: expression.length < node.end - start });
-      }
-      if (ts.isIdentifier(node)) {
-        for (const target of targetsByName.get(node.text) ?? []) {
-          target.mentionCount++;
-          if (target.mentions.length >= mentionLimit) continue;
-          target.mentions.push({ path, sha256, nodeKind: 'Identifier', parentKind: ts.SyntaxKind[node.parent.kind],
-            range: [location(source, node.getStart(source)), location(source, node.end)] });
-        }
-      }
-      ts.forEachChild(node, visit);
-    }
-    visit(source);
-    // Each file is read once, so the project does not keep it.
-    file.forget();
+    parse(path, source => scanFile(tsMorph.ts, source, { path, sha256 }, scan, targetsByName));
   }
   return scan;
 }
@@ -230,7 +228,7 @@ export function collect(state: StageState, { tsMorph, versions }: CollectTools, 
   ];
   output('loading-search.json', { ...context, status: 'completed', outcome: matches.length ? 'matches' : 'no-match',
     matches, diagnostics, limits,
-    query: { profile: 'stage-3-loading-syntax-v3', parser: 'ts-morph snapshot project (TypeScript parser, Latest)',
+    query: { profile: 'stage-3-loading-syntax-v3', parser: syntaxParser,
       selection: 'all indexed regular files with a JavaScript or TypeScript source extension',
       extensions: sourceExtensions.source, maxExpressionCodeUnits: expressionLimit, versions,
       candidateKinds: ['import-literal', 'import-computed', 'require', 'require.resolve', 'import.meta.glob',

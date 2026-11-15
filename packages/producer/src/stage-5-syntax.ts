@@ -1,12 +1,13 @@
 import type { ts as TypeScript } from 'ts-morph';
 import type { Fields } from './record-checks.ts';
-import type { ProjectTools } from './snapshot-project.ts';
+import { openSyntaxReader, parseDiagnostics, type ProjectTools, syntaxParser } from './snapshot-project.ts';
+import type { InventoryFile } from './stage-1-settings.ts';
 
 // The syntax candidates that Stage 5 collect saves: module and class
 // initialization, side-effect imports, and setup or registration calls in the
 // JavaScript and TypeScript files of the saved graph scan scope, with the parser
-// diagnostics, the skipped files and the omitted candidates. The query reads
-// syntax only.
+// diagnostics, the skipped files and the omitted candidates. The snapshot project
+// parses each file without compiler settings: the query reads syntax only.
 type Ts = typeof TypeScript;
 // A file of the saved graph scan scope and the graph contexts that list it.
 export interface ScanFile { path: string; sha256: string; contextRefs: string[] }
@@ -14,7 +15,9 @@ export interface ScanFile { path: string; sha256: string; contextRefs: string[] 
 export interface SyntaxState {
   header: Fields & { attemptId: string };
   graphRef: string;
-  indexed: Map<string, { bytes: number }>;
+  indexed: Map<string, InventoryFile>;
+  // The folder of the saved snapshot, which the snapshot project reads.
+  snapshotRoot: string;
   // The checked bytes of an indexed file of at most maxBytes.
   readIndexed(path: string, maxBytes: number): Buffer;
 }
@@ -156,7 +159,7 @@ function inspect(ts: Ts, found: { candidates: Fields[]; omissions: Fields[] }, a
 // The parser diagnostics of one file, at most diagnosticsPerFile of them.
 function fileDiagnostics(ts: Ts, file: ScanFile, source: TypeScript.SourceFile): { saved: Fields[]; count: number } {
   const lineAt = physicalLineLookup(source.text);
-  const parserDiagnostics = (source as TypeScript.SourceFile & { parseDiagnostics?: TypeScript.Diagnostic[] }).parseDiagnostics ?? [];
+  const parserDiagnostics = parseDiagnostics(source);
   const saved = parserDiagnostics.slice(0, syntaxLimits.diagnosticsPerFile).map(diagnostic => {
     const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
     return { path: file.path, code: diagnostic.code, line: diagnostic.start === undefined ? null : lineAt(diagnostic.start),
@@ -165,29 +168,34 @@ function fileDiagnostics(ts: Ts, file: ScanFile, source: TypeScript.SourceFile):
   return { saved, count: parserDiagnostics.length };
 }
 
-// Parses each file of the saved scan scope. A file that is not JavaScript or
-// TypeScript, is over the input byte limit or is not UTF-8 text is skipped with a reason.
+// Parses each file of the saved scan scope once with the snapshot project. A file
+// that is not JavaScript or TypeScript, is over the input byte limit or is not UTF-8
+// text is skipped with a reason; these checks read the file before the project does.
+// Lines come from the text that the parser read.
 export function syntaxCandidates(state: SyntaxState, scope: { syntaxScope: ScanFile[] }, { tsMorph, versions }: SyntaxTools): Fields {
   const { ts } = tsMorph;
+  const parse = openSyntaxReader({ files: [...state.indexed.values()], snapshotRoot: state.snapshotRoot }, tsMorph);
   const found = { candidates: [] as Fields[], omissions: [] as Fields[] };
   const diagnostics: Fields[] = [];
   const scanned: Fields[] = [];
   const skipped: Fields[] = [];
   for (const file of scope.syntaxScope) {
     if (!sourceExtension.test(file.path)) { skipped.push({ path: file.path, reason: 'not-js-ts' }); continue; }
-    if ((state.indexed.get(file.path) as { bytes: number }).bytes > syntaxLimits.inputBytes) {
+    if ((state.indexed.get(file.path) as InventoryFile).bytes > syntaxLimits.inputBytes) {
       skipped.push({ path: file.path, reason: 'input-byte-limit' });
       continue;
     }
     const bytes = state.readIndexed(file.path, syntaxLimits.inputBytes);
     const value = bytes.toString('utf8');
     if (!Buffer.from(value).equals(bytes)) { skipped.push({ path: file.path, reason: 'invalid-utf8' }); continue; }
-    const source = ts.createSourceFile(file.path, value, ts.ScriptTarget.Latest, true);
-    const { saved, count } = fileDiagnostics(ts, file, source);
-    diagnostics.push(...saved);
-    scanned.push({ ...file, parserDiagnostics: count, omittedDiagnostics: Math.max(0, count - syntaxLimits.diagnosticsPerFile) });
-    inspect(ts, found, state.header.attemptId, file, source);
+    parse(file.path, source => {
+      const { saved, count } = fileDiagnostics(ts, file, source);
+      diagnostics.push(...saved);
+      scanned.push({ ...file, parserDiagnostics: count, omittedDiagnostics: Math.max(0, count - syntaxLimits.diagnosticsPerFile) });
+      inspect(ts, found, state.header.attemptId, file, source);
+    });
   }
-  return { ...state.header, graphRef: state.graphRef, parser: { name: 'typescript', tsMorph: versions.tsMorph, typescript: versions.typescript }, scope: scanned, skipped,
+  return { ...state.header, graphRef: state.graphRef,
+    parser: { name: syntaxParser, tsMorph: versions.tsMorph, typescript: versions.typescript }, scope: scanned, skipped,
     candidates: found.candidates, diagnostics, omissions: found.omissions, limits };
 }

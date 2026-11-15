@@ -137,6 +137,7 @@ const siteLimits = ["Source syntax only; no bindings, type checking, alias resol
   "Named import and export specifiers can each be type-only even when the whole statement is not; inspect the saved expression.",
   "Call names can be shadowed. Resource calls are candidates, not proven resource access or ownership.",
   "Site and excerpt line numbers use CRLF, CR, and LF. U+2028 and U+2029 do not increment saved line numbers.",
+  "Diagnostic start and length are UTF-16 offsets in the text that the parser read, which leaves out a byte order mark at the start of a file.",
   "The query covers only the recorded JavaScript and TypeScript scope. Rust, excluded inputs, and other loading mechanisms remain outside it.",
   "At most 10000 sites and 4096 expression code units per site are saved. Truncation is explicit.",
   "Tool reads are not LLM source inspections."];
@@ -186,13 +187,13 @@ describe("Stage 4 collect", () => {
 
   test("saves each kind of source site with its lines, specifier and flags, and the parser diagnostics", () => {
     const { parser, ...record } = saved("source-sites.json");
-    expectParser(parser, "TypeScript createSourceFile");
+    expectParser(parser, "ts-morph snapshot project (TypeScript parser, Latest)");
     expect(record).toEqual({ formatVersion: 1, snapshotRef, status: "partial",
       scope: [...componentFiles, ...sources].map(({ path }) => path).sort().map((path) => ({ path, sha256: digestOf(path) })),
       sites: sites.map(([path, lines, kind, specifier, typeOnly, dynamic, expression], index) => ({ id: `${id}-site-${index + 1}`,
         path, sha256: digestOf(path), lines, kind, specifier, typeOnly, dynamic, expression, truncated: path === "long.ts" })),
-      // The positions count the byte order mark of bom.ts.
-      diagnostics: [["bom.ts", 64], ["bom.ts", 66], ["broken.ts", 13], ["broken.ts", 15]].map(([path, start]) =>
+      // The snapshot project leaves the byte order mark of bom.ts out of the text, so its positions do not count it.
+      diagnostics: [["bom.ts", 63], ["bom.ts", 65], ["broken.ts", 13], ["broken.ts", 15]].map(([path, start]) =>
         ({ path, code: 1134, start, length: 1, message: "Variable declaration expected." })),
       omittedSites: 0, limits: siteLimits });
   });
