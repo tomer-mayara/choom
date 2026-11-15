@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join, posix } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // The Stage 4 graph helper. In the graph container it runs dependency-cruiser on
 // the saved graph profile, one call for each context, with the tools of the graph
@@ -125,7 +125,7 @@ function checkPassConditions(context: Fields, id: string): void {
   'Use separate import and require conditions: ' + id);
 }
 
-function validateContext(context: unknown, files: ReadonlySet<string>): asserts context is GraphContext {
+export function validateContext(context: unknown, files: ReadonlySet<string>): asserts context is GraphContext {
   assert(hasFields(context, ['id', 'compilerSettingsRef', 'sourceFiles', 'compilerOptions',
     'aliases', 'conditionNames', 'moduleSystems', 'roots']) &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(context.id ?? '')) &&
@@ -156,7 +156,7 @@ function savedSourceFile(file: unknown): file is SourceFile {
     typeof file.sha256 === 'string' && /^[a-f0-9]{64}$/.test(file.sha256);
 }
 
-function validateProfile(profile: unknown): asserts profile is GraphProfile {
+export function validateProfile(profile: unknown): asserts profile is GraphProfile {
   assert(hasFields(profile, ['formatVersion', 'snapshotRef', 'attemptId', 'sourceFiles', 'contexts']) &&
     profile.formatVersion === 1 && text(profile.snapshotRef) &&
     /^s4-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(profile.attemptId ?? '')),
@@ -204,7 +204,7 @@ function checkOptionalTranspilers(toolRequire: NodeJS.Require): void {
   }
 }
 
-async function loadTools(localRoot: string | undefined): Promise<Tools> {
+export async function loadTools(localRoot: string | undefined): Promise<Tools> {
   const root = localRoot || '/opt/choom-tools';
   assert(isAbsolute(root) && realpathSync(root) === root && root !== repo && !root.startsWith(repo + '/'),
     'Expected a canonical trusted tool directory.');
@@ -341,7 +341,7 @@ function reachability(context: GraphContext, edges: Edge[]): Reachability {
   };
 }
 
-async function collect(profile: unknown, tools: Tools, baseDir: string): Promise<GraphResult> {
+export async function collect(profile: unknown, tools: Tools, baseDir: string): Promise<GraphResult> {
   validateProfile(profile);
   assert(realpathSync(baseDir) === baseDir && lstatSync(baseDir).isDirectory(),
     'Expected a canonical input directory.');
@@ -486,16 +486,20 @@ async function fixture(tools: Tools): Promise<FixtureApproval> {
   }
 }
 
-try {
-  const [argument, ...extra] = process.argv.slice(2);
-  assert(extra.length === 0 && argument !== undefined && ['--fixture', '/control/graph-profile.json'].includes(argument),
-    'Use /control/graph-profile.json or --fixture.');
-  const isFixture = argument === '--fixture';
-  const tools = await loadTools(isFixture ? process.env.CHOOM_GRAPH_TOOLS : undefined);
-  const result = isFixture ? await fixture(tools) :
-    await collect(JSON.parse(readRegular(argument).toString()), tools, repo);
-  process.stdout.write(JSON.stringify(result) + '\n');
-} catch (error) {
-  process.stderr.write((error as Error).message + '\n');
-  process.exitCode = 1;
+// The command line starts only when Node runs this file. A test can import the
+// functions above without starting it.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    const [argument, ...extra] = process.argv.slice(2);
+    assert(extra.length === 0 && argument !== undefined && ['--fixture', '/control/graph-profile.json'].includes(argument),
+      'Use /control/graph-profile.json or --fixture.');
+    const isFixture = argument === '--fixture';
+    const tools = await loadTools(isFixture ? process.env.CHOOM_GRAPH_TOOLS : undefined);
+    const result = isFixture ? await fixture(tools) :
+      await collect(JSON.parse(readRegular(argument).toString()), tools, repo);
+    process.stdout.write(JSON.stringify(result) + '\n');
+  } catch (error) {
+    process.stderr.write((error as Error).message + '\n');
+    process.exitCode = 1;
+  }
 }
