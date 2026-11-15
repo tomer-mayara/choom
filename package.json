@@ -24,6 +24,7 @@
     "test:native": "bun test --path-ignore-patterns '**/*.test.tsx' ./test/unit ./packages/baseline-model/test/unit ./packages/producer/test/unit",
     "test:dom": "bun test --preload ./test/preload.ts ./test/unit/app.test.tsx ./test/unit/components ./test/unit/platform/browser-documents.test.tsx",
     "test:integration": "bun test ./packages/baseline-model/test/integration",
+    "test:producer:docker": "bun test ./packages/producer/test/integration/docker && cucumber-js --config cucumber.mjs --profile docker",
     "test:rust": "bun run desktop:test",
     "test:watch": "bun test --watch",
     "test:e2e": "bun run test:behavior:browser",

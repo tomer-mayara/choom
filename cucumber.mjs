@@ -4,7 +4,9 @@ const shared = {
   format: ["progress"],
 };
 
-export const native = { ...shared, tags: "not @browser and not @packaged" };
+// Scenarios tagged @docker need a Docker engine. Only the docker profile runs them.
+export const native = { ...shared, tags: "not @browser and not @packaged and not @docker" };
 export default native;
-export const browser = { ...shared, tags: "@browser and not @packaged" };
+export const browser = { ...shared, tags: "@browser and not @packaged and not @docker" };
 export const packaged = { ...shared, tags: "@packaged" };
+export const docker = { ...shared, tags: "@docker" };

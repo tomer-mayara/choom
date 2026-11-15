@@ -273,6 +273,7 @@ See the [report contract](cookbook/interfaces/interface-duplication.md),
 | `bun run check` | TypeSpec and implementation conformance, type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
 | `bun run test` | Native Bun and Happy DOM unit tests in separate processes, then `test:integration` |
 | `bun run test:integration` | Node 26 imports `@choom/baseline-model` with no build step and validates a reviewed baseline |
+| `bun run test:producer:docker` | Producer checks that need a Docker engine: the Stage 4 graph image and `@docker` Cucumber scenarios; not part of `bun run check` |
 | `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
 | `bun run check-types` | Alias for the native TypeScript compiler check |
 | `bun run test:behavior` | Baseline and boundary Cucumber scenarios (no browser) |
@@ -372,8 +373,12 @@ Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
 `bun run test:integration` runs `packages/baseline-model/test/integration`. It
 starts the `node` on `PATH` and requires the major version in `.node-version`.
 Run all suites from the repository root.
-Cucumber loads `test/steps`; its default/native profile excludes `@browser` and
-`@packaged`. `test:e2e` runs browser acceptance against a fresh production build.
+`bun run test:producer:docker` runs `packages/producer/test/integration/docker`
+and the `docker` Cucumber profile. These suites need a Docker engine and stop
+with a "need Docker" message without one; the CI `producer` job runs them.
+Cucumber loads `test/steps`; its default/native profile excludes `@browser`,
+`@packaged` and `@docker`. `test:e2e` runs browser acceptance against a fresh
+production build.
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Failed browser scenarios retain screenshots and traces under `test-results/`.
 

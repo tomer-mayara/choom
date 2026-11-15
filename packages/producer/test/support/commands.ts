@@ -20,15 +20,19 @@ function producerEnvironment(settings: Record<string, string> = {}): Record<stri
   return { ...environment, ...settings };
 }
 
-function runProgram(program: string, args: readonly string[], settings: Record<string, string> = {}): CommandResult {
-  const result = spawnSync(program, args, { encoding: "utf8", env: producerEnvironment(settings), timeout: 120_000 });
+const defaultTimeout = 120_000;
+
+function runProgram(program: string, args: readonly string[], settings: Record<string, string> = {},
+  timeout = defaultTimeout): CommandResult {
+  const result = spawnSync(program, args, { encoding: "utf8", env: producerEnvironment(settings), timeout });
   if (result.error) throw result.error;
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
 // Run a producer helper file as an operator does: node for JavaScript, python3 for Python.
-export function runHelper(path: string, args: readonly string[] = [], settings: Record<string, string> = {}): CommandResult {
-  return runProgram(path.endsWith(".py") ? "python3" : "node", [path, ...args], settings);
+export function runHelper(path: string, args: readonly string[] = [], settings: Record<string, string> = {},
+  timeout = defaultTimeout): CommandResult {
+  return runProgram(path.endsWith(".py") ? "python3" : "node", [path, ...args], settings, timeout);
 }
 
 export function runCli(args: readonly string[], settings: Record<string, string> = {}): CommandResult {
