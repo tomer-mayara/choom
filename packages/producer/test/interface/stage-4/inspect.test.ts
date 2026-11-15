@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ts } from "ts-morph";
 import { type ExtraFile, inspectStageFour, type StageFourAttempt, stageFourAttempt }
   from "../../fixtures/stage-4-publication/fixture.ts";
-import { type CommandResult, toolsRoot } from "../../support/commands.ts";
+import { type CommandResult, makeScratch, removeScratch, toolsRoot } from "../../support/commands.ts";
+import { copyToolCheckout } from "../../support/tool-checkout.ts";
 
 // The Stage 4 source collection helper on a run after Stage 4 start and the graph
 // phases: the source sites and the first excerpts that collect saves, the excerpt
@@ -19,6 +21,7 @@ const snapshotRef = "snapshot-check";
 const sha256 = (bytes: string | Buffer): string => createHash("sha256").update(bytes).digest("hex");
 const nodeVersion = execFileSync("node", ["--version"], { encoding: "utf8" }).trim();
 const installed = (path: string): Buffer => readFileSync(join(toolsRoot, "node_modules", path));
+const tsMorphVersion = (JSON.parse(installed("ts-morph/package.json").toString()) as Json).version;
 const latin1 = Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]);
 const longCall = "fetch('" + "x".repeat(5000) + "');\n";
 
@@ -157,6 +160,15 @@ beforeAll(() => {
 
 afterAll(() => rmSync(fixture.root, { recursive: true, force: true }));
 
+// The parser record names ts-morph, its TypeScript and Node, and the digest of each tool file that ts-morph loaded.
+function expectParser(parser: unknown, name: string): void {
+  const { modules, ...versions } = parser as Json & { modules: Record<string, string> };
+  expect(versions).toEqual({ name, node: nodeVersion, tsMorph: tsMorphVersion, typescript: ts.version });
+  expect(Object.keys(modules)).toEqual(expect.arrayContaining(["ts-morph/package.json", "ts-morph/dist/ts-morph.js",
+    "@ts-morph/common/dist/ts-morph-common.js", "@ts-morph/common/dist/typescript.js"]));
+  for (const [path, digest] of Object.entries(modules)) expect({ path, digest }).toEqual({ path, digest: sha256(installed(path)) });
+}
+
 function initialExcerpt(path: string, totalLines: number, excerpt: string): Json {
   return { id: `${id}-source-${encodeURIComponent(path)}`, snapshotRef, path, sha256: digestOf(path),
     lines: [1, totalLines], totalLines, truncated: false, excerpt };
@@ -173,11 +185,10 @@ describe("Stage 4 collect", () => {
   });
 
   test("saves each kind of source site with its lines, specifier and flags, and the parser diagnostics", () => {
-    const record = saved("source-sites.json");
+    const { parser, ...record } = saved("source-sites.json");
+    expectParser(parser, "TypeScript createSourceFile");
     expect(record).toEqual({ formatVersion: 1, snapshotRef, status: "partial",
       scope: [...componentFiles, ...sources].map(({ path }) => path).sort().map((path) => ({ path, sha256: digestOf(path) })),
-      parser: { name: "TypeScript createSourceFile", version: JSON.parse(installed("typescript/package.json").toString()).version,
-        node: nodeVersion, parserSha256: sha256(installed("typescript/lib/typescript.js")) },
       sites: sites.map(([path, lines, kind, specifier, typeOnly, dynamic, expression], index) => ({ id: `${id}-site-${index + 1}`,
         path, sha256: digestOf(path), lines, kind, specifier, typeOnly, dynamic, expression, truncated: path === "long.ts" })),
       // The positions count the byte order mark of bom.ts.
@@ -298,6 +309,27 @@ describe("Stage 4 collect of other inputs", () => {
       expect(existsSync(join(attempt.attempt, "operator-collect.started.json"))).toBe(false);
     } finally {
       rmSync(attempt.root, { recursive: true, force: true });
+    }
+  }, 60_000);
+});
+
+describe("Stage 4 trusted parser", () => {
+  test.each([
+    ["ts-morph", "node_modules/ts-morph/dist/ts-morph.js"],
+    ["the TypeScript of ts-morph", "node_modules/@ts-morph/common/dist/typescript.js"],
+  ])("refuses a later action after %s changed in the tool checkout, before it saves a receipt", (_name, file) => {
+    const scratch = makeScratch();
+    const attempt = stageFourAttempt([], copyToolCheckout(scratch));
+    try {
+      expect(inspectStageFour(attempt, ["collect"])).toMatchObject({ status: 0, stderr: "" });
+      appendFileSync(join(attempt.tools, file), "\n// A later change.\n");
+      const result = inspectStageFour(attempt, ["excerpt", "cli.ts", "1", "1"]);
+      expect({ status: result.status, stdout: result.stdout }).toEqual({ status: 1, stdout: "" });
+      expect(result.stderr).toContain("Error: Trusted parser changed since collect.");
+      expect(existsSync(join(attempt.attempt, "operator-excerpt-001.started.json"))).toBe(false);
+    } finally {
+      rmSync(attempt.root, { recursive: true, force: true });
+      removeScratch(scratch);
     }
   }, 60_000);
 });

@@ -1,4 +1,4 @@
-import type * as TypeScript from 'typescript';
+import type { ts as TypeScript } from 'ts-morph';
 import type { Fields } from './record-checks.ts';
 
 // The source sites that Stage 4 collect saves: the import and re-export syntax,
@@ -13,8 +13,9 @@ export interface SiteInputs {
   sourceFiles: SourceFile[];
   // The checked text of an indexed source file.
   text(path: string): string;
+  // The TypeScript of ts-morph.
   ts: Ts;
-  // The record of the parser and its version.
+  // The record of the parser and its tool versions.
   parser: Fields;
 }
 // The kind of a site, its literal specifier or null, and its type-only and dynamic flags.

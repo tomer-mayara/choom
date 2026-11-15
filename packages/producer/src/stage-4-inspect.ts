@@ -7,13 +7,13 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import type * as TypeScript from 'typescript';
+import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
 import { directory, safePath } from './stage-3-inputs.ts';
 import { reviewPrompt } from './stage-4-review-prompt.ts';
-import { type SiteInputs, type SourceFile, sourceSites } from './stage-4-source-sites.ts';
+import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 
 // The Stage 4 source collection helper. collect saves the source sites of the
 // graph profile scope, the first excerpts, the review prompt and the proposed
@@ -72,6 +72,27 @@ assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/'), 'Use YAML fr
 read(yamlPath);
 const { parse } = require(yamlPath) as typeof Yaml;
 const parsed = (name: string): Fields => parse(utf8(saved(name), name)) as Fields;
+
+// ts-morph and its own copy of TypeScript from the trusted checkout. The parser
+// record names their versions and the digest of each tool file that ts-morph
+// loaded. Collect saves it with the source sites, and every later action refuses
+// the attempt when it changed.
+function loadParser(): { tsMorph: typeof TsMorph; parser: Fields } {
+  const modules = join(tools, 'node_modules') + '/';
+  const before = new Set(Object.keys(require.cache));
+  function load(name: string): unknown {
+    const path = require.resolve(name);
+    assert(path.startsWith(modules + 'ts-morph/'), 'Use ts-morph from the trusted checkout.');
+    read(path);
+    return require(path);
+  }
+  const tsMorph = load('ts-morph') as typeof TsMorph;
+  const { version } = load('ts-morph/package.json') as { version: string };
+  const loaded = Object.keys(require.cache).filter(path => path.startsWith(modules) && !before.has(path)).sort();
+  return { tsMorph, parser: { name: 'TypeScript createSourceFile', node: process.version, tsMorph: version,
+    typescript: tsMorph.ts.version, modules: Object.fromEntries(loaded.map(path => [path.slice(modules.length), hash(read(path))])) } };
+}
+const { tsMorph, parser } = loadParser();
 
 // The completed receipt of a phase: its started record, its outputs and its logs, with unchanged digests.
 function receipt(phase: string, required: string[]): void {
@@ -213,6 +234,8 @@ function state(): InspectState {
   assert(lstatSync(join(attempt, 'commands.md')).nlink === 1, 'Command log must not share a hard link.');
   const source = snapshotReader(snapshot, files);
   const entry = parse(utf8(artifacts.get(discovery.entryAnalysisRef as string) as Buffer, 'selected entry analysis')) as Fields;
+  if (lstatSync(join(attempt, 'source-sites.json'), { throwIfNoEntry: false }))
+    assert(isDeepStrictEqual(json('source-sites.json').parser, parser), 'Trusted parser changed since collect.');
   return { handoff, run, profile, files, source, entry };
 }
 
@@ -228,16 +251,6 @@ function excerpt(current: InspectState, path: string, first: number, last: numbe
   assert(Buffer.byteLength(numbered) <= 100 * 1024, 'Excerpt exceeds 100 KiB; request a smaller range.');
   return { id: sourceId, snapshotRef: current.handoff.snapshotRef, path, sha256: current.files.get(path)?.sha256,
     lines: [first, end], totalLines: lines.length, truncated: first !== 1 || end !== lines.length, excerpt: numbered };
-}
-
-// Loads the TypeScript parser from the trusted checkout, with the record of its version and digest.
-function loadParser(): Pick<SiteInputs, 'ts' | 'parser'> {
-  const tsPath = require.resolve('typescript');
-  assert(tsPath.startsWith(join(tools, 'node_modules/typescript') + '/'), 'Use the trusted TypeScript parser.');
-  read(tsPath);
-  const ts = require(tsPath) as typeof TypeScript;
-  return { ts, parser: { name: 'TypeScript createSourceFile', version: ts.version, node: process.version,
-    parserSha256: hash(read(tsPath)) } };
 }
 
 // The paths of the first excerpts: inspection priorities, root README files, entry
@@ -290,7 +303,7 @@ function artifactMap(): Record<string, { path: string; sha256: string }> {
 }
 
 function collect(current: InspectState): string[] {
-  saveJson('source-sites.json', sourceSites({ ...loadParser(), attemptId: id, snapshotRef: current.handoff.snapshotRef,
+  saveJson('source-sites.json', sourceSites({ ts: tsMorph.ts, parser, attemptId: id, snapshotRef: current.handoff.snapshotRef,
     sourceFiles: current.profile.sourceFiles as SourceFile[], text: path => utf8(current.source(path), path) }));
   saveJson('source-excerpts.json', initialExcerpts(current));
   save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,

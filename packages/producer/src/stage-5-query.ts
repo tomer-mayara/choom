@@ -1,7 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
-import type * as TypeScript from 'typescript';
 import { assert, type Fields } from './record-checks.ts';
-import { type ScanFile, syntaxCandidates, syntaxLimits } from './stage-5-syntax.ts';
+import { type ScanFile, syntaxCandidates, syntaxLimits, type SyntaxTools } from './stage-5-syntax.ts';
 
 // The evidence that Stage 5 collect saves from the checked run state: the
 // owner-null units with their graph and syntax references, the reviewed ranges of
@@ -259,12 +258,12 @@ function initialExcerpts(state: QueryState, scope: SavedScope): Fields {
   return { ...state.header, excerpts, skipped, limits: excerptLimits };
 }
 
-export function collectEvidence(state: QueryState, savedScope: SavedScope, ts: typeof TypeScript): Record<string, Fields> {
+export function collectEvidence(state: QueryState, savedScope: SavedScope, tools: SyntaxTools): Record<string, Fields> {
   assert(isDeepStrictEqual(scopeFor(state), savedScope), 'Stage 5 scope changed after start.');
   return {
     'remaining-units.json': remainingUnits(state),
     'inspection-coverage.json': inspectionCoverage(state),
-    'source-candidates.json': syntaxCandidates(state, savedScope, ts),
+    'source-candidates.json': syntaxCandidates(state, savedScope, tools),
     'source-excerpts.json': initialExcerpts(state, savedScope),
   };
 }

@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ts } from "ts-morph";
 import { type ExtraFile, publishStageFour, stageFourPublication, type StageFourPublication }
   from "../../fixtures/stage-4-publication/fixture.ts";
-import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts";
+import { type CommandResult, makeScratch, removeScratch, runCli, toolsRoot } from "../../support/commands.ts";
+import { copyToolCheckout } from "../../support/tool-checkout.ts";
 
 // The Stage 5 helper on a run after a published Stage 4 review: start, collect and
 // excerpt, with the files that each action saves and the messages of its refusals.
@@ -168,9 +170,9 @@ const results: Record<string, CommandResult> = {};
 const excerpts: CommandResult[] = [];
 const saved = (name: string): Json => JSON.parse(readFileSync(join(attempt, name), "utf8")) as Json;
 
-function stageFive(args: string[], work = fixture.work): CommandResult {
-  return runCli(["stage-5", ...args], { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE5_ID: id,
-    CHOOM_STAGE5: join(work, "evidence", id) });
+function stageFive(args: string[], work = fixture.work, tools = toolsRoot): CommandResult {
+  return runCli(["stage-5", ...args], { CHOOM_TOOLS: tools, CHOOM_WORK: work, CHOOM_STAGE5_ID: id,
+    CHOOM_STAGE5: join(work, "evidence", id) }, tools);
 }
 
 beforeAll(() => {
@@ -201,10 +203,13 @@ describe("Stage 5 start", () => {
         [name, sha256(readFileSync(join(attempt, name)))])),
       scopeSha256: sha256(readFileSync(join(attempt, "scope.json"))) });
     const versions = handoff.versions as Json & { modules: Record<string, string> };
-    expect(Object.keys(versions)).toEqual(["node", "yaml", "typescript", "modules"]);
-    expect({ yaml: versions.yaml, typescript: versions.typescript })
-      .toEqual({ yaml: packageVersion("yaml"), typescript: packageVersion("typescript") });
-    expect(Object.keys(versions.modules)).toEqual(expect.arrayContaining(["yaml/package.json", "typescript/lib/typescript.js"]));
+    expect(Object.keys(versions)).toEqual(["node", "yaml", "tsMorph", "typescript", "modules"]);
+    // ts-morph brings the TypeScript that Stage 5 uses. Both are trusted tool files; the separate typescript package is not loaded.
+    expect({ yaml: versions.yaml, tsMorph: versions.tsMorph, typescript: versions.typescript })
+      .toEqual({ yaml: packageVersion("yaml"), tsMorph: packageVersion("ts-morph"), typescript: ts.version });
+    expect(Object.keys(versions.modules)).toEqual(expect.arrayContaining(["yaml/package.json", "ts-morph/package.json",
+      "ts-morph/dist/ts-morph.js", "@ts-morph/common/dist/ts-morph-common.js", "@ts-morph/common/dist/typescript.js"]));
+    expect(Object.keys(versions.modules)).not.toContain("typescript/lib/typescript.js");
     for (const [path, digest] of Object.entries(versions.modules)) expect({ path, digest }).toEqual({ path, digest: sha256(installed(path)) });
     for (const name of ["run", "discovery", "baseline"])
       expect(readFileSync(join(attempt, `${name}.before.yaml`)).equals(readFileSync(join(fixture.work, `${name}.yaml`)))).toBe(true);
@@ -248,7 +253,7 @@ describe("Stage 5 collect", () => {
 
   test("saves each kind of syntax candidate with its lines, the parser diagnostics, the skipped files and the omissions", () => {
     expect(saved("source-candidates.json")).toEqual({ ...header, graphRef,
-      parser: { name: "typescript", version: packageVersion("typescript") },
+      parser: { name: "typescript", tsMorph: packageVersion("ts-morph"), typescript: ts.version },
       scope: scanned.filter((path) => path !== "init/large.js").map((path) => ({ path, sha256: digestOf(path), contextRefs,
         parserDiagnostics: parserDiagnostics[path]?.[0] ?? 0, omittedDiagnostics: parserDiagnostics[path]?.[1] ?? 0 })),
       skipped: [{ path: "init/large.js", reason: "input-byte-limit" }],
@@ -373,6 +378,28 @@ describe("Stage 5 after a change of the saved snapshot", () => {
       expect(existsSync(join(changed.work, "evidence", id, "source-candidates.json"))).toBe(false);
     } finally {
       rmSync(changed.root, { recursive: true, force: true });
+    }
+  }, 60_000);
+});
+
+describe("Stage 5 trusted tools", () => {
+  test.each([
+    ["ts-morph", "ts-morph/dist/ts-morph.js"],
+    ["the TypeScript of ts-morph", "@ts-morph/common/dist/typescript.js"],
+  ])("refuses a later action after %s changed in the tool checkout", (_name, file) => {
+    const scratch = makeScratch();
+    const changed = stageFourPublication(undefined, [], copyToolCheckout(scratch));
+    try {
+      expect(publishStageFour(changed, "finish").status).toBe(0);
+      expect(stageFive(["start"], changed.work, changed.tools)).toMatchObject({ status: 0, stderr: "" });
+      appendFileSync(join(changed.tools, "node_modules", file), "\n// A later change.\n");
+      const message = `Trusted parser module changed since start: ${file}`;
+      expect(stageFive(["collect"], changed.work, changed.tools)).toEqual({ status: 1, stdout: "", stderr: message + "\n" });
+      const receipt = JSON.parse(readFileSync(join(changed.work, "evidence", id, "operator-collect.json"), "utf8")) as Json;
+      expect(receipt).toMatchObject({ status: "failed", exitCode: 1, digests: {} });
+    } finally {
+      rmSync(changed.root, { recursive: true, force: true });
+      removeScratch(scratch);
     }
   }, 60_000);
 });

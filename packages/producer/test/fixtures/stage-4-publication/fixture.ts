@@ -13,8 +13,8 @@ import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts
 // run for real. The toolchain and graph phases need Docker, so this fixture
 // writes their outputs and receipts in the form that the collection and the
 // publisher read. The records are the smallest that pass every publisher check.
-// A test can add snapshot files that no component owns, and can stop before the
-// source collection.
+// A test can add snapshot files that no component owns, can stop before the source
+// collection, and can run the helpers of a copied tool checkout.
 interface Statement<Value> { value: Value; status: "proposed"; evidenceRefs: string[] }
 interface FixtureComponent {
   id: string;
@@ -34,8 +34,9 @@ export interface FixtureBaseline {
 }
 // A saved snapshot file that no component owns, as text or bytes.
 export interface ExtraFile { path: string; text: string | Buffer }
-// A Stage 4 attempt whose start, toolchain and graph phases completed, before the source collection.
-export interface StageFourAttempt { root: string; work: string; attempt: string }
+// A Stage 4 attempt whose start, toolchain and graph phases completed, before the source
+// collection, and the tool checkout whose helpers run it.
+export interface StageFourAttempt { root: string; work: string; attempt: string; tools: string }
 export interface StageFourPublication extends StageFourAttempt { review: string }
 interface InventoryFile { path: string; kind: "file"; bytes: number; sha256: string }
 interface GraphContext {
@@ -98,8 +99,8 @@ function checked(result: CommandResult, label: string): void {
   if (result.status !== 0) throw new Error(`${label} failed: ${result.stderr}`);
 }
 
-function stageEnvironment(work: string): Record<string, string> {
-  return { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE4_ID: stageFourAttemptId,
+function stageEnvironment(work: string, tools: string): Record<string, string> {
+  return { CHOOM_TOOLS: tools, CHOOM_WORK: work, CHOOM_STAGE4_ID: stageFourAttemptId,
     CHOOM_STAGE4: join(work, "evidence", stageFourAttemptId) };
 }
 
@@ -239,28 +240,28 @@ function writePacket(review: string, records: Record<string, unknown>): void {
 
 // Prepares the run after Stage 3 with the extra snapshot files, runs Stage 4
 // start, and writes the toolchain and graph phases. The source collection is next.
-export function stageFourAttempt(extraFiles: readonly ExtraFile[] = []): StageFourAttempt {
+export function stageFourAttempt(extraFiles: readonly ExtraFile[] = [], tools = toolsRoot): StageFourAttempt {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "choom-stage-4-publication-"));
   const work = join(root, "run");
   const attempt = join(work, "evidence", stageFourAttemptId);
   writeStageThreeRun(work, extraFiles);
-  checked(runCli(["stage-4", "start"], stageEnvironment(work)), "Stage 4 start");
+  checked(runCli(["stage-4", "start"], stageEnvironment(work, tools), tools), "Stage 4 start");
   writePhase(attempt, "toolchain", { "toolchain-selection.json": jsonText({ formatVersion: 1, status: "approved",
     imageId: "sha256:" + "0".repeat(64), limits: ["The fixture records no Docker image."] }) });
   writePhase(attempt, "run", graphOutputs(attempt));
-  return { root, work, attempt };
+  return { root, work, attempt, tools };
 }
 
 // Runs one action of the Stage 4 source collection helper on the attempt, as an operator does.
 export function inspectStageFour(fixture: StageFourAttempt, args: readonly string[]): CommandResult {
-  return runCli(["stage-4-inspect", ...args], stageEnvironment(fixture.work));
+  return runCli(["stage-4-inspect", ...args], stageEnvironment(fixture.work, fixture.tools), fixture.tools);
 }
 
 // Prepares the run, the Stage 4 attempt and the review folder. `change` edits the
 // proposed baseline before the fixture writes the packet.
 export function stageFourPublication(change: (baseline: FixtureBaseline) => void = () => {},
-  extraFiles: readonly ExtraFile[] = []): StageFourPublication {
-  const prepared = stageFourAttempt(extraFiles);
+  extraFiles: readonly ExtraFile[] = [], tools = toolsRoot): StageFourPublication {
+  const prepared = stageFourAttempt(extraFiles, tools);
   const review = join(prepared.root, "review");
   checked(inspectStageFour(prepared, ["collect"]), "Stage 4 collection");
   const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
@@ -273,5 +274,5 @@ export function stageFourPublication(change: (baseline: FixtureBaseline) => void
 // Runs one Stage 4/5 publisher action on the fixture, as an operator does.
 export function publishStageFour(fixture: StageFourPublication, action: "check" | "finish" | "verify"): CommandResult {
   const args = action === "verify" ? ["stage-4-5-publish", action, "4"] : ["stage-4-5-publish", action, "4", fixture.review];
-  return runCli(args, stageEnvironment(fixture.work));
+  return runCli(args, stageEnvironment(fixture.work, fixture.tools), fixture.tools);
 }

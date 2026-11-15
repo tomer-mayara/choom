@@ -1,5 +1,6 @@
-import type * as TypeScript from 'typescript';
+import type { ts as TypeScript } from 'ts-morph';
 import type { Fields } from './record-checks.ts';
+import type { ProjectTools } from './snapshot-project.ts';
 
 // The syntax candidates that Stage 5 collect saves: module and class
 // initialization, side-effect imports, and setup or registration calls in the
@@ -17,6 +18,8 @@ export interface SyntaxState {
   // The checked bytes of an indexed file of at most maxBytes.
   readIndexed(path: string, maxBytes: number): Buffer;
 }
+// ts-morph, with the TypeScript that the query uses, and the tool versions to record.
+export interface SyntaxTools { tsMorph: ProjectTools; versions: { tsMorph: string; typescript: string } }
 type RecordCandidate = (node: TypeScript.Node, kind: string, scope: string, details?: Fields) => void;
 interface FileScan { ts: Ts; record: RecordCandidate }
 
@@ -164,7 +167,8 @@ function fileDiagnostics(ts: Ts, file: ScanFile, source: TypeScript.SourceFile):
 
 // Parses each file of the saved scan scope. A file that is not JavaScript or
 // TypeScript, is over the input byte limit or is not UTF-8 text is skipped with a reason.
-export function syntaxCandidates(state: SyntaxState, scope: { syntaxScope: ScanFile[] }, ts: Ts): Fields {
+export function syntaxCandidates(state: SyntaxState, scope: { syntaxScope: ScanFile[] }, { tsMorph, versions }: SyntaxTools): Fields {
+  const { ts } = tsMorph;
   const found = { candidates: [] as Fields[], omissions: [] as Fields[] };
   const diagnostics: Fields[] = [];
   const scanned: Fields[] = [];
@@ -184,6 +188,6 @@ export function syntaxCandidates(state: SyntaxState, scope: { syntaxScope: ScanF
     scanned.push({ ...file, parserDiagnostics: count, omittedDiagnostics: Math.max(0, count - syntaxLimits.diagnosticsPerFile) });
     inspect(ts, found, state.header.attemptId, file, source);
   }
-  return { ...state.header, graphRef: state.graphRef, parser: { name: 'typescript', version: ts.version }, scope: scanned, skipped,
+  return { ...state.header, graphRef: state.graphRef, parser: { name: 'typescript', tsMorph: versions.tsMorph, typescript: versions.typescript }, scope: scanned, skipped,
     candidates: found.candidates, diagnostics, omissions: found.omissions, limits };
 }

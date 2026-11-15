@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import type * as TypeScript from 'typescript';
+import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
 import { appendCommandLog, cookbookPrompt } from './attempt-files.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
@@ -19,8 +19,9 @@ import { collectEvidence, excerpt, type SavedScope, scopeFor } from './stage-5-q
 // evidence, the review prompt and the proposed artifact map; excerpt saves a
 // requested range. Each action saves a receipt and appends its outcome to the
 // command log.
-interface Versions { node: string; yaml: string; typescript: string; modules: Record<string, string> }
-interface Toolchain { parse: (text: string) => unknown; ts: typeof TypeScript; versions: Versions }
+interface Versions { node: string; yaml: string; tsMorph: string; typescript: string; modules: Record<string, string> }
+// YAML, and ts-morph with its own copy of TypeScript, which the syntax query uses.
+interface Toolchain { parse: (text: string) => unknown; tsMorph: typeof TsMorph; versions: Versions }
 interface Prepared { toolchain: Toolchain; state: StageState; frozenTools: Record<string, Buffer> }
 interface Started { state: StageState; toolchain: Toolchain }
 interface Reservation { phase: string; prefix: string; started: Fields }
@@ -84,11 +85,12 @@ function checkPinned(pinned: Fields, modules: string, paths: string[]): void {
     'Trusted parser resolution changed since start.');
 }
 
-// The trusted YAML and TypeScript of the checkout, with their versions and the
-// digest of each tool file that this action loaded. A later action compares them with start.
+// The trusted YAML and ts-morph of the checkout, with their versions, the version of
+// the TypeScript of ts-morph, and the digest of each tool file that this action
+// loaded. A later action compares them with start.
 function loadTools(pinned?: Fields): Toolchain {
   const modules = join(tools, 'node_modules') + '/';
-  const packages = ['yaml', 'typescript', 'yaml/package.json'];
+  const packages = ['yaml', 'ts-morph', 'yaml/package.json', 'ts-morph/package.json'];
   const paths = packages.map(name => {
     const path = require.resolve(name);
     assert(path.startsWith(modules + name.split('/')[0] + '/') && realpathSync(path) === path,
@@ -96,12 +98,13 @@ function loadTools(pinned?: Fields): Toolchain {
     return path;
   });
   if (pinned) checkPinned(pinned, modules, paths);
-  const [{ parse }, ts, { version: yaml }] = paths.map(path => require(path)) as [typeof Yaml, typeof TypeScript, { version: string }];
+  const [{ parse }, tsMorph, { version: yaml }, { version: tsMorphVersion }] = paths.map(path => require(path)) as
+    [typeof Yaml, typeof TsMorph, { version: string }, { version: string }];
   const loaded = Object.keys(require.cache).filter(path => path.startsWith(modules)).sort();
-  const versions = { node: process.version, yaml, typescript: ts.version,
+  const versions = { node: process.version, yaml, tsMorph: tsMorphVersion, typescript: tsMorph.ts.version,
     modules: Object.fromEntries(loaded.map(path => [path.slice(modules.length), hash(read(path))])) };
   if (pinned) assert(isDeepStrictEqual(versions, pinned), 'Trusted parser modules changed since start.');
-  return { parse, ts, versions };
+  return { parse, tsMorph, versions };
 }
 
 function requireCompleted(phase: string, outputs: string[]): void {
@@ -185,7 +188,8 @@ function startedAttempt(): Started {
 
 function collectAction({ state, toolchain }: Started, prefix: string, output: Output, outputs: string[]): string {
   assert(collectOutputs.every(name => !exists(join(attempt, name))), 'Collect output already exists. Use a new attempt.');
-  const results = collectEvidence(state, json('scope.json') as unknown as SavedScope, toolchain.ts);
+  const results = collectEvidence(state, json('scope.json') as unknown as SavedScope,
+    { tsMorph: toolchain.tsMorph, versions: toolchain.versions });
   const prompt = reviewPrompt(state);
   for (const [name, value] of Object.entries(results)) output(name, encode(value));
   output('review-prompt.md', prompt);

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import * as ts from "typescript";
+import * as tsMorph from "ts-morph";
 import { collectEvidence, type IndexedFile, type QueryState, scopeFor } from "../../src/stage-5-query.ts";
 import { makeScratch, removeScratch } from "../support/commands.ts";
 
@@ -49,7 +49,8 @@ function stageState(): QueryState {
 describe("the Stage 5 syntax query", () => {
   test("skips a scan file that is not JavaScript or TypeScript and a file that is not UTF-8 text, and parses the others", () => {
     const state = stageState();
-    const candidates = collectEvidence(state, scopeFor(state), ts)["source-candidates.json"];
+    const versions = { tsMorph: "28.0.0", typescript: tsMorph.ts.version };
+    const candidates = collectEvidence(state, scopeFor(state), { tsMorph, versions })["source-candidates.json"];
     const contextRefs = ["s4-check-file@graph-results.json#/contexts/0"];
     expect(candidates).toMatchObject({
       scope: [{ path: "app.ts", sha256: sha256(files["app.ts"] as string), contextRefs, parserDiagnostics: 0, omittedDiagnostics: 0 }],
