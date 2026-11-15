@@ -1,18 +1,54 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import {
   appendFileSync, closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync,
   readFileSync, readdirSync, realpathSync, writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, isAbsolute, join, posix } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import type * as Yaml from 'yaml';
 import { refuseChangedProducerCode } from './producer-code.ts';
+import { assert, type Fields, hash, object, text } from './record-checks.ts';
+import { graphProfile, type IndexedFile, type Picomatch, type ProfileFacts, safePath } from './stage-4-graph-profile.ts';
+
+// The Stage 4 helper. start checks the run after Stage 3 and saves the graph
+// profile, toolchain builds and approves the graph image, and run extracts the
+// graph in a container. Saved JSON and YAML stay unchecked values until the checks
+// below read them.
+interface RegisteredArtifact { path: string; sha256: string; bytes: Buffer }
+interface Facts extends ProfileFacts {
+  formatVersion: 1; attemptId: string; runRef: string; entryAnalysisRef: string; inventoryRef: string;
+  knipRunsRef: string; work: string; tools: string; registeredArtifacts: number; checkpointDigests: Record<string, string>;
+}
+// The checked run after Stage 3 that an action starts from.
+interface StageState {
+  inputs: Record<string, Buffer>;
+  artifact(ref: string): RegisteredArtifact;
+  indexed: Map<string, IndexedFile>;
+  loading: Fields;
+  settings: Fields;
+  plan: Fields;
+  facts: Facts;
+}
+interface CommandRecord {
+  command: string; args: string[]; startedAt: string; timeoutMs: number; maxOutputBytes: number; stdout: string; stderr: string;
+  finishedAt?: string; exitCode?: number | null; signal?: string | null; error?: { code: unknown; message: string } | null;
+}
+interface DockerSelection { context: string | null; endpoint: string }
+// The receipt of one action: its command, its outcome and the digests of what it saved.
+interface OperatorRecord {
+  formatVersion: 1; attemptId: string; phase: string; action: string;
+  command: { args: string[]; cwd: string; environment: Record<string, string> };
+  startedAt: string; status: string; finishedAt?: string; exitCode?: number;
+  digests?: Record<string, string>; logDigests?: Record<string, string>;
+}
 
 const self = fileURLToPath(import.meta.url);
-const [action, ...args] = process.argv.slice(2);
-const { CHOOM_WORK, CHOOM_TOOLS, CHOOM_STAGE4_ID: id } = process.env;
+const [action = '', ...args] = process.argv.slice(2);
+const { CHOOM_WORK, CHOOM_TOOLS } = process.env;
+const id = process.env.CHOOM_STAGE4_ID ?? '';
 // Start saves the documents that the stage follows. Every action runs the producer
 // code in the tool checkout after the producer code check.
 const toolsToFreeze = ['step-4-cookbook.md', 'record-format.md'];
@@ -20,32 +56,22 @@ const toolsToFreeze = ['step-4-cookbook.md', 'record-format.md'];
 const graphHelper = '/producer/stage-4-graph.mjs';
 const drafts = ['run', 'discovery', 'baseline'];
 const maxOutputBytes = 64 * 1024 * 1024;
-const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
-const compilerKeys = ['target', 'module', 'moduleResolution', 'jsx', 'verbatimModuleSyntax'];
-const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const utc = () => new Date().toISOString();
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const text = value => typeof value === 'string' && value.trim().length > 0;
-const sha256 = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
-const exists = path => Boolean(lstatSync(path, { throwIfNoEntry: false }));
-const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const utc = (): string => new Date().toISOString();
+const isDigest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const exists = (path: string): boolean => Boolean(lstatSync(path, { throwIfNoEntry: false }));
 
-function safePath(path) {
-  return text(path) && !isAbsolute(path) && !/[\\\u0000-\u001f\u007f]/.test(path) &&
-    path.split('/').every(part => part && part !== '.' && part !== '..');
-}
-function directory(path) {
-  assert(isAbsolute(path ?? '') && lstatSync(path).isDirectory() && realpathSync(path) === path,
+function directory(path: string | undefined): string {
+  assert(isAbsolute(path ?? '') && lstatSync(path as string).isDirectory() && realpathSync(path as string) === path,
     'Expected a canonical directory: ' + path);
-  return path;
+  return path as string;
 }
-function read(path) {
+function read(path: string): Buffer {
   assert(lstatSync(path).isFile() && realpathSync(path) === path, 'Expected a regular saved file: ' + path);
   const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try { assert(fstatSync(fd).isFile(), 'Expected a regular file.'); return readFileSync(fd); }
   finally { closeSync(fd); }
 }
-function files(root, prefix = '') {
+function files(root: string, prefix = ''): string[] {
   return readdirSync(join(root, prefix)).sort().flatMap(name => {
     const path = prefix ? prefix + '/' + name : name;
     assert(safePath(path), 'Unsupported filename: ' + path);
@@ -57,35 +83,39 @@ function files(root, prefix = '') {
 }
 
 assert(['start', 'toolchain', 'run'].includes(action) && args.length === 0, 'Use start, toolchain, or run.');
-assert(/^s4-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id ?? ''), 'Set CHOOM_STAGE4_ID to an s4-... ID.');
+assert(/^s4-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id), 'Set CHOOM_STAGE4_ID to an s4-... ID.');
 const work = directory(CHOOM_WORK);
 const tools = directory(CHOOM_TOOLS);
 assert(work !== tools && !tools.startsWith(work + '/'), 'Keep trusted tools outside CHOOM_WORK.');
 const attempt = join(directory(join(work, 'evidence')), id);
 assert(!process.env.CHOOM_STAGE4 || process.env.CHOOM_STAGE4 === attempt, 'CHOOM_STAGE4 does not match the attempt.');
 // The cookbooks and record format stay in docs/design/app-a; the code is in packages/producer/src.
-const sourceTool = name => join(tools, name.endsWith('.md') ? 'docs/design/app-a' : 'packages/producer/src', name);
-const sourceSelf = sourceTool('stage-4-commands.mjs');
+const sourceTool = (name: string): string => join(tools, name.endsWith('.md') ? 'docs/design/app-a' : 'packages/producer/src', name);
+const sourceSelf = sourceTool('stage-4-commands.ts');
 assert(self === sourceSelf, 'Use the Stage 4 helper in the trusted checkout.');
 refuseChangedProducerCode(work, tools);
 const require = createRequire(join(tools, 'package.json'));
-function trustedModule(name) {
+function trustedModule(name: string): unknown {
   const path = require.resolve(name);
   assert(path.startsWith(join(tools, 'node_modules', name) + '/') && realpathSync(path) === path,
     'Install ' + name + ' in the trusted tool checkout.');
   return require(path);
 }
-const { parse } = trustedModule('yaml');
-const saved = name => { assert(safePath(name), 'Invalid attempt path.'); return read(join(attempt, name)); };
-const json = name => JSON.parse(saved(name));
-const save = (name, bytes) => { assert(safePath(name), 'Invalid output path.'); writeFileSync(join(attempt, name), bytes, { flag: 'wx' }); };
-const saveJson = (name, value) => save(name, JSON.stringify(value, null, 2) + '\n');
-const artifactId = name => id + '-file@' + encodeURIComponent(name);
-const digests = names => Object.fromEntries(names.map(name => [name, hash(saved(name))]));
+const { parse } = trustedModule('yaml') as typeof Yaml;
+const saved = (name: string): Buffer => { assert(safePath(name), 'Invalid attempt path.'); return read(join(attempt, name)); };
+const json = (name: string) => JSON.parse(saved(name).toString());
+const save = (name: string, bytes: string | Buffer): void => {
+  assert(safePath(name), 'Invalid output path.'); writeFileSync(join(attempt, name), bytes, { flag: 'wx' });
+};
+const saveJson = (name: string, value: unknown): void => save(name, JSON.stringify(value, null, 2) + '\n');
+const artifactId = (name: string): string => id + '-file@' + encodeURIComponent(name);
+const digests = (names: string[]): Record<string, string> => Object.fromEntries(names.map(name => [name, hash(saved(name))]));
 
-function state() {
+// The working drafts after Stage 3: a finalized run, a discovery result that has
+// not advanced past this handoff, and the empty initial baseline.
+function readDrafts() {
   const inputs = Object.fromEntries(drafts.map(name => [name, read(join(work, name + '.yaml'))]));
-  const { run, discovery, baseline } = Object.fromEntries(drafts.map(name => [name, parse(inputs[name].toString())]));
+  const { run, discovery, baseline } = Object.fromEntries(drafts.map(name => [name, parse((inputs[name] as Buffer).toString())]));
   assert(run?.formatVersion === 1 && run.mode === 'A' && run.status === 'in-progress' &&
     run.progress?.inventory === 'complete' && run.progress.entryAnalysis === 'complete' &&
     run.progress.inspectionPriorities === 'complete' && run.progress.baselineRecovery === 'pending' &&
@@ -97,60 +127,79 @@ function state() {
   assert(baseline?.formatVersion === 1 && baseline.parentId === null &&
     ['components', 'interfaces', 'resources', 'rules'].every(key => Array.isArray(baseline[key]) && !baseline[key].length),
   'Expected the empty initial baseline.');
-  const artifacts = new Map();
-  for (const [ref, record] of Object.entries(run.artifacts)) {
-    assert(safePath(record?.path) && sha256(record.sha256) &&
+  return { inputs, run, discovery };
+}
+
+// The registered artifacts of the run, each checked against its digest.
+function registeredArtifacts(run: Fields): { artifact: (ref: string) => RegisteredArtifact; count: number } {
+  const artifacts = new Map<string, RegisteredArtifact>();
+  for (const [ref, record] of Object.entries(run.artifacts as Record<string, Fields | null>)) {
+    assert(safePath(record?.path) && isDigest(record.sha256) &&
       !drafts.some(name => record.path === name + '.yaml') && !record.path.startsWith('evidence/' + id + '/'),
     'Invalid or already registered artifact: ' + ref);
     const bytes = read(join(work, record.path));
     assert(hash(bytes) === record.sha256, 'Registered artifact changed: ' + ref);
-    artifacts.set(ref, { ...record, bytes });
+    artifacts.set(ref, { ...record, bytes } as RegisteredArtifact);
   }
-  function artifact(ref) { assert(artifacts.has(ref), 'Missing registered artifact: ' + ref); return artifacts.get(ref); }
-  const selected = artifact(discovery.entryAnalysisRef);
-  const entry = parse(selected.bytes.toString());
+  function artifact(ref: string): RegisteredArtifact {
+    assert(artifacts.has(ref), 'Missing registered artifact: ' + ref);
+    return artifacts.get(ref) as RegisteredArtifact;
+  }
+  return { artifact, count: artifacts.size };
+}
+
+function indexedInventory(run: Fields, artifact: (ref: string) => RegisteredArtifact): Map<string, IndexedFile> {
+  const snapshot = run.snapshot as Fields;
+  const inventory = JSON.parse(artifact(snapshot.inventoryRef as string).bytes.toString());
+  assert(inventory.formatVersion === 1 && inventory.snapshotId === snapshot.id && Array.isArray(inventory.files),
+    'Inventory snapshot mismatch.');
+  const indexed = new Map<string, IndexedFile>();
+  for (const file of inventory.files) {
+    assert(safePath(file?.path) && !indexed.has(file.path) && file.kind === 'file' && isDigest(file.sha256),
+      'This graph profile requires unique regular inventory files.');
+    indexed.set(file.path, file);
+  }
+  return indexed;
+}
+
+function state(): StageState {
+  const { inputs, run, discovery } = readDrafts();
+  const { artifact, count } = registeredArtifacts(run);
+  const entry = parse(artifact(discovery.entryAnalysisRef).bytes.toString());
   assert(/^s3-.+-entry-analysis$/.test(discovery.entryAnalysisRef) && entry?.kind === 'entry-analysis' &&
     entry.snapshotRef === run.snapshot.id && entry.knipAssessment?.action === 'reuse' &&
     Array.isArray(entry.inspectionPriorities) && entry.inspectionPriorities.length,
   'Expected the finalized Stage 3 entry analysis.');
-  const inventory = JSON.parse(artifact(run.snapshot.inventoryRef).bytes);
-  assert(inventory.formatVersion === 1 && inventory.snapshotId === run.snapshot.id && Array.isArray(inventory.files),
-    'Inventory snapshot mismatch.');
-  const indexed = new Map();
-  for (const file of inventory.files) {
-    assert(safePath(file?.path) && !indexed.has(file.path) && file.kind === 'file' && sha256(file.sha256),
-      'This graph profile requires unique regular inventory files.');
-    indexed.set(file.path, file);
-  }
+  const indexed = indexedInventory(run, artifact);
   directory(join(work, 'snapshot'));
   const loadingRef = discovery.entryAnalysisRef.replace(/-entry-analysis$/, '-file@loading-search.json');
-  const loading = JSON.parse(artifact(loadingRef).bytes);
+  const loading = JSON.parse(artifact(loadingRef).bytes.toString());
   assert(loading.snapshotRef === run.snapshot.id && loading.status === 'completed' && Array.isArray(loading.scope) &&
-    loading.scope.length && loading.scope.every(file => indexed.get(file.path)?.sha256 === file.sha256) &&
-    new Set(loading.scope.map(file => file.path)).size === loading.scope.length, 'Invalid saved Stage 3 query scope.');
+    loading.scope.length && loading.scope.every((file: Fields) => indexed.get(file.path as string)?.sha256 === file.sha256) &&
+    new Set(loading.scope.map((file: Fields) => file.path)).size === loading.scope.length, 'Invalid saved Stage 3 query scope.');
   const settingsRef = 'settings-001';
-  const settings = JSON.parse(artifact(settingsRef).bytes);
-  const plan = JSON.parse(artifact(entry.planRef).bytes);
+  const settings = JSON.parse(artifact(settingsRef).bytes.toString());
+  const plan = JSON.parse(artifact(entry.planRef).bytes.toString());
   artifact(entry.knipRunsRef);
   assert(settings.snapshotId === run.snapshot.id && plan.snapshotRef === run.snapshot.id,
     'Settings or retained Knip plan describe a different snapshot.');
-  const facts = { formatVersion: 1, attemptId: id, runRef: run.id, snapshotRef: run.snapshot.id,
+  const facts: Facts = { formatVersion: 1, attemptId: id, runRef: run.id, snapshotRef: run.snapshot.id,
     entryAnalysisRef: discovery.entryAnalysisRef, inventoryRef: run.snapshot.inventoryRef, settingsRef,
     planRef: entry.planRef, knipRunsRef: entry.knipRunsRef, loadingRef, work, tools,
-    registeredArtifacts: artifacts.size,
-    checkpointDigests: Object.fromEntries(drafts.map(name => [name + '.before.yaml', hash(inputs[name])])) };
-  return { inputs, run, discovery, baseline, entry, artifact, indexed, loading, settings, plan, facts };
+    registeredArtifacts: count,
+    checkpointDigests: Object.fromEntries(drafts.map(name => [name + '.before.yaml', hash(inputs[name] as Buffer)])) };
+  return { inputs: inputs as Record<string, Buffer>, artifact, indexed, loading, settings, plan, facts };
 }
 
-function checkSnapshotMetadata(current) {
+function checkSnapshotMetadata(current: StageState): void {
   const counts = { missing: 0, type: 0, path: 0, size: 0, unavailable: 0, inventory: 0 };
-  const samples = [];
-  function problem(kind, file, reason) {
+  const samples: string[] = [];
+  function problem(kind: keyof typeof counts, file: IndexedFile, reason: string): void {
     counts[kind] += 1;
     if (samples.length < 12) samples.push(file.path.slice(0, 240) + ': ' + reason);
   }
   for (const file of current.indexed.values()) {
-    if (!Number.isSafeInteger(file.bytes) || file.bytes < 0) {
+    if (!Number.isSafeInteger(file.bytes) || (file.bytes as number) < 0) {
       problem('inventory', file, 'invalid inventory byte count');
       continue;
     }
@@ -161,8 +210,9 @@ function checkSnapshotMetadata(current) {
       else if (realpathSync(path) !== path) problem('path', file, 'path resolves outside its saved location');
       else if (stat.size !== file.bytes) problem('size', file, `expected ${file.bytes} bytes; found ${stat.size}`);
     } catch (error) {
-      problem(error.code === 'ENOENT' ? 'missing' : 'unavailable', file,
-        error.code === 'ENOENT' ? 'missing' : 'metadata could not be read (' + (error.code ?? 'unknown error') + ')');
+      const code = (error as NodeJS.ErrnoException).code;
+      problem(code === 'ENOENT' ? 'missing' : 'unavailable', file,
+        code === 'ENOENT' ? 'missing' : 'metadata could not be read (' + (code ?? 'unknown error') + ')');
     }
   }
   const failures = Object.values(counts).reduce((sum, count) => sum + count, 0);
@@ -170,7 +220,7 @@ function checkSnapshotMetadata(current) {
     const labels = { missing: 'missing', type: 'wrong file type', path: 'noncanonical path',
       size: 'wrong byte size', unavailable: 'unavailable metadata', inventory: 'invalid inventory size' };
     const summary = Object.entries(counts).filter(([, count]) => count)
-      .map(([kind, count]) => count + ' ' + labels[kind]).join(', ');
+      .map(([kind, count]) => count + ' ' + labels[kind as keyof typeof counts]).join(', ');
     throw new Error(`Snapshot metadata preflight failed for ${failures} of ${current.indexed.size} indexed files: ${summary}.\n` +
       samples.map(sample => '- ' + sample).join('\n') +
       (failures > samples.length ? `\n${failures - samples.length} further problem files are not listed.` : '') +
@@ -179,115 +229,17 @@ function checkSnapshotMetadata(current) {
   }
 }
 
-function profile(state) {
-  const { settings, plan, loading, indexed, facts } = state;
-  assert(Array.isArray(plan.workspaces) && plan.workspaces.some(workspace => workspace.dir === '.') &&
-    plan.workspaces.every(workspace => (workspace.dir === '.' || safePath(workspace.dir)) &&
-      Array.isArray(workspace.entry) && workspace.entry.every(text)), 'Invalid saved workspace entry patterns.');
-  const sourceFiles = loading.scope.map(({ path, sha256 }) => ({ path, sha256 }))
-    .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-  assert(sourceFiles.length && sourceFiles.every(file => sourceExtension.test(file.path) && !/[!*?{}\[\]()]/.test(file.path)),
-    'This profile needs saved JS/TS source with no glob characters in its filenames.');
-  const selected = new Set(sourceFiles.map(file => file.path));
-  const configurationLimits = [];
-  const groups = [];
-  const covered = new Set();
-  for (const [index, config] of (settings.configs ?? []).entries()) {
-    const ref = facts.settingsRef + '#/configs/' + index;
-    if (config.status !== 'parsed' || !Array.isArray(config.fileNames)) {
-      configurationLimits.push({ configRef: ref, reason: 'No fully parsed saved file selection; affected files use another supported context or the fallback.' });
-      continue;
-    }
-    const configured = new Set(config.fileNames.map(path => path.startsWith('/repo/') ? path.slice(6) : path));
-    const files = sourceFiles.filter(file => configured.has(file.path));
-    if (!files.length) {
-      configurationLimits.push({ configRef: ref, reason: 'This compiler context selects no indexed JS/TS scan files.' });
-      continue;
-    }
-    const options = Object.fromEntries(compilerKeys.filter(key => Object.hasOwn(config.compilerOptions ?? {}, key))
-      .map(key => [key, config.compilerOptions[key]]));
-    assert(Object.entries(options).every(([key, value]) => key === 'verbatimModuleSyntax'
-      ? typeof value === 'boolean' : Number.isSafeInteger(value) && value >= 0), 'Unsupported compiler option values: ' + config.path);
-    const aliases = [];
-    const paths = config.compilerOptions?.paths ?? {};
-    const base = config.compilerOptions?.baseUrl ?? config.compilerOptions?.pathsBasePath;
-    for (const [name, targets] of Object.entries(paths)) {
-      const target = Array.isArray(targets) && targets.length === 1 && text(targets[0]) && text(base)
-        ? posix.resolve(base, targets[0]) : null;
-      if (!/^[A-Za-z0-9@._/-]+\*?$/.test(name) || !target?.startsWith('/repo/') ||
-        !/^[A-Za-z0-9._/-]+\*?$/.test(target) || name.endsWith('*') !== target.endsWith('*')) {
-        configurationLimits.push({ configRef: ref, reason: 'Alias is outside the supported single-target form and was omitted: ' + name });
-        continue;
-      }
-      aliases.push({ name, alias: target });
-    }
-    if (config.compilerOptions?.baseUrl)
-      configurationLimits.push({ configRef: ref, reason: 'baseUrl-only bare imports are not resolved; only the recorded explicit path aliases are approximated.' });
-    groups.push({ name: 'compiler-' + (index + 1), files, ref, options, aliases });
-    files.forEach(file => covered.add(file.path));
-  }
-  const fallback = sourceFiles.filter(file => !covered.has(file.path));
-  if (fallback.length) groups.push({ name: 'fallback', files: fallback, ref: null, options: {}, aliases: [] });
-  const picomatch = trustedModule('picomatch');
-  const selectors = plan.workspaces.map((workspace, workspaceIndex) => ({
-    dir: workspace.dir,
-    patterns: workspace.entry.map((pattern, index) => {
-      const source = pattern.replace(/!$/, '');
-      const excluded = source.startsWith('!');
-      assert(source.length > (excluded ? 1 : 0), 'Empty entry pattern.');
-      return { excluded, match: picomatch(excluded ? source.slice(1) : source, { dot: true }),
-        ref: facts.planRef + '#/workspaces/' + workspaceIndex + '/entry/' + index };
-    }),
-  }));
-  function rootEvidence(path) {
-    return [...new Set(selectors.flatMap(({ dir, patterns }) => {
-      if (dir !== '.' && !path.startsWith(dir + '/')) return [];
-      const relative = dir === '.' ? path : path.slice(dir.length + 1);
-      if (patterns.some(pattern => pattern.excluded && pattern.match(relative))) return [];
-      return patterns.filter(pattern => !pattern.excluded && pattern.match(relative)).map(pattern => pattern.ref);
-    }))];
-  }
-  const contexts = groups.flatMap(group => ['import', 'require'].map(mode => ({
-    id: group.name + '-' + mode, compilerSettingsRef: group.ref,
-    sourceFiles: group.files.map(file => file.path), compilerOptions: group.options,
-    aliases: group.aliases, conditionNames: [mode, 'default'],
-    moduleSystems: mode === 'import' ? ['es6', 'tsd'] : ['cjs'],
-    roots: group.files.flatMap(file => {
-      const evidenceRefs = rootEvidence(file.path);
-      return evidenceRefs.length ? [{ path: file.path, evidenceRefs }] : [];
-    }),
-  })));
-  const outsideScope = [...indexed.values()].filter(file => sourceExtension.test(file.path) && !selected.has(file.path));
-  return {
-    graph: { formatVersion: 1, snapshotRef: facts.snapshotRef, attemptId: id, sourceFiles, contexts },
-    notes: { formatVersion: 1, snapshotRef: facts.snapshotRef, scopeRef: facts.loadingRef + '#/scope',
-      settingsRef: facts.settingsRef, planRef: facts.planRef,
-      groups: groups.map(group => ({ name: group.name, files: group.files.length, compilerSettingsRef: group.ref })),
-      configurationLimits,
-      outsideScope: outsideScope.map(({ path, sha256 }) => ({ path, sha256, status: 'unassessed' })),
-      limits: ['Scan files come from all indexed regular JavaScript and TypeScript files in the Stage 3 source query.',
-        "Explicit traversal roots use the retained entry patterns in each saved workspace; they are not Knip's complete effective roots.",
-        'Each parsed compiler file selection is a separate context. Overlapping selections stay separate; remaining source uses a named configuration-free fallback.',
-        'Import and require are separate, platform-neutral passes. Browser, Node, Bun, custom, and type-specific package conditions remain outside this profile.',
-        'Compiler inclusion does not claim production use, execution, or ownership. Referenced project contexts are not merged.',
-        'Only target, module, moduleResolution, jsx, and verbatimModuleSyntax are passed to the parser.',
-        'Recorded single-target path aliases approximate source resolution; omitted alias forms remain gaps and TypeScript paths do not establish runtime rewriting.',
-        'Ambient declarations, package dependencies, non-JS/TS source and cross-context traversal remain limited.'] },
-  };
-}
-
-function checkFrozen(current) {
+function checkFrozen(current: StageState): void {
   directory(attempt);
   const handoff = json('handoff.json');
   for (const [key, value] of Object.entries(current.facts))
     assert(isDeepStrictEqual(handoff[key], value), 'The prepared handoff changed: ' + key);
-  for (const name of drafts) assert(saved(name + '.before.yaml').equals(current.inputs[name]), 'Draft changed: ' + name);
+  for (const name of drafts) assert(saved(name + '.before.yaml').equals(current.inputs[name] as Buffer), 'Draft changed: ' + name);
   assert(isDeepStrictEqual(handoff.toolInputDigests, digests(toolsToFreeze)) &&
     handoff.graphProfileSha256 === hash(saved('graph-profile.json')) &&
     handoff.profileNotesSha256 === hash(saved('graph-profile-notes.json')), 'A frozen tool or profile changed.');
-  return handoff;
 }
-function receipt(phase) {
+function receipt(phase: string): void {
   const value = json('operator-' + phase + '.json');
   const required = phase === 'start' ? [...toolsToFreeze, ...drafts.map(name => name + '.before.yaml'),
     'handoff.json', 'graph-profile.json', 'graph-profile-notes.json']
@@ -304,53 +256,53 @@ function receipt(phase) {
     [value.digests, value.logDigests].every(records => Object.entries(records)
       .every(([name, digest]) => hash(saved(name)) === digest)),
   'The ' + phase + ' action failed or its evidence changed. Use a new attempt.');
-  return value;
 }
 
 const childEnv = { ...process.env };
 for (const name of ['NODE_OPTIONS', 'NODE_PATH', 'BASH_ENV', 'ENV', 'PYTHONPATH', 'PYTHONSTARTUP', 'PYTHONINSPECT']) delete childEnv[name];
-let endpoint = null;
-function command(program, arguments_, stem, timeoutMs, input) {
+let endpoint: string | null = null;
+function command(program: string, arguments_: string[], stem: string, timeoutMs: number, input?: string): CommandRecord {
   const actualArgs = program === 'docker' && endpoint ? ['--host', endpoint, ...arguments_] : arguments_;
-  const result = { command: program, args: actualArgs, startedAt: utc(), timeoutMs, maxOutputBytes,
+  const result: CommandRecord = { command: program, args: actualArgs, startedAt: utc(), timeoutMs, maxOutputBytes,
     stdout: stem + '.stdout.txt', stderr: stem + '.stderr.txt' };
   const execution = spawnSync(program, actualArgs, { input, maxBuffer: maxOutputBytes, timeout: timeoutMs,
     env: endpoint && program === 'docker' ? { ...childEnv, DOCKER_CONTEXT: '' } : childEnv });
   save(result.stdout, execution.stdout ?? Buffer.alloc(0)); save(result.stderr, execution.stderr ?? Buffer.alloc(0));
+  const failure = execution.error as NodeJS.ErrnoException | undefined;
   Object.assign(result, { finishedAt: utc(), exitCode: execution.status, signal: execution.signal,
-    error: execution.error ? { code: execution.error.code ?? null, message: execution.error.message } : null });
+    error: failure ? { code: failure.code ?? null, message: failure.message } : null });
   saveJson(stem + '.json', result);
   return result;
 }
-const succeeded = result => result.exitCode === 0 && !result.signal && !result.error;
-function selectDocker(stem) {
+const succeeded = (result: CommandRecord): boolean => result.exitCode === 0 && !result.signal && !result.error;
+function selectDocker(stem: string): DockerSelection {
   const context = process.env.DOCKER_CONTEXT || null;
   const host = process.env.DOCKER_HOST || null;
-  let selection;
+  let selection: DockerSelection;
   if (host && !context) selection = { context: null, endpoint: host };
   else {
     const result = command('docker', ['context', 'inspect', '--format',
       '{"context":{{json .Name}},"endpoint":{{json .Endpoints.docker.Host}}}', ...(context ? [context] : [])], stem, 30000);
     assert(succeeded(result), 'Docker context inspection failed; see ' + result.stderr);
-    selection = JSON.parse(saved(result.stdout));
+    selection = JSON.parse(saved(result.stdout).toString());
   }
   assert(/^unix:\/\/\//.test(selection.endpoint ?? '') && !/[\r\n\0]/.test(selection.endpoint),
     'Only a local Unix Docker endpoint with shared bind mounts is supported.');
   endpoint = selection.endpoint;
   return selection;
 }
-function mount(path, target) {
+function mount(path: string, target: string): string[] {
   assert(!/[,\r\n\0]/.test(path), 'Unsupported Docker mount path.');
   return ['--mount', 'type=bind,source=' + path + ',target=' + target + ',readonly'];
 }
-function container(imageId, nodeArgs, stem, mounts = [], cwd = '/tmp') {
+function container(imageId: string, nodeArgs: string[], stem: string, mounts: string[] = [], cwd = '/tmp'): CommandRecord {
   const name = 'choom-' + id.slice(0, 40) + '-' + stem.replaceAll('/', '-') + '-' + randomBytes(5).toString('hex');
   const result = command('docker', ['run', '--rm', '--pull=never', '--name', name,
     '--network', 'none', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--user', '65532:65532', '--pids-limit', '128', '--memory', '2g', '--memory-swap', '2g', '--cpus', '2',
     '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=512m,mode=1777', ...mounts,
     '--workdir', cwd, '--entrypoint', 'node', imageId, ...nodeArgs], stem, 300000);
-  let removal = null;
+  let removal: CommandRecord | null = null;
   if (!succeeded(result)) removal = command('docker', ['rm', '--force', name], stem + '-cleanup', 30000);
   const check = command('docker', ['ps', '-a', '--filter', 'name=^/' + name + '$', '--format', '{{.Names}}'],
     stem + '-cleanup-check', 30000);
@@ -361,7 +313,7 @@ function container(imageId, nodeArgs, stem, mounts = [], cwd = '/tmp') {
   return result;
 }
 
-function toolchain() {
+function toolchain(): string {
   receipt('start');
   mkdirSync(join(attempt, 'toolchain'));
   const dockerEndpoint = selectDocker('toolchain/context');
@@ -379,14 +331,14 @@ function toolchain() {
   const fixture = container(imageId, [graphHelper, '--fixture'], 'toolchain/fixture',
     mount(sourceTool('stage-4-graph.mjs'), graphHelper));
   assert(succeeded(fixture), 'Image fixture failed; do not run it on the snapshot.');
-  const check = JSON.parse(saved(fixture.stdout));
+  const check = JSON.parse(saved(fixture.stdout).toString());
   assert(check.status === 'approved' && check.toolVersions?.dependencyCruiser === '18.7.2' &&
     check.toolVersions.typescript === '6.0.2' && check.toolVersions.enhancedResolve === '5.26.0',
   'The image fixture did not approve the required tools.');
   const lock = container(imageId, ['--input-type=module', '-e',
     "import {readFileSync} from 'node:fs'; process.stdout.write(readFileSync('/opt/choom-tools/package-lock.json'));"], 'toolchain/lock');
   assert(succeeded(lock), 'Could not record the toolchain lockfile.');
-  const lockBytes = saved(lock.stdout); JSON.parse(lockBytes); save('toolchain/package-lock.json', lockBytes);
+  const lockBytes = saved(lock.stdout); JSON.parse(lockBytes.toString()); save('toolchain/package-lock.json', lockBytes);
   saveJson('toolchain-selection.json', { formatVersion: 1, status: 'approved', imageId, dockerEndpoint,
     toolVersions: check.toolVersions, fixtureRef: artifactId(fixture.stdout), fixtureSha256: hash(saved(fixture.stdout)),
     packageLockRef: artifactId('toolchain/package-lock.json'), packageLockSha256: hash(lockBytes),
@@ -395,7 +347,47 @@ function toolchain() {
   return 'Graph toolchain approved: ' + imageId;
 }
 
-function graphRun(current) {
+// Prepares or verifies the inventory-only input view of the graph run and checks its receipt.
+function inputView(current: StageState, operation: string, stem: string): Fields {
+  const inventory = current.artifact(current.facts.inventoryRef);
+  const inputRoot = join(work, 'knip-input-' + inventory.sha256);
+  const viewArgs = [work, join(work, inventory.path), inventory.sha256, current.facts.snapshotRef, id];
+  const result = command('python3', [sourceTool('inventory-view.py'), operation, ...viewArgs], stem, 900000);
+  assert(succeeded(result), 'Inventory input ' + operation + ' failed; see ' + result.stderr);
+  const value = JSON.parse(saved(result.stdout).toString());
+  assert(value.status === 'verified' && value.snapshotRef === current.facts.snapshotRef && value.attemptId === id &&
+    value.viewRoot === inputRoot && value.inventorySha256 === inventory.sha256 && value.unindexedInputsAvailable === false,
+  'Inventory input receipt mismatch.');
+  return { operation, receiptRef: artifactId(result.stdout), sha256: hash(saved(result.stdout)), result };
+}
+
+// Checks the saved graph output against the profile and saves it as the graph result.
+function saveGraph(result: CommandRecord, chosen: Fields, report: Fields): void {
+  assert(succeeded(result), 'Graph extraction failed; raw output is preserved.');
+  const graph = JSON.parse(saved(result.stdout).toString());
+  const profile = json('graph-profile.json');
+  assert(graph.formatVersion === 1 && graph.snapshotRef === profile.snapshotRef &&
+    graph.profileRef === artifactId('graph-profile.json') && ['completed', 'partial'].includes(graph.status) &&
+    isDeepStrictEqual(graph.toolVersions, chosen.toolVersions) &&
+    Array.isArray(graph.contexts) && graph.contexts.length === profile.contexts.length,
+  'Graph output identity or context count is invalid.');
+  for (let index = 0; index < profile.contexts.length; index++) {
+    const expected = profile.contexts[index]; const context = graph.contexts[index];
+    assert(context.id === expected.id && ['completed', 'failed'].includes(context.status) &&
+      isDeepStrictEqual(context.scanFiles, expected.sourceFiles) &&
+      isDeepStrictEqual(context.conditionNames, expected.conditionNames) &&
+      isDeepStrictEqual(context.moduleSystems, expected.moduleSystems) &&
+      context.compilerSettingsRef === expected.compilerSettingsRef &&
+      isDeepStrictEqual(context.roots, expected.roots), 'Graph context differs from the profile: ' + expected.id);
+  }
+  save('graph-results.json', saved(result.stdout));
+  report.status = graph.status;
+  report.graphRef = artifactId('graph-results.json'); report.graphSha256 = hash(saved('graph-results.json'));
+  assert(graph.status === 'completed' && graph.contexts.every((context: Fields) => context.status === 'completed'),
+    'The graph has partial execution. Review it before collecting component evidence.');
+}
+
+function graphRun(current: StageState): string {
   receipt('start'); receipt('toolchain');
   const chosen = json('toolchain-selection.json');
   assert(chosen.status === 'approved' && /^sha256:[a-f0-9]{64}$/.test(chosen.imageId), 'No approved graph image.');
@@ -405,64 +397,33 @@ function graphRun(current) {
   assert(succeeded(inspect) && saved(inspect.stdout).toString().trim() === chosen.imageId, 'Approved image is unavailable.');
   const inventory = current.artifact(current.facts.inventoryRef);
   const inputRoot = join(work, 'knip-input-' + inventory.sha256);
-  const viewArgs = [work, join(work, inventory.path), inventory.sha256, current.facts.snapshotRef, id];
-  function view(operation, stem) {
-    const result = command('python3', [sourceTool('inventory-view.py'), operation, ...viewArgs], stem, 900000);
-    assert(succeeded(result), 'Inventory input ' + operation + ' failed; see ' + result.stderr);
-    const value = JSON.parse(saved(result.stdout));
-    assert(value.status === 'verified' && value.snapshotRef === current.facts.snapshotRef && value.attemptId === id &&
-      value.viewRoot === inputRoot && value.inventorySha256 === inventory.sha256 && value.unindexedInputsAvailable === false,
-    'Inventory input receipt mismatch.');
-    return { operation, receiptRef: artifactId(result.stdout), sha256: hash(saved(result.stdout)), result };
-  }
-  const prepared = view('prepare', 'graph-input-prepare');
-  const before = view('verify', 'graph-input-before');
+  const prepared = inputView(current, 'prepare', 'graph-input-prepare');
+  const before = inputView(current, 'verify', 'graph-input-before');
   const result = container(chosen.imageId, [graphHelper, '/control/graph-profile.json'], 'graph',
     [...mount(directory(inputRoot), '/repo'), ...mount(attempt, '/control'), ...mount(sourceTool('stage-4-graph.mjs'), graphHelper)],
     '/repo');
-  const after = view('verify', 'graph-input-after');
-  const report = { formatVersion: 1, attemptId: id, snapshotRef: current.facts.snapshotRef, profileRef: artifactId('graph-profile.json'),
+  const after = inputView(current, 'verify', 'graph-input-after');
+  const report: Fields = { formatVersion: 1, attemptId: id, snapshotRef: current.facts.snapshotRef, profileRef: artifactId('graph-profile.json'),
     profileSha256: hash(saved('graph-profile.json')), imageId: chosen.imageId, dockerEndpoint,
     toolInputDigests: digests(toolsToFreeze), inventoryRef: current.facts.inventoryRef, inventorySha256: inventory.sha256,
     inputView: { root: inputRoot, prepared, before, after }, result, status: 'failed', graphRef: null };
-  try {
-    assert(succeeded(result), 'Graph extraction failed; raw output is preserved.');
-    const graph = JSON.parse(saved(result.stdout));
-    const profile = json('graph-profile.json');
-    assert(graph.formatVersion === 1 && graph.snapshotRef === profile.snapshotRef &&
-      graph.profileRef === artifactId('graph-profile.json') && ['completed', 'partial'].includes(graph.status) &&
-      isDeepStrictEqual(graph.toolVersions, chosen.toolVersions) &&
-      Array.isArray(graph.contexts) && graph.contexts.length === profile.contexts.length,
-    'Graph output identity or context count is invalid.');
-    for (let index = 0; index < profile.contexts.length; index++) {
-      const expected = profile.contexts[index]; const context = graph.contexts[index];
-      assert(context.id === expected.id && ['completed', 'failed'].includes(context.status) &&
-        isDeepStrictEqual(context.scanFiles, expected.sourceFiles) &&
-        isDeepStrictEqual(context.conditionNames, expected.conditionNames) &&
-        isDeepStrictEqual(context.moduleSystems, expected.moduleSystems) &&
-        context.compilerSettingsRef === expected.compilerSettingsRef &&
-        isDeepStrictEqual(context.roots, expected.roots), 'Graph context differs from the profile: ' + expected.id);
-    }
-    save('graph-results.json', saved(result.stdout));
-    report.status = graph.status;
-    report.graphRef = artifactId('graph-results.json'); report.graphSha256 = hash(saved('graph-results.json'));
-    assert(graph.status === 'completed' && graph.contexts.every(context => context.status === 'completed'),
-      'The graph has partial execution. Review it before collecting component evidence.');
-  } finally { saveJson('graph-run.json', report); }
+  try { saveGraph(result, chosen, report); }
+  finally { saveJson('graph-run.json', report); }
   return 'Graph extraction completed. All contexts and the input view passed their checks. Drafts remain unchanged.';
 }
 
-let current;
+let current: StageState;
 if (action === 'start') {
   assert(!exists(attempt), 'Attempt already exists. Use a new Stage 4 ID.');
   current = state();
   try { checkSnapshotMetadata(current); }
-  catch (error) { console.error(error.message); process.exit(1); }
-  const prepared = profile(current);
+  catch (error) { console.error((error as Error).message); process.exit(1); }
+  const prepared = graphProfile({ attemptId: id, settings: current.settings, plan: current.plan, loading: current.loading,
+    indexed: current.indexed, facts: current.facts, loadPicomatch: () => trustedModule('picomatch') as Picomatch });
   const frozen = Object.fromEntries(toolsToFreeze.map(name => [name, read(sourceTool(name))]));
   mkdirSync(attempt);
   for (const [name, bytes] of Object.entries(frozen)) save(name, bytes);
-  for (const name of drafts) save(name + '.before.yaml', current.inputs[name]);
+  for (const name of drafts) save(name + '.before.yaml', current.inputs[name] as Buffer);
   saveJson('graph-profile.json', prepared.graph); saveJson('graph-profile-notes.json', prepared.notes);
   saveJson('handoff.json', { ...current.facts, toolInputDigests: digests(toolsToFreeze),
     graphProfileSha256: hash(saved('graph-profile.json')), profileNotesSha256: hash(saved('graph-profile-notes.json')) });
@@ -473,18 +434,18 @@ if (exists(join(attempt, 'commands.md'))) {
   saved('commands.md');
   assert(lstatSync(join(attempt, 'commands.md')).nlink === 1, 'Expected an independent command log.');
 }
-const initialFiles = action === 'start' ? new Set() : new Set(files(attempt));
-const record = { formatVersion: 1, attemptId: id, phase: action, action,
+const initialFiles = action === 'start' ? new Set<string>() : new Set(files(attempt));
+const record: OperatorRecord = { formatVersion: 1, attemptId: id, phase: action, action,
   command: { args: process.argv, cwd: process.cwd(), environment: { CHOOM_WORK: work, CHOOM_TOOLS: tools,
     CHOOM_STAGE4_ID: id, CHOOM_STAGE4: attempt } }, startedAt: utc(), status: 'started' };
 saveJson(stem + '.started.json', record);
-let message; let error = null;
+let message: string | undefined; let error: string | null = null;
 try {
   message = action === 'start' ? `Prepared ${id}: ${current.facts.registeredArtifacts} registered artifacts verified; ${json('graph-profile.json').contexts.length} graph contexts saved. ` +
     `Snapshot path, type, and size metadata checked for ${current.indexed.size} files; content hashing remains a run check.`
     : action === 'toolchain' ? toolchain() : graphRun(current);
   checkFrozen(state());
-} catch (failure) { error = String(failure.message ?? failure).slice(0, 2000); }
+} catch (failure) { error = String((failure as Error).message ?? failure).slice(0, 2000); }
 save(stem + '.stdout.txt', message ? message + '\n' : '');
 save(stem + '.stderr.txt', error ? error + '\n' : '');
 const logs = [stem + '.started.json', stem + '.stdout.txt', stem + '.stderr.txt'];
@@ -492,16 +453,16 @@ const outputFiles = files(attempt).filter(name => !initialFiles.has(name) && !lo
 Object.assign(record, { finishedAt: utc(), status: error ? 'failed' : 'completed', exitCode: error ? 1 : 0,
   digests: digests(outputFiles), logDigests: digests(logs) });
 saveJson(stem + '.json', record);
-const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+const quote = (value: string): string => "'" + value.replaceAll("'", "'\\''") + "'";
 const commandLog = openSync(join(attempt, 'commands.md'),
   constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o600);
 try {
   const logStat = fstatSync(commandLog);
   assert(logStat.isFile() && logStat.nlink === 1, 'Expected an independent regular command log.');
   appendFileSync(commandLog, ['\n## ' + action, '', 'Started: ' + record.startedAt,
-  'Finished: ' + record.finishedAt, 'Working directory: ' + record.command.cwd, '', '```sh',
-  ...Object.entries(record.command.environment).map(([key, value]) => 'export ' + key + '=' + quote(value)),
-  record.command.args.map(quote).join(' '), '```', '', 'Outcome: ' + record.status,
+    'Finished: ' + record.finishedAt, 'Working directory: ' + record.command.cwd, '', '```sh',
+    ...Object.entries(record.command.environment).map(([key, value]) => 'export ' + key + '=' + quote(value)),
+    record.command.args.map(quote).join(' '), '```', '', 'Outcome: ' + record.status,
     'Receipt: ' + stem + '.json', '', message ?? error, ''].join('\n'));
 } finally { closeSync(commandLog); }
 if (error) { console.error(error); process.exitCode = 1; } else console.log(message);

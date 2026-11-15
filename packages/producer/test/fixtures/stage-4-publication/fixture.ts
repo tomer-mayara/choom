@@ -126,7 +126,7 @@ function writeStageThreeRun(work: string): void {
 
 // A completed phase receipt in the form that the Stage 4 commands write.
 function writePhase(attempt: string, phase: string, outputs: Record<string, string>): void {
-  const command = { args: [process.execPath, join(toolsRoot, "packages/producer/src/stage-4-commands.mjs"), phase],
+  const command = { args: [process.execPath, join(toolsRoot, "packages/producer/src/stage-4-commands.ts"), phase],
     cwd: attempt, environment: { CHOOM_STAGE4_ID: stageFourAttemptId, CHOOM_STAGE4: attempt } };
   const started = { formatVersion: 1, attemptId: stageFourAttemptId, phase, action: phase, command,
     startedAt: "2026-01-01T00:00:00.000Z", status: "started" };

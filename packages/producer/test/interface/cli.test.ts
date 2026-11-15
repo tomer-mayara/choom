@@ -42,7 +42,7 @@ describe("producer command line", () => {
       const attempt = join(work, "evidence/s4-cli");
       const receipt = JSON.parse(readFileSync(join(attempt, "operator-start.json"), "utf8")) as StartReceipt;
       expect(receipt.status).toBe("completed");
-      expect(receipt.command.args.slice(1)).toEqual([join(producerSource, "stage-4-commands.mjs"), "start"]);
+      expect(receipt.command.args.slice(1)).toEqual([join(producerSource, "stage-4-commands.ts"), "start"]);
       expect(receipt.command.environment).toEqual({ CHOOM_WORK: work, CHOOM_TOOLS: toolsRoot, CHOOM_STAGE4_ID: "s4-cli",
         CHOOM_STAGE4: attempt });
     });

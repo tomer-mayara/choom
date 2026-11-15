@@ -89,7 +89,7 @@ describe("stage starts save their documents and no producer code", () => {
       const work = join(scratch, "run");
       stagedRun(work, 3);
       const settings = { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE4_ID: "s4-new" };
-      const result = runHelper(code("stage-4-commands.mjs"), ["start"], settings);
+      const result = runHelper(code("stage-4-commands.ts"), ["start"], settings);
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       expect(result.stdout).toStartWith("Prepared s4-new: ");
       const attempt = join(work, "evidence/s4-new");

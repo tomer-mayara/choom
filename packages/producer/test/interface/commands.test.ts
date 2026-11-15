@@ -23,7 +23,7 @@ const usageCases: UsageCase[] = [
     message: "Use start, collect, excerpt PATH FIRST LAST, or save-review REVIEW_DIR." },
   { helper: "stage-3-finish.ts", args: ["unknown"], attempt: { CHOOM_STAGE3_ID: "s3-check" }, status: 1,
     message: "Run the Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3." },
-  { helper: "stage-4-commands.mjs", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
+  { helper: "stage-4-commands.ts", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use start, toolchain, or run." },
   { helper: "stage-4-graph.mjs", args: [], status: 1, message: "Use /control/graph-profile.json or --fixture." },
   { helper: "stage-4-inspect.mjs", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
@@ -121,7 +121,7 @@ describe("helpers that run only from the tool checkout", () => {
       const work = recordedRun(scratch);
       const attempt = attemptFolder(work, "s4-check");
       const settings = { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: work, CHOOM_STAGE4_ID: "s4-check" };
-      const toolchain = runHelper(helperCopy(attempt, "stage-4-commands.mjs"), ["toolchain"], settings);
+      const toolchain = runHelper(helperCopy(attempt, "stage-4-commands.ts"), ["toolchain"], settings);
       expect(toolchain.status).toBe(1);
       expect(toolchain.stderr).toContain("Use the Stage 4 helper in the trusted checkout.");
       const inspection = runHelper(helperCopy(attempt, "stage-4-inspect.mjs"), ["collect"], settings);

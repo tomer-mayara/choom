@@ -1,0 +1,168 @@
+import { isAbsolute, posix } from 'node:path';
+import { assert, type Fields, text } from './record-checks.ts';
+
+// The graph profile that Stage 4 start saves before the graph runs. It puts the
+// saved Stage 3 source scope into compiler contexts, takes the traversal roots
+// from the retained entry patterns, and notes the choices and their limits.
+// Saved JSON stays an unchecked value until the checks below read it.
+export interface IndexedFile { path: string; kind: unknown; sha256: string; bytes?: unknown }
+interface SourceFile { path: string; sha256: string }
+interface Alias { name: string; alias: string }
+interface ConfigurationLimit { configRef: string; reason: string }
+interface Group { name: string; files: SourceFile[]; ref: string | null; options: Fields; aliases: Alias[] }
+type Matcher = (path: string) => boolean;
+export type Picomatch = (pattern: string, options: { dot: boolean }) => Matcher;
+interface Pattern { excluded: boolean; match: Matcher; ref: string }
+interface Workspace { dir: string; entry: string[] }
+
+// The facts of the Stage 4 handoff that the profile and its notes name.
+export interface ProfileFacts { snapshotRef: string; settingsRef: string; planRef: string; loadingRef: string }
+export interface ProfileInputs {
+  attemptId: string;
+  settings: Fields;
+  plan: Fields;
+  loading: Fields;
+  indexed: Map<string, IndexedFile>;
+  facts: ProfileFacts;
+  // Loads picomatch from the trusted tool checkout.
+  loadPicomatch: () => Picomatch;
+}
+export interface GraphProfile { graph: Fields; notes: Fields }
+
+export const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+const compilerKeys = ['target', 'module', 'moduleResolution', 'jsx', 'verbatimModuleSyntax'];
+const limits = ['Scan files come from all indexed regular JavaScript and TypeScript files in the Stage 3 source query.',
+  "Explicit traversal roots use the retained entry patterns in each saved workspace; they are not Knip's complete effective roots.",
+  'Each parsed compiler file selection is a separate context. Overlapping selections stay separate; remaining source uses a named configuration-free fallback.',
+  'Import and require are separate, platform-neutral passes. Browser, Node, Bun, custom, and type-specific package conditions remain outside this profile.',
+  'Compiler inclusion does not claim production use, execution, or ownership. Referenced project contexts are not merged.',
+  'Only target, module, moduleResolution, jsx, and verbatimModuleSyntax are passed to the parser.',
+  'Recorded single-target path aliases approximate source resolution; omitted alias forms remain gaps and TypeScript paths do not establish runtime rewriting.',
+  'Ambient declarations, package dependencies, non-JS/TS source and cross-context traversal remain limited.'];
+
+export function safePath(path: unknown): path is string {
+  return text(path) && !isAbsolute(path) && !/[\\\u0000-\u001f\u007f]/.test(path) &&
+    path.split('/').every(part => part && part !== '.' && part !== '..');
+}
+
+function savedSourceFiles(plan: Fields, loading: Fields): SourceFile[] {
+  const workspaces = plan.workspaces as Workspace[];
+  assert(Array.isArray(workspaces) && workspaces.some(workspace => workspace.dir === '.') &&
+    workspaces.every(workspace => (workspace.dir === '.' || safePath(workspace.dir)) &&
+      Array.isArray(workspace.entry) && workspace.entry.every(text)), 'Invalid saved workspace entry patterns.');
+  const sourceFiles = (loading.scope as SourceFile[]).map(({ path, sha256 }) => ({ path, sha256 }))
+    .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  assert(sourceFiles.length && sourceFiles.every(file => sourceExtension.test(file.path) && !/[!*?{}[\]()]/.test(file.path)),
+    'This profile needs saved JS/TS source with no glob characters in its filenames.');
+  return sourceFiles;
+}
+
+// The options of a compiler context that the parser gets: the parsed values of
+// the compiler keys. Each is an enum value of the pinned TypeScript, or a boolean.
+function parserOptions(compilerOptions: unknown, path: unknown): Fields {
+  const parsed = (compilerOptions ?? {}) as Fields;
+  const options = Object.fromEntries(compilerKeys.filter(key => Object.hasOwn(parsed, key)).map(key => [key, parsed[key]]));
+  assert(Object.entries(options).every(([key, value]) => key === 'verbatimModuleSyntax'
+    ? typeof value === 'boolean' : Number.isSafeInteger(value) && (value as number) >= 0), 'Unsupported compiler option values: ' + path);
+  return options;
+}
+
+// The recorded single-target path aliases of a context. Other forms are omitted with a limit.
+function pathAliases(compilerOptions: Fields | undefined, ref: string, configurationLimits: ConfigurationLimit[]): Alias[] {
+  const aliases: Alias[] = [];
+  const paths = (compilerOptions?.paths ?? {}) as Fields;
+  const base = compilerOptions?.baseUrl ?? compilerOptions?.pathsBasePath;
+  for (const [name, targets] of Object.entries(paths)) {
+    const target = Array.isArray(targets) && targets.length === 1 && text(targets[0]) && text(base)
+      ? posix.resolve(base, targets[0]) : null;
+    if (!/^[A-Za-z0-9@._/-]+\*?$/.test(name) || !target?.startsWith('/repo/') ||
+      !/^[A-Za-z0-9._/-]+\*?$/.test(target) || name.endsWith('*') !== target.endsWith('*')) {
+      configurationLimits.push({ configRef: ref, reason: 'Alias is outside the supported single-target form and was omitted: ' + name });
+      continue;
+    }
+    aliases.push({ name, alias: target });
+  }
+  if (compilerOptions?.baseUrl)
+    configurationLimits.push({ configRef: ref, reason: 'baseUrl-only bare imports are not resolved; only the recorded explicit path aliases are approximated.' });
+  return aliases;
+}
+
+// One group for each fully parsed compiler file selection that selects saved source.
+function compilerGroups(settings: Fields, sourceFiles: SourceFile[], settingsRef: string):
+  { groups: Group[]; configurationLimits: ConfigurationLimit[] } {
+  const configurationLimits: ConfigurationLimit[] = [];
+  const groups: Group[] = [];
+  for (const [index, config] of ((settings.configs ?? []) as Fields[]).entries()) {
+    const ref = settingsRef + '#/configs/' + index;
+    if (config.status !== 'parsed' || !Array.isArray(config.fileNames)) {
+      configurationLimits.push({ configRef: ref, reason: 'No fully parsed saved file selection; affected files use another supported context or the fallback.' });
+      continue;
+    }
+    const configured = new Set((config.fileNames as string[]).map(path => path.startsWith('/repo/') ? path.slice(6) : path));
+    const files = sourceFiles.filter(file => configured.has(file.path));
+    if (!files.length) {
+      configurationLimits.push({ configRef: ref, reason: 'This compiler context selects no indexed JS/TS scan files.' });
+      continue;
+    }
+    const options = parserOptions(config.compilerOptions, config.path);
+    const aliases = pathAliases(config.compilerOptions as Fields | undefined, ref, configurationLimits);
+    groups.push({ name: 'compiler-' + (index + 1), files, ref, options, aliases });
+  }
+  return { groups, configurationLimits };
+}
+
+// The saved entry patterns of each workspace, as matchers with their plan references.
+function entrySelectors(plan: Fields, planRef: string, picomatch: Picomatch): { dir: string; patterns: Pattern[] }[] {
+  return (plan.workspaces as Workspace[]).map((workspace, workspaceIndex) => ({
+    dir: workspace.dir,
+    patterns: workspace.entry.map((pattern, index) => {
+      const source = pattern.replace(/!$/, '');
+      const excluded = source.startsWith('!');
+      assert(source.length > (excluded ? 1 : 0), 'Empty entry pattern.');
+      return { excluded, match: picomatch(excluded ? source.slice(1) : source, { dot: true }),
+        ref: planRef + '#/workspaces/' + workspaceIndex + '/entry/' + index };
+    }),
+  }));
+}
+
+function rootEvidence(selectors: { dir: string; patterns: Pattern[] }[], path: string): string[] {
+  return [...new Set(selectors.flatMap(({ dir, patterns }) => {
+    if (dir !== '.' && !path.startsWith(dir + '/')) return [];
+    const relative = dir === '.' ? path : path.slice(dir.length + 1);
+    if (patterns.some(pattern => pattern.excluded && pattern.match(relative))) return [];
+    return patterns.filter(pattern => !pattern.excluded && pattern.match(relative)).map(pattern => pattern.ref);
+  }))];
+}
+
+function graphContexts(groups: Group[], selectors: { dir: string; patterns: Pattern[] }[]): Fields[] {
+  return groups.flatMap(group => ['import', 'require'].map(mode => ({
+    id: group.name + '-' + mode, compilerSettingsRef: group.ref,
+    sourceFiles: group.files.map(file => file.path), compilerOptions: group.options,
+    aliases: group.aliases, conditionNames: [mode, 'default'],
+    moduleSystems: mode === 'import' ? ['es6', 'tsd'] : ['cjs'],
+    roots: group.files.flatMap(file => {
+      const evidenceRefs = rootEvidence(selectors, file.path);
+      return evidenceRefs.length ? [{ path: file.path, evidenceRefs }] : [];
+    }),
+  })));
+}
+
+export function graphProfile({ attemptId, settings, plan, loading, indexed, facts, loadPicomatch }: ProfileInputs): GraphProfile {
+  const sourceFiles = savedSourceFiles(plan, loading);
+  const selected = new Set(sourceFiles.map(file => file.path));
+  const { groups, configurationLimits } = compilerGroups(settings, sourceFiles, facts.settingsRef);
+  const covered = new Set(groups.flatMap(group => group.files.map(file => file.path)));
+  const fallback = sourceFiles.filter(file => !covered.has(file.path));
+  if (fallback.length) groups.push({ name: 'fallback', files: fallback, ref: null, options: {}, aliases: [] });
+  const contexts = graphContexts(groups, entrySelectors(plan, facts.planRef, loadPicomatch()));
+  const outsideScope = [...indexed.values()].filter(file => sourceExtension.test(file.path) && !selected.has(file.path));
+  return {
+    graph: { formatVersion: 1, snapshotRef: facts.snapshotRef, attemptId, sourceFiles, contexts },
+    notes: { formatVersion: 1, snapshotRef: facts.snapshotRef, scopeRef: facts.loadingRef + '#/scope',
+      settingsRef: facts.settingsRef, planRef: facts.planRef,
+      groups: groups.map(group => ({ name: group.name, files: group.files.length, compilerSettingsRef: group.ref })),
+      configurationLimits,
+      outsideScope: outsideScope.map(({ path, sha256 }) => ({ path, sha256, status: 'unassessed' })),
+      limits },
+  };
+}
