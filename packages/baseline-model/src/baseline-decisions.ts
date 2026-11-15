@@ -2,8 +2,9 @@ import { z } from "zod";
 import { baselineSchema } from "./baseline.ts";
 import { baselineId, baselineText } from "./baseline-statements.ts";
 import type {
-  Baseline, BaselineCorrectDecision, BaselineDecision, BaselineDecisions, BaselineDecisionValue, BaselineDocumentation,
+  Baseline, BaselineCorrectDecision, BaselineDecision, BaselineDecisions, BaselineDecisionValue,
 } from "./generated/contracts.ts";
+import { baselineStatements } from "./item-statements.ts";
 import { isJsonData, sameJsonData } from "./json-data.ts";
 import type { ReadonlyData } from "./readonly-data.ts";
 
@@ -27,22 +28,6 @@ export const baselineDecisionsSchema = z.strictObject({
   ])).min(1, "A decision file needs at least one entry."),
 }) satisfies z.ZodType<BaselineDecisions>;
 
-// The parts of a statement that the decision checks read.
-interface StatementState {
-  readonly value: unknown;
-  readonly status: "proposed" | "accepted";
-  readonly acceptanceRef?: string;
-}
-
-/** One statement of a baseline: an item field with a value, a status and evidence. */
-export interface BaselineStatement {
-  /** The ID of the component, interface, resource or rule. */
-  readonly itemId: string;
-  /** The path of the statement in the item, such as `purpose` or `documentation.entries.decode.kind`. */
-  readonly field: string;
-  readonly statement: StatementState;
-}
-
 /** A baseline that the shared baseline rules accept, and the SHA-256 of its saved file bytes. */
 export interface SavedBaseline {
   readonly baseline: ReadonlyData<Baseline>;
@@ -53,46 +38,6 @@ export interface SavedBaseline {
 export type DecisionsCheck =
   | { readonly status: "valid"; readonly decisions: BaselineDecisions }
   | { readonly status: "invalid"; readonly problems: readonly string[] };
-
-type AddStatement = (itemId: string, field: string, statement: StatementState | undefined) => void;
-
-// The item fields that hold one statement each. `parent` is optional.
-const statementFields = {
-  components: ["purpose", "membership", "groupingReason", "parent"],
-  interfaces: ["owner", "publicAccess", "allowedConsumers", "promises"],
-  resources: ["identity", "owner", "accessRules"],
-  rules: ["subject", "expected", "check"],
-} as const;
-
-// The statements of version 2 to 5 interface documentation, with the field paths
-// that discovery questions and gaps also use.
-function addDocumentationStatements(itemId: string, documentation: ReadonlyData<BaselineDocumentation>, add: AddStatement): void {
-  add(itemId, "documentation.summary", documentation.summary);
-  for (const entry of documentation.entries) {
-    const path = `documentation.entries.${entry.id}`;
-    add(itemId, `${path}.kind`, entry.kind);
-    add(itemId, `${path}.description`, entry.description);
-    add(itemId, `${path}.signature`, entry.signature);
-    add(itemId, `${path}.interaction`, entry.interaction);
-    for (const example of entry.examples) add(itemId, `${path}.examples.${example.id}.content`, example.content);
-  }
-}
-
-/** Every statement of the baseline, in the order of the baseline. */
-export function baselineStatements(baseline: ReadonlyData<Baseline>): BaselineStatement[] {
-  const statements: BaselineStatement[] = [];
-  const add: AddStatement = (itemId, field, statement) => {
-    if (statement !== undefined) statements.push({ itemId, field, statement });
-  };
-  for (const item of baseline.components) for (const field of statementFields.components) add(item.id, field, item[field]);
-  for (const item of baseline.interfaces) {
-    for (const field of statementFields.interfaces) add(item.id, field, item[field]);
-    if ("documentation" in item && item.documentation) addDocumentationStatements(item.id, item.documentation, add);
-  }
-  for (const item of baseline.resources) for (const field of statementFields.resources) add(item.id, field, item[field]);
-  for (const item of baseline.rules) for (const field of statementFields.rules) add(item.id, field, item[field]);
-  return statements;
-}
 
 const statementName = ({ itemId, field }: { itemId: string; field: string }): string => `${itemId}.${field}`;
 const isCorrection = (entry: BaselineDecision): entry is BaselineCorrectDecision => entry.action === "correct";

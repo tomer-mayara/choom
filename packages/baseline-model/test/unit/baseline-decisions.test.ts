@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { baselineStatements, type SavedBaseline, validateDecisions } from "../../src/baseline-decisions.ts";
+import { type SavedBaseline, validateDecisions } from "../../src/baseline-decisions.ts";
 import type { Baseline, BaselineDecision, BaselineDecisionValue } from "../../src/generated/contracts.ts";
 import { baselineExample, fixtureItem, proposed } from "../../../../test/support/baseline-fixtures.ts";
 import { baselineWithSignature } from "../../../../test/support/interface-documentation-fixtures.ts";
@@ -25,37 +25,6 @@ function problems(input: unknown, baseline?: Baseline): readonly string[] {
   const outcome = validateDecisions(input, saved(baseline));
   return outcome.status === "invalid" ? outcome.problems : [];
 }
-
-describe("the statements of a baseline", () => {
-  test("lists each statement with its item ID, field path and status, in the order of the baseline", () => {
-    const listed = baselineStatements(baselineWithSignature().input)
-      .map(({ itemId, field, statement }) => [itemId, field, statement.status]);
-    const entry = "documentation.entries.create-invoice";
-    expect(listed).toEqual([
-      ["checkout", "purpose", "proposed"], ["checkout", "membership", "proposed"], ["checkout", "groupingReason", "accepted"],
-      ["billing", "purpose", "proposed"], ["billing", "membership", "proposed"], ["billing", "groupingReason", "proposed"],
-      ["invoice-api", "owner", "proposed"], ["invoice-api", "publicAccess", "proposed"],
-      ["invoice-api", "allowedConsumers", "accepted"], ["invoice-api", "promises", "proposed"],
-      ["invoice-api", "documentation.summary", "proposed"], ["invoice-api", `${entry}.kind`, "proposed"],
-      ["invoice-api", `${entry}.description`, "proposed"], ["invoice-api", `${entry}.signature`, "accepted"],
-      ["invoice-api", `${entry}.interaction`, "proposed"], ["invoice-api", `${entry}.examples.valid-order.content`, "proposed"],
-      ["invoice-store", "identity", "proposed"], ["invoice-store", "owner", "proposed"], ["invoice-store", "accessRules", "proposed"],
-      ["invoice-access", "subject", "proposed"], ["invoice-access", "expected", "proposed"], ["invoice-access", "check", "proposed"],
-    ]);
-  });
-
-  test("a component parent is a statement only when the component has one", () => {
-    const baseline = baselineExample();
-    Object.assign(fixtureItem(baseline.components, 1), { parent: proposed("checkout") });
-    expect(baselineStatements(baseline).filter(({ field }) => field === "parent").map(({ itemId }) => itemId)).toEqual(["billing"]);
-  });
-
-  test("returns the statements of the baseline itself", () => {
-    const baseline = baselineExample();
-    const listed = baselineStatements(baseline).find(({ itemId, field }) => itemId === "billing" && field === "purpose");
-    expect(listed?.statement).toBe(fixtureItem(baseline.components, 1).purpose);
-  });
-});
 
 describe("decisions that the checks accept", () => {
   test("accept and correct entries for proposed statements", () => {
