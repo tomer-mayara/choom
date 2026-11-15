@@ -1,4 +1,4 @@
-import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, realpathSync, writeFileSync, writeSync } from 'node:fs';
+import { lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type * as Ripgrep from '@vscode/ripgrep';
 import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
+import { appendCommandLog, cookbookPrompt } from './attempt-files.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
 import { ripgrepVersion, runRipgrep } from './ripgrep.ts';
@@ -105,17 +106,7 @@ function loadTools(): Toolchain {
 }
 
 function reviewPrompt({ entryAnalysisRef }: { entryAnalysisRef: unknown }): string {
-  const body = saved(cookbook).toString().replaceAll('\r\n', '\n');
-  const pattern = /^<!-- stage3-review-prompt:start -->\n\x60\x60\x60text\n([\s\S]*?)^\x60\x60\x60\n<!-- stage3-review-prompt:end -->$/gm;
-  const blocks = [...body.matchAll(pattern)];
-  assert(blocks.length === 1, 'Expected one review prompt in the frozen Stage 3 cookbook.');
-  const tokens: Record<string, unknown> = { WORK: work, ATTEMPT: attempt, ID: id, PREVIOUS_ENTRY_REF: entryAnalysisRef };
-  const prompt = ((blocks[0] as RegExpMatchArray)[1] as string).replace(/\{\{([^{}\n]+)\}\}/g, (_, token: string) => {
-    assert(Object.hasOwn(tokens, token), 'Unknown review prompt token: ' + token);
-    return tokens[token] as string;
-  });
-  assert(!prompt.includes('{{'), 'Unresolved token in review prompt.');
-  return prompt;
+  return cookbookPrompt(saved(cookbook), 3, { WORK: work, ATTEMPT: attempt, ID: id, PREVIOUS_ENTRY_REF: entryAnalysisRef });
 }
 
 // Saves the started record of this action. Each excerpt request, text search and
@@ -137,19 +128,6 @@ function reserve(): Reservation {
       if (numbered && (error as NodeJS.ErrnoException).code === 'EEXIST') continue;
       throw error;
     }
-  }
-}
-
-function logCommand(entry: Fields): void {
-  const path = join(attempt, commandLog);
-  assert(lstatSync(path).isFile() && realpathSync(path) === path, 'Expected a canonical command log.');
-  const fd = openSync(path, constants.O_WRONLY | constants.O_APPEND | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-  try {
-    assert(fstatSync(fd).isFile(), 'Expected a regular command log.');
-    const bytes = Buffer.from('\n\x60\x60\x60json\n' + JSON.stringify(entry) + '\n\x60\x60\x60\n');
-    assert(writeSync(fd, bytes) === bytes.length, 'Incomplete command log write.');
-  } finally {
-    closeSync(fd);
   }
 }
 
@@ -296,7 +274,7 @@ function finishAction({ prefix, started }: Reservation, outputNames: string[], m
   const outcome = (): { status: string; exitCode: number } =>
     errorMessage ? { status: 'failed', exitCode: 1 } : { status: 'completed', exitCode: 0 };
   try {
-    logCommand({ ...started, ...outcome(), finishedAt });
+    appendCommandLog(join(attempt, commandLog), { ...started, ...outcome(), finishedAt });
   } catch (error) {
     errorMessage = [errorMessage, errorText(error)].filter(Boolean).join(' | ');
   }

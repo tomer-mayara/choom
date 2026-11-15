@@ -548,13 +548,14 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
 | `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
-| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
+| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-5-commands.ts`, `stage-6-commands.mjs` | Stage preparation, evidence collection or publication commands |
 | `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it. Its in-memory file system of the snapshot is also the file system of the snapshot project |
 | `stage-1-git.ts`, `stage-1-exclusions.ts` | The Git identity record that Stage 1 capture saves, and the reader of the capture exclusion rules that it uses |
 | `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record |
 | `parsing-profile.ts` | The named Choom parsing profile for a snapshot without project settings |
 | `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
+| `attempt-files.ts` | The review prompt of the cookbook that Stage 3 or Stage 5 start saved, and the command log that each action of those stages extends |
 | `stage-3-inputs.ts`, `stage-3-collect.ts` | The checked inputs of each Stage 3 action: the run after Stage 2 and its indexed snapshot files; and the evidence that Stage 3 `collect` saves |
 | `stage-3-text-search.ts`, `ripgrep.ts` | The Stage 3 text search of the saved snapshot (`stage-3 text-search`): the ripgrep arguments, the output check, the scope and the tool-call record; and the ripgrep program, its version and a bounded call |
 | `stage-3-exports.ts` | The Stage 3 exports action (`stage-3 exports`): the compiler settings of the file, the exports record and its notes |
@@ -565,6 +566,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, traversal roots and limits. The Stage 3 exports action uses the same compiler context rule |
 | `stage-4-graph.mjs` | Dependency extraction in the graph container |
 | `stage-4-inspect.ts`, `stage-4-source-sites.ts`, `stage-4-review-prompt.ts` | Bounded source evidence (`stage-4-inspect` command): the checked attempt, the first excerpts and the excerpt action; the source sites; and the Stage 4 review prompt |
+| `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |

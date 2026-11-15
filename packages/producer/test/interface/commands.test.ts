@@ -30,7 +30,7 @@ const usageCases: UsageCase[] = [
     message: "Use collect, or excerpt PATH FIRST LAST." },
   { helper: "stage-4-5-publish.ts", args: [], status: 1,
     message: "Use check STAGE REVIEW_DIR, finish STAGE REVIEW_DIR, or verify STAGE (4 or 5)." },
-  { helper: "stage-5-commands.mjs", args: [], attempt: { CHOOM_STAGE5_ID: "s5-check" }, status: 1,
+  { helper: "stage-5-commands.ts", args: [], attempt: { CHOOM_STAGE5_ID: "s5-check" }, status: 1,
     message: "Use start, collect, or excerpt PATH FIRST LAST." },
   { helper: "stage-6-commands.mjs", args: [], attempt: { CHOOM_STAGE6_ID: "s6-check" }, status: 1,
     message: "Use preflight REVIEW_DIR, start REVIEW_DIR, check, finish, or verify." },
@@ -149,7 +149,7 @@ describe("trusted commands check the producer code, then find their own files be
   test("Stage 5 reads its two saved documents and its parsers, then reaches the run manifest", () => {
     withScratch((scratch) => {
       const work = recordedRun(scratch);
-      const result = runHelper(join(producerSource, "stage-5-commands.mjs"), ["start"], { CHOOM_TOOLS: toolsRoot,
+      const result = runHelper(join(producerSource, "stage-5-commands.ts"), ["start"], { CHOOM_TOOLS: toolsRoot,
         CHOOM_WORK: work, CHOOM_STAGE5_ID: "s5-check", CHOOM_STAGE5: join(work, "evidence", "s5-check") });
       expect(result.status).toBe(1);
       expect(result.stderr).toBe(`ENOENT: no such file or directory, lstat '${join(work, "run.yaml")}'\n`);
