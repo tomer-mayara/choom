@@ -1,6 +1,8 @@
 import { baselineSchema } from '@choom/baseline-model';
 import { supportsSourceUsage, supportsSystemEntryPoints } from '@choom/baseline-model/baseline-format';
 import type { Baseline, BaselineDocumentation, BaselineInterface, BaselineSourceUse } from '@choom/baseline-model/contracts';
+import { baselineStatements, documentationStatements, type DocumentationStatement, itemStatementFields, type StatementState }
+  from '@choom/baseline-model/item-statements';
 import { assert, type Fields, object, oneOf } from './record-checks.ts';
 import { type SourceRecords, validateSourceLocation } from './record-sources.ts';
 
@@ -33,9 +35,8 @@ export interface RunBaselineInputs extends DocumentationInputs {
   componentIds: Set<unknown>;
   mapped: Map<unknown, unknown>;
 }
-interface Statement { value: unknown; status: string; evidenceRefs: string[] }
 // One statement of an interface's documentation, its subject path, and the facts in it that can be null.
-interface DocumentationStatement { path: string; statement: Statement; facts: [string, unknown][] }
+interface DocumentationCheck { path: string; statement: StatementState; facts: [string, unknown][] }
 
 // Reads value?.[key] from an unchecked value.
 const field = (value: unknown, key: string): unknown => (value as Fields | null | undefined)?.[key];
@@ -80,36 +81,27 @@ function sharedRuleMessage(baseline: unknown, issue: { path: PropertyKey[]; mess
   return path ? 'The baseline is invalid at ' + path + item + ': ' + issue.message : 'The baseline is invalid: ' + issue.message;
 }
 
+// The facts of a documentation statement that can be null, with their subjects.
+// Each interaction fact has its own subject; an example cannot be null.
+function nullableFacts(path: string, { part, statement }: DocumentationStatement): [string, unknown][] {
+  if (part === 'example') return [];
+  if (part === 'interaction' && object(statement.value))
+    return Object.entries(statement.value).map(([key, fact]) => [path + '.' + key, fact]);
+  return [[path, statement.value]];
+}
+
 // Each statement of an interface's documentation, in the order of the documentation.
-function documentationStatements(itemId: string, documentation: BaselineDocumentation): DocumentationStatement[] {
-  const root = itemId + '.documentation';
-  const statement = (path: string, value: Statement, facts: [string, unknown][] = [[path, value.value]]): DocumentationStatement =>
-    ({ path, statement: value, facts });
-  const statements = [statement(root + '.summary', documentation.summary)];
-  for (const entry of documentation.entries) {
-    const path = root + '.entries.' + entry.id;
-    statements.push(statement(path + '.kind', entry.kind), statement(path + '.description', entry.description));
-    if (entry.signature) statements.push(statement(path + '.signature', entry.signature));
-    if (entry.interaction) statements.push(statement(path + '.interaction', entry.interaction,
-      Object.entries(entry.interaction.value).map(([key, fact]) => [path + '.interaction.' + key, fact])));
-    for (const example of entry.examples) statements.push(statement(path + '.examples.' + example.id + '.content', example.content, []));
-  }
-  return statements;
+function documentationChecks(itemId: string, documentation: BaselineDocumentation): DocumentationCheck[] {
+  return documentationStatements(documentation).map(item => {
+    const path = itemId + '.' + item.field;
+    return { path, statement: item.statement, facts: nullableFacts(path, item) };
+  });
 }
 
 // Publication does not accept intent: every statement stays proposed.
 function checkProposedIntent(baseline: Baseline): void {
-  for (const key of collectionKeys) {
-    for (const item of items(baseline, key)) {
-      for (const [name, statement] of Object.entries(item)) {
-        if (name === 'id' || name === 'name' || name === 'documentation') continue;
-        assert((statement as Statement).status === 'proposed', 'Only proposed intent is supported: ' + item.id + '.' + name);
-      }
-      const documentation = item.documentation as BaselineDocumentation | undefined;
-      for (const { path, statement } of documentation ? documentationStatements(item.id as string, documentation) : [])
-        assert(statement.status === 'proposed', 'Only proposed intent is supported: ' + path);
-    }
-  }
+  for (const { itemId, field, statement } of baselineStatements(baseline))
+    assert(statement.status === 'proposed', 'Only proposed intent is supported: ' + itemId + '.' + field);
 }
 
 // The viewer display limits: 500 records, 2,000 explicit links and 16 component levels.
@@ -148,10 +140,11 @@ export function validateBaseline({ baseline, discovery, claim, evidence }: Basel
   for (const key of collectionKeys) {
     for (const item of items(baseline, key)) {
       claim(item.id);
-      for (const [name, statement] of Object.entries(item)) {
-        if (name === 'id' || name === 'name' || name === 'documentation') continue;
+      for (const name of itemStatementFields[key]) {
+        const statement = item[name] as StatementState | undefined;
+        if (statement === undefined) continue;
         evidence(statement);
-        if ((statement as Statement).value === null)
+        if (statement.value === null)
           assert(name === 'parent' || unknown(item.id), 'Unexplained unknown intent: ' + item.id + '.' + name);
       }
       const promises = statementValue(item, 'promises');
@@ -165,7 +158,7 @@ export function validateBaseline({ baseline, discovery, claim, evidence }: Basel
 
 function checkInterfaceDocumentation(item: BaselineInterface, documentation: BaselineDocumentation,
   inputs: DocumentationInputs, checks: { unknowns: Set<unknown>; reviewed: Set<unknown> }): void {
-  for (const { path, statement, facts } of documentationStatements(item.id, documentation)) {
+  for (const { path, statement, facts } of documentationChecks(item.id, documentation)) {
     inputs.evidence(statement);
     assert(facts.every(([subject, value]) => value !== null || checks.unknowns.has(subject)),
       'Invalid or unexplained documentation fact: ' + path);
