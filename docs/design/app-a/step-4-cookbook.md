@@ -242,14 +242,25 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-inspect collect
 ```
 
 This reads only indexed files whose saved hashes still match. It parses the
-selected JavaScript and TypeScript source as text. It saves:
+selected JavaScript and TypeScript source with the snapshot project (see the
+[Stage 3 cookbook](step-3-cookbook.md#list-the-exports-of-a-source-file)): a
+ts-morph project from the tool checkout that reads only the indexed snapshot
+files. It uses no compiler settings, so TypeScript parses at the latest language
+level. It saves:
 
 | Artifact | Contents |
 | --- | --- |
-| `source-sites.json` | Import and re-export syntax, dynamic imports, and candidate resource calls. Includes query scope, parser version, diagnostics, and limits. |
+| `source-sites.json` | Import and re-export syntax, dynamic imports, and candidate resource calls. Includes query scope, the parser record, diagnostics, and limits. The parser record names the parser, Node, ts-morph and the TypeScript that it brings, and the digest of each tool file that ts-morph loaded. |
 | `source-excerpts.json` | A bounded initial selection from priority files, entry candidates and component declarations, with file hashes, truncation and skipped paths. |
 | `review-prompt.md` | The LLM review instructions with the current paths and evidence references. |
 | `artifact-map.json` | Proposed artifact IDs and digests available at collection time. It omits itself, the mutable command log, and later files. |
+
+Site lines count CRLF, CR and LF in the text that the parser read. A byte order
+mark is not part of that text. It does not change the lines, and the diagnostic
+`start` and `length` do not count it. Each later action of this helper loads
+ts-morph again and compares its tool files with the parser record of
+`source-sites.json`. If ts-morph or its TypeScript changed, the action stops
+before it saves a receipt; start a new attempt.
 
 The syntax query does not resolve bindings. A call named `writeFile`, `query`,
 or `invoke` is a candidate site. It does not by itself establish resource access,

@@ -462,7 +462,8 @@ a gap of an open project. The unit suites check the producer code digest and rec
 command mapping, the check of the visible LLM response and the call record, the
 parsing profile, the settings collector, the Git identity, the capture exclusion
 rules, the installed ripgrep program, the text search, the snapshot project, the
-export list and the Stage 4 graph profile. The integration suite checks the shared record validator
+export list, the Stage 4 graph profile and the skip reasons of the Stage 5 syntax
+query. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
 reader. The interface suites run each helper with no
@@ -509,12 +510,31 @@ Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
 and the source collection, and writes the toolchain and graph receipts that need
 Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
 packet, and refuses a component ID equal to the baseline ID without writing.
+The Stage 4 inspection suite runs the source collection and the excerpt action on
+that attempt: each kind of source site with its lines, the parser record with the
+ts-morph and TypeScript versions, the source forms, a file with a byte order mark,
+the first excerpts and their skip reasons, and the refusals. It shows that a later
+action refuses a changed ts-morph in a copied tool checkout.
 Run the checks of the shared baseline rules in the producer with:
 
 ```sh
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/integration/records ./packages/producer/test/interface/stage-4
 bun test ./packages/producer/test/interface/entry-points/producer-publication.test.mjs
+```
+
+The Stage 5 suite publishes the Stage 4 fixture with more snapshot files, then
+runs Stage 5 start, collect and excerpt. It records the handoff with the pinned
+tool versions, the query scope, each kind of syntax candidate with its scope and
+lines, the parser diagnostics, the skipped files and the limits, the owner-null
+units, the coverage, the excerpts and the refusals. It shows that a later action
+refuses a changed ts-morph in a copied tool checkout. A unit suite gives the
+syntax query the skip reasons that a published Stage 4 run cannot have. Run them
+with:
+
+```sh
+bun test ./packages/producer/test/interface/stage-5 ./packages/producer/test/unit/stage-5-query.test.ts
+bun test ./packages/producer/test/interface/stage-4/inspect.test.ts
 ```
 
 Each stage that saves an LLM call record refuses a saved response with a hidden
@@ -583,8 +603,9 @@ configuration of `settings-001` that selects the file, else the named Choom
 parsing profile, else no settings. Each request saves `exports-NNN.json` with the
 settings and their reference, the ts-morph and TypeScript versions, the exports
 with their kinds and source ranges, the compiler inputs that the snapshot does not
-hold as gaps, and the requests for paths outside the snapshot. The Stage 3 loading
-search parses its files with the same project. The
+hold as gaps, and the requests for paths outside the snapshot. The source queries
+of Stage 3 `collect`, Stage 4 `stage-4-inspect collect` and Stage 5 `collect`
+parse their files with the same project, without compiler settings. The
 [Stage 3 cookbook](docs/design/app-a/step-3-cookbook.md#list-the-exports-of-a-source-file)
 gives the fields. Run the focused checks of the snapshot project and the exports
 with:
@@ -762,12 +783,19 @@ ran from their cookbooks is in TypeScript modules: the Stage 1 settings collecto
 (`stage-2-consolidate-inputs.ts`). The Stage 3 helper (`stage-3-commands.ts`) uses
 `stage-3-inputs.ts` for the checked run and snapshot files, `stage-3-collect.ts`
 for the evidence of `collect`, `stage-3-text-search.ts` with `ripgrep.ts` for
-the text search, and `stage-3-exports.ts` for the exports action. The snapshot
-project (`snapshot-project.ts`) opens a ts-morph project on the in-memory file
-system of the Stage 1 settings collector, and `snapshot-exports.ts` lists the
-exports of one of its files. Every stage action runs the code in the tool
-checkout. Stage 1 start saves the producer code record (`producer-code.ts`): the
-package version, the Git commit when there is one, and one digest of
+the text search, and `stage-3-exports.ts` for the exports action. The Stage 4
+inspection helper (`stage-4-inspect.ts`) uses `stage-4-source-sites.ts` for the
+source sites and `stage-4-review-prompt.ts` for the review prompt. The Stage 5
+helper (`stage-5-commands.ts`) uses `stage-5-inputs.ts` for the checked run and
+snapshot files, and `stage-5-query.ts` with `stage-5-syntax.ts` for the evidence
+of `collect`. `attempt-files.ts` holds the review prompt of a saved cookbook and
+the command log of Stages 3 and 5. The snapshot project (`snapshot-project.ts`)
+opens a ts-morph project on the in-memory file system of the Stage 1 settings
+collector, and `snapshot-exports.ts` lists the exports of one of its files. The
+source queries of Stages 3, 4 and 5 read their files with its syntax reader.
+Every stage action runs the code in the tool checkout. Stage 1 start saves the
+producer code record (`producer-code.ts`): the package version, the Git commit
+when there is one, and one digest of
 `packages/producer/src` and `packages/baseline-model/src`. Every later stage
 action checks that digest first and refuses a changed producer, so the code
 cannot change during a run. Stage 1 capture saves the Git identity of the target

@@ -46,10 +46,12 @@ It first checks the [producer code record](record-format.md#producer-code-record
 of the run. It then verifies the registered artifacts, the selected Stage 4 facts,
 the published draft pair, and every indexed snapshot file. It saves the three
 draft checkpoints, copies of this cookbook and the record format, the query scope,
-and a handoff record. It records parser versions and hashes. The working drafts
-stay unchanged. Use the trusted checkout command for every action. Each later
-action makes the same producer code check and verifies the saved documents and
-parser files before it loads them. A tool change requires a new attempt.
+and a handoff record. The handoff records the trusted tool versions: Node, YAML,
+ts-morph and the TypeScript that it brings, and the digest of each tool file that
+start loaded. The working drafts stay unchanged. Use the trusted checkout command
+for every action. Each later action makes the same producer code check and
+verifies the saved documents and the pinned tool files before it loads them. A
+tool change requires a new attempt.
 
 The reported counts depend on the target. Unassigned units include tests,
 contracts, documentation, configuration and assets. The count is not a count of
@@ -76,8 +78,13 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 collect
 
 The collector uses the saved inventory, mapping, entry analyses, dependency
 contexts and source-site records. It parses eligible JavaScript and TypeScript
-files from the union of saved graph scan scopes as text. It does not load target
-configuration, execute target code, or run
+files from the union of saved graph scan scopes with the snapshot project (see the
+[Stage 3 cookbook](step-3-cookbook.md#list-the-exports-of-a-source-file)), with no
+compiler settings, so TypeScript parses at the latest language level. A file that
+is not JavaScript or TypeScript, is over 2 MiB or is not UTF-8 text is skipped with
+a reason before the project reads it. Candidate lines count CRLF, CR and LF in the
+text that the parser read; a byte order mark does not change them. It does not
+load target configuration, execute target code, or run
 tests, builds, Knip or dependency-cruiser.
 
 | Artifact | Deterministic contents |
@@ -85,7 +92,7 @@ tests, builds, Knip or dependency-cruiser.
 | `scope.json` | The input references, source query scope, initial excerpt requests and limits fixed at the start. |
 | `remaining-units.json` | Every mapped file with `owner: null`, its original mapping reference, entry-candidate references, and incoming or outgoing graph references in each saved context. Source-site pointers locate matching import syntax. |
 | `inspection-coverage.json` | All mapped files, their owners, exact current reviewed ranges and references to historical reviewed ranges. Uninspected files remain visible, including files with owners. |
-| `source-candidates.json` | Syntax candidates for module or class initialization, side-effect imports, and setup or registration calls. Includes parser diagnostics, bounded output and omissions. |
+| `source-candidates.json` | Syntax candidates for module or class initialization, side-effect imports, and setup or registration calls. Includes the parser with the ts-morph and TypeScript versions, parser diagnostics, skipped files, bounded output and omissions. |
 | `source-excerpts.json` | Numbered initial excerpts, each with snapshot identity, file hash, exact lines and truncation state. Missing or skipped requests remain explicit. |
 | `review-prompt.md` | The LLM task and evidence rules for this attempt. |
 | `artifact-map.json` | Proposed IDs and digests for the available attempt artifacts. It excludes itself, the command log, the final collection receipt and logs, and later files. Command receipts bind those outputs and later excerpts. |
