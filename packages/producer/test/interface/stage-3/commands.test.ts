@@ -39,10 +39,11 @@ const issues = {
 };
 const reports = { normal: "s2-check-file@knip-normal.json", production: "s2-check-file@knip-production.json" };
 
-// A run after Stage 2: the saved snapshot above, with Latin-1 bytes in data/latin1.txt,
-// an entry analysis with candidates and two completed Knip runs with their reports.
-function collectableRun(work: string): void {
-  stagedRun(work, 2, { snapshot });
+// A run after Stage 2: by default the saved snapshot above, with Latin-1 bytes in
+// data/latin1.txt, an entry analysis with candidates and two completed Knip runs
+// with their reports.
+function collectableRun(work: string, files: SnapshotFile[] = snapshot): void {
+  stagedRun(work, 2, { snapshot: files });
   const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as Run;
   function save(path: string, bytes: string, ref: string): void {
     writeFileSync(join(work, path), bytes);
@@ -278,5 +279,66 @@ describe("Stage 3 excerpt, collect again and save-review", () => {
       stderr: "Work, snapshot, checkpoints or trusted tools changed since start.\n" });
     const receipt = JSON.parse(readFileSync(join(other, "evidence/s3-changed/operator-excerpt-001.json"), "utf8")) as Json;
     expect(receipt).toMatchObject({ status: "failed", exitCode: 1, digests: {} });
+  }, 60_000);
+});
+
+describe("Stage 3 collect of other source forms", () => {
+  // A file that starts with a byte order mark, JSX in .jsx and .tsx files, the
+  // CommonJS and ES module extensions and a declaration file.
+  const bom = "﻿import { helper } from './lib/helper.ts';\nexport const value = helper(1);\n";
+  const forms: SnapshotFile[] = [
+    { path: "bom.ts", text: bom },
+    { path: "legacy.cts", text: "const fs = require('node:fs');\n" },
+    { path: "lib/helper.ts", text: helper },
+    { path: "module.mts", text: "export const pages = import.meta.glob('./pages/*.ts');\n" },
+    { path: "page.tsx", text: "export const Page = () => <main>{import('./chart.tsx')}</main>;\n" },
+    { path: "types.d.ts", text: "declare function helper(n: number): number;\n" },
+    { path: "view.jsx", text: "export const View = () => <div>{require('./style.css')}</div>;\n" },
+  ];
+  const text = (path: string): string => String(forms.find((file) => file.path === path)?.text);
+  const found = (path: string, kind: string, expression: string): Json =>
+    ({ ...source(path, text(path)), kind, lines: [1, 1], expression, truncated: false });
+
+  // Starts an attempt on a new run of the files and runs collect.
+  function collected(name: string, files: SnapshotFile[], change: (root: string) => void = () => {}): CommandResult {
+    const run = join(scratch, name);
+    collectableRun(run, files);
+    expect(stageThree(["start"], run, "s3-forms").status).toBe(0);
+    change(join(run, "snapshot"));
+    return stageThree(["collect"], run, "s3-forms");
+  }
+
+  test("saves the loading matches and identifier mentions of each source form", () => {
+    expect(collected("forms-run", forms)).toMatchObject({ status: 0, stderr: "" });
+    const attempt = (name: string): Json =>
+      JSON.parse(readFileSync(join(scratch, "forms-run/evidence/s3-forms", name), "utf8")) as Json;
+    const loading = attempt("loading-search.json");
+    expect({ matches: loading.matches, diagnostics: loading.diagnostics }).toEqual({ diagnostics: [], matches: [
+      found("legacy.cts", "require", "require('node:fs')"), found("module.mts", "import.meta.glob", "import.meta.glob('./pages/*.ts')"),
+      found("page.tsx", "import-literal", "import('./chart.tsx')"), found("view.jsx", "require", "require('./style.css')")] });
+    // TypeScript reads the byte order mark as the first character of line 1.
+    const targets = (attempt("symbol-mentions.json").targets as Json[]).map(({ name, mentions }) => ({ name, mentions }));
+    expect(targets).toEqual([
+      { name: "helper", mentions: [mention("bom.ts", bom, "ImportSpecifier", 1, [11, 17]), mention("bom.ts", bom, "CallExpression", 2, [22, 28]),
+        mention("lib/helper.ts", helper, "FunctionDeclaration", 1, [17, 23]),
+        mention("types.d.ts", text("types.d.ts"), "FunctionDeclaration", 1, [18, 24])] },
+      { name: "Unused", mentions: [mention("lib/helper.ts", helper, "TypeAliasDeclaration", 4, [13, 19])] },
+      { name: "gone", mentions: [] },
+    ]);
+  }, 60_000);
+
+  test.each([
+    ["a source file that is not UTF-8 text", [...forms, { path: "latin1.js", text: Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]) }],
+      () => {}, "The encoded data was not valid for encoding utf-8"],
+    ["an indexed source file that changed after start", forms,
+      (root: string) => writeFileSync(join(root, "lib/helper.ts"), helper.replace("number", "bigint")),
+      "Changed indexed source: lib/helper.ts"],
+  ])("stops at %s, with a failed receipt and no saved search", (name, files, change, message) => {
+    const run = name.replaceAll(" ", "-");
+    expect(collected(run, files, change)).toEqual({ status: 1, stdout: "", stderr: message + "\n" });
+    const attempt = join(scratch, run, "evidence/s3-forms");
+    expect(JSON.parse(readFileSync(join(attempt, "operator-collect.json"), "utf8")) as Json)
+      .toMatchObject({ status: "failed", exitCode: 1, digests: {} });
+    expect(existsSync(join(attempt, "loading-search.json"))).toBe(false);
   }, 60_000);
 });
