@@ -3,9 +3,10 @@
 Read this with the [stage 4 cookbook](step-4-cookbook.md) or
 [stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
 to the shared publisher. The publisher is a trusted tool. Review folders contain
-data only; do not generate or execute a run-specific save script. The last two
+data only; do not generate or execute a run-specific save script. The last three
 sections define the [settings record](#settings-record) that Stage 1 saves and
-Stage 4 reads, and the [producer code record](#producer-code-record) that every
+Stage 4 reads, the [Git identity record](#git-identity-record) that the Stage 1
+capture saves, and the [producer code record](#producer-code-record) that every
 stage checks.
 
 ## Review folder
@@ -737,6 +738,127 @@ uses its target, module, moduleResolution and jsx options, and has
 `compilerSettingsRef: settings-001#/parsingProfile`. Otherwise the group is the
 configuration-free fallback with no options. Stage 4 start refuses a record that
 names an unknown profile.
+
+## Git identity record
+
+Stage 1 `capture` saves `evidence/git-identity.json` after the copy, and Stage 1
+`finish` registers it as `git-identity-001`. The record is `formatVersion: 1`.
+It names the Git commit, the branch and the local changes of the target folder,
+or it says that Git evidence is not available. It does not record the history.
+
+Git runs on the target folder, never on the snapshot. The design forbids
+running target code, so Git runs only these commands, which read refs and
+objects:
+
+```sh
+git version
+git rev-parse --is-inside-work-tree --show-prefix
+git rev-parse --verify 'HEAD^{commit}'
+git symbolic-ref -q HEAD
+git ls-tree -r -z --full-name <commit>
+```
+
+Each call is `git -C <target> --no-pager -c core.fsmonitor=false
+-c core.hooksPath=/dev/null <command>`, so the fsmonitor, hook and pager
+settings of the target cannot run a program. The call removes every inherited
+`GIT_*` variable and sets these variables:
+
+| Variable | Effect |
+| --- | --- |
+| `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null` | Git does not read the system and user Git settings. |
+| `GIT_OPTIONAL_LOCKS=0`, `GIT_TERMINAL_PROMPT=0` | Git takes no optional lock and asks no question. |
+| `GIT_ALLOW_PROTOCOL=` (empty) and `GIT_NO_LAZY_FETCH=1` | Git uses no transport and fetches no missing object. Without them, a partial clone that misses an object fetches it, and the fetch runs commands of the target settings, such as `remote.<name>.uploadpack`. |
+| `GIT_NO_REPLACE_OBJECTS=1` | Git ignores replacement objects, so the listed tree is the tree of the recorded commit. |
+
+The capture does not run `git status`, because it can run the clean and process
+filters of the target settings when it compares file contents. Choom compares
+the snapshot with the commit itself. The capture saves each Git call as it saves
+its rsync calls: `evidence/git/call-001.json` with the command, the arguments,
+the exit code, the signal and the error, and `call-001.stdout.txt` and
+`call-001.stderr.txt`. The record of a Git call also lists these variables in
+`environment`.
+
+A record with Git evidence:
+
+```json
+{
+  "formatVersion": 1,
+  "snapshotRef": "snapshot-001",
+  "status": "available",
+  "gitVersion": "git version 2.43.0",
+  "commit": "9994d1d5a5fdf4f9c444890f9333520c17b85a64",
+  "objectFormat": "sha1",
+  "branch": "main",
+  "targetPrefix": "",
+  "localChanges": {
+    "changed": ["src/app.ts"],
+    "notInCommit": ["notes.md"],
+    "notInSnapshot": ["old.ts"],
+    "outsideCaptureScope": [".github/workflows/ci.yml"],
+    "submodules": []
+  },
+  "limits": ["Git read the target folder after the copy. If the target folder changed during the capture, this record can differ from the snapshot.", "..."],
+  "gaps": []
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `formatVersion`, `snapshotRef` | `1` and the snapshot ID of the inventory. |
+| `status` | `available`, or `not-available` when Git evidence is not available. |
+| `gitVersion` | The output of `git version`, or `null` when Git did not run. |
+| `commit`, `objectFormat` | The commit of `HEAD`, and `sha1` or `sha256`, from the length of the commit ID. |
+| `branch` | The branch of `HEAD` without `refs/heads/`, or `null` when `HEAD` is detached. |
+| `targetPrefix` | The folder of the target in the Git work tree: `""` for its top folder, or a path that ends with `/`. The paths in `localChanges` are relative to the target folder, as in the inventory. |
+| `localChanges.changed` | Snapshot files whose content differs from the commit. Choom computes the Git object ID of the saved content, the hash of `blob <size>`, a NUL byte and the content with the object format, and compares it with the commit. |
+| `localChanges.notInCommit` | Snapshot files that are not in the commit. |
+| `localChanges.notInSnapshot` | Commit files in the target folder that are not in the snapshot and that the capture exclusions do not leave out. At capture, the target folder did not have them as regular files: they were deleted, or a folder took their place. |
+| `localChanges.outsideCaptureScope` | Commit files that the capture exclusions leave out. They are not compared, and they do not count as deleted. |
+| `localChanges.submodules` | The path of each submodule in the target folder. The files in a submodule are not compared. |
+| `limits` | The limits of the record in plain text. |
+| `reason` | Only when `not-available`: what failed, with Git's message when Git gave one. |
+| `gaps` | Empty when Git evidence is available. Otherwise one `git-unavailable` gap with `kind`, `subjectRefs` (the snapshot ID) and `reason`. |
+
+Each list in `localChanges` is sorted. To find the commit files that the capture
+exclusions leave out, Choom reads `exclusions.txt` as rsync reads it, for the
+rule forms that Stage 1 uses: a pattern with the wildcards `*` and `?`, a
+leading `/` that anchors it to the target folder, a trailing `/` that limits it
+to folders, and a `- ` prefix. Blank lines and lines that start with `#` or `;`
+are comments. For another rule form, such as an include rule (`+ `), `!`, a
+character class, `**` or a backslash, Choom does not guess:
+`outsideCaptureScope` is empty, `notInSnapshot` can also list files that the
+exclusions left out, and `limits` names the rule.
+
+The limits also say that a Git filter, such as line-ending conversion or Git
+LFS, can make a file look changed, that file modes are not compared, and that
+`notInCommit` can list files that Git ignores, because Git ignore rules do not
+set the capture scope.
+
+Git evidence is not available when Git is not installed, the target folder is
+not in a Git work tree, `HEAD` has no commit, or Git refuses a command or gives
+an unexpected answer. Git refuses a target folder that another user owns
+("dubious ownership"). A `safe.directory` setting in the user's Git settings does
+not change this, because the capture does not read those settings. In each case
+the capture continues, and the record has the reason and the gap:
+
+```json
+{
+  "formatVersion": 1,
+  "snapshotRef": "snapshot-001",
+  "status": "not-available",
+  "gitVersion": "git version 2.43.0",
+  "reason": "`git rev-parse --is-inside-work-tree --show-prefix` failed with exit code 128: fatal: not a git repository (or any of the parent directories): .git",
+  "gaps": [
+    { "kind": "git-unavailable", "subjectRefs": ["snapshot-001"], "reason": "Git evidence is not available, so the commit, the branch and the local changes of the snapshot are unknown. `git rev-parse --is-inside-work-tree --show-prefix` failed with exit code 128: ..." }
+  ]
+}
+```
+
+Stage 1 `finish` adds this gap to the discovery gaps after the review gaps and
+the settings gaps, with the ID `s1-git-identity-gap-001` and the evidence
+`git-identity-001#/gaps/0`. `finish` refuses a review question or gap with this
+ID, and a Git identity record that is not valid. Stage 1 `verify` checks that
+the saved Stage 1 discovery has the gap.
 
 ## Producer code record
 

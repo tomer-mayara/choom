@@ -450,24 +450,29 @@ producer code, and that a later action refuses the run after that code changed.
 They refuse a Stage 1 review whose saved LLM response holds a hidden reasoning
 block, and accept a visible response. They check that the Stage 1 settings record
 of a snapshot without compiler settings names the Choom parsing profile, its
-assumptions and a gap. The unit suites check the producer code
-digest and record, the command mapping, the check of the visible LLM response
-and the call record, the parsing profile, the settings collector and the Stage 4
-graph profile. The integration suite checks the shared record validator
+assumptions and a gap. They check that the Stage 1 capture of a Git repository
+records its commit and a changed file, and that a folder without Git is captured
+with a gap. The unit suites check the producer code digest and record, the
+command mapping, the check of the visible LLM response and the call record, the
+parsing profile, the settings collector, the Git identity, the capture exclusion
+rules and the Stage 4 graph profile. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
 reader. The interface suites run each helper with no
 action or an unknown action, check that each stage start saves its documents and
 no producer code, refuse each stage action when the run's producer code record is
 missing or does not match, and run the graph fixture, Knip image check, inventory
-view, recovery check and duplication start without Docker. They need `python3` on
-`PATH`. Docker-based Knip and graph runs are not part of these checks.
+view, recovery check and duplication start without Docker. They need `python3`
+and `git` on `PATH`. Docker-based Knip and graph runs are not part of these checks.
 
 The Stage 1 and Stage 2 interface suites run each stage through its commands on
 small fixtures. Python test doubles in `packages/producer/test/support/doubles/`
-take the place of `rsync` and Docker. The suites record the capture, the settings
-record, the Knip profile, the preflight and tool image decisions, the Knip
-receipts, the finish checks, the recovery capture and the input consolidation.
+take the place of `rsync` and Docker. The `rsync` double applies the capture
+exclusion rules in the forms that Stage 1 uses. The Stage 1 suites run the real
+Git on temporary repositories. The suites record the capture, the Git identity
+record, the settings record, the Knip profile, the preflight and tool image
+decisions, the Knip receipts, the finish checks, the recovery capture and the
+input consolidation.
 They also show that each action after start refuses the run after a producer code
 file changed in a copied tool checkout. Run them with:
 
@@ -521,6 +526,22 @@ fields. Run the focused checks of the named parsing profile with:
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/parsing-profile.test.ts ./packages/producer/test/unit/stage-1-settings.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts ./packages/producer/test/unit/stage-4-graph-profile.test.ts
 bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/recover-capture.test.ts ./packages/producer/test/interface/stage-4
+```
+
+Stage 1 capture records the Git identity of the target in
+`evidence/git-identity.json`: the commit, the branch and the local changes. Git
+runs only commands that read refs and objects, with the Git settings of the
+target that can run a program turned off, and never `git status`. Choom compares
+the snapshot with the commit itself. Without Git evidence, the capture continues,
+and Stage 1 finish adds a `git-unavailable` gap to the discovery gaps. The
+[record format](docs/design/app-a/record-format.md#git-identity-record) gives the
+commands, the settings and the fields. Run the focused checks of the Git identity
+with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/stage-1-git.test.ts ./packages/producer/test/unit/stage-1-exclusions.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts
+bun test ./packages/producer/test/interface/stage-1
 ```
 
 Run the focused checks of the producer code record with:
@@ -692,7 +713,11 @@ checkout. Stage 1 start saves the producer code record (`producer-code.ts`): the
 package version, the Git commit when there is one, and one digest of
 `packages/producer/src` and `packages/baseline-model/src`. Every later stage
 action checks that digest first and refuses a changed producer, so the code
-cannot change during a run. The stage starts save their cookbooks, and Stages 4
+cannot change during a run. Stage 1 capture saves the Git identity of the target
+(`stage-1-git.ts`, with the capture exclusion rules from `stage-1-exclusions.ts`),
+and Stage 1 finish adds the gaps of the settings record and the Git identity
+record to the discovery gaps (`stage-1-gaps.ts`). The stage starts save their
+cookbooks, and Stages 4
 and 5 also the record format, as records; Stages 3 and 5 read their review prompt
 from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types of
 `run-layout.mjs`. The shared record validator of Stages 4 to 6

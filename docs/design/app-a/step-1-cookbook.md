@@ -19,8 +19,9 @@ components or report smells.
 
 Use Bash or Zsh on macOS or Linux. Install the trusted Choom checkout's pinned
 Node and Bun dependencies as described in [repository setup](../../../README.md#set-up).
-Stage 1 also uses `rsync`. Install only the trusted checkout's tooling; do not
-install dependencies in a separate target repository or the saved snapshot.
+Stage 1 also uses `rsync`, and Git when the target is in a Git repository.
+Install only the trusted checkout's tooling; do not install dependencies in a
+separate target repository or the saved snapshot.
 Later stages use Python 3 and a local Docker engine; see the start guide.
 
 Set these variables to your own values. The parent of `CHOOM_WORK` must exist.
@@ -98,6 +99,24 @@ The helper then writes the inventory and `inventory.mjs`.
 All later analysis reads the saved snapshot. It includes local and untracked
 files that pass the explicit exclusions; Git ignore rules do not define scope.
 
+Last, the helper records the Git identity of the target in
+`evidence/git-identity.json`: the commit, the branch and the local changes. The
+local changes are the snapshot files that differ from the commit or are not in
+it, and the commit files that are not in the snapshot. A commit file that the
+capture exclusions leave out is listed apart; it does not count as deleted.
+Git runs on the target folder, not on the snapshot, and only commands that
+read refs and objects. The helper turns off the Git settings of the target
+that can run a program, and does not run `git status`. It saves each Git call
+in `evidence/git/`. If the target is not in a Git repository, Git is not
+installed, or Git refuses the folder, the capture continues: the record says
+that Git evidence is not available, with the reason, and `finish` adds a
+`git-unavailable` gap. Git refuses a target folder that another user owns. Your
+own `safe.directory` setting does not change this, because the helper does not
+read your Git settings. The capture prints the recorded commit, or that Git
+evidence is not available. See the
+[Git identity record](record-format.md#git-identity-record) for the commands,
+the settings, the fields and the limits.
+
 If capture fails, keep the failed evidence and start with a new working folder.
 Do not reuse its partial snapshot. Large output trees should be excluded before
 capture, rather than removed after inventory publication.
@@ -163,6 +182,8 @@ Supply these artifacts with their IDs:
 | `scope-notes-001` | `evidence/scope-notes.md` |
 | `extra-configs-001` | `evidence/extra-configs.json` |
 
+You can also supply `git-identity-001` (`evidence/git-identity.json`), the Git
+identity of the snapshot.
 Use the printed probe ID instead of `settings-001` during preliminary requests.
 Filter the large inventory when needed. Listing or hashing a file does not mean
 its contents were inspected. Follow the team's model-provider data policy.
@@ -212,13 +233,14 @@ Review package errors, compiler diagnostics, declarations, configuration
 inheritance and project references. Partial options do not establish valid or
 complete settings. Record missing required inputs. When the settings record
 names the Choom parsing profile, its options are Choom assumptions, not project
-settings. The tool adds each gap of the settings record to the discovery gaps,
-with an ID such as s1-settings-gap-001. Do not copy those gaps, and do not use IDs
-that start with s1-settings-gap-. Do not invent another profile. Inspect workspace
-declarations without assuming every package manifest is an active workspace.
-Read relevant deployment, test, build and architecture files as text. Request
-additional compiler settings as a JSON array of saved relative paths, retaining
-prior extra paths.
+settings. The tool adds each gap of the settings record and of the Git identity
+record to the discovery gaps, with an ID such as s1-settings-gap-001 or
+s1-git-identity-gap-001. Do not copy those gaps, and do not use IDs that start
+with s1-settings-gap- or s1-git-identity-gap-. Do not invent another profile.
+Inspect workspace declarations without assuming every package manifest is an
+active workspace. Read relevant deployment, test, build and architecture files
+as text. Request additional compiler settings as a JSON array of saved relative
+paths, retaining prior extra paths.
 
 Assign supported roles with exact file/directory selectors: source, tests,
 generated, configuration, documentation, or unknown. Several roles may apply.
@@ -292,7 +314,8 @@ cannot reconstruct the actual model input or prove the review's meaning.
 Apply the [review before publication](start-here.md#review-before-publication)
 guidance to the complete packet. Check role claims, missing inputs,
 supplied-evidence limits and exact inspected ranges against the saved evidence.
-The review does not copy the gaps of the settings record: `finish` adds them.
+The review does not copy the gaps of the settings record and the Git identity
+record: `finish` adds them.
 
 Set the review folder path, then run:
 
@@ -308,16 +331,21 @@ and creates discovery from the review's questions and gaps. Then it adds each ga
 of the settings record to the discovery gaps. Such a gap keeps its kind,
 `subjectRefs` and reason, gets the ID `s1-settings-gap-001` for the first gap,
 `s1-settings-gap-002` for the second and so on, and cites its place in the
-settings record, such as `settings-001#/gaps/0`. `finish` refuses a review question
-or gap with one of these IDs. It registers all evidence, including the producer
-code record, and `inventory.mjs` with computed SHA-256 digests, then writes
+settings record, such as `settings-001#/gaps/0`. After them, it adds the
+`git-unavailable` gap of the Git identity record when Git evidence is not
+available, as `s1-git-identity-gap-001` with `git-identity-001#/gaps/0` as
+evidence. `finish` refuses a review question or gap with one of these IDs, and a
+Git identity record that is not valid. It registers all evidence, including the
+producer code record, the Git identity record as `git-identity-001` and the Git
+calls, and `inventory.mjs` with computed SHA-256 digests, then writes
 `run.yaml` last. No manual digest entry or analysis-record editing is needed.
 It saves `evidence/stage1-discovery.yaml` as `discovery-001`; mutable root drafts
 are never registered as immutable evidence.
 
 `verify` is read-only. Expected: `stage1-inputs-verified`, with the run/snapshot IDs,
-artifact count and inventory count. It also derives the settings gaps again from
-the saved settings record and checks that the saved discovery has them.
+artifact count and inventory count. It also derives the gaps again from the saved
+settings record and Git identity record, and checks that the saved discovery has
+them.
 Structural checks do not verify semantic quality. Check the LLM's claims against
 the supplied evidence.
 
@@ -363,5 +391,7 @@ collector. Review its capture receipt before further
 work. Its historical layout requires a separately reviewed stage 1 publication;
 the new driver above does not claim to resume that legacy layout automatically.
 The recovery saves no producer code record, so the stage helpers refuse to
-continue its run.
+continue its run. It also saves no Git identity record, because it never reads
+the live repository. The Git identity record of the earlier run, if it has one,
+stays in that run.
 For a new third-party run, use the normal capture flow in this cookbook.

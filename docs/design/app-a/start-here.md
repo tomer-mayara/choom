@@ -127,7 +127,9 @@ You need:
   repository or the saved snapshot. For this workflow, stop setup after dependency
   installation; application startup, Rust, browser installation and desktop
   packaging are not prerequisites.
-- `rsync`, Python 3, and the usual shell tools used by the cookbooks.
+- `rsync`, Python 3, and the usual shell tools used by the cookbooks. Stage 1
+  also uses Git when the target is in a Git repository. Without Git, Stage 1
+  records that Git evidence is not available, with a gap.
 - A working local Docker daemon for the controlled Knip and dependency graph
   runs. Image preparation needs registry access; analysis runs use the isolated
   profiles in the cookbooks. A skipped Knip run can remain an explicit gap, but
@@ -177,6 +179,7 @@ node --version
 bun --version
 python3 --version
 rsync --version
+git --version
 docker version --format '{{.Server.Version}}'
 ```
 
@@ -543,11 +546,13 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
 | `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-4-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
 | `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it |
+| `stage-1-git.ts`, `stage-1-exclusions.ts` | The Git identity record that Stage 1 capture saves, and the reader of the capture exclusion rules that it uses |
+| `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record |
 | `parsing-profile.ts` | The named Choom parsing profile for a snapshot without project settings |
 | `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
-| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record and the producer code record |
+| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record and the producer code record |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
 | `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, traversal roots and limits |
 | `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence (`stage-4-inspect` command) |
