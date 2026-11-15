@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { type FixtureBaseline, publishStageFour, stageFourBaselineId, stageFourPublication, type StageFourPublication }
@@ -50,6 +50,54 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     }, (baseline) => {
       const http = baseline.components.find((component) => component.id === "http");
       if (http) http.id = baseline.id;
+    });
+  }, 60_000);
+});
+
+// The publisher checks the LLM part of the packet before it validates the records.
+interface PacketCase { name: string; file: string; change: (text: string) => string; message: string }
+
+const packetCases: PacketCase[] = [
+  { name: "the call record has no model", file: "llm/analysis-call.yaml",
+    change: (text) => text.replace(/^model: .*\n/m, ""), message: "Record exposed LLM metadata; use unknown for unavailable values." },
+  { name: "the response does not contain the five records", file: "llm/analysis-response.md", change: () => "No records.\n",
+    message: "Save the complete prompt and response, including the exact five candidate records." },
+  { name: "the review scope names another attempt", file: "llm/review-scope.json",
+    change: (text) => JSON.stringify({ ...(JSON.parse(text) as object), attemptId: "s4-other" }), message: "Invalid LLM review scope." },
+  { name: "the review folder has another file", file: "notes.md", change: () => "A note.\n",
+    message: "Expected exactly the nine review packet files from record-format.md." },
+];
+
+function changeReviewFile(fixture: StageFourPublication, name: string, change: (text: string) => string): void {
+  const path = join(fixture.review, name);
+  let text = "";
+  try { text = readFileSync(path, "utf8"); } catch { text = ""; }
+  writeFileSync(path, change(text));
+}
+
+describe("the Stage 4/5 publisher with an incomplete or repeated review", () => {
+  test.each(packetCases)("refuses a packet in which $name in check and finish, and writes nothing", ({ file, change, message }) => {
+    withPublication((fixture) => {
+      changeReviewFile(fixture, file, change);
+      const before = folderState(fixture.work);
+      for (const action of ["check", "finish"] as const) {
+        const refused = publishStageFour(fixture, action);
+        expect({ action, status: refused.status, stdout: refused.stdout, stderr: refused.stderr })
+          .toEqual({ action, status: 1, stdout: "", stderr: message + "\n" });
+      }
+      expect(folderState(fixture.work)).toEqual(before);
+    });
+  }, 60_000);
+
+  test("refuses to publish an attempt again after it published", () => {
+    withPublication((fixture) => {
+      expect(publishStageFour(fixture, "finish").status).toBe(0);
+      const before = folderState(fixture.work);
+      const again = publishStageFour(fixture, "finish");
+      // The publisher compares the drafts with the attempt checkpoints first.
+      expect({ status: again.status, stdout: again.stdout, stderr: again.stderr })
+        .toEqual({ status: 1, stdout: "", stderr: "Working draft changed: run.yaml\n" });
+      expect(folderState(fixture.work)).toEqual(before);
     });
   }, 60_000);
 });
