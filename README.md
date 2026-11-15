@@ -452,10 +452,13 @@ block, and accept a visible response. They check that the Stage 1 settings recor
 of a snapshot without compiler settings names the Choom parsing profile, its
 assumptions and a gap. They check that the Stage 1 capture of a Git repository
 records its commit and a changed file, and that a folder without Git is captured
-with a gap. The unit suites check the producer code digest and record, the
+with a gap. They search a saved snapshot with the Stage 3 text search and check
+that the record lists each match with its file, line and text, the searched scope
+and the ripgrep version, and that a search with no match names the searched files
+and the capture exclusions. The unit suites check the producer code digest and record, the
 command mapping, the check of the visible LLM response and the call record, the
 parsing profile, the settings collector, the Git identity, the capture exclusion
-rules and the Stage 4 graph profile. The integration suite checks the shared record validator
+rules, the installed ripgrep program, the text search and the Stage 4 graph profile. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
 reader. The interface suites run each helper with no
@@ -482,7 +485,10 @@ bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/int
 
 The Stage 3 suite finishes a Stage 2 attempt through its commands, then runs
 Stage 3 start, collect, save-review and the finalizer. It records a published
-attempt, verify, and the finalizer refusals. Run it with:
+attempt, verify, and the finalizer refusals. It records the files that start,
+collect, excerpt and save-review save and their refusals. It runs the text search
+with the real ripgrep on a snapshot with hidden, ignored, binary, compressed,
+linked and large files, and its refusals. Run it with:
 
 ```sh
 bun test ./packages/producer/test/interface/stage-3
@@ -542,6 +548,22 @@ with:
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/stage-1-git.test.ts ./packages/producer/test/unit/stage-1-exclusions.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts
 bun test ./packages/producer/test/interface/stage-1
+```
+
+Stage 3 `text-search` searches the text of the saved snapshot with ripgrep from
+`@vscode/ripgrep`. It passes `--no-config`, `--hidden`, `--no-ignore` and the
+snapshot root as the only path, never follows links or decompresses files, and
+removes `RIPGREP_CONFIG_PATH`. Each search saves a tool-call record with the
+query, the ripgrep version and arguments, the searched scope with the capture
+exclusions, the limits, the outcome (`match`, `no-match` or `truncated`), the
+matches and the digests of the raw output. The
+[Stage 3 cookbook](docs/design/app-a/step-3-cookbook.md#search-the-snapshot-text)
+gives the arguments and the fields. Run the focused checks of the text search with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/ripgrep.test.ts ./packages/producer/test/unit/stage-3-text-search.test.ts ./packages/producer/test/unit/stage-1-exclusions.test.ts
+bun test ./packages/producer/test/interface/stage-3
 ```
 
 Run the focused checks of the producer code record with:
@@ -708,7 +730,10 @@ ran from their cookbooks is in TypeScript modules: the Stage 1 settings collecto
 (`stage-1-settings.ts`), the Stage 2 steps (`stage-2-handoff.ts`,
 `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`,
 `stage-2-knip-run.ts` and `stage-2-finish.ts`) and the input consolidation command
-(`stage-2-consolidate-inputs.ts`). Every stage action runs the code in the tool
+(`stage-2-consolidate-inputs.ts`). The Stage 3 helper (`stage-3-commands.ts`) uses
+`stage-3-inputs.ts` for the checked run and snapshot files, `stage-3-collect.ts`
+for the evidence of `collect`, and `stage-3-text-search.ts` with `ripgrep.ts` for
+the text search. Every stage action runs the code in the tool
 checkout. Stage 1 start saves the producer code record (`producer-code.ts`): the
 package version, the Git commit when there is one, and one digest of
 `packages/producer/src` and `packages/baseline-model/src`. Every later stage
@@ -774,6 +799,13 @@ declares `@choom/baseline-model` with `workspace:*`, as the app does. The helper
 resolve them from the root `node_modules`, which the hoisted linker keeps in place.
 The workspace link resolves to `packages/baseline-model` in the same checkout,
 whose code the producer code digest covers.
+The producer also declares `@vscode/ripgrep` at `1.18.0` for the Stage 3 text
+search. That version takes the ripgrep program from one package for each
+platform, which `bun.lock` lists with its operating system, processor and
+integrity hash, so `bun install` puts the program in place with no install script
+and no download from GitHub. The package is not in `trustedDependencies`: it has
+no script to trust, and that list would replace Bun's default list of trusted
+packages.
 Knip ignores `dependency-cruiser` and `picomatch` in that workspace: the Stage 4
 graph helper loads dependency-cruiser by file path, and Stage 4 loads picomatch by
 a name in a variable, so Knip cannot see either use.

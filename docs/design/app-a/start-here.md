@@ -130,6 +130,10 @@ You need:
 - `rsync`, Python 3, and the usual shell tools used by the cookbooks. Stage 1
   also uses Git when the target is in a Git repository. Without Git, Stage 1
   records that Git evidence is not available, with a gap.
+- ripgrep for the Stage 3 text search. The dependency installation of the
+  trusted checkout installs it: `@vscode/ripgrep` takes the program from a
+  package for each platform and runs no install script. Stage 3 `start` records
+  its version, program and digest.
 - A working local Docker daemon for the controlled Knip and dependency graph
   runs. Image preparation needs registry access; analysis runs use the isolated
   profiles in the cookbooks. A skipped Knip run can remain an explicit gap, but
@@ -225,7 +229,7 @@ verified handoff from the previous stage.
 | --- | --- | --- | --- |
 | 1 | [Inventory and settings](step-1-cookbook.md) | Capture the selected files, collect settings, let the LLM review roles and missing inputs, then validate and save | A registered inventory and review; empty baseline; initial discovery |
 | 2 | [Entry candidates and Knip](step-2-cookbook.md) | Obtain the LLM entry plan, prepare and run controlled Knip, review its actual outcomes, then save entry analysis | Selected entry analysis with candidates, receipts and explicit limits |
-| 3 | [Loading gaps and priorities](step-3-cookbook.md) | Collect loading evidence and excerpts, review unresolved entries, decide whether Knip can be reused, then save | Updated entry analysis and an ordered inspection list |
+| 3 | [Loading gaps and priorities](step-3-cookbook.md) | Collect loading evidence and excerpts, search the snapshot text when needed, review unresolved entries, decide whether Knip can be reused, then save | Updated entry analysis and an ordered inspection list |
 | 4 | [Candidate components](step-4-cookbook.md) | Build dependency contexts, collect source evidence, review representative paths, then check and publish the proposed model | Components, interfaces, resources, rules, ownership mapping and inspected paths |
 | 5 | [Remaining code](step-5-cookbook.md) | Inspect unexplained regions, assign supported owners, retain justified unknowns and deferrals, then check and publish | Every inventoried unit accounted for and affected explanations updated |
 | 6 | [Validate and save](step-6-cookbook.md) | Review the complete result, validate the review packet, save the fixed records, then verify publication | Fixed baseline and discovery, selected by a completed run manifest |
@@ -552,6 +556,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
 | `stage-3-inputs.ts`, `stage-3-collect.ts` | The checked inputs of each Stage 3 action: the run after Stage 2 and its indexed snapshot files; and the evidence that Stage 3 `collect` saves |
+| `stage-3-text-search.ts`, `ripgrep.ts` | The Stage 3 text search of the saved snapshot (`stage-3 text-search`): the ripgrep arguments, the output check, the scope and the tool-call record; and the ripgrep program, its version and a bounded call |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record and the producer code record |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
