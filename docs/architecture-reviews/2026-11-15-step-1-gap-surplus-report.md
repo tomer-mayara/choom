@@ -146,6 +146,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-00c | tomer-mayara/choom#69 | Draft. This PR also records plan changes 6 and 7. |
 | GA-12 | tomer-mayara/choom#70 | Draft |
 | GA-09 | tomer-mayara/choom#71 | Draft. This PR also records plan change 8. |
+| GA-04 | tomer-mayara/choom#72 | Draft. This PR also records plan change 9. |
 
 Plan changes:
 
@@ -200,6 +201,16 @@ Plan changes:
    not copy them. The IDs are `s1-<record>-gap-NNN`, and the review cannot
    use them. `verify` refuses a saved discovery that lacks one. GA-04 uses
    the same function for its Git gap (step 5 below).
+9. **GA-04 does not run `git status` (E11 was not enough).** `git status`
+   can run the clean and process filters that a target defines in its own
+   Git settings. In a partial clone, even `ls-tree` fetches missing objects
+   through a command from the target's settings. So GA-04 runs only
+   `version`, `rev-parse`, `symbolic-ref` and `ls-tree`. It compares the
+   saved snapshot with the commit inside the producer. Every call also
+   removes inherited `GIT_*` variables and sets `GIT_TERMINAL_PROMPT=0`,
+   `GIT_ALLOW_PROTOCOL=` (no transport), `GIT_NO_LAZY_FETCH=1`,
+   `GIT_NO_REPLACE_OBJECTS=1` and `--no-pager`. A test with a real partial
+   clone checks that no program runs.
 
 ### How to work every ticket
 
@@ -665,11 +676,14 @@ Feature: Save Git identity with a snapshot
 
 1. **U** `gitIdentity(runGit)` uses a test double for Git. It returns the
    commit, the branch and the changed paths, or `not-available` with a reason.
-2. **U** It runs only `rev-parse` and `status --porcelain=v2`. Every command
-   sets `-c core.fsmonitor=false -c core.hooksPath=/dev/null`,
-   `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null` and
-   `GIT_OPTIONAL_LOCKS=0`, so target settings cannot run a program. The test
-   double refuses any other command or a missing setting.
+2. **U** It runs only `version`, `rev-parse`, `symbolic-ref` and `ls-tree`,
+   never `status` (plan change 9). Every command sets
+   `-c core.fsmonitor=false -c core.hooksPath=/dev/null`,
+   `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null`,
+   `GIT_OPTIONAL_LOCKS=0` and the fetch and replace settings of plan change
+   9, so target settings cannot run a program. The changed paths come from
+   a comparison of the snapshot with the commit. The test double refuses
+   any other command or a missing setting.
 3. **U** A Git refusal (for example, "dubious ownership") gives `not-available`
    with Git's message. It does not stop the capture.
 4. **N** Run it on a temporary real repository. The record is saved by digest
