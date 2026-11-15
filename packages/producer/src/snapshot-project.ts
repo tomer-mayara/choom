@@ -30,6 +30,8 @@ export interface ProjectGap {
 }
 export interface SnapshotProject {
   readonly project: TsMorph.Project;
+  // The TypeScript of ts-morph, which the project uses.
+  readonly ts: ProjectTools['ts'];
   // Adds an indexed regular file of the snapshot to the project and returns it.
   sourceFile(path: string): TsMorph.SourceFile;
   outsideReads(): OutsideRead[];
@@ -206,5 +208,5 @@ export function openSnapshotProject(snapshot: SnapshotFiles, settings: ProjectSe
     loaded.add(virtual);
     return file;
   }
-  return { project, sourceFile, outsideReads: () => [...host.outside.values()], gaps: () => [...gaps] };
+  return { project, ts: tools.ts, sourceFile, outsideReads: () => [...host.outside.values()], gaps: () => [...gaps] };
 }
