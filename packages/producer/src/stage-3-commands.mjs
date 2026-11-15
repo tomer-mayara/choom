@@ -71,7 +71,8 @@ assert(work !== tools && !tools.startsWith(work + '/'), 'Use a trusted tool chec
 const evidence = directory(join(work, 'evidence'));
 const attempt = join(evidence, id);
 const savedHelper = join(attempt, helper);
-const sourceHelper = join(tools, 'docs/design/app-a', helper);
+const sourceHelper = join(tools, 'packages/producer/src', helper);
+const sourceCookbook = join(tools, 'docs/design/app-a', cookbook);
 function saved(name) {
   assert(safePath(name), 'Invalid attempt path: ' + name);
   return read(join(attempt, name));
@@ -448,7 +449,8 @@ function main() {
     assert(self === sourceHelper && !exists(attempt), 'Start from CHOOM_TOOLS with a fresh attempt ID.');
     toolchain = loadTools();
     state = handoffState(toolchain.parse);
-    sourceInputs = Object.fromEntries(toolInputs.map(name => [name, read(join(dirname(self), name))]));
+    sourceInputs = Object.fromEntries(toolInputs.map(name =>
+      [name, read(name === cookbook ? sourceCookbook : join(dirname(self), name))]));
     mkdirSync(attempt);
   } else {
     directory(attempt);
@@ -468,7 +470,7 @@ function main() {
     if (action === 'start') {
       save(commandLog, '# Stage 3 commands\n\n' +
         'Set CHOOM_WORK, CHOOM_TOOLS and CHOOM_STAGE3_ID before running these commands.\n\n' +
-        '\x60\x60\x60sh\nnode "$CHOOM_TOOLS/docs/design/app-a/stage-3-commands.mjs" start\n' +
+        '\x60\x60\x60sh\nnode "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 start\n' +
         'node "$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID/stage-3-commands.mjs" collect\n' +
         'node "$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID/stage-3-commands.mjs" excerpt PATH FIRST LAST\n' +
         'node "$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID/stage-3-commands.mjs" save-review REVIEW_DIR\n' +

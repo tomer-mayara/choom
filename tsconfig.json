@@ -19,5 +19,5 @@
     "types": ["vite/client"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "packages/*/src"]
+  "include": ["src", "packages/baseline-model/src"]
 }

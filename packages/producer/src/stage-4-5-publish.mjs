@@ -88,7 +88,10 @@ assert(new RegExp('^s' + stage + '-[a-z0-9]+(?:-[a-z0-9]+)*$').test(id ?? ''), '
 const work = directory(process.env.CHOOM_WORK);
 const tools = directory(process.env.CHOOM_TOOLS);
 runLayout(work, tools);
-const source = directory(join(tools, 'docs/design/app-a'));
+const source = directory(join(tools, 'packages/producer/src'));
+// The record format stays with the cookbooks in docs/design/app-a.
+const documents = directory(join(tools, 'docs/design/app-a'));
+const sourceFolder = name => name.endsWith('.md') ? documents : source;
 assert(fileURLToPath(import.meta.url) === join(source, toolFiles[0]), 'Use the publisher in the trusted checkout.');
 const attempt = directory(join(directory(join(work, 'evidence')), id));
 assert(process.env['CHOOM_STAGE' + stage] === attempt, 'Set the matching stage attempt directory.');
@@ -138,7 +141,7 @@ function verifiedInput() {
   assert(handoff.attemptId === id && handoff.runRef === run.id && handoff.snapshotRef === run.snapshot.id &&
     handoff.work === work && handoff.tools === tools, 'Attempt identities changed.');
   for (const [name, bytes] of drafts) assert(handoff.checkpointDigests?.[checkpoint(name)] === hash(bytes), 'Checkpoint digest changed: ' + name);
-  for (const name of toolFiles) assert(handoff.toolInputDigests?.[name] === hash(get(name)) && get(name).equals(read(source, name)),
+  for (const name of toolFiles) assert(handoff.toolInputDigests?.[name] === hash(get(name)) && get(name).equals(read(sourceFolder(name), name)),
     'Publication tools changed or were not frozen at start: ' + name + '. Use a new attempt.');
   const required = stage === '4' ? ['start', 'toolchain', 'run', 'collect'] : ['start', 'collect'];
   const requiredOutputs = {

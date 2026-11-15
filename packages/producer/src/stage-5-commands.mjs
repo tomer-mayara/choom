@@ -25,7 +25,8 @@ const collectOutputs = ['remaining-units.json', 'inspection-coverage.json', 'sou
 const commandLog = 'commands.md';
 const commandHeader = '# Stage 5 commands\n\n' +
   'The commands below use saved inputs. A content read by a tool does not record LLM inspection.\n';
-const sourceTool = name => join(CHOOM_TOOLS, 'docs/design/app-a', name);
+// The cookbooks and record format stay in docs/design/app-a; the code is in packages/producer/src.
+const sourceTool = name => join(CHOOM_TOOLS, name.endsWith('.md') ? 'docs/design/app-a' : 'packages/producer/src', name);
 const artifactId = name => id + '-file@' + encodeURIComponent(name);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const digest = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);

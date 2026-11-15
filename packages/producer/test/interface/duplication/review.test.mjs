@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fixtureRun } from '../../fixtures/duplication-producer/fixture.mjs';
 import { recordedReview } from '../../fixtures/duplication-producer/review.mjs';
-import { startAssessment, collectAssessment, reviewAssessment, publishAssessment } from '../../../docs/design/app-a/duplication-commands.mjs';
-import { decodeBaselineYaml } from '../../../src/lib/baseline-yaml.ts';
-import { decodeDuplicationReportYaml } from '../../../src/lib/interface-duplication-yaml.ts';
+import { startAssessment, collectAssessment, reviewAssessment, publishAssessment } from '../../../src/duplication-commands.mjs';
+import { decodeBaselineYaml } from '../../../../../src/lib/baseline-yaml.ts';
+import { decodeDuplicationReportYaml } from '../../../../../src/lib/interface-duplication-yaml.ts';
 import { digest } from '../../fixtures/duplication-producer/fixture.mjs';
 
 function assessment() {

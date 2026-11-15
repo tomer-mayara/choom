@@ -3,8 +3,8 @@ import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fixtureRun } from '../../fixtures/duplication-producer/fixture.mjs';
-import { collectAssessment, skipAssessment, startAssessment } from '../../../docs/design/app-a/duplication-commands.mjs';
-import { normalizeDetector } from '../../../docs/design/app-a/duplication-detector.mjs';
+import { collectAssessment, skipAssessment, startAssessment } from '../../../src/duplication-commands.mjs';
+import { normalizeDetector } from '../../../src/duplication-detector.mjs';
 
 const side = name => ({ name, start: 1, end: 4 });
 const clone = (first, second) => ({ firstFile: side(first), secondFile: side(second), method: 'ast', similarity: 1 });

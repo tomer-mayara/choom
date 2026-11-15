@@ -38,7 +38,7 @@ export CHOOM_WORK="/absolute/path/to/analysis-run-001"
 export CHOOM_RUN_ID="run-001"
 export CHOOM_SNAPSHOT_ID="snapshot-001"
 export CHOOM_BASELINE_ID="baseline-001"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-1-commands.mjs" start
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 start
 ```
 
 Run one command at a time and stop on an error. The helper creates the folder;
@@ -82,7 +82,7 @@ from a completed snapshot or replace it with live contents.
 Pause target edits during capture, then run:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-1-commands.mjs" capture
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 capture
 ```
 
 The helper copies selected files with `rsync`, then performs a checksum dry-run
@@ -99,7 +99,7 @@ capture, rather than removed after inventory publication.
 ## 3. Collect settings
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-1-commands.mjs" settings
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 settings
 ```
 
 The collector reads package manifests and conventional `tsconfig*.json` and
@@ -154,7 +154,7 @@ Follow [Choose source ranges](start-here.md#choose-source-ranges) to check the
 saved file's line count. Collect the requested path and range with:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-1-commands.mjs" excerpt \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 excerpt \
   package.json 1 20 "Check declared commands and package entry fields."
 ```
 
@@ -269,8 +269,8 @@ Set the review folder path, then run:
 
 ```sh
 export CHOOM_STAGE1_REVIEW="/absolute/path/to/stage-1-review"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-1-commands.mjs" finish "$CHOOM_STAGE1_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-1-commands.mjs" verify
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 finish "$CHOOM_STAGE1_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 verify
 ```
 
 `finish` verifies snapshot bytes, the review's structure, IDs, references and

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { cpSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { producerSource, runHelper, toolsRoot, withScratch } from "../../support/producer-commands.ts";
+import { producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
 
 // Each case runs a producer command file as an operator does, with no action or an
 // unknown action, and records the current exit code and the key part of its message.

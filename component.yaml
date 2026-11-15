@@ -10,8 +10,6 @@ artifacts:
     - path: cookbook/behavior/baseline-viewer/open.feature
     - path: cookbook/behavior/baseline-viewer/installed.feature
     - path: cookbook/behavior/baseline-viewer/workflow.feature
-    # The producer has no component manifest yet. GA-00b moves this link to it.
-    - path: cookbook/behavior/producer/recovery.feature
   observability:
     - path: cookbook/observability/service.yaml
   architecture:
@@ -20,6 +18,7 @@ artifacts:
       inputs:
         - src
         - packages/baseline-model/src
+        - packages/producer/src
     - path: src-tauri/Cargo.toml
     - path: src-tauri/capabilities/main.json
   contracts:
@@ -32,5 +31,7 @@ children:
     path: ./src
   - name: baseline-model
     path: ./packages/baseline-model
+  - name: producer
+    path: ./packages/producer
   - name: native-shell
     path: ./src-tauri

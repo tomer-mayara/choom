@@ -105,7 +105,7 @@ try {
   assert(/^run-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(CHOOM_RUN_ID ?? '') &&
     /^snapshot-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(CHOOM_SNAPSHOT_ID ?? ''), 'Set new run and snapshot IDs.');
   const self = fileURLToPath(import.meta.url);
-  assert(self === join(tools, 'docs/design/app-a/recover-capture.mjs'), 'Run the trusted recovery helper.');
+  assert(self === join(tools, 'packages/producer/src/recover-capture.mjs'), 'Run the trusted recovery helper.');
   const helperBytes = read(self);
   const require = createRequire(join(tools, 'package.json'));
   for (const name of ['yaml', 'yaml/package.json', 'ts-morph', 'ts-morph/package.json']) {

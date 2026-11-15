@@ -23,7 +23,7 @@ components, trace behavior paths, compute reachability, or investigate smells.
 ## Run the saved commands
 
 This is the standard path for both a first run and a new attempt. It uses the
-[manual driver](stage-2-commands.mjs). Keep `CHOOM_WORK` and `CHOOM_TOOLS` from
+[manual driver](../../../packages/producer/src/stage-2-commands.mjs). Keep `CHOOM_WORK` and `CHOOM_TOOLS` from
 stage 1. Use a new attempt ID, such as `s2-001`; never reuse an attempt directory.
 Run one command at a time and check its result before continuing.
 Before the one-shot toolchain phase, check local Docker access from the actual
@@ -34,7 +34,7 @@ an executor that can run its saved commands.
 ```sh
 export CHOOM_STAGE2_ID="s2-001"
 export CHOOM_STAGE2="$CHOOM_WORK/evidence/$CHOOM_STAGE2_ID"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-2-commands.mjs" start
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 start
 ```
 
 `start` verifies stage 1, saves checkpoints and freezes this cookbook and the
@@ -274,8 +274,8 @@ console.log(`Saved inputs verified and checkpoints saved. Preserved ${registrati
 JS
 node "$CHOOM_STAGE2/prepare.mjs"
 cp -n "$CHOOM_TOOLS/docs/design/app-a/step-2-cookbook.md" "$CHOOM_STAGE2/cookbook.md"
-cp -n "$CHOOM_TOOLS/docs/design/app-a/check-knip-image.mjs" "$CHOOM_STAGE2/check-knip-image.mjs"
-cp -n "$CHOOM_TOOLS/docs/design/app-a/inventory-view.py" "$CHOOM_STAGE2/inventory-view.py"
+cp -n "$CHOOM_TOOLS/packages/producer/src/check-knip-image.mjs" "$CHOOM_STAGE2/check-knip-image.mjs"
+cp -n "$CHOOM_TOOLS/packages/producer/src/inventory-view.py" "$CHOOM_STAGE2/inventory-view.py"
 )
 ```
 
@@ -1535,7 +1535,7 @@ for (const [id, artifact] of Object.entries(run.artifacts)) {
   if (createHash('sha256').update(readFileSync(path)).digest('hex') !== artifact.sha256?.toLowerCase())
     throw new Error(`Registered evidence changed: ${id}`);
 }
-const result = spawnSync('python3', [join(tools, 'docs/design/app-a/inventory-view.py'),
+const result = spawnSync(process.execPath, [join(tools, 'packages/producer/src/cli.ts'), 'inventory-view',
   'consolidate', work, inventory, record.sha256, run.snapshot.id,
   sourceAttempt, ...retireAttempts.flatMap(id => ['--retire', id])], { stdio: 'inherit' });
 if (result.error) throw result.error;

@@ -19,11 +19,11 @@ export const safePath = path => typeof path === 'string' && path.length <= 4096 
 export const isDigest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
 export function toolIdentity() {
-  const folder = join(toolRoot, 'docs/design/app-a');
+  const folder = join(toolRoot, 'packages/producer/src');
   const helpers = Object.fromEntries(readdirSync(folder).filter(name => /^duplication-.*\.mjs$/.test(name)).sort()
     .map(name => [name, hash(savedFile(folder, name))]));
   // Pin whole schema/parser folders so new sibling dependencies are included.
-  const sharedPaths = ['package.json', 'packages/baseline-model/package.json', 'docs/design/app-a/run-layout.mjs',
+  const sharedPaths = ['package.json', 'packages/baseline-model/package.json', 'packages/producer/src/run-layout.mjs',
     'src/lib/baseline-yaml.ts', 'src/lib/interface-duplication-yaml.ts', 'src/lib/generated/contracts.ts',
     ...listFiles(toolRoot, 'src/domain'), ...listFiles(toolRoot, 'packages/baseline-model/src'),
     ...listFiles(toolRoot, 'src/lib/architecture-yaml')].sort();

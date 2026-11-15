@@ -43,8 +43,8 @@ export CHOOM_RUN=/absolute/path/to/completed-step-1
 export CHOOM_DUP=/absolute/path/to/duplication-001
 export CHOOM_DUP_REVIEW=/absolute/path/to/review-input.json
 
-node "$CHOOM_TOOLS/docs/design/app-a/duplication-commands.mjs" start "$CHOOM_RUN" "$CHOOM_DUP" duplication-001
-node "$CHOOM_TOOLS/docs/design/app-a/duplication-commands.mjs" collect "$CHOOM_DUP"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" duplication start "$CHOOM_RUN" "$CHOOM_DUP" duplication-001
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" duplication collect "$CHOOM_DUP"
 ```
 
 `start` verifies the selected baseline, original inventory bytes and every
@@ -71,7 +71,7 @@ omissions, collection is partial. A failed command is not a successful empty
 scan. If collection cannot be attempted, record the reason:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/duplication-commands.mjs" skip "$CHOOM_DUP" "Pinned detector is unavailable on this host."
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" duplication skip "$CHOOM_DUP" "Pinned detector is unavailable on this host."
 ```
 
 Use `skip` only before collection. A retry or changed profile needs a new
@@ -130,7 +130,7 @@ Use registered artifact IDs for evidence references, or a source reference
 declared in `sources`. `review-input` identifies the complete saved packet and
 can hold model settings and manager decisions. Include those details in the
 packet when using this reference; an identity label alone is not review evidence.
-The [synthetic fixture packet builder](../../../test/fixtures/duplication-producer/review.mjs)
+The [synthetic fixture packet builder](../../../packages/producer/test/fixtures/duplication-producer/review.mjs)
 shows the shape. Its recorded fixture identities are test data, not real model
 invocations. Replace them with the actual assessment provenance.
 
@@ -155,8 +155,8 @@ and carry evidence or a reason. Do not fill missing facts with guessed values.
 Preserve source references and reviewer provenance when merging observations.
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/duplication-commands.mjs" review "$CHOOM_DUP" "$CHOOM_DUP_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/duplication-commands.mjs" publish "$CHOOM_DUP"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" duplication review "$CHOOM_DUP" "$CHOOM_DUP_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" duplication publish "$CHOOM_DUP"
 ```
 
 Publication verifies registered evidence and the same portable report codec used
@@ -198,12 +198,12 @@ Step 1 manifest.
 ## Focused verification
 
 ```sh
-node --test test/interface/duplication/*.test.mjs
-bun test ./test/interface/duplication
+node --test packages/producer/test/interface/duplication/*.test.mjs
+bun test ./packages/producer/test/interface/duplication
 ```
 
 These checks exercise actual pinned collection, complete EDN accounting,
 immutable input identity, reviewed source-only leads, pending coverage, helper
 exclusion, and publication through the shared reader. The existing
 `bun run check:contracts` discovers these `.mjs` specifications through
-`test/interface`; no viewer dependency on jscpd is added.
+`packages/producer/test/interface`; no viewer dependency on jscpd is added.

@@ -264,7 +264,7 @@ function phase(record, stdout, stderr) {
     const plan = planPath ? regularFile(resolve(planPath)) : null;
     if (plan) validatePlan(plan, state(false));
     for (const name of sources) {
-      const path = name === sources[0] ? join(dirname(self), 'step-2-cookbook.md') : join(dirname(self), name);
+      const path = name === sources[0] ? join(tools, 'docs/design/app-a/step-2-cookbook.md') : join(dirname(self), name);
       save(name, regularFile(path));
     }
     Object.assign(record.digests, digests(sources));
@@ -399,7 +399,7 @@ function phase(record, stdout, stderr) {
 }
 
 if (action === 'start') {
-  assert(self === join(tools, 'docs/design/app-a/stage-2-commands.mjs'), 'Start from the tool checkout.');
+  assert(self === join(tools, 'packages/producer/src/stage-2-commands.mjs'), 'Start from the tool checkout.');
   mkdirSync(attempt);
   save('commands.md', '# Stage 2 commands\n');
 } else {

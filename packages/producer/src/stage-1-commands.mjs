@@ -16,7 +16,7 @@ const safe = name => text(name) && !isAbsolute(name) && !/[\\\u0000-\u001f\u007f
 const [action, ...args] = process.argv.slice(2);
 const self = fileURLToPath(import.meta.url);
 const tools = realpathSync(process.env.CHOOM_TOOLS ?? '');
-assert(self === join(tools, 'docs/design/app-a/stage-1-commands.mjs'), 'Use the trusted Stage 1 helper.');
+assert(self === join(tools, 'packages/producer/src/stage-1-commands.mjs'), 'Use the trusted Stage 1 helper.');
 const layoutHelper = 'run-layout.mjs';
 const layoutSource = join(dirname(self), layoutHelper);
 assert(isAbsolute(process.env.CHOOM_WORK ?? ''), 'Set CHOOM_WORK to a new absolute path.');

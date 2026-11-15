@@ -31,7 +31,7 @@ Use a fresh attempt ID. Keep earlier attempts unchanged:
 export CHOOM_STAGE5_ID="s5-001"
 export CHOOM_STAGE5="$CHOOM_WORK/evidence/$CHOOM_STAGE5_ID"
 
-node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" start
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 start
 ```
 
 The helper requires completed component recovery and its published working
@@ -69,7 +69,7 @@ receipt. If an excerpt failed after saving partial output, use a fresh attempt.
 ## 2. Collect the remaining-code evidence
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" collect
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 collect
 ```
 
 The collector uses the saved inventory, mapping, entry analyses, dependency
@@ -281,7 +281,7 @@ Follow [Choose source ranges](start-here.md#choose-source-ranges) before calling
 the helper. Replace this path and range with the requested values:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" excerpt \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 excerpt \
   path/from-the-saved-inventory.ts 1 80
 ```
 
@@ -304,9 +304,9 @@ separately and stop on failure:
 
 ```sh
 export CHOOM_REVIEW="/absolute/path/to/stage-5-review"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" check 5 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" finish 5 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" verify 5
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish check 5 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish finish 5 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 ```
 
 `check` is read-only. It is safe to correct the separate packet and repeat that

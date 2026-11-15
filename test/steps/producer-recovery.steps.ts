@@ -39,9 +39,9 @@ interface RecoveryWorld extends World {
 }
 
 const tools = realpathSync(fileURLToPath(new URL("../../", import.meta.url)));
-const stageSix = join(tools, "docs/design/app-a/stage-6-commands.mjs");
+const producerCli = join(tools, "packages/producer/src/cli.ts");
 // The fixture is JavaScript. This local type states only what these steps use.
-const fixtureModule = new URL("../fixtures/entry-points/producer.mjs", import.meta.url);
+const fixtureModule = new URL("../../packages/producer/test/fixtures/entry-points/producer.mjs", import.meta.url);
 const attempt = "s6-acceptance";
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
@@ -51,7 +51,7 @@ async function reviewedDraft(change?: BaselineChange): Promise<ProducerFixture> 
 }
 
 function stageSixCommand(run: ProducerFixture, action: string, ...args: string[]): SpawnSyncReturns<string> {
-  const result = spawnSync("node", [stageSix, action, ...args], {
+  const result = spawnSync("node", [producerCli, "stage-6", action, ...args], {
     encoding: "utf8",
     env: { ...process.env, CHOOM_TOOLS: tools, CHOOM_WORK: run.work, CHOOM_STAGE6_ID: attempt,
       CHOOM_STAGE6: join(run.work, "evidence", attempt) },

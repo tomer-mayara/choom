@@ -112,7 +112,9 @@ assert(/^s6-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id ?? ''), 'Set CHOOM_STAGE6_ID to a
 const work = directory(CHOOM_WORK);
 const tools = directory(CHOOM_TOOLS);
 runLayout(work, tools);
-const sourceTools = join(tools, 'docs/design/app-a');
+const sourceTools = join(tools, 'packages/producer/src');
+// The Stage 6 cookbook stays in docs/design/app-a.
+const sourceFolder = name => name.endsWith('.md') ? join(tools, 'docs/design/app-a') : sourceTools;
 assert(self === join(sourceTools, commandsName) && realpathSync(self) === self, 'Use the Stage 6 helper in the trusted checkout.');
 const attempt = join(directory(join(work, 'evidence')), id);
 assert(CHOOM_STAGE6 === attempt, 'Set CHOOM_STAGE6 to the matching attempt directory.');
@@ -313,7 +315,7 @@ async function start() {
   const review = directory(reviewDir);
   assert(review !== work && !review.startsWith(work + '/') && !work.startsWith(review + '/'),
     'Keep the readiness packet outside the saved run.');
-  const frozenTools = new Map(toolsToFreeze.map(name => [name, file(sourceTools, name)]));
+  const frozenTools = new Map(toolsToFreeze.map(name => [name, file(sourceFolder(name), name)]));
   const records = await loadRecords(frozenTools.get(recordsName));
   requireNames(fileNames(review), records.packetFiles, 'readiness packet');
   const packet = new Map(records.packetFiles.map(name => [name, file(review, name, { maxBytes: maxReviewBytes })]));

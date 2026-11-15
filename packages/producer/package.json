@@ -1,0 +1,16 @@
+{
+  "name": "@choom/producer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "dependency-cruiser": "18.7.2",
+    "jscpd": "5.4.2",
+    "knip": "6.44.1",
+    "picomatch": "4.0.7",
+    "ts-morph": "28.0.0",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "yaml": "2.9.1"
+  }
+}

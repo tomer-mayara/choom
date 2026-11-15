@@ -5,12 +5,12 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { decodeBaselineYaml } from '../../../src/lib/baseline-yaml.ts';
+import { decodeBaselineYaml } from '../../../../../src/lib/baseline-yaml.ts';
 import { producerFixture } from '../../fixtures/entry-points/producer.mjs';
 
-const tools = realpathSync(fileURLToPath(new URL('../../../', import.meta.url)));
+const tools = realpathSync(fileURLToPath(new URL('../../../../../', import.meta.url)));
 const attempt = 's6-fixture';
-const command = join(tools, 'docs/design/app-a/stage-6-commands.mjs');
+const command = join(tools, 'packages/producer/src/stage-6-commands.mjs');
 
 function stageSix(fixture, action, ...args) {
   const result = spawnSync('node', [command, action, ...args], { encoding: 'utf8',

@@ -1,7 +1,7 @@
 # Cookbook
 
 Start at the [root component manifest](../component.yaml). Paths are relative to
-each manifest. The five implementation components share the constraint artifacts
+each manifest. The six implementation components share the constraint artifacts
 here. TypeSpec owns their data and operation contracts; behavior and native
 configuration retain their own artifacts.
 
@@ -9,6 +9,7 @@ configuration retain their own artifacts.
 | --- | --- | --- | --- |
 | Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [Baseline opening](behavior/baseline-viewer/open.feature) and [file input](behavior/baseline-viewer/input.feature) | [Workflow](interfaces/workflow.tsp), [baseline codec](interfaces/baseline-codec.tsp), and [UI outcomes](interfaces/workspace.md) |
 | Baseline model | [`packages/baseline-model/component.yaml`](../packages/baseline-model/component.yaml) | [Baseline validation](behavior/baseline-viewer/validation.feature) | [Baseline contract](interfaces/baseline.tsp), [validation notes](interfaces/baseline.md), and [validator](../packages/baseline-model/src/baseline.ts) |
+| Producer | [`packages/producer/component.yaml`](../packages/producer/component.yaml) | [Baseline recovery](behavior/producer/recovery.feature) | [Stage 4 and 5 record format](../docs/design/app-a/record-format.md) and the [command line](../packages/producer/src/cli.ts) |
 | Duplication model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [Duplication report validation](behavior/baseline-viewer/duplication-report-codec.feature) | [Duplication contract](interfaces/interface-duplication.tsp) and [report notes](interfaces/interface-duplication.md) |
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | Baseline file selection and reading through the workspace | [Native file operations](interfaces/desktop-documents.tsp); [desktop boundary](interfaces/desktop.md) |
 | Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | [Installed baseline acceptance](../docs/change-requests/BV-native-acceptance.md) | Native file operations, Tauri [capability](../src-tauri/capabilities/main.json), and [configuration](../src-tauri/tauri.conf.json) |
@@ -17,7 +18,8 @@ The workspace owns `architecture/`, `components/`, and `lib/`. It connects
 baseline file input to validation, layout, and the view. The baseline model,
 duplication model, and desktop adapter have separate import boundaries. The
 baseline model is the `@choom/baseline-model` workspace in `packages/`; it
-imports no app code. Cargo dependencies and Tauri
+imports no app code. The producer is the `@choom/producer` workspace; it imports
+no app code except the duplication helpers' listed use of the viewer YAML readers. Cargo dependencies and Tauri
 capabilities define the native boundary.
 
 BV-03 supplies ordinary baseline opening and a basic component view. Nested
@@ -31,7 +33,8 @@ installed-app acceptance.
 The [CR-001 records](../docs/change-requests/CR-001-architecture-import.md)
 describe the former repository-analysis app. The separate
 [manual producer workflow](../docs/design/app-a/start-here.md) can create
-baselines and evidence; the viewer does not run it.
+baselines and evidence; the viewer does not run it. Its helpers are in
+[`packages/producer/src/`](../packages/producer/src/).
 
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
 Generated TypeScript declarations live with the
@@ -93,7 +96,7 @@ references; it does not infer missing facts or resolve external evidence.
 The app has no HTTP API or event transport. UI outcomes and native capabilities
 remain covered by their behavior and configuration checks.
 
-All six manifests share one unmeasured [OpenSLO Service](observability/service.yaml).
+All seven manifests share one unmeasured [OpenSLO Service](observability/service.yaml).
 There is no production SLI, SLO, or alert policy. The
 [evidence table and remaining work](TODO.md) separate local verification from
 native acceptance and production measurement prerequisites.

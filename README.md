@@ -282,9 +282,10 @@ See the [report contract](cookbook/interfaces/interface-duplication.md),
 | `bun run test:e2e` | Browser Cucumber acceptance against one fresh production build |
 | `bun run check:cookbook` | Component path integrity, contract ownership, and small OpenSLO Service shape |
 | `bun run check:contracts` | TypeSpec format/compilation, generated-output consistency, TypeScript conformance, and runtime interface tests |
-| `bun run check:dependencies` | Import boundary probes, cycles, unresolved imports, and the full frontend and baseline-model dependency graph |
+| `bun run check:dependencies` | Import boundary probes, cycles, unresolved imports, and the full frontend, baseline-model and producer dependency graph |
 | `bun run contracts:generate` | Regenerate committed TypeScript contracts and JSON schemas from TypeSpec |
 | `bun run analyze` | Source inventory using ts-morph |
+| `bun run producer <command> [action] [arguments...]` | Run a manual producer helper through its command line on Node 26; see the [producer cookbook](docs/design/app-a/start-here.md) |
 | `bun run habit-hooks --all` | Manual TypeScript and generic code-hygiene scan |
 | `bun run desktop:check` | Check the Rust shell with its lockfile |
 | `bun run desktop:lint` | Rust formatting and Clippy |
@@ -364,8 +365,8 @@ bun run test:e2e --tags @br-08c
 bun run test:e2e --tags @br-08d
 ```
 
-`bun run test:native` scans `test/unit` and `packages/baseline-model/test/unit`
-for native TypeScript suites.
+`bun run test:native` scans `test/unit`, `packages/baseline-model/test/unit` and
+`packages/producer/test/unit` for native TypeScript suites.
 `bun run test:dom` runs React suites with `test/preload.ts` in a separate process.
 Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
 `bun run test:integration` runs `packages/baseline-model/test/integration`. It
@@ -379,7 +380,7 @@ Failed browser scenarios retain screenshots and traces under `test-results/`.
 Run the duplication checks with:
 
 ```sh
-node --test test/interface/duplication/*.test.mjs
+node --test packages/producer/test/interface/duplication/*.test.mjs
 bun run test:behavior --tags '@interface-duplication or @duplication-report-codec or @di-02-03'
 bun test ./test/unit/architecture/duplication-workflow.test.ts ./test/unit/domain/interface-duplication.test.ts
 bun test ./test/interface/lib/interface-duplication-yaml.test.ts ./test/interface/lib/duplication-report-limits.test.ts
@@ -408,7 +409,7 @@ bun run test:behavior:packaged --tags @ep-06
 Run the Stage 6 system-entry publication check with:
 
 ```sh
-bun test ./test/interface/entry-points/producer-publication.test.mjs
+bun test ./packages/producer/test/interface/entry-points/producer-publication.test.mjs
 ```
 
 It opens the fixed version 4 baseline through the public decoder and checks the
@@ -420,6 +421,22 @@ The producer interface tests also run in `check:contracts`. The duplication test
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require
 the native driver setup described below.
+
+Run the focused producer checks with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit ./packages/producer/test/interface
+bun run producer --help
+```
+
+The `@producer` scenarios save a Stage 6 result from a reviewed fixture through
+the producer command line. The unit suites check the shared record validator and
+the command mapping. The interface suites run each helper with no action or an
+unknown action, check the source copies that each stage saves, and run the graph
+fixture, Knip image check, inventory view, recovery check and duplication start
+without Docker. They need `python3` on `PATH`. Docker-based Knip and graph runs
+are not part of these checks.
 
 The normal browser opening test uses the real app, file reader, decoder, layout,
 and component view. Controlled workflow tests cover failures, cancellation,
@@ -545,6 +562,7 @@ src/
   platform/            Host detection, native file selection/read, and browser file access
 packages/
   baseline-model/      @choom/baseline-model: baseline validation and generated contract types
+  producer/            @choom/producer: manual producer helpers, their command line, and tests
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, TypeSpec contracts, generated schemas, observability
 scripts/               Contract generation/checks and separate source-analysis tools
@@ -552,7 +570,7 @@ test/                  Unit/interface suites and shared Cucumber steps
 ```
 
 The root [component manifest](component.yaml) links the four constraints and the
-`workspace`, `baseline-model`, and `native-shell` children. The [workspace](src/component.yaml) owns
+`workspace`, `baseline-model`, `producer`, and `native-shell` children. The [workspace](src/component.yaml) owns
 the app entrypoints and `architecture/`, `components/`, and `lib/`. Its children
 are `architecture-model` in `domain/` and `desktop-adapter` in `platform/`.
 These manifests describe this repository for development checks. The viewer
@@ -565,16 +583,27 @@ the same package later. Its exports are `.` (the validator), `./contracts`,
 `./baseline-format`, and `./readonly-data`. It uses only TypeScript that Node
 can remove, so a Node process imports it with no build step.
 
+The [producer](packages/producer/component.yaml) is the `@choom/producer` Bun
+workspace. It holds the manual Stage 1 to 6 helpers, the duplication helpers,
+and `cli.ts`, which `bun run producer` runs on Node 26. The cookbooks, the
+[record format](docs/design/app-a/record-format.md), and the duplication guide
+stay in `docs/design/app-a/`. Stage 1 and Stage 2 still run code blocks from
+their saved cookbook copies, and each stage still saves copies of the files it
+uses, under the same names as before.
+
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model
-imports no app code from `src/` and no package other than `zod`. The workflow uses
+imports no app code from `src/` and no package other than `zod`. The producer
+imports no app code either, with one listed exception: the duplication helpers
+keep their use of the viewer's baseline and report YAML readers and the
+duplication key. The workflow uses
 injected file and layout operations. The platform owns Tauri access. React
 components use the [workspace view](src/architecture/workspace-view.ts) and
 prepared diagram data. App connects the workspace to the UI. ELK loads on demand
 before a baseline view is committed.
 
 `bun run check:dependencies` runs [import probes](scripts/check-dependency-boundaries.ts)
-in temporary projects and checks the full frontend and baseline-model dependency graph. The probes
+in temporary projects and checks the full frontend, baseline-model and producer dependency graph. The probes
 cover permitted and rejected imports, including erased types and imports with
 runtime effects. Cargo dependencies and Tauri capabilities govern the Rust
 boundary. The host registers only `document_file_read` and enables the open-file
@@ -598,6 +627,14 @@ The compatibility wrapper depends on `@typescript/old` through a `^6` range. A d
 Use `bun run typecheck` to check with the native compiler. Do not replace the compatibility alias with TypeScript 7: it does not provide the legacy compiler API.
 
 `cn` supplies the `cn` utility; no separate `clsx` or `tailwind-merge` dependency is needed. The shadcn generator may add dependencies or rewrite the utility when generating components; review those changes before accepting them. Knip checks application, test, tooling, and CSS dependencies.
+
+`packages/producer/package.json` declares the packages that the producer helpers load
+from the tool checkout, at the versions already in `bun.lock`: `yaml`, `picomatch`,
+`typescript`, `ts-morph`, `knip`, `dependency-cruiser`, and `jscpd`. The helpers
+resolve them from the root `node_modules`, which the hoisted linker keeps in place.
+Knip ignores `dependency-cruiser` and `picomatch` in that workspace: the Stage 4
+graph helper loads dependency-cruiser by file path, and Stage 4 loads picomatch by
+a name in a variable, so Knip cannot see either use.
 
 The Codex CLI is a development tool. Authenticate it separately when needed; no
 credentials, AI backend, or Codex subprocess are embedded in the app. Rust

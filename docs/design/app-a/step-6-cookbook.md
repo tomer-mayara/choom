@@ -43,7 +43,7 @@ snapshot file digests, selected fact references, and the published draft bytes.
 Keep the Stage 5 environment from its cookbook and run:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" verify 5
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 ```
 
 Do not rerun `finish 5`: its required state before publication no longer applies.
@@ -185,7 +185,7 @@ the trusted helper:
 
 ```sh
 export CHOOM_STAGE6_REVIEW="/absolute/path/to/stage-6-review"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" start \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 start \
   "$CHOOM_STAGE6_REVIEW"
 ```
 
@@ -206,7 +206,7 @@ Working drafts and the run manifest remain unchanged.
 To perform the same preflight before creating the attempt, use:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" preflight \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 preflight \
   "$CHOOM_STAGE6_REVIEW"
 ```
 
@@ -217,7 +217,7 @@ This is optional and read-only. `start` includes the preflight.
 After `start` succeeds, run:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" finish
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 finish
 ```
 
 The helper checks the prepared attempt and original inputs again. It creates:
@@ -251,7 +251,7 @@ No graph, Knip profile, entry selection, owner or acceptance decision changes.
 For a read-only check after preparation and before publication, use:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" check
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 check
 ```
 
 `finish` includes this check. Do not rerun `start` or `finish` after success.
@@ -270,7 +270,7 @@ Do not remove or rewrite historical registered evidence to force a pass.
 After publication, use the completed-state check:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" verify
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 verify
 ```
 
 Check that the final references resolve to the fixed files, their digests

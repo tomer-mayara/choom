@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
-import { producerSource, runHelper, toolsRoot, withScratch } from "../../support/producer-commands.ts";
+import { producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
 
 // These commands can run without Docker against the tools installed in the checkout.
 interface DuplicationFixture { root: string; work: string; output: string }
@@ -12,7 +12,7 @@ interface DuplicationModule { fixtureRun(): DuplicationFixture }
 const sha256 = (bytes: string): string => createHash("sha256").update(bytes).digest("hex");
 const helper = (name: string): string => join(producerSource, name);
 // The fixture is JavaScript. This local type states only what these tests use.
-const duplicationModule = new URL("../../fixtures/duplication-producer/fixture.mjs", import.meta.url);
+const duplicationModule = new URL("../fixtures/duplication-producer/fixture.mjs", import.meta.url);
 
 function savedSnapshot(work: string, snapshotId: string): { inventory: string; digest: string } {
   const source = "export const value = 1;\n";

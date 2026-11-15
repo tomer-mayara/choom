@@ -3,7 +3,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fixtureRun, digest } from '../../fixtures/duplication-producer/fixture.mjs';
-import { startAssessment } from '../../../docs/design/app-a/duplication-commands.mjs';
+import { startAssessment } from '../../../src/duplication-commands.mjs';
 
 // Given a completed baseline and snapshot, when a separate assessment starts,
 // then it records the public endpoints and gaps without changing the prior run.

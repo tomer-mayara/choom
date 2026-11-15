@@ -68,7 +68,7 @@ interface RecordsModule {
 }
 
 // The validator is JavaScript. This local type states only what these tests use.
-const recordsModule = new URL("../../../docs/design/app-a/stage-6-records.mjs", import.meta.url);
+const recordsModule = new URL("../../src/stage-6-records.mjs", import.meta.url);
 const { validateDiscoveryRecords, validateRecords } = (await import(recordsModule.href)) as RecordsModule;
 
 const digest = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");

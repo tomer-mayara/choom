@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 
 export interface CommandResult { status: number | null; stdout: string; stderr: string }
 
-export const toolsRoot = realpathSync(fileURLToPath(new URL("../../", import.meta.url)));
-export const producerSource = join(toolsRoot, "docs/design/app-a");
+export const toolsRoot = realpathSync(fileURLToPath(new URL("../../../../", import.meta.url)));
+export const producerSource = join(toolsRoot, "packages/producer/src");
 export const producerDocuments = join(toolsRoot, "docs/design/app-a");
 
 // Start each command with the caller's environment minus any producer settings,
@@ -29,6 +29,10 @@ function runProgram(program: string, args: readonly string[], settings: Record<s
 // Run a producer helper file as an operator does: node for JavaScript, python3 for Python.
 export function runHelper(path: string, args: readonly string[] = [], settings: Record<string, string> = {}): CommandResult {
   return runProgram(path.endsWith(".py") ? "python3" : "node", [path, ...args], settings);
+}
+
+export function runCli(args: readonly string[], settings: Record<string, string> = {}): CommandResult {
+  return runProgram("node", [join(producerSource, "cli.ts"), ...args], settings);
 }
 
 export function withScratch<T>(use: (scratch: string) => T): T {

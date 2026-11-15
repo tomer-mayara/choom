@@ -60,7 +60,9 @@ const tools = directory(CHOOM_TOOLS);
 assert(work !== tools && !tools.startsWith(work + '/'), 'Keep trusted tools outside CHOOM_WORK.');
 const attempt = join(directory(join(work, 'evidence')), id);
 assert(!process.env.CHOOM_STAGE4 || process.env.CHOOM_STAGE4 === attempt, 'CHOOM_STAGE4 does not match the attempt.');
-const sourceSelf = join(tools, 'docs/design/app-a/stage-4-commands.mjs');
+// The cookbooks and record format stay in docs/design/app-a; the code is in packages/producer/src.
+const sourceTool = name => join(tools, name.endsWith('.md') ? 'docs/design/app-a' : 'packages/producer/src', name);
+const sourceSelf = sourceTool('stage-4-commands.mjs');
 assert(self === (action === 'start' ? sourceSelf : join(attempt, 'stage-4-commands.mjs')),
   'Use the trusted checkout for start and the frozen attempt helper for later commands.');
 const require = createRequire(join(tools, 'package.json'));
@@ -453,7 +455,7 @@ if (action === 'start') {
   try { checkSnapshotMetadata(current); }
   catch (error) { console.error(error.message); process.exit(1); }
   const prepared = profile(current);
-  const frozen = Object.fromEntries(toolsToFreeze.map(name => [name, read(join(tools, 'docs/design/app-a', name))]));
+  const frozen = Object.fromEntries(toolsToFreeze.map(name => [name, read(sourceTool(name))]));
   mkdirSync(attempt);
   for (const [name, bytes] of Object.entries(frozen)) save(name, bytes);
   for (const name of drafts) save(name + '.before.yaml', current.inputs[name]);

@@ -141,6 +141,13 @@ export CHOOM_SNAPSHOT_ID="snapshot-001"
 export CHOOM_BASELINE_ID="baseline-001"
 ```
 
+The cookbooks start the trusted helpers through the producer command line,
+`node "$CHOOM_TOOLS/packages/producer/src/cli.ts" <command> <action>`. It works
+from any directory. In the tool checkout, `bun run producer <command> <action>`
+runs the same command. It runs the helper in `packages/producer/src/` with the
+same arguments and environment. When a cookbook runs a helper copy saved in an
+attempt folder, use that saved copy as the cookbook shows.
+
 Choose a new working folder whose parent exists. For a checkout-local run, create
 the parent with `mkdir -p "$CHOOM_TOOLS/work-choom"` and set
 `CHOOM_WORK="$CHOOM_TOOLS/work-choom/analysis-run-001"`. Leave the run folder
@@ -506,12 +513,14 @@ followed by
 ## File guide
 
 The six cookbooks are the operating instructions. Read their helpers when auditing
-or changing the workflow; the cookbooks identify which helper to invoke.
+or changing the workflow; the cookbooks identify which helper to invoke. The
+helpers and the command line are in [`packages/producer/src/`](../../../packages/producer/src/).
 
 | Files | Purpose |
 | --- | --- |
 | `step-1-cookbook.md` through `step-6-cookbook.md` | Stage instructions, LLM prompts, checks and next handoff |
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
+| `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
 | `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
 | `stage-3-finish.mjs` | Validate, save and verify the latest completed Stage 3 state |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5 |

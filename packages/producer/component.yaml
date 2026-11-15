@@ -1,0 +1,13 @@
+name: producer
+description: Manual producer helpers and command line that recover a baseline and discovery result from one snapshot.
+
+artifacts:
+  behavior:
+    - path: ../../cookbook/behavior/producer/recovery.feature
+  observability:
+    - path: ../../cookbook/observability/service.yaml
+  architecture:
+    - path: ../../.dependency-cruiser.cjs
+  contracts:
+    # The Stage 4 and 5 review records and the version 4 publication rules.
+    - path: ../../docs/design/app-a/record-format.md

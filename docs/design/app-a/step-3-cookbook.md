@@ -29,10 +29,10 @@ each command separately and stop if it fails. The following example uses
 ```sh
 export CHOOM_STAGE3_ID="s3-001"
 export CHOOM_STAGE3="$CHOOM_WORK/evidence/$CHOOM_STAGE3_ID"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-3-commands.mjs" start
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3 start
 ```
 
-The [manual helper](stage-3-commands.mjs) checks the saved manifest, discovery,
+The [manual helper](../../../packages/producer/src/stage-3-commands.mjs) checks the saved manifest, discovery,
 empty baseline, and registered artifact digests. The manifest must mark entry
 analysis complete. Discovery must select a registered entry analysis.
 
@@ -41,7 +41,7 @@ The helper creates a new attempt directory and saves:
 - `run.before.yaml`, `discovery.before.yaml`, and `baseline.before.yaml`.
 - `handoff.json`, with the selected inputs and helper digests.
 - Copies of this cookbook, the command helper, and the
-  [finalizer](stage-3-finish.mjs).
+  [finalizer](../../../packages/producer/src/stage-3-finish.mjs).
 - `commands.md` and command receipts.
 
 It does not change the working drafts or register the new files yet. It does not

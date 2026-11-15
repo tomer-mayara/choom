@@ -96,8 +96,8 @@ support acceptance when it goes through the real production boundary.
 Keep an existing mixed suite in the category that covers its real collaboration
 or acceptance journey. Do not add doubles or weaken assertions just to put it in
 unit. Document focused commands in the owning app or workspace. The current
-Bun native runner scans the root `test/unit/` and `packages/baseline-model/test/unit/`
-for TypeScript suites and excludes `*.test.tsx`. `test:integration` runs the
+Bun native runner scans the root `test/unit/`, `packages/baseline-model/test/unit/`
+and `packages/producer/test/unit/` for TypeScript suites and excludes `*.test.tsx`. `test:integration` runs the
 baseline-model integration suite, which starts Node instead of Bun.
 The separate DOM runner selects React suites with `test/preload.ts`.
 `test:e2e` builds once and runs browser Cucumber acceptance using Playwright;

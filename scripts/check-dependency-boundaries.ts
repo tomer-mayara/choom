@@ -30,6 +30,12 @@ const analyzerBoundary = "development-analyzers-stay-out-of-app";
 const layoutBoundary = "layout-engine-loads-through-composition";
 const modelBoundary = "baseline-model-imports-no-app-code";
 const modelIndependence = "baseline-model-is-platform-independent";
+const producerStage = "packages/producer/src/stage-6-commands.mjs";
+const producerCli = "packages/producer/src/cli.ts";
+const producerFiles = "packages/producer/src/duplication-files.mjs";
+const producerCommands = "packages/producer/src/duplication-commands.mjs";
+const producerBoundary = "producer-imports-no-app-code";
+const producerDuplicationBoundary = "producer-duplication-helpers-use-fixed-app-modules";
 
 const allowed: readonly Probe[] = [
   ["src/App.tsx", workspace, "runtime"],
@@ -66,6 +72,13 @@ const allowed: readonly Probe[] = [
   [model, "node_modules/zod/index.js", "runtime"],
   [model, modelContracts, "type"],
   ["src/platform/browser-documents.ts", platformContracts, "type"],
+  [producerStage, "node_modules/yaml/index.js", "runtime"],
+  [producerStage, model, "runtime"],
+  [producerCli, modelContracts, "type"],
+  [producerFiles, codec, "runtime"],
+  [producerFiles, parser, "runtime"],
+  [producerCommands, domain, "runtime"],
+  [producerCommands, reportCodec, "runtime"],
 ];
 
 const forbidden: readonly Probe[] = [
@@ -116,6 +129,11 @@ const forbidden: readonly Probe[] = [
   ["src/platform/documents.ts", workflow, "type", "platform-does-not-depend-on-workspace"],
   ["src/App.tsx", "node_modules/@tauri-apps/api/index.js", "runtime", "desktop-access-through-adapter"],
   [workspace, "test/support/baseline-fixtures.ts", "type", "no-test-code-in-app"],
+  [producerStage, codec, "runtime", producerBoundary],
+  [producerStage, "src/platform/documents.ts", "runtime", producerBoundary],
+  [producerCli, domainContracts, "type", producerBoundary],
+  [producerFiles, "src/platform/documents.ts", "runtime", producerDuplicationBoundary],
+  [producerCommands, layout, "runtime", producerDuplicationBoundary],
 ];
 
 function moduleSpecifier(source: string, target: string): string {
@@ -190,7 +208,7 @@ async function checkProbes(repository: string, probes: readonly Probe[]): Promis
     await copyFile(join(repository, "package.json"), join(root, "package.json"));
     await writeProbeModules(root, probes);
     // Cruise the same source folders as check:dependencies.
-    const inputs = ["src", "packages/baseline-model/src"];
+    const inputs = ["src", "packages/baseline-model/src", "packages/producer/src"];
     for (const input of inputs) await mkdir(join(root, input), { recursive: true });
     const cruise = Bun.spawnSync([
       "node", join(repository, "node_modules/dependency-cruiser/bin/dependency-cruiser.mjs"),

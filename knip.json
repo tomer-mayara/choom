@@ -26,6 +26,12 @@
       "bun": false,
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/producer": {
+      "bun": false,
+      "ignoreDependencies": ["dependency-cruiser", "picomatch"],
+      "entry": ["src/*.mjs", "test/**/*.test.{ts,mjs}"],
+      "project": ["src/**/*.{ts,mjs}", "test/**/*.{ts,mjs}"]
     }
   }
 }

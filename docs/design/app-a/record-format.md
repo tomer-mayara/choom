@@ -584,9 +584,9 @@ Set `CHOOM_REVIEW` to the canonical absolute review-folder path. Keep the curren
 stage's environment from its cookbook. For stage 4:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" check 4 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" finish 4 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" verify 4
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish check 4 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish finish 4 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 4
 ```
 
 For stage 5, replace each `4` with `5`. Run commands one at a time and stop on
