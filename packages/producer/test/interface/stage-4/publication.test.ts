@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
-import { type FixtureBaseline, publishStageFour, stageFourBaselineId, stageFourPublication, type StageFourPublication }
-  from "../../fixtures/stage-4-publication/fixture.ts";
+import { type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
+  type StageFourPublication } from "../../fixtures/stage-4-publication/fixture.ts";
 import { folderState } from "../../support/producer-record.ts";
 
 // The Stage 4/5 publisher runs as an operator runs it, on a run after Stage 3
@@ -59,6 +59,44 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     }, (baseline) => {
       const http = baseline.components.find((component) => component.id === "http");
       if (http) http.id = baseline.id;
+    });
+  }, 60_000);
+});
+
+// The publisher checks the receipt of each numbered request of Stage 4 inspect after collect.
+function requested(fixture: StageFourPublication, args: string[], status: number): void {
+  expect({ args, status: inspectStageFour(fixture, args).status }).toEqual({ args, status });
+}
+
+function refusedInCheck(fixture: StageFourPublication, message: string): void {
+  const before = folderState(fixture.work);
+  const refused = publishStageFour(fixture, "check");
+  expect({ status: refused.status, stdout: refused.stdout, stderr: refused.stderr }).toEqual({ status: 1, stdout: "", stderr: message + "\n" });
+  expect(folderState(fixture.work)).toEqual(before);
+}
+
+describe("the Stage 4/5 publisher with Stage 4 excerpt requests", () => {
+  test("accepts a completed excerpt request and a failed one", () => {
+    withPublication((fixture) => {
+      requested(fixture, ["excerpt", "cli.ts", "1", "1"], 0);
+      requested(fixture, ["excerpt", "missing.ts", "1", "1"], 1);
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified" });
+    });
+  }, 60_000);
+
+  test.each([
+    ["a changed excerpt", (fixture: StageFourPublication) => {
+      requested(fixture, ["excerpt", "cli.ts", "1", "1"], 0);
+      appendFileSync(join(fixture.attempt, "excerpt-001.json"), "\n");
+    }, "Collection output changed: excerpt-001.json"],
+    ["a failed excerpt request with an output", (fixture: StageFourPublication) => {
+      requested(fixture, ["excerpt", "missing.ts", "1", "1"], 1);
+      writeFileSync(join(fixture.attempt, "excerpt-001.json"), "{}\n");
+    }, "A failed excerpt has partial output. Preserve it and use a fresh attempt: excerpt-001"],
+  ])("refuses %s in check, and writes nothing", (_name, change, message) => {
+    withPublication((fixture) => {
+      change(fixture);
+      refusedInCheck(fixture, message);
     });
   }, 60_000);
 });
