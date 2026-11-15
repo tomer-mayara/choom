@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { runCli, toolsRoot } from "./commands.ts";
@@ -42,6 +42,14 @@ export async function completedRun(model: string, change?: BaselineChange): Prom
   }
   return { root: fixture.root, work: fixture.work, baselineId: fixture.baseline.id,
     baselinePath: `baselines/${fixture.baseline.id}/baseline.yaml` };
+}
+
+// Copies the run folder to scratch/run, so that a test can change the copy and
+// keep the run for other tests. Returns the path of the copy.
+export function copyRunFolder(run: CompletedRunFixture, scratch: string): string {
+  const work = join(scratch, "run");
+  cpSync(run.work, work, { recursive: true });
+  return work;
 }
 
 export interface DecisionEntry { action: string; itemId: string; field: string; oldValue?: unknown; newValue?: unknown }

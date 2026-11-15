@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { appendFileSync, cpSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { type CommandResult, runCli, withScratch } from "../../support/commands.ts";
-import { completedRun, type CompletedRunFixture, type DecisionEntry as Entry, type DecisionFile, decisionFileYaml, stageSixAttempt }
-  from "../../support/completed-run.ts";
+import { completedRun, type CompletedRunFixture, copyRunFolder, type DecisionEntry as Entry, type DecisionFile, decisionFileYaml,
+  stageSixAttempt } from "../../support/completed-run.ts";
 import { folderState } from "../../support/producer-record.ts";
 
 // The baseline decide command on copies of one run that the Stage 6 command line
@@ -25,11 +25,7 @@ beforeAll(async () => {
 
 afterAll(() => rmSync(published.root, { recursive: true, force: true }));
 
-function copiedRun(scratch: string): string {
-  const work = join(scratch, "run");
-  cpSync(published.work, work, { recursive: true });
-  return work;
-}
+const copiedRun = (scratch: string): string => copyRunFolder(published, scratch);
 
 function baselineDigest(work: string): string {
   return sha256(readFileSync(join(work, published.baselinePath)));

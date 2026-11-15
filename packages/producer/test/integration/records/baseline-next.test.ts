@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { appendFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { type CommandResult, runCli, withScratch } from "../../support/commands.ts";
-import { completedRun, type CompletedRunFixture, type DecisionEntry, type DecisionFile, decisionFileYaml, stageSixAttempt }
-  from "../../support/completed-run.ts";
+import { completedRun, type CompletedRunFixture, copyRunFolder, type DecisionEntry, type DecisionFile, decisionFileYaml,
+  stageSixAttempt } from "../../support/completed-run.ts";
 import { folderState } from "../../support/producer-record.ts";
 
 // The baseline next command on copies of one run that the Stage 6 command line
@@ -33,11 +33,7 @@ beforeAll(async () => {
 
 afterAll(() => rmSync(published.root, { recursive: true, force: true }));
 
-function copiedRun(scratch: string): string {
-  const work = join(scratch, "run");
-  cpSync(published.work, work, { recursive: true });
-  return work;
-}
+const copiedRun = (scratch: string): string => copyRunFolder(published, scratch);
 
 // Saves a decision record as decisions/<file>.yaml in the run copy, and returns its bytes.
 function saveRecord(work: string, entries: DecisionEntry[], change: Partial<DecisionFile> = {}, file = change.id ?? "decisions-001"):
