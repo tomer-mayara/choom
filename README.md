@@ -657,23 +657,27 @@ bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/int
 
 After Stage 6, `bun run producer baseline decide --run RUN_FOLDER DECISION_FILE`
 records human decisions about the published baseline: a person accepts or
-corrects proposed statements. `validateDecisions` in `@choom/baseline-model`
-checks the decision file against the baseline and the SHA-256 of its file. The
-producer refuses a decider who has the name of a model in the run's LLM call
-records. That check is a process rule; it does not prove that a person decided.
-The command saves the file once as `decisions/<id>.json` and changes no other
-file of the run. The [record format](docs/design/app-a/record-format.md#decision-record)
-gives the fields and the checks. The `@producer` scenarios record an accept and a
-correction for a run that the Stage 6 command line completed, and refuse a decider
-that is the model of the run and a correction of a value that the baseline does
-not have. The unit suites check the decision contract rules, the statements of a
-baseline, the completed run reader and the decider check; the interface suite
-checks the contract; the integration suite runs the command. Run them with:
+corrects proposed statements in a YAML decision file. The producer reads the
+file with the bounded YAML profile of a baseline, and `validateDecisions` in
+`@choom/baseline-model` checks it against the baseline and the SHA-256 of its
+file. The producer refuses a decider who has the name of a model in the run's
+LLM call records. That check is a process rule; it does not prove that a person
+decided. The command saves the exact file once as `decisions/<id>.yaml` and
+changes no other file of the run. `readDecisionRecord` in `decision-record.ts`
+reads a saved record with the same rules. The
+[record format](docs/design/app-a/record-format.md#decision-record) gives the
+fields and the checks. The `@producer` scenarios record an accept and a
+correction from YAML files that start with a comment, for a run that the Stage 6
+command line completed, and refuse a decider that is the model of the run and a
+correction of a value that the baseline does not have. The unit suites check the
+decision contract rules, the statements of a baseline, the YAML decision file and
+the saved record, the completed run reader and the decider check; the interface
+suite checks the contract; the integration suite runs the command. Run them with:
 
 ```sh
 bun run test:behavior --tags @producer
 bun test ./packages/baseline-model/test/unit/baseline-decisions.test.ts ./test/interface/domain/baseline-decisions.test.ts
-bun test ./packages/producer/test/unit/completed-run.test.ts ./packages/producer/test/unit/decider-check.test.ts
+bun test ./packages/producer/test/unit/decision-record.test.ts ./packages/producer/test/unit/completed-run.test.ts ./packages/producer/test/unit/decider-check.test.ts
 bun test ./packages/producer/test/integration/records/baseline-decide.test.ts
 ```
 
@@ -881,8 +885,9 @@ holds the design rule "Do not save hidden reasoning": every stage that saves an
 LLM call record checks that the response holds only the visible answer and that
 the call record has `hiddenReasoning: not-saved`.
 The baseline command (`baseline-commands.ts`) records human decisions after
-Stage 6: `baseline-decide.ts` reads the completed run with `completed-run.ts`
-and checks the decider with `decider-check.ts`.
+Stage 6: `baseline-decide.ts` reads the completed run with `completed-run.ts`,
+reads the YAML decision file with `decision-record.ts`, which uses the bounded
+YAML profile of `stage-6-records.ts`, and checks the decider with `decider-check.ts`.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model

@@ -295,23 +295,24 @@ an existing run.
 
 Saving the baseline does not accept its statements. After the verified result,
 a person can accept or correct proposed statements. That person is the decider;
-a model cannot decide. Write the decision file outside the run folder, as the
-[record format](record-format.md#decision-record) describes. Its
+a model cannot decide. Write the decision file in YAML outside the run folder, as
+the [record format](record-format.md#decision-record) describes. It can start
+with a comment, such as the comment of an entry that the viewer copies. Its
 `baselineDigest` is the `sha256` of the published baseline in the `run.yaml`
 registry. Then run:
 
 ```sh
-export CHOOM_DECISIONS="/absolute/path/to/decisions.json"
+export CHOOM_DECISIONS="/absolute/path/to/decisions.yaml"
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline decide --run "$CHOOM_WORK" "$CHOOM_DECISIONS"
 ```
 
-The command checks the decisions against the published baseline. It refuses a
-decider who has the name of a model in the run's LLM call records. This check is
-a process rule: it does not prove that a person decided. The command saves the
-file once as `decisions/<id>.json` and prints its SHA-256; keep it with the run
-notes. It does not change the baseline or another file of the run. Use a new ID
-for new decisions. Ticket GA-01b makes the next baseline version from saved
-decisions.
+The command reads the file with the bounded YAML profile of a baseline and
+checks the decisions against the published baseline. It refuses a decider who
+has the name of a model in the run's LLM call records. This check is a process
+rule: it does not prove that a person decided. The command saves the exact file
+once as `decisions/<id>.yaml` and prints its SHA-256; keep it with the run notes.
+It does not change the baseline or another file of the run. Use a new ID for new
+decisions. Ticket GA-01b makes the next baseline version from saved decisions.
 
 ## Saved state
 
@@ -321,4 +322,4 @@ decisions.
 | After `start` | Same proposal; fixed output is prepared. | Checkpoints, review and validation are saved. Working drafts are unchanged. |
 | After `finish` | Fixed version saved by digest. Statements remain proposed. | Fixed discovery selects that baseline. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
 | After `verify` | Unchanged. | Read-only verification reports the saved result and its limits. |
-| After `baseline decide` | Unchanged. Statements stay proposed. | `decisions/<id>.json` holds the decision file. The discovery and the manifest do not change. |
+| After `baseline decide` | Unchanged. Statements stay proposed. | `decisions/<id>.yaml` holds the decision file. The discovery and the manifest do not change. |

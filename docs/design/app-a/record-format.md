@@ -914,38 +914,54 @@ the recovery capture do not use the record.
 ## Decision record
 
 Stage 6 publishes a baseline whose statements are all `proposed`. After Stage 6,
-a person can accept or correct statements. The person writes a decision file,
-and `baseline decide` checks it and saves it in the run folder as a decision
-record. The record does not change the baseline. Ticket GA-01b makes the next
-baseline version from saved decision records. The
+a person can accept or correct statements. The person writes a decision file in
+YAML, and `baseline decide` checks it and saves it in the run folder as a
+decision record. The record does not change the baseline. Ticket GA-01b makes
+the next baseline version from saved decision records. The
 [TypeSpec contract](../../../cookbook/interfaces/baseline-decisions.tsp) in
-`@choom/baseline-model` defines the file, so the viewer can use it too.
+`@choom/baseline-model` defines the value of the file, so the viewer can use it
+too. A copied decision-file entry from the viewer starts with a YAML comment
+that names the baseline.
 
-```json
-{
-  "formatVersion": 1,
-  "id": "decisions-001",
-  "baselineRef": "baseline-001",
-  "baselineDigest": "<64 lowercase hexadecimal characters>",
-  "decider": { "name": "Ada Example", "kind": "human" },
-  "decidedAt": "2026-11-15T10:30:00Z",
-  "entries": [
-    { "action": "accept", "itemId": "cli", "field": "purpose" },
-    { "action": "correct", "itemId": "billing", "field": "purpose",
-      "oldValue": "Bill the saved orders.", "newValue": "Bill each saved order once." }
-  ]
-}
+```yaml
+# Baseline baseline-001, SHA-256 <64 lowercase hexadecimal characters>
+formatVersion: 1
+id: decisions-001
+baselineRef: baseline-001
+baselineDigest: <64 lowercase hexadecimal characters>
+decider:
+  name: Ada Example
+  kind: human
+decidedAt: 2026-11-15T10:30:00Z
+entries:
+  - action: accept
+    itemId: cli
+    field: purpose
+  - action: correct
+    itemId: billing
+    field: purpose
+    oldValue: Bill the saved orders.
+    newValue: Bill each saved order once.
 ```
+
+The producer reads a decision file with the [bounded YAML profile](#reader-limits)
+of a baseline: one UTF-8 document of at most 16 MiB within the same YAML limits,
+the core schema, unique string keys and values that JSON can hold. Comments are
+allowed. Anchors, aliases, explicit tags and directives are refused, and a merge
+key (`<<`) does not merge: without an alias it is an ordinary key, which the
+contract refuses. `decidedAt` stays text. JSON is also YAML, so a decision file
+in JSON form is read the same way. A refusal of the profile starts with
+"Decision file", such as `Decision file YAML mapping keys must be unique strings.`
 
 | Field | Value |
 | --- | --- |
 | `formatVersion` | `1`. |
-| `id` | The ID of the record: lowercase letters, digits and hyphens, at most 128 characters. The record is saved as `decisions/<id>.json`. |
+| `id` | The ID of the record: lowercase letters, digits and hyphens, at most 128 characters. The record is saved as `decisions/<id>.yaml`. |
 | `baselineRef` | The ID of the published baseline. |
 | `baselineDigest` | The SHA-256 of the published baseline file, as 64 lowercase hexadecimal characters. It is the `sha256` of the baseline in the `run.yaml` registry, which Stage 6 computes from the saved bytes. The viewer computes the same digest of the file that it opens. |
 | `decider` | `name` of the person who decided, and `kind: human`. |
 | `decidedAt` | When the person decided: an RFC 3339 time in UTC, such as `2026-11-15T10:30:00Z`. |
-| `entries` | At least one decision. `{action: accept, itemId, field}` accepts a statement with its current value. `{action: correct, itemId, field, oldValue, newValue}` replaces the value; `oldValue` is the current value. Values are JSON data. There is no reject action: a statement without a decision stays proposed. |
+| `entries` | At least one decision. `{action: accept, itemId, field}` accepts a statement with its current value. `{action: correct, itemId, field, oldValue, newValue}` replaces the value; `oldValue` is the current value. Values are data that JSON can hold. There is no reject action: a statement without a decision stays proposed. |
 
 An entry names one statement: an item field with `value`, `status` and
 `evidenceRefs`. `itemId` is the ID of a component, interface, resource or rule.
@@ -988,16 +1004,22 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline decide --run "$CHOOM_W
 The command reads `run.yaml`, which must report `completed` with
 `baselineRecovery: complete` and name the published baseline. It checks the
 registered SHA-256, the bounded YAML profile and the shared rules of the
-published baseline, and reads the decision file: UTF-8 JSON of at most 16 MiB.
-After `validateDecisions` and the decider check below, it saves the exact bytes
-of the file once, as `decisions/<id>.json`. A second save with the same ID is
-refused, also when the content is the same. The baseline, the discovery result,
-`run.yaml` and every other file of the run stay unchanged, so `run.yaml` does
-not register the record. The output is JSON: the record path and its SHA-256,
-the baseline, the decider, the time, each decided statement, and the call
-records and models that the decider check compared. Keep the SHA-256 with the
-run notes. The command is not a stage action: it does not check the producer
-code record, because a person can decide after the run with a later producer.
+published baseline, and reads the decision file with the bounded YAML profile
+above. After `validateDecisions` and the decider check below, it saves the exact
+bytes of the file once, comments included, as `decisions/<id>.yaml`. A second
+save with the same ID is refused, also when the content is the same. The
+baseline, the discovery result, `run.yaml` and every other file of the run stay
+unchanged, so `run.yaml` does not register the record. The command prints JSON,
+as the stage helpers do: the record path and its SHA-256, the baseline, the
+decider, the time, each decided statement, and the call records and models that
+the decider check compared. Keep the SHA-256 with the run notes. The command is
+not a stage action: it does not check the producer code record, because a
+person can decide after the run with a later producer.
+
+A later command reads a saved record with `readDecisionRecord(run, id)` in
+`packages/producer/src/decision-record.ts`. It reads `decisions/<id>.yaml` of a
+completed run with the same rules as `baseline decide` and returns its bytes,
+its SHA-256 and its value, for `validateDecisions`.
 
 The decider check is a process rule, not proof (decision D10). The command
 compares `decider.name` with the `model` value of each LLM call record of the

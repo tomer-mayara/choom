@@ -132,10 +132,12 @@ cycles. No field is silently discarded. Byte and YAML limits belong to the
 [workspace](workspace.md).
 
 The [decision contract](baseline-decisions.tsp) defines a decision file: human
-decisions that accept or correct statements of one saved baseline. Import
-`validateDecisions` from `@choom/baseline-model/baseline-decisions`. It takes the
-file and the baseline with the SHA-256 of its saved bytes, reads no file, and
-returns the typed decisions or every problem that it found. A statement is an
+decisions that accept or correct statements of one saved baseline. The file is
+YAML; the producer reads it with the bounded YAML profile of a baseline, and the
+contract describes the parsed value. Import `validateDecisions` from
+`@choom/baseline-model/baseline-decisions`. It takes that value and the baseline
+with the SHA-256 of its saved bytes, reads no file, and returns the typed
+decisions or every problem that it found. A statement is an
 item field with `value`, `status` and `evidenceRefs`. `baselineStatements` in
 `@choom/baseline-model/item-statements` lists them with their paths, and the
 producer record checks and the viewer's Recorded statements use the same list.
