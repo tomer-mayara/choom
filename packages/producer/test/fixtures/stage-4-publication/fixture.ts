@@ -3,7 +3,9 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } fro
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
+import { choomDefaultProfile } from "../../../src/parsing-profile.ts";
 import { producerReceipt } from "../../../src/producer-code.ts";
+import { noProjectSettingsGap } from "../../../src/stage-1-settings.ts";
 import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts";
 
 // A run after Stage 3 with a complete Stage 4 attempt and a reviewed Stage 4
@@ -99,7 +101,9 @@ function writeStageThreeRun(work: string): void {
   const inventorySha256 = register(inventoryRef, "evidence/inventory.json",
     jsonText({ formatVersion: 1, snapshotId: snapshotRef, files: inventoryFiles }));
   register("s1-file@evidence%2Fproducer.json", "evidence/producer.json", jsonText(producerReceipt(toolsRoot)));
-  register("settings-001", "evidence/settings.json", jsonText({ formatVersion: 1, snapshotId: snapshotRef, configs: [], packages: [] }));
+  // The fixture has no compiler settings, so the settings record names the Choom parsing profile.
+  register("settings-001", "evidence/settings.json", jsonText({ formatVersion: 2, snapshotId: snapshotRef, configs: [], packages: [],
+    parsingProfile: choomDefaultProfile, gaps: [noProjectSettingsGap(snapshotRef, choomDefaultProfile)] }));
   register("launch-settings", "evidence/launch-settings.json",
     jsonText({ cli: "choom serve", http: ["GET /orders"], unresolved: "plugin command" }));
   const planSha256 = register(planRef, "evidence/s2-check/entry-plan.json",

@@ -250,8 +250,9 @@ function checkCapturedInputs(inputs: StageOneInputs): void {
     capturedScope.requiredExclusion === inputs.requiredExclusion && capturedScope.exclusionsSha256 === hash(read('exclusions.txt')) &&
     capturedScope.scopeNotesSha256 === hash(read('evidence/scope-notes.md')), 'Capture exclusions or scope notes changed after capture.');
   const settings = json('evidence/settings.json');
-  assert(settings.formatVersion === 1 && settings.snapshotId === inputs.snapshotRef && Array.isArray(settings.configs) &&
-    Array.isArray(settings.packages), 'Complete settings collection before the final review.');
+  assert(settings.formatVersion === 2 && settings.snapshotId === inputs.snapshotRef && Array.isArray(settings.configs) &&
+    Array.isArray(settings.packages) && Object.hasOwn(settings, 'parsingProfile') && Array.isArray(settings.gaps),
+  'Complete settings collection before the final review.');
   const selection = json('evidence/settings-selection.json');
   assert(selection.formatVersion === 1 && selection.snapshotRef === inputs.snapshotRef && safe(selection.probe) &&
     selection.settingsSha256 === hash(read('evidence/settings.json')) &&

@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "snapshotId": "snapshot-check",
   "virtualRoot": "/repo",
   "limits": {
@@ -159,6 +159,8 @@
       "references": []
     }
   ],
+  "parsingProfile": null,
+  "gaps": [],
   "contentReads": [
     {
       "path": "package.json",

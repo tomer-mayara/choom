@@ -71,7 +71,7 @@ function contextPair({ name, ref, files, options, aliases, roots }: Group) {
 describe("Stage 4 start", () => {
   test("saves one context pair for each parsed compiler selection and a configuration-free fallback for the other source", () => {
     withScratch((scratch) => {
-      const work = startedRun(scratch, { snapshot, settings: { configs } });
+      const work = startedRun(scratch, { snapshot, settings: { configs, parsingProfile: null, gaps: [] } });
       const sourceFiles = snapshot.filter(({ path }) => path !== "README.md")
         .map(({ path, text }) => ({ path, sha256: sha256(text) }));
       expect(saved(work, "graph-profile.json")).toEqual({ formatVersion: 1, snapshotRef, attemptId, sourceFiles, contexts: [

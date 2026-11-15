@@ -2,15 +2,18 @@ import { readFileSync, lstatSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve, posix } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type * as TsMorph from 'ts-morph';
+import type * as ParsingProfiles from './parsing-profile.ts';
 
 // The Stage 1 settings collector. The Stage 1 settings action runs it in the tool
 // checkout; the recovery capture runs a settings.mts copy in its new run. It reads
 // package manifests and compiler settings through a snapshot-backed file system
-// and prints the settings record. It runs no target code. The copy cannot import
-// other producer files, so the collector is one file and loads ts-morph from the
-// tool checkout. readProjectSettings is the collector without its process input
-// and output.
+// and prints the settings record. It runs no target code. Without project
+// settings, the record names the Choom parsing profile and a gap. The copy cannot
+// import other producer files, so the collector is one file and loads ts-morph and
+// the parsing profile from the tool checkout. readProjectSettings is the collector
+// without its process input and output.
 export interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 interface Diagnostic { code?: number; message: string }
 interface ConfigRecord {
@@ -24,9 +27,16 @@ interface ContentRead { path: string; bytes: number; sha256: string }
 export interface SnapshotInput { inventory: { snapshotId: string; files: InventoryFile[] }; snapshotRoot: string; extraConfigs: string[] }
 // The parts of ts-morph that the collector uses: a file system in memory and the TypeScript compiler API.
 export type SettingsTools = Pick<typeof TsMorph, 'InMemoryFileSystemHost' | 'ts'>;
+type ParsingProfile = ParsingProfiles.ParsingProfile;
+// The trusted code and data that the collector uses, from the tool checkout.
+export interface CollectorTools { tsMorph: SettingsTools; parsingProfile: ParsingProfile }
+// A settings gap has the fields of a discovery gap except its ID and evidence:
+// the Stage 1 review gives each gap an ID and cites the settings record.
+export interface SettingsGap { kind: string; subjectRefs: string[]; reason: string }
 export interface SettingsRecord {
   formatVersion: number; snapshotId: string; virtualRoot: string; limits: { maxConfigFileBytes: number };
-  packages: PackageRecord[]; configs: ConfigRecord[]; contentReads: ContentRead[]; contentReadScope: string;
+  packages: PackageRecord[]; configs: ConfigRecord[]; parsingProfile: ParsingProfile | null; gaps: SettingsGap[];
+  contentReads: ContentRead[]; contentReadScope: string;
 }
 type MemoryHost = InstanceType<SettingsTools['InMemoryFileSystemHost']>;
 type ParseConfigHost = TsMorph.ts.ParseConfigHost;
@@ -176,27 +186,44 @@ function readConfigs(snapshot: SnapshotFileSystem, ts: SettingsTools['ts'], extr
   return configs;
 }
 
-export function readProjectSettings(input: SnapshotInput, tools: SettingsTools): SettingsRecord {
-  const snapshot = new SnapshotFileSystem(input, tools);
+// The gap of a snapshot without project settings.
+export function noProjectSettingsGap(snapshotId: string, profile: ParsingProfile): SettingsGap {
+  return { kind: 'no-project-settings', subjectRefs: [snapshotId], reason: 'No project settings were found. ' +
+    'The snapshot has no tsconfig*.json or jsconfig*.json file, and the operator named no extra compiler settings. ' +
+    `The source is parsed with the named Choom parsing profile ${profile.id}. ` +
+    'Its options are Choom assumptions, not settings of the project.' };
+}
+
+export function readProjectSettings(input: SnapshotInput, { tsMorph, parsingProfile }: CollectorTools): SettingsRecord {
+  const snapshot = new SnapshotFileSystem(input, tsMorph);
   const packages = readPackages(snapshot);
-  const configs = readConfigs(snapshot, tools.ts, input.extraConfigs);
+  const configs = readConfigs(snapshot, tsMorph.ts, input.extraConfigs);
   snapshot.checkSnapshot();
-  return { formatVersion: 1, snapshotId: input.inventory.snapshotId,
+  const { snapshotId } = input.inventory;
+  // Any configuration, also one that does not parse, is project settings: the profile is only for none.
+  const profile = configs.length ? null : structuredClone(parsingProfile);
+  return { formatVersion: 2, snapshotId,
     virtualRoot: '/repo', limits: { maxConfigFileBytes }, packages, configs,
+    parsingProfile: profile, gaps: profile ? [noProjectSettingsGap(snapshotId, profile)] : [],
     contentReads: [...snapshot.contentReads.values()],
     contentReadScope: 'Only requested settings and package manifests were read and verified. Other inventory contents were not revalidated.' };
 }
 
 // Collects the settings of the run in CHOOM_WORK and prints the settings record.
-function collectSettings(): void {
+async function collectSettings(): Promise<void> {
   // The settings action and the recovery capture always set both folders.
   const work = process.env.CHOOM_WORK as string;
-  const require = createRequire(resolve(process.env.CHOOM_TOOLS as string, 'package.json'));
-  const tools = require('ts-morph') as SettingsTools;
+  const tools = process.env.CHOOM_TOOLS as string;
+  const require = createRequire(resolve(tools, 'package.json'));
+  const tsMorph = require('ts-morph') as SettingsTools;
+  const profiles = await import(pathToFileURL(resolve(tools, 'packages/producer/src/parsing-profile.ts')).href) as
+    typeof ParsingProfiles;
   const inventory = JSON.parse(readFileSync(join(work, 'evidence/inventory.json'), 'utf8'));
   const snapshotRoot = realpathSync(join(work, 'snapshot'));
   const extraConfigs: string[] = JSON.parse(readFileSync(join(work, 'evidence/extra-configs.json'), 'utf8'));
-  console.log(JSON.stringify(readProjectSettings({ inventory, snapshotRoot, extraConfigs }, tools), null, 2));
+  const settings = readProjectSettings({ inventory, snapshotRoot, extraConfigs },
+    { tsMorph, parsingProfile: profiles.choomDefaultProfile });
+  console.log(JSON.stringify(settings, null, 2));
 }
 
-if (import.meta.main) collectSettings();
+if (import.meta.main) await collectSettings();

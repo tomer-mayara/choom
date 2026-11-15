@@ -311,8 +311,9 @@ function collectSettings(recovery: Recovery, save: (name: string, bytes: string 
   report.settings = settingsCommand;
   assert(!settings.error && settings.status === 0 && !settings.signal, 'Settings collection failed; preserve this new folder and its logs.');
   const parsedSettings = JSON.parse(settings.stdout.toString());
-  assert(parsedSettings.formatVersion === 1 && parsedSettings.snapshotId === snapshotId &&
-    Array.isArray(parsedSettings.packages) && Array.isArray(parsedSettings.configs), 'Invalid settings output.');
+  assert(parsedSettings.formatVersion === 2 && parsedSettings.snapshotId === snapshotId &&
+    Array.isArray(parsedSettings.packages) && Array.isArray(parsedSettings.configs) &&
+    Object.hasOwn(parsedSettings, 'parsingProfile') && Array.isArray(parsedSettings.gaps), 'Invalid settings output.');
   save('evidence/settings.json', settings.stdout);
   return { stdout: settings.stdout, command: settingsCommand };
 }

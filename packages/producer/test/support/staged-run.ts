@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
+import { choomDefaultProfile } from "../../src/parsing-profile.ts";
 import { producerReceipt } from "../../src/producer-code.ts";
+import { noProjectSettingsGap } from "../../src/stage-1-settings.ts";
 import { toolsRoot } from "./commands.ts";
 
 export const stagedSnapshotRef = "snapshot-check";
@@ -11,7 +13,8 @@ const sha256 = (text: string): string => createHash("sha256").update(text).diges
 // A saved snapshot file. A "symlink" record is listed in the inventory only.
 export interface SnapshotFile { path: string; text: string; kind?: "file" | "symlink" }
 // `tools` is the tool checkout whose producer code record the run gets. `settings`
-// replaces fields of the settings record that a run after Stage 3 gets.
+// replaces fields of the settings record that a run after Stage 3 gets: by default,
+// the record of a snapshot without project settings.
 export interface StagedRunOptions { snapshot?: SnapshotFile[]; questions?: unknown[]; tools?: string; settings?: Record<string, unknown> }
 
 const defaultSnapshot: SnapshotFile[] = [{ path: "app.ts", text: "export const value = 1;\n" }];
@@ -50,8 +53,9 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: Stage
     Object.assign(progress, { entryAnalysis: "complete" });
     discovery.entryAnalysisRef = "s2-check-entry-analysis";
     if (finishedStage === 3) {
-      save("evidence/settings.json", JSON.stringify({ formatVersion: 1, snapshotId: snapshotRef, configs: [], packages: [],
-        ...options.settings }), "settings-001");
+      save("evidence/settings.json", JSON.stringify({ formatVersion: 2, snapshotId: snapshotRef, configs: [], packages: [],
+        parsingProfile: choomDefaultProfile, gaps: [noProjectSettingsGap(snapshotRef, choomDefaultProfile)], ...options.settings }),
+      "settings-001");
       // The Stage 3 source query selects every JavaScript and TypeScript file of the snapshot.
       const scope = files.filter(({ path, kind }) => kind === "file" && sourceFile.test(path))
         .map(({ path, sha256: digest }) => ({ path, sha256: digest }));
