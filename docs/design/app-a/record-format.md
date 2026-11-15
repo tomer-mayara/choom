@@ -676,9 +676,9 @@ capture exclusions and limits in the new scope record.
 ## Settings record
 
 Stage 1 `settings` saves the settings record as `evidence/settings.json`, and
-Stage 1 `finish` registers the selected record as `settings-001`. Stage 4 start
-reads its compiler configurations and its parsing profile. The record is
-`formatVersion: 2`.
+Stage 1 `finish` registers the selected record as `settings-001`. Stage 3
+`exports` and Stage 4 start read its compiler configurations and its parsing
+profile. The record is `formatVersion: 2`.
 
 | Field | Meaning |
 | --- | --- |
@@ -737,7 +737,10 @@ group. When the record names the profile, the group is named after the profile,
 uses its target, module, moduleResolution and jsx options, and has
 `compilerSettingsRef: settings-001#/parsingProfile`. Otherwise the group is the
 configuration-free fallback with no options. Stage 4 start refuses a record that
-names an unknown profile.
+names an unknown profile. Stage 3 `exports` chooses the settings of one source
+file with the same rule: the first parsed compiler selection that selects the
+file, else the profile, else no settings. See the
+[Stage 3 cookbook](step-3-cookbook.md#list-the-exports-of-a-source-file).
 
 ## Git identity record
 

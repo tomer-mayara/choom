@@ -549,7 +549,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
 | `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
 | `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
-| `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it |
+| `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it. Its in-memory file system of the snapshot is also the file system of the snapshot project |
 | `stage-1-git.ts`, `stage-1-exclusions.ts` | The Git identity record that Stage 1 capture saves, and the reader of the capture exclusion rules that it uses |
 | `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record |
 | `parsing-profile.ts` | The named Choom parsing profile for a snapshot without project settings |
@@ -557,10 +557,12 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
 | `stage-3-inputs.ts`, `stage-3-collect.ts` | The checked inputs of each Stage 3 action: the run after Stage 2 and its indexed snapshot files; and the evidence that Stage 3 `collect` saves |
 | `stage-3-text-search.ts`, `ripgrep.ts` | The Stage 3 text search of the saved snapshot (`stage-3 text-search`): the ripgrep arguments, the output check, the scope and the tool-call record; and the ripgrep program, its version and a bounded call |
+| `stage-3-exports.ts` | The Stage 3 exports action (`stage-3 exports`): the compiler settings of the file, the exports record and its notes |
+| `snapshot-project.ts`, `snapshot-exports.ts` | The ts-morph project of the saved snapshot: an in-memory file system that holds only the indexed snapshot files with checked digests, the record of each request for a path outside the snapshot, and the compiler inputs that the snapshot does not hold as gaps; and the exports of one file of the project |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record and the producer code record |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
-| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, traversal roots and limits |
+| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, traversal roots and limits. The Stage 3 exports action uses the same compiler context rule |
 | `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence (`stage-4-inspect` command) |
 | `stage-5-query.mjs` | Remaining-code and inspection-coverage queries |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |

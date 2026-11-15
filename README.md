@@ -455,10 +455,14 @@ records its commit and a changed file, and that a folder without Git is captured
 with a gap. They search a saved snapshot with the Stage 3 text search and check
 that the record lists each match with its file, line and text, the searched scope
 and the ripgrep version, and that a search with no match names the searched files
-and the capture exclusions. The unit suites check the producer code digest and record, the
+and the capture exclusions. They list the exports of a snapshot file with the
+Stage 3 exports action and check each kind and source range, and that a
+declaration file that the compiler settings name and the capture did not save is
+a gap of an open project. The unit suites check the producer code digest and record, the
 command mapping, the check of the visible LLM response and the call record, the
 parsing profile, the settings collector, the Git identity, the capture exclusion
-rules, the installed ripgrep program, the text search and the Stage 4 graph profile. The integration suite checks the shared record validator
+rules, the installed ripgrep program, the text search, the snapshot project, the
+export list and the Stage 4 graph profile. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
 reader. The interface suites run each helper with no
@@ -486,9 +490,13 @@ bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/int
 The Stage 3 suite finishes a Stage 2 attempt through its commands, then runs
 Stage 3 start, collect, save-review and the finalizer. It records a published
 attempt, verify, and the finalizer refusals. It records the files that start,
-collect, excerpt and save-review save and their refusals. It runs the text search
+collect, excerpt and save-review save and their refusals, and the loading search
+of other source forms. It runs the text search
 with the real ripgrep on a snapshot with hidden, ignored, binary, compressed,
-linked and large files, and its refusals. Run it with:
+linked and large files, and its refusals. It runs the exports action with the
+real ts-morph for a configuration, the parsing profile and the fallback, with its
+gaps and refusals, and shows that a later action refuses a changed ts-morph in a
+copied tool checkout. Run it with:
 
 ```sh
 bun test ./packages/producer/test/interface/stage-3
@@ -563,6 +571,27 @@ gives the arguments and the fields. Run the focused checks of the text search wi
 ```sh
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/ripgrep.test.ts ./packages/producer/test/unit/stage-3-text-search.test.ts ./packages/producer/test/unit/stage-1-exclusions.test.ts
+bun test ./packages/producer/test/interface/stage-3
+```
+
+Stage 3 `exports PATH` lists the exports of one indexed JavaScript or TypeScript
+file of the saved snapshot. It opens a ts-morph project on an in-memory file
+system that holds only the indexed snapshot files, each checked against its
+inventory digest, and it never reads the disk outside them. The compiler settings
+of the file are chosen as for the Stage 4 graph groups: the first fully parsed
+configuration of `settings-001` that selects the file, else the named Choom
+parsing profile, else no settings. Each request saves `exports-NNN.json` with the
+settings and their reference, the ts-morph and TypeScript versions, the exports
+with their kinds and source ranges, the compiler inputs that the snapshot does not
+hold as gaps, and the requests for paths outside the snapshot. The Stage 3 loading
+search parses its files with the same project. The
+[Stage 3 cookbook](docs/design/app-a/step-3-cookbook.md#list-the-exports-of-a-source-file)
+gives the fields. Run the focused checks of the snapshot project and the exports
+with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/snapshot-project.test.ts ./packages/producer/test/unit/snapshot-exports.test.ts ./packages/producer/test/unit/stage-4-graph-profile.test.ts ./packages/producer/test/unit/stage-1-settings.test.ts
 bun test ./packages/producer/test/interface/stage-3
 ```
 
@@ -732,8 +761,11 @@ ran from their cookbooks is in TypeScript modules: the Stage 1 settings collecto
 `stage-2-knip-run.ts` and `stage-2-finish.ts`) and the input consolidation command
 (`stage-2-consolidate-inputs.ts`). The Stage 3 helper (`stage-3-commands.ts`) uses
 `stage-3-inputs.ts` for the checked run and snapshot files, `stage-3-collect.ts`
-for the evidence of `collect`, and `stage-3-text-search.ts` with `ripgrep.ts` for
-the text search. Every stage action runs the code in the tool
+for the evidence of `collect`, `stage-3-text-search.ts` with `ripgrep.ts` for
+the text search, and `stage-3-exports.ts` for the exports action. The snapshot
+project (`snapshot-project.ts`) opens a ts-morph project on the in-memory file
+system of the Stage 1 settings collector, and `snapshot-exports.ts` lists the
+exports of one of its files. Every stage action runs the code in the tool
 checkout. Stage 1 start saves the producer code record (`producer-code.ts`): the
 package version, the Git commit when there is one, and one digest of
 `packages/producer/src` and `packages/baseline-model/src`. Every later stage
