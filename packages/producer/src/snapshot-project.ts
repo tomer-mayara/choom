@@ -9,7 +9,8 @@ import { SnapshotFileSystem, type SnapshotFiles } from './stage-1-settings.ts';
 // against the inventory size and digest. Any other path is not found: the project
 // never reads the disk outside the indexed files, and it records each request for
 // a path that the snapshot does not hold. The project uses the compiler settings
-// that the caller gives.
+// that the caller gives. A compiler input that the settings or a loaded file name
+// and the snapshot does not hold is a gap, and the project opens without it.
 export type ProjectTools = Pick<typeof TsMorph, 'InMemoryFileSystemHost' | 'Project' | 'ts'>;
 // The compiler settings of the project: their reference in the Stage 1 settings
 // record (null for none), the configuration file that names the compiler inputs, the
@@ -19,11 +20,20 @@ export interface ProjectSettings {
 }
 // A request of the project for a path that the snapshot does not hold. The answer was "not found".
 export interface OutsideRead { operation: 'read-file' | 'read-directory' | 'file-exists' | 'directory-exists'; path: string }
+// A compiler input that the snapshot does not hold: a files entry or a types entry
+// of the settings, or a reference path or reference types directive of a loaded
+// file. It has the fields of a discovery gap without its ID and evidence, and
+// `missing` names the missing file or type package.
+export interface ProjectGap {
+  kind: 'missing-compiler-input'; input: 'files' | 'types' | 'reference-path' | 'reference-types'; missing: string;
+  subjectRefs: string[]; reason: string;
+}
 export interface SnapshotProject {
   readonly project: TsMorph.Project;
   // Adds an indexed regular file of the snapshot to the project and returns it.
   sourceFile(path: string): TsMorph.SourceFile;
   outsideReads(): OutsideRead[];
+  gaps(): ProjectGap[];
 }
 
 export const virtualRoot = '/repo';
@@ -31,6 +41,13 @@ export const virtualRoot = '/repo';
 const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const readOnly = (): Error => new Error('The snapshot project is read-only.');
 const standard = (path: string): string => posix.resolve(virtualRoot, path);
+// The snapshot path of a project path, or the project path when it is outside the virtual root.
+const snapshotPath = (path: string): string => path.startsWith(virtualRoot + '/') ? path.slice(virtualRoot.length + 1) : path;
+// The file names that a reference path directive without an extension can name, as TypeScript tries them.
+const referenceExtensions = ['.ts', '.tsx', '.d.ts'];
+const missingFile = 'but the snapshot does not hold that file.';
+const missingTypes = 'but the snapshot holds no declaration file for it.';
+const openedWithout = 'The project opened without it.';
 
 // The file system host of the project: the indexed files of the snapshot, read only.
 // The in-memory file system holds only the indexed files, so it answers "not found"
@@ -117,18 +134,77 @@ class SnapshotHost implements TsMorph.FileSystemHost {
   copy(): Promise<void> { return Promise.reject(readOnly()); }
 }
 
+// Whether a type package resolves in the snapshot, as TypeScript resolves a types
+// entry or a reference types directive of the containing file.
+function typesResolve(project: TsMorph.Project, ts: ProjectTools['ts'], name: string, containingFile: string): boolean {
+  const resolution = ts.resolveTypeReferenceDirective(name, containingFile, project.compilerOptions.get(),
+    project.getModuleResolutionHost());
+  return resolution.resolvedTypeReferenceDirective?.resolvedFileName !== undefined;
+}
+
+// The files entries and the types entries of the settings that the snapshot does not hold.
+function settingsGaps(settings: ProjectSettings, files: SnapshotFileSystem, project: TsMorph.Project,
+  ts: ProjectTools['ts']): ProjectGap[] {
+  if (settings.configPath === null) return [];
+  const folder = posix.dirname(settings.configPath);
+  const config = snapshotPath(settings.configPath);
+  const named = settings.ref === null ? config : `${config} (${settings.ref})`;
+  const gaps: ProjectGap[] = [];
+  for (const entry of settings.files) {
+    const missing = snapshotPath(posix.resolve(folder, entry));
+    if (files.indexed.has(posix.resolve(folder, entry))) continue;
+    gaps.push({ kind: 'missing-compiler-input', input: 'files', missing, subjectRefs: [config, missing],
+      reason: `${named} names ${missing} in its files list, ${missingFile} ${openedWithout}` });
+  }
+  const types = settings.compilerOptions.types;
+  // TypeScript resolves the types entries from this file name in the configuration folder.
+  const containingFile = posix.join(folder, '__inferred type names__.ts');
+  for (const name of Array.isArray(types) ? types.filter(type => typeof type === 'string') : []) {
+    if (typesResolve(project, ts, name, containingFile)) continue;
+    gaps.push({ kind: 'missing-compiler-input', input: 'types', missing: name, subjectRefs: [config],
+      reason: `${named} names the type package ${name} in its types list, ${missingTypes} ${openedWithout}` });
+  }
+  return gaps;
+}
+
+// The reference path and reference types directives of a loaded file that the snapshot does not hold, in source order.
+function referenceGaps(file: TsMorph.SourceFile, files: SnapshotFileSystem, project: TsMorph.Project,
+  ts: ProjectTools['ts']): ProjectGap[] {
+  const virtual: string = file.getFilePath();
+  const path = snapshotPath(virtual);
+  const { referencedFiles, typeReferenceDirectives } = file.compilerNode;
+  const directives = [...referencedFiles.map(reference => ({ reference, types: false })),
+    ...typeReferenceDirectives.map(reference => ({ reference, types: true }))].sort((a, b) => a.reference.pos - b.reference.pos);
+  return directives.flatMap(({ reference: { fileName }, types }): ProjectGap[] => {
+    if (types) return typesResolve(project, ts, fileName, virtual) ? [] : [{ kind: 'missing-compiler-input',
+      input: 'reference-types', missing: fileName, subjectRefs: [path],
+      reason: `${path} names the type package ${fileName} in a reference types directive, ${missingTypes}` }];
+    const target = posix.resolve(posix.dirname(virtual), fileName);
+    const names = posix.extname(target) ? [target] : referenceExtensions.map(extension => target + extension);
+    if (names.some(name => files.indexed.has(name))) return [];
+    const missing = snapshotPath(target);
+    return [{ kind: 'missing-compiler-input', input: 'reference-path', missing, subjectRefs: [path, missing],
+      reason: `${path} names ${missing} in a reference path directive, ${missingFile}` }];
+  });
+}
+
 // Opens the project of the saved snapshot with the compiler settings. The project
 // adds no file until the caller asks for one.
 export function openSnapshotProject(snapshot: SnapshotFiles, settings: ProjectSettings, tools: ProjectTools): SnapshotProject {
   const files = new SnapshotFileSystem(snapshot, tools);
   const host = new SnapshotHost(files);
   const project = new tools.Project({ fileSystem: host, compilerOptions: settings.compilerOptions as TsMorph.CompilerOptions });
+  const gaps = settingsGaps(settings, files, project, tools.ts);
+  host.check();
+  const loaded = new Set<string>();
   function sourceFile(path: string): TsMorph.SourceFile {
     const virtual = posix.join(virtualRoot, path);
     assert(virtual === virtualRoot + '/' + path && files.indexed.has(virtual), 'Path is outside the indexed regular files: ' + path);
     const file = project.addSourceFileAtPath(virtual);
     host.check();
+    if (!loaded.has(virtual)) gaps.push(...referenceGaps(file, files, project, tools.ts));
+    loaded.add(virtual);
     return file;
   }
-  return { project, sourceFile, outsideReads: () => [...host.outside.values()] };
+  return { project, sourceFile, outsideReads: () => [...host.outside.values()], gaps: () => [...gaps] };
 }

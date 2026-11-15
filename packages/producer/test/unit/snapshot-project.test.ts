@@ -78,4 +78,40 @@ describe("openSnapshotProject", () => {
     expect(reads.filter(({ path }) => path.startsWith("/repo/src/greet") || path === "/repo/src")).toEqual([]);
     expect(new Set(reads.map(({ operation, path }) => `${operation} ${path}`)).size).toBe(reads.length);
   });
+
+  test("lists a files entry that the snapshot does not hold as a gap, and still opens", () => {
+    const project = opened({ ref: "settings-001#/configs/0", configPath: "/repo/tsconfig.json",
+      files: ["src/app.ts", "types/env.d.ts", "../shared/global.d.ts"], compilerOptions: { strict: true } });
+    expect(project.gaps()).toEqual([
+      { kind: "missing-compiler-input", input: "files", missing: "types/env.d.ts", subjectRefs: ["tsconfig.json", "types/env.d.ts"],
+        reason: "tsconfig.json (settings-001#/configs/0) names types/env.d.ts in its files list, but the snapshot does not " +
+          "hold that file. The project opened without it." },
+      { kind: "missing-compiler-input", input: "files", missing: "/shared/global.d.ts",
+        subjectRefs: ["tsconfig.json", "/shared/global.d.ts"],
+        reason: "tsconfig.json (settings-001#/configs/0) names /shared/global.d.ts in its files list, but the snapshot does not " +
+          "hold that file. The project opened without it." },
+    ]);
+    expect(project.sourceFile("src/greet.ts").getFunctions().map((item) => item.getName())).toEqual(["greet"]);
+  });
+
+  test("lists a types entry that does not resolve in the snapshot as a gap", () => {
+    const project = opened({ ref: "settings-001#/configs/0", configPath: "/repo/tsconfig.json", files: [],
+      compilerOptions: { types: ["local", "node"], typeRoots: ["/repo/types"] } });
+    expect(project.gaps()).toEqual([{ kind: "missing-compiler-input", input: "types", missing: "node",
+      subjectRefs: ["tsconfig.json"], reason: "tsconfig.json (settings-001#/configs/0) names the type package node in its " +
+        "types list, but the snapshot holds no declaration file for it. The project opened without it." }]);
+  });
+
+  test("lists the reference directives of a loaded file that the snapshot does not hold as gaps", () => {
+    const project = opened();
+    project.sourceFile("src/app.ts");
+    project.sourceFile("src/app.ts");
+    expect(project.gaps()).toEqual([
+      { kind: "missing-compiler-input", input: "reference-path", missing: "src/env.d.ts", subjectRefs: ["src/app.ts", "src/env.d.ts"],
+        reason: "src/app.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file." },
+      { kind: "missing-compiler-input", input: "reference-types", missing: "node", subjectRefs: ["src/app.ts"],
+        reason: "src/app.ts names the type package node in a reference types directive, but the snapshot holds no " +
+          "declaration file for it." },
+    ]);
+  });
 });
