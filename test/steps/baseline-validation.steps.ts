@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { Given, Then, When, type World } from "@cucumber/cucumber";
-import { baselineSchema } from "../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { baselineExample, invalidBaseline, reviewedBaseline } from "../support/baseline-fixtures.ts";
 
 interface BaselineWorld extends World {

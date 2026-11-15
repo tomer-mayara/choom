@@ -2,21 +2,30 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreDependencies": ["@typescript/old"],
   "ignoreBinaries": ["uvx"],
-  "entry": [
-    "src/domain/generated/contracts.ts",
-    "src/platform/generated/contracts.ts",
-    "src/architecture/generated/workflow.ts",
-    "src/lib/generated/contracts.ts",
-    "scripts/**/*.ts",
-    "test/unit/**/*.{ts,tsx}",
-    "test/interface/**/*.ts",
-    "test/steps/**/*.ts",
-    "test/browser/main.tsx"
-  ],
-  "project": [
-    "src/**/*.{ts,tsx,css}",
-    "scripts/**/*.ts",
-    "test/**/*.{ts,tsx}",
-    "*.{ts,mjs,cjs}"
-  ]
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/domain/generated/contracts.ts",
+        "src/platform/generated/contracts.ts",
+        "src/architecture/generated/workflow.ts",
+        "src/lib/generated/contracts.ts",
+        "scripts/**/*.ts",
+        "test/unit/**/*.{ts,tsx}",
+        "test/interface/**/*.ts",
+        "test/steps/**/*.ts",
+        "test/browser/main.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx,css}",
+        "scripts/**/*.ts",
+        "test/**/*.{ts,tsx}",
+        "*.{ts,mjs,cjs}"
+      ]
+    },
+    "packages/baseline-model": {
+      "bun": false,
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    }
+  }
 }

@@ -1,6 +1,6 @@
 import { ArrowLeft, X } from "lucide-react";
-import type { Baseline } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { ArchitectureDetails } from "./architecture-details.tsx";
 import { ArchitectureRecordList } from "./architecture-record-list.tsx";
 import type { ArchitectureInspection } from "./use-architecture-inspection.ts";

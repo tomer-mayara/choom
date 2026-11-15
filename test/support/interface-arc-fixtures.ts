@@ -1,4 +1,4 @@
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { accepted, baselineExample, fixtureItem, proposed } from "./baseline-fixtures.ts";
 
 export function interfaceArcBaseline(example: string): Baseline {

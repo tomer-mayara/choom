@@ -1,6 +1,6 @@
 import type {
   Baseline, BaselineComponent, BaselineInterface, BaselineResource, BaselineRule,
-} from "../../src/domain/generated/contracts.ts";
+} from "@choom/baseline-model/contracts";
 import { proposed } from "./baseline-fixtures.ts";
 
 function component(index: number): BaselineComponent {

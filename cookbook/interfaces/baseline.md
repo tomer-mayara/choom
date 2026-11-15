@@ -1,9 +1,12 @@
 # Baseline validation
 
-The architecture-model component owns the baseline viewer profile in
-[baseline.tsp](baseline.tsp). `baselineSchema` in
-[`src/domain/baseline.ts`](../../src/domain/baseline.ts) validates an unknown value
-and returns the generated `Baseline` data type. Use `safeParse` to get field paths
+The baseline-model component owns the baseline viewer profile in
+[baseline.tsp](baseline.tsp). It is the `@choom/baseline-model` workspace. The
+viewer uses these rules, and the producer will use the same rules. `baselineSchema` in
+[`packages/baseline-model/src/baseline.ts`](../../packages/baseline-model/src/baseline.ts)
+validates an unknown value and returns the generated `Baseline` data type.
+Import it from `@choom/baseline-model`, and the generated types from
+`@choom/baseline-model/contracts`. Use `safeParse` to get field paths
 for invalid input. The reader accepts `formatVersion: 1`, `formatVersion: 2`,
 `formatVersion: 3`, and `formatVersion: 4`.
 Version 1 keeps its original strict fields. Version 2 adds optional interface
@@ -125,20 +128,28 @@ bun run test:behavior --tags @br-10a
 bun run test:behavior --tags @br-11a
 bun run test:behavior --tags @ep-01
 bun run test:e2e --tags @br-11a
-bun test ./test/unit/domain/source-usage.test.ts ./test/unit/domain/source-usage-limits.test.ts
+bun test ./packages/baseline-model/test/unit/source-usage.test.ts ./packages/baseline-model/test/unit/source-usage-limits.test.ts
+bun test ./test/unit/lib/baseline-display-limits.test.ts
 bun test ./test/interface/domain/source-usage.test.ts
 bun test ./test/unit/lib/source-connections.test.ts
 bun test --preload ./test/preload.ts ./test/unit/components/source-use-reading.test.tsx ./test/unit/components/source-usage-guard.test.tsx
 bun test ./test/interface/domain/system-entry-points.test.ts
 bun run test:e2e --tags @br-10a
-bun test ./test/unit/domain/baseline.test.ts
-bun test ./test/unit/domain/interface-documentation.test.ts ./test/unit/domain/interface-documentation-limits.test.ts
+bun test ./packages/baseline-model/test/unit/baseline.test.ts
+bun test ./packages/baseline-model/test/unit/interface-documentation.test.ts ./packages/baseline-model/test/unit/interface-documentation-limits.test.ts
 bun test ./test/interface/domain/baseline.test.ts
 bun test ./test/interface/domain/interface-documentation.test.ts
+bun run test:integration
 bun run check:contracts
 ```
 
-The feature and TypeSpec contract are linked from the domain component manifest.
+`bun run test:integration` starts Node, not Bun, from the repository root. Node
+imports `@choom/baseline-model` through the workspace link, with no build step,
+and validates a reviewed baseline. The package uses only TypeScript that Node can
+remove (type stripping), so it can run in a Node process such as the producer.
+
+The feature and TypeSpec contract are linked from the
+[baseline-model component manifest](../../packages/baseline-model/component.yaml).
 The existing runners discover the new feature, steps, and suites. This change
 adds no cross-component dependency or production service, so the architecture
 and OpenSLO artifacts remain unchanged.

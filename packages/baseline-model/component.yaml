@@ -1,0 +1,20 @@
+name: baseline-model
+description: Owns the baseline format rules, validation and generated contract types, for the viewer and the producer.
+
+artifacts:
+  behavior:
+    - path: ../../cookbook/behavior/baseline-viewer/validation.feature
+    - path: ../../cookbook/behavior/baseline-viewer/interface-documentation.feature
+    - path: ../../cookbook/behavior/baseline-viewer/source-usage.feature
+    - path: ../../cookbook/behavior/baseline-viewer/system-entry-points.feature
+  observability:
+    - path: ../../cookbook/observability/service.yaml
+  architecture:
+    - path: ../../.dependency-cruiser.cjs
+  contracts:
+    # TypeSpec owns the structure; the runtime schema also checks IDs and references.
+    - path: ../../cookbook/interfaces/baseline.tsp
+    - path: ../../cookbook/interfaces/baseline-documentation.tsp
+    - path: ../../cookbook/interfaces/baseline-source-usage.tsp
+    - path: ../../cookbook/interfaces/baseline-system-entry-points.tsp
+    - path: ../../cookbook/interfaces/baseline.md

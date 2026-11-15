@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 
 export function fixtureItem<Items extends readonly unknown[]>(items: Items, index = 0): Items[number] {
   const item = items[index];

@@ -19,7 +19,9 @@ assessment. The commands record helper hashes, the lockfile digest and runtime;
 collection also records the native jscpd 5.4.2 binary digest and exact arguments.
 The tool fingerprint also covers `package.json`, the shared run-layout helper,
 both codec entry files, generated codec contracts, and all files in `src/domain/`
-and `src/lib/architecture-yaml/`. Sorted paths and file hashes detect changes,
+and `src/lib/architecture-yaml/`. It also covers the shared baseline rules:
+`packages/baseline-model/package.json` and all files in
+`packages/baseline-model/src/`. Sorted paths and file hashes detect changes,
 additions and removals in those folders. This covers the producer's local source
 dependencies; extend the explicit coverage if an import moves outside it.
 The assessment rejects changed registered inputs, fingerprinted sources,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { Browser } from "webdriverio";
-import type { BaselineInterface, BaselineV3 } from "../../../src/domain/generated/contracts.ts";
+import type { BaselineInterface, BaselineV3 } from "@choom/baseline-model/contracts";
 import { readRenderedDrawing, readSignatureSourceMetadata, type ReadingDrawing, type SignatureReading } from "../interface-documentation-reading.ts";
 import { expectReviewedConnections, readSourceUseOverview, reviewedCrossConnections, reviewedSelfConnections, type SourceConsumerReading } from "../source-consumer-reading.ts";
 

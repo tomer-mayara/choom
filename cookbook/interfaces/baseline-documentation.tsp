@@ -2,7 +2,7 @@ import "@typespec/json-schema";
 
 using TypeSpec.JsonSchema;
 
-namespace Choom.Domain;
+namespace Choom.BaselineModel;
 
 // Runtime validation measures UTF-8 byte budgets and checks local references.
 union BaselineEntryKind {

@@ -6,7 +6,7 @@ import "./baseline-system-entry-points.tsp";
 using TypeSpec.JsonSchema;
 
 @jsonSchema
-namespace Choom.Domain;
+namespace Choom.BaselineModel;
 
 @pattern("^[a-z0-9]+(?:-[a-z0-9]+)*$")
 scalar baselineId extends string;

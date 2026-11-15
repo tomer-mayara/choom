@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ArchitectureDetails } from "../../../src/components/architecture-details.tsx";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { baselineDetailsExample, baselineWithUnknownDetails, longAccessRules, recordedAcceptanceRef, recordedEvidenceRef, recordedMarkup } from "../../support/baseline-detail-fixtures.ts";
 import { accepted, fixtureItem, proposed, reviewedBaseline } from "../../support/baseline-fixtures.ts";
 import { originalInterfaceRecord, selectInterfaceTab } from "../../support/interface-details-dom.ts";

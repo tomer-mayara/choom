@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { ElkNode } from "elkjs/lib/elk.bundled.js";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { layoutBaseline } from "../../../src/lib/architecture-layout.ts";
 import { componentControlHeight, componentControlWidth } from "../../../src/lib/component-geometry.ts";
 import { baselineExample, proposed, reviewedBaseline } from "../../support/baseline-fixtures.ts";

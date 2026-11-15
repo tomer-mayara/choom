@@ -1,8 +1,9 @@
+import type { Baseline, BaselineInterface } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type {
-  Baseline, BaselineInterface, DuplicationBaselineBinding, DuplicationEndpointReference,
+  DuplicationBaselineBinding, DuplicationEndpointReference,
   DuplicationFinding, DuplicationReport, DuplicationSnapshotBinding,
 } from "./generated/contracts.ts";
-import type { ReadonlyData } from "./readonly-data.ts";
 import { resolveDuplicationRecordedFact } from "./duplication-facts.ts";
 
 export function duplicationFindingKey(

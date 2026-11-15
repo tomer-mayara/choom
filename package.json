@@ -9,6 +9,9 @@
     "node": ">=26.13.0 <27",
     "bun": ">=1.4.4 <1.5"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "bun run typecheck && vite build",
@@ -17,9 +20,10 @@
     "check-types": "bun run typecheck",
     "lint": "eslint . --max-warnings 0",
     "habit-hooks": "uvx --from 'habit-hooks[typescript]==1.5.0' habit-hooks",
-    "test": "bun run test:native && bun run test:dom",
-    "test:native": "bun test --path-ignore-patterns '**/*.test.tsx' ./test/unit",
+    "test": "bun run test:native && bun run test:dom && bun run test:integration",
+    "test:native": "bun test --path-ignore-patterns '**/*.test.tsx' ./test/unit ./packages/baseline-model/test/unit",
     "test:dom": "bun test --preload ./test/preload.ts ./test/unit/app.test.tsx ./test/unit/components ./test/unit/platform/browser-documents.test.tsx",
+    "test:integration": "bun test ./packages/baseline-model/test/integration",
     "test:rust": "bun run desktop:test",
     "test:watch": "bun test --watch",
     "test:e2e": "bun run test:behavior:browser",
@@ -27,7 +31,7 @@
     "test:behavior:native": "cucumber-js --config cucumber.mjs --profile native",
     "test:behavior:browser": "bun run build && bun scripts/run-browser-behavior.ts",
     "test:behavior:packaged": "bun scripts/run-packaged-behavior.ts",
-    "check:dependencies": "bun scripts/check-dependency-boundaries.ts && depcruise src --config .dependency-cruiser.cjs",
+    "check:dependencies": "bun scripts/check-dependency-boundaries.ts && depcruise src packages/baseline-model/src --config .dependency-cruiser.cjs",
     "check:unused": "knip",
     "check:duplicates": "jscpd --config .jscpd.json",
     "check:cookbook": "bun scripts/validate-cookbook.ts",
@@ -45,6 +49,7 @@
     "codex": "codex"
   },
   "dependencies": {
+    "@choom/baseline-model": "workspace:*",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-dialog": "2.8.4",
     "@xyflow/react": "12.12.1",

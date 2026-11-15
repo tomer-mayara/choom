@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Browser } from "webdriverio";
 import { readInstalledInterfaceRecord } from "./installed-interface-record.ts";
-import type { Baseline, BaselineInterface } from "../../../src/domain/generated/contracts.ts";
+import type { Baseline, BaselineInterface } from "@choom/baseline-model/contracts";
 import { publishedReadingEntries, readRenderedDrawing, readSignatureSourceMetadata, type PublishedReading, type ReadingDrawing } from "../interface-documentation-reading.ts";
 
 const run = promisify(execFile);

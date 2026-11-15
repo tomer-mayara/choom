@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { expect, type Page } from "@playwright/test";
-import type { Baseline, BaselineDocumentedEntry, BaselineInterface } from "../../../src/domain/generated/contracts.ts";
+import type { Baseline, BaselineDocumentedEntry, BaselineInterface } from "@choom/baseline-model/contracts";
 import { publishedReadingEntries, readRenderedDrawing, readSignatureSourceMetadata, type PublishedReading, type ReadingDrawing, type SignatureReading } from "../interface-documentation-reading.ts";
 
 const interfacePanel = (page: Page) => page.getByRole("dialog", { name: "Interface details", exact: true });

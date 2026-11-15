@@ -1,4 +1,4 @@
-import type { Baseline } from "../domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { BaselineDisplayLimitError, displayLimitMessage } from "../lib/baseline-display-limits.ts";
 import { decodeBaselineYaml } from "../lib/baseline-yaml.ts";

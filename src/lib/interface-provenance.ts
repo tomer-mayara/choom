@@ -1,5 +1,5 @@
-import type { AcceptedTextStatement, BaselineInterface, BaselineSourceAssessment, BaselineSourceUse, ProposedTextStatement } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { AcceptedTextStatement, BaselineInterface, BaselineSourceAssessment, BaselineSourceUse, ProposedTextStatement } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 
 type Metadata = ReadonlyData<Pick<ProposedTextStatement, "status" | "evidenceRefs">
   | Pick<AcceptedTextStatement, "status" | "evidenceRefs" | "acceptanceRef">>;

@@ -14,12 +14,34 @@ import {
 import { SyntaxKind, type Node } from "@typespec/compiler/ast";
 import { getExtensions } from "@typespec/json-schema";
 
-const targets = [
+interface Target {
+  namespace: string;
+  path: string;
+  /** The package export that other workspaces use to import this output. */
+  module?: string;
+}
+
+const targets: readonly Target[] = [
+  {
+    namespace: "Choom.BaselineModel", path: "packages/baseline-model/src/generated/contracts.ts",
+    module: "@choom/baseline-model/contracts",
+  },
   { namespace: "Choom.Domain", path: "src/domain/generated/contracts.ts" },
   { namespace: "Choom.Desktop", path: "src/platform/generated/contracts.ts" },
   { namespace: "Choom.Documents", path: "src/lib/generated/contracts.ts" },
   { namespace: "Choom.Workspace", path: "src/architecture/generated/workflow.ts" },
 ];
+
+function workspaceOf(path: string): string {
+  return /^packages\/[^/]+\//.exec(path)?.[0] ?? "";
+}
+
+// An output in another workspace is imported through that package's exports.
+function importPath(source: Target, target: Target): string {
+  if (target.module && workspaceOf(source.path) !== workspaceOf(target.path)) return target.module;
+  const path = relative(dirname(source.path), target.path).replaceAll("\\", "/").replace(/\.ts$/, "");
+  return path.startsWith(".") ? path : `./${path}`;
+}
 
 function identifier(name: string): string {
   if (!/^[A-Za-z_$][\w$]*$/.test(name)) throw new Error(`Unsupported TypeScript name: ${name}`);
@@ -47,8 +69,7 @@ function namedReference(namespace: Namespace, name: string, owner: Namespace, im
   const source = targets.find((candidate) => candidate.namespace === getNamespaceFullName(owner));
   if (!target || !source) throw new Error(`Unbound contract namespace: ${getNamespaceFullName(namespace)}`);
   const alias = identifier(target.namespace.replaceAll(".", ""));
-  const path = relative(dirname(source.path), target.path).replaceAll("\\", "/").replace(/\.ts$/, "");
-  imports.set(alias, path.startsWith(".") ? path : `./${path}`);
+  imports.set(alias, importPath(source, target));
   return `${alias}.${identifier(name)}`;
 }
 

@@ -1,9 +1,9 @@
-import type { Baseline, BaselineInterface, BaselineSourceAssessment, BaselineSourceNote, BaselineSourceUse } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline, BaselineInterface, BaselineSourceAssessment, BaselineSourceNote, BaselineSourceUse } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { componentName } from "../lib/component-name.ts";
 import { InterfaceSourceLocation } from "./interface-source-location.tsx";
 import type { InterfaceDisclosure } from "./use-interface-disclosures.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 
 type Use = ReadonlyData<BaselineSourceUse>;
 type Interface = ReadonlyData<BaselineInterface>;

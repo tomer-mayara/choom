@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
-import { fixtureItem } from "../../support/baseline-fixtures.ts";
-import { baselineWithSignature, invalidDocumentation } from "../../support/interface-documentation-fixtures.ts";
-import { invalidSourceUsage, sourceUsageBaseline } from "../../support/source-usage-fixtures.ts";
+import { baselineSchema } from "../../src/baseline.ts";
+import { fixtureItem } from "../../../../test/support/baseline-fixtures.ts";
+import { baselineWithSignature, invalidDocumentation } from "../../../../test/support/interface-documentation-fixtures.ts";
+import { invalidSourceUsage, sourceUsageBaseline } from "../../../../test/support/source-usage-fixtures.ts";
 
 test.each([
   "duplicate interface assessments", "duplicate use IDs", "a missing component", "a missing interface",

@@ -271,7 +271,8 @@ See the [report contract](cookbook/interfaces/interface-duplication.md),
 | `bun run preview` | Serve the production frontend |
 | `./scripts/run_all_constraints.sh` | Run all four automated constraint validations with a pass/fail summary and diagnostic logs |
 | `bun run check` | TypeSpec and implementation conformance, type checks, lint, unit tests, behavioral tests, cookbook policies, dependency boundaries, unused code, and duplication |
-| `bun run test` | Native Bun and Happy DOM unit tests in separate processes |
+| `bun run test` | Native Bun and Happy DOM unit tests in separate processes, then `test:integration` |
+| `bun run test:integration` | Node 26 imports `@choom/baseline-model` with no build step and validates a reviewed baseline |
 | `bun test` / `bun run test:watch` | Focused architecture-model tests in native Bun |
 | `bun run check-types` | Alias for the native TypeScript compiler check |
 | `bun run test:behavior` | Baseline and boundary Cucumber scenarios (no browser) |
@@ -281,7 +282,7 @@ See the [report contract](cookbook/interfaces/interface-duplication.md),
 | `bun run test:e2e` | Browser Cucumber acceptance against one fresh production build |
 | `bun run check:cookbook` | Component path integrity, contract ownership, and small OpenSLO Service shape |
 | `bun run check:contracts` | TypeSpec format/compilation, generated-output consistency, TypeScript conformance, and runtime interface tests |
-| `bun run check:dependencies` | Import boundary probes, cycles, unresolved imports, and the full frontend dependency graph |
+| `bun run check:dependencies` | Import boundary probes, cycles, unresolved imports, and the full frontend and baseline-model dependency graph |
 | `bun run contracts:generate` | Regenerate committed TypeScript contracts and JSON schemas from TypeSpec |
 | `bun run analyze` | Source inventory using ts-morph |
 | `bun run habit-hooks --all` | Manual TypeScript and generic code-hygiene scan |
@@ -303,7 +304,8 @@ Run the focused baseline checks with:
 
 ```sh
 bun run test:behavior --tags @baseline-viewer
-bun test ./test/unit/domain/baseline.test.ts ./test/interface/domain/baseline.test.ts
+bun test ./packages/baseline-model/test/unit ./test/interface/domain/baseline.test.ts
+bun run test:integration
 bun test ./test/unit/lib/baseline-yaml.test.ts ./test/interface/lib/baseline-yaml.test.ts
 bun test ./test/unit/architecture
 bun test ./test/unit/lib/architecture-layout.test.ts
@@ -362,9 +364,13 @@ bun run test:e2e --tags @br-08c
 bun run test:e2e --tags @br-08d
 ```
 
-`bun run test:native` scans `test/unit` for native TypeScript suites.
+`bun run test:native` scans `test/unit` and `packages/baseline-model/test/unit`
+for native TypeScript suites.
 `bun run test:dom` runs React suites with `test/preload.ts` in a separate process.
 Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
+`bun run test:integration` runs `packages/baseline-model/test/integration`. It
+starts the `node` on `PATH` and requires the major version in `.node-version`.
+Run all suites from the repository root.
 Cucumber loads `test/steps`; its default/native profile excludes `@browser` and
 `@packaged`. `test:e2e` runs browser acceptance against a fresh production build.
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
@@ -478,7 +484,7 @@ set `NO_COLOR=1` for plain terminal output.
 
 | Constraint | Checks |
 | --- | --- |
-| Behavioral | Bun unit tests, baseline/boundary Cucumber scenarios, and browser Cucumber against one fresh production build |
+| Behavioral | Bun unit tests, the Node import test of the baseline model, baseline/boundary Cucumber scenarios, and browser Cucumber against one fresh production build |
 | Observability | Component links, contract ownership, and the OpenSLO Service shape |
 | Architectural | TypeScript dependency boundaries, cycles, and unresolved imports |
 | Interface | TypeSpec compilation and generated-output consistency, TypeScript implementation conformance, and runtime interface cases; broader schema/adapter behavior also runs in Behavioral |
@@ -534,9 +540,11 @@ findings with exit 0. Correct findings or document why they remain, and keep
 src/
   architecture/        Baseline opening, view ownership, and app composition
   components/          React components and shadcn-compatible UI
-  domain/              Platform-independent baseline model and validation
+  domain/              Duplication-report validation and the starter baseline
   lib/                 Bounded YAML input, ELK layout, and class merging
   platform/            Host detection, native file selection/read, and browser file access
+packages/
+  baseline-model/      @choom/baseline-model: baseline validation and generated contract types
 src-tauri/             Rust desktop shell and window capabilities
 cookbook/              Behavior, TypeSpec contracts, generated schemas, observability
 scripts/               Contract generation/checks and separate source-analysis tools
@@ -544,21 +552,29 @@ test/                  Unit/interface suites and shared Cucumber steps
 ```
 
 The root [component manifest](component.yaml) links the four constraints and the
-`workspace` and `native-shell` children. The [workspace](src/component.yaml) owns
+`workspace`, `baseline-model`, and `native-shell` children. The [workspace](src/component.yaml) owns
 the app entrypoints and `architecture/`, `components/`, and `lib/`. Its children
 are `architecture-model` in `domain/` and `desktop-adapter` in `platform/`.
 These manifests describe this repository for development checks. The viewer
 reads component records from the selected baseline.
 
+The [baseline model](packages/baseline-model/component.yaml) is a Bun workspace.
+It owns the baseline format rules: `baselineSchema` and the generated `Baseline`
+types. The viewer imports it as `@choom/baseline-model`. The producer will use
+the same package later. Its exports are `.` (the validator), `./contracts`,
+`./baseline-format`, and `./readonly-data`. It uses only TypeScript that Node
+can remove, so a Node process imports it with no build step.
+
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
-decoding separate from platform operations, UI, and layout. The workflow uses
+decoding separate from platform operations, UI, and layout. The baseline model
+imports no app code from `src/` and no package other than `zod`. The workflow uses
 injected file and layout operations. The platform owns Tauri access. React
 components use the [workspace view](src/architecture/workspace-view.ts) and
 prepared diagram data. App connects the workspace to the UI. ELK loads on demand
 before a baseline view is committed.
 
 `bun run check:dependencies` runs [import probes](scripts/check-dependency-boundaries.ts)
-in temporary projects and checks the full frontend dependency graph. The probes
+in temporary projects and checks the full frontend and baseline-model dependency graph. The probes
 cover permitted and rejected imports, including erased types and imports with
 runtime effects. Cargo dependencies and Tauri capabilities govern the Rust
 boundary. The host registers only `document_file_read` and enables the open-file
@@ -570,7 +586,7 @@ or a baseline requests that chunk.
 
 ## Dependency policy
 
-All requested direct npm and Cargo dependencies use exact versions; commit `bun.lock` and `src-tauri/Cargo.lock` after intentional updates. The JavaScript dialog companion `@tauri-apps/plugin-dialog@2.8.4` is included alongside the Rust plugin. Cucumber 13.3.0 supplies `@cucumber/gherkin@42.0.1` transitively; it is not separately installed.
+All requested direct npm and Cargo dependencies use exact versions; commit `bun.lock` and `src-tauri/Cargo.lock` after intentional updates. The root `package.json` declares the `packages/*` workspaces, and the app depends on `@choom/baseline-model` with `workspace:*`. `bunfig.toml` keeps the hoisted linker, so all workspaces share one `node_modules` tree. The JavaScript dialog companion `@tauri-apps/plugin-dialog@2.8.4` is included alongside the Rust plugin. Cucumber 13.3.0 supplies `@cucumber/gherkin@42.0.1` transitively; it is not separately installed.
 
 The [TypeScript side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) is deliberate:
 

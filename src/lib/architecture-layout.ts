@@ -1,5 +1,5 @@
 import ELK, { type ElkNode } from "elkjs/lib/elk.bundled.js";
-import type { Baseline } from "../domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { checkBaselineDisplayLimits } from "./baseline-display-limits.ts";
 import { componentControlHeight, componentControlWidth } from "./component-geometry.ts";
 

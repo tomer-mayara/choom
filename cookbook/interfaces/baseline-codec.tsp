@@ -20,7 +20,7 @@ scalar baselineYaml extends string;
 @extension("additionalProperties", false)
 model DecodedBaseline {
   status: "success";
-  baseline: Choom.Domain.Baseline;
+  baseline: Choom.BaselineModel.Baseline;
 
   @minValue(0)
   durationMs: float64;

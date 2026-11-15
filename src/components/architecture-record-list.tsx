@@ -1,5 +1,5 @@
-import type { BaselineComponent, BaselineInterface, BaselineResource } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { BaselineComponent, BaselineInterface, BaselineResource } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 import { Button } from "./ui/button.tsx";
 

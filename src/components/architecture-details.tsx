@@ -3,12 +3,12 @@ import type {
   Baseline, BaselineComponent, BaselineResource, BaselineRule,
   BaselineAccessPointsStatement, BaselineComponentReferenceStatement, BaselineConsumersStatement,
   BaselineMembershipStatement, BaselineNullableTextStatement, BaselinePromisesStatement, BaselineRuleObjectStatement, BaselineTextStatement,
-} from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+} from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { InterfaceDetails } from "./interface-details.tsx";
 import type { InterfaceReadingState } from "./interface-reading-state.ts";
 import { systemEntryReview } from "../lib/system-entry-points.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
   | { kind: "interface"; interfaceId: string; entryId?: string }

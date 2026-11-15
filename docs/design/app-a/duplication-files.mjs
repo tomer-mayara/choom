@@ -23,9 +23,10 @@ export function toolIdentity() {
   const helpers = Object.fromEntries(readdirSync(folder).filter(name => /^duplication-.*\.mjs$/.test(name)).sort()
     .map(name => [name, hash(savedFile(folder, name))]));
   // Pin whole schema/parser folders so new sibling dependencies are included.
-  const sharedPaths = ['package.json', 'docs/design/app-a/run-layout.mjs',
+  const sharedPaths = ['package.json', 'packages/baseline-model/package.json', 'docs/design/app-a/run-layout.mjs',
     'src/lib/baseline-yaml.ts', 'src/lib/interface-duplication-yaml.ts', 'src/lib/generated/contracts.ts',
-    ...listFiles(toolRoot, 'src/domain'), ...listFiles(toolRoot, 'src/lib/architecture-yaml')].sort();
+    ...listFiles(toolRoot, 'src/domain'), ...listFiles(toolRoot, 'packages/baseline-model/src'),
+    ...listFiles(toolRoot, 'src/lib/architecture-yaml')].sort();
   const sharedSources = Object.fromEntries(sharedPaths.map(path => [path, hash(savedFile(toolRoot, path))]));
   return { node: process.version, bun: process.versions.bun ?? null,
     lockSha256: hash(savedFile(toolRoot, 'bun.lock')), helpers, sharedSources };

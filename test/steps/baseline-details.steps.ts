@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { expect as browserExpect, type Locator, type Page } from "@playwright/test";
 import { stringify } from "yaml";
-import { baselineSchema } from "../../src/domain/baseline.ts";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import { baselineSchema } from "@choom/baseline-model";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 import {
   baselineDetailsExample, baselineWithOnlyRules, baselineWithUnknownDetails,

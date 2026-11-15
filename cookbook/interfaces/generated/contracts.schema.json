@@ -2000,20 +2000,186 @@
             ],
             "additionalProperties": false
         },
-        "DuplicationEndpointReference": {
+        "Baseline": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationEndpointReference.json",
+            "$id": "Baseline.json",
+            "anyOf": [
+                {
+                    "$ref": "BaselineV1.json"
+                },
+                {
+                    "$ref": "BaselineV2.json"
+                },
+                {
+                    "$ref": "BaselineV3.json"
+                },
+                {
+                    "$ref": "BaselineV4.json"
+                }
+            ]
+        },
+        "DecodedBaseline": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodedBaseline.json",
             "type": "object",
             "properties": {
-                "interfaceId": {
-                    "$ref": "duplicationReference.json"
+                "status": {
+                    "type": "string",
+                    "const": "success"
                 },
-                "entryId": {
-                    "$ref": "duplicationReference.json"
+                "baseline": {
+                    "$ref": "Baseline.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
                 }
             },
             "required": [
-                "interfaceId"
+                "status",
+                "baseline",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineDecodeFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineDecodeFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "type": "string",
+                    "const": "decoding"
+                },
+                "code": {
+                    "$ref": "BaselineDecodeFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineDecodeFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineDecodeFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "unsupported-version"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-encoding"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-document"
+                },
+                {
+                    "type": "string",
+                    "const": "limit-exceeded"
+                }
+            ]
+        },
+        "DecodedDuplicationReport": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodedDuplicationReport.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "report": {
+                    "$ref": "DuplicationReport.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "report",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DuplicationReport": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationReport.json",
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "const": "interface-duplication-review"
+                },
+                "formatVersion": {
+                    "type": "number",
+                    "const": 1
+                },
+                "id": {
+                    "$ref": "duplicationReference.json"
+                },
+                "runRef": {
+                    "$ref": "duplicationReference.json"
+                },
+                "createdAt": {
+                    "$ref": "duplicationReference.json"
+                },
+                "producer": {
+                    "$ref": "DuplicationTool.json"
+                },
+                "baseline": {
+                    "$ref": "DuplicationBaselineBinding.json"
+                },
+                "snapshot": {
+                    "$ref": "DuplicationSnapshotBinding.json"
+                },
+                "scan": {
+                    "$ref": "DuplicationScan.json"
+                },
+                "review": {
+                    "$ref": "DuplicationReviewCoverage.json"
+                },
+                "findings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DuplicationFinding.json"
+                    },
+                    "maxItems": 1000
+                }
+            },
+            "required": [
+                "kind",
+                "formatVersion",
+                "id",
+                "runRef",
+                "createdAt",
+                "producer",
+                "baseline",
+                "snapshot",
+                "scan",
+                "review",
+                "findings"
             ],
             "additionalProperties": false
         },
@@ -2023,6 +2189,415 @@
             "type": "string",
             "maxLength": 4096,
             "pattern": "\\S"
+        },
+        "DuplicationTool": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationTool.json",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "$ref": "duplicationReference.json"
+                },
+                "version": {
+                    "$ref": "duplicationReference.json"
+                }
+            },
+            "required": [
+                "name",
+                "version"
+            ],
+            "additionalProperties": false
+        },
+        "DuplicationBaselineBinding": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationBaselineBinding.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "duplicationReference.json"
+                },
+                "formatVersion": {
+                    "anyOf": [
+                        {
+                            "type": "number",
+                            "const": 1
+                        },
+                        {
+                            "type": "number",
+                            "const": 2
+                        },
+                        {
+                            "type": "number",
+                            "const": 3
+                        },
+                        {
+                            "type": "number",
+                            "const": 4
+                        }
+                    ]
+                },
+                "sha256": {
+                    "$ref": "duplicationDigest.json"
+                }
+            },
+            "required": [
+                "id",
+                "formatVersion",
+                "sha256"
+            ],
+            "additionalProperties": false
+        },
+        "duplicationDigest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "duplicationDigest.json",
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "DuplicationSnapshotBinding": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationSnapshotBinding.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "duplicationReference.json"
+                },
+                "inventorySha256": {
+                    "$ref": "duplicationDigest.json"
+                }
+            },
+            "required": [
+                "id",
+                "inventorySha256"
+            ],
+            "additionalProperties": false
+        },
+        "DuplicationScan": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationScan.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "completed"
+                        },
+                        {
+                            "type": "string",
+                            "const": "partial"
+                        },
+                        {
+                            "type": "string",
+                            "const": "failed"
+                        },
+                        {
+                            "type": "string",
+                            "const": "skipped"
+                        }
+                    ]
+                },
+                "profile": {
+                    "$ref": "duplicationReference.json"
+                },
+                "tool": {
+                    "$ref": "DuplicationTool.json"
+                },
+                "counts": {
+                    "$ref": "DuplicationScanCounts.json"
+                },
+                "scopeRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationReference.json"
+                    }
+                },
+                "diagnostics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationText.json"
+                    }
+                },
+                "mappingGaps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationText.json"
+                    }
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationReference.json"
+                    }
+                }
+            },
+            "required": [
+                "status",
+                "profile",
+                "tool",
+                "counts",
+                "scopeRefs",
+                "diagnostics",
+                "mappingGaps",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "DuplicationScanCounts": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationScanCounts.json",
+            "type": "object",
+            "properties": {
+                "examined": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationCount.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "excluded": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationCount.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "unsupported": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationCount.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "helperOnly": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationCount.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "unmapped": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationCount.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "examined",
+                "excluded",
+                "unsupported",
+                "helperOnly",
+                "unmapped"
+            ],
+            "additionalProperties": false
+        },
+        "duplicationCount": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "duplicationCount.json",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+        },
+        "duplicationText": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "duplicationText.json",
+            "type": "string",
+            "maxLength": 16384,
+            "pattern": "\\S"
+        },
+        "DuplicationReviewCoverage": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationReviewCoverage.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "pending"
+                        },
+                        {
+                            "type": "string",
+                            "const": "partial"
+                        },
+                        {
+                            "type": "string",
+                            "const": "completed"
+                        }
+                    ]
+                },
+                "inspected": {
+                    "$ref": "duplicationCount.json"
+                },
+                "pending": {
+                    "$ref": "duplicationCount.json"
+                },
+                "scopeRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationReference.json"
+                    }
+                },
+                "gaps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationText.json"
+                    }
+                }
+            },
+            "required": [
+                "status",
+                "inspected",
+                "pending",
+                "scopeRefs",
+                "gaps"
+            ],
+            "additionalProperties": false
+        },
+        "DuplicationFinding": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationFinding.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "duplicationReference.json"
+                },
+                "kind": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "interface-pair"
+                        },
+                        {
+                            "type": "string",
+                            "const": "entry-pair"
+                        }
+                    ]
+                },
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DuplicationEndpoint.json"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                },
+                "observations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DuplicationObservation.json"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                },
+                "status": {
+                    "$ref": "DuplicationStatus.json"
+                },
+                "overlap": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "differences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationText.json"
+                    }
+                },
+                "rationale": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "gaps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationText.json"
+                    }
+                },
+                "facts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DuplicationFact.json"
+                    },
+                    "maxItems": 100
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationReference.json"
+                    }
+                },
+                "counterevidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationReference.json"
+                    }
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DuplicationSource.json"
+                    },
+                    "maxItems": 100
+                },
+                "review": {
+                    "anyOf": [
+                        {
+                            "$ref": "DuplicationReview.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "recommendation": {
+                    "$ref": "duplicationText.json"
+                }
+            },
+            "required": [
+                "id",
+                "kind",
+                "endpoints",
+                "observations",
+                "status",
+                "overlap",
+                "differences",
+                "rationale",
+                "gaps",
+                "facts",
+                "evidenceRefs",
+                "counterevidenceRefs",
+                "sources",
+                "review"
+            ],
+            "additionalProperties": false
         },
         "DuplicationEndpoint": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2049,6 +2624,117 @@
             ],
             "additionalProperties": false
         },
+        "DuplicationObservation": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationObservation.json",
+            "type": "object",
+            "properties": {
+                "origin": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "jscpd-ast"
+                        },
+                        {
+                            "type": "string",
+                            "const": "jscpd-token"
+                        },
+                        {
+                            "type": "string",
+                            "const": "source-review"
+                        }
+                    ]
+                },
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DuplicationEndpoint.json"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                },
+                "score": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationScore.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "method": {
+                    "$ref": "duplicationReference.json"
+                },
+                "toolVersion": {
+                    "anyOf": [
+                        {
+                            "$ref": "duplicationReference.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "duplicationReference.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "origin",
+                "endpoints",
+                "score",
+                "method",
+                "toolVersion",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "duplicationScore": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "duplicationScore.json",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+        },
+        "DuplicationStatus": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationStatus.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "needs-review"
+                },
+                {
+                    "type": "string",
+                    "const": "potential-redundancy"
+                },
+                {
+                    "type": "string",
+                    "const": "justified-distinction"
+                },
+                {
+                    "type": "string",
+                    "const": "insufficient-evidence"
+                }
+            ]
+        },
+        "DuplicationFact": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationFact.json",
+            "anyOf": [
+                {
+                    "$ref": "DuplicationRecordedFact.json"
+                },
+                {
+                    "$ref": "DuplicationSourceFact.json"
+                }
+            ]
+        },
         "DuplicationRecordedFact": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DuplicationRecordedFact.json",
@@ -2073,6 +2759,23 @@
                 "topic",
                 "basis",
                 "field"
+            ],
+            "additionalProperties": false
+        },
+        "DuplicationEndpointReference": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationEndpointReference.json",
+            "type": "object",
+            "properties": {
+                "interfaceId": {
+                    "$ref": "duplicationReference.json"
+                },
+                "entryId": {
+                    "$ref": "duplicationReference.json"
+                }
+            },
+            "required": [
+                "interfaceId"
             ],
             "additionalProperties": false
         },
@@ -2225,57 +2928,6 @@
             ],
             "additionalProperties": false
         },
-        "duplicationText": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "duplicationText.json",
-            "type": "string",
-            "maxLength": 16384,
-            "pattern": "\\S"
-        },
-        "DuplicationResolvedFact": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationResolvedFact.json",
-            "type": "object",
-            "properties": {
-                "value": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "status": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "const": "proposed"
-                        },
-                        {
-                            "type": "string",
-                            "const": "accepted"
-                        }
-                    ]
-                },
-                "evidenceRefs": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "acceptanceRef": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "status",
-                "evidenceRefs"
-            ],
-            "additionalProperties": false
-        },
         "DuplicationSource": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DuplicationSource.json",
@@ -2310,89 +2962,6 @@
                 "evidenceRef"
             ],
             "additionalProperties": false
-        },
-        "duplicationDigest": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "duplicationDigest.json",
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-        },
-        "DuplicationObservation": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationObservation.json",
-            "type": "object",
-            "properties": {
-                "origin": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "const": "jscpd-ast"
-                        },
-                        {
-                            "type": "string",
-                            "const": "jscpd-token"
-                        },
-                        {
-                            "type": "string",
-                            "const": "source-review"
-                        }
-                    ]
-                },
-                "endpoints": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "DuplicationEndpoint.json"
-                    },
-                    "minItems": 2,
-                    "maxItems": 2
-                },
-                "score": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationScore.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "method": {
-                    "$ref": "duplicationReference.json"
-                },
-                "toolVersion": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationReference.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "evidenceRefs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationReference.json"
-                    },
-                    "minItems": 1
-                }
-            },
-            "required": [
-                "origin",
-                "endpoints",
-                "score",
-                "method",
-                "toolVersion",
-                "evidenceRefs"
-            ],
-            "additionalProperties": false
-        },
-        "duplicationScore": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "duplicationScore.json",
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
         },
         "DuplicationReview": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2429,619 +2998,6 @@
                 "manager",
                 "reviewedAt",
                 "decisionRefs"
-            ],
-            "additionalProperties": false
-        },
-        "DuplicationFinding": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationFinding.json",
-            "type": "object",
-            "properties": {
-                "id": {
-                    "$ref": "duplicationReference.json"
-                },
-                "kind": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "const": "interface-pair"
-                        },
-                        {
-                            "type": "string",
-                            "const": "entry-pair"
-                        }
-                    ]
-                },
-                "endpoints": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "DuplicationEndpoint.json"
-                    },
-                    "minItems": 2,
-                    "maxItems": 2
-                },
-                "observations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "DuplicationObservation.json"
-                    },
-                    "minItems": 1,
-                    "maxItems": 100
-                },
-                "status": {
-                    "$ref": "DuplicationStatus.json"
-                },
-                "overlap": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationText.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "differences": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationText.json"
-                    }
-                },
-                "rationale": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationText.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "gaps": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationText.json"
-                    }
-                },
-                "facts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "DuplicationFact.json"
-                    },
-                    "maxItems": 100
-                },
-                "evidenceRefs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationReference.json"
-                    }
-                },
-                "counterevidenceRefs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationReference.json"
-                    }
-                },
-                "sources": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "DuplicationSource.json"
-                    },
-                    "maxItems": 100
-                },
-                "review": {
-                    "anyOf": [
-                        {
-                            "$ref": "DuplicationReview.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "recommendation": {
-                    "$ref": "duplicationText.json"
-                }
-            },
-            "required": [
-                "id",
-                "kind",
-                "endpoints",
-                "observations",
-                "status",
-                "overlap",
-                "differences",
-                "rationale",
-                "gaps",
-                "facts",
-                "evidenceRefs",
-                "counterevidenceRefs",
-                "sources",
-                "review"
-            ],
-            "additionalProperties": false
-        },
-        "DuplicationStatus": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationStatus.json",
-            "anyOf": [
-                {
-                    "type": "string",
-                    "const": "needs-review"
-                },
-                {
-                    "type": "string",
-                    "const": "potential-redundancy"
-                },
-                {
-                    "type": "string",
-                    "const": "justified-distinction"
-                },
-                {
-                    "type": "string",
-                    "const": "insufficient-evidence"
-                }
-            ]
-        },
-        "DuplicationFact": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationFact.json",
-            "anyOf": [
-                {
-                    "$ref": "DuplicationRecordedFact.json"
-                },
-                {
-                    "$ref": "DuplicationSourceFact.json"
-                }
-            ]
-        },
-        "DuplicationBaselineBinding": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationBaselineBinding.json",
-            "type": "object",
-            "properties": {
-                "id": {
-                    "$ref": "duplicationReference.json"
-                },
-                "formatVersion": {
-                    "anyOf": [
-                        {
-                            "type": "number",
-                            "const": 1
-                        },
-                        {
-                            "type": "number",
-                            "const": 2
-                        },
-                        {
-                            "type": "number",
-                            "const": 3
-                        },
-                        {
-                            "type": "number",
-                            "const": 4
-                        }
-                    ]
-                },
-                "sha256": {
-                    "$ref": "duplicationDigest.json"
-                }
-            },
-            "required": [
-                "id",
-                "formatVersion",
-                "sha256"
-            ],
-            "additionalProperties": false
-        },
-        "DuplicationSnapshotBinding": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationSnapshotBinding.json",
-            "type": "object",
-            "properties": {
-                "id": {
-                    "$ref": "duplicationReference.json"
-                },
-                "inventorySha256": {
-                    "$ref": "duplicationDigest.json"
-                }
-            },
-            "required": [
-                "id",
-                "inventorySha256"
-            ],
-            "additionalProperties": false
-        },
-        "DuplicationTool": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationTool.json",
-            "type": "object",
-            "properties": {
-                "name": {
-                    "$ref": "duplicationReference.json"
-                },
-                "version": {
-                    "$ref": "duplicationReference.json"
-                }
-            },
-            "required": [
-                "name",
-                "version"
-            ],
-            "additionalProperties": false
-        },
-        "DuplicationScanCounts": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationScanCounts.json",
-            "type": "object",
-            "properties": {
-                "examined": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationCount.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "excluded": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationCount.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "unsupported": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationCount.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "helperOnly": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationCount.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "unmapped": {
-                    "anyOf": [
-                        {
-                            "$ref": "duplicationCount.json"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                }
-            },
-            "required": [
-                "examined",
-                "excluded",
-                "unsupported",
-                "helperOnly",
-                "unmapped"
-            ],
-            "additionalProperties": false
-        },
-        "duplicationCount": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "duplicationCount.json",
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-        },
-        "DuplicationScan": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationScan.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "const": "completed"
-                        },
-                        {
-                            "type": "string",
-                            "const": "partial"
-                        },
-                        {
-                            "type": "string",
-                            "const": "failed"
-                        },
-                        {
-                            "type": "string",
-                            "const": "skipped"
-                        }
-                    ]
-                },
-                "profile": {
-                    "$ref": "duplicationReference.json"
-                },
-                "tool": {
-                    "$ref": "DuplicationTool.json"
-                },
-                "counts": {
-                    "$ref": "DuplicationScanCounts.json"
-                },
-                "scopeRefs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationReference.json"
-                    }
-                },
-                "diagnostics": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationText.json"
-                    }
-                },
-                "mappingGaps": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationText.json"
-                    }
-                },
-                "evidenceRefs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationReference.json"
-                    }
-                }
-            },
-            "required": [
-                "status",
-                "profile",
-                "tool",
-                "counts",
-                "scopeRefs",
-                "diagnostics",
-                "mappingGaps",
-                "evidenceRefs"
-            ],
-            "additionalProperties": false
-        },
-        "DuplicationReviewCoverage": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationReviewCoverage.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "const": "pending"
-                        },
-                        {
-                            "type": "string",
-                            "const": "partial"
-                        },
-                        {
-                            "type": "string",
-                            "const": "completed"
-                        }
-                    ]
-                },
-                "inspected": {
-                    "$ref": "duplicationCount.json"
-                },
-                "pending": {
-                    "$ref": "duplicationCount.json"
-                },
-                "scopeRefs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationReference.json"
-                    }
-                },
-                "gaps": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "duplicationText.json"
-                    }
-                }
-            },
-            "required": [
-                "status",
-                "inspected",
-                "pending",
-                "scopeRefs",
-                "gaps"
-            ],
-            "additionalProperties": false
-        },
-        "DuplicationReport": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DuplicationReport.json",
-            "type": "object",
-            "properties": {
-                "kind": {
-                    "type": "string",
-                    "const": "interface-duplication-review"
-                },
-                "formatVersion": {
-                    "type": "number",
-                    "const": 1
-                },
-                "id": {
-                    "$ref": "duplicationReference.json"
-                },
-                "runRef": {
-                    "$ref": "duplicationReference.json"
-                },
-                "createdAt": {
-                    "$ref": "duplicationReference.json"
-                },
-                "producer": {
-                    "$ref": "DuplicationTool.json"
-                },
-                "baseline": {
-                    "$ref": "DuplicationBaselineBinding.json"
-                },
-                "snapshot": {
-                    "$ref": "DuplicationSnapshotBinding.json"
-                },
-                "scan": {
-                    "$ref": "DuplicationScan.json"
-                },
-                "review": {
-                    "$ref": "DuplicationReviewCoverage.json"
-                },
-                "findings": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "DuplicationFinding.json"
-                    },
-                    "maxItems": 1000
-                }
-            },
-            "required": [
-                "kind",
-                "formatVersion",
-                "id",
-                "runRef",
-                "createdAt",
-                "producer",
-                "baseline",
-                "snapshot",
-                "scan",
-                "review",
-                "findings"
-            ],
-            "additionalProperties": false
-        },
-        "Baseline": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "Baseline.json",
-            "anyOf": [
-                {
-                    "$ref": "BaselineV1.json"
-                },
-                {
-                    "$ref": "BaselineV2.json"
-                },
-                {
-                    "$ref": "BaselineV3.json"
-                },
-                {
-                    "$ref": "BaselineV4.json"
-                }
-            ]
-        },
-        "DecodedBaseline": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DecodedBaseline.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "const": "success"
-                },
-                "baseline": {
-                    "$ref": "Baseline.json"
-                },
-                "durationMs": {
-                    "type": "number",
-                    "minimum": 0
-                }
-            },
-            "required": [
-                "status",
-                "baseline",
-                "durationMs"
-            ],
-            "additionalProperties": false
-        },
-        "BaselineDecodeFailure": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "BaselineDecodeFailure.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "const": "failure"
-                },
-                "stage": {
-                    "type": "string",
-                    "const": "decoding"
-                },
-                "code": {
-                    "$ref": "BaselineDecodeFailureCode.json"
-                },
-                "message": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 2048
-                },
-                "durationMs": {
-                    "type": "number",
-                    "minimum": 0
-                }
-            },
-            "required": [
-                "status",
-                "stage",
-                "code",
-                "message",
-                "durationMs"
-            ],
-            "additionalProperties": false
-        },
-        "BaselineDecodeFailureCode": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "BaselineDecodeFailureCode.json",
-            "anyOf": [
-                {
-                    "type": "string",
-                    "const": "unsupported-version"
-                },
-                {
-                    "type": "string",
-                    "const": "invalid-encoding"
-                },
-                {
-                    "type": "string",
-                    "const": "invalid-document"
-                },
-                {
-                    "type": "string",
-                    "const": "limit-exceeded"
-                }
-            ]
-        },
-        "DecodedDuplicationReport": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "DecodedDuplicationReport.json",
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "const": "success"
-                },
-                "report": {
-                    "$ref": "DuplicationReport.json"
-                },
-                "durationMs": {
-                    "type": "number",
-                    "minimum": 0
-                }
-            },
-            "required": [
-                "status",
-                "report",
-                "durationMs"
             ],
             "additionalProperties": false
         },
@@ -3511,6 +3467,50 @@
                     "$ref": "WorkflowFailure.json"
                 }
             ]
+        },
+        "DuplicationResolvedFact": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DuplicationResolvedFact.json",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "status": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "proposed"
+                        },
+                        {
+                            "type": "string",
+                            "const": "accepted"
+                        }
+                    ]
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "acceptanceRef": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "status",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
         }
     }
 }

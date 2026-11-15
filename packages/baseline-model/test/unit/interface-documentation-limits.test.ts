@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
-import { baselineExample, fixtureItem } from "../../support/baseline-fixtures.ts";
-import { baselineWithSignature, documentationAtBudget, enrichedBaseline, excessiveDocumentation } from "../../support/interface-documentation-fixtures.ts";
+import { baselineSchema } from "../../src/baseline.ts";
+import { baselineExample, fixtureItem } from "../../../../test/support/baseline-fixtures.ts";
+import { baselineWithSignature, documentationAtBudget, enrichedBaseline, excessiveDocumentation } from "../../../../test/support/interface-documentation-fixtures.ts";
 
 test.each([
   "entries per interface", "examples per entry", "descriptive text bytes", "sample text bytes", "total documentation bytes",

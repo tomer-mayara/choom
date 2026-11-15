@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import type { Baseline, BaselineDocumentedEntry, BaselineInterface, BaselineSourceAssessment } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline, BaselineDocumentedEntry, BaselineInterface, BaselineSourceAssessment } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { componentName } from "../lib/component-name.ts";
 import { InterfaceUsedBy } from "./interface-used-by.tsx";
 import { Button } from "./ui/button.tsx";
 import { interfaceSourceStatements } from "../lib/interface-provenance.ts";
 import type { InterfaceDisclosure } from "./use-interface-disclosures.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 
 type Interface = ReadonlyData<BaselineInterface>;
 type Entry = ReadonlyData<BaselineDocumentedEntry>;

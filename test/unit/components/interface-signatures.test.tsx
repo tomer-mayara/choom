@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ArchitectureDetails } from "../../../src/components/architecture-details.tsx";
 import { InterfaceRecordedStatus } from "../../../src/components/interface-overview.tsx";
-import type { Baseline } from "../../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { baselineWithSignature } from "../../support/interface-documentation-fixtures.ts";
 import { originalInterfaceRecord, selectInterfaceTab } from "../../support/interface-details-dom.ts";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { expect, type Locator, type Page } from "@playwright/test";
-import type { BaselineV3 } from "../../../src/domain/generated/contracts.ts";
+import type { BaselineV3 } from "@choom/baseline-model/contracts";
 import { readRenderedDrawing, readSignatureSourceMetadata, type SignatureReading } from "../interface-documentation-reading.ts";
 import { readSourceUseOverview, type SourceConsumerReading } from "../source-consumer-reading.ts";
 import { openPublishedInterface } from "./published-interface-browser.ts";

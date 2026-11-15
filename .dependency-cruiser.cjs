@@ -1,4 +1,5 @@
 const domain = "^src/domain/";
+const baselineModel = "^packages/baseline-model/src/";
 const codec = "^src/lib/((baseline|interface-duplication)-yaml\\.ts$|architecture-yaml/)";
 const codecContracts = "^src/lib/generated/contracts\\.ts$";
 const platform = "^src/platform/";
@@ -26,7 +27,19 @@ module.exports = {
       name: "domain-is-platform-independent",
       severity: "error",
       from: { path: domain },
-      to: { pathNot: [domain, "^node_modules/zod/"] },
+      to: { pathNot: [domain, baselineModel, "^node_modules/zod/"] },
+    },
+    {
+      name: "baseline-model-imports-no-app-code",
+      severity: "error",
+      from: { path: "^packages/baseline-model/" },
+      to: { path: "^src/" },
+    },
+    {
+      name: "baseline-model-is-platform-independent",
+      severity: "error",
+      from: { path: baselineModel },
+      to: { pathNot: [baselineModel, "^node_modules/zod/", "^src/"] },
     },
     {
       name: "libraries-do-not-depend-on-ui-or-platform",
@@ -44,7 +57,7 @@ module.exports = {
       name: "baseline-codec-uses-domain-and-yaml",
       severity: "error",
       from: { path: [codec, codecContracts] },
-      to: { pathNot: [codec, codecContracts, domain, "^node_modules/yaml/"] },
+      to: { pathNot: [codec, codecContracts, domain, baselineModel, "^node_modules/yaml/"] },
     },
     {
       name: "components-do-not-import-app-entrypoints",
@@ -101,7 +114,8 @@ module.exports = {
       to: {
         pathNot: [
           workflowContracts,
-          "^src/domain/(generated/contracts|readonly-data)\\.ts$",
+          "^src/domain/generated/contracts\\.ts$",
+          "^packages/baseline-model/src/(generated/contracts|readonly-data)\\.ts$",
           "^src/lib/architecture-layout\\.ts$",
         ],
       },
@@ -156,6 +170,8 @@ module.exports = {
     tsPreCompilationDeps: "specify",
     enhancedResolveOptions: {
       extensions: [".js", ".ts", ".tsx", ".json"],
+      // Resolve package exports as TypeScript, Vite, and Node do, including workspace subpaths.
+      exportsFields: ["exports"],
       conditionNames: ["import", "browser", "default"],
     },
   },

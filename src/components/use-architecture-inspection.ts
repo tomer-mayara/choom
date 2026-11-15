@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Baseline } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { ConnectionMode } from "../lib/interface-arc-visibility.ts";
 import type { ArchitecturePanel } from "./architecture-details.tsx";

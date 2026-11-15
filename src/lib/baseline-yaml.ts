@@ -1,4 +1,4 @@
-import { baselineSchema } from "../domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { CodecProblem } from "./architecture-yaml/limits.ts";
 import { readYamlData } from "./architecture-yaml/parse.ts";
 import type { BaselineCodec, DecodeBaselineOutcome } from "./generated/contracts.ts";

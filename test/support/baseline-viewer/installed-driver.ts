@@ -9,7 +9,7 @@ import type { World } from "@cucumber/cucumber";
 import { Key, remote, type Browser } from "webdriverio";
 import { expectInstalledUnknownConsumers, inspectAndArrangeInstalledArcs } from "./installed-arcs.ts";
 import { inspectInstalledArcOpens } from "./installed-arc-files.ts";
-import type { Baseline, BaselineV3 } from "../../../src/domain/generated/contracts.ts";
+import type { Baseline, BaselineV3 } from "@choom/baseline-model/contracts";
 import { inspectInstalledDocumentation, type InstalledDocumentationTask } from "./published-interface-installed.ts";
 import { captureInstalledView, readInstalledView } from "./installed-view.ts";
 import { inspectInstalledSourceConsumers, type InstalledSourceConsumerTask } from "./source-consumer-installed.ts";

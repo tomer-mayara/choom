@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
-import { accepted, baselineExample, fixtureItem, invalidBaseline, proposed, reviewedBaseline } from "../../support/baseline-fixtures.ts";
+import { baselineSchema } from "../../src/baseline.ts";
+import { accepted, baselineExample, fixtureItem, invalidBaseline, proposed, reviewedBaseline } from "../../../../test/support/baseline-fixtures.ts";
 
 describe("baseline field shapes", () => {
   test("preserves the four item kinds, statement statuses, and unavailable references", () => {

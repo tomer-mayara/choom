@@ -1,5 +1,7 @@
 // Generated from TypeSpec by bun run contracts:generate. Do not edit.
 
+import type * as ChoomBaselineModel from "@choom/baseline-model/contracts";
+
 import type * as ChoomDomain from "../../domain/generated/contracts";
 
 export interface BaselineCodec {
@@ -22,7 +24,7 @@ export type DecodeDuplicationReportOutcome = DecodedDuplicationReport | Duplicat
 
 export interface DecodedBaseline {
   status: "success";
-  baseline: ChoomDomain.Baseline;
+  baseline: ChoomBaselineModel.Baseline;
   durationMs: number;
 }
 
@@ -43,7 +45,7 @@ export interface DuplicationDecodeFailure {
 export type DuplicationDecodeFailureCode = "unsupported-version" | "invalid-encoding" | "invalid-document" | "limit-exceeded" | "baseline-mismatch";
 
 export interface DuplicationReportCodec {
-  decode(text: baselineYaml, baseline: ChoomDomain.Baseline, baselineSha256: ChoomDomain.duplicationDigest): DecodeDuplicationReportOutcome;
+  decode(text: baselineYaml, baseline: ChoomBaselineModel.Baseline, baselineSha256: ChoomDomain.duplicationDigest): DecodeDuplicationReportOutcome;
 }
 
 export type baselineYaml = string;

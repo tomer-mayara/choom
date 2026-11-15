@@ -2,7 +2,7 @@ import "@typespec/json-schema";
 
 using TypeSpec.JsonSchema;
 
-namespace Choom.Domain;
+namespace Choom.BaselineModel;
 
 // Runtime checks UTF-8 budgets, local bindings, note locations and references.
 // Source observations do not establish permission or runtime execution.

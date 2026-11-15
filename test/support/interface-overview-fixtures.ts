@@ -1,4 +1,4 @@
-import type { Baseline, BaselineDocumentation } from "../../src/domain/generated/contracts.ts";
+import type { Baseline, BaselineDocumentation } from "@choom/baseline-model/contracts";
 import { accepted, fixtureItem, proposed } from "./baseline-fixtures.ts";
 import { enrichedBaseline } from "./interface-documentation-fixtures.ts";
 

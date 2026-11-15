@@ -2,7 +2,7 @@ import "@typespec/json-schema";
 
 using TypeSpec.JsonSchema;
 
-namespace Choom.Domain;
+namespace Choom.BaselineModel;
 
 // Runtime validation checks byte limits, safe paths, and local references.
 @extension("additionalProperties", false)

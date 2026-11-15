@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { expect as browserExpect, type Page } from "@playwright/test";
 import { stringify } from "yaml";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
 import { fixtureItem } from "../support/baseline-fixtures.ts";
 import { baselineWithSignature } from "../support/interface-documentation-fixtures.ts";

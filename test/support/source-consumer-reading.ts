@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { BaselineDocumentedEntry, BaselineInterface, BaselineSourceNote, BaselineV3 } from "../../src/domain/generated/contracts.ts";
+import type { BaselineDocumentedEntry, BaselineInterface, BaselineSourceNote, BaselineV3 } from "@choom/baseline-model/contracts";
 import { expectSignatureReading, type ReadingDrawing, type SignatureReading } from "./interface-documentation-reading.ts";
 
 const workspace = "s4-001-workspace";

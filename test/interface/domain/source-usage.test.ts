@@ -3,7 +3,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { stringify } from "yaml";
 import contracts from "../../../cookbook/interfaces/generated/contracts.schema.json";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { baselineCodec } from "../../../src/lib/baseline-yaml.ts";
 import { sourceUsageBaseline } from "../../support/source-usage-fixtures.ts";
 

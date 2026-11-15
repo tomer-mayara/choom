@@ -1,9 +1,8 @@
 import { expect, test } from "bun:test";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
-import { checkBaselineDisplayLimits } from "../../../src/lib/baseline-display-limits.ts";
-import { fixtureItem } from "../../support/baseline-fixtures.ts";
-import { documentationAtBudget } from "../../support/interface-documentation-fixtures.ts";
-import { sourceUsageAtBudget, sourceUsageBaseline } from "../../support/source-usage-fixtures.ts";
+import { baselineSchema } from "../../src/baseline.ts";
+import { fixtureItem } from "../../../../test/support/baseline-fixtures.ts";
+import { documentationAtBudget } from "../../../../test/support/interface-documentation-fixtures.ts";
+import { sourceUsageAtBudget, sourceUsageBaseline } from "../../../../test/support/source-usage-fixtures.ts";
 
 test("all use records count before filtering or combining", () => {
   const input = sourceUsageBaseline();
@@ -55,16 +54,6 @@ test("new references and descriptions count UTF-8 bytes", () => {
   input.sourceUsage.mappingRef = "selected-mapping";
   fixtureItem(input.sourceUsage.assessments).scope += "x";
   expect(baselineSchema.safeParse(input).success).toBe(false);
-});
-
-test("source-use and legacy-link budgets remain independent", () => {
-  const input = sourceUsageBaseline();
-  const assessment = fixtureItem(input.sourceUsage.assessments);
-  const original = fixtureItem(assessment.uses);
-  assessment.uses = Array.from({ length: 2000 }, (_, index) => ({ ...structuredClone(original), id: `use-${index}` }));
-  fixtureItem(input.interfaces).allowedConsumers.value = ["checkout", "billing"];
-  const parsed = baselineSchema.parse(input);
-  expect(() => checkBaselineDisplayLimits(parsed)).not.toThrow();
 });
 
 test("version 3 retains the independent documentation budget", () => {

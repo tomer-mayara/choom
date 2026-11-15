@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
-import { fixtureItem } from "../../support/baseline-fixtures.ts";
-import { baselineWithSignature, enrichedBaseline, invalidDocumentation } from "../../support/interface-documentation-fixtures.ts";
+import { baselineSchema } from "../../src/baseline.ts";
+import { fixtureItem } from "../../../../test/support/baseline-fixtures.ts";
+import { baselineWithSignature, enrichedBaseline, invalidDocumentation } from "../../../../test/support/interface-documentation-fixtures.ts";
 
 test.each([
   "duplicate entry ID", "unknown access point", "interaction on a type", "uncited source note",

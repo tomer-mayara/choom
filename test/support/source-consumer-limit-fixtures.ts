@@ -1,4 +1,4 @@
-import type { BaselineV3 } from "../../src/domain/generated/contracts.ts";
+import type { BaselineV3 } from "@choom/baseline-model/contracts";
 import { sourceUsageBaseline } from "./source-usage-fixtures.ts";
 
 /** Synthetic boundary data: 2,000 uses, 4,000 located notes, and exactly 2 MiB sourceUsage. */

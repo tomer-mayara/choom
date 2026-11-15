@@ -3,8 +3,8 @@ import {
   Background, ControlButton, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore, useStoreApi, type Node, type NodeProps,
 } from "@xyflow/react";
 import { RotateCcw } from "lucide-react";
-import type { BaselineComponent, Baseline } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { BaselineComponent, Baseline } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { maximumDiagramZoom, normalMinimumZoom, revealHeader, startingViewport } from "../lib/architecture-viewport.ts";
 import { componentControlHeight, componentControlWidth, componentGroupBorderWidth } from "../lib/component-geometry.ts";
@@ -21,7 +21,7 @@ import { useArchitectureInspection } from "./use-architecture-inspection.ts";
 import { useComponentGestures, type ComponentGestures } from "./use-component-gestures.ts";
 import { Button } from "./ui/button.tsx";
 import { duplicationCounts, type DuplicationControls } from "./duplication-view.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 import "@xyflow/react/dist/style.css";
 
 type ArchitectureNode = Node<{

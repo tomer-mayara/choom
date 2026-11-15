@@ -5,7 +5,8 @@ import { join } from "node:path";
 import type { World } from "@cucumber/cucumber";
 import { expect, type Page } from "@playwright/test";
 import { parse } from "yaml";
-import type { Baseline, DuplicationReport } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { DuplicationReport } from "../../src/domain/generated/contracts.ts";
 import { BaselineBrowserDriver } from "./baseline-viewer/browser-driver.ts";
 
 export interface DuplicationWorld extends World {

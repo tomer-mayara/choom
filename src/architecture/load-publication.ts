@@ -1,4 +1,5 @@
-import type { Baseline, DuplicationReport } from "../domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { DuplicationReport } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { WorkflowOutcome, WorkflowState } from "./generated/workflow.ts";
 import type { LoadWorkflowSnapshot } from "./workspace-view.ts";

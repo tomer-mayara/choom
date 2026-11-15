@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import contracts from "../../../cookbook/interfaces/generated/contracts.schema.json";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { accepted, fixtureItem } from "../../support/baseline-fixtures.ts";
 import { baselineWithSignature, enrichedBaseline } from "../../support/interface-documentation-fixtures.ts";
 
