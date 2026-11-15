@@ -9,10 +9,18 @@ import { assert, type Fields, text } from './record-checks.ts';
 // settings record names. Saved JSON stays an unchecked value until the checks
 // below read it.
 export interface IndexedFile { path: string; kind: unknown; sha256: string; bytes?: unknown }
-interface SourceFile { path: string; sha256: string }
+export interface SourceFile { path: string; sha256: string }
 interface Alias { name: string; alias: string }
 interface ConfigurationLimit { configRef: string; reason: string }
-interface Group { name: string; files: SourceFile[]; ref: string | null; options: Fields; aliases: Alias[] }
+// A compiler context: its name, the files that it selects, the reference of its
+// settings (null for the fallback), the options that the parser gets, the path
+// aliases, and for a configuration its entry in the settings record.
+export interface CompilerContext {
+  name: string; files: SourceFile[]; ref: string | null; options: Fields; aliases: Alias[]; config: Fields | null;
+}
+export interface CompilerContexts {
+  groups: CompilerContext[]; configurationLimits: ConfigurationLimit[]; parsingProfile: ParsingProfile | null;
+}
 type Matcher = (path: string) => boolean;
 export type Picomatch = (pattern: string, options: { dot: boolean }) => Matcher;
 interface Pattern { excluded: boolean; match: Matcher; ref: string }
@@ -93,9 +101,9 @@ function pathAliases(compilerOptions: Fields | undefined, ref: string, configura
 
 // One group for each fully parsed compiler file selection that selects saved source.
 function compilerGroups(settings: Fields, sourceFiles: SourceFile[], settingsRef: string):
-  { groups: Group[]; configurationLimits: ConfigurationLimit[] } {
+  { groups: CompilerContext[]; configurationLimits: ConfigurationLimit[] } {
   const configurationLimits: ConfigurationLimit[] = [];
-  const groups: Group[] = [];
+  const groups: CompilerContext[] = [];
   for (const [index, config] of ((settings.configs ?? []) as Fields[]).entries()) {
     const ref = settingsRef + '#/configs/' + index;
     if (config.status !== 'parsed' || !Array.isArray(config.fileNames)) {
@@ -110,7 +118,7 @@ function compilerGroups(settings: Fields, sourceFiles: SourceFile[], settingsRef
     }
     const options = parserOptions(config.compilerOptions, config.path);
     const aliases = pathAliases(config.compilerOptions as Fields | undefined, ref, configurationLimits);
-    groups.push({ name: 'compiler-' + (index + 1), files, ref, options, aliases });
+    groups.push({ name: 'compiler-' + (index + 1), files, ref, options, aliases, config });
   }
   return { groups, configurationLimits };
 }
@@ -118,10 +126,25 @@ function compilerGroups(settings: Fields, sourceFiles: SourceFile[], settingsRef
 // The group of the source that no parsed compiler selection covers. With a named
 // parsing profile, it uses the profile's options; otherwise it is a
 // configuration-free fallback.
-function remainingGroup(files: SourceFile[], profile: ParsingProfile | null, settingsRef: string): Group {
-  if (profile === null) return { name: 'fallback', files, ref: null, options: {}, aliases: [] };
+function remainingGroup(files: SourceFile[], profile: ParsingProfile | null, settingsRef: string): CompilerContext {
+  if (profile === null) return { name: 'fallback', files, ref: null, options: {}, aliases: [], config: null };
   return { name: profile.id, files, ref: settingsRef + '#/parsingProfile',
-    options: parserOptions(profile.compilerOptions, profile.id), aliases: [] };
+    options: parserOptions(profile.compilerOptions, profile.id), aliases: [], config: null };
+}
+
+// The compiler contexts of saved source files: one group for each fully parsed
+// compiler selection that selects some of them, in record order, then one group
+// for the files that no parsed selection covers. That group uses the named Choom
+// parsing profile when the settings record names it; otherwise it is the
+// configuration-free fallback. A file can be in several groups. The Stage 3
+// exports action applies the same rule to one file.
+export function compilerContexts(settings: Fields, sourceFiles: SourceFile[], settingsRef: string): CompilerContexts {
+  const parsingProfile = namedParsingProfile(settings);
+  const { groups, configurationLimits } = compilerGroups(settings, sourceFiles, settingsRef);
+  const covered = new Set(groups.flatMap(group => group.files.map(file => file.path)));
+  const remaining = sourceFiles.filter(file => !covered.has(file.path));
+  if (remaining.length) groups.push(remainingGroup(remaining, parsingProfile, settingsRef));
+  return { groups, configurationLimits, parsingProfile };
 }
 
 function profileLimits(profile: ParsingProfile | null, settingsRef: string): string[] {
@@ -153,7 +176,7 @@ function rootEvidence(selectors: { dir: string; patterns: Pattern[] }[], path: s
   }))];
 }
 
-function graphContexts(groups: Group[], selectors: { dir: string; patterns: Pattern[] }[]): Fields[] {
+function graphContexts(groups: CompilerContext[], selectors: { dir: string; patterns: Pattern[] }[]): Fields[] {
   return groups.flatMap(group => ['import', 'require'].map(mode => ({
     id: group.name + '-' + mode, compilerSettingsRef: group.ref,
     sourceFiles: group.files.map(file => file.path), compilerOptions: group.options,
@@ -167,13 +190,11 @@ function graphContexts(groups: Group[], selectors: { dir: string; patterns: Patt
 }
 
 export function graphProfile({ attemptId, settings, plan, loading, indexed, facts, loadPicomatch }: ProfileInputs): GraphProfile {
+  // The profile check comes before the scope check.
   const parsingProfile = namedParsingProfile(settings);
   const sourceFiles = savedSourceFiles(plan, loading);
   const selected = new Set(sourceFiles.map(file => file.path));
-  const { groups, configurationLimits } = compilerGroups(settings, sourceFiles, facts.settingsRef);
-  const covered = new Set(groups.flatMap(group => group.files.map(file => file.path)));
-  const remaining = sourceFiles.filter(file => !covered.has(file.path));
-  if (remaining.length) groups.push(remainingGroup(remaining, parsingProfile, facts.settingsRef));
+  const { groups, configurationLimits } = compilerContexts(settings, sourceFiles, facts.settingsRef);
   const contexts = graphContexts(groups, entrySelectors(plan, facts.planRef, loadPicomatch()));
   const outsideScope = [...indexed.values()].filter(file => sourceExtension.test(file.path) && !selected.has(file.path));
   return {

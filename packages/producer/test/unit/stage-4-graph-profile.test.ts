@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createRequire } from "node:module";
 import { choomDefaultProfile } from "../../src/parsing-profile.ts";
-import { type GraphProfile, graphProfile, type IndexedFile, type Picomatch, type ProfileInputs }
+import { compilerContexts, type GraphProfile, graphProfile, type IndexedFile, type Picomatch, type ProfileInputs }
   from "../../src/stage-4-graph-profile.ts";
 
 // The graph profile of Stage 4 start, from a Stage 3 source scope of two files
@@ -54,5 +54,35 @@ describe("the Stage 4 graph profile", () => {
   test("refuses a settings record that names an unknown parsing profile", () => {
     expect(() => profileFor({ configs: [], parsingProfile: { id: "choom-default-v9" } }))
       .toThrow(new Error("The settings record names an unknown parsing profile: choom-default-v9"));
+  });
+});
+
+// The rule of the graph profile for the compiler settings of saved source files,
+// which the Stage 3 exports action applies to one file.
+describe("the compiler contexts of saved source files", () => {
+  const app = { path: "src/app.ts", sha256: "a".repeat(64) };
+  const config = (path: string, fileNames: string[], status = "parsed") =>
+    ({ path, status, fileNames, compilerOptions: { target: 9, strict: true }, declared: { files: fileNames } });
+
+  test("are the parsed configurations that select the file, in record order", () => {
+    const main = config("/repo/tsconfig.json", ["src/app.ts"]);
+    const all = config("/repo/tsconfig.all.json", ["src/app.ts", "src/view.jsx"]);
+    const configs = [main, config("/repo/tsconfig.view.json", ["src/view.jsx"]),
+      config("/repo/tsconfig.broken.json", ["src/app.ts"], "partial"), all];
+    const { groups } = compilerContexts({ configs, parsingProfile: null }, [app], "settings-001");
+    expect(groups.map(({ name, ref, files, options, config: entry }) => ({ name, ref, files, options, config: entry }))).toEqual([
+      { name: "compiler-1", ref: "settings-001#/configs/0", files: [app], options: { target: 9 }, config: main },
+      { name: "compiler-4", ref: "settings-001#/configs/3", files: [app], options: { target: 9 }, config: all },
+    ]);
+  });
+
+  test("are the named parsing profile, or else the configuration-free fallback, for a file that no configuration selects", () => {
+    const configs = [config("/repo/tsconfig.json", ["src/view.jsx"])];
+    const profile = compilerContexts({ configs: [], parsingProfile: choomDefaultProfile }, [app], "settings-001");
+    const fallback = compilerContexts({ configs, parsingProfile: null }, [app], "settings-001");
+    expect([...profile.groups, ...fallback.groups].map(({ name, ref, files, config: entry }) => ({ name, ref, files, config: entry })))
+      .toEqual([{ name: "choom-default-v1", ref: "settings-001#/parsingProfile", files: [app], config: null },
+        { name: "fallback", ref: null, files: [app], config: null }]);
+    expect(profile.parsingProfile).toBe(choomDefaultProfile);
   });
 });
