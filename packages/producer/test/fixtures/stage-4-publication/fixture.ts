@@ -13,6 +13,8 @@ import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts
 // run for real. The toolchain and graph phases need Docker, so this fixture
 // writes their outputs and receipts in the form that the collection and the
 // publisher read. The records are the smallest that pass every publisher check.
+// A test can add snapshot files that no component owns, and can stop before the
+// source collection.
 interface Statement<Value> { value: Value; status: "proposed"; evidenceRefs: string[] }
 interface FixtureComponent {
   id: string;
@@ -30,7 +32,12 @@ export interface FixtureBaseline {
   resources: unknown[];
   rules: unknown[];
 }
-export interface StageFourPublication { root: string; work: string; review: string; attempt: string }
+// A saved snapshot file that no component owns, as text or bytes.
+export interface ExtraFile { path: string; text: string | Buffer }
+// A Stage 4 attempt whose start, toolchain and graph phases completed, before the source collection.
+export interface StageFourAttempt { root: string; work: string; attempt: string }
+export interface StageFourPublication extends StageFourAttempt { review: string }
+interface InventoryFile { path: string; kind: "file"; bytes: number; sha256: string }
 interface GraphContext {
   id: string;
   sourceFiles: string[];
@@ -73,9 +80,16 @@ const jsonText = (value: unknown): string => JSON.stringify(value, null, 2) + "\
 // Each statement gets its own evidence list. The saved YAML must not use anchors or aliases.
 const yamlText = (value: unknown): string => stringify(value, { aliasDuplicateObjects: false });
 const statement = <Value>(value: Value): Statement<Value> => ({ value, status: "proposed", evidenceRefs: [...evidenceRefs] });
-const inventoryFiles = sourceFiles.map(({ path, text }) => ({ path, kind: "file", bytes: Buffer.byteLength(text), sha256: sha256(text) }));
+// The JavaScript and TypeScript files that the Stage 3 source query selects.
+const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
-function write(path: string, text: string): void {
+// The inventory of the two component files and the extra files.
+function inventoryOf(extraFiles: readonly ExtraFile[]): InventoryFile[] {
+  return [...sourceFiles, ...extraFiles].map(({ path, text }) =>
+    ({ path, kind: "file", bytes: Buffer.byteLength(text), sha256: sha256(text) }));
+}
+
+function write(path: string, text: string | Buffer): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, text);
 }
@@ -90,14 +104,15 @@ function stageEnvironment(work: string): Record<string, string> {
 }
 
 // The drafts and registered records that a run has after Stage 3 finish.
-function writeStageThreeRun(work: string): void {
+function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[]): void {
   const artifacts: Record<string, { path: string; sha256: string }> = {};
   const register = (ref: string, path: string, text: string): string => {
     write(join(work, path), text);
     artifacts[ref] = { path, sha256: sha256(text) };
     return sha256(text);
   };
-  for (const { path, text } of sourceFiles) write(join(work, "snapshot", path), text);
+  for (const { path, text } of [...sourceFiles, ...extraFiles]) write(join(work, "snapshot", path), text);
+  const inventoryFiles = inventoryOf(extraFiles);
   const inventorySha256 = register(inventoryRef, "evidence/inventory.json",
     jsonText({ formatVersion: 1, snapshotId: snapshotRef, files: inventoryFiles }));
   register("s1-file@evidence%2Fproducer.json", "evidence/producer.json", jsonText(producerReceipt(toolsRoot)));
@@ -115,7 +130,8 @@ function writeStageThreeRun(work: string): void {
     profileRef: "s2-check-knip-profile", preflightRef: "s2-check-knip-preflight", runs: [],
     inputDigests: { planSha256, profileSha256, preflightSha256, inventorySha256 } }));
   register("s3-check-file@loading-search.json", "evidence/s3-check/loading-search.json", jsonText({ snapshotRef,
-    status: "completed", scope: inventoryFiles.map(({ path, sha256: digest }) => ({ path, sha256: digest })) }));
+    status: "completed", scope: inventoryFiles.filter(({ path }) => sourceExtension.test(path))
+      .map(({ path, sha256: digest }) => ({ path, sha256: digest })) }));
   register(stageThreeAnalysis, "evidence/s3-check/entry-analysis.yaml", yamlText({ formatVersion: 1, kind: "entry-analysis",
     snapshotRef, planRef, knipRunsRef, llmReview: "recorded", reviewedFiles: [], questions: [], gaps, knipAssessment,
     candidates, inspectionPriorities }));
@@ -172,8 +188,10 @@ function proposedBaseline(): FixtureBaseline {
       groupingReason: statement("One reviewed entry file.") })) };
 }
 
-// The five review records. The code mapping follows the exact paths of the final baseline.
-function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: string }[] }): Record<string, unknown> {
+// The five review records. The code mapping follows the exact paths of the final
+// baseline; a file that no membership selects has no owner.
+function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: string }[] },
+  inventoryFiles: readonly InventoryFile[]): Record<string, unknown> {
   const proposal = artifactId("baseline.proposed.yaml");
   const graphRef = artifactId("graph-results.json");
   const http = inventoryFiles[1];
@@ -181,7 +199,8 @@ function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: strin
   const units = inventoryFiles.map(({ path, sha256: digest }) => {
     const index = baseline.components.findIndex((item) => item.membership.value.paths.includes(path));
     return { id: `${stageFourAttemptId}-unit-${path.replace(".ts", "")}`, path, sha256: digest, roles: ["source"],
-      reason: "The component membership selects this file.", inspection: path === "http.ts" ? "reviewed" : "unreviewed",
+      reason: index < 0 ? "No component membership selects this file." : "The component membership selects this file.",
+      inspection: path === "http.ts" ? "reviewed" : "unreviewed",
       owner: baseline.components[index]?.id ?? null, membershipRef: index < 0 ? null : `${proposal}#/components/${index}/membership`,
       evidenceRefs: [...evidenceRefs] };
   });
@@ -218,24 +237,37 @@ function writePacket(review: string, records: Record<string, unknown>): void {
     suppliedArtifactRefs: [artifactId("artifact-map.json"), "launch-settings"], limits }));
 }
 
-// Prepares the run, the Stage 4 attempt and the review folder. `change` edits the
-// proposed baseline before the fixture writes the packet.
-export function stageFourPublication(change: (baseline: FixtureBaseline) => void = () => {}): StageFourPublication {
+// Prepares the run after Stage 3 with the extra snapshot files, runs Stage 4
+// start, and writes the toolchain and graph phases. The source collection is next.
+export function stageFourAttempt(extraFiles: readonly ExtraFile[] = []): StageFourAttempt {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "choom-stage-4-publication-"));
   const work = join(root, "run");
-  const review = join(root, "review");
   const attempt = join(work, "evidence", stageFourAttemptId);
-  writeStageThreeRun(work);
+  writeStageThreeRun(work, extraFiles);
   checked(runCli(["stage-4", "start"], stageEnvironment(work)), "Stage 4 start");
   writePhase(attempt, "toolchain", { "toolchain-selection.json": jsonText({ formatVersion: 1, status: "approved",
     imageId: "sha256:" + "0".repeat(64), limits: ["The fixture records no Docker image."] }) });
-  const graph = graphOutputs(attempt);
-  writePhase(attempt, "run", graph);
-  checked(runCli(["stage-4-inspect", "collect"], stageEnvironment(work)), "Stage 4 collection");
+  writePhase(attempt, "run", graphOutputs(attempt));
+  return { root, work, attempt };
+}
+
+// Runs one action of the Stage 4 source collection helper on the attempt, as an operator does.
+export function inspectStageFour(fixture: StageFourAttempt, args: readonly string[]): CommandResult {
+  return runCli(["stage-4-inspect", ...args], stageEnvironment(fixture.work));
+}
+
+// Prepares the run, the Stage 4 attempt and the review folder. `change` edits the
+// proposed baseline before the fixture writes the packet.
+export function stageFourPublication(change: (baseline: FixtureBaseline) => void = () => {},
+  extraFiles: readonly ExtraFile[] = []): StageFourPublication {
+  const prepared = stageFourAttempt(extraFiles);
+  const review = join(prepared.root, "review");
+  checked(inspectStageFour(prepared, ["collect"]), "Stage 4 collection");
+  const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
   const baseline = proposedBaseline();
   change(baseline);
-  writePacket(review, packetRecords(baseline, JSON.parse(graph["graph-results.json"] ?? "{}") as { contexts: { id: string }[] }));
-  return { root, work, review, attempt };
+  writePacket(review, packetRecords(baseline, graph, inventoryOf(extraFiles)));
+  return { ...prepared, review };
 }
 
 // Runs one Stage 4/5 publisher action on the fixture, as an operator does.
