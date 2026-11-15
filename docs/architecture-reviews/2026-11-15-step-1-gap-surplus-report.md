@@ -151,8 +151,9 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-06a | tomer-mayara/choom#74 | Draft. This PR also records plan changes 12 and 13. |
 | GA-06a2 | tomer-mayara/choom#75 | Draft. This PR also records plan change 14. |
 | GA-10a | tomer-mayara/choom#76 | Draft. This PR also records plan changes 15 and 16. |
+| GA-10b | tomer-mayara/choom#77 | Draft. This PR also records the approval of plan changes 6 to 16. |
 
-Plan changes:
+Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
 1. **GA-00b is split.** GA-00b moves the producer without changing behavior.
    A new ticket, **GA-00b2**, moves the code blocks that Stages 1 and 2 run
