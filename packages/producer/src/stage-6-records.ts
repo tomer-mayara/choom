@@ -57,56 +57,59 @@ interface Selection extends References {
 }
 interface History { historyRefs: unknown[]; reviewedRanges: Fields[] }
 
-const structureLimit = (): never => { throw new Error('Baseline exceeds the YAML structure limit.'); };
-const refuseProperties = (items: Yaml.CST.SourceToken[]): void => assert(!items.some(item => oneOf(['anchor', 'tag'], item.type)),
-  'Baseline YAML anchors and explicit tags are unsupported.');
+// `label` names the record that the bounded YAML profile reads, at the start of
+// each message, such as Baseline.
+const structureLimit = (label: string): never => { throw new Error(label + ' exceeds the YAML structure limit.'); };
+const refuseProperties = (items: Yaml.CST.SourceToken[], label: string): void =>
+  assert(!items.some(item => oneOf(['anchor', 'tag'], item.type)), label + ' YAML anchors and explicit tags are unsupported.');
 
-function checkLexerLimits(input: string, yaml: typeof Yaml): void {
+function checkLexerLimits(input: string, yaml: typeof Yaml, label: string): void {
   const lines = /\r\n|[\r\n]/gu;
   let lineCount = 0;
-  while (lines.test(input)) if (++lineCount > yamlNodeLimit) structureLimit();
+  while (lines.test(input)) if (++lineCount > yamlNodeLimit) structureLimit(label);
   let tokens = 0;
   let commas = 0;
   let scalar = false;
   for (const token of new yaml.Lexer().lex(input)) {
-    assert(++tokens <= 1500000, 'Baseline exceeds the YAML token limit.');
-    if (!scalar && token === ',' && ++commas > yamlNodeLimit) structureLimit();
+    assert(++tokens <= 1500000, label + ' exceeds the YAML token limit.');
+    if (!scalar && token === ',' && ++commas > yamlNodeLimit) structureLimit(label);
     scalar = !scalar && token === yaml.CST.SCALAR;
   }
 }
 
-function checkFlowSeparators(token: Yaml.CST.FlowCollection): void {
+function checkFlowSeparators(token: Yaml.CST.FlowCollection, label: string): void {
   for (const [index, item] of token.items.entries()) {
     const separators = item.start.filter(part => part.type === 'comma').length;
     const empty = item.key === undefined && !item.sep && !item.value;
     assert(!(separators > 1 || (index === 0 && separators > 0) ||
       (index > 0 && !empty && separators === 0) || (empty && index < token.items.length - 1)),
-    'Invalid baseline YAML flow separators.');
+    'Invalid ' + label.toLowerCase() + ' YAML flow separators.');
   }
 }
 
 // The structure of one YAML document within the node and depth limits, without
 // aliases, anchors, tags or syntax errors.
-function structureCheck(yaml: typeof Yaml): (token: Yaml.CST.Token | null | undefined, depth: number) => void {
+function structureCheck(yaml: typeof Yaml, label: string): (token: Yaml.CST.Token | null | undefined, depth: number) => void {
   let nodes = 0;
   return function inspect(token, depth) {
-    if (++nodes > yamlNodeLimit) structureLimit();
-    assert(!oneOf(['alias', 'error'], token?.type), 'Baseline YAML aliases and syntax errors are unsupported.');
+    if (++nodes > yamlNodeLimit) structureLimit(label);
+    assert(!oneOf(['alias', 'error'], token?.type), label + ' YAML aliases and syntax errors are unsupported.');
     if (!yaml.CST.isCollection(token)) {
-      if (token?.type !== 'block-scalar' || depth > 0)
-        yaml.CST.resolveAsScalar(token as Yaml.CST.FlowScalar, true, () => { throw new Error('Invalid baseline YAML scalar.'); });
+      if (token?.type !== 'block-scalar' || depth > 0) yaml.CST.resolveAsScalar(token as Yaml.CST.FlowScalar, true, () => {
+        throw new Error('Invalid ' + label.toLowerCase() + ' YAML scalar.');
+      });
       return;
     }
-    if (depth >= 32) structureLimit();
-    if (token.type === 'flow-collection') checkFlowSeparators(token);
+    if (depth >= 32) structureLimit(label);
+    if (token.type === 'flow-collection') checkFlowSeparators(token, label);
     const sequence = token.type === 'block-seq' ||
       (token.type === 'flow-collection' && token.start.type === 'flow-seq-start');
     for (const { start, key, sep, value } of token.items as Yaml.CST.CollectionItem[]) {
-      refuseProperties(start);
-      if (sep) refuseProperties(sep);
+      refuseProperties(start, label);
+      if (sep) refuseProperties(sep, label);
       if (key === undefined && !value && !start.some(item => item.type === 'seq-item-ind')) continue;
       const implicitMap = sequence && key !== undefined;
-      if (implicitMap && (depth + 1 >= 32 || ++nodes > yamlNodeLimit)) structureLimit();
+      if (implicitMap && (depth + 1 >= 32 || ++nodes > yamlNodeLimit)) structureLimit(label);
       const nextDepth = depth + (implicitMap ? 2 : 1);
       if (!sequence || implicitMap) inspect(key, nextDepth);
       inspect(value, nextDepth);
@@ -114,45 +117,52 @@ function structureCheck(yaml: typeof Yaml): (token: Yaml.CST.Token | null | unde
   };
 }
 
-function* checkedTokens(input: string, yaml: typeof Yaml): Generator<Yaml.CST.Token> {
-  const inspect = structureCheck(yaml);
+function* checkedTokens(input: string, yaml: typeof Yaml, label: string): Generator<Yaml.CST.Token> {
+  const inspect = structureCheck(yaml, label);
   let documents = 0;
   for (const token of new yaml.Parser().parse(input)) {
-    assert(!oneOf(['directive', 'error'], token.type), 'Baseline YAML directives and syntax errors are unsupported.');
+    assert(!oneOf(['directive', 'error'], token.type), label + ' YAML directives and syntax errors are unsupported.');
     if (token.type === 'document') {
-      assert(++documents === 1, 'Baseline must contain one YAML document.');
-      refuseProperties(token.start);
+      assert(++documents === 1, label + ' must contain one YAML document.');
+      refuseProperties(token.start, label);
       inspect(token.value, 0);
     }
     yield token;
   }
-  assert(documents === 1, 'Baseline must contain one YAML document.');
+  assert(documents === 1, label + ' must contain one YAML document.');
 }
 
-// The saved tools run outside the viewer. Keep its bounded YAML profile here too.
-// The caller supplies the trusted, pinned YAML module; no saved run code is loaded.
-export function readBaselineYaml(bytes: Buffer, yaml: typeof Yaml): unknown {
-  assert(bytes.length <= 16 * 1024 * 1024, 'Baseline exceeds the 16 MiB file limit.');
+// The saved tools run outside the viewer. Keep its bounded YAML profile here too,
+// for the baseline and for the other saved records that use it, such as a
+// decision file. The caller supplies the trusted, pinned YAML module; no saved run
+// code is loaded.
+export function readBoundedYaml(bytes: Buffer, yaml: typeof Yaml, label: string): unknown {
+  assert(bytes.length <= 16 * 1024 * 1024, label + ' exceeds the 16 MiB file limit.');
   const input = bytes.toString('utf8');
-  assert(Buffer.from(input).equals(bytes), 'Baseline must use UTF-8.');
-  checkLexerLimits(input, yaml);
+  assert(Buffer.from(input).equals(bytes), label + ' must use UTF-8.');
+  checkLexerLimits(input, yaml, label);
   const composer = new yaml.Composer({ schema: 'core', version: '1.2', strict: true, merge: false,
     resolveKnownTags: false, uniqueKeys: false, prettyErrors: false });
-  const [document] = [...composer.compose(checkedTokens(input, yaml))];
-  assert(document && !document.errors.length && !document.warnings.length, 'Baseline must contain valid YAML.');
+  const [document] = [...composer.compose(checkedTokens(input, yaml, label))];
+  assert(document && !document.errors.length && !document.warnings.length, label + ' must contain valid YAML.');
   yaml.visit(document, {
     Map: (_key, map) => {
       const keys = new Set();
       for (const { key } of map.items) {
         assert(yaml.isScalar(key) && typeof key.value === 'string' && !keys.has(key.value),
-          'Baseline YAML mapping keys must be unique strings.');
+          label + ' YAML mapping keys must be unique strings.');
         keys.add(key.value);
       }
     },
     Scalar: (_key, { value }) => assert(value === null || oneOf(['string', 'boolean'], typeof value) ||
-      (typeof value === 'number' && Number.isFinite(value)), 'Baseline must contain JSON-compatible data.'),
+      (typeof value === 'number' && Number.isFinite(value)), label + ' must contain JSON-compatible data.'),
   });
   return document.toJS({ maxAliasCount: 0 });
+}
+
+// A baseline under the bounded YAML profile, with the messages that start with Baseline.
+export function readBaselineYaml(bytes: Buffer, yaml: typeof Yaml): unknown {
+  return readBoundedYaml(bytes, yaml, 'Baseline');
 }
 
 function documentReader(artifacts: Map<string, Artifact>, parse: (text: string) => unknown): (id: unknown) => unknown {
