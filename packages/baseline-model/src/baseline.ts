@@ -4,6 +4,7 @@ import { baselineId as itemId, baselineStatement as statement, baselineText as t
 import { baselineSourceUsageSchema, validateBaselineSourceUsage } from "./baseline-source-usage.ts";
 import { baselineSystemEntryPointsSchema, validateBaselineSystemEntryPoints } from "./baseline-system-entry-points.ts";
 import type { Baseline, BaselineRuleValue } from "./generated/contracts.ts";
+import { isJsonData, isPlainRecord } from "./json-data.ts";
 
 function isExactPath(value: string): boolean {
   return /\S/.test(value) && !/^[A-Za-z]:/.test(value)
@@ -24,56 +25,8 @@ const symbolSelector = z.strictObject({
   symbol: symbolName,
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-}
-
-function ruleChildren(value: Record<string, unknown> | unknown[]): unknown[] | undefined {
-  if (Object.getOwnPropertySymbols(value).length > 0) return undefined;
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  const array = Array.isArray(value);
-  if (array && Object.keys(descriptors).length !== value.length + 1) return undefined;
-  const children: unknown[] = [];
-  for (const [key, descriptor] of Object.entries(descriptors)) {
-    if (array && key === "length") continue;
-    if (!descriptor.enumerable || !Object.hasOwn(descriptor, "value")) return undefined;
-    if (array && (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= value.length)) return undefined;
-    children.push(descriptor.value);
-  }
-  return children;
-}
-
 function isRuleObject(value: unknown): value is Record<string, BaselineRuleValue> {
-  if (!isRecord(value)) return false;
-  const pending: { value: unknown; exit?: boolean }[] = [{ value }];
-  const ancestors = new Set<object>();
-  const complete = new Set<object>();
-  while (pending.length > 0) {
-    const entry = pending.pop();
-    if (!entry) break;
-    const current = entry.value;
-    if (current === null || typeof current === "string" || typeof current === "boolean") continue;
-    if (typeof current === "number") {
-      if (!Number.isFinite(current)) return false;
-      continue;
-    }
-    if (!Array.isArray(current) && !isRecord(current)) return false;
-    if (entry.exit) {
-      ancestors.delete(current);
-      complete.add(current);
-      continue;
-    }
-    if (ancestors.has(current)) return false;
-    if (complete.has(current)) continue;
-    const children = ruleChildren(current);
-    if (!children) return false;
-    ancestors.add(current);
-    pending.push({ value: current, exit: true });
-    for (const child of children) pending.push({ value: child });
-  }
-  return true;
+  return isPlainRecord(value) && isJsonData(value);
 }
 
 const componentReference = statement(itemId.nullable());
