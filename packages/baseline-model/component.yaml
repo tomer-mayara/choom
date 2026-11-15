@@ -18,4 +18,5 @@ artifacts:
     - path: ../../cookbook/interfaces/baseline-documentation.tsp
     - path: ../../cookbook/interfaces/baseline-source-usage.tsp
     - path: ../../cookbook/interfaces/baseline-system-entry-points.tsp
+    - path: ../../cookbook/interfaces/baseline-decisions.tsp
     - path: ../../cookbook/interfaces/baseline.md

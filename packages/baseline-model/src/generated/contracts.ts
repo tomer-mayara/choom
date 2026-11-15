@@ -86,6 +86,12 @@ export interface AcceptedTextStatement {
 
 export type Baseline = BaselineV1 | BaselineV2 | BaselineV3 | BaselineV4 | BaselineV5;
 
+export interface BaselineAcceptDecision {
+  action: "accept";
+  itemId: baselineId;
+  field: baselineText;
+}
+
 export type BaselineAccessPoints = Array<baselineText>;
 
 export type BaselineAccessPointsStatement = ProposedAccessPointsStatement | AcceptedAccessPointsStatement;
@@ -113,6 +119,37 @@ export interface BaselineComponentV5 {
 export type BaselineConsumers = Array<baselineId>;
 
 export type BaselineConsumersStatement = ProposedConsumersStatement | AcceptedConsumersStatement;
+
+export interface BaselineCorrectDecision {
+  action: "correct";
+  itemId: baselineId;
+  field: baselineText;
+  oldValue: BaselineDecisionValue;
+  newValue: BaselineDecisionValue;
+}
+
+export interface BaselineDecider {
+  name: baselineText;
+  kind: "human";
+}
+
+export type BaselineDecision = BaselineAcceptDecision | BaselineCorrectDecision;
+
+export interface BaselineDecisionObject {
+  [key: string]: BaselineDecisionValue;
+}
+
+export type BaselineDecisionValue = string | boolean | number | null | BaselineDecisionObject | Array<BaselineDecisionValue>;
+
+export interface BaselineDecisions {
+  formatVersion: 1;
+  id: baselineDecisionsId;
+  baselineRef: baselineId;
+  baselineDigest: baselineFileDigest;
+  decider: BaselineDecider;
+  decidedAt: baselineDecisionTime;
+  entries: Array<BaselineDecision>;
+}
 
 export interface BaselineDocumentation {
   summary: BaselineNullableTextStatement;
@@ -433,6 +470,12 @@ export interface ProposedTextStatement {
   status: "proposed";
   evidenceRefs: Array<baselineText>;
 }
+
+export type baselineDecisionTime = string;
+
+export type baselineDecisionsId = baselineId;
+
+export type baselineFileDigest = string;
 
 export type baselineId = string;
 

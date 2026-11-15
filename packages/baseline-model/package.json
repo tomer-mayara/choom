@@ -6,6 +6,7 @@
   "license": "MIT",
   "exports": {
     ".": "./src/baseline.ts",
+    "./baseline-decisions": "./src/baseline-decisions.ts",
     "./baseline-format": "./src/baseline-format.ts",
     "./contracts": "./src/generated/contracts.ts",
     "./readonly-data": "./src/readonly-data.ts"

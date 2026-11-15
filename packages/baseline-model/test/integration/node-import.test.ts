@@ -14,6 +14,7 @@ import { isDeepStrictEqual } from "node:util";
 import { parse } from "yaml";
 import { baselineSchema } from "@choom/baseline-model";
 import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
+import "@choom/baseline-model/baseline-decisions";
 import "@choom/baseline-model/contracts";
 import "@choom/baseline-model/readonly-data";
 
