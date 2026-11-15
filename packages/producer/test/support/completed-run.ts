@@ -1,5 +1,6 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { runCli, toolsRoot } from "./commands.ts";
 
@@ -41,4 +42,31 @@ export async function completedRun(model: string, change?: BaselineChange): Prom
   }
   return { root: fixture.root, work: fixture.work, baselineId: fixture.baseline.id,
     baselinePath: `baselines/${fixture.baseline.id}/baseline.yaml` };
+}
+
+// A file of a small run folder that a test writes. run.yaml registers it with its
+// SHA-256 unless `registered` is false.
+export interface RunFile { path: string; text: string; registered?: boolean }
+
+export const smallRunBaselineId = "baseline-check";
+export const smallRunBaselinePath = `baselines/${smallRunBaselineId}/baseline.yaml`;
+
+// The call record that a stage saves for one LLM call.
+export const llmCallRecord = (model: string): string =>
+  stringify({ provider: "fixture", model, date: "2026-01-01", settings: "unknown", hiddenReasoning: "not-saved" });
+
+// Writes the files and the run.yaml of a run that Stage 6 completed, with the
+// fields of `manifest` replaced. Only the fields that the baseline decide command
+// reads are real: the status, the published baseline and the artifact registry.
+export function writeSmallCompletedRun(work: string, files: RunFile[], manifest: Record<string, unknown> = {}): void {
+  const artifacts: Record<string, { path: string; sha256: string }> = {};
+  for (const { path, text, registered } of files) {
+    mkdirSync(dirname(join(work, path)), { recursive: true });
+    writeFileSync(join(work, path), text);
+    const ref = path === smallRunBaselinePath ? smallRunBaselineId : "file@" + encodeURIComponent(path);
+    if (registered !== false) artifacts[ref] = { path, sha256: createHash("sha256").update(text).digest("hex") };
+  }
+  writeFileSync(join(work, "run.yaml"), stringify({ formatVersion: 1, id: "run-check", mode: "A", status: "completed",
+    progress: { inventory: "complete", baselineRecovery: "complete" }, artifacts, baselineRef: smallRunBaselineId,
+    discoveryRef: "s6-check-discovery", completedAt: "2026-01-01T00:00:00.000Z", ...manifest }));
 }
