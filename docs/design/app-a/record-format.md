@@ -65,7 +65,9 @@ described as future work beside a newly appended correction.
 All versions have `formatVersion`, `id`, `parentId: null`,
 `components`, `interfaces`, `resources`, and `rules`. Versions 3 and 4
 permit `sourceUsage`. Version 4 also permits `systemEntryPoints`. The
-top-level fields are strict in every version. Keep the initial baseline
+top-level fields are strict in every version. The producer writes versions 1
+to 4 only. The shared reader also accepts version 5, which the producer does
+not write yet; see [Version 5 symbol selectors](#version-5-symbol-selectors). Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
 
@@ -97,7 +99,8 @@ Publication does not accept intent.
 - `membership.value` has `paths` and optional `excludePaths`. Each selector is
   an exact snapshot-relative path or a subtree ending in `/**`. Other glob forms
   are unsupported. A selector cannot contain `#`, so that a symbol reference such
-  as `src/a.ts#decode` is not read as a path. Select a file whose name contains
+  as `src/a.ts#decode` is not read as a path. Version 5 names symbols in a
+  separate field, which the producer does not write yet. Select a file whose name contains
   `#` through a subtree of its folder. Selectors must assign at most one direct
   owner. Exclude a child's files from its parent; containment does not duplicate
   ownership.
@@ -443,6 +446,24 @@ references, and source paths have a 4 KiB UTF-8 limit. Scope, labels, and
 limitations have an 8 KiB UTF-8 limit. Use nonblank text and safe relative
 paths. The architecture record and link budgets count their existing
 collections separately.
+
+## Version 5 symbol selectors
+
+The shared reader in `@choom/baseline-model` also accepts `formatVersion: 5`.
+Version 5 is version 4 plus an optional `symbols` list in a component's
+`membership.value`: `symbols: [{ path, symbol }]`. Each `path` is one exact
+snapshot-relative file path under the selector rules above; a `/**` subtree
+and `#` are refused. Each `symbol` is a JavaScript identifier name, such as
+`computePrice`, or `default` for a default export. A component cannot repeat a
+`{ path, symbol }` pair. In version 5, `paths` can be empty when `symbols` is
+not, but a membership needs at least one path or symbol. Version 5 keeps the
+version 2 to 4 fields, checks, and limits, and the version 3 and 4 arrow rules.
+The reader checks the syntax only. See the
+[baseline contract](../../../cookbook/interfaces/baseline.md) for the full rules.
+
+The producer does not write version 5 yet. The Stage 5 and Stage 6 checks
+refuse it, so a run publishes versions 1 to 4 only. Ticket GA-02a adds symbol
+selectors to the code mapping and the producer.
 
 ## Entry analysis
 

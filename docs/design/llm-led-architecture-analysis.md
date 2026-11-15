@@ -604,7 +604,7 @@ are its likely components, how do they interact, and what remains uncertain?
 
 | File | Purpose | Produced by |
 | --- | --- | --- |
-| `baselines/<baseline-id>/baseline.yaml` | Architectural intent, interface documentation, and optional source-use assessments (version 3) and system entry points (version 4) tied to a saved snapshot. | The LLM proposes the model from evidence. Choom validates and saves it. |
+| `baselines/<baseline-id>/baseline.yaml` | Architectural intent, interface documentation, and optional source-use assessments (version 3), system entry points (version 4), and symbol membership selectors (version 5) tied to a saved snapshot. | The LLM proposes the model from evidence. Choom validates and saves it. |
 | `runs/<run-id>/discovery.yaml` | What this pass established, inspected, or left unresolved. References the selected baseline and saved facts. | Tools supply facts and coverage. The LLM supplies explanations and questions. Choom assembles and validates the result. |
 
 These files represent the [saved records](#saved-records); they do not introduce
@@ -621,7 +621,11 @@ documentation and method signatures. Version 3 retains that contract and can add
 Version 4 retains version 3 and can add `systemEntryPoints`, as defined in
 [CR-003](../change-requests/CR-003-system-entry-points.md) and the
 [record contract](app-a/record-format.md#version-4-system-entry-points).
-The viewer keeps legacy permission arrows for versions 1/2. Versions 3 and 4 use
+Version 5 retains version 4 and can add symbol selectors (`symbols: [{ path, symbol }]`)
+to a component's membership, as defined in the
+[record contract](app-a/record-format.md#version-5-symbol-selectors). The viewer
+checks their syntax only, and the producer does not write version 5 yet.
+The viewer keeps legacy permission arrows for versions 1/2. Versions 3 to 5 use
 only saved application/tooling value uses for arrows, with known consumer and
 provider components. Other references stay readable in details. It never infers a source
 consumer from permission or claims that source inspection proves execution.

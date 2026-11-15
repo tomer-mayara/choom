@@ -50,7 +50,7 @@ Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri sy
 bun run desktop
 ```
 
-Use **Open Baseline** to select a `formatVersion: 1`, `2`, `3`, or `4` baseline in
+Use **Open Baseline** to select a `formatVersion: 1`, `2`, `3`, `4`, or `5` baseline in
 the browser or desktop app.
 The input must be valid UTF-8 and at most 16 MiB.
 Version 2 can add saved interface documentation. Version 3 retains those fields
@@ -60,9 +60,14 @@ for reviewed startup and external call boundaries.
 Component details show the saved Startup and External entries with their paths,
 evidence, and optional source lines. An interface link opens the saved operation
 or interface Overview, and Back returns to the component entry.
+Version 5 retains version 4 and lets a component's membership also name
+symbols in a file, such as `computePrice` in `billing/invoice.ts`. Component
+details list them under **Membership → Symbols**. The viewer checks their syntax
+only; the producer does not write version 5 yet. Try the
+[symbol membership example](test/fixtures/baseline-viewer/symbol-membership.yaml).
 Versions 1 and 2 keep their strict fields. An interface's **Original record** disclosure retains all saved
 values, including documentation and statement references.
-For versions 3 and 4, **Baseline details → Original source-use data** retains the
+For versions 3 to 5, **Baseline details → Original source-use data** retains the
 complete source-use object when supplied. Reading it does not fetch source
 files or verify their hashes.
 The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
@@ -86,7 +91,7 @@ explicit owner and consumer links, and 16 component levels. Larger inputs show
 **Too large to display** and keep the current view. The
 [complete viewer measurements](docs/change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements)
 record the tested workloads, timings, and limits.
-Versions 3 and 4 also accept at most 2,000 source-use records, 4,000 source notes, and
+Versions 3 to 5 also accept at most 2,000 source-use records, 4,000 source notes, and
 2 MiB of compact JSON for the complete source-use object. These limits are
 separate from the documentation and explicit permission-link limits. Invalid
 source data leaves the current view intact.
@@ -99,12 +104,12 @@ consumer to the component that owns the interface. It means the consumer may
 use that interface; it does not claim that a call occurs. Several consumers
 produce several arrows without increasing the owner's interface count.
 
-Versions 3 and 4 draw saved source use from each consumer to the interface's
+Versions 3 to 5 draw saved source use from each consumer to the interface's
 provider. They include value references in application and tooling code when
 both components are known. Several sites for the same interface and endpoints
 produce one arrow. Type, test, unknown-context, and unmapped references remain
 in the saved data. A source arrow does not establish permission or execution.
-If source-use data is absent, versions 3 and 4 show no arrows.
+If source-use data is absent, versions 3 to 5 show no arrows.
 
 **Connections: Selected** is the default. The initial view has no arrows.
 Select a component to show only arrows where it is the consumer or owner.
@@ -178,7 +183,7 @@ Unknown facts stay unknown. **Access rule** lists permitted components; it does
 not report actual calls or runtime authorization. Use arrow keys, Home, or End
 to change tabs. A direct interface selection starts a fresh Overview.
 
-In versions 3 and 4, **Used by** groups saved application and tooling value references
+In versions 3 to 5, **Used by** groups saved application and tooling value references
 by their direct consumer. The list covers the whole interface, even when an
 entry is selected. Each site keeps its entry binding, kind, context, and
 description. **Caller source** shows the saved caller note and location inline.
@@ -240,7 +245,7 @@ Choom does not load referenced files or execute recorded checks.
 After opening a saved baseline, choose **Duplicates**, then **Open duplication
 report** (**Open report** in narrow windows). Select the report published by the external assessment. Its baseline
 ID, format version and SHA-256 must match the original baseline file bytes.
-Report version 1 can bind to baseline versions 1 through 4.
+Report version 1 can bind to baseline versions 1 through 5.
 Reformatting a baseline requires a new bound report. Browser file reading needs
 HTTPS or loopback for SHA-256; the desktop reader hashes the bytes locally.
 

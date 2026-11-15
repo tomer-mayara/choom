@@ -89,7 +89,7 @@ Interfaces and resources have no separate nodes. In versions 1 and 2, interface
 arcs run from each recorded allowed consumer to the recorded owner. They show
 permission to use the interface, not observed calls.
 
-Versions 3 and 4 use only saved source-use records. Application and tooling value
+Versions 3 to 5 use only saved source-use records. Application and tooling value
 references connect the directly mapped consumer to the interface owner when
 both are known. Type, test, unknown-context, and unmapped references create no
 canvas arrow. Several sites combine into one arc per interface and endpoints;
@@ -159,6 +159,11 @@ accepted statement also shows its acceptance reference. Missing optional fields
 say **Not recorded**. Null statement values say **Unknown (null)**. Empty lists and objects
 remain `[]` and `{}`. Membership paths and exclusions are separate fields, and
 the four promise fields stay distinct from a wholly unknown promise value.
+In version 5, Membership also has **Symbols**. It lists each saved symbol
+selector as its symbol name and file path, for example `computePrice in
+billing/invoice.ts`, as list text that a screen reader can read. An absent
+symbol list says **Not recorded**; an empty list shows `[]`. Versions 1 to 4
+show no Symbols field. The viewer does not match symbols against source files.
 
 **Baseline details** shows the format version, baseline ID, and parent baseline
 ID. A null parent baseline ID means this is the first baseline and shows **No
@@ -179,7 +184,7 @@ component inspection emphasizes incoming and outgoing arcs. Interface inspection
 emphasizes its arcs and reveals their labels; unrelated shown labels still respond
 to hover and keyboard focus. Other panel kinds and a closed panel show normal arcs.
 
-When version 4 has a system-entry assessment, component details list its directly
+When version 4 or 5 has a system-entry assessment, component details list its directly
 owned entries under **System entry points**. Startup and External groups keep the
 saved order within each kind. Each entry shows its label, path, evidence
 references, and saved source lines when present. A linked operation opens that
@@ -279,7 +284,7 @@ general behavior, so the legacy contract stays visible when the description and
 interaction are absent. Original record keeps the complete signature statement.
 
 Overview, Example, and Sources use standard keyboard tabs in the existing inspector width.
-For versions 3 and 4, Overview's **Used by** list groups application and tooling value
+For versions 3 to 5, Overview's **Used by** list groups application and tooling value
 references by direct consumer ID. Duplicate component names retain their IDs.
 Each saved site keeps its kind, context, description, and optional entry binding.
 The list covers the interface and does not change when an entry is selected.
@@ -292,7 +297,7 @@ inline disclosure for the saved note and location; it does not navigate or fetch
 Missing source data, missing assessment, and assessed empty uses have distinct
 messages. The source notice describes absent data, no assessments, or partial
 review. It does not count permission gaps as unknown callers. Omit the notice
-when no interfaces exist. Versions 3 and 4 label the header status **Interface statement
+when no interfaces exist. Versions 3 to 5 label the header status **Interface statement
 status**, separately from source use. Access rule remains permission only.
 
 Sources also shows the assessment's scope and limits, shared snapshot and
@@ -377,6 +382,7 @@ bun scripts/run-browser-behavior.ts --tags @br-07
 bun scripts/run-browser-behavior.ts --tags @br-08
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
+bun scripts/run-browser-behavior.ts --tags @ga-03b
 bun test --preload ./test/preload.ts ./test/unit/components/interface-overview.test.tsx
 bun scripts/run-browser-behavior.ts --tags @br-10b
 bun test --preload ./test/preload.ts ./test/unit/components/interface-examples.test.tsx

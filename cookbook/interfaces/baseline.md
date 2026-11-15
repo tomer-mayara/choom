@@ -8,18 +8,20 @@ validates an unknown value and returns the generated `Baseline` data type.
 Import it from `@choom/baseline-model`, and the generated types from
 `@choom/baseline-model/contracts`. Use `safeParse` to get field paths
 for invalid input. The reader accepts `formatVersion: 1`, `formatVersion: 2`,
-`formatVersion: 3`, and `formatVersion: 4`.
+`formatVersion: 3`, `formatVersion: 4`, and `formatVersion: 5`.
 Version 1 keeps its original strict fields. Version 2 adds optional interface
 documentation, defined in [baseline-documentation.tsp](baseline-documentation.tsp).
 The viewer does not upgrade a file or accept the legacy diagram format.
 
 The generated schema checks field shapes, nonblank text, statement statuses,
-acceptance references, and list sizes. The runtime validator also checks item ID
-uniqueness, component references, parent cycles, and safe membership selectors.
+acceptance references, list sizes, and repeated symbol selectors. The runtime
+validator also checks item ID uniqueness, component references, parent cycles,
+safe membership selectors, and symbol selector syntax.
 Selectors are relative paths or subtrees ending in `/**`. A selector cannot
 contain `#`, so that a symbol reference such as `src/a.ts#decode` is not read as
-a path. Exact paths and exclusions are retained; validation does not match them
-against source files.
+a path. Version 5 names symbols in a separate field instead. Exact paths,
+exclusions, and symbols are retained; validation does not match them against
+source files.
 
 Accepted statements require an `acceptanceRef`; proposed statements cannot have
 one. All statements require at least one nonblank evidence reference. The viewer
@@ -61,7 +63,7 @@ matching location note. This checks the saved link only. External publication
 must verify the source review; the viewer does not open source files or verify
 the claim. An `illustrative` example does not claim source review.
 
-Versions 3 and 4 retain all version 2 fields and validation. They can add optional
+Versions 3 to 5 retain all version 2 fields and validation. They can add optional
 `sourceUsage`, defined in [baseline-source-usage.tsp](baseline-source-usage.tsp).
 Versions 1/2 reject that field. A source-use object names one saved snapshot and
 one code mapping. Its assessments describe reviewed scope, evidence, limitations,
@@ -85,7 +87,7 @@ It does not fetch files, verify digests, infer consumers, or prove execution.
 Source observations never replace `allowedConsumers`, which remains a permission
 statement. Baseline details exposes the complete **Original source-use data**.
 
-Version 4 can also add optional `systemEntryPoints`, defined in
+Versions 4 and 5 can also add optional `systemEntryPoints`, defined in
 [baseline-system-entry-points.tsp](baseline-system-entry-points.tsp).
 Its absence means entry points were not recorded. A present object records a
 review scope, at least one scope evidence reference, limits of that review, and
@@ -100,10 +102,26 @@ entry in the linked interface. Entry evidence is nonempty and distinct. If a
 source range is present, its direct reference must be in that entry's evidence;
 its snapshot and path must match the assessment and entry. The source location
 uses the same path, digest, and line-range rules as documentation. When version
-4 has both `systemEntryPoints` and `sourceUsage`, their snapshot and mapping
+4 or 5 has both `systemEntryPoints` and `sourceUsage`, their snapshot and mapping
 references must match. The reader checks these internal links. It does not
 open the source checkout or evidence bundle, or verify deployment and calls.
 Versions 1 to 3 reject `systemEntryPoints`.
+
+Version 5 is version 4 plus optional symbol selectors in a component's
+membership value: `symbols: [{ path, symbol }]`. It keeps all version 2 to 4
+fields and validation, and it uses the version 3 and 4 arrow rules. A symbol
+`path` follows the path selector rules, but it must name one file: a `/**`
+subtree and `#` are refused. A `symbol` is a JavaScript identifier name. It
+starts with a Unicode ID_Start character, `$`, or `_`, and continues with
+ID_Continue characters, `$`, ZWNJ, or ZWJ. The check does not refuse reserved
+words, so `default`, the name of a default export, passes. Unicode escape
+sequences are not decoded. A component cannot repeat a `{ path, symbol }` pair.
+In version 5, `paths` can be empty when `symbols` is not empty, but each
+membership needs at least one path or symbol. Versions 1 to 4 keep a non-empty
+`paths` list and reject `symbols`. As for paths, the reader checks only the
+selector syntax. It does not open files, check that a file declares the symbol,
+or check ownership across components. The producer does not write version 5
+yet; ticket GA-02a adds that.
 
 Rule values are JSON objects or null. Keep nested values and all own keys,
 including `__proto__`, without running expressions. Reject non-JSON values and
@@ -113,7 +131,10 @@ cycles. No field is silently discarded. Byte and YAML limits belong to the
 
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
 copies of the reviewed empty and full `work-choom` baselines. Tests use repository
-paths and need no external checkout or companion records.
+paths and need no external checkout or companion records. The version 5 example
+[`symbol-membership.yaml`](../../test/fixtures/baseline-viewer/symbol-membership.yaml)
+in the same folder has a component that owns only one symbol in a file that
+another component owns by path.
 
 The documentation fixture in `test/support/interface-documentation-fixtures.ts`
 supplies version 2 reader and browser cases. The browser accepts it through the
@@ -127,7 +148,11 @@ bun run test:behavior --tags @bv-01
 bun run test:behavior --tags @br-10a
 bun run test:behavior --tags @br-11a
 bun run test:behavior --tags @ep-01
+bun run test:behavior --tags @ga-03b
 bun run test:e2e --tags @br-11a
+bun run test:e2e --tags @ga-03b
+bun test ./packages/baseline-model/test/unit/symbol-membership.test.ts ./packages/baseline-model/test/unit/baseline-format.test.ts
+bun test ./test/interface/domain/symbol-membership.test.ts
 bun test ./packages/baseline-model/test/unit/source-usage.test.ts ./packages/baseline-model/test/unit/source-usage-limits.test.ts
 bun test ./test/unit/lib/baseline-display-limits.test.ts
 bun test ./test/interface/domain/source-usage.test.ts
@@ -150,6 +175,8 @@ remove (type stripping), so it can run in a Node process such as the producer.
 
 The feature and TypeSpec contract are linked from the
 [baseline-model component manifest](../../packages/baseline-model/component.yaml).
+The workspace manifest also links `symbol-membership.feature`, because its
+browser scenario covers the component details.
 The existing runners discover the new feature, steps, and suites. This change
 adds no cross-component dependency or production service, so the architecture
 and OpenSLO artifacts remain unchanged.

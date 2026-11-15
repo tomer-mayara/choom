@@ -72,7 +72,8 @@ supported literal signature with parameters and return type. Keep an unsupported
 complete declaration unknown with its exact field gap; do not invent types or
 infer them from prose. Preserve supported descriptions, examples, and evidence.
 Stage 6 saves the validated proposal without changing its bytes. Choom reads
-all four versions without running source analysis.
+versions 1 to 5 without running source analysis. The producer does not write
+[version 5](record-format.md#version-5-symbol-selectors) yet.
 
 Use one trusted tool revision and the pinned environment for an attempt. A tool
 change needs a fresh attempt. Historical runs keep their saved baselines,
