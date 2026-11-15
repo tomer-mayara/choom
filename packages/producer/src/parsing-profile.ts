@@ -34,3 +34,16 @@ export const choomDefaultProfile: ParsingProfile = {
     'The profile sets no path aliases, baseUrl, lib, types or strict options. It reads the source structure. It does not check types.',
   ],
 };
+
+const profiles = new Map<unknown, ParsingProfile>([[choomDefaultProfile.id, choomDefaultProfile]]);
+
+// The parsing profile that a Stage 1 settings record names, or null when the
+// record names none. A record of this producer names only a known profile.
+export function namedParsingProfile(settings: Record<string, unknown>): ParsingProfile | null {
+  const named = settings.parsingProfile ?? null;
+  if (named === null) return null;
+  const id = (named as { id?: unknown }).id;
+  const profile = profiles.get(id);
+  if (profile === undefined) throw new Error('The settings record names an unknown parsing profile: ' + String(id));
+  return profile;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ts } from "ts-morph";
-import { choomDefaultProfile } from "../../src/parsing-profile.ts";
+import { choomDefaultProfile, namedParsingProfile } from "../../src/parsing-profile.ts";
 
 describe("the Choom parsing profile choom-default-v1", () => {
   test("has fixed compiler options in the tsconfig.json form", () => {
@@ -25,5 +25,21 @@ describe("the Choom parsing profile choom-default-v1", () => {
     for (const assumption of assumptions) expect(assumption).toMatch(/^[A-Z][^\n<>`*]*\.$/);
     for (const [name, value] of Object.entries(choomDefaultProfile.declared.compilerOptions))
       expect(assumptions.some((assumption) => assumption.includes(`(${name}: ${String(value)})`))).toBe(true);
+  });
+});
+
+describe("the parsing profile that a settings record names", () => {
+  test("is none when the record names no profile", () => {
+    expect(namedParsingProfile({ configs: [], parsingProfile: null })).toBeNull();
+    expect(namedParsingProfile({ configs: [] })).toBeNull();
+  });
+
+  test("is the Choom parsing profile when the record names it", () => {
+    expect(namedParsingProfile({ configs: [], parsingProfile: structuredClone(choomDefaultProfile) })).toBe(choomDefaultProfile);
+  });
+
+  test("is refused when the record names an unknown profile", () => {
+    expect(() => namedParsingProfile({ parsingProfile: { ...choomDefaultProfile, id: "choom-default-v9" } }))
+      .toThrow(new Error("The settings record names an unknown parsing profile: choom-default-v9"));
   });
 });

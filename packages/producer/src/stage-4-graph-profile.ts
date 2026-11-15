@@ -1,10 +1,13 @@
 import { isAbsolute, posix } from 'node:path';
+import { namedParsingProfile, type ParsingProfile } from './parsing-profile.ts';
 import { assert, type Fields, text } from './record-checks.ts';
 
 // The graph profile that Stage 4 start saves before the graph runs. It puts the
 // saved Stage 3 source scope into compiler contexts, takes the traversal roots
-// from the retained entry patterns, and notes the choices and their limits.
-// Saved JSON stays an unchecked value until the checks below read it.
+// from the retained entry patterns, and notes the choices and their limits. A
+// snapshot without project settings uses the Choom parsing profile that the
+// settings record names. Saved JSON stays an unchecked value until the checks
+// below read it.
 export interface IndexedFile { path: string; kind: unknown; sha256: string; bytes?: unknown }
 interface SourceFile { path: string; sha256: string }
 interface Alias { name: string; alias: string }
@@ -31,9 +34,10 @@ export interface GraphProfile { graph: Fields; notes: Fields }
 
 export const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const compilerKeys = ['target', 'module', 'moduleResolution', 'jsx', 'verbatimModuleSyntax'];
+const contextLimit = 'Each parsed compiler file selection is a separate context. Overlapping selections stay separate; remaining source uses a named configuration-free fallback.';
 const limits = ['Scan files come from all indexed regular JavaScript and TypeScript files in the Stage 3 source query.',
   "Explicit traversal roots use the retained entry patterns in each saved workspace; they are not Knip's complete effective roots.",
-  'Each parsed compiler file selection is a separate context. Overlapping selections stay separate; remaining source uses a named configuration-free fallback.',
+  contextLimit,
   'Import and require are separate, platform-neutral passes. Browser, Node, Bun, custom, and type-specific package conditions remain outside this profile.',
   'Compiler inclusion does not claim production use, execution, or ownership. Referenced project contexts are not merged.',
   'Only target, module, moduleResolution, jsx, and verbatimModuleSyntax are passed to the parser.',
@@ -111,6 +115,21 @@ function compilerGroups(settings: Fields, sourceFiles: SourceFile[], settingsRef
   return { groups, configurationLimits };
 }
 
+// The group of the source that no parsed compiler selection covers. With a named
+// parsing profile, it uses the profile's options; otherwise it is a
+// configuration-free fallback.
+function remainingGroup(files: SourceFile[], profile: ParsingProfile | null, settingsRef: string): Group {
+  if (profile === null) return { name: 'fallback', files, ref: null, options: {}, aliases: [] };
+  return { name: profile.id, files, ref: settingsRef + '#/parsingProfile',
+    options: parserOptions(profile.compilerOptions, profile.id), aliases: [] };
+}
+
+function profileLimits(profile: ParsingProfile | null, settingsRef: string): string[] {
+  if (profile === null) return limits;
+  return limits.map(limit => limit !== contextLimit ? limit : 'The snapshot has no project settings, so its source uses the ' +
+    `named Choom parsing profile ${profile.id}. ${settingsRef}#/parsingProfile records its options and assumptions.`);
+}
+
 // The saved entry patterns of each workspace, as matchers with their plan references.
 function entrySelectors(plan: Fields, planRef: string, picomatch: Picomatch): { dir: string; patterns: Pattern[] }[] {
   return (plan.workspaces as Workspace[]).map((workspace, workspaceIndex) => ({
@@ -148,12 +167,13 @@ function graphContexts(groups: Group[], selectors: { dir: string; patterns: Patt
 }
 
 export function graphProfile({ attemptId, settings, plan, loading, indexed, facts, loadPicomatch }: ProfileInputs): GraphProfile {
+  const parsingProfile = namedParsingProfile(settings);
   const sourceFiles = savedSourceFiles(plan, loading);
   const selected = new Set(sourceFiles.map(file => file.path));
   const { groups, configurationLimits } = compilerGroups(settings, sourceFiles, facts.settingsRef);
   const covered = new Set(groups.flatMap(group => group.files.map(file => file.path)));
   const fallback = sourceFiles.filter(file => !covered.has(file.path));
-  if (fallback.length) groups.push({ name: 'fallback', files: fallback, ref: null, options: {}, aliases: [] });
+  if (fallback.length) groups.push(remainingGroup(fallback, parsingProfile, facts.settingsRef));
   const contexts = graphContexts(groups, entrySelectors(plan, facts.planRef, loadPicomatch()));
   const outsideScope = [...indexed.values()].filter(file => sourceExtension.test(file.path) && !selected.has(file.path));
   return {
@@ -163,6 +183,6 @@ export function graphProfile({ attemptId, settings, plan, loading, indexed, fact
       groups: groups.map(group => ({ name: group.name, files: group.files.length, compilerSettingsRef: group.ref })),
       configurationLimits,
       outsideScope: outsideScope.map(({ path, sha256 }) => ({ path, sha256, status: 'unassessed' })),
-      limits },
+      limits: profileLimits(parsingProfile, facts.settingsRef) },
   };
 }

@@ -97,6 +97,22 @@ describe("Stage 4 start", () => {
     });
   });
 
+  // stagedRun saves the settings record of a snapshot without project settings.
+  test("uses the options of the Choom parsing profile for a snapshot without project settings", () => {
+    withScratch((scratch) => {
+      const work = startedRun(scratch, { snapshot });
+      const profileRef = `${settingsRef}#/parsingProfile`;
+      expect((saved<{ contexts: unknown[] }>(work, "graph-profile.json")).contexts).toEqual(contextPair({ name: "choom-default-v1",
+        ref: profileRef, files: ["app.ts", "lib/helper.ts", "scripts/build.mjs"],
+        options: { target: 12, module: 200, moduleResolution: 100, jsx: 1 }, aliases: [],
+        roots: [{ path: "app.ts", evidenceRefs: [planRoot] }] }));
+      const notes = saved<{ groups: unknown[]; limits: string[] }>(work, "graph-profile-notes.json");
+      expect(notes.groups).toEqual([{ name: "choom-default-v1", files: 3, compilerSettingsRef: profileRef }]);
+      expect(notes.limits).toEqual(graphLimits.map((limit, index) => index !== 2 ? limit : "The snapshot has no project " +
+        `settings, so its source uses the named Choom parsing profile choom-default-v1. ${profileRef} records its options and assumptions.`));
+    });
+  });
+
   test("refuses a snapshot with a missing file and creates no attempt", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
