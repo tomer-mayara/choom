@@ -214,7 +214,8 @@ function snapshotReader(snapshot: string, files: Map<string, InventoryFile>): In
   };
 }
 
-// The attempt as start, toolchain and run left it, checked again before and after each action.
+// The attempt as start, toolchain and run left it, checked again before and after
+// each action. Once collect saved the source sites, the trusted parser must be the same.
 function state(): InspectState {
   const handoff = startedHandoff();
   const run = parsed('run.before.yaml');
