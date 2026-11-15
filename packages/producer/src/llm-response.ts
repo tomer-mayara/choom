@@ -4,8 +4,9 @@
 // The check cannot prove that nothing was left out; it refuses the forms that a
 // copied reasoning block or a pasted raw provider response take.
 
-// A line that starts, after optional spaces, with one of these opening tags.
-const reasoningTag = /^[ \t]*<(?:thinking|reasoning|redacted_thinking)/i;
+// A line that starts, after optional white space, with one of these opening tags.
+// White space includes tabs, a no-break space and a byte order mark.
+const reasoningTag = /^\s*<(?:thinking|reasoning|redacted_thinking)/i;
 // A Markdown code fence: three or more backticks or tildes after at most three spaces.
 const codeFence = /^ {0,3}(`{3,}|~{3,})/;
 // The types of the provider content blocks that hold hidden reasoning.

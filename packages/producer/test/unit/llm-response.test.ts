@@ -12,6 +12,8 @@ const refusedResponses: [string, string][] = [
   ["a thinking block before the answer", "<thinking>\nThe CLI starts first.\n</thinking>\n\nThe review follows.\n"],
   ["a tag after spaces in another letter case", "The review follows.\n\n   <Thinking>\nCheck the CLI.\n   </Thinking>\n"],
   ["a tag after a tab", "\t<thinking>Check the CLI.</thinking>\n"],
+  ["a tag after a byte order mark", "﻿<thinking>\nCheck the CLI.\n</thinking>\nThe review follows.\n"],
+  ["a tag after a no-break space", "The review follows.\n <reasoning>Check the CLI.</reasoning>\n"],
   ["a reasoning block", "<reasoning>\nCheck the CLI.\n</reasoning>\nThe review follows.\n"],
   ["a redacted thinking block with an attribute", "<redacted_thinking data=\"abc\"/>\nThe review follows.\n"],
   ["a tag after a closed fence", `${fence}yaml\nformatVersion: 1\n${fence}\n<thinking>\nCheck the CLI.\n</thinking>\n`],
