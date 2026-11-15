@@ -14,6 +14,9 @@ configuration retain their own artifacts.
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | Baseline file selection and reading through the workspace | [Native file operations](interfaces/desktop-documents.tsp); [desktop boundary](interfaces/desktop.md) |
 | Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | [Installed baseline acceptance](../docs/change-requests/BV-native-acceptance.md) | Native file operations, Tauri [capability](../src-tauri/capabilities/main.json), and [configuration](../src-tauri/tauri.conf.json) |
 
+The producer also owns the [baseline decisions](behavior/producer/baseline-decisions.feature)
+behavior: it records human decisions about a published baseline.
+
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
 baseline file input to validation, layout, and the view. The baseline model,
 duplication model, and desktop adapter have separate import boundaries. The
