@@ -41,6 +41,11 @@ const textOf = (path: string): string => {
 const references = (expected: Expected[]): Json[] => expected.map(({ path, kind, localName, at }) =>
   ({ path, range: rangeIn(textOf(path), at), kind, localName }));
 const folder = (path: string): Json => ({ operation: "directory-exists", path });
+// The reasons of the unresolved entries.
+const computedName = "The module name is computed. The query cannot tell which module the site names, so it can name " +
+  "the module of the symbol.";
+const typeScriptRequire = "TypeScript does not follow a require call in a TypeScript file. The call can load the module " +
+  "of the symbol.";
 
 // The requests after collect, in order. Each request takes the next number, also a refused one.
 const requests: [string, string][] = [["src/billing/invoice.ts", "createInvoice"], ["cli.ts", "start"],
@@ -126,7 +131,7 @@ describe("Stage 4 references", () => {
         { path: "src/legacy.js", kind: "call", localName: "start", at: "«start»();" },
       ]),
       unresolved: sites.map(({ site: { path, lines, kind, expression }, index }) =>
-        ({ siteRef: `${sitesRef}#/sites/${index}`, path, lines, kind, expression })),
+        ({ siteRef: `${sitesRef}#/sites/${index}`, path, lines, kind, expression, reason: computedName })),
       gaps: [] });
     expect((record.unresolved as Json[]).map(({ kind, lines }) => ({ kind, lines }))).toEqual([
       { kind: "dynamic-import", lines: [2, 2] }, { kind: "require-candidate", lines: [3, 3] },
@@ -165,6 +170,35 @@ describe("Stage 4 references", () => {
     expect(result.stderr).toContain("Error: Use collect, excerpt PATH FIRST LAST, or references PATH SYMBOL.");
     expect(existsSync(join(fixture.attempt, "operator-references-009.started.json"))).toBe(false);
   });
+});
+
+describe("Stage 4 references with require calls", () => {
+  test("lists a literal require call of a TypeScript file as unresolved, follows the one of a JavaScript file, and does not " +
+    "list require.resolve", () => {
+    const invoice = "src/billing/invoice.ts";
+    const old = "const { createInvoice } = require('./billing/invoice');\n\ncreateInvoice('old');\n";
+    const attempt = stageFourAttempt([{ path: invoice, text: "export function createInvoice(id: string) {\n  return { id };\n}\n" },
+      { path: "src/legacy.cts", text: "const { createInvoice } = require('./billing/invoice');\n\ncreateInvoice('legacy');\n" },
+      { path: "src/old.js", text: old },
+      { path: "src/worker.ts", text: "export const worker = require.resolve('./billing/invoice');\n" }]);
+    try {
+      expect(inspectStageFour(attempt, ["collect"])).toMatchObject({ status: 0, stderr: "" });
+      expect(inspectStageFour(attempt, ["references", invoice, "createInvoice"]))
+        .toEqual({ status: 0, stderr: "", stdout: "Saved references-001.json.\n" });
+      const record = JSON.parse(readFileSync(join(attempt.attempt, "references-001.json"), "utf8")) as Json;
+      const { sites } = JSON.parse(readFileSync(join(attempt.attempt, "source-sites.json"), "utf8")) as { sites: Json[] };
+      const index = sites.findIndex((site) => site.path === "src/legacy.cts");
+      expect({ completeness: record.completeness, references: record.references, unresolved: record.unresolved }).toEqual({
+        completeness: "partial",
+        references: [{ path: "src/old.js", range: rangeIn(old, "const { «createInvoice» }"), kind: "import", localName: "createInvoice" },
+          { path: "src/old.js", range: rangeIn(old, "«createInvoice»('old')"), kind: "call", localName: "createInvoice" }],
+        unresolved: [{ siteRef: `${id}-file@source-sites.json#/sites/${index}`, path: "src/legacy.cts", lines: [1, 1],
+          kind: "require-candidate", expression: "require('./billing/invoice')", reason: typeScriptRequire }],
+      });
+    } finally {
+      rmSync(attempt.root, { recursive: true, force: true });
+    }
+  }, 60_000);
 });
 
 describe("Stage 4 references before or after a changed collect", () => {

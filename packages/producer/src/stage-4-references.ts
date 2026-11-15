@@ -19,10 +19,16 @@ export interface ReferencesInput {
   // ts-morph from the trusted checkout, and the parser record that collect saved with the source sites.
   tsMorph: ProjectTools; parser: Fields;
 }
-export interface UnresolvedSite { siteRef: string; path: unknown; lines: unknown; kind: unknown; expression: unknown }
+export interface UnresolvedSite { siteRef: string; path: unknown; lines: unknown; kind: unknown; expression: unknown; reason: string }
 
 // The loading sites that can name a module by a computed value.
 const loadingKinds = new Set(['dynamic-import', 'require-candidate', 'require-resolve-candidate', 'import-equals']);
+// The type checker does not read a require call in a TypeScript file as an import.
+const typeScriptFile = /\.(?:[cm]?ts|tsx)$/;
+const computedName = 'The module name is computed. The query cannot tell which module the site names, so it can name ' +
+  'the module of the symbol.';
+const typeScriptRequire = 'TypeScript does not follow a require call in a TypeScript file. The call can load the module ' +
+  'of the symbol.';
 // The JavaScript files of the scope are part of the compiler program only with allowJs.
 const queryOptions = { allowJs: true };
 const checker = 'ts-morph snapshot project (TypeScript type checker)';
@@ -42,19 +48,22 @@ export const referencesNotes = [
     'top-level declaration of the file. An import is not a declaration of the file. Each alias is followed to the ' +
     'declaration that it names, and declarations lists that declaration. A declaration is not a reference.',
   'The query follows renamed imports and exports, export * from, namespace imports, default imports, import = and the ' +
-    'JavaScript require calls that the compiler resolves. It does not follow a require call in a TypeScript file, an ' +
-    'import that the compiler settings do not resolve, the local names that a destructured dynamic import binds in a ' +
-    'TypeScript file, or JSDoc types.',
+    'JavaScript require calls that the compiler resolves. It does not follow a require call in a TypeScript file ' +
+    '(unresolved lists it), an import that the compiler settings do not resolve, the local names that a destructured ' +
+    'dynamic import binds in a TypeScript file, or JSDoc types.',
   'kind is import for an import, import = or JavaScript require that binds a local name to the symbol; re-export for an ' +
     'export list entry, export default, export = or export * from that exports it; type for a use in a type; call for a ' +
     'call, new expression, tagged template, decorator or JSX element that it starts; and value for any other use. The ' +
     'closing tag of a JSX element is not listed.',
   'localName is the name that the site uses for the symbol: the local name that an import binds, the export name of a ' +
     're-export, or the name expression of another use, such as billing.createInvoice.',
-  'unresolved lists each loading site of source-sites.json in the scope whose module name is computed: a dynamic import, ' +
-    'require, require.resolve or import = site with a null specifier. Such a site can load the module of the symbol, so ' +
-    'the references can be incomplete. completeness is partial when unresolved has an entry, and complete-within-scope ' +
-    'otherwise. Neither value covers the files outside the scope or the uses that the query does not follow.',
+  'unresolved lists each loading site of source-sites.json in the scope that can load the module of the symbol and that ' +
+    'the query does not follow, with its reason: a dynamic import, require, require.resolve or import = site with a ' +
+    'computed module name (a null specifier), and a require call with a literal module name in a TypeScript file (.ts, ' +
+    '.tsx, .mts or .cts). The checker follows a literal require call in a JavaScript file, and a require.resolve call ' +
+    'with a literal name loads nothing, so neither is listed. completeness is partial when unresolved has an entry, and ' +
+    'complete-within-scope otherwise. Neither value covers the files outside the scope or the other uses that the query ' +
+    'does not follow.',
   'A range starts at the first character of the site and ends after its last character: the name, the import or export ' +
     'entry, or the export * from statement. Lines and columns start at 1 and count UTF-16 code units. A byte order mark ' +
     'is not counted.',
@@ -64,11 +73,21 @@ export const referencesNotes = [
   outsideReadsNote,
 ];
 
-// The loading sites of the scope whose module name is computed, as possible uses that the query does not resolve.
+// Why the query does not follow a loading site, or undefined for a site that it follows or that loads nothing.
+function unresolvedReason({ path, kind, specifier }: Fields): string | undefined {
+  if (loadingKinds.has(kind as string) && specifier === null) return computedName;
+  if (kind === 'require-candidate' && typeScriptFile.test(path as string)) return typeScriptRequire;
+  return undefined;
+}
+
+// The loading sites of the scope that can load the module of the symbol and that the query does not follow,
+// as possible uses that it does not resolve.
 export function unresolvedSites(sites: Fields, scope: ReadonlySet<string>, sitesRef: string): UnresolvedSite[] {
-  return (sites.sites as Fields[]).flatMap(({ path, lines, kind, specifier, expression }, index) =>
-    scope.has(path as string) && loadingKinds.has(kind as string) && specifier === null
-      ? [{ siteRef: sitesRef + '#/sites/' + index, path, lines, kind, expression }] : []);
+  return (sites.sites as Fields[]).flatMap((site, index) => {
+    const { path, lines, kind, expression } = site;
+    const reason = scope.has(path as string) ? unresolvedReason(site) : undefined;
+    return reason === undefined ? [] : [{ siteRef: sitesRef + '#/sites/' + index, path, lines, kind, expression, reason }];
+  });
 }
 
 // The source file of the graph scope that the operator named.
