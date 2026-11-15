@@ -36,7 +36,7 @@ node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" start
 
 The helper requires completed component recovery and its published working
 drafts. The baseline must still be proposed, before Stage 6 saves a fixed version.
-Versions 1, 2, and 3 keep their own strict fields. Use version 3 for
+Versions 1 to 4 keep their own strict fields. Use version 3 for
 [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when `systemEntryPoints`
 is present. Both formats retain the

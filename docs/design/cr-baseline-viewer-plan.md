@@ -118,6 +118,12 @@ from its name or location.
 
 ## Diagram and details
 
+> **Superseded display rules.** The
+> [readability plan](cr-baseline-viewer-readability-plan.md#view-behavior)
+> replaced the node and line rules in this section. The current view shows
+> components only, draws connection arcs between components, and draws no arc
+> when an owner is unknown. This section keeps the BV-05 rules as history.
+
 Use ordinary named nodes for components, interfaces, and resources. This avoids
 custom interface ports and gives an interface a stable endpoint even when its
 owner is unknown. Reuse the current canvas and detail-panel mechanics.

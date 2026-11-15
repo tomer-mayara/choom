@@ -2,7 +2,7 @@
 
 Status: **Proposed — design only**
 
-Updated: **2026-11-08**
+Updated: **2026-11-15**
 
 This document defines Choom's analysis process, tools, saved data, and outputs.
 
@@ -16,8 +16,10 @@ This document defines Choom's analysis process, tools, saved data, and outputs.
 - [Step 2: investigate isolation and granularity](#step-2-investigate-isolation-and-granularity)
   - [Starting smell catalog](#starting-smell-catalog)
   - [Tools and algorithms](#tools-and-algorithms)
+  - [Duplicated public capabilities](#duplicated-public-capabilities)
   - [Investigation and recommendations](#investigation-and-recommendations)
 - [Step 3: show findings on the baseline](#step-3-show-findings-on-the-baseline)
+  - [Duplicated-interface report](#duplicated-interface-report)
   - [Proposals and the component diff](#proposals-and-the-component-diff)
   - [Report views](#report-views)
 - [Runs and saved evidence](#runs-and-saved-evidence)
@@ -152,12 +154,16 @@ Use one model format for baselines and proposals:
 Each item has an ID. Each statement records its source and whether it is proposed
 or accepted. Acceptance follows the project's policy and can cover selected
 statements. New or changed statements remain proposed until accepted. An LLM
-cannot accept its own proposal.
+cannot accept its own proposal. A named human decider records each decision.
+Code can refuse a decider that names the run's model, but it cannot prove that a
+person made the decision: this rule is a process rule.
 
 A human can correct the model or add business intent. For example: "Customer
 pricing must change independently of invoicing." Once a baseline is saved,
 accepting or correcting its statements creates a new version and assessment.
-Earlier reports keep the versions they used. Human review is optional; Choom
+Earlier reports keep the versions they used. A new version has no discovery
+result until a new run maps it; reusing saved facts for a new version (mode B)
+is later work. Human review is optional; Choom
 can continue with a provisional baseline.
 
 The baseline stores membership rules and intended ownership. The run stores the
@@ -551,7 +557,7 @@ quality on repositories kept separate from prompt development. Include:
 Allow several reasonable component groupings. Measure correct findings and false
 alarms, missed problems, useful proposals, variation across runs, coverage, time,
 and cost. A report with only unknowns is insufficient when usable evidence exists.
-The seven-family catalog is a starting hypothesis. An 80% claim needs independently
+The eight-family catalog is a starting hypothesis. An 80% claim needs independently
 identified problems and room for cases outside the catalog.
 
 ## Research basis
@@ -598,7 +604,7 @@ are its likely components, how do they interact, and what remains uncertain?
 
 | File | Purpose | Produced by |
 | --- | --- | --- |
-| `baselines/<baseline-id>/baseline.yaml` | Architectural intent, interface documentation, and optional version 3 source-use assessments tied to a saved snapshot. | The LLM proposes the model from evidence. Choom validates and saves it. |
+| `baselines/<baseline-id>/baseline.yaml` | Architectural intent, interface documentation, and optional source-use assessments (version 3) and system entry points (version 4) tied to a saved snapshot. | The LLM proposes the model from evidence. Choom validates and saves it. |
 | `runs/<run-id>/discovery.yaml` | What this pass established, inspected, or left unresolved. References the selected baseline and saved facts. | Tools supply facts and coverage. The LLM supplies explanations and questions. Choom assembles and validates the result. |
 
 These files represent the [saved records](#saved-records); they do not introduce
@@ -612,9 +618,12 @@ no smell findings, redesign proposal, or health score.
 and `rules`. Version 1 keeps the original model. Version 2 adds interface
 documentation and method signatures. Version 3 retains that contract and can add
 `sourceUsage`, as defined in the [producer record contract](app-a/record-format.md#version-3-source-use-assessments).
-The viewer keeps legacy permission arrows for versions 1/2. Version 3 uses only
-saved application/tooling value uses for arrows, with known consumer and provider
-components. Other references stay readable in details. It never infers a source
+Version 4 retains version 3 and can add `systemEntryPoints`, as defined in
+[CR-003](../change-requests/CR-003-system-entry-points.md) and the
+[record contract](app-a/record-format.md#version-4-system-entry-points).
+The viewer keeps legacy permission arrows for versions 1/2. Versions 3 and 4 use
+only saved application/tooling value uses for arrows, with known consumer and
+provider components. Other references stay readable in details. It never infers a source
 consumer from permission or claims that source inspection proves execution.
 
 IDs and names identify items. Each statement about intent uses
@@ -623,6 +632,13 @@ IDs and names identify items. Each statement about intent uses
 project's acceptance process. The LLM cannot supply that decision itself.
 Use `null` for an unknown value and explain it in a question or gap. An empty
 collection means that no items were modeled; it does not prove they do not exist.
+
+The manual producer applies a stricter profile when it publishes a Step 1
+baseline. The baseline has at least one component. Each component has a
+non-null purpose and grouping reason, and at least one path selector, including
+a parent that only groups other components. See the
+[record format](app-a/record-format.md#baseline). The viewer accepts the wider
+model above.
 
 For example, this is one component record in a fictional `baseline.yaml`:
 
@@ -657,7 +673,7 @@ large file lists and raw tool output in referenced artifacts.
 | `formatVersion`, `kind` | `1` and `architecture-discovery`. This identifies a Step 1 result. |
 | `runRef`, `baselineRef` | References to the run manifest and selected immutable baseline version. |
 | `overview` | A short system explanation and its `evidenceRefs`. |
-| `inspectedPaths` | Behavior paths traced through source, entry-point and component references, and supporting evidence. These are source inspections, not runtime traces. |
+| `inspectedPaths` | Behavior paths traced through source, entry-point and component references, the steps followed, limits, and supporting evidence. These are source inspections, not runtime traces. |
 | `codeMappingRef` | Every in-scope code unit, its owner or explicit unknown owner, and mapping evidence. |
 | `entryAnalysisRef` | Choom's entry candidates with roles and sources, Knip reports and limits, and any verified file-level reachability with its roots, method, and coverage. |
 | `dependenciesRef`, `resourceAccessRef` | Observed dependency and resource-access records, including context, kinds, evidence, and unresolved targets. |
@@ -685,6 +701,13 @@ inspectedPaths:
     entryPointRef: entry-http
     componentIds: [http-api, billing]
     evidenceRefs: [e-http-route, e-billing-api, e-invoice-storage]
+    steps:
+      - action: The route handler validates the request and calls Billing.
+        evidenceRefs: [e-http-route]
+      - action: Billing creates the invoice and writes it to storage.
+        evidenceRefs: [e-billing-api, e-invoice-storage]
+    limits:
+      - Source inspection only; the path is not a runtime trace.
 codeMappingRef: mapping-001
 entryAnalysisRef: entries-001
 dependenciesRef: dependencies-001

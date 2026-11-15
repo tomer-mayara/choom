@@ -86,7 +86,7 @@ Publication does not accept intent.
 | Collection | Exact item fields |
 | --- | --- |
 | `components` | `id`, `name`, `purpose`, `membership`, `groupingReason`; optional `parent`. |
-| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2/3 also permit `documentation`. |
+| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2–4 also permit `documentation`. |
 | `resources` | `id`, `name`, `identity`, `owner`, `accessRules`. |
 | `rules` | `id`, `name`, `subject`, `expected`, `check`. |
 
