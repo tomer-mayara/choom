@@ -512,13 +512,14 @@ bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/int
 
 Without project settings, Stage 1 names the Choom parsing profile
 `choom-default-v1` in the settings record, with its assumptions and a
-`no-project-settings` gap, and Stage 4 start parses the source with its options.
+`no-project-settings` gap. Stage 1 finish adds that gap to the discovery gaps,
+and Stage 4 start parses the source with the profile's options.
 The [record format](docs/design/app-a/record-format.md#settings-record) gives the
 fields. Run the focused checks of the named parsing profile with:
 
 ```sh
 bun run test:behavior --tags @producer
-bun test ./packages/producer/test/unit/parsing-profile.test.ts ./packages/producer/test/unit/stage-1-settings.test.ts ./packages/producer/test/unit/stage-4-graph-profile.test.ts
+bun test ./packages/producer/test/unit/parsing-profile.test.ts ./packages/producer/test/unit/stage-1-settings.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts ./packages/producer/test/unit/stage-4-graph-profile.test.ts
 bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/recover-capture.test.ts ./packages/producer/test/interface/stage-4
 ```
 

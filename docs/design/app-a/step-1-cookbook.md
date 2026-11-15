@@ -124,10 +124,12 @@ A snapshot without project settings has no `tsconfig*.json` or `jsconfig*.json`
 file, and no extra compiler settings are named (see below). Its settings record
 names the Choom parsing profile `choom-default-v1` in `parsingProfile`, with the
 profile's options and its assumptions in plain text. `gaps` then has a
-`no-project-settings` gap. The profile's options are Choom assumptions, not
-settings of the project. Later stages parse the source with them. A snapshot with
-any configuration, also one that does not parse, uses no profile: `parsingProfile`
-is `null`. The [record format](record-format.md#settings-record) gives the fields.
+`no-project-settings` gap. `finish` adds each gap of the settings record to the
+discovery gaps (see section 5); the review does not copy it. The profile's options
+are Choom assumptions, not settings of the project. Later stages parse the source
+with them. A snapshot with any configuration, also one that does not parse, uses
+no profile: `parsingProfile` is `null`. The
+[record format](record-format.md#settings-record) gives the fields.
 
 The collector saves an immutable numbered probe under `evidence/settings-probes/`
 and prints its evidence ID. `evidence/settings.json` is a working copy of the
@@ -210,9 +212,9 @@ Review package errors, compiler diagnostics, declarations, configuration
 inheritance and project references. Partial options do not establish valid or
 complete settings. Record missing required inputs. When the settings record
 names the Choom parsing profile, its options are Choom assumptions, not project
-settings. Copy each gap of the settings record into gaps: give it an s1-gap ID,
-keep its kind, subjectRefs and reason, and cite it with its JSON Pointer, such as
-settings-001#/gaps/0. Do not invent another profile. Inspect workspace
+settings. The tool adds each gap of the settings record to the discovery gaps,
+with an ID such as s1-settings-gap-001. Do not copy those gaps, and do not use IDs
+that start with s1-settings-gap-. Do not invent another profile. Inspect workspace
 declarations without assuming every package manifest is an active workspace.
 Read relevant deployment, test, build and architecture files as text. Request
 additional compiler settings as a JSON array of saved relative paths, retaining
@@ -290,8 +292,7 @@ cannot reconstruct the actual model input or prove the review's meaning.
 Apply the [review before publication](start-here.md#review-before-publication)
 guidance to the complete packet. Check role claims, missing inputs,
 supplied-evidence limits and exact inspected ranges against the saved evidence.
-Check that the review gaps include each gap of the settings record. `finish` does
-not check this.
+The review does not copy the gaps of the settings record: `finish` adds them.
 
 Set the review folder path, then run:
 
@@ -303,16 +304,22 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 verify
 
 `finish` verifies snapshot bytes, the review's structure, IDs, references and
 supplied source ranges. It copies the review packet, saves an empty baseline,
-and creates discovery from the review's questions and gaps. It registers all
-evidence, including the producer code record, and `inventory.mjs` with computed
-SHA-256 digests, then writes `run.yaml` last. No manual digest entry or
-analysis-record editing is needed.
+and creates discovery from the review's questions and gaps. Then it adds each gap
+of the settings record to the discovery gaps. Such a gap keeps its kind,
+`subjectRefs` and reason, gets the ID `s1-settings-gap-001` for the first gap,
+`s1-settings-gap-002` for the second and so on, and cites its place in the
+settings record, such as `settings-001#/gaps/0`. `finish` refuses a review question
+or gap with one of these IDs. It registers all evidence, including the producer
+code record, and `inventory.mjs` with computed SHA-256 digests, then writes
+`run.yaml` last. No manual digest entry or analysis-record editing is needed.
 It saves `evidence/stage1-discovery.yaml` as `discovery-001`; mutable root drafts
 are never registered as immutable evidence.
 
 `verify` is read-only. Expected: `stage1-inputs-verified`, with the run/snapshot IDs,
-artifact count and inventory count. Structural checks do not verify semantic
-quality. Check the LLM's claims against the supplied evidence.
+artifact count and inventory count. It also derives the settings gaps again from
+the saved settings record and checks that the saved discovery has them.
+Structural checks do not verify semantic quality. Check the LLM's claims against
+the supplied evidence.
 
 After success, do not change the snapshot or registered evidence. The run remains
 `in-progress`, with `inventory: complete` and `baselineRecovery: pending`.

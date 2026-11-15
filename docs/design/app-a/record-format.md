@@ -686,7 +686,7 @@ reads its compiler configurations and its parsing profile. The record is
 | `packages` | Each `package.json`, with its parsed `data` or its parse `error`. |
 | `configs` | Each `tsconfig*.json`, `jsconfig*.json` and extra compiler configuration, and each project that they reference: `path`, `status` (`parsed`, `partial` or `unavailable`) and `diagnostics`, and for a file that parses, `declared`, `compilerOptions`, `fileNames` and `references`. |
 | `parsingProfile` | `null` when `configs` has an entry. Otherwise the Choom parsing profile: `id`, `declared.compilerOptions`, `compilerOptions` and `assumptions`. |
-| `gaps` | The gaps that the collector found. Each gap has `kind`, `subjectRefs` and `reason`, the fields of a discovery gap without its ID and evidence. The Stage 1 review copies each gap into its gaps with an ID and cites it. |
+| `gaps` | The gaps that the collector found. Each gap has `kind`, `subjectRefs` and `reason`, the fields of a discovery gap without its ID and evidence. Stage 1 `finish` adds each gap to the discovery gaps, as the example below shows. |
 | `contentReads`, `contentReadScope` | The snapshot files that the collector read and checked against the inventory, and the limit of that check. |
 
 A snapshot without project settings has no `tsconfig*.json` or `jsconfig*.json`
@@ -714,6 +714,22 @@ the pinned TypeScript 6.0.2, as in a configuration entry. These options are Choo
 assumptions, not settings of the project. A configuration that does not parse is
 still project settings, so its record names no profile. A changed option or
 assumption needs a new profile ID.
+
+Stage 1 `finish` adds each gap of the settings record to the discovery gaps, after
+the review gaps. Gap `N` (from 0) gets the ID `s1-settings-gap-` with the number
+`N + 1` in three digits, and cites `settings-001#/gaps/N`:
+
+```yaml
+gaps:
+  - id: s1-settings-gap-001
+    kind: no-project-settings
+    subjectRefs: [snapshot-001]
+    reason: No project settings were found. ...
+    evidenceRefs: ["settings-001#/gaps/0"]
+```
+
+`finish` refuses a review question or gap with one of these IDs, and Stage 1
+`verify` checks that the saved Stage 1 discovery has these gaps.
 
 Stage 4 start puts the source that no parsed compiler selection covers in one
 group. When the record names the profile, the group is named after the profile,
