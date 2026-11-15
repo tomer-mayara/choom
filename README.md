@@ -458,12 +458,16 @@ and the ripgrep version, and that a search with no match names the searched file
 and the capture exclusions. They list the exports of a snapshot file with the
 Stage 3 exports action and check each kind and source range, and that a
 declaration file that the compiler settings name and the capture did not save is
-a gap of an open project. The unit suites check the producer code digest and record, the
+a gap of an open project. They build the Stage 4 graph of small packages and check
+that a JavaScript file gets the target of the condition of its syntax, that
+TypeScript that compiles to CommonJS gets the `require` target and no
+`pre-compilation-only` mark, and that TypeScript that compiles to an ES module
+keeps the `import` target. The unit suites check the producer code digest and record, the
 command mapping, the check of the visible LLM response and the call record, the
 parsing profile, the settings collector, the Git identity, the capture exclusion
 rules, the installed ripgrep program, the text search, the snapshot project, the
-export list, the Stage 4 graph profile, the profile checks of the Stage 4 graph
-helper and the skip reasons of the Stage 5 syntax
+export list, the Stage 4 graph profile, the module kinds, the profile checks of the
+Stage 4 graph helper and the skip reasons of the Stage 5 syntax
 query. The integration suite checks the shared record validator
 with the shared baseline rules of `@choom/baseline-model`: the producer profile, the
 shared-rule messages, the reserved IDs, the run checks and the bounded YAML
@@ -533,14 +537,19 @@ dependency-cruiser, also from a copy of the helper alone in a folder with no
 `package.json`, as the container gets it. The graph passes suite runs Stage 4
 start and the helper's `collect` on three small packages whose dependency has
 separate import and require targets (`test/fixtures/module-kinds/`). It records
-the passes and edges of today, including the import targets that TypeScript files
-whose compiled code is CommonJS get. A unit suite records the profile checks of
-the helper. The Docker suite checks that the image runs the helper with no
-stderr. Run the graph helper checks with:
+the passes and edges: the CommonJS pass gives TypeScript that compiles to CommonJS
+the `require` target, and the edges of JavaScript and of ES module TypeScript keep
+the condition of their syntax. The CommonJS pass suite runs the three passes on a
+file with every import form, with `module: commonjs` and with `nodenext`. The unit
+suites record the module kind rule (`stage-4-module-kinds.ts`), the passes and
+module kinds of the graph profile, and the profile checks of the helper. The
+Docker suite checks that the image runs the helper, with its CommonJS fixture
+pass, and writes no stderr. Run the graph helper and module kind checks with:
 
 ```sh
-bun test ./packages/producer/test/unit/stage-4-graph.test.ts ./packages/producer/test/interface/stage-4/graph-helper.test.ts
-bun test ./packages/producer/test/interface/stage-4/graph-passes.test.ts ./packages/producer/test/interface/local-checks.test.ts
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/stage-4-module-kinds.test.ts ./packages/producer/test/unit/stage-4-graph-profile.test.ts ./packages/producer/test/unit/stage-4-graph.test.ts
+bun test ./packages/producer/test/interface/stage-4/graph-helper.test.ts ./packages/producer/test/interface/stage-4/graph-passes.test.ts ./packages/producer/test/interface/stage-4/graph-commonjs-pass.test.ts ./packages/producer/test/interface/local-checks.test.ts
 bun run test:producer:docker
 ```
 

@@ -563,7 +563,8 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record and the producer code record |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
-| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, traversal roots and limits. The Stage 3 exports action uses the same compiler context rule |
+| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, their passes, traversal roots and limits. The Stage 3 exports action uses the same compiler context rule |
+| `stage-4-module-kinds.ts` | The module kind of the code that runs for each file of a compiler context, from its extension, the compiler `module` setting and the nearest indexed `package.json`. Files that compile to CommonJS get a CommonJS pass |
 | `stage-4-graph.ts` | Dependency extraction in the graph container. The container gets only this file, as `/producer/stage-4-graph.mts` |
 | `stage-4-inspect.ts`, `stage-4-source-sites.ts`, `stage-4-review-prompt.ts` | Bounded source evidence (`stage-4-inspect` command): the checked attempt, the first excerpts and the excerpt action; the source sites; and the Stage 4 review prompt |
 | `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |

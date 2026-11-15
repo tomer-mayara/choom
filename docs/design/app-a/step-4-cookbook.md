@@ -83,10 +83,54 @@ source uses one group named after the profile, such as `choom-default-v1`, with
 the profile's options and `compilerSettingsRef: settings-001#/parsingProfile`.
 The helper refuses a settings record that names an unknown profile.
 
-Each group has separate import and CommonJS passes with platform-neutral
-`import`/`require` and `default` conditions. Browser, Node, Bun, custom and
+Each group has separate import and require passes with platform-neutral
+`import`/`require` and `default` conditions. The import pass reads ES module
+syntax and TypeScript references with the `import` condition. The require pass
+reads CommonJS syntax with the `require` condition. Browser, Node, Bun, custom and
 TypeScript-specific package conditions remain unassessed. The helper does not
 infer a runtime from a directory name or execute target configuration.
+
+Stage 4 start also decides the module kind of the code that runs for each file
+of a group (`stage-4-module-kinds.ts`). TypeScript that compiles to CommonJS
+turns its `import` statements into `require` calls:
+
+- A `.mts` file is an ES module and a `.cts` file is CommonJS, as Node runs the
+  compiled `.mjs` and `.cjs` files (`decidedBy: extension`).
+- For a `.ts` or `.tsx` file, the `module` setting of the group decides:
+  CommonJS gives CommonJS, and ES2015 to ESNext give ES modules
+  (`compiler-module`). With Node16, Node18, Node20 or NodeNext, the `type` of
+  the nearest indexed `package.json` decides, and without a `type` or without
+  a `package.json` the file is CommonJS (`package-type`).
+- JavaScript files, `module: preserve` and a group with no `module` setting keep
+  the syntax as written (`syntax`). Snapshots without project settings use the
+  Choom parsing profile, which sets `module: preserve`.
+- `module` None, AMD, UMD or System, a `package.json` that is not a valid JSON
+  object, and a `type` other than `module` or `commonjs` give an unknown kind
+  with a reason (`unknown`). Such a file keeps the passes of its syntax.
+
+A group in which some files compile to CommonJS gets a third pass,
+`<group>-commonjs`. It reads ES module syntax, TypeScript references and
+CommonJS syntax with the `require` condition, and keeps only the imports of
+those files. It reads their `require` calls only so that dependency-cruiser
+finds the imports that the compiled code keeps; the require pass keeps the
+`require` calls. So a value import is not `pre-compilation-only`, and a
+type-only import or re-export stays `pre-compilation-only`. The import pass and
+the CommonJS pass both name those files in `compiledToCommonJS`. The import pass
+keeps none of their imports, except an `import()` call that the compiled code
+keeps. With `module: commonjs`, TypeScript compiles an `import()` call into a
+`require` call, so the CommonJS pass keeps it, with the `require` condition and
+not `pre-compilation-only`. With any other setting, the call stays, and the import
+pass keeps it with the `import` condition. A JavaScript `import()` call keeps the
+`import` condition, as in Node. Traversal stays within each pass. In a group with
+both kinds, a pass can reach a file whose own edges are in another pass, and
+stops there; that file is not unused.
+
+`graph-profile-notes.json` lists in `moduleKinds` each file whose module kind
+its syntax does not decide: its group, kind, rule (`decidedBy`), the compiler
+setting reference (`setting`), the `package.json` and the reason. The module
+kinds do not cover `createRequire` in ES modules, conditions in `typesVersions`,
+bundler resolution, or TypeScript that a bundler, not `tsc`, compiles. Review
+those files from their source.
 
 The profile passes only the saved target, module, module-resolution, JSX and
 verbatim-module options to the parser. It approximates simple single-target
@@ -123,9 +167,9 @@ access to obtain the tool image and packages.
 The helper records the image ID, package lock, versions, command outcomes, and
 fixture result. The image runs the fixture with the graph helper at the same
 container path as the graph run. The fixture checks aliases, type-only imports,
-dynamic imports, conditional package imports, overlapping scan contexts,
-unresolved targets and configuration traps. A fixture pass covers those cases;
-it does not prove complete target coverage.
+dynamic imports, conditional package imports, a CommonJS pass for a `.cts` file,
+overlapping scan contexts, unresolved targets and configuration traps. A fixture
+pass covers those cases; it does not prove complete target coverage.
 
 The graph engine uses the API and its built-in JSON reporter. It passes
 Choom-owned data directly. It does not load a target rule file, custom reporter,
@@ -159,6 +203,8 @@ The engine scans each context separately with these explicit settings:
 - `exportsFields: ["exports"]` and `importsFields: ["imports"]`.
 - Separate `import` and `require` conditions, each with `default`. These are
   platform-neutral source-analysis passes, not claims about the target runtime.
+  A CommonJS pass uses the `require` condition. Each pass keeps only the edges
+  of the files that it owns, and its `limits` say what it keeps.
 - Resolver targets stay within `/repo`. Installed target dependencies remain
   unavailable. Missing packages remain visible in the raw evidence.
 - `doNotFollow: "^"` prevents recursive parsing. Each selected source file is
@@ -173,7 +219,8 @@ Publication requires an actual completed run with every context completed.
 A skipped Knip result from Stage 2 does not permit a skipped or inferred graph.
 Read the run and context statuses separately from their coverage limits.
 A completed `require` context can contain no dependency edges; an empty edge
-list does not by itself mean the tool failed to execute.
+list does not by itself mean the tool failed to execute. The same applies to an
+import pass whose files all compile to CommonJS.
 
 Choom traverses retained internal source edges from the recorded roots. This
 includes type-only, re-export, and literal dynamic dependencies. It saves reached
