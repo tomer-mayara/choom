@@ -15,11 +15,14 @@ type Fields = Record<string, unknown>;
 interface Alias { name: string; alias: string; onlyModule?: boolean }
 interface Root { path: string; evidenceRefs: string[] }
 interface SourceFile { path: string; sha256: string }
+// The scan files of a compiler context whose compiled code is CommonJS, and the condition of their import() calls.
+interface CompiledToCommonJS { files: string[]; dynamicImportCondition: string }
 // A checked context of the graph profile: one pass over its scan files.
 interface GraphContext {
   id: string; compilerSettingsRef: string | null; sourceFiles: string[]; compilerOptions: Fields; aliases: Alias[];
-  conditionNames: string[]; moduleSystems: string[]; roots: Root[];
+  conditionNames: string[]; moduleSystems: string[]; compiledToCommonJS?: CompiledToCommonJS; roots: Root[];
 }
+type PassKind = 'import' | 'require' | 'commonjs';
 interface GraphProfile { formatVersion: 1; snapshotRef: string; attemptId: string; sourceFiles: SourceFile[]; contexts: GraphContext[] }
 interface Transpiler { name: string; available: boolean; currentVersion: string }
 interface CruiseResponse { exitCode: number; output: unknown }
@@ -29,9 +32,8 @@ interface ToolVersions { node: string; dependencyCruiser: string; typescript: st
 interface Tools { cruise: Cruise; versions: ToolVersions }
 // A module and a dependency of the raw dependency-cruiser output. readEdges checks the unknown fields.
 interface RawDependency {
-  module: unknown; moduleSystem: string; protocol?: string; dependencyTypes: unknown; coreModule: unknown;
-  couldNotResolve: unknown; resolved: unknown; followable: unknown; matchesDoNotFollow: unknown;
-  preCompilationOnly?: unknown; dynamic?: unknown;
+  module: unknown; moduleSystem: string; protocol?: string; dependencyTypes: unknown; coreModule: unknown; couldNotResolve: unknown;
+  resolved: unknown; followable: unknown; matchesDoNotFollow: unknown; preCompilationOnly?: unknown; dynamic?: unknown;
 }
 interface RawModule { source: string; dependencies: RawDependency[]; followable?: unknown }
 interface RawGraph { modules: RawModule[] }
@@ -40,17 +42,15 @@ interface EdgeSource { attemptId: string; contextIndex: number; baseDir: string 
 type PackageLookup = (path: string) => Set<string>;
 interface Target { to: string | null; targetKind: string }
 interface Edge extends Target {
-  id: string; from: string; specifier: string; dependencyTypes: string[]; preCompilationOnly: boolean | null;
-  dynamic: boolean | null; evidenceRefs: string[];
+  id: string; from: string; specifier: string; dependencyTypes: string[]; preCompilationOnly: boolean | null; dynamic: boolean | null;
+  evidenceRefs: string[];
 }
 interface Reachability {
-  status: string; method: string; roots: string[]; reached: string[]; notReached: string[]; stoppedEdges: string[];
-  edgePolicy: string;
+  status: string; method: string; roots: string[]; reached: string[]; notReached: string[]; stoppedEdges: string[]; edgePolicy: string;
 }
 interface ContextResult {
-  id: string; conditionNames: string[]; moduleSystems: string[]; compilerSettingsRef: string | null; scanFiles: string[];
-  roots: Root[]; coverage: string; status: string; raw: unknown; edges: Edge[]; reachability: Reachability | null;
-  limits: string[];
+  id: string; conditionNames: string[]; moduleSystems: string[]; compilerSettingsRef: string | null; scanFiles: string[]; roots: Root[];
+  coverage: string; status: string; raw: unknown; edges: Edge[]; reachability: Reachability | null; limits: string[];
 }
 interface GraphResult {
   formatVersion: 1; snapshotRef: string; profileRef: string; status: string; coverage: string; toolVersions: ToolVersions;
@@ -61,15 +61,15 @@ interface FixtureApproval { status: string; toolVersions: ToolVersions; contextC
 const repo = '/repo';
 const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const compilerKeys = ['target', 'module', 'moduleResolution', 'jsx', 'verbatimModuleSyntax'];
-const extensions = ['.ts', '.tsx', '.mts', '.cts', '.d.ts', '.d.mts', '.d.cts',
-  '.js', '.jsx', '.mjs', '.cjs', '.json'];
+const extensions = ['.ts', '.tsx', '.mts', '.cts', '.d.ts', '.d.mts', '.d.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'];
 const limits = [
   'This graph describes saved source dependencies. Runtime execution and unused-file judgments are outside its coverage.',
   'The resolver uses the recorded conditions and simple saved aliases. Target configuration, plugins, builds, and tests remain unexecuted.',
   'Installed target dependencies are unavailable. Declared external imports without a saved target are unresolved.',
   'Bun and Node runtime resolution, bundler behavior, and type-specific package conditions are outside this profile.',
   'Built-in labels come from the analyzer runtime and dependency-cruiser. Their availability in the target runtime is unverified.',
-  'Each pass retains its selected module systems. Traversal stays within that pass.',
+  'Each pass retains its selected module systems. Traversal stays within that pass. A CommonJS pass resolves the import syntax of TypeScript whose compiled code is CommonJS with the require condition.',
+  'The module kinds do not cover createRequire in ES modules, conditions in typesVersions, bundler resolution, or TypeScript that a bundler compiles instead of tsc.',
   'The pinned graph can drop import kind and type-only labels from unresolved dependencies. It can collapse static and dynamic imports of the same specifier.',
   'Use saved syntax evidence for import sites and computed loading, including occurrences that the graph does not retain.',
 ];
@@ -108,26 +108,40 @@ function validAlias(entry: unknown): entry is Alias {
     (!Object.hasOwn(entry, 'onlyModule') || entry.onlyModule === !entry.name.endsWith('*'));
 }
 
-// A pass reads either CommonJS with the require condition, or ES modules and
-// TypeScript references with the import condition, each with default and at most
-// one platform condition.
-function checkPassConditions(context: Fields, id: string): void {
-  const commonJS = stringList(context.moduleSystems) && context.moduleSystems.length === 1 &&
-    context.moduleSystems[0] === 'cjs';
-  const esModules = stringList(context.moduleSystems) && context.moduleSystems.length === 2 &&
-    context.moduleSystems.includes('es6') && context.moduleSystems.includes('tsd');
-  assert((commonJS || esModules) && stringList(context.conditionNames) &&
-    context.conditionNames.includes('default') &&
-    context.conditionNames.includes(commonJS ? 'require' : 'import') &&
-    !context.conditionNames.includes(commonJS ? 'import' : 'require') &&
+// The kind of a pass, by the module systems that it reads: ES modules and TypeScript
+// references with the import condition, CommonJS with the require condition, or all
+// three with the require condition for the files whose compiled code is CommonJS.
+const passKinds = new Map<string, PassKind>([['es6,tsd', 'import'], ['cjs', 'require'], ['cjs,es6,tsd', 'commonjs']]);
+const kindOf = (context: GraphContext): PassKind => passKinds.get([...context.moduleSystems].sort().join()) as PassKind;
+
+// Each pass has default and at most one platform condition.
+function checkPassConditions(context: Fields, id: string): PassKind {
+  const kind = stringList(context.moduleSystems) ? passKinds.get([...context.moduleSystems].sort().join()) : undefined;
+  const condition = kind === 'import' ? 'import' : 'require';
+  assert(kind !== undefined && stringList(context.conditionNames) &&
+    context.conditionNames.includes('default') && context.conditionNames.includes(condition) &&
+    !context.conditionNames.includes(condition === 'import' ? 'require' : 'import') &&
     context.conditionNames.every(name => ['import', 'require', 'default', 'browser', 'node', 'bun'].includes(name)) &&
     context.conditionNames.filter(name => ['browser', 'node', 'bun'].includes(name)).length <= 1,
   'Use separate import and require conditions: ' + id);
+  return kind;
+}
+
+// An import pass can name the files whose compiled code is CommonJS, a CommonJS pass
+// must name them, and a require pass does not.
+function checkCompiledToCommonJS(context: Fields, kind: PassKind, id: string): void {
+  const compiled = context.compiledToCommonJS;
+  assert(compiled !== undefined || kind !== 'commonjs', 'A CommonJS pass needs the files whose compiled code is CommonJS: ' + id);
+  const scope = new Set(context.sourceFiles as string[]);
+  assert(compiled === undefined || (kind !== 'require' && hasFields(compiled, ['files', 'dynamicImportCondition']) &&
+    stringList(compiled.files) && compiled.files.length > 0 && compiled.files.every(path => scope.has(path)) &&
+    ['import', 'require'].includes(compiled.dynamicImportCondition as string)),
+  'Invalid files whose compiled code is CommonJS: ' + id);
 }
 
 export function validateContext(context: unknown, files: ReadonlySet<string>): asserts context is GraphContext {
   assert(hasFields(context, ['id', 'compilerSettingsRef', 'sourceFiles', 'compilerOptions',
-    'aliases', 'conditionNames', 'moduleSystems', 'roots']) &&
+    'aliases', 'conditionNames', 'moduleSystems', 'roots'], ['compiledToCommonJS']) &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(context.id ?? '')) &&
     (context.compilerSettingsRef === null || text(context.compilerSettingsRef)),
   'Invalid graph context.');
@@ -142,7 +156,7 @@ export function validateContext(context: unknown, files: ReadonlySet<string>): a
   assert(Array.isArray(context.aliases) && context.aliases.every(validAlias) &&
     unique(context.aliases.map(entry => entry.name)),
   'Expected simple, unique aliases within /repo: ' + id);
-  checkPassConditions(context, id);
+  checkCompiledToCommonJS(context, checkPassConditions(context, id), id);
   const scope = new Set(context.sourceFiles);
   assert(Array.isArray(context.roots) && context.roots.every(root =>
     hasFields(root, ['path', 'evidenceRefs']) && scope.has(root.path as string) &&
@@ -176,6 +190,10 @@ export function validateProfile(profile: unknown): asserts profile is GraphProfi
     assert(new Set(paths).size === files.size,
       'Every saved scan file needs at least one ' + mode + ' context.');
   }
+  const named = (kind: PassKind): string => checked.filter(context => context.compiledToCommonJS && kindOf(context) === kind)
+    .map(context => JSON.stringify([context.sourceFiles, context.compiledToCommonJS])).sort().join('\n');
+  assert(named('import') === named('commonjs'),
+    'The import passes and the CommonJS passes must name the same files whose compiled code is CommonJS.');
 }
 
 function readRegular(path: string): Buffer {
@@ -277,8 +295,25 @@ function normalizedTarget(dep: RawDependency, scope: ReadonlySet<string>, declar
   return { to: dep.resolved, targetKind: scope.has(dep.resolved) ? 'internal' : 'context-boundary' };
 }
 
+// Whether a pass keeps a dependency of a scan file. A file whose compiled code is
+// CommonJS loads its import syntax with require, so its CommonJS pass keeps those
+// dependencies. It leaves the require calls to the require pass, and an import() that
+// keeps the import condition to the import pass. Other files keep today's passes.
+function dependencyFilter(context: GraphContext): (from: string, dep: RawDependency) => boolean {
+  const kind = kindOf(context);
+  const compiled = new Set(context.compiledToCommonJS?.files);
+  const dynamicImport = context.compiledToCommonJS?.dynamicImportCondition === 'import';
+  return (from, dep) => {
+    if (kind === 'require' || !compiled.has(from)) return kind !== 'commonjs';
+    const importCondition = dep.dynamic === true && dynamicImport;
+    return kind === 'import' ? importCondition : dep.moduleSystem !== 'cjs' && !importCondition;
+  };
+}
+
 function readEdges(context: GraphContext, raw: RawGraph, source: EdgeSource, declaredPackages: PackageLookup): Edge[] {
   assert(Array.isArray(raw.modules), 'Expected graph modules.');
+  const keeps = dependencyFilter(context);
+  const commonJSPass = kindOf(context) === 'commonjs';
   const scope = new Set(context.sourceFiles);
   const parsed = raw.modules.filter(module => !Object.hasOwn(module, 'followable'));
   assert(parsed.length === scope.size && unique(parsed.map(module => module.source)) &&
@@ -292,23 +327,39 @@ function readEdges(context: GraphContext, raw: RawGraph, source: EdgeSource, dec
     if (Object.hasOwn(module, 'followable')) return [];
     const packages = declaredPackages(module.source);
     return module.dependencies.flatMap((dep, dependencyIndex) => {
-      if (!context.moduleSystems.includes(dep.moduleSystem)) return [];
+      if (!context.moduleSystems.includes(dep.moduleSystem) || !keeps(module.source, dep)) return [];
       assert(text(dep.module) && Array.isArray(dep.dependencyTypes) && dep.dependencyTypes.every(text) &&
         typeof dep.coreModule === 'boolean' && typeof dep.couldNotResolve === 'boolean' &&
         dep.followable === false && dep.matchesDoNotFollow === true, 'Invalid raw dependency.');
       const specifier = dep.protocol && !dep.module.startsWith(dep.protocol) ? dep.protocol + dep.module : dep.module;
+      // TypeScript compiles an import() that the CommonJS pass keeps into a require call,
+      // which dependency-cruiser does not match with the import(). The compiled code keeps it.
+      const compiledCall = commonJSPass && dep.dynamic === true;
       return [{
         id: `${attemptId}-edge-${contextIndex + 1}-${moduleIndex + 1}-${dependencyIndex + 1}`,
         from: module.source,
         specifier,
         ...normalizedTarget(dep, scope, packages, baseDir),
-        dependencyTypes: dep.dependencyTypes,
-        preCompilationOnly: typeof dep.preCompilationOnly === 'boolean' ? dep.preCompilationOnly : null,
+        dependencyTypes: compiledCall ? dep.dependencyTypes.filter(type => type !== 'pre-compilation-only') : dep.dependencyTypes,
+        preCompilationOnly: compiledCall ? false : typeof dep.preCompilationOnly === 'boolean' ? dep.preCompilationOnly : null,
         dynamic: typeof dep.dynamic === 'boolean' ? dep.dynamic : null,
         evidenceRefs: [`${attemptId}-file@graph-results.json#/contexts/${contextIndex}/raw/modules/${moduleIndex}/dependencies/${dependencyIndex}`],
       }];
     });
   });
+}
+
+// What a pass keeps of the files whose compiled code is CommonJS.
+function compiledLimits(context: GraphContext): string[] {
+  const dynamicImport = context.compiledToCommonJS?.dynamicImportCondition;
+  if (dynamicImport === undefined) return [];
+  if (kindOf(context) === 'import') return [dynamicImport === 'import'
+    ? 'This pass keeps only the import() calls of the files whose compiled code is CommonJS. The CommonJS pass keeps their other imports.'
+    : 'This pass keeps no import of the files whose compiled code is CommonJS. The CommonJS pass keeps them.'];
+  return ['This pass keeps only the imports of the files whose compiled code is CommonJS, with the require condition. ' +
+    (dynamicImport === 'import' ? 'Their import() calls keep the import condition in the import pass. '
+      : 'TypeScript compiles their import() calls into require calls, so these imports are not pre-compilation-only. ') +
+    'It reads their require calls only to find the imports that the compiled code keeps; the require pass keeps the require calls.'];
 }
 
 function reachability(context: GraphContext, edges: Edge[]): Reachability {
@@ -374,6 +425,7 @@ export async function collect(profile: unknown, tools: Tools, baseDir: string): 
         declaredPackages);
       const contextLimits = ['Traversal stops at resolved targets outside this context, built-ins, external packages, and unresolved targets.'];
       if (!context.roots.length) contextLimits.push('This pass has no recorded traversal roots.');
+      contextLimits.push(...compiledLimits(context));
       contexts.push({ ...result, status: 'completed', raw, edges, reachability: reachability(context, edges),
         limits: contextLimits });
     } catch (error) {
