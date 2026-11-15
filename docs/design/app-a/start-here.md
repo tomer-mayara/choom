@@ -544,7 +544,8 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-4-5-publish.mjs` | Check, publish and verify the Stage 4 or Stage 5 review |
 | `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence (`stage-4-inspect` command) |
 | `stage-5-query.mjs` | Remaining-code and inspection-coverage queries |
-| `stage-6-records.mjs` | Shared validation of the architecture records |
+| `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
+| `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
 | [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |
 | `check-knip-image.mjs` | Validate the controlled Knip tool image |
 | `inventory-view.py` | Prepare and verify inventory-only tool input copies |

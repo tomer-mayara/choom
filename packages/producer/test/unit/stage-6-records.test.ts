@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import * as yaml from "yaml";
+import { readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords } from "../../src/stage-6-records.ts";
 
 // Characterization of the shared record validator that Stages 4, 5 and 6 use.
 // The records are small in-memory copies modeled on the Stage 6 producer fixture.
@@ -71,37 +72,6 @@ interface Records {
   mapping: { scope: { unitKind: string } & Record<string, unknown>; units: MappingUnit[] } & Record<string, unknown>;
 }
 interface Artifact { path: string; bytes: Buffer; sha256: string }
-interface RecordInputs {
-  run: { formatVersion: number; id: string; snapshot: { id: string; inventoryRef: string } };
-  baseline: Records["baseline"];
-  discovery: Records["discovery"];
-  inventory: unknown;
-  artifacts: Map<string, Artifact>;
-  parse(text: string): unknown;
-  readSource(path: string, limit: number): Buffer;
-  reservedIds?: string[];
-  packet?: Map<string, Buffer>;
-  draftDigests?: Record<string, string>;
-}
-interface RecordCounts {
-  mappedFiles: number;
-  unknownOwners: number;
-  components: number;
-  behaviorEntries: number;
-  gaps: number;
-  questions: number;
-  graphContexts: number;
-  sourceRecordsVerified: number;
-}
-interface RecordsModule {
-  validateRecords(inputs: RecordInputs): RecordCounts;
-  validateDiscoveryRecords(inputs: RecordInputs): RecordCounts;
-  readBaselineYaml(bytes: Buffer, yamlModule: typeof yaml): unknown;
-}
-
-// The validator is JavaScript. This local type states only what these tests use.
-const recordsModule = new URL("../../src/stage-6-records.mjs", import.meta.url);
-const { readBaselineYaml, validateDiscoveryRecords, validateRecords } = (await import(recordsModule.href)) as RecordsModule;
 
 const digest = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
 const snapshotRef = "snap";

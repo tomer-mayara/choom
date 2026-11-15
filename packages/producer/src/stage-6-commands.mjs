@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { runLayout } from './run-layout.mjs';
-import * as records from './stage-6-records.mjs';
+import * as records from './stage-6-records.ts';
 
 const self = fileURLToPath(import.meta.url);
 const [action, reviewDir, ...extra] = process.argv.slice(2);

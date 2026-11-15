@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { runLayout } from './run-layout.mjs';
-import { readBaselineYaml, validateDiscoveryRecords } from './stage-6-records.mjs';
+import { readBaselineYaml, validateDiscoveryRecords } from './stage-6-records.ts';
 
 const [action, stage, reviewDirectory, ...extra] = process.argv.slice(2);
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
