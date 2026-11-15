@@ -6,7 +6,7 @@ import { producerSource, runHelper, toolsRoot, withScratch } from "../../support
 // The Stage 4 graph helper runs as a process, as the graph container runs it.
 // These cases stop before the helper reads a graph profile, so they need no
 // tools. The fixture approval with the checkout's tools is in local-checks.test.ts.
-const helper = join(producerSource, "stage-4-graph.mjs");
+const helper = join(producerSource, "stage-4-graph.ts");
 const usage = "Use /control/graph-profile.json or --fixture.\n";
 const toolFolderRefusal = "Expected a canonical trusted tool directory.\n";
 // The tool folder of the graph image is not on a computer that runs these tests.

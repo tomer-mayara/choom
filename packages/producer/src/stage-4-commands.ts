@@ -52,8 +52,11 @@ const id = process.env.CHOOM_STAGE4_ID ?? '';
 // Start saves the documents that the stage follows. Every action runs the producer
 // code in the tool checkout after the producer code check.
 const toolsToFreeze = ['step-4-cookbook.md', 'record-format.md'];
-// The container path of the graph helper, which each run mounts from the tool checkout.
-const graphHelper = '/producer/stage-4-graph.mjs';
+// The graph helper in the tool checkout, and its path in the container, where each
+// run mounts it. Node runs a .mts file as an ES module and removes its types, with
+// no package.json and no module format detection.
+const graphHelperSource = 'stage-4-graph.ts';
+const graphHelper = '/producer/stage-4-graph.mts';
 const drafts = ['run', 'discovery', 'baseline'];
 const maxOutputBytes = 64 * 1024 * 1024;
 const utc = (): string => new Date().toISOString();
@@ -329,7 +332,7 @@ function toolchain(): string {
   const inspect = command('docker', ['image', 'inspect', '--format', '{{.Id}}', imageId], 'toolchain/image', 30000);
   assert(succeeded(inspect) && saved(inspect.stdout).toString().trim() === imageId, 'Built image identity mismatch.');
   const fixture = container(imageId, [graphHelper, '--fixture'], 'toolchain/fixture',
-    mount(sourceTool('stage-4-graph.mjs'), graphHelper));
+    mount(sourceTool(graphHelperSource), graphHelper));
   assert(succeeded(fixture), 'Image fixture failed; do not run it on the snapshot.');
   const check = JSON.parse(saved(fixture.stdout).toString());
   assert(check.status === 'approved' && check.toolVersions?.dependencyCruiser === '18.7.2' &&
@@ -400,7 +403,7 @@ function graphRun(current: StageState): string {
   const prepared = inputView(current, 'prepare', 'graph-input-prepare');
   const before = inputView(current, 'verify', 'graph-input-before');
   const result = container(chosen.imageId, [graphHelper, '/control/graph-profile.json'], 'graph',
-    [...mount(directory(inputRoot), '/repo'), ...mount(attempt, '/control'), ...mount(sourceTool('stage-4-graph.mjs'), graphHelper)],
+    [...mount(directory(inputRoot), '/repo'), ...mount(attempt, '/control'), ...mount(sourceTool(graphHelperSource), graphHelper)],
     '/repo');
   const after = inputView(current, 'verify', 'graph-input-after');
   const report: Fields = { formatVersion: 1, attemptId: id, snapshotRef: current.facts.snapshotRef, profileRef: artifactId('graph-profile.json'),

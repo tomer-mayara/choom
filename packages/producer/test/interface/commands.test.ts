@@ -25,7 +25,7 @@ const usageCases: UsageCase[] = [
     message: "Run the Stage 3 finalizer without arguments to publish, or with verify to check completed Stage 3." },
   { helper: "stage-4-commands.ts", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use start, toolchain, or run." },
-  { helper: "stage-4-graph.mjs", args: [], status: 1, message: "Use /control/graph-profile.json or --fixture." },
+  { helper: "stage-4-graph.ts", args: [], status: 1, message: "Use /control/graph-profile.json or --fixture." },
   { helper: "stage-4-inspect.ts", args: [], attempt: { CHOOM_STAGE4_ID: "s4-check" }, status: 1,
     message: "Use collect, or excerpt PATH FIRST LAST." },
   { helper: "stage-4-5-publish.ts", args: [], status: 1,

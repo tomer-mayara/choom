@@ -36,17 +36,17 @@ function graphFixtureApproval(): string {
 
 describe("local producer tool checks", () => {
   test("the Stage 4 graph fixture approves the checkout's dependency-cruiser toolchain", () => {
-    const result = runHelper(helper("stage-4-graph.mjs"), ["--fixture"], { CHOOM_GRAPH_TOOLS: toolsRoot });
+    const result = runHelper(helper("stage-4-graph.ts"), ["--fixture"], { CHOOM_GRAPH_TOOLS: toolsRoot });
     expect(result).toEqual({ status: 0, stdout: graphFixtureApproval(), stderr: "" });
   }, 60_000);
 
-  // Stage 4 mounts only the graph helper in the graph container, at /producer/,
-  // with no package.json next to it. A copy in the same form runs the fixture.
+  // Stage 4 mounts only the graph helper in the graph container, as
+  // /producer/stage-4-graph.mts with no package.json. A copy in the same form runs the fixture.
   test("the Stage 4 graph fixture runs from a copy of the graph helper alone, as the container gets it", () => {
     withScratch((scratch) => {
       mkdirSync(join(scratch, "producer"));
-      const copy = join(scratch, "producer/stage-4-graph.mjs");
-      copyFileSync(helper("stage-4-graph.mjs"), copy);
+      const copy = join(scratch, "producer/stage-4-graph.mts");
+      copyFileSync(helper("stage-4-graph.ts"), copy);
       const result = runHelper(copy, ["--fixture"], { CHOOM_GRAPH_TOOLS: toolsRoot });
       expect(result).toEqual({ status: 0, stdout: graphFixtureApproval(), stderr: "" });
     });

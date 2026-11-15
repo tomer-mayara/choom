@@ -564,7 +564,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record and the producer code record |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
 | `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, traversal roots and limits. The Stage 3 exports action uses the same compiler context rule |
-| `stage-4-graph.mjs` | Dependency extraction in the graph container |
+| `stage-4-graph.ts` | Dependency extraction in the graph container. The container gets only this file, as `/producer/stage-4-graph.mts` |
 | `stage-4-inspect.ts`, `stage-4-source-sites.ts`, `stage-4-review-prompt.ts` | Bounded source evidence (`stage-4-inspect` command): the checked attempt, the first excerpts and the excerpt action; the source sites; and the Stage 4 review prompt |
 | `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |

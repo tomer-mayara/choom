@@ -905,6 +905,6 @@ writes nothing when:
   Continue with that producer version, or start a new run.
 
 The programs that a stage action starts after its check, such as the Stage 2
-modules, `inventory-view.py`, `check-knip-image.mjs` and `stage-4-graph.mjs`, do
+modules, `inventory-view.py`, `check-knip-image.mjs` and `stage-4-graph.ts`, do
 not check again. The duplication assessment, the input consolidation command and
 the recovery capture do not use the record.
