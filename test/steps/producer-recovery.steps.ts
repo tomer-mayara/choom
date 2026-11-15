@@ -8,7 +8,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
-import { publishStageFour, stageFourPublication, type StageFourPublication }
+import { publishStageFour, stageFourBaselineId, stageFourPublication, type StageFourPublication }
   from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import type { CommandResult } from "../../packages/producer/test/support/commands.ts";
 import { copyToolCheckout } from "../../packages/producer/test/support/tool-checkout.ts";
@@ -279,7 +279,7 @@ Then("the draft is refused", function (this: RecoveryWorld) {
 
 Then("the operator is told which ID is reserved", function (this: RecoveryWorld) {
   const message = lastPublishCommand(this).stderr;
-  assert.match(message, /\bbaseline-check\b/);
+  assert.ok(message.includes(stageFourBaselineId), message);
   assert.match(message, /\breserved\b/);
 });
 

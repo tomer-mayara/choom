@@ -12,7 +12,7 @@ import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts
 // writes their outputs and receipts in the form that the collection and the
 // publisher read. The records are the smallest that pass every publisher check.
 interface Statement<Value> { value: Value; status: "proposed"; evidenceRefs: string[] }
-export interface FixtureComponent {
+interface FixtureComponent {
   id: string;
   name: string;
   purpose: Statement<string | null>;
@@ -38,7 +38,7 @@ interface GraphContext {
   moduleSystems: string[];
 }
 
-export const stageFourAttemptId = "s4-check";
+const stageFourAttemptId = "s4-check";
 export const stageFourBaselineId = "baseline-check";
 const runRef = "run-check";
 const snapshotRef = "snapshot-check";
