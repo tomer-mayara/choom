@@ -149,6 +149,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-04 | tomer-mayara/choom#72 | Draft. This PR also records plan change 9. |
 | GA-05 | tomer-mayara/choom#73 | Draft. This PR also records plan changes 10 and 11. |
 | GA-06a | tomer-mayara/choom#74 | Draft. This PR also records plan changes 12 and 13. |
+| GA-06a2 | tomer-mayara/choom#75 | Draft. This PR also records plan change 14. |
 
 Plan changes:
 
@@ -241,6 +242,12 @@ Plan changes:
     The matches are the same. The line-1 columns of a file with a byte
     order mark are one less, because ts-morph does not count that mark.
     GA-06a2 must keep the lines of Stages 4 and 5 the same.
+14. **The Stage 4 source sites record changed (GA-06a2).** The site lines
+    stay the same. In a file with a byte order mark, the diagnostic `start`
+    values are one less, for the same reason as plan change 13, and a new
+    `limits` line says so. The records of Stages 4 and 5 keep
+    `formatVersion: 1`, because the producer code record (GA-00e) makes each
+    run use one producer version.
 
 ### How to work every ticket
 
