@@ -152,7 +152,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-06a2 | tomer-mayara/choom#75 | Draft. This PR also records plan change 14. |
 | GA-10a | tomer-mayara/choom#76 | Draft. This PR also records plan changes 15 and 16. |
 | GA-10b | tomer-mayara/choom#77 | Draft. This PR also records the approval of plan changes 6 to 16. |
-| GA-01a | tomer-mayara/choom#78 | Draft. The JSON decision file needs a matching change in the CR-004 text (#60). |
+| GA-01a | tomer-mayara/choom#78 | Draft. This PR also records D22. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
@@ -358,6 +358,7 @@ record its current behavior.
 | D18 | Docker tests | A CI `producer` job runs `@docker` scenarios. `bun run check` skips them. |
 | D19 | G4 | Git identity only. History is left to Step 2 planning. |
 | D20 | Old discovery files in the viewer | Approved by the owner on 2026-11-15. The viewer refuses a discovery result without `baselineDigest`, because an ID alone can match the wrong baseline. Old runs need a new run to show in the viewer. |
+| D22 | Format of the decision file | Approved by the owner on 2026-11-15. The decision file is YAML, as the CR-004 text says. The producer reads it with the bounded YAML profile of a baseline and saves its exact bytes as `decisions/<id>.yaml`. |
 
 ### Ticket map and order
 
