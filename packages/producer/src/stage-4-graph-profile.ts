@@ -32,7 +32,7 @@ export interface ProfileInputs {
 }
 export interface GraphProfile { graph: Fields; notes: Fields }
 
-export const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const compilerKeys = ['target', 'module', 'moduleResolution', 'jsx', 'verbatimModuleSyntax'];
 const contextLimit = 'Each parsed compiler file selection is a separate context. Overlapping selections stay separate; remaining source uses a named configuration-free fallback.';
 const limits = ['Scan files come from all indexed regular JavaScript and TypeScript files in the Stage 3 source query.',
@@ -172,8 +172,8 @@ export function graphProfile({ attemptId, settings, plan, loading, indexed, fact
   const selected = new Set(sourceFiles.map(file => file.path));
   const { groups, configurationLimits } = compilerGroups(settings, sourceFiles, facts.settingsRef);
   const covered = new Set(groups.flatMap(group => group.files.map(file => file.path)));
-  const fallback = sourceFiles.filter(file => !covered.has(file.path));
-  if (fallback.length) groups.push(remainingGroup(fallback, parsingProfile, facts.settingsRef));
+  const remaining = sourceFiles.filter(file => !covered.has(file.path));
+  if (remaining.length) groups.push(remainingGroup(remaining, parsingProfile, facts.settingsRef));
   const contexts = graphContexts(groups, entrySelectors(plan, facts.planRef, loadPicomatch()));
   const outsideScope = [...indexed.values()].filter(file => sourceExtension.test(file.path) && !selected.has(file.path));
   return {

@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { createRequire } from "node:module";
 import { choomDefaultProfile } from "../../src/parsing-profile.ts";
-import { graphProfile, type IndexedFile, type Picomatch, type ProfileInputs } from "../../src/stage-4-graph-profile.ts";
+import { type GraphProfile, graphProfile, type IndexedFile, type Picomatch, type ProfileInputs }
+  from "../../src/stage-4-graph-profile.ts";
 
 // The graph profile of Stage 4 start, from a Stage 3 source scope of two files
 // and one entry pattern. Only the settings record changes between the cases.
@@ -10,7 +11,7 @@ const sourceFiles = [{ path: "src/app.ts", sha256: "a".repeat(64) }, { path: "sr
 const indexed = new Map<string, IndexedFile>(sourceFiles.map((file) => [file.path, { ...file, kind: "file", bytes: 10 }]));
 const roots = [{ path: "src/app.ts", evidenceRefs: ["s2-check-entry-plan#/workspaces/0/entry/0"] }];
 
-function profileFor(settings: Record<string, unknown>): ReturnType<typeof graphProfile> {
+function profileFor(settings: Record<string, unknown>): GraphProfile {
   const inputs: ProfileInputs = { attemptId: "s4-check", settings, indexed, loadPicomatch: () => picomatch,
     plan: { workspaces: [{ dir: ".", entry: ["src/app.ts"] }] }, loading: { scope: sourceFiles },
     facts: { snapshotRef: "snapshot-check", settingsRef: "settings-001", planRef: "s2-check-entry-plan",
@@ -19,7 +20,7 @@ function profileFor(settings: Record<string, unknown>): ReturnType<typeof graphP
 }
 
 // The import and require contexts of one group, by their IDs, references, files and options.
-function contextSummaries(profile: ReturnType<typeof graphProfile>): unknown[] {
+function contextSummaries(profile: GraphProfile): unknown[] {
   return (profile.graph.contexts as Record<string, unknown>[]).map(({ id, compilerSettingsRef, sourceFiles: files, compilerOptions,
     roots: contextRoots }) => ({ id, compilerSettingsRef, files, compilerOptions, roots: contextRoots }));
 }

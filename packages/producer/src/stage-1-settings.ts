@@ -186,7 +186,7 @@ function readConfigs(snapshot: SnapshotFileSystem, ts: SettingsTools['ts'], extr
   return configs;
 }
 
-// The gap of a snapshot without project settings.
+// The gap of a snapshot without project settings. The Stage 1 review copies it into its gaps.
 export function noProjectSettingsGap(snapshotId: string, profile: ParsingProfile): SettingsGap {
   return { kind: 'no-project-settings', subjectRefs: [snapshotId], reason: 'No project settings were found. ' +
     'The snapshot has no tsconfig*.json or jsconfig*.json file, and the operator named no extra compiler settings. ' +
@@ -194,6 +194,8 @@ export function noProjectSettingsGap(snapshotId: string, profile: ParsingProfile
     'Its options are Choom assumptions, not settings of the project.' };
 }
 
+// The settings record of a saved snapshot. Without project settings, it names
+// the parsing profile and has the gap that says so.
 export function readProjectSettings(input: SnapshotInput, { tsMorph, parsingProfile }: CollectorTools): SettingsRecord {
   const snapshot = new SnapshotFileSystem(input, tsMorph);
   const packages = readPackages(snapshot);
