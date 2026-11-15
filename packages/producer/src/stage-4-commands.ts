@@ -421,8 +421,13 @@ if (action === 'start') {
   current = state();
   try { checkSnapshotMetadata(current); }
   catch (error) { console.error((error as Error).message); process.exit(1); }
+  const readIndexed = (path: string): Buffer => {
+    const bytes = read(join(work, 'snapshot', path));
+    assert(hash(bytes) === current.indexed.get(path)?.sha256, 'Snapshot file changed: ' + path);
+    return bytes;
+  };
   const prepared = graphProfile({ attemptId: id, settings: current.settings, plan: current.plan, loading: current.loading,
-    indexed: current.indexed, facts: current.facts, loadPicomatch: () => trustedModule('picomatch') as Picomatch });
+    indexed: current.indexed, facts: current.facts, loadPicomatch: () => trustedModule('picomatch') as Picomatch, readIndexed });
   const frozen = Object.fromEntries(toolsToFreeze.map(name => [name, read(sourceTool(name))]));
   mkdirSync(attempt);
   for (const [name, bytes] of Object.entries(frozen)) save(name, bytes);

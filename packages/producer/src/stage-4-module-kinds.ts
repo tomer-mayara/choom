@@ -17,6 +17,12 @@ export type NearestPackage = { path: string; type: unknown } | { path: string; u
 export interface EmittedKind {
   kind: ModuleKind; decidedBy: KindRule; setting: string | null; packageJson: string | null; reason: string | null;
 }
+// The files of a compiler context whose compiled code is CommonJS, and the condition
+// of their import() calls: require with module CommonJS, which compiles them into
+// require calls, and import with any other setting, which keeps them.
+export interface CompiledToCommonJS { files: string[]; dynamicImportCondition: 'import' | 'require' }
+// The module kind of each file of a compiler context that its syntax does not decide.
+export interface ContextKinds { compiled: CompiledToCommonJS | null; records: (EmittedKind & { path: string })[] }
 
 // The ModuleKind values of TypeScript.
 const commonJSModule = 1;
@@ -55,6 +61,19 @@ export function emittedKind(path: string, compilerModule: CompilerModule | null,
   const name = unresolvedOutput[compilerModule.value] ?? String(compilerModule.value);
   return decided('unknown', 'unknown', { setting,
     reason: `The compiler module setting ${name} gives code that the graph does not resolve by module kind.` });
+}
+
+// The module kinds of the files of one compiler context of the graph profile. Its
+// module setting comes from the options of the context and the reference of its
+// compiler settings in the settings record (null for the configuration-free fallback).
+export function contextKinds(paths: string[], options: Record<string, unknown>, ref: string | null,
+  nearestPackage: (path: string) => NearestPackage): ContextKinds {
+  const compilerModule = typeof options.module === 'number' && ref !== null
+    ? { value: options.module, ref: ref + '/compilerOptions/module' } : null;
+  const kinds = paths.map(path => ({ path, ...emittedKind(path, compilerModule, nearestPackage) }));
+  const files = kinds.filter(({ kind }) => kind === 'commonjs').map(({ path }) => path);
+  const dynamicImportCondition = compilerModule?.value === commonJSModule ? 'require' : 'import';
+  return { compiled: files.length ? { files, dynamicImportCondition } : null, records: kinds.filter(({ kind }) => kind !== 'syntax') };
 }
 
 function readPackage(path: string, bytes: Buffer): NearestPackage {

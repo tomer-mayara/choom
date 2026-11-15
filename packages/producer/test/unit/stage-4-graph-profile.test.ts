@@ -5,15 +5,21 @@ import { compilerContexts, type GraphProfile, graphProfile, type IndexedFile, ty
   from "../../src/stage-4-graph-profile.ts";
 
 // The graph profile of Stage 4 start, from a Stage 3 source scope of two files
-// and one entry pattern. Only the settings record changes between the cases.
+// and one entry pattern. Only the settings record changes between most cases. The
+// module kind cases also give other source files and indexed package.json files.
 const picomatch = createRequire(import.meta.url)("picomatch") as Picomatch;
 const sourceFiles = [{ path: "src/app.ts", sha256: "a".repeat(64) }, { path: "src/view.jsx", sha256: "b".repeat(64) }];
-const indexed = new Map<string, IndexedFile>(sourceFiles.map((file) => [file.path, { ...file, kind: "file", bytes: 10 }]));
 const roots = [{ path: "src/app.ts", evidenceRefs: ["s2-check-entry-plan#/workspaces/0/entry/0"] }];
 
-function profileFor(settings: Record<string, unknown>): GraphProfile {
-  const inputs: ProfileInputs = { attemptId: "s4-check", settings, indexed, loadPicomatch: () => picomatch,
-    plan: { workspaces: [{ dir: ".", entry: ["src/app.ts"] }] }, loading: { scope: sourceFiles },
+function profileFor(settings: Record<string, unknown>, scope = sourceFiles, packages: Record<string, string> = {}): GraphProfile {
+  const indexed = new Map<string, IndexedFile>([...scope, ...Object.keys(packages).map((path) => ({ path, sha256: "c".repeat(64) }))]
+    .map((file) => [file.path, { ...file, kind: "file", bytes: 10 }]));
+  const readIndexed = (path: string): Buffer => {
+    if (packages[path] === undefined) throw new Error("Not an indexed package.json: " + path);
+    return Buffer.from(packages[path]);
+  };
+  const inputs: ProfileInputs = { attemptId: "s4-check", settings, indexed, loadPicomatch: () => picomatch, readIndexed,
+    plan: { workspaces: [{ dir: ".", entry: ["src/app.ts"] }] }, loading: { scope },
     facts: { snapshotRef: "snapshot-check", settingsRef: "settings-001", planRef: "s2-check-entry-plan",
       loadingRef: "s3-check-file@loading-search.json" } };
   return graphProfile(inputs);
@@ -34,6 +40,8 @@ describe("the Stage 4 graph profile", () => {
     expect(contextSummaries(profile)).toEqual(["import", "require"].map((mode) => ({ id: `choom-default-v1-${mode}`,
       compilerSettingsRef: "settings-001#/parsingProfile", files, compilerOptions: options, roots })));
     expect(profile.notes.groups).toEqual([{ name: "choom-default-v1", files: 2, compilerSettingsRef: "settings-001#/parsingProfile" }]);
+    // module: preserve keeps each import as written, so no file has another module kind.
+    expect(profile.notes.moduleKinds).toEqual([]);
     expect((profile.notes.limits as string[])[2]).toBe("The snapshot has no project settings, so its source uses the named " +
       "Choom parsing profile choom-default-v1. settings-001#/parsingProfile records its options and assumptions.");
   });
@@ -84,5 +92,49 @@ describe("the compiler contexts of saved source files", () => {
       .toEqual([{ name: "choom-default-v1", ref: "settings-001#/parsingProfile", files: [app], config: null },
         { name: "fallback", ref: null, files: [app], config: null }]);
     expect(profile.parsingProfile).toBe(choomDefaultProfile);
+  });
+});
+
+// The passes of a compiler context by the module kind of its files, and the record
+// of each file whose module kind is not decided by its syntax.
+describe("the module kinds of the Stage 4 graph profile", () => {
+  const moduleRef = "settings-001#/configs/0/compilerOptions/module";
+  const config = (compilerOptions: Record<string, number>, scope = sourceFiles) => ({ configs: [{ path: "/repo/tsconfig.json",
+    status: "parsed", fileNames: scope.map(({ path }) => "/repo/" + path), compilerOptions }], parsingProfile: null });
+  const passes = (profile: GraphProfile): unknown[] => (profile.graph.contexts as Record<string, unknown>[])
+    .map(({ id, conditionNames, moduleSystems, compiledToCommonJS }) => ({ id, conditionNames, moduleSystems, compiledToCommonJS }));
+  const importPass = { conditionNames: ["import", "default"], moduleSystems: ["es6", "tsd"] };
+  const requirePass = { conditionNames: ["require", "default"], moduleSystems: ["cjs"] };
+  const commonJSPass = { conditionNames: ["require", "default"], moduleSystems: ["es6", "tsd", "cjs"] };
+  const record = (path: string, kind: string, decidedBy: string, more: Record<string, unknown> = {}) =>
+    ({ group: "compiler-1", path, kind, decidedBy, setting: null, packageJson: null, reason: null, ...more });
+
+  test("give a compiler context a CommonJS pass for the files whose compiled code is CommonJS", () => {
+    const profile = profileFor(config({ module: 1 }));
+    const compiledToCommonJS = { files: ["src/app.ts"], dynamicImportCondition: "require" };
+    expect(passes(profile)).toEqual([{ id: "compiler-1-import", ...importPass, compiledToCommonJS },
+      { id: "compiler-1-require", ...requirePass }, { id: "compiler-1-commonjs", ...commonJSPass, compiledToCommonJS }]);
+    expect(profile.notes.moduleKinds).toEqual([record("src/app.ts", "commonjs", "compiler-module", { setting: moduleRef })]);
+  });
+
+  test("with module nodenext use the nearest indexed package.json, and the import() calls keep the import condition", () => {
+    const scope = ["lib/esm.ts", "src/app.ts", "src/legacy.cts", "src/view.jsx"].map((path) => ({ path, sha256: "d".repeat(64) }));
+    const profile = profileFor(config({ module: 199, moduleResolution: 99 }, scope), scope,
+      { "package.json": JSON.stringify({ name: "root" }), "lib/package.json": JSON.stringify({ type: "module" }) });
+    const compiledToCommonJS = { files: ["src/app.ts", "src/legacy.cts"], dynamicImportCondition: "import" };
+    expect(passes(profile)).toEqual([{ id: "compiler-1-import", ...importPass, compiledToCommonJS },
+      { id: "compiler-1-require", ...requirePass }, { id: "compiler-1-commonjs", ...commonJSPass, compiledToCommonJS }]);
+    expect(profile.notes.moduleKinds).toEqual([
+      record("lib/esm.ts", "module", "package-type", { setting: moduleRef, packageJson: "lib/package.json" }),
+      record("src/app.ts", "commonjs", "package-type", { setting: moduleRef, packageJson: "package.json" }),
+      record("src/legacy.cts", "commonjs", "extension"),
+    ]);
+  });
+
+  test("keep the passes of the syntax for a file of unknown kind, and record why its kind is unknown", () => {
+    const profile = profileFor(config({ module: 2 }));
+    expect(passes(profile)).toEqual([{ id: "compiler-1-import", ...importPass }, { id: "compiler-1-require", ...requirePass }]);
+    expect(profile.notes.moduleKinds).toEqual([record("src/app.ts", "unknown", "unknown", { setting: moduleRef,
+      reason: "The compiler module setting AMD gives code that the graph does not resolve by module kind." })]);
   });
 });

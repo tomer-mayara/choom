@@ -1,6 +1,7 @@
 import { isAbsolute, posix } from 'node:path';
 import { namedParsingProfile, type ParsingProfile } from './parsing-profile.ts';
 import { assert, type Fields, text } from './record-checks.ts';
+import { type ContextKinds, contextKinds, packageLookup } from './stage-4-module-kinds.ts';
 
 // The graph profile that Stage 4 start saves before the graph runs. It puts the
 // saved Stage 3 source scope into compiler contexts, takes the traversal roots
@@ -37,6 +38,8 @@ export interface ProfileInputs {
   facts: ProfileFacts;
   // Loads picomatch from the trusted tool checkout.
   loadPicomatch: () => Picomatch;
+  // Gives the checked bytes of an indexed snapshot file. The module kinds read package.json files with it.
+  readIndexed: (path: string) => Buffer;
 }
 export interface GraphProfile { graph: Fields; notes: Fields }
 
@@ -46,11 +49,18 @@ const contextLimit = 'Each parsed compiler file selection is a separate context.
 const limits = ['Scan files come from all indexed regular JavaScript and TypeScript files in the Stage 3 source query.',
   "Explicit traversal roots use the retained entry patterns in each saved workspace; they are not Knip's complete effective roots.",
   contextLimit,
-  'Import and require are separate, platform-neutral passes. Browser, Node, Bun, custom, and type-specific package conditions remain outside this profile.',
+  'Import and require are separate, platform-neutral passes. A third, CommonJS pass reads the import syntax of TypeScript whose compiled code is CommonJS with the require condition. Browser, Node, Bun, custom, and type-specific package conditions remain outside this profile.',
   'Compiler inclusion does not claim production use, execution, or ownership. Referenced project contexts are not merged.',
   'Only target, module, moduleResolution, jsx, and verbatimModuleSyntax are passed to the parser.',
   'Recorded single-target path aliases approximate source resolution; omitted alias forms remain gaps and TypeScript paths do not establish runtime rewriting.',
-  'Ambient declarations, package dependencies, non-JS/TS source and cross-context traversal remain limited.'];
+  'Ambient declarations, package dependencies, non-JS/TS source and cross-context traversal remain limited.',
+  'The module kind of a file comes from its extension, the compiler module setting and the type of the nearest indexed package.json. createRequire in ES modules, conditions in typesVersions, bundler resolution, and TypeScript that a bundler compiles instead of tsc remain outside this rule.'];
+// The conditions and module systems of each kind of pass.
+const passes = {
+  import: { conditionNames: ['import', 'default'], moduleSystems: ['es6', 'tsd'] },
+  require: { conditionNames: ['require', 'default'], moduleSystems: ['cjs'] },
+  commonjs: { conditionNames: ['require', 'default'], moduleSystems: ['es6', 'tsd', 'cjs'] },
+};
 
 export function safePath(path: unknown): path is string {
   return text(path) && !isAbsolute(path) && !/[\\\u0000-\u001f\u007f]/.test(path) &&
@@ -176,26 +186,34 @@ function rootEvidence(selectors: { dir: string; patterns: Pattern[] }[], path: s
   }))];
 }
 
-function graphContexts(groups: CompilerContext[], selectors: { dir: string; patterns: Pattern[] }[]): Fields[] {
-  return groups.flatMap(group => ['import', 'require'].map(mode => ({
-    id: group.name + '-' + mode, compilerSettingsRef: group.ref,
-    sourceFiles: group.files.map(file => file.path), compilerOptions: group.options,
-    aliases: group.aliases, conditionNames: [mode, 'default'],
-    moduleSystems: mode === 'import' ? ['es6', 'tsd'] : ['cjs'],
-    roots: group.files.flatMap(file => {
+// The passes of each compiler context: an import pass and a require pass over its
+// files, and a CommonJS pass when some of its files compile to CommonJS. The import
+// pass and the CommonJS pass name those files.
+function graphContexts(groups: (ContextKinds & { group: CompilerContext })[], selectors: { dir: string; patterns: Pattern[] }[]): Fields[] {
+  return groups.flatMap(({ group, compiled }) => {
+    const roots = group.files.flatMap(file => {
       const evidenceRefs = rootEvidence(selectors, file.path);
       return evidenceRefs.length ? [{ path: file.path, evidenceRefs }] : [];
-    }),
-  })));
+    });
+    const kinds = compiled ? (['import', 'require', 'commonjs'] as const) : (['import', 'require'] as const);
+    return kinds.map(kind => ({
+      id: group.name + '-' + kind, compilerSettingsRef: group.ref,
+      sourceFiles: group.files.map(file => file.path), compilerOptions: group.options, aliases: group.aliases, ...passes[kind],
+      ...(compiled && kind !== 'require' ? { compiledToCommonJS: compiled } : {}), roots,
+    }));
+  });
 }
 
-export function graphProfile({ attemptId, settings, plan, loading, indexed, facts, loadPicomatch }: ProfileInputs): GraphProfile {
+export function graphProfile({ attemptId, settings, plan, loading, indexed, facts, loadPicomatch, readIndexed }: ProfileInputs): GraphProfile {
   // The profile check comes before the scope check.
   const parsingProfile = namedParsingProfile(settings);
   const sourceFiles = savedSourceFiles(plan, loading);
   const selected = new Set(sourceFiles.map(file => file.path));
   const { groups, configurationLimits } = compilerContexts(settings, sourceFiles, facts.settingsRef);
-  const contexts = graphContexts(groups, entrySelectors(plan, facts.planRef, loadPicomatch()));
+  const nearestPackage = packageLookup(indexed, readIndexed);
+  const kinds = groups.map(group =>
+    ({ group, ...contextKinds(group.files.map(file => file.path), group.options, group.ref, nearestPackage) }));
+  const contexts = graphContexts(kinds, entrySelectors(plan, facts.planRef, loadPicomatch()));
   const outsideScope = [...indexed.values()].filter(file => sourceExtension.test(file.path) && !selected.has(file.path));
   return {
     graph: { formatVersion: 1, snapshotRef: facts.snapshotRef, attemptId, sourceFiles, contexts },
@@ -203,6 +221,7 @@ export function graphProfile({ attemptId, settings, plan, loading, indexed, fact
       settingsRef: facts.settingsRef, planRef: facts.planRef,
       groups: groups.map(group => ({ name: group.name, files: group.files.length, compilerSettingsRef: group.ref })),
       configurationLimits,
+      moduleKinds: kinds.flatMap(({ group, records }) => records.map(record => ({ group: group.name, ...record }))),
       outsideScope: outsideScope.map(({ path, sha256 }) => ({ path, sha256, status: 'unassessed' })),
       limits: profileLimits(parsingProfile, facts.settingsRef) },
   };

@@ -36,11 +36,16 @@ const graphLimits = [
   "Scan files come from all indexed regular JavaScript and TypeScript files in the Stage 3 source query.",
   "Explicit traversal roots use the retained entry patterns in each saved workspace; they are not Knip's complete effective roots.",
   "Each parsed compiler file selection is a separate context. Overlapping selections stay separate; remaining source uses a named configuration-free fallback.",
-  "Import and require are separate, platform-neutral passes. Browser, Node, Bun, custom, and type-specific package conditions remain outside this profile.",
+  "Import and require are separate, platform-neutral passes. A third, CommonJS pass reads the import syntax of TypeScript whose " +
+    "compiled code is CommonJS with the require condition. Browser, Node, Bun, custom, and type-specific package conditions remain " +
+    "outside this profile.",
   "Compiler inclusion does not claim production use, execution, or ownership. Referenced project contexts are not merged.",
   "Only target, module, moduleResolution, jsx, and verbatimModuleSyntax are passed to the parser.",
   "Recorded single-target path aliases approximate source resolution; omitted alias forms remain gaps and TypeScript paths do not establish runtime rewriting.",
   "Ambient declarations, package dependencies, non-JS/TS source and cross-context traversal remain limited.",
+  "The module kind of a file comes from its extension, the compiler module setting and the type of the nearest indexed package.json. " +
+    "createRequire in ES modules, conditions in typesVersions, bundler resolution, and TypeScript that a bundler compiles instead of " +
+    "tsc remain outside this rule.",
 ];
 
 function stageFour(work: string, action: string, settings: Record<string, string> = {}): CommandResult {
@@ -60,30 +65,42 @@ function saved<T>(work: string, name: string): T {
 }
 
 interface Group { name: string; ref: string | null; files: string[]; options: object; aliases: object[]; roots: object[] }
+interface CompiledToCommonJS { files: string[]; dynamicImportCondition: string }
 
-// Both passes of one group: import and require.
-function contextPair({ name, ref, files, options, aliases, roots }: Group) {
-  return ["import", "require"].map((mode) => ({ id: `${name}-${mode}`, compilerSettingsRef: ref, sourceFiles: files,
-    compilerOptions: options, aliases, conditionNames: [mode, "default"],
-    moduleSystems: mode === "import" ? ["es6", "tsd"] : ["cjs"], roots }));
+// The passes of one group: import and require, and a CommonJS pass when some of its
+// files compile to CommonJS. The import pass and the CommonJS pass name those files.
+function contextPasses({ name, ref, files, options, aliases, roots }: Group, compiledToCommonJS?: CompiledToCommonJS) {
+  const passes = [["import", ["import", "default"], ["es6", "tsd"]], ["require", ["require", "default"], ["cjs"]],
+    ...(compiledToCommonJS ? [["commonjs", ["require", "default"], ["es6", "tsd", "cjs"]] as const] : [])] as const;
+  return passes.map(([kind, conditionNames, moduleSystems]) => ({ id: `${name}-${kind}`, compilerSettingsRef: ref, sourceFiles: files,
+    compilerOptions: options, aliases, conditionNames, moduleSystems,
+    ...(compiledToCommonJS && kind !== "require" ? { compiledToCommonJS } : {}), roots }));
 }
 
 describe("Stage 4 start", () => {
-  test("saves one context pair for each parsed compiler selection and a configuration-free fallback for the other source", () => {
+  // The configuration uses module NodeNext and the snapshot has no package.json, so
+  // the compiled code of its TypeScript files is CommonJS.
+  test("saves the passes of each parsed compiler selection and of a configuration-free fallback for the other source", () => {
     withScratch((scratch) => {
       const work = startedRun(scratch, { snapshot, settings: { configs, parsingProfile: null, gaps: [] } });
       const sourceFiles = snapshot.filter(({ path }) => path !== "README.md")
         .map(({ path, text }) => ({ path, sha256: sha256(text) }));
+      const files = ["app.ts", "lib/helper.ts"];
       expect(saved(work, "graph-profile.json")).toEqual({ formatVersion: 1, snapshotRef, attemptId, sourceFiles, contexts: [
-        ...contextPair({ name: "compiler-1", ref: `${settingsRef}#/configs/0`, files: ["app.ts", "lib/helper.ts"],
+        ...contextPasses({ name: "compiler-1", ref: `${settingsRef}#/configs/0`, files,
           options: { target: 9, module: 199, moduleResolution: 99, jsx: 4, verbatimModuleSyntax: true },
-          aliases: [{ name: "@/*", alias: "/repo/*" }], roots: [{ path: "app.ts", evidenceRefs: [planRoot] }] }),
-        ...contextPair({ name: "fallback", ref: null, files: ["scripts/build.mjs"], options: {}, aliases: [], roots: [] }),
+          aliases: [{ name: "@/*", alias: "/repo/*" }], roots: [{ path: "app.ts", evidenceRefs: [planRoot] }] },
+        { files, dynamicImportCondition: "import" }),
+        ...contextPasses({ name: "fallback", ref: null, files: ["scripts/build.mjs"], options: {}, aliases: [], roots: [] }),
       ] });
+      const moduleKind = (path: string) => ({ group: "compiler-1", path, kind: "commonjs", decidedBy: "package-type",
+        setting: `${settingsRef}#/configs/0/compilerOptions/module`, packageJson: null,
+        reason: "No indexed package.json is above the file, so Node runs its compiled code as CommonJS." });
       expect(saved(work, "graph-profile-notes.json")).toEqual({ formatVersion: 1, snapshotRef,
         scopeRef: "s3-check-file@loading-search.json#/scope", settingsRef, planRef: "s2-check-entry-plan",
         groups: [{ name: "compiler-1", files: 2, compilerSettingsRef: `${settingsRef}#/configs/0` },
           { name: "fallback", files: 1, compilerSettingsRef: null }],
+        moduleKinds: files.map(moduleKind),
         configurationLimits: [
           { configRef: `${settingsRef}#/configs/0`,
             reason: "Alias is outside the supported single-target form and was omitted: #internal/*" },
@@ -102,7 +119,7 @@ describe("Stage 4 start", () => {
     withScratch((scratch) => {
       const work = startedRun(scratch, { snapshot });
       const profileRef = `${settingsRef}#/parsingProfile`;
-      expect((saved<{ contexts: unknown[] }>(work, "graph-profile.json")).contexts).toEqual(contextPair({ name: "choom-default-v1",
+      expect((saved<{ contexts: unknown[] }>(work, "graph-profile.json")).contexts).toEqual(contextPasses({ name: "choom-default-v1",
         ref: profileRef, files: ["app.ts", "lib/helper.ts", "scripts/build.mjs"],
         options: { target: 12, module: 200, moduleResolution: 100, jsx: 1 }, aliases: [],
         roots: [{ path: "app.ts", evidenceRefs: [planRoot] }] }));
