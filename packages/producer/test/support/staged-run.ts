@@ -6,9 +6,15 @@ import { stringify } from "yaml";
 export const stagedSnapshotRef = "snapshot-check";
 const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
 
+// A saved snapshot file. A "symlink" record is listed in the inventory only.
+export interface SnapshotFile { path: string; text: string; kind?: "file" | "symlink" }
+export interface StagedRunOptions { snapshot?: SnapshotFile[]; questions?: unknown[] }
+
+const defaultSnapshot: SnapshotFile[] = [{ path: "app.ts", text: "export const value = 1;\n" }];
+
 // Writes the drafts and registered records that a run has after Stage 1, 2 or 3.
 // Each stage start checks only part of them; the values are the smallest that pass.
-export function stagedRun(work: string, finishedStage: 1 | 2 | 3): void {
+export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: StagedRunOptions = {}): void {
   const snapshotRef = stagedSnapshotRef;
   const artifacts: Record<string, { path: string; sha256: string }> = {};
   function save(path: string, text: string, ref?: string): void {
@@ -16,15 +22,16 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3): void {
     writeFileSync(join(work, path), text);
     if (ref) artifacts[ref] = { path, sha256: sha256(text) };
   }
-  const source = "export const value = 1;\n";
-  save("snapshot/app.ts", source);
-  const files = [{ path: "app.ts", kind: "file", bytes: Buffer.byteLength(source), sha256: sha256(source) }];
+  const snapshot = options.snapshot ?? defaultSnapshot;
+  for (const file of snapshot) if (file.kind !== "symlink") save("snapshot/" + file.path, file.text);
+  const files = snapshot.map(({ path, text, kind }) => ({ path, kind: kind ?? "file", bytes: Buffer.byteLength(text),
+    sha256: sha256(text) }));
   const inventory = JSON.stringify({ formatVersion: 1, snapshotId: snapshotRef, files }, null, 2) + "\n";
   save("evidence/inventory.json", inventory, "inventory-001");
   save("inventory.mjs", `process.stdout.write(${JSON.stringify(inventory)});\n`, "s1-file@inventory.mjs");
   const progress: Record<string, string> = { inventory: "complete", baselineRecovery: "pending" };
   const discovery: Record<string, unknown> = { formatVersion: 1, kind: "architecture-discovery", runRef: "run-check",
-    questions: [], gaps: [] };
+    questions: options.questions ?? [], gaps: [] };
   if (finishedStage >= 2) {
     save("evidence/s2-check/entry-plan.json", JSON.stringify({ formatVersion: 1, snapshotRef,
       workspaces: [{ dir: ".", entry: ["app.ts"] }] }), "s2-check-entry-plan");

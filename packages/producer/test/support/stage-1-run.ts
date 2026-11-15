@@ -1,0 +1,95 @@
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { stringify } from "yaml";
+import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
+
+// Helpers that run Stage 1 the way the step-1 cookbook does, on a small target
+// folder. The capture needs rsync: give a PATH with the test double.
+export interface StageOneRun { target: string; work: string; review: string; tools: string; env: Record<string, string> }
+
+const stageOneSnapshotRef = "snapshot-check";
+
+const json = (value: unknown): string => JSON.stringify(value, null, 2) + "\n";
+
+// A target with compiler settings that use `extends`, a project reference, a
+// missing base file and a file that is not valid JSON.
+export const settingsTarget: Record<string, string> = {
+  "app.ts": "export const value = 1;\n",
+  "configs/custom.json": json({ extends: "../tsconfig.base.json", include: ["../app.ts"] }),
+  "package.json": json({ name: "fixture", private: true, workspaces: ["packages/*"] }),
+  "packages/lib/package.json": json({ name: "lib", main: "src/index.ts" }),
+  "packages/lib/src/index.ts": "export const library = 2;\n",
+  "packages/lib/tsconfig.json": json({ extends: "../../tsconfig.base.json",
+    compilerOptions: { composite: true, outDir: "dist" }, include: ["src"] }),
+  "tsconfig.base.json": json({ compilerOptions: { strict: true, target: "ES2022", module: "NodeNext" } }),
+  "tsconfig.broken.json": "{ \"compilerOptions\": \n",
+  "tsconfig.json": json({ extends: "./tsconfig.base.json", compilerOptions: { noEmit: true }, files: ["app.ts"],
+    references: [{ path: "./packages/lib" }] }),
+  "tsconfig.missing.json": json({ extends: "./tsconfig.absent.json" }),
+};
+
+export function writeFiles(root: string, files: Record<string, string>): void {
+  for (const [path, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
+}
+
+export function stageOneRun(scratch: string, env: Record<string, string>, tools = toolsRoot): StageOneRun {
+  const run = { target: join(scratch, "target"), work: join(scratch, "run"), review: join(scratch, "review"), tools,
+    env: { CHOOM_TOOLS: tools, CHOOM_WORK: join(scratch, "run"), CHOOM_TARGET: join(scratch, "target"),
+      CHOOM_RUN_ID: "run-check", CHOOM_SNAPSHOT_ID: stageOneSnapshotRef, CHOOM_BASELINE_ID: "baseline-check", ...env } };
+  writeFiles(run.target, settingsTarget);
+  return run;
+}
+
+export function stageOne(run: StageOneRun, action: string, ...args: string[]): CommandResult {
+  return runCli(["stage-1", action, ...args], run.env, run.tools);
+}
+
+// The helper copy that start saved for the later comparison.
+export function savedHelper(work: string): string {
+  const names = readdirSync(join(work, "evidence")).filter((name) => /^stage-1-commands\.m[jt]s$/.test(name));
+  const [name] = names;
+  if (name === undefined || names.length !== 1) throw new Error("Expected one saved Stage 1 helper.");
+  return join(work, "evidence", name);
+}
+
+export interface Excerpt { id: string; artifactRef: string; snapshotRef: string; path: string; sha256: string; lines: number[] }
+type Fields = Record<string, unknown>;
+export interface ReviewPacket { review: Fields; scope: Fields; call: Fields; prompt: string; response?: string }
+
+// A complete Stage 1 review packet that cites one saved excerpt. A test can
+// change any part before it writes the packet.
+export function reviewPacket(excerpt: Excerpt): ReviewPacket {
+  const source = { id: excerpt.id, snapshotRef: excerpt.snapshotRef, path: excerpt.path, sha256: excerpt.sha256,
+    lines: excerpt.lines };
+  return {
+    review: { formatVersion: 1, snapshotRef: stageOneSnapshotRef, reviewedFiles: [source],
+      roles: [{ selector: "app.ts", roles: ["source"], basis: "observed", evidenceRefs: ["inventory-001"] }],
+      workspaceDeclarations: [{ path: "package.json", patterns: ["packages/*"], membershipStatus: "unverified",
+        evidenceRefs: [excerpt.id] }],
+      questions: [{ id: "s1-question-001", subjectRefs: ["app.ts"], text: "Which command starts the application?",
+        evidenceRefs: ["inventory-001#/files/0"] }],
+      gaps: [{ id: "s1-gap-001", kind: "missing-input", subjectRefs: ["tsconfig.missing.json"],
+        reason: "The base configuration is not in the snapshot.", evidenceRefs: ["settings-001#/configs"] }],
+      llmReview: "recorded" },
+    scope: { formatVersion: 1, runRef: "run-check", snapshotRef: stageOneSnapshotRef,
+      suppliedArtifactRefs: ["inventory-001", "settings-001", "exclusions-001", "scope-notes-001", "extra-configs-001",
+        excerpt.artifactRef], limits: ["Only the saved test fixture was supplied."] },
+    call: { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown" },
+    prompt: "Perform Choom Appendix A, stage 1.\n",
+  };
+}
+
+export function writeReview(run: StageOneRun, packet: ReviewPacket, folder = run.review): string {
+  const review = stringify(packet.review);
+  writeFiles(folder, {
+    "review.yaml": review,
+    "review-scope.json": json(packet.scope),
+    "llm-prompt.md": packet.prompt,
+    "llm-response.md": packet.response ?? "The complete review follows.\n\n" + review,
+    "llm-call.yaml": stringify(packet.call),
+  });
+  return folder;
+}

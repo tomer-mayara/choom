@@ -448,6 +448,18 @@ fixture, Knip image check, inventory view, recovery check and duplication start
 without Docker. They need `python3` on `PATH`. Docker-based Knip and graph runs
 are not part of these checks.
 
+The Stage 1 and Stage 2 interface suites run each stage through its commands on
+small fixtures. Python test doubles in `packages/producer/test/support/doubles/`
+take the place of `rsync` and Docker. The suites record the capture, the settings
+record, the Knip profile, the preflight and tool image decisions, the Knip
+receipts, the finish checks, the recovery capture and the input consolidation.
+They also show that a running attempt uses only the code that its start saved.
+Run them with:
+
+```sh
+bun test ./packages/producer/test/interface/stage-1 ./packages/producer/test/interface/stage-2
+```
+
 The normal browser opening test uses the real app, file reader, decoder, layout,
 and component view. Controlled workflow tests cover failures, cancellation,
 concurrent requests, and late results. Browser tests and IPC doubles do not

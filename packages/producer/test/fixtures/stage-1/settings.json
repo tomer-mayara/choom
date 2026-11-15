@@ -1,0 +1,205 @@
+{
+  "formatVersion": 1,
+  "snapshotId": "snapshot-check",
+  "virtualRoot": "/repo",
+  "limits": {
+    "maxConfigFileBytes": 8388608
+  },
+  "packages": [
+    {
+      "path": "package.json",
+      "data": {
+        "name": "fixture",
+        "private": true,
+        "workspaces": [
+          "packages/*"
+        ]
+      }
+    },
+    {
+      "path": "packages/lib/package.json",
+      "data": {
+        "name": "lib",
+        "main": "src/index.ts"
+      }
+    }
+  ],
+  "configs": [
+    {
+      "path": "/repo/packages/lib/tsconfig.json",
+      "status": "parsed",
+      "diagnostics": [],
+      "declared": {
+        "extends": "../../tsconfig.base.json",
+        "compilerOptions": {
+          "composite": true,
+          "outDir": "dist"
+        },
+        "include": [
+          "src"
+        ]
+      },
+      "compilerOptions": {
+        "strict": true,
+        "target": 9,
+        "module": 199,
+        "composite": true,
+        "outDir": "/repo/packages/lib/dist",
+        "configFilePath": "/repo/packages/lib/tsconfig.json"
+      },
+      "fileNames": [
+        "packages/lib/src/index.ts"
+      ],
+      "references": []
+    },
+    {
+      "path": "/repo/tsconfig.base.json",
+      "status": "parsed",
+      "diagnostics": [],
+      "declared": {
+        "compilerOptions": {
+          "strict": true,
+          "target": "ES2022",
+          "module": "NodeNext"
+        }
+      },
+      "compilerOptions": {
+        "strict": true,
+        "target": 9,
+        "module": 199,
+        "configFilePath": "/repo/tsconfig.base.json"
+      },
+      "fileNames": [
+        "app.ts",
+        "packages/lib/src/index.ts"
+      ],
+      "references": []
+    },
+    {
+      "path": "/repo/tsconfig.broken.json",
+      "status": "unavailable",
+      "diagnostics": [
+        {
+          "message": "Expression expected."
+        }
+      ]
+    },
+    {
+      "path": "/repo/tsconfig.json",
+      "status": "parsed",
+      "diagnostics": [],
+      "declared": {
+        "extends": "./tsconfig.base.json",
+        "compilerOptions": {
+          "noEmit": true
+        },
+        "files": [
+          "app.ts"
+        ],
+        "references": [
+          {
+            "path": "./packages/lib"
+          }
+        ]
+      },
+      "compilerOptions": {
+        "strict": true,
+        "target": 9,
+        "module": 199,
+        "noEmit": true,
+        "configFilePath": "/repo/tsconfig.json"
+      },
+      "fileNames": [
+        "app.ts"
+      ],
+      "references": [
+        "/repo/packages/lib/tsconfig.json"
+      ]
+    },
+    {
+      "path": "/repo/tsconfig.missing.json",
+      "status": "partial",
+      "diagnostics": [
+        {
+          "code": 5083,
+          "message": "Cannot read file '/repo/tsconfig.absent.json'."
+        }
+      ],
+      "declared": {
+        "extends": "./tsconfig.absent.json"
+      },
+      "compilerOptions": {
+        "configFilePath": "/repo/tsconfig.missing.json"
+      },
+      "fileNames": [
+        "app.ts",
+        "packages/lib/src/index.ts"
+      ],
+      "references": []
+    },
+    {
+      "path": "/repo/configs/custom.json",
+      "status": "parsed",
+      "diagnostics": [],
+      "declared": {
+        "extends": "../tsconfig.base.json",
+        "include": [
+          "../app.ts"
+        ]
+      },
+      "compilerOptions": {
+        "strict": true,
+        "target": 9,
+        "module": 199,
+        "configFilePath": "/repo/configs/custom.json"
+      },
+      "fileNames": [
+        "app.ts"
+      ],
+      "references": []
+    }
+  ],
+  "contentReads": [
+    {
+      "path": "package.json",
+      "bytes": 83,
+      "sha256": "197c6837c3925ee5a26dce8fbaed806dd60e14284baeca83e63893475a2ee017"
+    },
+    {
+      "path": "packages/lib/package.json",
+      "bytes": 46,
+      "sha256": "ee6fce6baa3fd878d4890dd60cb7b56b04085627a168b6fc1bb91eeccb5747e5"
+    },
+    {
+      "path": "packages/lib/tsconfig.json",
+      "bytes": 146,
+      "sha256": "1ec077bc676082b36a0ed2d1ec809533ad3fb131d120c44229c0c33452962291"
+    },
+    {
+      "path": "tsconfig.base.json",
+      "bytes": 100,
+      "sha256": "21029f9a126e9d5f417af5966a0e97e33b025f301d6d99aed072ea2321768448"
+    },
+    {
+      "path": "tsconfig.broken.json",
+      "bytes": 22,
+      "sha256": "7c0cfcf860de61171418d5006244ca38e0ca75dfa9416e8af6884aa1213a8dab"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 184,
+      "sha256": "8d39891b4787a345f1cd105e15b9bf3c5bcfaf2eb92d5a838f2d7bd430713279"
+    },
+    {
+      "path": "tsconfig.missing.json",
+      "bytes": 42,
+      "sha256": "9e9f07cf80e7f2ce7bfb481ef724278c323173c7bb78d34e25be7a491c1b49c1"
+    },
+    {
+      "path": "configs/custom.json",
+      "bytes": 77,
+      "sha256": "9d37230d5678586498249ae4b59b102e5bf837374b84111a006d5bbc0f5d7fb6"
+    }
+  ],
+  "contentReadScope": "Only requested settings and package manifests were read and verified. Other inventory contents were not revalidated."
+}

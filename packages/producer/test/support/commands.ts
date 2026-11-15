@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,15 +35,35 @@ export function runHelper(path: string, args: readonly string[] = [], settings: 
   return runProgram(path.endsWith(".py") ? "python3" : "node", [path, ...args], settings, timeout);
 }
 
-export function runCli(args: readonly string[], settings: Record<string, string> = {}): CommandResult {
-  return runProgram("node", [join(producerSource, "cli.ts"), ...args], settings);
+// Run the command line of a tool checkout: this checkout, or a copy made by a test.
+export function runCli(args: readonly string[], settings: Record<string, string> = {}, tools = toolsRoot): CommandResult {
+  return runProgram("node", [join(tools, "packages/producer/src/cli.ts"), ...args], settings);
+}
+
+// The inventory view makes its input copies read-only. Make every folder
+// writable again so that a user without root rights can remove the scratch folder.
+function makeFoldersWritable(folder: string): void {
+  for (const entry of readdirSync(folder, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    chmodSync(join(folder, entry.name), 0o700);
+    makeFoldersWritable(join(folder, entry.name));
+  }
+}
+
+export function removeScratch(scratch: string): void {
+  makeFoldersWritable(scratch);
+  rmSync(scratch, { recursive: true, force: true });
+}
+
+export function makeScratch(): string {
+  return mkdtempSync(join(realpathSync(tmpdir()), "choom-producer-"));
 }
 
 export function withScratch<T>(use: (scratch: string) => T): T {
-  const scratch = mkdtempSync(join(realpathSync(tmpdir()), "choom-producer-"));
+  const scratch = makeScratch();
   try {
     return use(scratch);
   } finally {
-    rmSync(scratch, { recursive: true, force: true });
+    removeScratch(scratch);
   }
 }
