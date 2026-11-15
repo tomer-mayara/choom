@@ -4,8 +4,9 @@ import { assert, type Fields, text } from './record-checks.ts';
 import { type ContextKinds, contextKinds, packageLookup } from './stage-4-module-kinds.ts';
 
 // The graph profile that Stage 4 start saves before the graph runs. It puts the
-// saved Stage 3 source scope into compiler contexts, takes the traversal roots
-// from the retained entry patterns, and notes the choices and their limits. A
+// saved Stage 3 source scope into compiler contexts, gives each context its passes
+// by the module kinds of its files, takes the traversal roots from the retained
+// entry patterns, and notes the choices, the module kinds and their limits. A
 // snapshot without project settings uses the Choom parsing profile that the
 // settings record names. Saved JSON stays an unchecked value until the checks
 // below read it.
