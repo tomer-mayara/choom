@@ -11,7 +11,7 @@ interface Component {
   name: string;
   purpose: Statement<string | null>;
   membership: Statement<{ paths: string[] }>;
-  groupingReason: Statement<string>;
+  groupingReason: Statement<string | null>;
   parent?: Statement<string>;
 }
 interface Issue { id: string; kind: string; reason: string; subjectRefs: string[]; evidenceRefs: string[] }
@@ -196,24 +196,37 @@ const refusedCases: [string, (records: Records) => void, string][] = [
   ["a discovery that already names its baseline", (records) => {
     records.discovery.baselineRef = "base-1";
   }, "Expected complete working discovery with no fixed baseline reference."],
-  ["no components", (records) => {
-    records.baseline.components = [];
-    records.mapping.units.forEach((unit) => Object.assign(unit, { owner: null, membershipRef: null }));
-    records.entry.behaviorEntries = [];
-  }, "Missing or duplicate components."],
   ["code units smaller than a file", (records) => {
     records.mapping.scope.unitKind = "symbol";
   }, "Invalid selected code mapping scope."],
   ["a glob membership selector", (records) => {
     findComponent(records, "cli").membership.value.paths = ["*.ts"];
   }, "Unsupported membership selectors: cli"],
+];
+
+// The producer profile: rules that the producer adds to the shared baseline rules. Each case
+// has its own message. A question or gap does not make a null purpose or grouping reason valid.
+const profileCases: [string, (records: Records) => void, string][] = [
+  ["a baseline with no components", (records) => {
+    records.baseline.components = [];
+  }, "The baseline has no components. The producer needs at least one component."],
   ["a null purpose with no question or gap", (records) => {
     findComponent(records, "cli").purpose.value = null;
-  }, "Unexplained unknown intent: cli.purpose"],
+  }, "Component cli has no purpose. The producer needs a purpose for each component."],
   ["a null purpose that a gap names", (records) => {
     findComponent(records, "cli").purpose.value = null;
     nameUnknownSubject(records, "cli.purpose");
-  }, "Missing component intent: cli"],
+  }, "Component cli has no purpose. The producer needs a purpose for each component."],
+  ["a null grouping reason that a gap names", (records) => {
+    findComponent(records, "http").groupingReason.value = null;
+    nameUnknownSubject(records, "http.groupingReason");
+  }, "Component http has no grouping reason. The producer needs a grouping reason for each component."],
+  ["a membership with no paths", (records) => {
+    findComponent(records, "http").membership.value.paths = [];
+  }, "Component http has no membership paths. The producer needs at least one path for each component."],
+  ["a version 5 baseline", (records) => {
+    records.baseline.formatVersion = 5;
+  }, "The producer writes baseline formatVersion 1, 2, 3 or 4, not 5."],
 ];
 
 describe("validateDiscoveryRecords", () => {
@@ -382,9 +395,6 @@ const runCheckCases: [string, (records: Records) => void, string][] = [
   ["a baseline with a parent version", (records) => {
     records.baseline.parentId = "base-0";
   }, "Expected a first proposed baseline."],
-  ["a version 5 baseline", (records) => {
-    records.baseline.formatVersion = 5;
-  }, "Expected a first proposed baseline."],
 ];
 
 describe("run checks of the baseline against the saved records", () => {
@@ -393,6 +403,12 @@ describe("run checks of the baseline against the saved records", () => {
   });
 
   test.each(runCheckCases)("refuses %s", (_name, change, message) => {
+    expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(message);
+  });
+});
+
+describe("the producer profile", () => {
+  test.each(profileCases)("refuses %s", (_name, change, message) => {
     expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(message);
   });
 });

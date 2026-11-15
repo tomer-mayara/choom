@@ -31,7 +31,35 @@ interface ItemChecks {
   evidence(record: unknown): void;
 }
 
+const producerVersions = [1, 2, 3, 4];
+// Reads value?.[key] from an unchecked value.
+const field = (value: unknown, key: string): unknown => (value as Fields | null | undefined)?.[key];
 const statementValue = (item: Fields, name: string): unknown => (item[name] as Fields | undefined)?.value;
+
+// The producer profile: what the producer writes, on top of the shared baseline
+// rules. It writes formatVersion 1 to 4 and only the first version of a
+// baseline. The baseline has at least one component. Each component, also a
+// parent that only groups other components, has a purpose, a grouping reason
+// and at least one path. A question or gap does not replace these values. The
+// profile runs first, so that each case has its own message.
+export function checkProducerProfile(baseline: unknown): void {
+  const version = field(baseline, 'formatVersion');
+  assert(oneOf(producerVersions, version), 'The producer writes baseline formatVersion 1, 2, 3 or 4, not ' + JSON.stringify(version) + '.');
+  assert(field(baseline, 'parentId') === null, 'Expected a first proposed baseline.');
+  const components = field(baseline, 'components');
+  if (!Array.isArray(components)) return;
+  assert(components.length > 0, 'The baseline has no components. The producer needs at least one component.');
+  for (const component of components as unknown[]) {
+    const id = String(field(component, 'id'));
+    assert(field(field(component, 'purpose'), 'value') !== null,
+      'Component ' + id + ' has no purpose. The producer needs a purpose for each component.');
+    assert(field(field(component, 'groupingReason'), 'value') !== null,
+      'Component ' + id + ' has no grouping reason. The producer needs a grouping reason for each component.');
+    const paths = field(field(field(component, 'membership'), 'value'), 'paths');
+    assert(!Array.isArray(paths) || paths.length > 0,
+      'Component ' + id + ' has no membership paths. The producer needs at least one path for each component.');
+  }
+}
 const absent = (value: unknown): boolean => value === null || value === undefined;
 const issueSubjects = (discovery: Fields): Set<unknown> => new Set([...(discovery.questions as Fields[]),
   ...(discovery.gaps as Fields[])].flatMap(issue => issue.subjectRefs as unknown[]));
@@ -122,6 +150,7 @@ function itemKeys(key: string, item: Fields, baseline: Fields): string[] {
 }
 
 export function validateBaseline({ baseline, discovery, claim, evidence }: BaselineInputs): BaselineMembers {
+  checkProducerProfile(baseline);
   const keys = ['formatVersion', 'id', 'parentId', ...collectionKeys,
     ...(oneOf([3, 4], baseline?.formatVersion) && Object.hasOwn(baseline, 'sourceUsage') ? ['sourceUsage'] : []),
     ...(baseline?.formatVersion === 4 && Object.hasOwn(baseline, 'systemEntryPoints') ? ['systemEntryPoints'] : [])];
