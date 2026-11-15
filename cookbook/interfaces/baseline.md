@@ -144,6 +144,16 @@ producer record checks and the viewer's Recorded statements use the same list.
 The [record format](../../docs/design/app-a/record-format.md#decision-record)
 gives the fields, the statements that can be decided and the checks.
 
+`nextBaselineVersion` from the same export makes the next version of a saved
+baseline from a decision file, after the checks of `validateDecisions`. It reads
+no file. The version has the ID `<parent ID>-<decision record ID>` and the
+parent ID as its `parentId`. Each decided statement is `accepted`, with the
+decision record ID as its `acceptanceRef`; a correction also replaces the value.
+All other values stay the same, and the version passes the shared baseline
+rules, so the viewer accepts it as any other baseline. The
+[record format](../../docs/design/app-a/record-format.md#next-baseline-version)
+gives the producer command that saves it.
+
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
 copies of the reviewed empty and full `work-choom` baselines. Tests use repository
 paths and need no external checkout or companion records. The version 5 example

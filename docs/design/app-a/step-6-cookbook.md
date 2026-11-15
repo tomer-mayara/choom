@@ -312,7 +312,23 @@ has the name of a model in the run's LLM call records. This check is a process
 rule: it does not prove that a person decided. The command saves the exact file
 once as `decisions/<id>.yaml` and prints its SHA-256; keep it with the run notes.
 It does not change the baseline or another file of the run. Use a new ID for new
-decisions. Ticket GA-01b makes the next baseline version from saved decisions.
+decisions.
+
+Then make the next baseline version from the saved decision record. Give its ID:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline next --run "$CHOOM_WORK" --decisions decisions-001
+```
+
+The command checks the decisions again against the published baseline, and
+makes the [next version](record-format.md#next-baseline-version): the decided
+statements are `accepted` with the decision record ID as their `acceptanceRef`,
+and a correction also replaces the value. It saves the version once as
+`baselines/<baseline-id>-<decisions-id>/baseline.yaml`, and beside it the
+version record `version.json`, which links the version to the published
+baseline and to the decision record by SHA-256. The published baseline, the
+discovery result, `run.yaml` and the decision record do not change. The new
+version has no discovery result until a new run maps it.
 
 ## Saved state
 
@@ -323,3 +339,4 @@ decisions. Ticket GA-01b makes the next baseline version from saved decisions.
 | After `finish` | Fixed version saved by digest. Statements remain proposed. | Fixed discovery selects that baseline. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
 | After `verify` | Unchanged. | Read-only verification reports the saved result and its limits. |
 | After `baseline decide` | Unchanged. Statements stay proposed. | `decisions/<id>.yaml` holds the decision file. The discovery and the manifest do not change. |
+| After `baseline next` | Unchanged. A new folder holds the next version, with the decided statements accepted, and its version record. | The discovery, the manifest and the decision record do not change. The new version has no discovery result. |

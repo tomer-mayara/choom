@@ -47,6 +47,9 @@ analysis-run-001/
   baselines/baseline-001/baseline.yaml  Fixed proposed architecture
   runs/run-001/discovery.yaml          Fixed discovery with evidence references
   decisions/decisions-001.yaml         Optional human decisions, saved after Stage 6
+  baselines/baseline-001-decisions-001/  Optional next version made from those decisions,
+    baseline.yaml                        with the decided statements accepted
+    version.json                         Its links to the parent and the decisions
   run-takeaways.md                     Optional operator/reviewer log
   run-notes.md                         Optional handoff notes and dated corrections
 ```
@@ -564,7 +567,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `snapshot-project.ts`, `snapshot-exports.ts` | The ts-morph project of the saved snapshot: an in-memory file system that holds only the indexed snapshot files with checked digests, the record of each request for a path outside the snapshot, the compiler inputs that the snapshot does not hold as gaps, and the syntax reader without compiler settings that the source queries of Stages 3, 4 and 5 use; and the exports of one file of the project |
 | `snapshot-references.ts` | The references to a symbol of a file of the snapshot project, from the TypeScript type checker: its declarations, and each import, re-export, type use, call and other use with its range and local name; and whether the compiler settings resolve a module name of a searched file |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
-| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record and the producer code record |
+| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record, the producer code record, the decision record and the next baseline version |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
 | `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, their passes, traversal roots and limits. `compiler-settings.ts` applies the same compiler context rule to one file |
 | `stage-4-module-kinds.ts` | The module kind of the code that runs for each file of a compiler context, from its extension, the compiler `module` setting and the nearest indexed `package.json`. Files that compile to CommonJS get a CommonJS pass |
@@ -577,6 +580,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
 | `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |
 | `baseline-commands.ts`, `baseline-decide.ts`, `decision-record.ts` | The baseline command (`baseline decide`): check a YAML decision file against the published baseline of a completed run, and save it once as `decisions/<id>.yaml`; and the reader of a decision file and of a saved record, with the bounded YAML profile. See the [decision record](record-format.md#decision-record) |
+| `baseline-next.ts` | The next action of the baseline command (`baseline next`): make the next baseline version from a saved decision record, check it, and save it once with its version record. See the [next baseline version](record-format.md#next-baseline-version) |
 | `completed-run.ts`, `decider-check.ts` | A run that Stage 6 completed, read with the digests of its registry; and the check that the decider is not a model in the run's LLM call records |
 | [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |
 | `check-knip-image.mjs` | Validate the controlled Knip tool image |

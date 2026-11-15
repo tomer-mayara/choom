@@ -3,12 +3,13 @@
 Read this with the [stage 4 cookbook](step-4-cookbook.md) or
 [stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
 to the shared publisher. The publisher is a trusted tool. Review folders contain
-data only; do not generate or execute a run-specific save script. The last four
+data only; do not generate or execute a run-specific save script. The last five
 sections define the [settings record](#settings-record) that Stage 1 saves and
 Stage 4 reads, the [Git identity record](#git-identity-record) that the Stage 1
 capture saves, the [producer code record](#producer-code-record) that every
-stage checks, and the [decision record](#decision-record) of human decisions
-after Stage 6.
+stage checks, the [decision record](#decision-record) of human decisions
+after Stage 6, and the [next baseline version](#next-baseline-version) that a
+decision record makes.
 
 ## Review folder
 
@@ -88,9 +89,10 @@ described as future work beside a newly appended correction.
 
 ## Baseline
 
-All versions have `formatVersion`, `id`, `parentId: null`,
-`components`, `interfaces`, `resources`, and `rules`. Versions 3 and 4
-permit `sourceUsage`. Version 4 also permits `systemEntryPoints`. The
+All versions have `formatVersion`, `id`, `parentId`, `components`,
+`interfaces`, `resources`, and `rules`. The first version of a baseline has
+`parentId: null`; a [next version](#next-baseline-version) names its parent.
+Versions 3 and 4 permit `sourceUsage`. Version 4 also permits `systemEntryPoints`. The
 top-level fields are strict in every version. The producer writes versions 1
 to 4 only. The shared reader also accepts version 5, which the producer does
 not write yet; see [Version 5 symbol selectors](#version-5-symbol-selectors). Keep the initial baseline
@@ -100,8 +102,10 @@ evidence for this publication profile. Other collections can be empty.
 The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
 
 1. The **producer profile**, which is stricter than the shared rules. The
-   producer writes `formatVersion` 1 to 4 and only the first version
-   (`parentId: null`). The baseline has at least one component. Each component,
+   producer writes `formatVersion` 1 to 4. Stages 4 to 6 write only the first
+   version (`parentId: null`); `baseline next` writes the
+   [next version](#next-baseline-version). The baseline has at least one
+   component. Each component,
    also a parent that only groups other components, has a non-null `purpose`,
    a non-null `groupingReason` and at least one path in `membership.value.paths`.
    A question or gap does not make a null purpose or grouping reason valid.
@@ -131,7 +135,8 @@ An intent statement has exactly `value`, `status: proposed`, and `evidenceRefs`.
 Unknown intent uses `value: null` and a question or gap whose `subjectRefs`
 includes the item ID or a field such as `interface-id.allowedConsumers`.
 Publication does not accept intent. After Stage 6, a person can accept or
-correct statements in a [decision record](#decision-record).
+correct statements in a [decision record](#decision-record), and `baseline next`
+makes the [next baseline version](#next-baseline-version) from it.
 
 | Collection | Exact item fields |
 | --- | --- |
@@ -928,8 +933,8 @@ the recovery capture do not use the record.
 Stage 6 publishes a baseline whose statements are all `proposed`. After Stage 6,
 a person can accept or correct statements. The person writes a decision file in
 YAML, and `baseline decide` checks it and saves it in the run folder as a
-decision record. The record does not change the baseline. Ticket GA-01b makes
-the next baseline version from saved decision records. The
+decision record. The record does not change the baseline. `baseline next` makes
+the [next baseline version](#next-baseline-version) from a saved record. The
 [TypeSpec contract](../../../cookbook/interfaces/baseline-decisions.tsp) in
 `@choom/baseline-model` defines the value of the file, so the viewer can use it
 too. A copied decision-file entry from the viewer starts with a YAML comment
@@ -1028,7 +1033,8 @@ the decider check compared. Keep the SHA-256 with the run notes. The command is
 not a stage action: it does not check the producer code record, because a
 person can decide after the run with a later producer.
 
-A later command reads a saved record with `readDecisionRecord(run, id)` in
+A later command, such as `baseline next`, reads a saved record with
+`readDecisionRecord(run, id)` in
 `packages/producer/src/decision-record.ts`. It reads `decisions/<id>.yaml` of a
 completed run with the same rules as `baseline decide` and returns its bytes,
 its SHA-256 and its value, for `validateDecisions`.
@@ -1047,3 +1053,92 @@ register, such as a failed attempt, are not compared. Code cannot prove that a
 person made the decisions: any writer can give a person's name. The check stops
 a decision file that names a model of the run, and the named person stays
 responsible for the decisions.
+
+## Next baseline version
+
+Decisions do not change a saved baseline. `baseline next` makes a new version
+from a saved [decision record](#decision-record): the published baseline of the
+run, with the decided statements accepted. The new version has no discovery
+result until a new run maps it (decision D12). The discovery result of the run
+and earlier reports keep the published baseline.
+
+Give the ID of a decision record that `baseline decide` saved:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline next --run "$CHOOM_WORK" --decisions decisions-001
+```
+
+The command reads the completed run and its published baseline as
+`baseline decide` does, and reads `decisions/<id>.yaml` with
+`readDecisionRecord`. `nextBaselineVersion` in `@choom/baseline-model` makes
+the version. It reads no file. It runs the checks of `validateDecisions`
+against the published baseline first, so a record that does not fit that
+baseline is refused with every problem. The version:
+
+- has the ID `<parent ID>-<decision record ID>`, such as
+  `baseline-001-decisions-001`. Both IDs are lowercase IDs with hyphens, so the
+  new ID is one too, and it is never the parent ID. One record always gives
+  the same ID, so it makes at most one version;
+- has `parentId` set to the ID of the published baseline, and the same
+  `formatVersion`;
+- has each decided statement `accepted`, with the decision record ID as its
+  `acceptanceRef`. A correction also replaces the value. The statement keeps
+  its `evidenceRefs`;
+- keeps every other field, item and statement of the published baseline, with
+  the items and list entries in the same order.
+
+The command also refuses a record whose `id` is not the ID in its file name, and
+a decider who is a model of the run, as `baseline decide` does. It writes the
+version as YAML, reads the text back with the bounded YAML profile, and checks
+it with the shared baseline rules and the producer profile of a next version:
+
+- the parent is the baseline that the decision record is for;
+- the saved decision record has the SHA-256 that the version record gives;
+- each `accepted` statement names that decision record in its
+  `acceptanceRef`, and the record has an entry for the statement: `accept`, or
+  `correct` with the value of the statement as its `newValue`. A statement
+  without an entry stays `proposed`;
+- no item has the ID of the version, because the baseline ID is reserved;
+- the version is within the [viewer limits](#reader-limits).
+
+A first version, which Stages 4 to 6 check, has no decision record: its
+`parentId` is null, and every statement is `proposed`.
+
+The command saves two new files, once, in a new folder:
+
+| Path in the run folder | Contents |
+| --- | --- |
+| `baselines/<version-id>/baseline.yaml` | The next version. |
+| `baselines/<version-id>/version.json` | The version record. The command writes it last. |
+
+```json
+{
+  "formatVersion": 1,
+  "baseline": { "id": "baseline-001-decisions-001", "path": "baselines/baseline-001-decisions-001/baseline.yaml", "sha256": "<64 lowercase hexadecimal characters>" },
+  "parent": { "id": "baseline-001", "path": "baselines/baseline-001/baseline.yaml", "sha256": "<64 lowercase hexadecimal characters>" },
+  "decisions": { "id": "decisions-001", "path": "decisions/decisions-001.yaml", "sha256": "<64 lowercase hexadecimal characters>" }
+}
+```
+
+The version record links the version to its parent and to its decision record.
+Each link gives the ID, the path in the run folder and the SHA-256 of the saved
+bytes. The parent SHA-256 is the `sha256` of the published baseline in the
+`run.yaml` registry. A later check reads `decisions/<id>.yaml` again and
+compares its SHA-256 with the version record. The command does not change the
+published baseline, the discovery result, `run.yaml` or the decision record.
+`run.yaml` does not register the version, because the version record is enough
+to check the links. The viewer opens the new version as any baseline file; it
+does not read the version record.
+
+A second `baseline next` with the same record is refused, because the version
+folder exists: a saved version does not change. A new decision record about the
+published baseline makes another version beside the first; both name the
+published baseline as their parent. If the command stops after it made the
+folder, examine the folder before you run the command again. A folder without
+`version.json` does not hold a complete version.
+
+The command prints JSON: the version path and SHA-256, the links of the parent
+and of the decision record, the path and SHA-256 of the version record, each
+decided statement, and the call records and models that the decider check
+compared. As for `baseline decide`, the command is not a stage action: it does
+not check the producer code record.

@@ -379,7 +379,7 @@ Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
 starts the `node` on `PATH` and requires the major version in `.node-version`.
 It also runs `packages/producer/test/integration/records`, where the producer
 record validator runs with the shared baseline rules of `@choom/baseline-model`.
-The same folder holds the suite of the `baseline decide` command.
+The same folder holds the suites of the `baseline decide` and `baseline next` commands.
 Run all suites from the repository root.
 `bun run test:producer:docker` runs `packages/producer/test/integration/docker`
 and the `docker` Cucumber profile. These suites need a Docker engine and stop
@@ -712,6 +712,30 @@ bun test ./packages/producer/test/unit/decision-record.test.ts ./packages/produc
 bun test ./packages/producer/test/integration/records/baseline-decide.test.ts
 ```
 
+`bun run producer baseline next --run RUN_FOLDER --decisions DECISION_ID` makes
+the next baseline version from a saved decision record. `nextBaselineVersion` in
+`@choom/baseline-model` runs the checks of `validateDecisions` and makes the
+version: its ID is `<parent ID>-<decision record ID>`, its parent is the
+published baseline, and each decided statement is `accepted` with the decision
+record ID as its `acceptanceRef`. A correction also replaces the value. The
+producer profile of a next version accepts an accepted statement only when it
+names the decision record of the version, the saved record has the SHA-256 that
+the version record gives, and the record decides that statement. The command
+saves the version once as `baselines/<version-id>/baseline.yaml`, with the
+version record `version.json`, and changes no other file of the run. The
+[record format](docs/design/app-a/record-format.md#next-baseline-version) gives
+the rules and the files. The `@producer` scenarios record decisions for a run
+that the Stage 6 command line completed, make the next version, and validate it
+as the viewer does. The unit suite checks the version rules, the producer record
+suite checks the statuses of a next version, and the integration suite runs the
+command. Run them with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/baseline-model/test/unit/baseline-decisions.test.ts
+bun test ./packages/producer/test/integration/records/record-baseline.test.ts ./packages/producer/test/integration/records/baseline-next.test.ts
+```
+
 The decision checks, the producer record checks and the viewer's **Recorded
 statements** use one list of the statements of a baseline and their paths:
 `item-statements.ts` in `@choom/baseline-model`. Run the checks of the list and
@@ -868,7 +892,8 @@ too, for the baseline shape, and adds its stricter profile and its run checks
 `./baseline-format`, and `./readonly-data`. It uses only TypeScript that Node
 can remove, so a Node process imports it with no build step.
 The `./baseline-decisions` export checks a decision file against a saved
-baseline (`validateDecisions`). The `./item-statements` export lists the
+baseline (`validateDecisions`) and makes the next version from it
+(`nextBaselineVersion`). The `./item-statements` export lists the
 statements of a baseline with their paths, for the decision checks, the
 producer record checks and the viewer's Recorded statements.
 
@@ -923,6 +948,7 @@ The baseline command (`baseline-commands.ts`) records human decisions after
 Stage 6: `baseline-decide.ts` reads the completed run with `completed-run.ts`,
 reads the YAML decision file with `decision-record.ts`, which uses the bounded
 YAML profile of `stage-6-records.ts`, and checks the decider with `decider-check.ts`.
+`baseline-next.ts` makes the next baseline version from a saved decision record.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model
