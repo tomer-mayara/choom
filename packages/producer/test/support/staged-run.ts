@@ -10,10 +10,12 @@ const sha256 = (text: string): string => createHash("sha256").update(text).diges
 
 // A saved snapshot file. A "symlink" record is listed in the inventory only.
 export interface SnapshotFile { path: string; text: string; kind?: "file" | "symlink" }
-// `tools` is the tool checkout whose producer code record the run gets.
-export interface StagedRunOptions { snapshot?: SnapshotFile[]; questions?: unknown[]; tools?: string }
+// `tools` is the tool checkout whose producer code record the run gets. `settings`
+// replaces fields of the settings record that a run after Stage 3 gets.
+export interface StagedRunOptions { snapshot?: SnapshotFile[]; questions?: unknown[]; tools?: string; settings?: Record<string, unknown> }
 
 const defaultSnapshot: SnapshotFile[] = [{ path: "app.ts", text: "export const value = 1;\n" }];
+const sourceFile = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
 // Writes the drafts and registered records that a run has after Stage 1, 2 or 3,
 // with the producer code record that Stage 1 start saves and publication registers.
@@ -48,10 +50,13 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: Stage
     Object.assign(progress, { entryAnalysis: "complete" });
     discovery.entryAnalysisRef = "s2-check-entry-analysis";
     if (finishedStage === 3) {
-      save("evidence/settings.json", JSON.stringify({ formatVersion: 1, snapshotId: snapshotRef, configs: [], packages: [] }),
-        "settings-001");
-      save("evidence/s3-check/loading-search.json", JSON.stringify({ snapshotRef, status: "completed",
-        scope: [{ path: "app.ts", sha256: files[0]?.sha256 }] }), "s3-check-file@loading-search.json");
+      save("evidence/settings.json", JSON.stringify({ formatVersion: 1, snapshotId: snapshotRef, configs: [], packages: [],
+        ...options.settings }), "settings-001");
+      // The Stage 3 source query selects every JavaScript and TypeScript file of the snapshot.
+      const scope = files.filter(({ path, kind }) => kind === "file" && sourceFile.test(path))
+        .map(({ path, sha256: digest }) => ({ path, sha256: digest }));
+      save("evidence/s3-check/loading-search.json", JSON.stringify({ snapshotRef, status: "completed", scope }),
+        "s3-check-file@loading-search.json");
       save("evidence/s3-check/entry-analysis.yaml", stringify({ ...analysis, knipAssessment: { action: "reuse" },
         inspectionPriorities: [{ id: "first", priority: 1 }] }), "s3-check-entry-analysis");
       Object.assign(progress, { inspectionPriorities: "complete" });
