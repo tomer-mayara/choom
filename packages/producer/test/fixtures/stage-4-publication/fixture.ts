@@ -2,10 +2,11 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import * as tsMorph from "ts-morph";
 import { stringify } from "yaml";
 import { choomDefaultProfile } from "../../../src/parsing-profile.ts";
 import { producerReceipt } from "../../../src/producer-code.ts";
-import { noProjectSettingsGap } from "../../../src/stage-1-settings.ts";
+import { noProjectSettingsGap, readProjectSettings } from "../../../src/stage-1-settings.ts";
 import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts";
 
 // A run after Stage 3 with a complete Stage 4 attempt and a reviewed Stage 4
@@ -14,7 +15,8 @@ import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts
 // writes their outputs and receipts in the form that the collection and the
 // publisher read. The records are the smallest that pass every publisher check.
 // A test can add snapshot files that no component owns, can stop before the source
-// collection, and can run the helpers of a copied tool checkout.
+// collection, can run the helpers of a copied tool checkout, and can use the
+// settings record that the Stage 1 collector makes for the snapshot.
 interface Statement<Value> { value: Value; status: "proposed"; evidenceRefs: string[] }
 interface FixtureComponent {
   id: string;
@@ -37,6 +39,9 @@ export interface ExtraFile { path: string; text: string | Buffer }
 // A Stage 4 attempt whose start, toolchain and graph phases completed, before the source
 // collection, and the tool checkout whose helpers run it.
 export interface StageFourAttempt { root: string; work: string; attempt: string; tools: string }
+// The settings record of the run: the fixture record, which names the Choom parsing
+// profile, or the record that the Stage 1 collector makes for the snapshot files.
+export type FixtureSettings = "profile" | "collected";
 export interface StageFourPublication extends StageFourAttempt { review: string }
 interface InventoryFile { path: string; kind: "file"; bytes: number; sha256: string }
 interface GraphContext {
@@ -104,8 +109,17 @@ function stageEnvironment(work: string, tools: string): Record<string, string> {
     CHOOM_STAGE4: join(work, "evidence", stageFourAttemptId) };
 }
 
+// The settings record of the run. The fixture record has no compiler settings, so
+// it names the Choom parsing profile.
+function settingsRecord(work: string, inventoryFiles: InventoryFile[], settings: FixtureSettings): unknown {
+  if (settings === "profile") return { formatVersion: 2, snapshotId: snapshotRef, configs: [], packages: [],
+    parsingProfile: choomDefaultProfile, gaps: [noProjectSettingsGap(snapshotRef, choomDefaultProfile)] };
+  return readProjectSettings({ inventory: { snapshotId: snapshotRef, files: inventoryFiles },
+    snapshotRoot: realpathSync(join(work, "snapshot")), extraConfigs: [] }, { tsMorph, parsingProfile: choomDefaultProfile });
+}
+
 // The drafts and registered records that a run has after Stage 3 finish.
-function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[]): void {
+function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], settings: FixtureSettings): void {
   const artifacts: Record<string, { path: string; sha256: string }> = {};
   const register = (ref: string, path: string, text: string): string => {
     write(join(work, path), text);
@@ -117,9 +131,7 @@ function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[]): voi
   const inventorySha256 = register(inventoryRef, "evidence/inventory.json",
     jsonText({ formatVersion: 1, snapshotId: snapshotRef, files: inventoryFiles }));
   register("s1-file@evidence%2Fproducer.json", "evidence/producer.json", jsonText(producerReceipt(toolsRoot)));
-  // The fixture has no compiler settings, so the settings record names the Choom parsing profile.
-  register("settings-001", "evidence/settings.json", jsonText({ formatVersion: 2, snapshotId: snapshotRef, configs: [], packages: [],
-    parsingProfile: choomDefaultProfile, gaps: [noProjectSettingsGap(snapshotRef, choomDefaultProfile)] }));
+  register("settings-001", "evidence/settings.json", jsonText(settingsRecord(work, inventoryFiles, settings)));
   register("launch-settings", "evidence/launch-settings.json",
     jsonText({ cli: "choom serve", http: ["GET /orders"], unresolved: "plugin command" }));
   const planSha256 = register(planRef, "evidence/s2-check/entry-plan.json",
@@ -240,11 +252,12 @@ function writePacket(review: string, records: Record<string, unknown>): void {
 
 // Prepares the run after Stage 3 with the extra snapshot files, runs Stage 4
 // start, and writes the toolchain and graph phases. The source collection is next.
-export function stageFourAttempt(extraFiles: readonly ExtraFile[] = [], tools = toolsRoot): StageFourAttempt {
+export function stageFourAttempt(extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
+  settings: FixtureSettings = "profile"): StageFourAttempt {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "choom-stage-4-publication-"));
   const work = join(root, "run");
   const attempt = join(work, "evidence", stageFourAttemptId);
-  writeStageThreeRun(work, extraFiles);
+  writeStageThreeRun(work, extraFiles, settings);
   checked(runCli(["stage-4", "start"], stageEnvironment(work, tools), tools), "Stage 4 start");
   writePhase(attempt, "toolchain", { "toolchain-selection.json": jsonText({ formatVersion: 1, status: "approved",
     imageId: "sha256:" + "0".repeat(64), limits: ["The fixture records no Docker image."] }) });
