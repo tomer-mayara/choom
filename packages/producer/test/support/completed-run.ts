@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { runCli, toolsRoot } from "./commands.ts";
@@ -42,6 +42,35 @@ export async function completedRun(model: string, change?: BaselineChange): Prom
   }
   return { root: fixture.root, work: fixture.work, baselineId: fixture.baseline.id,
     baselinePath: `baselines/${fixture.baseline.id}/baseline.yaml` };
+}
+
+export interface DecisionEntry { action: string; itemId: string; field: string; oldValue?: unknown; newValue?: unknown }
+export interface DecisionRecord {
+  formatVersion: number;
+  id: string;
+  baselineRef: string;
+  baselineDigest: string;
+  decider: { name: string; kind: string };
+  decidedAt: string;
+  entries: DecisionEntry[];
+}
+
+// The decisions of a person about the published baseline of the run, with the
+// fields of `change` replaced.
+export function decisionRecord(run: CompletedRunFixture, entries: DecisionEntry[], change: Partial<DecisionRecord> = {}):
+  DecisionRecord {
+  const baselineDigest = createHash("sha256").update(readFileSync(join(run.work, run.baselinePath))).digest("hex");
+  return { formatVersion: 1, id: "decisions-001", baselineRef: run.baselineId, baselineDigest,
+    decider: { name: "Ada Example", kind: "human" }, decidedAt: "2026-11-15T10:30:00Z", entries, ...change };
+}
+
+// Saves a decision record in the run folder as baseline decide saves a decision
+// file: as decisions/<id>.yaml. Returns the path in the run folder.
+export function saveDecisionRecord(work: string, record: DecisionRecord): string {
+  const path = `decisions/${record.id}.yaml`;
+  mkdirSync(join(work, "decisions"), { recursive: true });
+  writeFileSync(join(work, path), stringify(record));
+  return path;
 }
 
 // A file of a small run folder that a test writes. run.yaml registers it with its

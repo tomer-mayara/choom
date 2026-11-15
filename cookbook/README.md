@@ -16,6 +16,8 @@ configuration retain their own artifacts.
 
 The producer also owns the [baseline decisions](behavior/producer/baseline-decisions.feature)
 behavior: it records human decisions about a published baseline.
+It owns the [baseline versions](behavior/producer/baseline-versions.feature)
+behavior too: it makes the next baseline version from recorded decisions.
 
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
 baseline file input to validation, layout, and the view. The baseline model,
