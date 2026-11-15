@@ -51,13 +51,17 @@ bun run desktop
 ```
 
 Use **Open Baseline** to select a `formatVersion: 1`, `2`, or `3` baseline in
-the browser or desktop app. The input must be valid UTF-8 and at most 16 MiB.
+the browser or desktop app. The decoder also accepts version `4` saved data.
+The input must be valid UTF-8 and at most 16 MiB.
 Version 2 can add saved interface documentation. Version 3 retains those fields
 and can add source-use records with a shared snapshot and code mapping.
+Version 4 can also add a saved [system-entry assessment](cookbook/interfaces/baseline-system-entry-points.tsp)
+for reviewed startup and external call boundaries.
 Versions 1 and 2 keep their strict fields. An interface's **Original record** disclosure retains all saved
 values, including documentation and statement references.
-**Baseline details → Original source-use data** retains the complete source-use
-object when supplied. Reading it does not fetch source files or verify their hashes.
+For version 3, **Baseline details → Original source-use data** retains the
+complete source-use object when supplied. Reading it does not fetch source
+files or verify their hashes.
 The [baseline contract](cookbook/interfaces/baseline.md) describes the model;
 [input notes](cookbook/interfaces/baseline-codec.md) describe the file limits.
 An old `schemaVersion: 1` diagram is not a baseline.
@@ -74,7 +78,7 @@ explicit owner and consumer links, and 16 component levels. Larger inputs show
 **Too large to display** and keep the current view. The
 [complete viewer measurements](docs/change-requests/BV-baseline-viewer-evidence.md#complete-viewer-measurements)
 record the tested workloads, timings, and limits.
-Version 3 also accepts at most 2,000 source-use records, 4,000 source notes, and
+Versions 3 and 4 also accept at most 2,000 source-use records, 4,000 source notes, and
 2 MiB of compact JSON for the complete source-use object. These limits are
 separate from the documentation and explicit permission-link limits. Invalid
 source data leaves the current view intact.

@@ -1,6 +1,7 @@
 import "@typespec/json-schema";
 import "./baseline-documentation.tsp";
 import "./baseline-source-usage.tsp";
+import "./baseline-system-entry-points.tsp";
 
 using TypeSpec.JsonSchema;
 
@@ -336,8 +337,22 @@ model BaselineV3 {
   sourceUsage?: BaselineSourceUsage;
 }
 
+@extension("additionalProperties", false)
+model BaselineV4 {
+  formatVersion: 4;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: BaselineComponent[];
+  interfaces: BaselineInterface[];
+  resources: BaselineResource[];
+  rules: BaselineRule[];
+  sourceUsage?: BaselineSourceUsage;
+  systemEntryPoints?: BaselineSystemEntryPoints;
+}
+
 union Baseline {
   BaselineV1,
   BaselineV2,
   BaselineV3,
+  BaselineV4,
 }

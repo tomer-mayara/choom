@@ -7,6 +7,7 @@ artifacts:
     - path: ../../cookbook/behavior/baseline-viewer/interface-documentation.feature
     - path: ../../cookbook/behavior/baseline-viewer/duplication-report-codec.feature
     - path: ../../cookbook/behavior/baseline-viewer/source-usage.feature
+    - path: ../../cookbook/behavior/baseline-viewer/system-entry-points.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
@@ -18,4 +19,5 @@ artifacts:
     - path: ../../cookbook/interfaces/interface-duplication.tsp
     - path: ../../cookbook/interfaces/interface-duplication.md
     - path: ../../cookbook/interfaces/baseline-source-usage.tsp
+    - path: ../../cookbook/interfaces/baseline-system-entry-points.tsp
     - path: ../../cookbook/interfaces/baseline.md

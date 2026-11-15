@@ -77,7 +77,7 @@ export interface AcceptedTextStatement {
   acceptanceRef: baselineText;
 }
 
-export type Baseline = BaselineV1 | BaselineV2 | BaselineV3;
+export type Baseline = BaselineV1 | BaselineV2 | BaselineV3 | BaselineV4;
 
 export type BaselineAccessPoints = Array<baselineText>;
 
@@ -250,6 +250,32 @@ export interface BaselineSourceUse {
   entryId?: baselineId;
 }
 
+export interface BaselineSystemEntryPoint {
+  id: baselineId;
+  kind: "startup" | "external";
+  label: baselineText;
+  path: baselineText;
+  componentId: baselineId;
+  evidenceRefs: Array<baselineText>;
+  source?: BaselineSystemEntrySource;
+  interfaceId?: baselineId;
+  entryId?: baselineId;
+}
+
+export interface BaselineSystemEntryPoints {
+  snapshotRef: baselineText;
+  mappingRef: baselineText;
+  scope: baselineText;
+  evidenceRefs: Array<baselineText>;
+  limitations: Array<baselineText>;
+  entries: Array<BaselineSystemEntryPoint>;
+}
+
+export interface BaselineSystemEntrySource {
+  evidenceRef: baselineText;
+  location: BaselineSourceLocation;
+}
+
 export type BaselineTextStatement = ProposedTextStatement | AcceptedTextStatement;
 
 export interface BaselineV1 {
@@ -281,6 +307,18 @@ export interface BaselineV3 {
   resources: Array<BaselineResource>;
   rules: Array<BaselineRule>;
   sourceUsage?: BaselineSourceUsage;
+}
+
+export interface BaselineV4 {
+  formatVersion: 4;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: Array<BaselineComponent>;
+  interfaces: Array<BaselineInterface>;
+  resources: Array<BaselineResource>;
+  rules: Array<BaselineRule>;
+  sourceUsage?: BaselineSourceUsage;
+  systemEntryPoints?: BaselineSystemEntryPoints;
 }
 
 export interface DuplicationBaselineBinding {

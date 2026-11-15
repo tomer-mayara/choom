@@ -23,11 +23,11 @@ test.each([1, 2])("sourceUsage remains forbidden in version %i", (version) => {
   expect(baselineSchema.safeParse(input).success).toBe(false);
 });
 
-test("version 3 allows absent source usage and rejects future versions", () => {
+test("version 3 allows absent source usage and rejects unsupported versions", () => {
   const { sourceUsage: _sourceUsage, ...input } = sourceUsageBaseline();
   expect(structure(input)).toBe(true);
   expect(baselineSchema.parse(input)).toEqual(input);
-  expect(baselineCodec.decode(stringify({ ...input, formatVersion: 4 }))).toMatchObject({
+  expect(baselineCodec.decode(stringify({ ...input, formatVersion: 5 }))).toMatchObject({
     status: "failure", code: "unsupported-version",
   });
 });
