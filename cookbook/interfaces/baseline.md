@@ -13,8 +13,10 @@ The viewer does not upgrade a file or accept the legacy diagram format.
 The generated schema checks field shapes, nonblank text, statement statuses,
 acceptance references, and list sizes. The runtime validator also checks item ID
 uniqueness, component references, parent cycles, and safe membership selectors.
-Selectors are relative paths or subtrees ending in `/**`. Exact paths and
-exclusions are retained; validation does not match them against source files.
+Selectors are relative paths or subtrees ending in `/**`. A selector cannot
+contain `#`, so that a symbol reference such as `src/a.ts#decode` is not read as
+a path. Exact paths and exclusions are retained; validation does not match them
+against source files.
 
 Accepted statements require an `acceptanceRef`; proposed statements cannot have
 one. All statements require at least one nonblank evidence reference. The viewer

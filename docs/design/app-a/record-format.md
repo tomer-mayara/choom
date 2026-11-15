@@ -96,8 +96,11 @@ Publication does not accept intent.
   names another component or is null; parent cycles are invalid.
 - `membership.value` has `paths` and optional `excludePaths`. Each selector is
   an exact snapshot-relative path or a subtree ending in `/**`. Other glob forms
-  are unsupported. Selectors must assign at most one direct owner. Exclude a
-  child's files from its parent; containment does not duplicate ownership.
+  are unsupported. A selector cannot contain `#`, so that a symbol reference such
+  as `src/a.ts#decode` is not read as a path. Select a file whose name contains
+  `#` through a subtree of its folder. Selectors must assign at most one direct
+  owner. Exclude a child's files from its parent; containment does not duplicate
+  ownership.
 - An `owner` value names a component, or is null with an explained gap.
 - `publicAccess.value` lists access points as nonempty strings.
   `allowedConsumers.value` is a nonempty list of component IDs, or null when the

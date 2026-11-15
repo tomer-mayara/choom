@@ -23,6 +23,7 @@ Feature: Validate a saved architecture baseline
       | a cycle of component parents                |
       | an accepted statement without its reference |
       | an unsupported membership selector          |
+      | a symbol written as a membership path       |
 
   Scenario Outline: Read the reviewed baseline files
     Given the reviewed <example> baseline

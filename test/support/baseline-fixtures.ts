@@ -80,6 +80,9 @@ export function invalidBaseline(problem: string): { input: unknown; path: string
     case "an unsupported membership selector":
       component.membership.value.paths = ["checkout/*.ts"];
       return { input, path: "components.0.membership.value.paths.0" };
+    case "a symbol written as a membership path":
+      component.membership.value.paths = ["checkout/order.ts#createOrder"];
+      return { input, path: "components.0.membership.value.paths.0" };
     default:
       throw new Error(`Unknown invalid baseline example: ${problem}`);
   }

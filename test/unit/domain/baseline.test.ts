@@ -141,6 +141,7 @@ describe("baseline membership selectors", () => {
     "/source", "C:/source", "C:source", "source\\file", "../source", "./source", "source/../file",
     "source//file", "source/", "source/./file", "source/**/*.ts", "source/*.ts", "source/[x].ts",
     "source/?", "source/{x}", "/**", "**", "", " ", "source/\u0000", "source/\nfile",
+    "source/file.ts#symbol", "source#folder/**",
   ])("rejects unsupported selector %j in either selector list", (selector) => {
     for (const key of ["paths", "excludePaths"] as const) {
       const input = baselineExample();

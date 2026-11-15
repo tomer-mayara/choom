@@ -8,7 +8,7 @@ import type { Baseline, BaselineRuleValue } from "./generated/contracts.ts";
 function isSelector(value: string): boolean {
   const base = value.endsWith("/**") ? value.slice(0, -3) : value;
   return /\S/.test(base) && !/^[A-Za-z]:/.test(base)
-    && !/[\\\u0000-\u001f\u007f?*\[\]{}]/.test(base)
+    && !/[\\\u0000-\u001f\u007f?*\[\]{}#]/.test(base)
     && base.split("/").every((part) => part !== "" && part !== "." && part !== "..");
 }
 

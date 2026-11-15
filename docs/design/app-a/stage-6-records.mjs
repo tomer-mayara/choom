@@ -445,7 +445,7 @@ function validateBaseline({ baseline, discovery, claim, evidence }) {
   const members = new Map();
   function selector(path) {
     const base = path.endsWith('/**') ? path.slice(0, -3) : path;
-    return safe(base) && !/^[A-Za-z]:/.test(base) && !/[?*\[\]{}]/.test(base);
+    return safe(base) && !/^[A-Za-z]:/.test(base) && !/[?*\[\]{}#]/.test(base);
   }
   for (const [key, required] of Object.entries(fields)) {
     for (const item of list(baseline[key], key)) {
