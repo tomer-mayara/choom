@@ -29,6 +29,14 @@ export const settingsTarget: Record<string, string> = {
   "tsconfig.missing.json": json({ extends: "./tsconfig.absent.json" }),
 };
 
+// A target with JavaScript and TypeScript files and a package manifest, and no
+// tsconfig*.json or jsconfig*.json file.
+export const noSettingsTarget: Record<string, string> = {
+  "package.json": json({ name: "fixture", private: true, type: "module" }),
+  "src/app.ts": "import { greet } from './greet.js';\n\nexport const message: string = greet('Choom');\n",
+  "src/greet.js": "export function greet(name) {\n  return 'Hello ' + name;\n}\n",
+};
+
 export function writeFiles(root: string, files: Record<string, string>): void {
   for (const [path, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -36,11 +44,12 @@ export function writeFiles(root: string, files: Record<string, string>): void {
   }
 }
 
-export function stageOneRun(scratch: string, env: Record<string, string>, tools = toolsRoot): StageOneRun {
+export function stageOneRun(scratch: string, env: Record<string, string>, tools = toolsRoot,
+  target = settingsTarget): StageOneRun {
   const run = { target: join(scratch, "target"), work: join(scratch, "run"), review: join(scratch, "review"), tools,
     env: { CHOOM_TOOLS: tools, CHOOM_WORK: join(scratch, "run"), CHOOM_TARGET: join(scratch, "target"),
       CHOOM_RUN_ID: "run-check", CHOOM_SNAPSHOT_ID: stageOneSnapshotRef, CHOOM_BASELINE_ID: "baseline-check", ...env } };
-  writeFiles(run.target, settingsTarget);
+  writeFiles(run.target, target);
   return run;
 }
 
@@ -56,11 +65,19 @@ function checked(result: CommandResult, action: string): CommandResult {
   return result;
 }
 
+// A Stage 1 run of the target after start and capture. The capture uses the
+// rsync test double.
+export function capturedRun(scratch: string, target = settingsTarget): StageOneRun {
+  const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) }, toolsRoot, target);
+  for (const action of ["start", "capture"]) checked(stageOne(run, action), action);
+  return run;
+}
+
 // A Stage 1 run after start, capture and settings, with one saved excerpt of
-// package.json. The capture uses the rsync test double.
+// package.json.
 export function capturedStageOneRun(scratch: string): { run: StageOneRun; excerpt: Excerpt } {
-  const run = stageOneRun(scratch, { PATH: pathWithDoubles(scratch) });
-  for (const action of ["start", "capture", "settings"]) checked(stageOne(run, action), action);
+  const run = capturedRun(scratch);
+  checked(stageOne(run, "settings"), "settings");
   const excerpt = checked(stageOne(run, "excerpt", "package.json", "1", "5", "Check the workspace patterns."), "excerpt");
   return { run, excerpt: JSON.parse(excerpt.stdout) as Excerpt };
 }

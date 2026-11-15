@@ -5,6 +5,7 @@ artifacts:
   behavior:
     - path: ../../cookbook/behavior/producer/recovery.feature
     - path: ../../cookbook/behavior/producer/visible-response.feature
+    - path: ../../cookbook/behavior/producer/parsing-profile.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
