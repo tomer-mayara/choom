@@ -1104,12 +1104,20 @@ it with the shared baseline rules and the producer profile of a next version:
 A first version, which Stages 4 to 6 check, has no decision record: its
 `parentId` is null, and every statement is `proposed`.
 
-The command saves two new files, once, in a new folder:
+The command saves one new folder with two files, once, all or nothing:
 
 | Path in the run folder | Contents |
 | --- | --- |
 | `baselines/<version-id>/baseline.yaml` | The next version. |
-| `baselines/<version-id>/version.json` | The version record. The command writes it last. |
+| `baselines/<version-id>/version.json` | The version record. |
+
+It writes the two files into a new temporary folder in `baselines/`, whose name
+starts with `.next-` and so cannot be a baseline ID, and reads each file back
+there. Then one rename gives the folder its final name. After any failure, the
+command removes the temporary folder and refuses with
+`Cannot make the folder baselines/<version-id>: <cause>`, so no part of the
+version stays, and a later run can make the version. Only a hard stop of the
+process, such as a power loss, can leave a `.next-` folder; remove it.
 
 ```json
 {
@@ -1135,9 +1143,7 @@ version record.
 A second `baseline next` with the same record is refused, because the version
 folder exists: a saved version does not change. A new decision record about the
 published baseline makes another version beside the first; both name the
-published baseline as their parent. If the command stops after it made the
-folder, examine the folder before you run the command again. A folder without
-`version.json` does not hold a complete version.
+published baseline as their parent.
 
 The command prints JSON: the version path and SHA-256, the links of the parent
 and of the decision record, the path and SHA-256 of the version record, each

@@ -326,9 +326,10 @@ statements are `accepted` with the decision record ID as their `acceptanceRef`,
 and a correction also replaces the value. It saves the version once as
 `baselines/<baseline-id>-<decisions-id>/baseline.yaml`, and beside it the
 version record `version.json`, which links the version to the published
-baseline and to the decision record by SHA-256. The published baseline, the
-discovery result, `run.yaml` and the decision record do not change. The new
-version has no discovery result until a new run maps it.
+baseline and to the decision record by SHA-256. The save is all or nothing: a
+failed command leaves no part of the folder, so you can run it again. The
+published baseline, the discovery result, `run.yaml` and the decision record do
+not change. The new version has no discovery result until a new run maps it.
 
 ## Saved state
 

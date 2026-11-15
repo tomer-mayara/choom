@@ -722,17 +722,19 @@ producer profile of a next version accepts an accepted statement only when it
 names the decision record of the version, the saved record has the SHA-256 that
 the version record gives, and the record decides that statement. The command
 saves the version once as `baselines/<version-id>/baseline.yaml`, with the
-version record `version.json`, and changes no other file of the run. The
-[record format](docs/design/app-a/record-format.md#next-baseline-version) gives
-the rules and the files. The `@producer` scenarios record decisions for a run
-that the Stage 6 command line completed, make the next version, and validate it
-as the viewer does. The unit suite checks the version rules, the producer record
-suite checks the statuses of a next version, and the integration suite runs the
-command. Run them with:
+version record `version.json`, all or nothing: it writes both files in a
+temporary folder and renames the folder. It changes no other file of the run.
+The [record format](docs/design/app-a/record-format.md#next-baseline-version)
+gives the rules and the files. The `@producer` scenarios record decisions for a
+run that the Stage 6 command line completed, make the next version, and validate
+it as the viewer does. The unit suites check the version rules and the
+all-or-nothing save of the folder, the producer record suite checks the statuses
+of a next version, and the integration suite runs the command. Run them with:
 
 ```sh
 bun run test:behavior --tags @producer
 bun test ./packages/baseline-model/test/unit/baseline-decisions.test.ts
+bun test ./packages/producer/test/unit/version-folder.test.ts
 bun test ./packages/producer/test/integration/records/record-baseline.test.ts ./packages/producer/test/integration/records/baseline-next.test.ts
 ```
 
@@ -948,7 +950,8 @@ The baseline command (`baseline-commands.ts`) records human decisions after
 Stage 6: `baseline-decide.ts` reads the completed run with `completed-run.ts`,
 reads the YAML decision file with `decision-record.ts`, which uses the bounded
 YAML profile of `stage-6-records.ts`, and checks the decider with `decider-check.ts`.
-`baseline-next.ts` makes the next baseline version from a saved decision record.
+`baseline-next.ts` makes the next baseline version from a saved decision record,
+and `version-folder.ts` saves its folder all or nothing.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model
