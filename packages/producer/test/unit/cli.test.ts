@@ -48,4 +48,8 @@ describe("producer command line mapping", () => {
     for (const [name, { helper }] of producerCommands)
       expect(text).toMatch(new RegExp(`^ {2}${name} +.+ \\(${helper.replaceAll(".", "\\.")}\\)$`, "m"));
   });
+
+  test("says that the Stage 4 inspection helper also finds references", () => {
+    expect(producerCommands.get("stage-4-inspect")?.use).toBe("Collect the Stage 4 source evidence, excerpts and references.");
+  });
 });
