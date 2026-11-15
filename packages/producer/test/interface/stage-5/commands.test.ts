@@ -89,7 +89,9 @@ const extraFiles = [...sources, ...documents].sort((first, second) => first.path
 const allFiles = [...componentFiles, ...extraFiles];
 const digestOf = (path: string): string => sha256(allFiles.find((file) => file.path === path)?.text ?? "");
 const scanned = [...componentFiles, ...sources].map(({ path }) => path).sort();
-const contextRefs = [0, 1].map((index) => `${graphRef}#/contexts/${index}`);
+// The import, require and CommonJS passes of the Choom parsing profile. forms/legacy.cts
+// compiles to CommonJS, so the compiler context has a CommonJS pass.
+const contextRefs = [0, 1, 2].map((index) => `${graphRef}#/contexts/${index}`);
 
 const registration = (path: string, lines: [number, number], scope: string, expression: string, name: string): Candidate =>
   [path, lines, "setup-or-registration-call", scope, expression, name];
