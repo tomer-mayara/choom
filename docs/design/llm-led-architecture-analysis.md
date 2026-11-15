@@ -390,8 +390,11 @@ Changing an accepted rule does not mean the old implementation was repaired.
 ### Report views
 
 - **Baseline:** components, contracts, code membership, proposed/accepted status,
-  and gaps. Keep deferred regions visible with their status and reason; they can
-  be collapsed in the diagram. A human can submit corrections from this view.
+  and gaps. With an attached discovery result, show its recorded questions and
+  gaps beside the items they name. Keep deferred regions visible with their
+  reason; they can be collapsed. A human prepares a correction from this view as
+  a decision-file entry; the producer records the decision. See
+  [CR-004](../change-requests/CR-004-discovery-in-viewer.md).
 - **Findings:** affected components and observed crossings. Open a finding to see
   its consequence, rule, captured source, tool results, and limits.
 - **Proposals:** before/after grouping or contract changes, linked findings,
@@ -521,6 +524,10 @@ requirement to keep Load Repo and version-1 diagram import/export. The manual
 producer workflow in this document remains separate from the viewer.
 The viewer opens the recorded baseline directly. It does not run this analysis
 process, load evidence, evaluate checks, or change recorded acceptance status.
+It can attach one discovery result whose baseline ID and digest match the open
+baseline, and show its recorded questions and gaps
+([CR-004](../change-requests/CR-004-discovery-in-viewer.md)). It reads no file
+that the discovery result refers to.
 
 Analysis records use a separate format. The
 [legacy document builder](https://github.com/tomer-mayara/choom/blob/58c7fe4778df6aa04eb50a0ad548c5097547b8de/src/domain/build-architecture-document.ts)

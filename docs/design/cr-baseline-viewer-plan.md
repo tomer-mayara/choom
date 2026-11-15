@@ -46,7 +46,9 @@ the data, not the filename: a valid baseline named `example.choom.yaml` still
 opens. File pickers accept `.yaml` and `.yml`.
 
 Copy/export, model editing, statement acceptance, evidence loading, observed
-dependency overlays, and analysis runs are outside this release. Opening a file
+dependency overlays, and analysis runs are outside this release.
+[CR-004](../change-requests/CR-004-discovery-in-viewer.md) later adds discovery
+questions and gaps; it keeps these exclusions. Opening a file
 does not change it. No source checkout, Node installation, or analyzer is needed
 by the installed viewer.
 
