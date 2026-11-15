@@ -73,10 +73,10 @@ export function capturedRun(scratch: string, target = settingsTarget): StageOneR
   return run;
 }
 
-// A Stage 1 run after start, capture and settings, with one saved excerpt of
-// package.json.
-export function capturedStageOneRun(scratch: string): { run: StageOneRun; excerpt: Excerpt } {
-  const run = capturedRun(scratch);
+// A Stage 1 run of the target after start, capture and settings, with one saved
+// excerpt of package.json.
+export function capturedStageOneRun(scratch: string, target = settingsTarget): { run: StageOneRun; excerpt: Excerpt } {
+  const run = capturedRun(scratch, target);
   checked(stageOne(run, "settings"), "settings");
   const excerpt = checked(stageOne(run, "excerpt", "package.json", "1", "5", "Check the workspace patterns."), "excerpt");
   return { run, excerpt: JSON.parse(excerpt.stdout) as Excerpt };

@@ -9,6 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
+import { type DiscoveryGap, toolGaps } from './stage-1-gaps.ts';
 
 // The Stage 1 helper. Every action runs from the trusted tool checkout. Start
 // records the producer code, and each later action refuses the run when the
@@ -244,7 +245,8 @@ function saveExcerpt(): void {
   saveJson(path, result); console.log(JSON.stringify(result, null, 2));
 }
 
-function checkCapturedInputs(inputs: StageOneInputs): void {
+// Checks the capture scope and the selected settings record, and returns that record.
+function checkCapturedInputs(inputs: StageOneInputs): { gaps: unknown[] } {
   const capturedScope = json('evidence/capture-scope.json');
   assert(capturedScope.snapshotRef === inputs.snapshotRef && capturedScope.workLayout === inputs.workLayout &&
     capturedScope.requiredExclusion === inputs.requiredExclusion && capturedScope.exclusionsSha256 === hash(read('exclusions.txt')) &&
@@ -261,6 +263,12 @@ function checkCapturedInputs(inputs: StageOneInputs): void {
     selection.extraConfigsSha256 === hash(read(selection.probe + '.extra-configs.json')) &&
     selection.collectorSha256 === hash(readFileSync(collector)) && json(selection.probe + '.json').exitCode === 0,
   'Settings do not match the selected successful probe and current extra paths. Rerun settings before review.');
+  return settings;
+}
+
+// The discovery gaps that finish adds from the settings record, such as missing project settings.
+function settingsGaps(settings: { gaps: unknown[] }): DiscoveryGap[] {
+  return toolGaps({ name: 'settings', artifactRef: 'settings-001', gaps: settings.gaps });
 }
 
 function readReview(reviewDir: string, inputs: StageOneInputs): { bytes: Map<string, Buffer>; review: Review } {
@@ -346,6 +354,14 @@ function checkReviewItems(review: Review, evidence: ReviewEvidence): void {
   }
 }
 
+// The IDs of the gaps that finish adds stay unique: no review question or gap uses them.
+function checkReservedIds(review: Review, addedGaps: DiscoveryGap[]): void {
+  const reserved = new Set<unknown>(addedGaps.map(gap => gap.id));
+  for (const item of [...review.questions, ...review.gaps])
+    assert(!reserved.has(item.id), 'The ID ' + item.id + ' is reserved for a gap that finish adds from the settings record. ' +
+      'Use a different ID.');
+}
+
 function checkSuppliedScope(scopeBytes: Buffer, inputs: StageOneInputs, review: Review, evidence: ReviewEvidence): void {
   const scope = JSON.parse(scopeBytes.toString());
   assert(scope?.formatVersion === 1 && scope.runRef === inputs.runRef && scope.snapshotRef === inputs.snapshotRef &&
@@ -368,10 +384,12 @@ function checkSuppliedScope(scopeBytes: Buffer, inputs: StageOneInputs, review: 
 }
 
 // Review packets are copied only after validation; the manifest is published last.
-function publish(inputs: StageOneInputs, bytes: Map<string, Buffer>, review: Review, inventory: Inventory): void {
+// Discovery has the review gaps and then the gaps that the tools found.
+function publish(inputs: StageOneInputs, bytes: Map<string, Buffer>, review: Review, inventory: Inventory,
+  addedGaps: DiscoveryGap[]): void {
   for (const [name, content] of bytes) save('evidence/' + name, content);
   const discovery = { formatVersion: 1, kind: 'architecture-discovery', runRef: inputs.runRef,
-    questions: review.questions, gaps: review.gaps };
+    questions: review.questions, gaps: [...review.gaps, ...addedGaps] };
   save('evidence/stage1-discovery.yaml', stringify(discovery));
   save('baseline.yaml', stringify({ formatVersion: 1, id: inputs.baselineId, parentId: null,
     components: [], interfaces: [], resources: [], rules: [] }));
@@ -397,12 +415,21 @@ function finish(inputs: StageOneInputs): void {
   const reviewDir = realpathSync(args[0] ?? '');
   assert(!reviewDir.startsWith(work + '/') && reviewDir !== work, 'Keep review inputs outside the saved run.');
   const inventory: Inventory = json('evidence/inventory.json'); verifyInventory(inventory);
-  checkCapturedInputs(inputs);
+  const addedGaps = settingsGaps(checkCapturedInputs(inputs));
   const { bytes, review } = readReview(reviewDir, inputs);
   const evidence = reviewSources(review, inventory);
   checkReviewItems(review, evidence);
+  checkReservedIds(review, addedGaps);
   checkSuppliedScope(bytes.get('review-scope.json') as Buffer, inputs, review, evidence);
-  publish(inputs, bytes, review, inventory);
+  publish(inputs, bytes, review, inventory, addedGaps);
+}
+
+// The saved Stage 1 discovery has each gap that finish adds from the saved settings record.
+function checkSavedSettingsGaps(): void {
+  const discovery = parse(read('evidence/stage1-discovery.yaml').toString());
+  for (const gap of settingsGaps(json('evidence/settings.json')))
+    assert(Array.isArray(discovery?.gaps) && discovery.gaps.some((saved: unknown) => isDeepStrictEqual(saved, gap)),
+      'The saved Stage 1 discovery lacks the settings gap ' + gap.id + '. Start a new run.');
 }
 
 function verify(inputs: StageOneInputs): void {
@@ -412,6 +439,7 @@ function verify(inputs: StageOneInputs): void {
   for (const [id, record] of Object.entries<{ path: string; sha256: string }>(run.artifacts))
     assert(hash(read(record.path)) === record.sha256, 'Changed artifact: ' + id);
   verifyInventory(inventory);
+  checkSavedSettingsGaps();
   console.log(JSON.stringify({ status: 'stage1-inputs-verified', runRef: run.id, snapshotRef: run.snapshot.id,
     registeredArtifacts: Object.keys(run.artifacts).length, files: inventory.files.length, writes: [] }, null, 2));
 }

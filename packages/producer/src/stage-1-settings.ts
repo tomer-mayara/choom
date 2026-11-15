@@ -31,7 +31,7 @@ type ParsingProfile = ParsingProfiles.ParsingProfile;
 // The trusted code and data that the collector uses, from the tool checkout.
 export interface CollectorTools { tsMorph: SettingsTools; parsingProfile: ParsingProfile }
 // A settings gap has the fields of a discovery gap except its ID and evidence:
-// the Stage 1 review gives each gap an ID and cites the settings record.
+// Stage 1 finish adds each gap to discovery with an ID and the settings record as evidence.
 export interface SettingsGap { kind: string; subjectRefs: string[]; reason: string }
 export interface SettingsRecord {
   formatVersion: number; snapshotId: string; virtualRoot: string; limits: { maxConfigFileBytes: number };
@@ -186,7 +186,7 @@ function readConfigs(snapshot: SnapshotFileSystem, ts: SettingsTools['ts'], extr
   return configs;
 }
 
-// The gap of a snapshot without project settings. The Stage 1 review copies it into its gaps.
+// The gap of a snapshot without project settings. Stage 1 finish adds it to the discovery gaps.
 export function noProjectSettingsGap(snapshotId: string, profile: ParsingProfile): SettingsGap {
   return { kind: 'no-project-settings', subjectRefs: [snapshotId], reason: 'No project settings were found. ' +
     'The snapshot has no tsconfig*.json or jsconfig*.json file, and the operator named no extra compiler settings. ' +
