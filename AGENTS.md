@@ -32,8 +32,10 @@ For new or changed production behavior in `src/`, `src-tauri/src/`, or
 Apply its DRY3 rule and test definitions during implementation and review.
 
 Run `bun run test` for the complete Bun unit suite. It runs `test:native`
-for TypeScript suites under `test/unit/`, then `test:dom` for React suites with
-`test/preload.ts` in a separate process. Keep DOM globals out of native tests.
+for TypeScript suites under `test/unit/` and workspace `test/unit/` folders,
+then `test:dom` for React suites with `test/preload.ts` in a separate process,
+then `test:integration` for workspace suites that run under Node. Keep DOM
+globals out of native tests.
 Run `bun run test:behavior` for Cucumber constraints and `bun run test:e2e`
 for browser Cucumber acceptance through `test/steps/`. Install Chromium with
 `bunx --no-install playwright install chromium` before the first browser run.
