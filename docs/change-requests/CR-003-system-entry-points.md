@@ -180,7 +180,9 @@ call endpoints, or claim that it found every entry outside its stated scope.
   that the whole system was checked.
 - Keep full accessible names, keyboard selection, focus restoration, zoom, Fit
   view, movement, and narrow layouts. If badges do not fit, update the shared
-  component geometry and its layout checks. Do not clip names or badges.
+  component geometry and its layout checks. The badges and two visual name
+  lines must fit. Keep the full component name in the accessible name and
+  component details.
 
 Opening a valid version 4 baseline remains one view commit. Invalid data,
 cancellation, and late results leave the current view in place. The viewer

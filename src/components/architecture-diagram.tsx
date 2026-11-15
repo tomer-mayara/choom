@@ -8,6 +8,7 @@ import type { ReadonlyData } from "../domain/readonly-data.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { maximumDiagramZoom, normalMinimumZoom, revealHeader, startingViewport } from "../lib/architecture-viewport.ts";
 import { componentControlHeight, componentControlWidth, componentGroupBorderWidth } from "../lib/component-geometry.ts";
+import { systemEntryCounts, systemEntryReview, type SystemEntryCounts } from "../lib/system-entry-points.ts";
 import { ComponentArrangement } from "../lib/component-arrangement.ts";
 import { incompleteInterfaceCount, interfaceArcs } from "../lib/interface-arcs.ts";
 import { shownInterfaceArcs, type ConnectionMode } from "../lib/interface-arc-visibility.ts";
@@ -29,6 +30,7 @@ type ArchitectureNode = Node<{
   isGroup: boolean;
   interfaceCount: number;
   duplicateCount: number;
+  entryCounts?: SystemEntryCounts;
   selected: boolean;
   gestures: ComponentGestures;
   announce: (message: string) => void;
@@ -39,10 +41,13 @@ const arrowSteps: Record<string, { x: number; y: number }> = {
   ArrowLeft: { x: -10, y: 0 }, ArrowRight: { x: 10, y: 0 }, ArrowUp: { x: 0, y: -10 }, ArrowDown: { x: 0, y: 10 },
 };
 
-function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount, inspect, selected, gestures, announce } }: NodeProps<ArchitectureNode>) {
+function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount, entryCounts, inspect, selected, gestures, announce } }: NodeProps<ArchitectureNode>) {
   const { getNodesBounds, getViewport, setViewport, screenToFlowPosition } = useReactFlow();
   const store = useStoreApi();
   const pointerSelection = useRef(false);
+  const entryDescription = entryCounts ? `system-entry-markers-${item.id}` : undefined;
+  // The marked header fits a two-line name, metadata, and badges at the shared height.
+  const metadataLine = entryCounts ? "text-xs leading-[14px]" : "text-xs";
 
   function reveal(position: { x: number; y: number }) {
     const { width, height } = store.getState();
@@ -71,8 +76,8 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount
       <button
         type="button" aria-label={`${item.name}, ${item.id}`} aria-haspopup="dialog"
         data-component-id={item.id}
-        aria-describedby="item-inspection-hint" aria-pressed={selected}
-        className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center gap-0.5 border-border px-3 py-1 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
+        aria-describedby={entryDescription ? `item-inspection-hint ${entryDescription}` : "item-inspection-hint"} aria-pressed={selected}
+        className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center border-border px-3 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${entryCounts ? "gap-px py-0.5" : "gap-0.5 py-1"} ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
         style={{ width: componentControlWidth, height: componentControlHeight, touchAction: "none" }}
         onFocus={revealFocusedItem}
         onPointerDown={(event) => {
@@ -99,9 +104,13 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount
           inspect(panel, event.currentTarget, keyboard);
         }}
       >
-        <span className="line-clamp-2 max-w-full font-semibold leading-5 wrap-anywhere" title={item.name}>{item.name}</span>
-        <span className="text-xs text-muted-foreground">{interfaceCount} {interfaceCount === 1 ? "interface" : "interfaces"}</span>
-        {duplicateCount > 0 ? <span className="text-xs">{duplicateCount} possible {duplicateCount === 1 ? "duplicate" : "duplicates"}</span> : null}
+        <span className={`line-clamp-2 max-w-full font-semibold wrap-anywhere ${entryCounts ? "leading-[18px]" : "leading-5"}`} title={item.name}>{item.name}</span>
+        <span className={`${metadataLine} text-muted-foreground`}>{interfaceCount} {interfaceCount === 1 ? "interface" : "interfaces"}</span>
+        {duplicateCount > 0 ? <span className={metadataLine}>{duplicateCount} possible {duplicateCount === 1 ? "duplicate" : "duplicates"}</span> : null}
+        {entryCounts ? <span id={entryDescription} className={`flex gap-1 font-medium ${metadataLine}`}>
+          {entryCounts.startup > 0 ? <span className="rounded-sm bg-sky-100 px-1 text-sky-900 dark:bg-sky-950 dark:text-sky-200">Startup {entryCounts.startup}</span> : null}
+          {entryCounts.external > 0 ? <span className="rounded-sm bg-violet-100 px-1 text-violet-900 dark:bg-violet-950 dark:text-violet-200">External {entryCounts.external}</span> : null}
+        </span> : null}
       </button>
     </div>
   );
@@ -148,12 +157,19 @@ function ResetLayoutControl({ layout, firstRootId, arrangement, gestures, announ
   }}><RotateCcw aria-hidden="true" style={{ fill: "none" }} /></ControlButton>;
 }
 
-function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode, showSelfConnections, setShowSelfConnections, duplicateCounts }: {
+function SystemEntryLegend() {
+  return <section aria-label="System entry point legend" className="basis-full">
+    <p><strong>Startup</strong> starts a program. <strong>External</strong> calls a running program. Markers cover the saved review scope.</p>
+  </section>;
+}
+
+function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode, showSelfConnections, setShowSelfConnections, duplicateCounts, entryCounts }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; arrangement: ComponentArrangement;
   inspection: ReturnType<typeof useArchitectureInspection>;
   connectionMode: ConnectionMode; setConnectionMode: (mode: ConnectionMode) => void;
   showSelfConnections: boolean; setShowSelfConnections: (show: boolean) => void;
   duplicateCounts: ReadonlyMap<string, number>;
+  entryCounts: ReadonlyMap<string, SystemEntryCounts>;
 }) {
   const geometry = useSyncExternalStore(arrangement.subscribe, arrangement.getSnapshot);
   const gestures = useComponentGestures(arrangement);
@@ -181,11 +197,11 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
     for (const item of baseline.components) items.set(item.id, {
       item, panel: { kind: "component", componentId: item.id }, isGroup: parents.has(item.id),
       interfaceCount: interfaceCounts.get(item.id) ?? 0, inspect: inspection.open, selected: inspection.componentId === item.id,
-      duplicateCount: duplicateCounts.get(item.id) ?? 0,
+      duplicateCount: duplicateCounts.get(item.id) ?? 0, entryCounts: entryCounts.get(item.id),
       gestures, announce,
     });
     return items;
-  }, [baseline, inspection.open, inspection.componentId, gestures, announce, duplicateCounts]);
+  }, [baseline, inspection.open, inspection.componentId, gestures, announce, duplicateCounts, entryCounts]);
   const nodes = useMemo<ArchitectureNode[]>(() => {
     return geometry.nodes.map(({ id, position, width, height, parentId }) => {
       const data = items.get(id);
@@ -248,6 +264,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
         <p>The canvas shows application and tooling value references. Type and test references stay in details. Source use does not prove runtime execution.</p>
       </div> : <p>Arrow: consumer may use the owner's interface.</p>}
       <p style={{ visibility: edges.length ? "hidden" : "visible" }}>No connections shown.</p>
+      {entryCounts.size > 0 ? <SystemEntryLegend /> : null}
     </div>
     <div className="min-h-0 flex-1">
     <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} minZoom={minimumZoom} maxZoom={maximumDiagramZoom}
@@ -268,12 +285,11 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
   </div>;
 }
 
-function SourceReviewNotice({ baseline }: { baseline: ReadonlyData<Baseline> }) {
+function sourceReviewNotice(baseline: ReadonlyData<Baseline>): string | null {
   if (!supportsSourceUsage(baseline) || baseline.interfaces.length === 0) return null;
-  const message = !baseline.sourceUsage ? "Source use not recorded."
+  return !baseline.sourceUsage ? "Source use not recorded."
     : baseline.sourceUsage.assessments.length === 0 ? "No interface source assessments recorded."
       : "Source review is partial. See interface details for scope and gaps.";
-  return <p className="shrink-0 border-b border-border px-4 py-2 text-xs text-muted-foreground">{message}</p>;
 }
 
 /** The published pair defines one view; pointer frames only update its canvas. */
@@ -296,6 +312,9 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
   const arrangement = useMemo(() => new ComponentArrangement(layout), [baseline, layout]);
   const openPanel = inspection.open;
   const incompleteInterfaces = incompleteInterfaceCount(baseline);
+  const sourceNotice = sourceReviewNotice(baseline);
+  const { assessment, notices: entryNotices } = systemEntryReview(baseline);
+  const entryCounts = useMemo(() => systemEntryCounts(assessment?.entries ?? []), [assessment]);
   const counts = useMemo(() => duplicationCounts(baseline, duplication?.report), [baseline, duplication?.report]);
 
   return (
@@ -309,17 +328,22 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
           <Button variant="outline" onClick={(event) => openPanel({ kind: "duplicates" }, event.currentTarget, event.detail === 0)}>Duplicates</Button>
         </div>
       </div>
-      {incompleteInterfaces > 0 ? <p className="shrink-0 border-b border-border px-4 py-2 text-xs text-muted-foreground">
-        {incompleteInterfaces} {incompleteInterfaces === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.
-      </p> : null}
-      <SourceReviewNotice baseline={baseline} />
+      {incompleteInterfaces > 0 || sourceNotice || entryNotices.length > 0 ? (
+        <div className={`flex shrink-0 flex-wrap gap-x-4 border-b border-border px-4 text-xs text-muted-foreground ${incompleteInterfaces > 0 || sourceNotice ? "py-2" : "py-0.5"}`}>
+          {incompleteInterfaces > 0 ? <p>
+            {incompleteInterfaces} {incompleteInterfaces === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.
+          </p> : null}
+          {sourceNotice ? <p>{sourceNotice}</p> : null}
+          {entryNotices.map((notice) => <p key={notice}>{notice}</p>)}
+        </div>
+      ) : null}
       {baseline.components.length === 0 ? (
         <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       {layout.nodes.length > 0 ? <ArchitectureCanvas baseline={baseline} layout={layout} arrangement={arrangement} inspection={inspection}
         connectionMode={connectionMode} setConnectionMode={setConnectionMode}
-        showSelfConnections={showSelfConnections} setShowSelfConnections={setShowSelfConnections} duplicateCounts={counts.components} /> : null}
+        showSelfConnections={showSelfConnections} setShowSelfConnections={setShowSelfConnections} duplicateCounts={counts.components} entryCounts={entryCounts} /> : null}
       <ArchitectureDetailsPanel baseline={baseline} inspection={inspection} duplication={duplication} counts={counts}
         onOpenDuplicationReport={onOpenDuplicationReport} onRemoveDuplicationReport={onRemoveDuplicationReport} reportBusy={reportBusy} />
       </div>

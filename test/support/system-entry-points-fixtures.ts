@@ -1,3 +1,4 @@
+import { fixtureItem, proposed } from "./baseline-fixtures.ts";
 import { sourceUsageBaseline } from "./source-usage-fixtures.ts";
 
 export function systemEntryPointsBaseline() {
@@ -63,3 +64,19 @@ export function systemEntryPointsAtBudget(bytes: number) {
   if (remaining !== 0) throw new Error("The requested system-entry budget is outside the fixture range.");
   return input;
 }
+
+export function markedSystemEntryPointsBaseline(externalCount = 3) {
+  const input = systemEntryPointsBaseline();
+  const [checkout, billing] = input.components;
+  const external = fixtureItem(input.systemEntryPoints.entries, 1);
+  if (!checkout || !billing) throw new Error("The system entry fixture needs Checkout and Billing.");
+  input.components = [{ ...checkout, id: "commerce", name: "Commerce", membership: proposed({ paths: ["commerce/**"] }) },
+    checkout, { ...billing, parent: proposed("commerce") }];
+  input.systemEntryPoints.entries = [fixtureItem(input.systemEntryPoints.entries),
+    ...Array.from({ length: externalCount }, (_, index) => ({
+      ...external, id: `invoice-http-${index + 1}`, label: `HTTP POST /invoices/${index + 1}`,
+    }))];
+  return input;
+}
+
+export const systemEntryReviewLimit = "Scheduled callbacks were outside this review.";

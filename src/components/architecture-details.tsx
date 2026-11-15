@@ -7,6 +7,7 @@ import type {
 import type { ReadonlyData } from "../domain/readonly-data.ts";
 import { InterfaceDetails } from "./interface-details.tsx";
 import type { InterfaceReadingState } from "./interface-reading-state.ts";
+import { systemEntryReview } from "../lib/system-entry-points.ts";
 import { supportsSourceUsage } from "../domain/baseline-format.ts";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
@@ -77,6 +78,23 @@ function RuleRow({ rule }: { rule: ReadonlyData<BaselineRule> }) {
   </details>;
 }
 
+function SystemEntryReview({ baseline }: { baseline: ReadonlyData<Baseline> }) {
+  const { assessment, notices } = systemEntryReview(baseline);
+  return <section aria-label="System entry point review" className="space-y-3">
+    <h3 className="font-semibold">System entry point review</h3>
+    {notices.map((notice) => <p key={notice} className="text-sm text-muted-foreground">{notice}</p>)}
+    {assessment ? <>
+      <Field name="Reviewed scope"><RecordedValue value={assessment.scope} /></Field>
+      <Field name="Scope evidence">
+        <ul className="list-disc pl-5">{assessment.evidenceRefs.map((reference) => <li key={reference}><code className="wrap-anywhere">{reference}</code></li>)}</ul>
+      </Field>
+      {assessment.limitations.length ? <Field name="Review limits">
+        <ul className="list-disc pl-5">{assessment.limitations.map((limit, index) => <li key={index}><RecordedValue value={limit} /></li>)}</ul>
+      </Field> : null}
+    </> : null}
+  </section>;
+}
+
 export function ArchitectureDetails({ baseline, panel, showHeading = true, contentRef, reading }: {
   baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel; showHeading?: boolean; contentRef?: RefObject<HTMLDivElement | null>;
   reading?: InterfaceReadingState;
@@ -88,6 +106,7 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
     <Field name="Parent baseline ID">
       {baseline.parentId === null ? <p className="text-muted-foreground">No parent baseline (null)</p> : <RecordedValue value={baseline.parentId} />}
     </Field>
+    <SystemEntryReview baseline={baseline} />
     {supportsSourceUsage(baseline) && baseline.sourceUsage ? <details data-section="original-source-usage" className="rounded-lg border border-border p-3">
       <summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-ring">Original source-use data</summary>
       <RecordedValue value={baseline.sourceUsage} />
