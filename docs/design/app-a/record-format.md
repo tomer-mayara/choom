@@ -952,7 +952,8 @@ uses, or that the list is complete.
 Top-level fields are exactly `formatVersion: 1`, `kind: architecture-discovery`,
 `runRef`, `entryAnalysisRef`, `codeMappingRef`, `dependenciesRef`,
 `resourceAccessRef`, `overview`, `inspectedPaths`, `questions`, and `gaps`.
-Leave `baselineRef` absent until stage 6.
+Leave `baselineRef` and `baselineDigest` absent: Stage 6 adds them to the
+[fixed discovery result](#fixed-discovery-result).
 
 `overview` has `text` and nonempty `evidenceRefs`. `inspectedPaths` contains source
 paths actually reviewed. Each has `id`, `description`, `entryPointRef` naming a
@@ -970,6 +971,34 @@ are record counts, not counts of unresolved questions or defects.
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership
 changes must be reflected in paths, behavior entries and resource actors.
+
+### Fixed discovery result
+
+Stage 6 saves the fixed discovery result as `runs/<run-id>/discovery.yaml`, with
+`formatVersion: 2`. It has every field of the reviewed working discovery, with
+the same values and in the same order, and two more fields at the end:
+
+| Field | Meaning |
+| --- | --- |
+| `baselineRef` | The ID of the fixed baseline. |
+| `baselineDigest` | The SHA-256 of the bytes of the fixed baseline file, `baselines/<baselineRef>/baseline.yaml`, as 64 lowercase hexadecimal characters. It is the `sha256` of the baseline in the `run.yaml` registry. |
+
+IDs such as `baseline-001` repeat across runs, so an ID alone can name the wrong
+file. The digest binds the discovery result to the exact baseline file. The
+working discovery stays at `formatVersion: 1` without these two fields: only
+Stage 6 knows the bytes of the fixed baseline, and the shared record checks
+refuse a working discovery with `baselineRef` or `baselineDigest`.
+
+Stage 6 `verify` runs the shared record checks on the saved fixed baseline and
+discovery result, with the bytes of the saved baseline file. It refuses a fixed
+discovery result that is not version 2, that names another baseline ID, or whose
+`baselineDigest` is not the SHA-256 of the saved baseline file. A run that an
+older producer completed has a fixed discovery result of `formatVersion: 1`, with
+`baselineRef` and no digest. The [producer code record](#producer-code-record)
+makes such a run use its own producer version, which reads version 1. The viewer
+uses `baselineRef` and `baselineDigest` as
+[CR-004](../../change-requests/CR-004-discovery-in-viewer.md#binding-to-the-open-baseline)
+describes.
 
 ## Check, publish and verify
 

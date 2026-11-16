@@ -228,7 +228,13 @@ The helper checks the prepared attempt and original inputs again. It creates:
 | Path under the working folder | Contents |
 | --- | --- |
 | `baselines/<baseline-id>/baseline.yaml` | Exact reviewed baseline bytes, with proposed statements unchanged. |
-| `runs/<run-id>/discovery.yaml` | The reviewed discovery plus `baselineRef`. All selected facts, questions and gaps remain. |
+| `runs/<run-id>/discovery.yaml` | The reviewed discovery with `formatVersion: 2`, plus `baselineRef` and `baselineDigest`, the SHA-256 of the saved baseline file. All selected facts, questions and gaps remain. |
+
+The working discovery stays `formatVersion: 1`. Only the fixed discovery result
+gets version 2, because only Stage 6 knows the bytes of the fixed baseline. Its
+`baselineDigest` binds it to that exact file; a baseline ID alone can repeat
+across runs. The [record format](record-format.md#fixed-discovery-result) gives
+the fields.
 
 The existing root `run.yaml` remains the canonical manifest for this manual
 run. Its registry gives the fixed files' paths and digests. The baseline's own
@@ -278,7 +284,11 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 verify
 
 Check that the final references resolve to the fixed files, their digests
 match, every inventory unit remains accounted for, and prior evidence remains
-unchanged. The current manual run keeps explicit unknown owners and incomplete
+unchanged.
+`verify` also runs the shared record checks on the saved fixed baseline and
+discovery result. The discovery result must name the ID of the baseline and the
+SHA-256 of the saved baseline file. A changed baseline file or a discovery result
+with another digest is refused. Do not edit either file to force a pass. The current manual run keeps explicit unknown owners and incomplete
 source coverage. Completion does not turn those limits into complete coverage.
 Read the generated coverage summaries as well as the structured progress fields.
 They must refer to the completed result and its selected facts, without a stale
@@ -301,7 +311,7 @@ a model cannot decide. Write the decision file in YAML outside the run folder, a
 the [record format](record-format.md#decision-record) describes. It can start
 with a comment, such as the comment of an entry that the viewer copies. Its
 `baselineDigest` is the `sha256` of the published baseline in the `run.yaml`
-registry. Then run:
+registry, which is also the `baselineDigest` of the fixed discovery result. Then run:
 
 ```sh
 export CHOOM_DECISIONS="/absolute/path/to/decisions.yaml"
@@ -339,7 +349,7 @@ not change. The new version has no discovery result until a new run maps it.
 | --- | --- | --- |
 | Before stage 6 | Reviewed stage 5 proposal. | Working discovery has no `baselineRef`; baseline recovery is pending. |
 | After `start` | Same proposal; fixed output is prepared. | Checkpoints, review and validation are saved. Working drafts are unchanged. |
-| After `finish` | Fixed version saved by digest. Statements remain proposed. | Fixed discovery selects that baseline. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
+| After `finish` | Fixed version saved by digest. Statements remain proposed. | Fixed discovery (version 2) selects that baseline by its ID and the SHA-256 of its file. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
 | After `verify` | Unchanged. | Read-only verification reports the saved result and its limits. |
 | After `baseline decide` | Unchanged. Statements stay proposed. | `decisions/<id>.yaml` holds the decision file. The discovery and the manifest do not change. |
 | After `baseline next` | Unchanged. A new folder holds the next version, with the decided statements accepted, and its version record. | The discovery, the manifest and the decision record do not change. The new version has no discovery result. |

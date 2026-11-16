@@ -443,6 +443,24 @@ preload in the helper process and makes one file operation fail. Run them with:
 bun test ./packages/producer/test/interface/stage-6
 ```
 
+Stage 6 saves the fixed discovery result with `formatVersion: 2`: the reviewed
+working discovery, `baselineRef`, and `baselineDigest`, the SHA-256 of the bytes
+of the fixed baseline file that it saves. `fixedDiscovery` in `stage-6-records.ts`
+makes the record. Stage 6 `verify` runs the shared record checks on the saved
+fixed records with the bytes of the saved baseline file, and refuses a discovery
+result whose baseline ID or digest does not match. The working discovery stays
+version 1. The [record format](docs/design/app-a/record-format.md#fixed-discovery-result)
+gives the fields. The `@producer` scenarios save a Stage 6 result through the
+command line and check its digest, and refuse a run whose discovery result names
+another digest or whose saved baseline file changed. Run the focused checks of
+the discovery digest with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/integration/records/fixed-discovery.test.ts ./packages/producer/test/integration/records/stage-6-records.test.ts
+bun test ./packages/producer/test/interface/stage-6
+```
+
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require

@@ -45,7 +45,7 @@ analysis-run-001/
   baseline.yaml                       Working model; later matches fixed version
   discovery.yaml                      Working discovery; later matches fixed result
   baselines/baseline-001/baseline.yaml  Fixed proposed architecture
-  runs/run-001/discovery.yaml          Fixed discovery with evidence references
+  runs/run-001/discovery.yaml          Fixed discovery with the SHA-256 of the fixed baseline
   decisions/decisions-001.yaml         Optional human decisions, saved after Stage 6
   baselines/baseline-001-decisions-001/  Optional next version made from those decisions,
     baseline.yaml                        with the decided statements accepted
@@ -514,6 +514,8 @@ The final Stage 6 verification must succeed. Confirm that:
 5. Inferred architectural statements remain proposed. Saving does not accept them.
 6. Current coverage summaries agree with completion and selected facts. Any
    retained explanatory defect is identified precisely in readiness or run notes.
+7. The fixed discovery result has `formatVersion: 2` and names the fixed baseline
+   by its ID and the SHA-256 of its file (`baselineDigest`).
 
 Set the final `progress.md` status after verification. Link the fixed baseline
 and discovery, summarize the checks and remaining limits, and share the report
@@ -594,7 +596,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
 | `stage-5-parts.ts`, `part-dependencies.ts` | The record of the Stage 5 parts action (`stage-5 parts`): the parts of one file that named symbols divide, with the dependencies of the file at both levels; and the placement of each loading site of a divided file in the part that uses it, or at file level with a reason, with the type checker of the saved file |
 | `stage-6-inputs.ts`, `stage-6-files.ts` | The checked inputs of each Stage 6 action: the trusted YAML package, the registered artifacts and the indexed snapshot files; and the file operations of Stage 6: checked reads, the files and folders that an action owns and can remove again, and the publication lock |
-| `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
+| `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, the fixed discovery result with its check against the saved baseline file, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
 | `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest and the checked read of a file that symbols divide |
 | `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |
