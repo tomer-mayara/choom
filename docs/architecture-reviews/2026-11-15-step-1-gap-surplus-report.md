@@ -1443,8 +1443,9 @@ items stay open.
   cannot remove it (`EACCES` in `local-checks.test.ts`). GA-00b2
   (tomer-mayara/choom#67) fixes the cleanup in `test/support/commands.ts`.
   When the stack is rebased onto `main`, move that fix into GA-00b.
-- The branch `claude/gracious-sagan-q3vcj9-flaky-header` fixes the flaky
-  scenario "Reach a large header with the keyboard". It has no PR yet.
+- tomer-mayara/choom#96 (draft, on `main`) fixes the flaky scenario "Reach a
+  large header with the keyboard". The stack has the same step, so the
+  rebase onto `main` brings the fix into the stack.
 
 **Limits that the PRs record and do not fix:**
 
