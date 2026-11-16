@@ -32,6 +32,20 @@ export const fieldChecks = {
   position: integerIn(0, 255),
 };
 
+// The parts of a call path: its first name, and the steps after it, each () for a call
+// and each .name for a property. With new at the start, the first () is a new call,
+// new(), and a path with no () finds a new call of the path itself (newCall).
+export function callPathParts(path: string): { head: string; steps: string[]; newCall: boolean } {
+  const [, start, head = '', rest = ''] = /^(new )?([A-Za-z_$][A-Za-z0-9_$]*)(.*)$/.exec(path) ?? [];
+  let newCall = start !== undefined;
+  const steps = (rest.match(/\(\)|\.[A-Za-z_$][A-Za-z0-9_$]*/g) ?? []).map(token => {
+    const next = token === '()' && newCall ? 'new()' : token;
+    if (token === '()') newCall = false;
+    return next;
+  });
+  return { head, steps, newCall };
+}
+
 // The start of each message about a rule: its list, its number and its ID.
 export function ruleMessage(label: string, rule: unknown, number: number): string {
   const id = object(rule) ? rule.id : undefined;

@@ -29,6 +29,24 @@ export interface BehaviorEntrySettingsLiteralRule {
   propertyPath: behaviorEntryPropertyPath;
 }
 
+export interface ResourceAccessRule {
+  id: behaviorEntryRuleId;
+  version: behaviorEntryRuleVersion;
+  library: behaviorEntryText;
+  resourceKind: resourceAccessKind;
+  operation: resourceAccessOperation;
+  importName: behaviorEntryModuleName;
+  callPath: behaviorEntryCallPath;
+  typePath: resourceAccessTypePath | null;
+  nameCall: resourceAccessCall;
+  nameArgument: behaviorEntryArgument;
+}
+
+export interface ResourceAccessRuleList {
+  formatVersion: 1;
+  rules: Array<ResourceAccessRule>;
+}
+
 export type behaviorEntryArgument = number;
 
 export type behaviorEntryCallPath = string;
@@ -46,3 +64,11 @@ export type behaviorEntryRuleId = string;
 export type behaviorEntryRuleVersion = number;
 
 export type behaviorEntryText = string;
+
+export type resourceAccessCall = number;
+
+export type resourceAccessKind = string;
+
+export type resourceAccessOperation = string;
+
+export type resourceAccessTypePath = string;

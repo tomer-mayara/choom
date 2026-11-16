@@ -3709,6 +3709,113 @@
                 }
             ]
         },
+        "ResourceAccessRule": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ResourceAccessRule.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "behaviorEntryRuleId.json"
+                },
+                "version": {
+                    "$ref": "behaviorEntryRuleVersion.json"
+                },
+                "library": {
+                    "$ref": "behaviorEntryText.json"
+                },
+                "resourceKind": {
+                    "$ref": "resourceAccessKind.json"
+                },
+                "operation": {
+                    "$ref": "resourceAccessOperation.json"
+                },
+                "importName": {
+                    "$ref": "behaviorEntryModuleName.json"
+                },
+                "callPath": {
+                    "$ref": "behaviorEntryCallPath.json"
+                },
+                "typePath": {
+                    "anyOf": [
+                        {
+                            "$ref": "resourceAccessTypePath.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "nameCall": {
+                    "$ref": "resourceAccessCall.json"
+                },
+                "nameArgument": {
+                    "$ref": "behaviorEntryArgument.json"
+                }
+            },
+            "required": [
+                "id",
+                "version",
+                "library",
+                "resourceKind",
+                "operation",
+                "importName",
+                "callPath",
+                "typePath",
+                "nameCall",
+                "nameArgument"
+            ],
+            "additionalProperties": false
+        },
+        "resourceAccessKind": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "resourceAccessKind.json",
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "resourceAccessOperation": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "resourceAccessOperation.json",
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "resourceAccessTypePath": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "resourceAccessTypePath.json",
+            "type": "string",
+            "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:(?:\\(\\))*\\.[A-Za-z_$][A-Za-z0-9_$]*)*$"
+        },
+        "resourceAccessCall": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "resourceAccessCall.json",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "ResourceAccessRuleList": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ResourceAccessRuleList.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 1
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ResourceAccessRule.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "formatVersion",
+                "rules"
+            ],
+            "additionalProperties": false
+        },
         "ReadDocumentFileRequest": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "ReadDocumentFileRequest.json",
