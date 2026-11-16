@@ -523,6 +523,17 @@ bun test ./packages/producer/test/integration/records/fixed-discovery.test.ts ./
 bun test ./packages/producer/test/interface/stage-6
 ```
 
+Each Stage 6 action also checks the fixed discovery result with the discovery
+contract of the viewer (`validateDiscoveryResult`), before it saves a file, and
+`verify` checks the saved file again. So Stage 6 never publishes a result that
+the viewer refuses, such as a question with another field. The fixed-discovery
+suite checks such refusals, and the viewer-discovery suite opens the saved
+result of the Stage 6 producer fixture with the viewer codec:
+
+```sh
+bun test ./packages/producer/test/integration/records/fixed-discovery.test.ts ./packages/producer/test/integration/records/viewer-discovery.test.ts
+```
+
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require
@@ -1119,7 +1130,8 @@ baseline (`validateDecisions`) and makes the next version from it
 statements of a baseline with their paths, for the decision checks, the
 producer record checks and the viewer's Recorded statements.
 The `./discovery-result` export checks a version 2 discovery result against a
-saved baseline file (`validateDiscoveryResult`), for the viewer.
+saved baseline file (`validateDiscoveryResult`), for the viewer and for Stage 6
+of the producer.
 
 The [producer](packages/producer/component.yaml) is the `@choom/producer` Bun
 workspace. It holds the manual Stage 1 to 6 helpers, the duplication helpers,

@@ -235,6 +235,11 @@ gets version 2, because only Stage 6 knows the bytes of the fixed baseline. Its
 `baselineDigest` binds it to that exact file; a baseline ID alone can repeat
 across runs. The [record format](record-format.md#fixed-discovery-result) gives
 the fields.
+Every Stage 6 action also checks that the viewer can open the fixed discovery
+result: each question and gap has exactly its fields, and the result keeps the
+limits of the viewer. A refusal starts with "The viewer could not open the fixed
+discovery result." and names the field. Stage 6 then saves nothing. Earlier
+stages keep questions and gaps unchanged, so start a new run.
 
 The existing root `run.yaml` remains the canonical manifest for this manual
 run. Its registry gives the fixed files' paths and digests. The baseline's own

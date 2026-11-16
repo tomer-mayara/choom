@@ -967,6 +967,10 @@ to the lists in the current entry analysis. Keep unsupported languages, missing
 inputs, deferred areas and unknown ownership visible.
 The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
+A question or gap has exactly these fields. A linked note that answers or narrows
+an earlier record is a new question or gap with the same fields; it names the ID
+of the earlier record, such as in its `subjectRefs`. Stage 6 refuses a question
+or gap with another field (see [Fixed discovery result](#fixed-discovery-result)).
 
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership
@@ -999,6 +1003,20 @@ makes such a run use its own producer version, which reads version 1. The viewer
 uses `baselineRef` and `baselineDigest` as
 [CR-004](../../change-requests/CR-004-discovery-in-viewer.md#binding-to-the-open-baseline)
 describes.
+
+Each Stage 6 action also checks that the viewer can open the fixed discovery
+result, with the discovery contract of the viewer (`validateDiscoveryResult` in
+`@choom/baseline-model/discovery-result`). Each question and gap has exactly its
+fields, 1 to 100 subject references and at least one evidence reference. The
+IDs are unique across questions and gaps. There are at most 5,000 questions and
+gaps together. A text has at most 16 KiB of UTF-8, an ID, a kind or a reference
+at most 4 KiB, and all text values of the file together at most 4 MiB. Stage 6
+makes this check before it saves any file, and `verify` makes it again on the
+saved file. A refusal starts with "The viewer could not open the fixed discovery
+result." and names the field, such as
+`The discovery result is invalid at questions.0: Unrecognized key: "answer"`.
+Earlier stages keep their questions and gaps unchanged, so a run with such a
+record cannot complete: start a new run, and do not edit saved files.
 
 ## Check, publish and verify
 

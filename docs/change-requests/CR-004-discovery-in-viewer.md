@@ -178,7 +178,9 @@ viewer work:
   contract of the part that the viewer reads. `validateDiscoveryResult` in
   `@choom/baseline-model/discovery-result` checks a result against a saved
   baseline file: the kind, version 2, the fields, the limits, the unique IDs, and
-  the baseline ID and digest. The producer can use the same check.
+  the baseline ID and digest. Stage 6 of the producer runs the same check on the
+  fixed discovery result before it saves a file, and `verify` runs it on the
+  saved file, so the producer never publishes a result that the viewer refuses.
 - `src/lib/discovery-result-yaml.ts` reads the selected file with the bounded YAML
   reader of a baseline, with the outcomes of
   [discovery-result-codec.tsp](../../cookbook/interfaces/discovery-result-codec.tsp).
