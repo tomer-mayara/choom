@@ -369,3 +369,13 @@ rules:
     kind: settings-literal
     fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
     propertyPath: build.rolldownOptions.input
+  # The entries that the top-level input of Vite 8 names, such as
+  # input: { main: 'index.html', nested: 'nested/index.html' }. Vite also uses this
+  # input in development. An input of the build options replaces it for the build.
+  - id: vite-input
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: input

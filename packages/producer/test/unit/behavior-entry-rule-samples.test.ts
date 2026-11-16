@@ -259,6 +259,19 @@ const settingsSamples: Record<string, SettingsSample> = {
     "  },",
     "})"),
   entries: [["[«'index.html'»", "index.html"]], gaps: ["«resolve(import.meta.dirname, 'nested/index.html')»]"] },
+  // The Multi-Page App example of the Vite 8 guide, which names the pages in the top-level
+  // input. Vite also uses this input in development.
+  "vite-input": { tool: vite, file: "vite.config.ts", text: lines(
+    "import { resolve } from 'node:path'",
+    "import { defineConfig } from 'vite'",
+    "",
+    "export default defineConfig({",
+    "  input: {",
+    "    main: 'index.html',",
+    "    nested: resolve(import.meta.dirname, 'nested/index.html'),",
+    "  },",
+    "})"),
+  entries: [["main: «'index.html'»", "index.html"]], gaps: ["nested: «resolve(import.meta.dirname, 'nested/index.html')»"] },
 };
 
 const ruleList = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules;
