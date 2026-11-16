@@ -13,6 +13,10 @@ Feature: Find behavior entry candidates
   The worker rules find the start sites of worker threads and of BullMQ queue
   workers. The worker file or the queue name is the name. The processor of a queue
   worker is its handler. A worker thread has no handler: it runs its file.
+  The settings rules read the entries that a Vite settings file names, such as the
+  input of the build, without running the file. A string literal is a candidate with
+  the settings file, the range of the value and the entry. An entry that the code
+  computes is a gap with a reason.
 
   Scenario: A rule finds a candidate
     Given a saved snapshot that calls a registration function from the rule list
@@ -34,3 +38,10 @@ Feature: Find behavior entry candidates
     Given a saved snapshot that starts a worker thread and a BullMQ queue worker
     When the operator collects behavior entry candidates
     Then each worker has a candidate that names its file or its queue, its start site and its handler, if it has one
+
+  Scenario: Find the entries of frontend build settings
+    Given a saved snapshot whose Vite settings name one entry as a string literal and one entry that the code computes
+    When the operator collects behavior entry candidates
+    Then the literal entry has a candidate that names the settings file, the range of the value and the entry
+    And it is marked as found by a syntax rule, not as a proven entry
+    And the computed entry is a gap with a reason

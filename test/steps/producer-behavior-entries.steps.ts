@@ -12,14 +12,19 @@ import type { CommandResult } from "../../packages/producer/test/support/command
 // of the tool checkout. Its route rules find the route methods of HTTP servers. For
 // example, express-route-get finds a call of get on the app that the call express()
 // made. Its worker rules find the new Worker calls that start worker threads and
-// queue workers. The toolchain and graph phases of the fixture need no Docker.
+// queue workers. Its settings rules read the entries that a Vite settings file names.
+// The toolchain and graph phases of the fixture need no Docker.
 interface Position { line?: unknown; column?: unknown }
 interface Candidate {
   ruleId?: unknown; ruleVersion?: unknown; entryKind?: unknown; found?: unknown; path?: unknown; range?: Position[];
   expression?: unknown; name?: unknown; nameReason?: unknown; handler?: { path?: unknown; range?: Position[] } | null;
   handlerReason?: unknown;
 }
-interface CandidatesRecord { status?: unknown; candidates?: Candidate[] }
+interface Gap {
+  kind?: unknown; ruleId?: unknown; entryKind?: unknown; path?: unknown; range?: Position[]; expression?: unknown;
+  reason?: unknown;
+}
+interface CandidatesRecord { status?: unknown; candidates?: Candidate[]; gaps?: Gap[] }
 interface SavedRule { id?: unknown; version?: unknown; library?: unknown; callPath?: unknown }
 
 interface BehaviorEntriesWorld extends World {
@@ -55,17 +60,29 @@ const emailJobs: ExtraFile = { path: "src/email-jobs.ts",
 const emailWorker: ExtraFile = { path: "src/email-worker.ts", text: "import { Worker } from 'bullmq';\n" +
   "import { sendEmail } from './email-jobs';\n\nconst connection = { host: 'localhost', port: 6379 };\n\n" +
   "export const worker = new Worker('emails', sendEmail, { connection });\n" };
+// The Vite settings of a web app with two pages, in the form of the Multi-Page App
+// example of the Vite guide, with the main page as a path literal. The code computes
+// the path of the admin page, as the guide does for each page.
+const viteSettings: ExtraFile = { path: "web/vite.config.ts", text: "import { resolve } from 'node:path';\n" +
+  "import { defineConfig } from 'vite';\n\nexport default defineConfig({\n  build: {\n    rollupOptions: {\n" +
+  "      input: {\n        main: 'index.html',\n        admin: resolve(import.meta.dirname, 'admin/index.html'),\n" +
+  "      },\n    },\n  },\n});\n" };
 const position = (line: number, column: number): Position => ({ line, column });
 
-// The candidates of the record that collect saved.
-function savedCandidates(world: BehaviorEntriesWorld): Candidate[] {
+// The record that collect saved.
+function savedRecord(world: BehaviorEntriesWorld): CandidatesRecord {
   const command = world.behaviorCommand;
   assert.ok(command && world.behaviorAttempt, "Collect the candidates first.");
   assert.equal(command.status, 0, command.stderr);
   const record = JSON.parse(readFileSync(join(world.behaviorAttempt.attempt, "behavior-entry-candidates.json"), "utf8")) as
     CandidatesRecord;
   assert.equal(record.status, "completed");
-  return record.candidates ?? [];
+  return record;
+}
+
+// The candidates of the record that collect saved.
+function savedCandidates(world: BehaviorEntriesWorld): Candidate[] {
+  return savedRecord(world).candidates ?? [];
 }
 
 // The only candidate of the record that collect saved.
@@ -105,6 +122,11 @@ Given("a saved snapshot with the routes of an Express router, a Fastify server a
 Given("a saved snapshot that starts a worker thread and a BullMQ queue worker", { timeout: 120_000 },
   function (this: BehaviorEntriesWorld) {
     this.behaviorAttempt = stageFourAttempt([emailJobs, emailWorker, resize]);
+  });
+
+Given("a saved snapshot whose Vite settings name one entry as a string literal and one entry that the code computes",
+  { timeout: 120_000 }, function (this: BehaviorEntriesWorld) {
+    this.behaviorAttempt = stageFourAttempt([viteSettings]);
   });
 
 When("the operator collects behavior entry candidates", { timeout: 120_000 }, function (this: BehaviorEntriesWorld) {
@@ -167,3 +189,25 @@ Then("each worker has a candidate that names its file or its queue, its start si
         name: "./resize-worker.js", handler: null, handlerReason: "The rule names no handler argument." },
     ]);
   });
+
+// A settings rule reads the value at its property path, build.rollupOptions.input here,
+// without running the file. The string literal is the candidate: its range is the range
+// of the value, and the entry is its text. A settings entry has no handler.
+Then("the literal entry has a candidate that names the settings file, the range of the value and the entry",
+  function (this: BehaviorEntriesWorld) {
+    const { ruleId, entryKind, path, range, expression, name, handler: found, handlerReason } = onlyCandidate(this);
+    assert.deepEqual({ ruleId, entryKind, path, range, expression, name, handler: found, handlerReason }, {
+      ruleId: "vite-build-rollup-options-input", entryKind: "frontend-entry", path: viteSettings.path,
+      range: [position(8, 15), position(8, 27)], expression: "'index.html'", name: "index.html", handler: null,
+      handlerReason: "A settings-literal rule finds a settings entry, which has no handler." });
+  });
+
+// The value of the other page is a call, so its path is known only when the file runs.
+Then("the computed entry is a gap with a reason", function (this: BehaviorEntriesWorld) {
+  const gaps = (savedRecord(this).gaps ?? []).map(({ kind, ruleId, entryKind, path, range, expression, reason }) =>
+    ({ kind, ruleId, entryKind, path, range, expression, reason }));
+  assert.deepEqual(gaps, [{ kind: "unknown-settings-value", ruleId: "vite-build-rollup-options-input",
+    entryKind: "frontend-entry", path: viteSettings.path, range: [position(9, 16), position(9, 64)],
+    expression: "resolve(import.meta.dirname, 'admin/index.html')",
+    reason: "The value at the property path is not a string literal, so it is known only at run time." }]);
+});
