@@ -22,6 +22,8 @@ It also owns the [behavior entry candidates](behavior/producer/behavior-entries.
 behavior: Stage 4 applies its pinned behavior entry rules to the source.
 It owns the [code units](behavior/producer/code-units.feature) behavior too:
 symbol selectors divide a file into code units, which the producer checks on the saved snapshot.
+It owns the [resource access sites](behavior/producer/resource-access.feature)
+behavior too: Stage 4 applies its pinned resource access rules to the source.
 
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
 baseline file input to validation, layout, and the view. The baseline model,
