@@ -644,7 +644,7 @@ of the plugins (see the
 | --- | --- |
 | `pluginEntryPatterns` | Each copied pattern, as `knip-profile.json` holds it in the entry patterns of its workspace: `workspace`, `manifest` (the `package.json` whose dependency turned the plugin on: the workspace manifest or the manifest of a workspace that holds it), `plugin` (the Knip plugin name), `dependency`, `field` (`entry`, or `production` with a final `!` on the pattern) and `pattern`. |
 | `pluginPatternsNotCopied` | Each static pattern of a found plugin that the profile does not copy, with the same fields and the pattern of Knip, and `reason`: it looks like a settings file by its name (a test of names with known misses, which the Stage 2 cookbook lists), or it is a negation. |
-| `pluginsNotCopied` | Each found plugin that adds no pattern: `workspace` (or `null` for a manifest that is not a workspace of the plan), `manifest`, `plugin`, `dependency` and `reason`. |
+| `pluginsNotCopied` | Each found plugin that adds no pattern: `workspace` (or `null` for a manifest that is not a workspace of the plan), `manifest`, `plugin`, `dependency` and `reason`. A plugin that Knip 6.44.1 turns on without a dependency of its enablers (always, by files or manifest fields, or only in its code) has one item, with `workspace`, `manifest` and `dependency` set to `null`. |
 
 When the selected entry analysis names the candidates, the shared record checks
 of Stages 4, 5 and 6 check them against the saved snapshot:

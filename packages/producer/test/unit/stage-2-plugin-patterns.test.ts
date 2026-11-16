@@ -6,14 +6,15 @@ import { type KnipPlugin, pluginEntryPatterns, pluginReasons, type SnapshotManif
 import { toolsRoot } from "../support/commands.ts";
 
 // The plugins of these cases follow the shape of the plugin definitions of Knip
-// 6.44.1: enablers, static entry and production patterns, and settings-file patterns.
+// 6.44.1: enablers, static entry and production patterns, settings-file patterns, and
+// the isEnabled function with which Knip turns a plugin on.
 const next: KnipPlugin = { name: "next", enablers: ["next"], config: ["next.config.{js,ts}"],
   production: ["app/**/page.{js,tsx}", "pages/**/*.tsx"] };
 const vitest: KnipPlugin = { name: "vitest", enablers: ["vitest"], entry: ["**/*.test.ts"], config: ["vitest.config.ts"] };
 const vite: KnipPlugin = { name: "vite", enablers: ["vite", "vitest"], config: ["vite.config.{js,ts}"] };
 const storybook: KnipPlugin = { name: "storybook", enablers: [/^@storybook\//], entry: ["**/*.stories.tsx"] };
 const files: KnipPlugin = { name: "github-actions", enablers: "This plugin is enabled when a workflow file is found.",
-  entry: [".github/workflows/*.yml"] };
+  isEnabled: ({ cwd }: { cwd: string }) => cwd.endsWith("/.github"), entry: [".github/workflows/*.yml"] };
 const changesets: KnipPlugin = { name: "changesets", enablers: ["@changesets/cli"], entry: [".changeset/*.md"], isRootOnly: true };
 
 const manifest = (path: string, workspace: string | null, value: Record<string, unknown>): SnapshotManifest =>
@@ -21,6 +22,8 @@ const manifest = (path: string, workspace: string | null, value: Record<string, 
 const root = (value: Record<string, unknown>): SnapshotManifest => manifest("package.json", ".", value);
 const source = (plugin: string, dependency: string, workspace = ".", path = "package.json") =>
   ({ workspace, manifest: path, plugin, dependency });
+// The record of a plugin that Knip turns on without a dependency of its enablers list.
+const withoutDependency = (plugin: string, reason: string) => ({ workspace: null, manifest: null, plugin, dependency: null, reason });
 
 // The plugin definitions of the installed Knip 6.44.1 by name, in the order of its plugin names.
 async function installedPlugins(): Promise<Map<string, KnipPlugin>> {
@@ -54,10 +57,24 @@ describe("pluginEntryPatterns", () => {
       .toEqual([{ ...source("vite", "vite"), reason: pluginReasons.noStaticPatterns }]);
   });
 
-  test("a plugin that files turn on, or that has no static patterns, adds nothing", () => {
+  // A dependency with the name of a plugin that files turn on does not turn it on. The profile records the plugin once.
+  test("a plugin that files turn on, or that has no static patterns, adds nothing, with the reason", () => {
     expect(pluginEntryPatterns([root({ devDependencies: { vite: "8.0.0", "github-actions": "1.0.0" } })], [vite, files]))
-      .toEqual({ copied: [], patternsNotCopied: [],
-        pluginsNotCopied: [{ ...source("vite", "vite"), reason: pluginReasons.noStaticPatterns }] });
+      .toEqual({ copied: [], patternsNotCopied: [], pluginsNotCopied: [
+        { ...source("vite", "vite"), reason: pluginReasons.noStaticPatterns },
+        withoutDependency("github-actions", pluginReasons.turnedOnByFiles)] });
+  });
+
+  test("a plugin that Knip turns on without a dependency of its enablers adds nothing, and the profile records it once", () => {
+    // As in Knip 6.44.1: node is on in every workspace, the definition of tsx names no enablers but its code reads the
+    // dependencies, and c8 has no isEnabled, because it only reads the arguments of commands, so Knip never turns it on.
+    const node: KnipPlugin = { name: "node", isEnabled: () => true, entry: ["server.js"] };
+    const tsx: KnipPlugin = { name: "tsx", isEnabled: ({ dependencies }: { dependencies: Set<string> }) => dependencies.has("tsx") };
+    const c8: KnipPlugin = { name: "c8" };
+    const manifests = [root({ devDependencies: { tsx: "4.0.0", c8: "10.0.0" } }),
+      manifest("packages/api/package.json", "packages/api", {})];
+    expect(pluginEntryPatterns(manifests, [c8, node, tsx])).toEqual({ copied: [], patternsNotCopied: [], pluginsNotCopied: [
+      withoutDependency("node", pluginReasons.alwaysOn), withoutDependency("tsx", pluginReasons.noEnablers)] });
   });
 
   test("a pattern that names a settings file and a negation are not copied", () => {
@@ -117,9 +134,17 @@ describe("pluginEntryPatterns", () => {
     // Knip 6.44.1 also turns on its PostCSS and Vercel OG plugins for the next package.
     expect(found.copied.filter(({ plugin }) => plugin === "next").map(({ field, pattern }) => ({ field, pattern }))).toEqual(
       (plugins.get("next")?.production as string[]).map((pattern) => ({ field: "production", pattern: pattern + "!" })));
-    expect(found.pluginsNotCopied.map(({ plugin, reason }) => ({ plugin, reason }))).toEqual([
-      { plugin: "postcss", reason: pluginReasons.noStaticPatterns }, { plugin: "svelte", reason: pluginReasons.everyPatternLeftOut },
-      { plugin: "vite", reason: pluginReasons.noStaticPatterns }]);
+    // Knip 6.44.1 turns node on in every workspace, ten plugins on by files or manifest fields, and tsx by code without
+    // enablers. Each has one record, in the order of the plugin names.
+    const byFiles = pluginReasons.turnedOnByFiles;
+    const notByDependency: [string, string][] = [["bun", byFiles], ["github-actions", byFiles], ["mcp", byFiles],
+      ["mise", byFiles], ["node", pluginReasons.alwaysOn], ["openclaw", byFiles], ["pnpm", byFiles], ["taskfile", byFiles],
+      ["travis", byFiles], ["tsx", pluginReasons.noEnablers], ["typescript-content-mapper", byFiles], ["yarn", byFiles]];
+    expect(found.pluginsNotCopied).toEqual([
+      { ...source("postcss", "next"), reason: pluginReasons.noStaticPatterns },
+      { ...source("svelte", "svelte"), reason: pluginReasons.everyPatternLeftOut },
+      { ...source("vite", "vite"), reason: pluginReasons.noStaticPatterns },
+      ...notByDependency.map(([plugin, reason]) => withoutDependency(plugin, reason))]);
   });
 
   // The settings-file test reads only names, and Knip 6.44.1 marks only the config patterns of a plugin

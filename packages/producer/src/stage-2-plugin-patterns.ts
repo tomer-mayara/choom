@@ -7,13 +7,18 @@
 // records their source. A pattern that looks like a settings file by its name stays
 // out, so such a file stays a plain file, and a negation stays out, because in the
 // entry patterns of a workspace it would also remove other entries. The settings-file
-// test reads only names, so it has known misses (see namesSettingsFile).
+// test reads only names, so it has known misses (see namesSettingsFile). A plugin that
+// Knip turns on without a dependency of its enablers, such as node or yarn, adds no
+// pattern; the profile records it once.
 
 // The fields of a plugin definition of Knip 6.44.1 that the selection reads. `enablers`
 // holds dependency names and patterns, or a text when files turn the plugin on.
+// `isEnabled` is the function with which Knip turns the plugin on; the selection does
+// not call it.
 export interface KnipPlugin {
   name: string;
   enablers?: unknown;
+  isEnabled?: unknown;
   entry?: unknown;
   production?: unknown;
   config?: unknown;
@@ -27,8 +32,11 @@ interface PluginSource { workspace: string; manifest: string; plugin: string; de
 export interface CopiedPattern extends PluginSource { field: 'entry' | 'production'; pattern: string }
 // A pattern of Knip that the profile does not hold, and why.
 export interface PatternNotCopied extends CopiedPattern { reason: string }
-// A plugin that a dependency turns on but that adds no pattern, and why.
-export interface PluginNotCopied extends Omit<PluginSource, 'workspace'> { workspace: string | null; reason: string }
+// A plugin that adds no pattern, and why: a plugin that a dependency turns on, or with a
+// null workspace, manifest and dependency, a plugin that Knip turns on without one.
+export interface PluginNotCopied {
+  workspace: string | null; manifest: string | null; plugin: string; dependency: string | null; reason: string;
+}
 export interface PluginPatterns { copied: CopiedPattern[]; patternsNotCopied: PatternNotCopied[]; pluginsNotCopied: PluginNotCopied[] }
 
 export const pluginReasons = {
@@ -44,6 +52,13 @@ export const pluginReasons = {
   negation: 'The pattern is a negation. In the entry patterns of the workspace, it would also remove the entries of the ' +
     'plan and of the other plugins.',
   notRelative: 'The pattern is not a relative pattern in the workspace.',
+  alwaysOn: 'Knip 6.44.1 turns this plugin on in every workspace, not by a dependency. The profile copies the patterns of a ' +
+    'plugin only when a dependency turns it on, so it copies none of the patterns of this plugin.',
+  turnedOnByFiles: 'Knip 6.44.1 turns this plugin on when it finds a file or a manifest field that the plugin names, not by ' +
+    'a dependency. The profile copies the patterns of a plugin only when a dependency turns it on, so it copies none of the ' +
+    'patterns of this plugin.',
+  noEnablers: 'The definition of this plugin in Knip 6.44.1 names no enablers, so only its code decides when the plugin is ' +
+    'on. The profile does not run plugin code, so it copies none of the patterns of this plugin.',
 };
 
 const patternsOf = (value: unknown): string[] | null =>
@@ -69,6 +84,18 @@ function dependencyFor(plugin: KnipPlugin, names: string[]): string | undefined 
     if (found !== undefined) return found;
   }
   return undefined;
+}
+
+// Why the profile copies no pattern of a plugin that Knip 6.44.1 turns on without a
+// dependency of an enablers list, or null for another plugin. An enablers text names the
+// files or the manifest fields that turn the plugin on. An isEnabled without a parameter
+// reads nothing of the workspace, so the plugin is on in every workspace, as node is.
+// Another isEnabled without enablers decides in code, as for tsx. A plugin without
+// isEnabled only reads the arguments of commands, and Knip never turns it on.
+function notByDependency(plugin: KnipPlugin): string | null {
+  if (Array.isArray(plugin.enablers) || typeof plugin.isEnabled !== 'function') return null;
+  if (typeof plugin.enablers === 'string') return pluginReasons.turnedOnByFiles;
+  return plugin.isEnabled.length === 0 ? pluginReasons.alwaysOn : pluginReasons.noEnablers;
 }
 
 // Whether a pattern looks like a settings file by its name: a settings-file pattern
@@ -144,6 +171,12 @@ export function pluginEntryPatterns(manifests: readonly SnapshotManifest[], knip
       if (dependency !== undefined) found.pluginsNotCopied.push({ workspace: null, manifest: manifest.path, plugin: plugin.name,
         dependency, reason: pluginReasons.notWorkspace });
     }
+  }
+  // No manifest decides these plugins, so each has one record for all the workspaces.
+  for (const plugin of knipPlugins) {
+    const reason = notByDependency(plugin);
+    if (reason !== null) found.pluginsNotCopied.push({ workspace: null, manifest: null, plugin: plugin.name, dependency: null,
+      reason });
   }
   return found;
 }

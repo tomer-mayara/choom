@@ -378,9 +378,23 @@ that it did not copy in `pluginPatternsNotCopied`, and in `pluginsNotCopied` eac
 found plugin that adds no pattern, with the reason: a plugin whose entries come only
 from its settings file or its own code, such as Vite, which reads its start files from
 `index.html`; a plugin whose patterns all stay out; a root-only plugin of another
-workspace; and a plugin of a manifest that is not a workspace of the plan. It keeps
-`disabledPlugins`, the list of every plugin. For a Next.js app, the record has
-entries such as:
+workspace; and a plugin of a manifest that is not a workspace of the plan.
+`pluginsNotCopied` also records, once each and with `workspace`, `manifest` and
+`dependency` set to `null`, the plugins that Knip 6.44.1 turns on without a
+dependency of their enablers. The profile copies none of their patterns:
+
+- `node`, which Knip turns on in every workspace. Its `server.js` entry is not copied;
+- the plugins that files or manifest fields turn on: `bun`, `github-actions`, `mcp`,
+  `mise`, `openclaw`, `pnpm` (its `.pnpmfile.{cjs,mjs}` entry is not copied),
+  `taskfile`, `travis`, `typescript-content-mapper` and `yarn` (its
+  `yarn.config.cjs` entry is not copied);
+- `tsx`, whose definition names no enablers, so only its code shows that the `tsx`
+  dependency turns it on.
+
+A plugin without an `isEnabled` function, such as `c8` or `ts-node`, only reads the
+arguments of commands, and Knip never turns it on, so the record does not list it.
+`preflight.json` also keeps `disabledPlugins`, the list of every plugin. For a
+Next.js app, the record has entries such as:
 
 ```json
 "pluginEntryPatterns": [

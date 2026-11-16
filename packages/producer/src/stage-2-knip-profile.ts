@@ -141,6 +141,10 @@ writeFileSync(join(attempt, 'preflight.json'), JSON.stringify({
     'config or whose first part ends with rc. So the profile copies some settings files, such as ' +
     '.dependency-cruiser.{js,cjs,mjs,json}, vercel.{js,mjs,cjs,ts,mts} and dangerfile.{js,cjs,mjs,ts}, and it does not ' +
     'copy the Mastra pattern of the config, instructions, memory and workspace files of an agent.',
+    'A plugin that Knip 6.44.1 turns on without a dependency of its enablers adds nothing: node, which is on in every ' +
+    'workspace, tsx, whose definition names no enablers, and the plugins that files or manifest fields turn on, such as ' +
+    'bun, github-actions, pnpm and yarn. pluginsNotCopied records each of them once, with a null workspace, manifest and ' +
+    'dependency.',
     'Only these file-name patterns come from the plugins. The profile runs no plugin code, so it loses the entries that ' +
     'this code finds: the resolve steps of the plugins, such as the start files that the Vite plugin reads from index.html, ' +
     'the readers of .vue, .svelte and .astro files, and the syntax visitors of the plugins. A settings file that changes ' +

@@ -17,6 +17,19 @@ interface SavedRun { artifacts: Record<string, { path: string; sha256: string }>
 
 const id = "s2-check";
 const imageId = "sha256:" + "a".repeat(64);
+// The plugins of Knip 6.44.1 that no dependency of an enablers list turns on, in the order of the plugin names, as the
+// preflight records them.
+const onlyByDependency = " The profile copies the patterns of a plugin only when a dependency turns it on, so it copies none " +
+  "of the patterns of this plugin.";
+const byFiles = "Knip 6.44.1 turns this plugin on when it finds a file or a manifest field that the plugin names, not by a " +
+  "dependency." + onlyByDependency;
+const withoutDependency = [["bun", byFiles], ["github-actions", byFiles], ["mcp", byFiles], ["mise", byFiles],
+  ["node", "Knip 6.44.1 turns this plugin on in every workspace, not by a dependency." + onlyByDependency],
+  ["openclaw", byFiles], ["pnpm", byFiles], ["taskfile", byFiles], ["travis", byFiles],
+  ["tsx", "The definition of this plugin in Knip 6.44.1 names no enablers, so only its code decides when the plugin is on. " +
+    "The profile does not run plugin code, so it copies none of the patterns of this plugin."],
+  ["typescript-content-mapper", byFiles], ["yarn", byFiles],
+].map(([plugin, reason]) => ({ workspace: null, manifest: null, plugin, dependency: null, reason }));
 const sha256 = (bytes: Buffer | string): string => createHash("sha256").update(bytes).digest("hex");
 const dockerfile = "FROM node:24-bookworm-slim\nWORKDIR /opt/choom-tools\n" +
   "RUN npm init -y && npm install --ignore-scripts --save-exact knip@6.44.1\nUSER 65534:65534\nWORKDIR /repo\n";
@@ -74,8 +87,9 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         planSha256: sha256(saved("entry-plan.json")), profileSha256: sha256(saved("knip-profile.json")),
         inventory: { ref: "inventory-001", path: "evidence/inventory.json", sha256: sha256(inventory) },
         status: "eligible", reasons: [], environment: { KNIP_DISABLE_RAW_TRANSFER: "1" },
-        // The manifest has no dependencies, so no plugin adds a pattern.
-        disabledPlugins: plugins, pluginEntryPatterns: [], pluginPatternsNotCopied: [], pluginsNotCopied: [],
+        // The manifest has no dependencies, so no plugin adds a pattern. Each plugin that Knip 6.44.1 turns on
+        // without a dependency of its enablers has one record.
+        disabledPlugins: plugins, pluginEntryPatterns: [], pluginPatternsNotCopied: [], pluginsNotCopied: withoutDependency,
         approvedCoreParsers: ["JS/TS", "MDX", "Sass/SCSS", "Less", "Stylus", "TSRX"],
         limits: ["Every Knip plugin is turned off, so Knip loads no settings file of the target.",
           "For each plugin that a dependency or a development dependency of a workspace manifest turns on, or of the " +
@@ -87,6 +101,10 @@ describe("a Stage 2 attempt with an approved tool image", () => {
           "config or whose first part ends with rc. So the profile copies some settings files, such as " +
           ".dependency-cruiser.{js,cjs,mjs,json}, vercel.{js,mjs,cjs,ts,mts} and dangerfile.{js,cjs,mjs,ts}, and it does not " +
           "copy the Mastra pattern of the config, instructions, memory and workspace files of an agent.",
+          "A plugin that Knip 6.44.1 turns on without a dependency of its enablers adds nothing: node, which is on in every " +
+          "workspace, tsx, whose definition names no enablers, and the plugins that files or manifest fields turn on, such " +
+          "as bun, github-actions, pnpm and yarn. pluginsNotCopied records each of them once, with a null workspace, " +
+          "manifest and dependency.",
           "Only these file-name patterns come from the plugins. The profile runs no plugin code, so it loses the entries " +
           "that this code finds: the resolve steps of the plugins, such as the start files that the Vite plugin reads from " +
           "index.html, the readers of .vue, .svelte and .astro files, and the syntax visitors of the plugins. A settings " +
