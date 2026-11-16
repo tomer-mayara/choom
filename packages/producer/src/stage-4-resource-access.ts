@@ -8,7 +8,7 @@ import { resourceAccessRuleList } from './resource-access-rules.ts';
 import { outsideReadsNote, virtualRoot } from './snapshot-project.ts';
 import type { SourceFile } from './stage-4-graph-profile.ts';
 import { checkerTool, queryOptions } from './stage-4-references.ts';
-import { readScope, type ScopeInput } from './stage-4-rule-scope.ts';
+import { candidateLimit, candidateList, readScope, type ScopeInput } from './stage-4-rule-scope.ts';
 import { fileSites } from './stage-4-source-sites.ts';
 
 // The record of resource access candidates that Stage 4 collect saves. It applies the
@@ -32,7 +32,6 @@ export interface SavedSites { ref: string; ofFile(path: string): { site: Fields;
 interface Where { path: string; sha256: string; graphContext: string }
 type Node = TsMorph.ts.Node;
 
-const candidateLimit = 10000;
 const resourceSite = 'resource-call-candidate';
 const nameOnlyReason = 'No resource access rule found this call. Only its name is on the list of resource call names of the ' +
   'source sites, so it can access a resource.';
@@ -70,7 +69,7 @@ export const resourceAccessNotes = [
     'candidates come from the saved sites: when source-sites.json omitted sites after its limit, their calls are not here.',
   'A range starts at the first character and ends after the last character. Lines and columns start at 1 and count UTF-16 ' +
     'code units. A byte order mark is not counted. expression holds at most 4096 code units, and truncated says when it is ' +
-    'shorter than the site. At most 10000 candidates are saved; omittedCandidates counts the others.',
+    'shorter than the site. At most ' + candidateLimit + ' candidates are saved; omittedCandidates counts the others.',
   'gaps lists each compiler input that the snapshot does not hold, as in the Stage 4 references record.',
   outsideReadsNote,
 ];
@@ -144,20 +143,16 @@ export function fileAccessCandidates(query: RuleQuery, file: SourceFile, rules: 
 }
 
 export function resourceAccessRecord(input: ResourceAccessInput): Fields {
-  const candidates: Fields[] = [];
-  let omittedCandidates = 0;
   const sites = savedSites(input.sites, input.sitesRef);
   const scope = readScope(input, (query, file, graphContext) =>
     ({ candidates: fileAccessCandidates(query, file, input.rules.rules, sites, graphContext), gaps: [] }));
-  for (const candidate of scope.candidates) {
-    if (candidates.length < candidateLimit) candidates.push(candidate);
-    else omittedCandidates++;
-  }
+  const list = candidateList();
+  list.add(scope.candidates);
   return {
-    formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: omittedCandidates ? 'partial' : 'completed',
+    formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: list.omitted ? 'partial' : 'completed',
     rulesRef: input.rulesRef, rulesSha256: input.rulesSha256, settingsRef, sourceSitesRef: input.sitesRef,
     scope: { files: (input.profile.sourceFiles as SourceFile[]).map(file => file.path), groups: scope.groups }, queryOptions,
     tool: { ...input.parser, name: checkerTool }, virtualRoot,
-    candidates, omittedCandidates, gaps: scope.gaps, outsideReads: scope.outsideReads, notes: resourceAccessNotes,
+    candidates: list.saved, omittedCandidates: list.omitted, gaps: scope.gaps, outsideReads: scope.outsideReads, notes: resourceAccessNotes,
   };
 }

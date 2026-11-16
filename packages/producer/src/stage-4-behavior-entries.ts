@@ -11,7 +11,7 @@ import type { SnapshotFiles } from './stage-1-settings.ts';
 import type { Picomatch, SourceFile } from './stage-4-graph-profile.ts';
 import { pluginPatternCandidates, type PluginPatternSource } from './stage-4-plugin-entries.ts';
 import { checkerTool, queryOptions } from './stage-4-references.ts';
-import { readScope } from './stage-4-rule-scope.ts';
+import { candidateLimit, candidateList, readScope } from './stage-4-rule-scope.ts';
 
 // The record of behavior entry candidates that Stage 4 collect saves. It applies the
 // rule list that Stage 4 start saved to each source file of the graph scope, in the
@@ -42,7 +42,6 @@ type SaveCandidates = (file: SourceFile, found: readonly EntryCandidate[]) => vo
 
 // Stage 1 finish registers the review that holds the role records of the run with this ID.
 export const stageOneReviewRef = 'review-001';
-const candidateLimit = 10000;
 // The role name of test files in the Stage 1 review, from the list of its cookbook.
 const testRole = 'tests';
 
@@ -92,7 +91,7 @@ export const behaviorEntryNotes = [
     'the rules do not show whether the code is application or tooling code.',
   'A range starts at the first character and ends after the last character. Lines and columns start at 1 and count UTF-16 ' +
     'code units. A byte order mark is not counted. expression holds at most 4096 code units, and truncated says when it is ' +
-    'shorter than the site. At most 10000 candidates are saved; omittedCandidates counts the others.',
+    'shorter than the site. At most ' + candidateLimit + ' candidates are saved; omittedCandidates counts the others.',
   'gaps also lists each compiler input that the snapshot does not hold, as in the Stage 4 references record.',
   outsideReadsNote,
 ];
@@ -145,33 +144,23 @@ export function behaviorEntryRecord(input: BehaviorEntryInput): Fields {
     .filter((rule): rule is BehaviorEntrySettingsLiteralRule => rule.kind === 'settings-literal'), picomatch);
   const binRules = input.rules.rules.filter((rule): rule is BehaviorEntryPackageBinRule => rule.kind === 'package-bin');
   const roleOf = testRoles(input.review, input.reviewRef);
-  const candidates: Fields[] = [];
-  let omittedCandidates = 0;
-  const save: SaveCandidates = (file, found) => {
-    for (const candidate of found) {
-      if (candidates.length < candidateLimit) candidates.push(savedCandidate(file, candidate, roleOf(file.path)));
-      else omittedCandidates++;
-    }
-  };
+  const list = candidateList();
+  const saved = (file: SourceFile, found: readonly EntryCandidate[]): Fields[] =>
+    found.map(candidate => savedCandidate(file, candidate, roleOf(file.path)));
+  const save: SaveCandidates = (file, found) => list.add(saved(file, found));
   const scope = readScope(input, (query, file) => {
     const settings = settingsCandidates(query, file.path, settingRules);
-    return { candidates: [...callCandidates(query, file.path, callRules), ...settings.candidates]
-      .map(candidate => savedCandidate(file, candidate, roleOf(file.path))), gaps: settings.gaps.map(item => savedGap(file, item)) };
+    return { candidates: saved(file, [...callCandidates(query, file.path, callRules), ...settings.candidates]),
+      gaps: settings.gaps.map(item => savedGap(file, item)) };
   });
-  for (const candidate of scope.candidates) {
-    if (candidates.length < candidateLimit) candidates.push(candidate);
-    else omittedCandidates++;
-  }
+  list.add(scope.candidates);
   const binGaps = packageBins(input, binRules, save);
-  for (const candidate of pluginPatternCandidates(input.pluginPatterns, input.snapshot.files, picomatch, roleOf)) {
-    if (candidates.length < candidateLimit) candidates.push(candidate);
-    else omittedCandidates++;
-  }
+  list.add(pluginPatternCandidates(input.pluginPatterns, input.snapshot.files, picomatch, roleOf));
   return {
-    formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: omittedCandidates ? 'partial' : 'completed',
+    formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: list.omitted ? 'partial' : 'completed',
     rulesRef: input.rulesRef, rulesSha256: input.rulesSha256, settingsRef, rolesRef: input.reviewRef,
     scope: { files: (profile.sourceFiles as SourceFile[]).map(file => file.path), groups: scope.groups }, queryOptions,
-    tool: { ...input.parser, name: checkerTool, picomatch: input.picomatchVersion }, virtualRoot,
-    candidates, omittedCandidates, gaps: [...scope.gaps, ...binGaps], outsideReads: scope.outsideReads, notes: behaviorEntryNotes,
+    tool: { ...input.parser, name: checkerTool, picomatch: input.picomatchVersion }, virtualRoot, candidates: list.saved,
+    omittedCandidates: list.omitted, gaps: [...scope.gaps, ...binGaps], outsideReads: scope.outsideReads, notes: behaviorEntryNotes,
   };
 }

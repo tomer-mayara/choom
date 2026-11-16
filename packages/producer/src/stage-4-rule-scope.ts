@@ -26,8 +26,27 @@ export interface ScopeRead { groups: Fields[]; candidates: Fields[]; gaps: unkno
 export interface FileFindings { candidates: Fields[]; gaps: unknown[] }
 // Reads one file of the scope with the type checker of its group.
 export type FileReader = (query: EntryQuery, file: SourceFile, graphContext: string) => FileFindings;
+// The candidates of a Stage 4 rule record, in the order of the record. The record
+// saves the first ones up to its limit, and omitted counts the others.
+export interface CandidateList { saved: Fields[]; omitted: number; add(found: Iterable<Fields>): void }
 // The files of the scope that one graph group reads, with its settings and its import pass.
 interface Group { settings: FileSettings; index: number; pass: Fields; files: SourceFile[] }
+
+// The limit of the candidates that each Stage 4 rule record saves. The notes of the records name it.
+export const candidateLimit = 10000;
+
+export function candidateList(): CandidateList {
+  const list: CandidateList = {
+    saved: [], omitted: 0,
+    add(found) {
+      for (const candidate of found) {
+        if (list.saved.length < candidateLimit) list.saved.push(candidate);
+        else list.omitted++;
+      }
+    },
+  };
+  return list;
+}
 
 // The graph groups of the scope, in the order of their first file: the files whose
 // first compiler context is the group, its settings and its import pass.
