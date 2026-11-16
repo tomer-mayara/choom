@@ -16,6 +16,13 @@ const behaviorCandidates = `behavior-entry-candidates.json lists the calls and s
   `before you record a behavior entry, cite the candidate in its evidenceRefs, and keep a null name or handler unknown with ` +
   `its reason. Name the file in the entry analysis as behaviorEntryCandidatesRef.\n\n`;
 
+// How the reviewer uses the resource access candidates, and keeps observed access separate from inferred ownership.
+const resourceCandidates = `resource-access-candidates.json lists the calls that the pinned Choom resource access rules ` +
+  `found, with their operation, name and source context, and the resource call sites of source-sites.json that no rule ` +
+  `found (confidence name-only). A candidate is a place to read, not proven access. Keep observed access separate from ` +
+  `inferred ownership: a matching name does not prove the same resource, and a candidate names no owner. Name the file in ` +
+  `resource-access.json as resourceAccessCandidatesRef.\n\n`;
+
 export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt }: PromptFacts): string {
   return `# Stage 4 component recovery review\n\n` +
     `Run: ${runRef}\nSnapshot: ${snapshotRef}\nAttempt: ${attemptId}\n` +
@@ -26,15 +33,15 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `Do not use the live checkout, excluded paths, or external information. Use saved numbered excerpts for source review. ` +
     evidenceRequests +
     `Read ${entryAnalysisRef}, its inspection priorities, graph-profile.json, graph-results.json, source-sites.json, ` +
-    `behavior-entry-candidates.json, source-excerpts.json, and the saved step-4-cookbook.md. Review source in priority order. ` +
-    `A file query or a graph scan is not a source inspection. Record only ranges actually read.\n\n` +
+    `behavior-entry-candidates.json, resource-access-candidates.json, source-excerpts.json, and the saved step-4-cookbook.md. ` +
+    `Review source in priority order. A file query or a graph scan is not a source inspection. Record only ranges actually read.\n\n` +
     `Recover the apparent intended components. Use documents, callers, tests, and completed source paths as evidence. ` +
     `Existing folders, component.yaml declarations, graph clusters, and dependency edges are clues; they do not alone establish intent. ` +
     `Do not propose boundary improvements, smells, health scores, or deletions in this stage. Keep all inferred statements proposed.\n\n` +
     `Keep each graph context separate. Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
     `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
     `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n` +
-    behaviorCandidates +
+    behaviorCandidates + resourceCandidates +
     `Review saved launch settings and behavior entries for system entry points. Inspect each external operation's ` +
     `registration or host binding. Trace built files to source only with saved evidence. Use the candidate file mapping ` +
     `for direct start and handler owners. Preserve separate operations that share a handler. Keep unresolved candidates ` +

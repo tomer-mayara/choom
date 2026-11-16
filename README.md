@@ -725,6 +725,31 @@ bun test ./packages/producer/test/interface/behavior-entry-rules.test.ts ./packa
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
 ```
 
+Stage 4 `stage-4-inspect collect` also applies the pinned list of Choom resource
+access rules (`packages/producer/rules/resource-access-rules.yaml`, with its
+[contract](cookbook/interfaces/resource-access-rules.tsp)) to the source files of
+the graph scope. Stage 4 start saves a copy of the list and its SHA-256, and each
+later Stage 4 action refuses a changed list. A rule finds a call whose receiver comes
+from its import (`receiver-import`) or has a declared type of that import, such as a
+parameter `db: Knex` (`receiver-type`). Each candidate in
+`resource-access-candidates.json` names its operation, its name or `null` with a
+reason, an identity that is inferred from the name and is not proven, and its source
+context; it names no owner. Each resource call site of `source-sites.json` that no
+rule found stays in the record with confidence `name-only`. The Stage 4 resource
+observations name the record, and the shared record checks check it against the
+saved snapshot. The `@producer` scenario collects a write to the invoices table
+through a typed Knex client. The
+[Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-resource-access-candidates)
+gives the rules and their limits. Run the focused checks of the resource access
+candidates with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/resource-access-calls.test.ts ./packages/producer/test/unit/stage-4-resource-access.test.ts ./packages/producer/test/unit/record-resource-candidates.test.ts
+bun test ./packages/producer/test/interface/resource-access-rules.test.ts ./packages/producer/test/interface/stage-4/resource-access.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
+bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
+```
+
 Run the focused checks of the producer code record with:
 
 ```sh

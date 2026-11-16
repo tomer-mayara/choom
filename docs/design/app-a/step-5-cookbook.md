@@ -181,6 +181,8 @@ proposed. Retain an unknown owner with a specific reason where evidence is
 insufficient. Do not create a utilities group to eliminate unknowns.
 The entry-analysis update keeps behaviorEntryCandidatesRef of the selected
 entry analysis. Its candidates are places to read, not proven entries.
+The resource observations keep resourceAccessCandidatesRef of the selected
+resource observations. Keep observed access separate from inferred ownership.
 
 Start with files. Divide a file only when a boundary inside it needs
 examination: reviewed source shows that a top-level declaration of the file

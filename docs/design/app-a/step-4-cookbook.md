@@ -22,6 +22,7 @@ publish the proposed model into the working drafts.
 - [Recover an incomplete saved input](#recover-an-incomplete-saved-input)
 - [4. Collect source evidence](#4-collect-source-evidence)
   - [Find the behavior entry candidates](#find-the-behavior-entry-candidates)
+  - [Find the resource access candidates](#find-the-resource-access-candidates)
   - [Find the references to a symbol](#find-the-references-to-a-symbol)
 - [5. Ask the LLM to recover components](#5-ask-the-llm-to-recover-components)
 - [6. Check the proposed result](#6-check-the-proposed-result)
@@ -45,7 +46,9 @@ requires completed stage 3 inspection priorities, a selected entry analysis that
 supports Knip reuse, and an empty initial baseline. It saves checkpoints and
 copies of this cookbook, the record format and the behavior entry rule list into
 the new attempt, and refuses a rule list that does not follow its contract (see
-[Find the behavior entry candidates](#find-the-behavior-entry-candidates)). Every later
+[Find the behavior entry candidates](#find-the-behavior-entry-candidates)). It does
+the same for the resource access rule list (see
+[Find the resource access candidates](#find-the-resource-access-candidates)). Every later
 command, the inspection helper and the publication commands in section 6 run from
 the tool checkout and make the same producer code check first.
 The input remains the empty version 1 seed. Versions 1 and 2 remain readable.
@@ -309,6 +312,7 @@ level. It saves:
 | --- | --- |
 | `source-sites.json` | Import and re-export syntax, dynamic imports, and candidate resource calls. Includes query scope, the parser record, diagnostics, and limits. The parser record names the parser, Node, ts-morph and the TypeScript that it brings, and the digest of each tool file that ts-morph loaded. |
 | `behavior-entry-candidates.json` | The candidates of the pinned behavior entry rules in the source files of the graph scope: their rule, site, name, handler and role, the gaps, the scope and the limits. See [Find the behavior entry candidates](#find-the-behavior-entry-candidates). |
+| `resource-access-candidates.json` | The candidates of the pinned resource access rules in the source files of the graph scope, and the resource call sites of `source-sites.json` that no rule found: their operation, name, confidence and source context, the scope and the limits. See [Find the resource access candidates](#find-the-resource-access-candidates). |
 | `source-excerpts.json` | A bounded initial selection from priority files, entry candidates and component declarations, with file hashes, truncation and skipped paths. |
 | `review-prompt.md` | The LLM review instructions with the current paths and evidence references. |
 | `artifact-map.json` | Proposed artifact IDs and digests available at collection time. It omits itself, the mutable command log, and later files. |
@@ -322,7 +326,8 @@ before it saves a receipt; start a new attempt.
 
 The syntax query does not resolve bindings. A call named `writeFile`, `query`,
 or `invoke` is a candidate site. It does not by itself establish resource access,
-resource identity, or ownership. Mixed imports can contain type-only named
+resource identity, or ownership. `resource-access-candidates.json` keeps each such
+site that no resource access rule found. Mixed imports can contain type-only named
 specifiers; their complete saved expressions remain available for review.
 
 Initial excerpts contain at most the first 200 lines of a UTF-8 file of at most
@@ -688,6 +693,159 @@ analysis names the record as `behaviorEntryCandidatesRef` (see the
 [record format](record-format.md#behavior-entry-candidates)). The publisher checks
 each candidate and gap against the saved snapshot.
 
+### Find the resource access candidates
+
+`collect` also applies the pinned list of Choom resource access rules to the source
+files of the graph scope and saves the candidates in `resource-access-candidates.json`.
+A candidate is a site to read. It shows observed access syntax: a call, its operation
+and the name of a resource. It does not show which resource the call uses, and it
+names no owner. Two sites with the same table name need not use the same table, so
+the identity of a resource is inferred from its name and is not proven.
+
+The list is `packages/producer/rules/resource-access-rules.yaml` in the tool
+checkout, and its contract is
+[resource-access-rules.tsp](../../../cookbook/interfaces/resource-access-rules.tsp).
+Stage 4 `start` checks it, saves a copy as `resource-access-rules.yaml` and records
+its SHA-256 in `toolInputDigests`, and each later Stage 4 action refuses a tool
+checkout whose list differs from that copy, as for the behavior entry rule list. A
+rule that changes keeps its ID and gets the next version.
+
+The list holds four rules now, for the table queries of Knex, such as
+`db('invoices').insert(row)`: `knex-insert`, `knex-update` and `knex-del` with the
+operation `write`, and `knex-select` with the operation `read`. Knex names the table
+in the call that starts the query and the operation in the method after it, so a rule
+can read both without SQL text. Each rule has an `id`, a `version`, the `library`, the
+`resourceKind`, such as `database-table`, the `operation`, such as `read` or `write`,
+and:
+
+- `importName` and `callPath`, as in a `call` rule of the behavior entry rules. The
+  rule finds a call whose callee is `callPath` on the value of the import, such as
+  `knex()().insert` for `db('invoices').insert(row)` after `const db = knex(config)`.
+  Such a candidate has `confidence: receiver-import`.
+- `typePath`, or `null`: the same call written from a type that the import exports,
+  such as `Knex().insert`. The rule also finds the call on a value whose declared
+  type is that type, with `confidence: receiver-type`: a parameter such as
+  `db: Knex`, a parameter property such as `constructor(private readonly db: Knex)`,
+  a class or interface property, or a variable with a type annotation. The snapshot
+  holds no package types, so the type checker cannot read the type itself. The
+  helper follows the type reference to its import binding, as it follows a value:
+  through the imports and exports of snapshot files, the type aliases of the
+  snapshot, a qualified name such as `knex.Knex`, and a union with `null` or
+  `undefined`. A type path ends with the last steps of the call path, and the type
+  stands for the value of the steps before them: `Knex` stands for `knex()`.
+- `nameCall` and `nameArgument`: the name of the resource is the argument at
+  `nameArgument` of the call at `nameCall`, counted back from the call that the rule
+  finds: `0` for that call and `1` for the last call of the call path. The Knex rules
+  read the table name from `db('invoices')`, with `nameCall: 1` and
+  `nameArgument: 0`. That call can also be in the initializer of a variable that holds
+  the query, as the value follows it.
+
+A call of the same method on another receiver, such as `cache.insert(row)`, is not a
+candidate of a rule. For each candidate:
+
+- `name` is the text of a string literal or of a template literal without
+  substitutions. Any other name is `null`, with `nameReason`. `identity` is
+  `inferred-from-name` when the candidate has a name, and `unknown` otherwise.
+- `context` is what the source shows, not a runtime trace: the function or the method
+  that holds the call (`kind: function` or `method`), with its name and range, or the
+  module (`kind: module`), when no function holds it, such as a call at the top level
+  or in a class field outside any function. A member of a named class has the class
+  name first, such as `InvoiceService.create`. `graphContext` names the import pass
+  of the graph group of the file, as in `scope.groups`.
+- `siteRef` names the site of `source-sites.json` when the call is a resource call
+  site there, else `null`.
+
+Each resource call site of `source-sites.json` that no rule found stays in the record
+as a candidate with `confidence: name-only` and its `siteRef`. It has no rule,
+operation or name, and its identity is `unknown`: only its method name is on the list
+of the source collection. The source sites do not change.
+
+The rules do not find these accesses, so a missing candidate does not show that the
+code has no access:
+
+- a chain with another call between the table call and the method, such as
+  `db('invoices').where({ id }).update(row)`;
+- a named import whose name is the import name, such as `import { knex } from 'knex'`:
+  a call path that starts with `knex` names the value of the module;
+- a value without a declared type, a value that a later assignment gives, the return
+  type of a function or a method, and a union of two types;
+- a table name in SQL text: the rules do not read SQL strings;
+- the files outside the graph scope, and source that is not JavaScript or TypeScript.
+
+| Record field | Meaning |
+| --- | --- |
+| `formatVersion`, `attemptId`, `snapshotRef`, `status` | `1`, the Stage 4 attempt ID, the snapshot ID, and `completed`, or `partial` when the limit of 10000 candidates omitted some. |
+| `rulesRef`, `rulesSha256` | The copy of the rule list that start saved, and its SHA-256. |
+| `settingsRef`, `sourceSitesRef` | `settings-001`, whose compiler settings the helper used, and the `source-sites.json` of collect, whose resource call sites the record keeps. |
+| `scope`, `queryOptions`, `tool`, `virtualRoot` | As in the behavior entry candidates record. `tool` names no picomatch version. |
+| `candidates` | Each candidate, in the order of the scope files and then in source order: `ruleId`, `ruleVersion`, `library`, `resourceKind`, `operation` (each `null` for a name-only candidate), `confidence` (`receiver-import`, `receiver-type` or `name-only`), `siteRef`, `path`, `sha256`, `range`, `expression`, `truncated`, `name`, `nameReason`, `identity` (`inferred-from-name` or `unknown`) and `context` (`kind`, `name`, `range` and `graphContext`). No field names an owner. |
+| `omittedCandidates` | The number of candidates after the limit. |
+| `gaps` | Each compiler input that the snapshot does not hold, as in the references record. |
+| `outsideReads`, `notes` | As in the references record. |
+
+A range has 1-based lines and columns, as in the references record. A snapshot with a
+service that writes through a typed Knex client, a function that reads through the
+client of another file, and a pg pool query gives this record. The snapshot ID is an
+example, and the tool digests, `outsideReads` and `notes` are cut:
+
+```json
+{
+  "formatVersion": 1,
+  "attemptId": "s4-001",
+  "snapshotRef": "snapshot-001",
+  "status": "completed",
+  "rulesRef": "s4-001-file@resource-access-rules.yaml",
+  "rulesSha256": "1aa2f89711534596b75b316b6ccba78fa96f0d759fbcd014b56d2a45646a1e50",
+  "settingsRef": "settings-001",
+  "sourceSitesRef": "s4-001-file@source-sites.json",
+  "scope": {
+    "files": ["src/db.ts", "src/invoices.ts", "src/orders.ts", "src/reports.ts"],
+    "groups": [{ "graphContext": "choom-default-v1-import", "graphContextRef": "s4-001-file@graph-profile.json#/contexts/0",
+      "compilerSettingsRef": "settings-001#/parsingProfile", "files": ["src/db.ts", "src/invoices.ts", "src/orders.ts", "src/reports.ts"] }]
+  },
+  "queryOptions": { "allowJs": true },
+  "tool": { "name": "ts-morph snapshot project (TypeScript type checker)", "node": "v26.13.0", "tsMorph": "28.0.0",
+    "typescript": "6.0.2", "modules": { "ts-morph/dist/ts-morph.js": "..." } },
+  "virtualRoot": "/repo",
+  "candidates": [
+    { "ruleId": "knex-insert", "ruleVersion": 1, "library": "knex", "resourceKind": "database-table", "operation": "write",
+      "confidence": "receiver-type", "siteRef": null, "path": "src/invoices.ts",
+      "sha256": "96eaf38b1ee959834bf1ea7fea0362d2be57274a07a1e1f5e50026318ba421d9",
+      "range": [{ "line": 7, "column": 11 }, { "line": 7, "column": 46 }],
+      "expression": "this.db('invoices').insert(invoice)", "truncated": false, "name": "invoices", "nameReason": null,
+      "identity": "inferred-from-name", "context": { "kind": "method", "name": "InvoiceService.create",
+        "range": [{ "line": 6, "column": 3 }, { "line": 8, "column": 4 }], "graphContext": "choom-default-v1-import" } },
+    { "ruleId": "knex-select", "ruleVersion": 1, "library": "knex", "resourceKind": "database-table", "operation": "read",
+      "confidence": "receiver-import", "siteRef": null, "path": "src/orders.ts",
+      "sha256": "c620d608d14eaa182bbc89004ab5426ded936ec0068730b334bf33be250da38a",
+      "range": [{ "line": 4, "column": 10 }, { "line": 4, "column": 35 }],
+      "expression": "db('orders').select('id')", "truncated": false, "name": "orders", "nameReason": null,
+      "identity": "inferred-from-name", "context": { "kind": "function", "name": "listOrders",
+        "range": [{ "line": 3, "column": 1 }, { "line": 5, "column": 2 }], "graphContext": "choom-default-v1-import" } },
+    { "ruleId": null, "ruleVersion": null, "library": null, "resourceKind": null, "operation": null,
+      "confidence": "name-only", "siteRef": "s4-001-file@source-sites.json#/sites/4", "path": "src/reports.ts",
+      "sha256": "e3d5dc90954586c4c5a54766d99e622e8f60065d60f194365d37d03ed22e155e",
+      "range": [{ "line": 4, "column": 29 }, { "line": 4, "column": 69 }],
+      "expression": "pool.query('SELECT total FROM invoices')", "truncated": false, "name": null,
+      "nameReason": "No resource access rule found this call. Only its name is on the list of resource call names of the source sites, so it can access a resource.",
+      "identity": "unknown", "context": { "kind": "function", "name": "totals",
+        "range": [{ "line": 4, "column": 23 }, { "line": 4, "column": 69 }], "graphContext": "choom-default-v1-import" } }
+  ],
+  "omittedCandidates": 0,
+  "gaps": [],
+  "outsideReads": ["..."],
+  "notes": ["A candidate is a call that a Choom resource access rule found (confidence receiver-import or receiver-type), ...", "..."]
+}
+```
+
+Read the site of a candidate before a claim. The review can cite the record, or one
+candidate, as evidence, such as
+`s4-001-file@resource-access-candidates.json#/candidates/0`, and the Stage 4 resource
+observations name the record as `resourceAccessCandidatesRef` (see the
+[record format](record-format.md#resource-access-candidates)). Keep the observed
+access of a candidate separate from the inferred identity and the owner of a
+resource. The publisher checks each candidate against the saved snapshot.
+
 ### Find the references to a symbol
 
 After `collect`, the LLM can ask where a top-level symbol of a source file is
@@ -934,6 +1092,8 @@ Request the references to a top-level symbol (a path and a symbol name) when
 you need to know where it is used; then read the reference ranges.
 Read the behavior entry candidates as places to read, not as proven entries,
 and name them in the entry analysis as behaviorEntryCandidatesRef.
+Read the resource access candidates as sites to read, not as proven access,
+and name them in resource-access.json as resourceAccessCandidatesRef.
 Recover the apparent intended architecture; do not recommend redesigns.
 Keep source-use assessments separate from allowedConsumers.
 Review launch settings, behavior entries and each external operation's
@@ -976,7 +1136,7 @@ The following table explains their purpose:
 | --- | --- |
 | Baseline | Components, supported interfaces, resource owners, and intended rules. Statements use `{value, status: proposed, evidenceRefs}`. Unknown intent is `null` with a question or gap. |
 | Code mapping | Explicit file scope (`unitKind: file`), one direct component owner per file or `owner: null`, reasons, and supporting evidence. Exact mapped files belong here; membership selectors belong in the baseline. Stage 4 keeps each file whole. |
-| Resource observations | Inspected access sites, access kind, target identity or explicit unknown target, context, and source evidence. Observed access does not establish permission. |
+| Resource observations | Inspected access sites, access kind, target identity or explicit unknown target, context, and source evidence. Observed access does not establish permission. Name the resource access candidates of collect as `resourceAccessCandidatesRef`; a candidate is observed access syntax, and its name does not establish the identity or the owner of a resource. |
 | Entry analysis update | Preserve entry history and Knip limits. Add supported behavior entries and references to the separate graph reachability results. Name the behavior entry candidates of collect as `behaviorEntryCandidatesRef`. |
 | Discovery update | Overview, completed inspected paths, proposed fact references, questions, and gaps. `baselineRef` stays unset until the fixed baseline is saved in stage 6. |
 | Review record | The prompt, the complete visible response, supplied evidence, exposed model metadata with `hiddenReasoning: not-saved`, and exact source ranges actually inspected. Do not save hidden reasoning. Do not invent unavailable API metadata. |
@@ -1019,6 +1179,8 @@ guidance before `finish`. Check the complete model and fact records:
   No report difference or unreachable file is treated as proof of unused code.
 - Resource observations and intended ownership remain separate. Unknown targets,
   missing dependencies, native-code coverage, and uninspected code remain visible.
+  A resource access candidate is a site to read; a matching name does not show that
+  two sites use the same resource.
 - Current overview, mapping limits, resource limits and counts agree with the
   selected records. Do not carry an old limit forward merely because it was
   present in a previous packet. Review selected manifest summaries too; use the

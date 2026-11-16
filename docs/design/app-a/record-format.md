@@ -25,7 +25,7 @@ visible response. Do not save hidden reasoning.
 | `discovery.proposed.yaml` | Complete working discovery; no `baselineRef` yet. |
 | `entry-analysis.yaml` | Complete updated entry analysis. |
 | `code-mapping.json` | Every inventory file, or in Stage 5 the parts of a file that symbol selectors divide, with one owner or an explicit unknown owner. |
-| `resource-access.json` | Source-supported resource observations. |
+| `resource-access.json` | Source-supported resource observations, and the name of the resource access candidates of Stage 4 `collect`. |
 | `llm/analysis-prompt.md` | Full instructions supplied to the LLM. |
 | `llm/analysis-response.md` | Complete visible response, including the exact text of all five candidate records above. No thinking or reasoning blocks and no raw provider output. |
 | `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`, `hiddenReasoning: not-saved`. Use `unknown` for values not exposed; settings can be a mapping or `unknown`. |
@@ -82,6 +82,13 @@ The behavior entry candidates of Stage 4 `collect`
 Cite the record, or one candidate with a JSON Pointer, such as
 `s4-001-file@behavior-entry-candidates.json#/candidates/0`. A candidate shows
 where to read. It is not a reviewed source range and does not prove an entry.
+
+The resource access candidates of Stage 4 `collect`
+(`resource-access-candidates.json`, see
+[Resource access candidates](#resource-access-candidates)) are tool evidence in
+the same way. Cite the record, or one candidate, such as
+`s4-001-file@resource-access-candidates.json#/candidates/0`. A candidate shows
+where to read. It does not prove access, the identity of a resource or its owner.
 
 Use saved numbered excerpts for source claims. An excerpt being available does
 not mean it was read by the LLM. A source review record must use the exact saved
@@ -753,7 +760,11 @@ the Stage 5 evidence and these checks name whole files.
 ## Resource observations
 
 Use `formatVersion: 1`, `kind: resource-observations`, `snapshotRef`, `scope`,
-`observations`, and a nonempty `limits` string array. Scope has
+`observations`, a nonempty `limits` string array, and `resourceAccessCandidatesRef`.
+In Stage 4, `resourceAccessCandidatesRef` names the candidates that its `collect`
+saved, such as `s4-001-file@resource-access-candidates.json`; in Stage 5, it keeps
+the value of the selected Stage 4 resource observations. The Stage 4/5 publisher
+refuses any other value. Scope has
 `method: source-inspection`, `reviewedFilesRef` pointing to the current entry
 analysis's `#/reviewedFiles`, and `historicalEntryAnalysisRefs` as in the mapping.
 
@@ -767,6 +778,60 @@ Syntax-query matches identify sites to inspect. Establish the actor, operation
 and source context before adding an observation; a registration inside a
 deferred function body is not automatically a module-start effect. These
 records remain source observations, not runtime verification.
+
+The record keeps observed access separate from inferred identity and ownership:
+
+- The candidates that it names are observed access syntax only: sites,
+  operations and names. Each name gives an identity that is inferred from the
+  name (`inferred-from-name`) or `unknown`, and no candidate names an owner. Two
+  sites with the same table name need not use the same table.
+- An observation records an inspected access: the code that accesses
+  (`componentRef`, the mapped owner of the source file, not the owner of the
+  resource), the `operation`, the `source`, the `context`, and the target. The
+  target keeps its observed `expression` apart from its inferred identity:
+  `identity` (`symbolic` or `unknown`) and `resourceRef`, a modeled resource or
+  `null`.
+- The owner of a resource is intent. It belongs to the `owner` statement of the
+  resource in the proposed baseline, with its own status and evidence, not to an
+  observation or a candidate.
+
+## Resource access candidates
+
+Stage 4 `collect` saves `resource-access-candidates.json`: the calls that the
+pinned Choom resource access rules found in the source files of the graph scope, and
+each resource call site of `source-sites.json` that no rule found, with confidence
+`name-only`. The [stage 4 cookbook](step-4-cookbook.md#find-the-resource-access-candidates)
+gives the rules, the fields and the limits. The Stage 4 resource observations name
+the record as `resourceAccessCandidatesRef`, and the Stage 5 resource observations
+keep that value.
+
+When the selected resource observations name the candidates, the shared record
+checks of Stages 4, 5 and 6 check them against the saved snapshot:
+
+- The name is a registered `resource-access-candidates.json` artifact of the
+  current snapshot with `formatVersion: 1`. `status` is `partial` when
+  `omittedCandidates` is more than 0, and `completed` otherwise.
+- `rulesRef` is a registered artifact whose SHA-256 is `rulesSha256`, and
+  `sourceSitesRef` is a registered `source-sites.json` of the current snapshot.
+- Each candidate has exactly the fields of the record, so it names no owner. A
+  candidate with confidence `receiver-import` or `receiver-type` names a rule of the
+  list by `ruleId` and `ruleVersion`, with the `library`, `resourceKind` and
+  `operation` of that rule, and a `siteRef` or `null`. A `name-only` candidate has
+  `null` in those five fields and a `siteRef`.
+- A candidate with a name has `identity: inferred-from-name` and no `nameReason`; a
+  candidate with a `null` name has a `nameReason` and `identity: unknown`.
+- `path`, `sha256`, `range`, `expression` and `truncated` follow the rules of the
+  behavior entry candidates. A `context` of kind `module` has a `null` name and
+  range; a `context` of kind `function` or `method` has a range in the saved text of
+  the same file.
+- A `siteRef` names a `resource-call-candidate` site of the source sites with the same
+  path, digest and expression. A `completed` record names each such site in a
+  candidate.
+- Each gap is a `missing-compiler-input` gap.
+
+These checks show that the candidates match the saved files and the saved source
+sites. They do not show that a candidate accesses a resource, which resource it
+uses, or that the list is complete.
 
 ## Discovery
 
