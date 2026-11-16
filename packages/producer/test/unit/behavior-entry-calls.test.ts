@@ -15,6 +15,16 @@ const workerStart: BehaviorEntryCallRule = { id: "worker-start", version: 2, lib
   kind: "call", importName: "node:worker_threads", callPath: "new Worker", nameArgument: 0, handlerArgument: null };
 const honoGet: BehaviorEntryCallRule = { ...expressGet, id: "hono-route-get", library: "hono", importName: "hono",
   callPath: "new Hono().get" };
+// The action of a command: the name is the first argument of the command call, the call
+// before action (nameCall 1), and the handler is the first argument of the action call.
+// The builder methods description and option give the command that they are called on.
+const commandAction: BehaviorEntryCallRule = { id: "command-action", version: 1, library: "commander", entryKind: "cli-command",
+  kind: "call", importName: "commander", callPath: "program.command().action", nameArgument: 0, handlerArgument: 0, nameCall: 1,
+  sameValueMethods: ["description", "option"] };
+// A command call of a chain: each command call gives the instance that it is called on.
+const chainedCommand: BehaviorEntryCallRule = { id: "chained-command", version: 1, library: "yargs", entryKind: "cli-command",
+  kind: "call", importName: "yargs", callPath: "yargs().command", nameArgument: 0, handlerArgument: "last",
+  sameValueMethods: ["command", "option"] };
 const serverPath = "src/server.ts";
 const handlerText = "const list = () => 'orders';\n";
 const handlerAt = (text: string) => ({ path: serverPath, range: rangeIn(text, "const «list = () => 'orders'»;") });
@@ -77,6 +87,13 @@ describe("callCandidates matches a call whose receiver comes from the import", (
     expect(candidatesIn({ [serverPath]: text })).toEqual([]);
   });
 
+  test("a route in the handler of another route comes after that route, in source order", () => {
+    const text = appText + "app.get('/a', () => {\n  app.get('/b', list);\n});\n";
+    expect(candidatesIn({ [serverPath]: text }).map(({ name, range }) => ({ name, range }))).toEqual([
+      { name: "/a", range: rangeIn(text, "app.get('/a', () => {\n  app.get('/b', list);\n})") },
+      { name: "/b", range: rangeIn(text, "app.get('/b', list)") }]);
+  });
+
   test("not an app that a parameter with a type of the import holds: a call rule has no type path", () => {
     const text = "import express, { type Express } from 'express';\n" + handlerText +
       "export function routes(app: Express) {\n  app.get('/orders', list);\n}\n";
@@ -95,6 +112,65 @@ describe("callCandidates matches a call whose receiver comes from the import", (
         expression: "new Worker('./job.js')", truncated: false, name: "./job.js", nameReason: null, handler: null,
         handlerReason: "The rule names no handler argument." },
       call("api.get('/orders', list)", "hono-route-get")]);
+  });
+});
+
+// A file that starts with the program export and the list handler.
+const programText = "import { program } from 'commander';\n" + handlerText;
+// The candidate of a rule at a call of the text, with a name and the list handler.
+const commandAt = (text: string, call: string, name: string | null, ruleId = "command-action"): EntryCandidate =>
+  ({ ...routeAt(text, call), ruleId, entryKind: "cli-command", name });
+
+describe("callCandidates reads the name from the call at the name call of the rule", () => {
+  test.each([
+    ["the command call before the action call", "program.command('serve').action(list);\n",
+      "program.command('serve').action(list)"],
+    ["the command call in the initializer of a variable that holds the command",
+      "const serve = program.command('serve');\nserve.action(list);\n", "serve.action(list)"],
+  ])("%s", (_name, use, call) => {
+    const text = programText + use;
+    expect(candidatesIn({ [serverPath]: text }, serverPath, [commandAction])).toEqual([commandAt(text, call, "serve")]);
+  });
+
+  test("a computed name in the command call is null with a reason, and a command call without a name is not a candidate", () => {
+    const text = programText + "program.command(`${list()}`).action(list);\nprogram.command().action(list);\n";
+    expect(candidatesIn({ [serverPath]: text }, serverPath, [commandAction])).toEqual([{
+      ...commandAt(text, "program.command(`${list()}`).action(list)", null),
+      nameReason: "The name argument is a template literal with substitutions, so the name is known only at run time." }]);
+  });
+});
+
+describe("callCandidates passes the calls of the same value methods of a rule", () => {
+  test.each([
+    ["between the command call and the action call", "program.command('serve').description('Serve').option('-p').action(list)"],
+    ["before the command call", "program.description('Tools').command('serve').action(list)"],
+    ["on a variable that holds the command", "const serve = program.command('serve').description('Serve');\nserve.option('-p')" +
+      ".action(list)"],
+  ])("%s", (_name, use) => {
+    const text = programText + use + ";\n";
+    const call = use.slice(use.lastIndexOf("\n") + 1);
+    expect(candidatesIn({ [serverPath]: text }, serverPath, [commandAction])).toEqual([commandAt(text, call, "serve")]);
+  });
+
+  // The call of the second command holds the call of the first, and both start at yargs.
+  test("each call of a chain whose method gives the same value, in the order of the chain", () => {
+    const text = "import yargs from 'yargs';\n" + handlerText +
+      "yargs(process.argv).command('serve', 'Serve', {}, list).option('verbose').command('build', 'Build', {}, list).parse();\n";
+    const first = "yargs(process.argv).command('serve', 'Serve', {}, list)";
+    expect(candidatesIn({ [serverPath]: text }, serverPath, [chainedCommand])).toEqual([
+      commandAt(text, first, "serve", "chained-command"),
+      commandAt(text, first + ".option('verbose').command('build', 'Build', {}, list)", "build", "chained-command")]);
+  });
+
+  test.each([
+    ["a method that the rule does not name", "program.command('serve').alias('s').action(list);\n", [commandAction]],
+    ["a property between the calls", "program.command('serve').parent.action(list);\n", [commandAction]],
+    ["a second command call, which makes another command", "program.command('tools').command('serve').action(list);\n",
+      [commandAction]],
+    ["a call that a rule without same value methods does not pass",
+      "import express from 'express';\nexpress().use(list).get('/orders', list);\n", [expressGet]],
+  ])("not %s", (_name, use, rules) => {
+    expect(candidatesIn({ [serverPath]: programText + use }, serverPath, rules)).toEqual([]);
   });
 });
 

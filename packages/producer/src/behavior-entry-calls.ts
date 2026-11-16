@@ -1,6 +1,6 @@
 import type * as TsMorph from 'ts-morph';
-import { type Argument, argumentAt, located, member, nameOf, propertyName, ruleCalls, rulePath, type RuleQuery, snapshotSource,
-  unwrapped } from './call-rules.ts';
+import { type Argument, argumentAt, located, member, nameCallOf, nameOf, propertyName, type RuleCall, ruleCalls, rulePath,
+  type RuleQuery, snapshotSource, unwrapped } from './call-rules.ts';
 import type { BehaviorEntryCallRule } from './generated/contracts.ts';
 import { nodeRange } from './snapshot-exports.ts';
 import { type SnapshotProject, snapshotPath } from './snapshot-project.ts';
@@ -8,8 +8,11 @@ import { type Checking, declared, referenceProgram, type SourceRange } from './s
 
 // The call rules of the behavior entry rules on a snapshot project. A rule finds a
 // call whose callee is its call path on the value of its import, such as app.get
-// after const app = express(). The value paths of the import, and the names, come
-// from call-rules.ts. The name and the handler are arguments of the call.
+// after const app = express(), and passes the calls of its same value methods, such
+// as description in program.command('serve').description('Start').action(serve). The
+// value paths of the import, and the names, come from call-rules.ts. The handler is an
+// argument of the call. The name is an argument of the call at the name call of the
+// rule: the call itself, or a call of its call path, such as command for action.
 type Node = TsMorph.ts.Node;
 export type EntryQuery = RuleQuery;
 // A located declaration or function of the snapshot.
@@ -66,12 +69,14 @@ function handlerOf(query: Checking, source: TsMorph.ts.SourceFile, argument: Arg
   return name === undefined ? { handler: null, handlerReason: reasons.otherHandler } : declarationOf(query, name);
 }
 
-function candidateOf(query: EntryQuery, source: TsMorph.ts.SourceFile, call: TsMorph.ts.CallExpression | TsMorph.ts.NewExpression,
-  rule: BehaviorEntryCallRule): EntryCandidate | undefined {
-  const args = call.arguments ?? [];
-  const name = argumentAt(query.ts, args, rule.nameArgument, null);
-  const handler = argumentAt(query.ts, args, rule.handlerArgument, rule.nameArgument);
+function candidateOf(query: EntryQuery, found: RuleCall<{ rule: BehaviorEntryCallRule }>): EntryCandidate | undefined {
+  const { call, entry: { rule } } = found;
+  const nameCall = rule.nameCall ?? 0;
+  const name = argumentAt(query.ts, nameCallOf(found, nameCall)?.arguments ?? [], rule.nameArgument, null);
+  // The last argument must come after the name argument only when both are arguments of one call.
+  const handler = argumentAt(query.ts, call.arguments ?? [], rule.handlerArgument, nameCall === 0 ? rule.nameArgument : null);
   if (name.kind === 'missing' || handler.kind === 'missing') return undefined;
+  const source = call.getSourceFile();
   return { ruleId: rule.id, ruleVersion: rule.version, entryKind: rule.entryKind, ...located(source, call),
     ...nameOf(query.ts, name, reasons.noName), ...handlerOf(query, source, handler) };
 }
@@ -84,6 +89,6 @@ export function entryQuery(project: SnapshotProject): EntryQuery {
 
 // The candidates of the call rules in one file that the project holds, in source order.
 export function callCandidates(query: EntryQuery, path: string, rules: readonly BehaviorEntryCallRule[]): EntryCandidate[] {
-  const entries = rules.map(rule => ({ rule, path: rulePath(rule.importName, rule.callPath) }));
-  return ruleCalls(query, path, entries).flatMap(({ call, entry }) => candidateOf(query, call.getSourceFile(), call, entry.rule) ?? []);
+  const entries = rules.map(rule => ({ rule, path: rulePath(rule.importName, rule.callPath, rule.sameValueMethods) }));
+  return ruleCalls(query, path, entries).flatMap(found => candidateOf(query, found) ?? []);
 }

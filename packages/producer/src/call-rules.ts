@@ -26,12 +26,15 @@ type TsSymbol = TsMorph.ts.Symbol;
 // each .name for a property, () for a call and new() for a new call. `calls` holds the
 // call or new call of each call step of a value of the source, in order; a rule path has none.
 export interface ValuePath { module: string; steps: string[]; calls: Node[] }
-// The callee path of a rule, and whether the rule finds a new call.
-export interface RulePath extends ValuePath { newCall: boolean }
+// The callee path of a rule, whether the rule finds a new call, and the methods whose call
+// gives the value that it is called on, such as description in program.command().description().
+export interface RulePath extends ValuePath { newCall: boolean; sameValueMethods: ReadonlySet<string> }
 // The program and the type checker of the files that a snapshot project holds.
 export interface RuleQuery extends Checking { program: TsMorph.ts.Program }
-// A call or new call whose callee is the path of a rule entry, and the value path of the callee.
-export interface RuleCall<Entry> { call: TsMorph.ts.CallExpression | TsMorph.ts.NewExpression; entry: Entry; value: ValuePath }
+type Call = TsMorph.ts.CallExpression | TsMorph.ts.NewExpression;
+// A call or new call whose callee is the path of a rule entry, and the value path of the
+// callee without the calls of the same value methods of the rule.
+export interface RuleCall<Entry> { call: Call; entry: Entry; value: ValuePath }
 // The range of a node of a file, and its text up to the expression limit.
 export interface Located { range: SourceRange; expression: string; truncated: boolean }
 // An argument of a call: none when the rule names no argument, spread when a spread
@@ -66,11 +69,11 @@ const moduleValue = (module: string): ValuePath => ({ module, steps: [], calls: 
 
 // The callee path of a rule: its call path from the value of its import. The first name of the path is
 // importName itself for the value of the module, and otherwise the name of an export of the module.
-export function rulePath(importName: string, callPath: string): RulePath {
+export function rulePath(importName: string, callPath: string, sameValueMethods: readonly string[] = []): RulePath {
   const { head, steps, newCall } = callPathParts(callPath);
   const module = moduleValue(importName);
   const path = steps.reduce((value, next) => step(value, next), head === importName ? module : step(module, '.' + head));
-  return { ...path, newCall };
+  return { ...path, newCall, sameValueMethods: new Set(sameValueMethods) };
 }
 
 // The type path of a rule: the same call written from a type of its import. The
@@ -80,7 +83,34 @@ export function rulePath(importName: string, callPath: string): RulePath {
 export function typeRulePath(importName: string, typePath: string, callPath: string): RulePath {
   const { head, steps } = callPathParts(typePath);
   const type = { module: importName, steps: ['type:' + (head === importName ? '' : head)], calls: [] };
-  return { ...steps.reduce((value: ValuePath, next) => step(value, next), type), newCall: callPathParts(callPath).newCall };
+  return { ...steps.reduce((value: ValuePath, next) => step(value, next), type), newCall: callPathParts(callPath).newCall,
+    sameValueMethods: new Set() };
+}
+
+// A value path without the calls of methods that give the value that they are called on:
+// each such method step goes with the call step after it and the node of that call.
+function withoutSameValueCalls(path: ValuePath, methods: ReadonlySet<string>): ValuePath {
+  if (methods.size === 0) return path;
+  const steps: string[] = [];
+  const calls: Node[] = [];
+  let call = 0;
+  for (let index = 0; index < path.steps.length; index++) {
+    const part = path.steps[index] as string;
+    if (part.startsWith('.') && methods.has(part.slice(1)) && path.steps[index + 1] === '()') {
+      index++;
+      call++;
+      continue;
+    }
+    if (part === '()' || part === 'new()') calls.push(path.calls[call++] as Node);
+    steps.push(part);
+  }
+  return { module: path.module, steps, calls };
+}
+
+// The call that holds the name of a rule call, counted back from the call that the rule
+// found: 0 for that call, 1 for the last call of its value path, 2 for the call before it.
+export function nameCallOf({ call, value }: RuleCall<unknown>, nameCall: number): Call | undefined {
+  return nameCall === 0 ? call : value.calls[value.calls.length - nameCall] as Call | undefined;
 }
 
 // The expression inside parentheses and type or non-null assertions.
@@ -263,13 +293,17 @@ export function nameOf(ts: Ts, argument: Argument, none: string): Named {
 }
 
 // The calls of one file that the project holds whose callee is the path of a rule
-// entry, in source order and then in the order of the entries.
+// entry, in source order and then in the order of the entries. A rule passes the calls
+// of its same value methods in the value path of a callee. The call of a later method
+// of a chain holds the calls before it and starts with them, so a call that starts at
+// the same place as another and ends before it comes first: the calls of a chain are in
+// the order of the chain.
 export function ruleCalls<Entry extends { path: RulePath }>(query: RuleQuery, path: string, entries: readonly Entry[]):
   RuleCall<Entry>[] {
   const { ts, program } = query;
   const source = program.getSourceFile(virtualRoot + '/' + path);
   assert(source, 'The program of the query does not hold ' + path + '.');
-  const found: RuleCall<Entry>[] = [];
+  const found: (RuleCall<Entry> & { start: number })[] = [];
   const visit = (node: Node): void => {
     if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
       // The property name of the callee must be the last name of the rule. Any other callee can be a renamed import.
@@ -277,10 +311,15 @@ export function ruleCalls<Entry extends { path: RulePath }>(query: RuleQuery, pa
       const applicable = entries.filter(({ path: rule }) => rule.newCall === ts.isNewExpression(node) &&
         (property === undefined || property === 'default' || rule.steps.at(-1) === '.' + property));
       const value = applicable.length ? valuePath(query, node.expression) : undefined;
-      for (const entry of applicable) if (value !== undefined && samePath(entry.path, value)) found.push({ call: node, entry, value });
+      for (const entry of applicable) {
+        const passed = value && withoutSameValueCalls(value, entry.path.sameValueMethods);
+        if (passed !== undefined && samePath(entry.path, passed))
+          found.push({ call: node, entry, value: passed, start: node.getStart(source) });
+      }
     }
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return found;
+  return found.sort((left, right) => left.start - right.start || left.call.end - right.call.end)
+    .map(({ call, entry, value }) => ({ call, entry, value }));
 }

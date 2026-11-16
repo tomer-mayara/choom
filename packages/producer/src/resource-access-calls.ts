@@ -1,5 +1,5 @@
 import type * as TsMorph from 'ts-morph';
-import { argumentAt, type Located, located, type Named, nameOf, ruleCalls, rulePath, type RuleQuery, typeRulePath, type ValuePath }
+import { argumentAt, type Located, located, type Named, nameCallOf, nameOf, ruleCalls, rulePath, type RuleQuery, typeRulePath }
   from './call-rules.ts';
 import type { ResourceAccessRule } from './generated/contracts.ts';
 import { nodeRange } from './snapshot-exports.ts';
@@ -65,19 +65,15 @@ export function sourceContext(ts: Ts, node: Node): SourceContext {
   return { kind: 'module', name: null, range: null };
 }
 
-// The call that holds the name: the call that the rule finds, or a call of the value path, counted back.
-function nameHolder(call: Call, value: ValuePath, rule: ResourceAccessRule): Call | undefined {
-  return rule.nameCall === 0 ? call : value.calls[value.calls.length - rule.nameCall] as Call | undefined;
-}
-
 // The calls of the rules in one file that the project holds, in source order and then in the order of the rules.
 export function accessMatches(query: RuleQuery, path: string, rules: readonly ResourceAccessRule[]): AccessMatch[] {
   const { ts } = query;
   const entries = rules.flatMap(rule => [{ rule, path: rulePath(rule.importName, rule.callPath), confidence: 'receiver-import' as const },
     ...rule.typePath === null ? [] : [{ rule, path: typeRulePath(rule.importName, rule.typePath, rule.callPath),
       confidence: 'receiver-type' as const }]]);
-  return ruleCalls(query, path, entries).map(({ call, entry: { rule, confidence }, value }) => {
-    const holder = nameHolder(call, value, rule);
+  return ruleCalls(query, path, entries).map((found) => {
+    const { call, entry: { rule, confidence } } = found;
+    const holder = nameCallOf(found, rule.nameCall);
     const name = nameOf(ts, argumentAt(ts, holder?.arguments ?? [], rule.nameArgument, null), noName);
     return { call, rule, confidence, ...located(call.getSourceFile(), call), ...name, context: sourceContext(ts, call) };
   });
