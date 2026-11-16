@@ -3,12 +3,8 @@ import { baselineSourceNoteSchema } from "./baseline-documentation.ts";
 import { baselineId, baselineText } from "./baseline-statements.ts";
 import type { Baseline, BaselineInterface, BaselineSourceAssessment } from "./generated/contracts.ts";
 import { supportsSourceUsage } from "./baseline-format.ts";
+import { utf8Bounded as bounded, utf8Length } from "./utf8-limits.ts";
 
-const encoder = new TextEncoder();
-const bounded = (schema: z.ZodString, bytes: number) => schema.refine(
-  (value) => encoder.encode(value).byteLength <= bytes,
-  `The UTF-8 text limit is ${bytes} bytes.`,
-);
 const reference = bounded(baselineText, 4 * 1024);
 const id = bounded(baselineId, 4 * 1024);
 const description = bounded(baselineText, 8 * 1024);
@@ -81,7 +77,7 @@ export function validateBaselineSourceUsage(baseline: Baseline, context: z.Refin
   if (counts.notes > 4000) context.addIssue({
     code: "custom", path: ["sourceUsage", "assessments"], message: "The source-note limit is 4000 records.",
   });
-  if (encoder.encode(JSON.stringify(source)).byteLength > 2 * 1024 * 1024) context.addIssue({
+  if (utf8Length(JSON.stringify(source)) > 2 * 1024 * 1024) context.addIssue({
     code: "custom", path: ["sourceUsage"], message: "The combined source-use limit is 2097152 UTF-8 bytes.",
   });
   const interfaces = new Map(baseline.interfaces.map((item) => [item.id, item]));

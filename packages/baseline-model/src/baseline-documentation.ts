@@ -1,13 +1,9 @@
 import { z } from "zod";
 import { baselineId, baselineStatement, baselineText } from "./baseline-statements.ts";
 import type { Baseline, BaselineInterface } from "./generated/contracts.ts";
+import { utf8Bounded as boundedText, utf8Length } from "./utf8-limits.ts";
 
-const encoder = new TextEncoder();
 const documentationByteLimit = 2 * 1024 * 1024;
-const boundedText = (schema: z.ZodString, limit: number) => schema.refine(
-  (value) => encoder.encode(value).byteLength <= limit,
-  `The UTF-8 text limit is ${limit} bytes.`,
-);
 const reference = boundedText(baselineText, 4 * 1024);
 const localId = boundedText(baselineId, 4 * 1024);
 const description = boundedText(baselineText, 8 * 1024);
@@ -102,7 +98,7 @@ function validateDocumentationLinks(item: BaselineInterface, index: number, cont
 export function validateBaselineDocumentation(baseline: Baseline, context: z.RefinementCtx): void {
   if (baseline.formatVersion === 1) return;
   const docs = baseline.interfaces.flatMap((item) => item.documentation ? [item.documentation] : []);
-  if (encoder.encode(JSON.stringify(docs)).byteLength > documentationByteLimit) {
+  if (utf8Length(JSON.stringify(docs)) > documentationByteLimit) {
     context.addIssue({
       code: "custom", path: ["interfaces"],
       message: `The combined documentation limit is ${documentationByteLimit} UTF-8 bytes.`,
