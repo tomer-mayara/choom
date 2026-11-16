@@ -147,13 +147,12 @@ export function resourceAccessRecord(input: ResourceAccessInput): Fields {
   const candidates: Fields[] = [];
   let omittedCandidates = 0;
   const sites = savedSites(input.sites, input.sitesRef);
-  const scope = readScope(input, (query, file, graphContext) => {
-    for (const candidate of fileAccessCandidates(query, file, input.rules.rules, sites, graphContext)) {
-      if (candidates.length < candidateLimit) candidates.push(candidate);
-      else omittedCandidates++;
-    }
-    return [];
-  });
+  const scope = readScope(input, (query, file, graphContext) =>
+    ({ candidates: fileAccessCandidates(query, file, input.rules.rules, sites, graphContext), gaps: [] }));
+  for (const candidate of scope.candidates) {
+    if (candidates.length < candidateLimit) candidates.push(candidate);
+    else omittedCandidates++;
+  }
   return {
     formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: omittedCandidates ? 'partial' : 'completed',
     rulesRef: input.rulesRef, rulesSha256: input.rulesSha256, settingsRef, sourceSitesRef: input.sitesRef,

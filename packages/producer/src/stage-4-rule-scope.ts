@@ -10,8 +10,9 @@ import { importPass, queryOptions } from './stage-4-references.ts';
 // them. Each graph group of the scope, in the order of its first file, opens the
 // snapshot project with the compiler settings of the group, chosen as the references
 // action chooses them, and with allowJs; the type checker reads the files of its
-// import pass. The records save each group, the gaps, and the requests of the
-// projects for paths that the snapshot does not hold.
+// import pass. The records save each group, the candidates in the order of the scope
+// files, the gaps, and the requests of the projects for paths that the snapshot does
+// not hold.
 export interface ScopeInput {
   // The indexed files of the saved snapshot and its folder, which the snapshot project reads.
   snapshot: SnapshotFiles;
@@ -19,9 +20,12 @@ export interface ScopeInput {
   profile: Fields; profileRef: string; settings: Fields;
   tsMorph: ProjectTools;
 }
-export interface ScopeRead { groups: Fields[]; gaps: unknown[]; outsideReads: OutsideRead[] }
-// Reads one file of the scope with the type checker of its group and returns the gaps of the file.
-export type FileReader = (query: EntryQuery, file: SourceFile, graphContext: string) => unknown[];
+// The candidates are in the order of the scope files, and those of a file in the order that its reader gives.
+export interface ScopeRead { groups: Fields[]; candidates: Fields[]; gaps: unknown[]; outsideReads: OutsideRead[] }
+// The candidates and the gaps that a reader finds in one file of the scope.
+export interface FileFindings { candidates: Fields[]; gaps: unknown[] }
+// Reads one file of the scope with the type checker of its group.
+export type FileReader = (query: EntryQuery, file: SourceFile, graphContext: string) => FileFindings;
 // The files of the scope that one graph group reads, with its settings and its import pass.
 interface Group { settings: FileSettings; index: number; pass: Fields; files: SourceFile[] }
 
@@ -39,19 +43,27 @@ function groupsOf(profile: Fields, settings: Fields): Group[] {
 }
 
 // Reads each file of the scope. The gaps of a group are the gaps of its files and then
-// the compiler inputs that the snapshot does not hold, each gap once.
+// the compiler inputs that the snapshot does not hold, each gap once. The files of the
+// groups can interleave in the scope, so the candidates of each file wait until all
+// groups are read.
 export function readScope(input: ScopeInput, read: FileReader): ScopeRead {
   const gaps = new Map<string, unknown>(); const outsideReads = new Map<string, OutsideRead>();
+  const found = new Map<string, Fields[]>();
   const groups = groupsOf(input.profile, input.settings).map(group => {
     const project = openSnapshotProject(input.snapshot, { ...group.settings.project,
       compilerOptions: { ...group.settings.project.compilerOptions, ...queryOptions } }, input.tsMorph);
     for (const path of group.pass.sourceFiles as string[]) project.sourceFile(path);
     const query = entryQuery(project);
-    for (const file of group.files) for (const gap of read(query, file, group.pass.id as string)) gaps.set(JSON.stringify(gap), gap);
+    for (const file of group.files) {
+      const findings = read(query, file, group.pass.id as string);
+      found.set(file.path, findings.candidates);
+      for (const gap of findings.gaps) gaps.set(JSON.stringify(gap), gap);
+    }
     for (const gap of project.gaps()) gaps.set(JSON.stringify(gap), gap);
     for (const outside of project.outsideReads()) outsideReads.set(outside.operation + ' ' + outside.path, outside);
     return { graphContext: group.pass.id, graphContextRef: input.profileRef + '#/contexts/' + group.index,
       compilerSettingsRef: group.settings.ref, files: group.files.map(file => file.path) };
   });
-  return { groups, gaps: [...gaps.values()], outsideReads: [...outsideReads.values()] };
+  const candidates = (input.profile.sourceFiles as SourceFile[]).flatMap(file => found.get(file.path) ?? []);
+  return { groups, candidates, gaps: [...gaps.values()], outsideReads: [...outsideReads.values()] };
 }

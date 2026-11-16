@@ -155,9 +155,13 @@ export function behaviorEntryRecord(input: BehaviorEntryInput): Fields {
   };
   const scope = readScope(input, (query, file) => {
     const settings = settingsCandidates(query, file.path, settingRules);
-    save(file, [...callCandidates(query, file.path, callRules), ...settings.candidates]);
-    return settings.gaps.map(item => savedGap(file, item));
+    return { candidates: [...callCandidates(query, file.path, callRules), ...settings.candidates]
+      .map(candidate => savedCandidate(file, candidate, roleOf(file.path))), gaps: settings.gaps.map(item => savedGap(file, item)) };
   });
+  for (const candidate of scope.candidates) {
+    if (candidates.length < candidateLimit) candidates.push(candidate);
+    else omittedCandidates++;
+  }
   const binGaps = packageBins(input, binRules, save);
   for (const candidate of pluginPatternCandidates(input.pluginPatterns, input.snapshot.files, picomatch, roleOf)) {
     if (candidates.length < candidateLimit) candidates.push(candidate);
