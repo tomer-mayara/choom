@@ -156,6 +156,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-06b | tomer-mayara/choom#79 | Draft. The query command is the Stage 4 inspect action `references PATH SYMBOL`, where the design places focused source queries. |
 | GA-01b | tomer-mayara/choom#80 | Draft |
 | GA-07a | tomer-mayara/choom#81 | Draft. Stage 4 collect saves the candidates as `behavior-entry-candidates.json`, and the entry analysis names it as `behaviorEntryCandidatesRef`. The ticket said `behaviorEntries`, but that field already holds reviewed entries that the LLM writes. The list starts with one rule, the Express `get` route, which the scenarios use. |
+| GA-07b | tomer-mayara/choom#82 | Draft. 30 route rules (Express app and router, Fastify, Hono). The method comes from the rule, so the record does not change. Every call rule needs a documented sample in a data-driven test. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
