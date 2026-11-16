@@ -60,7 +60,7 @@ describe("pluginEntryPatterns", () => {
     const value = { devDependencies: { astro: "5.0.0", bumpp: "10.0.0", svelte: "5.0.0", tailwindcss: "4.0.0" } };
     const found = pluginEntryPatterns([root(value)], [astro, bumpp, svelte, tailwind, vite,
       { name: "jest", enablers: ["jest"], config: ["package.json"] }]);
-    const notCopied = (plugin: string, dependency: string, field: string, pattern: string, reason: string) =>
+    const notCopied = (plugin: string, dependency: string, field: "entry" | "production", pattern: string, reason: string) =>
       ({ ...source(plugin, dependency), field, pattern, reason });
     expect(found.copied).toEqual([{ ...source("astro", "astro"), field: "production", pattern: "src/pages/**/*.ts!" }]);
     expect(found.patternsNotCopied).toEqual([

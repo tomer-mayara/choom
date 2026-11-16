@@ -114,8 +114,9 @@ const planOrder = (manifest: SnapshotManifest): number =>
 const plugins = pluginEntryPatterns(manifests.sort((left, right) => planOrder(left) - planOrder(right)),
   pluginNames.map(name => ({ ...Plugins[name], name })));
 for (const { workspace, pattern } of plugins.copied) {
-  const entry = workspaces[workspace]?.entry as string[];
-  if (!entry.includes(pattern)) workspaces[workspace] = { ...workspaces[workspace], entry: [...entry, pattern] };
+  const current = workspaces[workspace];
+  const entry = current?.entry as string[];
+  if (current && !entry.includes(pattern)) workspaces[workspace] = { entry: [...entry, pattern], project: current.project };
 }
 const profile = { ...Object.fromEntries(pluginNames.map(name => [name, false])), preprocessor: [], workspaces };
 const profileBytes = JSON.stringify(profile, null, 2);
