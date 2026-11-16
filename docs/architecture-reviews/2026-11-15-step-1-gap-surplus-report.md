@@ -134,7 +134,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | Report | tomer-mayara/choom#57 | Draft |
 | GA-03a | tomer-mayara/choom#58 | Draft |
 | GA-01c | tomer-mayara/choom#59 | Draft |
-| GA-11a | tomer-mayara/choom#60 | Draft. CR-004 text needs owner approval before GA-11b starts. |
+| GA-11a | tomer-mayara/choom#60 | Draft. The owner approved GA-11b, and with it the CR-004 text, on 2026-11-16 (recorded in the GA-11b1 PR). |
 | GA-DOC | tomer-mayara/choom#61 | Draft |
 | GA-00a | tomer-mayara/choom#62 | Draft |
 | GA-00b | tomer-mayara/choom#63 | Draft |
@@ -164,6 +164,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-02b | tomer-mayara/choom#87 | Draft. Not as the ticket says: a new Stage 5 request, `parts PATH SYMBOL...`, saves `parts-NNN.json`, because Stage 5 `collect` never sees a divided file. A part is named by its symbol or `rest`, not by a unit ID. An import goes to the part that holds all uses of its names. `shared`, `unreferenced` and `not-resolved` imports stay at file level. |
 | GA-07d | tomer-mayara/choom#88 | Draft. The engine changes, test first, as the ticket table allows: call rules get the optional fields `nameCall` and `sameValueMethods`. There are commander and yargs command rules (the yargs handler is argument 3), and a new rule kind, `package-bin`, which links a bin file to its source only with evidence (the snapshot file, or the saved `outDir` and `rootDir`). |
 | GA-08 | tomer-mayara/choom#89 | Draft. This PR also records plan change 17 and D23 (path A, which replaces D15). Every plugin stays `false`. The plugin patterns are copied into the Stage 2 profile, and Stage 4 lists their files with `found: knip-plugin-pattern`. The first real run of the `@docker` scenarios is in CI. |
+| GA-11b1 | tomer-mayara/choom#90 | Draft. This PR also records the owner's approval of GA-11b and the CR-004 text, and plan change 18. The Stage 6 helper is now TypeScript, with no change of behavior. Stage 6 saves discovery version 2 with `baselineDigest`, and `verify` checks it. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
@@ -298,6 +299,17 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
       settings candidates, with `found: knip-plugin-pattern`.
 
     The D15 test stays in the suite as the record of why.
+18. **GA-11b is split (GA-11b1 and GA-11b2).** The owner approved GA-11b,
+    and with it the CR-004 text, on 2026-11-16. CR-004 says that Stage 6
+    writes discovery `formatVersion: 2` with `baselineDigest`. Stage 6 was
+    `stage-6-commands.mjs`, so rule 5 (D4) applies, as for GA-10a.
+    - **GA-11b1 (producer):** converts the Stage 6 helper to TypeScript with
+      no change of behavior, with characterization tests first. Then Stage 6
+      saves the fixed discovery result as version 2 with `baselineDigest`, and
+      `verify` checks it against the saved baseline file. The working draft
+      stays version 1, because only Stage 6 knows the fixed baseline bytes.
+    - **GA-11b2 (viewer):** the steps of GA-11b in `@choom/baseline-model` and
+      the viewer, as CR-004 says.
 
 ### How to work every ticket
 
@@ -384,7 +396,7 @@ record its current behavior.
 | D14 | G7 | One rule engine with a pinned rule list. The first rules cover HTTP servers, workers and queues, CLI tools and frontend settings. |
 | D15 | G8 | Replaced by D23 on 2026-11-16 (plan change 17). Before: plugins run with `config: []`, so they use only their default file-name patterns and never load settings files. There is no approval list. This is not yet tested on Knip 6.44.1: GA-08 tests it first. |
 | D16 | ripgrep | `@vscode/ripgrep` at an exact version. Version 1.18.0 needs no `trustedDependencies` entry (plan change 10). |
-| D17 | G11 | CR-004 is approved in principle. The viewer shows discovery questions and gaps, and can copy a decision-file entry. There is no editor in the viewer. |
+| D17 | G11 | CR-004 is approved in principle. The viewer shows discovery questions and gaps, and can copy a decision-file entry. There is no editor in the viewer. The owner approved GA-11b, and with it the CR-004 text, on 2026-11-16. |
 | D18 | Docker tests | A CI `producer` job runs `@docker` scenarios. `bun run check` skips them. |
 | D19 | G4 | Git identity only. History is left to Step 2 planning. |
 | D20 | Old discovery files in the viewer | Approved by the owner on 2026-11-15. The viewer refuses a discovery result without `baselineDigest`, because an ID alone can match the wrong baseline. Old runs need a new run to show in the viewer. |
@@ -1317,6 +1329,8 @@ It fails today because every plugin is set to `false`.
 ### GA-11b Viewer shows discovery questions and gaps
 
 **Gap:** G11 (design 190–191, 392–394), D17, D20. **Needs:** GA-11a, GA-00a, GA-01a.
+
+**Changed by plan change 18:** GA-11b1 does step 1, the producer part. GA-11b2 does steps 2 to 7, the viewer part.
 
 ```gherkin
 @baseline-viewer @browser

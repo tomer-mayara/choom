@@ -1,9 +1,9 @@
 # CR-004: Show discovery questions and gaps in the viewer
 
-**Status:** Proposed. The owner approved the direction on 2026-11-15
+**Status:** Approved. The owner approved the direction on 2026-11-15
 (decisions D17 and D20 in the
-[Step 1 gap report](../architecture-reviews/2026-11-15-step-1-gap-surplus-report.md#decision-log)).
-The owner must approve this text before viewer work starts.
+[Step 1 gap report](../architecture-reviews/2026-11-15-step-1-gap-surplus-report.md#decision-log)),
+and approved this text with ticket GA-11b on 2026-11-16.
 
 **Date:** 2026-11-15
 
