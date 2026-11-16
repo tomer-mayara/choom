@@ -234,3 +234,70 @@ rules:
     callPath: fastify().all
     nameArgument: 0
     handlerArgument: last
+  # The route methods of a Hono app, such as app.post('/orders', (c) => c.text('Created'))
+  # after const app = new Hono() with import { Hono } from 'hono'. The path is the name
+  # and the last argument is the handler. Hono has no head method: a get route also
+  # answers HEAD requests.
+  - id: hono-route-get
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().get
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-post
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-put
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-patch
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-delete
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-options
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-all
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().all
+    nameArgument: 0
+    handlerArgument: last

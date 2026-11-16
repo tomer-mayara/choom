@@ -59,6 +59,22 @@ const fastifyRequired: Receiver = { extension: "js", entryKind: "http-route",
     "a local function with the name require": "function require(name) {\n  return () => new Map()\n}\n" +
       "const fastify = require('fastify')({\n  logger: true\n})\n",
   } };
+// The app of the Hono getting started guide, and an app with the types of its
+// bindings, as the Hono guide for Cloudflare Workers writes it.
+const honoApp: Receiver = { extension: "ts", entryKind: "http-route",
+  start: "import { Hono } from 'hono'\n\nconst app = new Hono()\n", others: {
+    "a Map": "const app = new Map<string, unknown>()\n",
+    "the app of another package": "import { Hono } from 'other'\n\nconst app = new Hono()\n",
+    "a local class with the name of the import": "class Hono extends Map<string, unknown> {}\n\nconst app = new Hono()\n",
+  } };
+const honoTypedApp: Receiver = { extension: "ts", entryKind: "http-route",
+  start: "import { Hono } from 'hono'\n\ntype Bindings = {\n  USERNAME: string\n}\n\nconst app = new Hono<{ Bindings: Bindings }>()\n",
+  others: {
+    "a Map": "const app = new Map<string, { Bindings: unknown }>()\n",
+    "the app of another package": "import { Hono } from 'other'\n\nconst app = new Hono<{ Bindings: unknown }>()\n",
+    "a local class with the name of the import": "class Hono<Env> extends Map<string, Env> {}\n\n" +
+      "const app = new Hono<{ Bindings: unknown }>()\n",
+  } };
 
 // The sample of each call rule of the list, by rule ID.
 const samples: Record<string, Sample> = {
@@ -117,6 +133,16 @@ const samples: Record<string, Sample> = {
     call: "fastify.head('/', «(request, reply) => {\n  reply.send()\n}»)" },
   "fastify-route-all": { receiver: fastifyRequired, name: "/",
     call: "fastify.all('/', «async (request, reply) => {\n  return { hello: 'world' }\n}»)" },
+  // The routes of the Hono routing guide: its HTTP methods, a path parameter and any
+  // method. Hono has no head method: a get route also answers HEAD.
+  "hono-route-get": { receiver: honoApp, name: "/user/:name",
+    call: "app.get('/user/:name', «async (c) => {\n  const name = c.req.param('name')\n  return c.text(name)\n}»)" },
+  "hono-route-post": { receiver: honoApp, name: "/", call: "app.post('/', «(c) => c.text('POST /')»)" },
+  "hono-route-put": { receiver: honoApp, name: "/", call: "app.put('/', «(c) => c.text('PUT /')»)" },
+  "hono-route-delete": { receiver: honoApp, name: "/", call: "app.delete('/', «(c) => c.text('DELETE /')»)" },
+  "hono-route-patch": { receiver: honoTypedApp, name: "/", call: "app.patch('/', «(c) => c.text('PATCH /')»)" },
+  "hono-route-options": { receiver: honoTypedApp, name: "/", call: "app.options('/', «(c) => c.text('OPTIONS /')»)" },
+  "hono-route-all": { receiver: honoTypedApp, name: "/hello", call: "app.all('/hello', «(c) => c.text('Any Method /hello')»)" },
 };
 
 const callRules = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules
