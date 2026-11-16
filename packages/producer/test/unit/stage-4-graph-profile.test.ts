@@ -131,6 +131,29 @@ describe("the module kinds of the Stage 4 graph profile", () => {
     ]);
   });
 
+  // TypeScript 6.0.2 keeps an import() call of a .cts file only with module Node16 to
+  // NodeNext or Preserve. With any other setting, or none, the compiled code requires the module.
+  test("give the import() calls of a .cts file the require condition with module ESNext or no module setting", () => {
+    const scope = [{ path: "src/legacy.cts", sha256: "d".repeat(64) }];
+    const compiledToCommonJS = { files: ["src/legacy.cts"], dynamicImportCondition: "require" };
+    for (const settings of [config({ module: 99 }, scope), config({}, scope)])
+      expect(passes(profileFor(settings, scope))).toEqual([{ id: "compiler-1-import", ...importPass, compiledToCommonJS },
+        { id: "compiler-1-require", ...requirePass }, { id: "compiler-1-commonjs", ...commonJSPass, compiledToCommonJS }]);
+    // The configuration-free fallback has no module setting.
+    expect(passes(profileFor({ configs: [], parsingProfile: null }, scope))).toEqual([
+      { id: "fallback-import", ...importPass, compiledToCommonJS }, { id: "fallback-require", ...requirePass },
+      { id: "fallback-commonjs", ...commonJSPass, compiledToCommonJS }]);
+  });
+
+  test("give the import() calls of a .cts file the import condition only with module Node16 to NodeNext or Preserve", () => {
+    const scope = [{ path: "src/legacy.cts", sha256: "d".repeat(64) }];
+    const condition = (module: number): unknown => ((profileFor(config({ module }, scope), scope).graph
+      .contexts as Record<string, unknown>[])[0]?.compiledToCommonJS as Record<string, unknown>).dynamicImportCondition;
+    expect([1, 5, 6, 7, 99, 100, 101, 102, 199, 200].map((module) => [module, condition(module)])).toEqual([[1, "require"],
+      [5, "require"], [6, "require"], [7, "require"], [99, "require"], [100, "import"], [101, "import"], [102, "import"],
+      [199, "import"], [200, "import"]]);
+  });
+
   test("keep the passes of the syntax for a file of unknown kind, and record why its kind is unknown", () => {
     const profile = profileFor(config({ module: 2 }));
     expect(passes(profile)).toEqual([{ id: "compiler-1-import", ...importPass }, { id: "compiler-1-require", ...requirePass }]);

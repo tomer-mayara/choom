@@ -44,16 +44,17 @@ export const commonJsTypeScript: ModuleKindPackage = {
   compilerOptions: { module: 1 },
 };
 
-// The import forms of main.ts in the import forms package, by the "#..." name that
-// each form loads.
+// The import forms of the main file in the import forms package, by the "#..." name
+// that each form loads.
 const importFormNames = ["dep", "types", "side", "other", "kinds", "legacy", "lazy", "query"];
 
-// A package with no type field whose main.ts has each import form: a value import, a
-// type-only import, a side-effect import, a re-export, a type-only re-export,
-// import = require, a dynamic import(), a type query and a triple-slash reference.
-// Each form loads its own name, which the imports field maps to <name>/index.mjs for
-// the import condition and to <name>/index.cjs for the require condition.
-export function importFormsPackage(compilerOptions: Record<string, number>): ModuleKindPackage {
+// A package with no type field whose main file, main.ts or another name such as
+// main.cts, has each import form: a value import, a type-only import, a side-effect
+// import, a re-export, a type-only re-export, import = require, a dynamic import(), a
+// type query and a triple-slash reference. Each form loads its own name, which the
+// imports field maps to <name>/index.mjs for the import condition and to
+// <name>/index.cjs for the require condition.
+export function importFormsPackage(compilerOptions: Record<string, number>, mainFile = "main.ts"): ModuleKindPackage {
   const imports = Object.fromEntries(importFormNames.map((name) =>
     [`#${name}`, { import: `./${name}/index.mjs`, require: `./${name}/index.cjs` }]));
   const main = ["/// <reference path='./globals.d.ts' />", "import { value } from '#dep';", "import type { Shape } from '#types';",
@@ -62,7 +63,7 @@ export function importFormsPackage(compilerOptions: Record<string, number>): Mod
     "export type Query = typeof import('#query');", "export const main: Shape = { value: value + String(legacy) };", ""];
   return { compilerOptions, snapshot: [
     { path: "package.json", text: JSON.stringify({ name: "forms", imports }) + "\n" },
-    { path: "main.ts", text: main.join("\n") },
+    { path: mainFile, text: main.join("\n") },
     { path: "globals.d.ts", text: "declare const marker: string;\n" },
     ...importFormNames.flatMap((name) => [{ path: `${name}/index.mjs`, text: `export const value = '${name}-import';\n` },
       { path: `${name}/index.cjs`, text: `exports.value = '${name}-require';\n` }]),

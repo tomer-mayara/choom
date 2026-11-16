@@ -349,15 +349,17 @@ function readEdges(context: GraphContext, raw: RawGraph, source: EdgeSource, dec
   });
 }
 
-// What a pass keeps of the files whose compiled code is CommonJS.
+// What a pass keeps of the files whose compiled code is CommonJS. Stage 4 start gives
+// their import() calls the import condition only with module Node16 to NodeNext or
+// Preserve, with which TypeScript keeps the calls.
 function compiledLimits(context: GraphContext): string[] {
   const dynamicImport = context.compiledToCommonJS?.dynamicImportCondition;
   if (dynamicImport === undefined) return [];
   if (kindOf(context) === 'import') return [dynamicImport === 'import'
-    ? 'This pass keeps only the import() calls of the files whose compiled code is CommonJS. The CommonJS pass keeps their other imports.'
+    ? 'This pass keeps only the import() calls of the files whose compiled code is CommonJS, which TypeScript keeps with module Node16 to NodeNext or Preserve. The CommonJS pass keeps their other imports.'
     : 'This pass keeps no import of the files whose compiled code is CommonJS. The CommonJS pass keeps them.'];
   return ['This pass keeps only the imports of the files whose compiled code is CommonJS, with the require condition. ' +
-    (dynamicImport === 'import' ? 'Their import() calls keep the import condition in the import pass. '
+    (dynamicImport === 'import' ? 'TypeScript keeps their import() calls with module Node16 to NodeNext or Preserve, so the import pass keeps them with the import condition. '
       : 'TypeScript compiles their import() calls into require calls, so these imports are not pre-compilation-only. ') +
     'It reads their require calls only to find the imports that the compiled code keeps; the require pass keeps the require calls.'];
 }
@@ -486,7 +488,8 @@ function writeFixture(scratch: string, baseDir: string, source: Record<string, s
 }
 
 // An import, a require and a CommonJS pass over every fixture file, and two overlapping
-// passes over two files. legacy.cts compiles to CommonJS.
+// passes over two files. legacy.cts compiles to CommonJS, and with module ESNext
+// TypeScript compiles an import() call of it into a require call.
 function fixtureProfile(source: Record<string, string>): GraphProfile {
   const sourceFiles = Object.entries(source).map(([path, contents]) => ({ path, sha256: sha256(contents) }));
   const context = {
@@ -494,7 +497,7 @@ function fixtureProfile(source: Record<string, string>): GraphProfile {
     compilerOptions: { target: 10, module: 99, jsx: 4, verbatimModuleSyntax: true },
     aliases: [{ name: '@/*', alias: '/repo/*' }],
   };
-  const compiledToCommonJS = { files: ['legacy.cts'], dynamicImportCondition: 'import' };
+  const compiledToCommonJS = { files: ['legacy.cts'], dynamicImportCondition: 'require' };
   return {
     formatVersion: 1, snapshotRef: 'fixture', attemptId: 's4-fixture', sourceFiles,
     contexts: [

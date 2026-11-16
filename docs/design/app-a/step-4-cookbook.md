@@ -126,13 +126,16 @@ finds the imports that the compiled code keeps; the require pass keeps the
 type-only import or re-export stays `pre-compilation-only`. The import pass and
 the CommonJS pass both name those files in `compiledToCommonJS`. The import pass
 keeps none of their imports, except an `import()` call that the compiled code
-keeps. With `module: commonjs`, TypeScript compiles an `import()` call into a
-`require` call, so the CommonJS pass keeps it, with the `require` condition and
-not `pre-compilation-only`. With any other setting, the call stays, and the import
-pass keeps it with the `import` condition. A JavaScript `import()` call keeps the
-`import` condition, as in Node. Traversal stays within each pass. In a group with
-both kinds, a pass can reach a file whose own edges are in another pass, and
-stops there; that file is not unused.
+keeps. TypeScript keeps an `import()` call only with `module` Node16 to NodeNext
+or Preserve, so the import pass keeps it with the `import` condition. With
+`module: commonjs`, ES2015 to ESNext, or no `module` setting, TypeScript compiles
+the call into a `require` call, also in a `.cts` file, so the CommonJS pass keeps
+it, with the `require` condition and not `pre-compilation-only`. The deprecated
+settings None, AMD, UMD and System also give the `require` condition, although
+there TypeScript keeps the call or writes it for another module loader. A
+JavaScript `import()` call keeps the `import` condition, as in Node. Traversal
+stays within each pass. In a group with both kinds, a pass can reach a file whose
+own edges are in another pass, and stops there; that file is not unused.
 
 `graph-profile-notes.json` lists in `moduleKinds` each file whose module kind
 its syntax does not decide: its group, kind, rule (`decidedBy`), the compiler

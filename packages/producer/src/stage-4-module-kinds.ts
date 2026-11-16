@@ -18,8 +18,11 @@ export interface EmittedKind {
   kind: ModuleKind; decidedBy: KindRule; setting: string | null; packageJson: string | null; reason: string | null;
 }
 // The files of a compiler context whose compiled code is CommonJS, and the condition
-// of their import() calls: require with module CommonJS, which compiles them into
-// require calls, and import with any other setting, which keeps them.
+// of their import() calls. TypeScript keeps an import() call only with module Node16
+// to NodeNext or Preserve, so the call keeps the import condition. With CommonJS,
+// ES2015 to ESNext or no module setting, TypeScript compiles it into a require call,
+// so it gets the require condition. The deprecated settings None, AMD, UMD and
+// System also give the require condition.
 export interface CompiledToCommonJS { files: string[]; dynamicImportCondition: 'import' | 'require' }
 // The module kind of each file of a compiler context that its syntax does not decide.
 export interface ContextKinds { compiled: CompiledToCommonJS | null; records: (EmittedKind & { path: string })[] }
@@ -30,6 +33,9 @@ const esModuleOutput = new Set([5, 6, 7, 99]);
 const packageTypeOutput = new Set([100, 101, 102, 199]);
 const preserveModule = 200;
 const unresolvedOutput: Record<number, string> = { 0: 'None', 2: 'AMD', 3: 'UMD', 4: 'System' };
+// The module settings with which TypeScript keeps an import() call: Node16 to NodeNext, and Preserve.
+const keepsImportCalls = (module: number | undefined): boolean => module !== undefined &&
+  ((module >= 100 && module <= 199) || module === preserveModule);
 
 function decided(kind: ModuleKind, decidedBy: KindRule, more: Partial<EmittedKind> = {}): EmittedKind {
   return { kind, decidedBy, setting: null, packageJson: null, reason: null, ...more };
@@ -72,7 +78,7 @@ export function contextKinds(paths: string[], options: Record<string, unknown>, 
     ? { value: options.module, ref: ref + '/compilerOptions/module' } : null;
   const kinds = paths.map(path => ({ path, ...emittedKind(path, compilerModule, nearestPackage) }));
   const files = kinds.filter(({ kind }) => kind === 'commonjs').map(({ path }) => path);
-  const dynamicImportCondition = compilerModule?.value === commonJSModule ? 'require' : 'import';
+  const dynamicImportCondition = keepsImportCalls(compilerModule?.value) ? 'import' : 'require';
   return { compiled: files.length ? { files, dynamicImportCondition } : null, records: kinds.filter(({ kind }) => kind !== 'syntax') };
 }
 
