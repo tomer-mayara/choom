@@ -45,7 +45,7 @@ describe("the producer profile of a version 5 baseline", () => {
   });
 });
 
-// The mapping of the two files of the baseline: src/billing.ts divided, and src/app.ts whole.
+// The checked code mapping of src/billing.ts, which the symbol selector of pricing divides.
 function mapped(billingUnits: Fields[]): MappedOwners {
   const checked = checkBaselineDocument(baseline());
   const { members } = validateBaseline({ baseline: checked, discovery: { questions: [], gaps: [] },
