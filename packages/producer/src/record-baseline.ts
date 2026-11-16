@@ -6,6 +6,7 @@ import type { Baseline, BaselineDecisions, BaselineDocumentation, BaselineInterf
 import { baselineStatements, documentationStatements, type DocumentationStatement, itemStatementFields, type StatementState }
   from '@choom/baseline-model/item-statements';
 import { assert, type Fields, object, oneOf } from './record-checks.ts';
+import type { MappedOwners } from './record-code-mapping.ts';
 import { type SourceRecords, validateSourceLocation } from './record-sources.ts';
 
 // The checks of a proposed baseline. The shared baseline rules in
@@ -35,7 +36,7 @@ export interface DocumentationInputs {
 export interface RunBaselineInputs extends DocumentationInputs {
   snapshotRef: string;
   componentIds: Set<unknown>;
-  mapped: Map<unknown, unknown>;
+  mapped: MappedOwners;
 }
 // One statement of an interface's documentation, its subject path, and the facts in it that can be null.
 interface DocumentationCheck { path: string; statement: StatementState; facts: [string, unknown][] }
@@ -251,7 +252,7 @@ function checkSourceUse(use: BaselineSourceUse, path: string, checks: UsageCheck
     assert(checks.reviewed.has(ref), 'Source use is outside the selected source review history: ' + path + ': ' + ref);
   }
   checks.evidence(use);
-  assert(checks.mapped.get((checks.source.records.get(use.callerRef) as Fields).path) === use.consumerId,
+  assert(checks.mapped.owns((checks.source.records.get(use.callerRef) as Fields).path, use.consumerId),
     'Source consumer differs from the direct mapped caller owner: ' + path);
   for (const name of ['consumerId', 'context'] as const) {
     if (name === 'consumerId' ? use.consumerId === null : use.context === 'unknown')
@@ -287,7 +288,7 @@ export function validateSystemEntryPoints(inputs: RunBaselineInputs): void {
     'systemEntryPoints.mappingRef differs from the selected candidate mapping.');
   inputs.evidence(assessment);
   for (const entry of assessment.entries) {
-    assert(inputs.mapped.get(entry.path) === entry.componentId, 'System entry differs from the direct mapped owner: ' + entry.id);
+    assert(inputs.mapped.owns(entry.path, entry.componentId), 'System entry differs from the direct mapped owner: ' + entry.id);
     inputs.evidence(entry);
     if (entry.source) validateSourceLocation(entry.source, inputs.source);
   }

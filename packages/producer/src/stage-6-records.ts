@@ -6,6 +6,7 @@ import { validateBehaviorCandidates } from './record-behavior-candidates.ts';
 import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
   from './record-baseline.ts';
 import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, strings, text } from './record-checks.ts';
+import { type MappedOwners, validateCodeMapping } from './record-code-mapping.ts';
 import { validateGraph } from './record-graph.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
 
@@ -290,43 +291,6 @@ function selectedHistory({ discovery, document, snapshotRef, source }: Selection
     reviewedRanges: chain.flatMap(item => item.record.reviewedFiles as Fields[]) };
 }
 
-const matchesSelector = (path: string, selector: string): boolean =>
-  selector.endsWith('/**') ? path.startsWith(selector.slice(0, -2)) : path === selector;
-
-function checkMapping(selection: Selection, members: Map<unknown, Fields>, { historyRefs, reviewedRanges }: History): Map<unknown, unknown> {
-  const { mapping, discovery, indexed, claim, resolve, evidence } = selection;
-  const scope = mapping.scope as Fields | undefined;
-  assert(mapping.kind === 'code-mapping' && scope?.inventoryRef === selection.inputs.run.snapshot.inventoryRef &&
-    scope.basis === 'all-inventoried-regular-files' && scope.unitKind === 'file' &&
-    text(scope.inspectionMeaning) && scope.selectedEntryAnalysisRef === discovery.entryAnalysisRef &&
-    same(scope.historicalEntryAnalysisRefs, historyRefs) && strings(mapping.limits) &&
-    Array.isArray(mapping.units) && mapping.units.length === indexed.size, 'Invalid selected code mapping scope.');
-  const reviewedPaths = new Set(reviewedRanges.map(item => item.path));
-  const mapped = new Map<unknown, unknown>();
-  for (const unit of mapping.units as Fields[]) {
-    claim(unit.id);
-    assert(!mapped.has(unit.path) && indexed.has(unit.path) && indexed.get(unit.path)?.sha256 === unit.sha256 && strings(unit.roles) &&
-      text(unit.reason) && unit.inspection === (reviewedPaths.has(unit.path) ? 'reviewed' : 'unreviewed'),
-    'Invalid mapped unit or inspection coverage: ' + unit.path);
-    const path = unit.path as string;
-    const owners = [...members].filter(([, { value }]) => {
-      const { paths, excludePaths } = value as { paths: string[]; excludePaths?: string[] };
-      return paths.some(pattern => matchesSelector(path, pattern)) && !(excludePaths ?? []).some(pattern => matchesSelector(path, pattern));
-    }).map(([id]) => id);
-    assert(same(owners, unit.owner === null ? [] : [unit.owner]), 'Mapping and direct membership differ: ' + unit.path);
-    if (unit.owner === null) assert(unit.membershipRef === null, 'Unknown unit selects a membership: ' + unit.path);
-    else {
-      const selectedMembership = resolve(unit.membershipRef);
-      const membership = members.get(unit.owner) as Fields;
-      assert(same(selectedMembership, membership) || same(selectedMembership, membership.value),
-        'Mapped membership reference differs from proposed intent: ' + unit.path);
-    }
-    evidence(unit);
-    mapped.set(unit.path, unit.owner);
-  }
-  return mapped;
-}
-
 // The retained Knip receipts, the reuse decision, the file candidates and the
 // historical inspection priorities of the selected entry analysis.
 function checkEntryFacts({ inputs, entry, document, snapshotRef, indexed, claim, evidence }: Selection): Set<unknown> {
@@ -383,7 +347,7 @@ function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields
   };
 }
 
-interface BehaviorInputs { componentIds: Set<unknown>; mapped: Map<unknown, unknown>; fileEntries: Set<unknown>; sourceSite(item: Fields): void }
+interface BehaviorInputs { componentIds: Set<unknown>; mapped: MappedOwners; fileEntries: Set<unknown>; sourceSite(item: Fields): void }
 
 function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries, sourceSite }: BehaviorInputs): void {
   const { entry, discovery, claim, evidence } = selection;
@@ -393,7 +357,7 @@ function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries
     assert(text(item.kind) && text(item.expression) && componentIds.has(item.componentRef) &&
       strings(item.fileEntryRefs) && item.fileEntryRefs.every(id => fileEntries.has(id)), 'Invalid behavior entry: ' + item.id);
     sourceSite(item);
-    assert(mapped.get((item.source as Fields).path) === item.componentRef, 'Behavior entry differs from the mapped source owner: ' + item.id);
+    assert(mapped.owns((item.source as Fields).path, item.componentRef), 'Behavior entry differs from the mapped source owner: ' + item.id);
     evidence(item);
     behaviorEntries.set(item.id, item);
   }
@@ -426,7 +390,7 @@ function checkResourceAccess(selection: Selection, { componentIds, mapped, sourc
       text(target?.expression) && oneOf(['symbolic', 'unknown'], target.identity) &&
       (target.resourceRef === null || resources.has(target.resourceRef)), 'Invalid resource access: ' + item.id);
     sourceSite(item);
-    assert(mapped.get((item.source as Fields).path) === item.componentRef, 'Resource actor differs from the mapped source owner: ' + item.id);
+    assert(mapped.owns((item.source as Fields).path, item.componentRef), 'Resource actor differs from the mapped source owner: ' + item.id);
     evidence(item);
   }
 }
@@ -460,10 +424,10 @@ function checkReadiness(selection: Selection, packet: Map<string, Buffer>): void
   checkVisibleResponse(saved('llm/analysis-response.md').toString('utf8'), 'llm/analysis-response.md');
 }
 
-function recordCounts({ source, graph, mapping, baseline, entry, discovery, access, count }: Selection, mapped: Map<unknown, unknown>): RecordCounts {
+function recordCounts({ source, graph, mapping, baseline, entry, discovery, access, count }: Selection, mapped: MappedOwners): RecordCounts {
   const length = (value: unknown): number => (value as unknown[]).length;
   return { evidenceRefsResolved: count(), sourceRecordsVerified: source.verified.size, graphContexts: length(graph.contexts),
-    mappedFiles: mapped.size, unknownOwners: (mapping.units as Fields[]).filter(unit => unit.owner === null).length,
+    mappedFiles: mapped.files, unknownOwners: (mapping.units as Fields[]).filter(unit => unit.owner === null).length,
     components: length(baseline.components), interfaces: length(baseline.interfaces), resources: length(baseline.resources),
     rules: length(baseline.rules), behaviorEntries: length(entry.behaviorEntries), inspectedPaths: length(discovery.inspectedPaths),
     observations: length(access.observations), questions: length(discovery.questions), gaps: length(discovery.gaps) };
@@ -478,7 +442,7 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   const history = selectedHistory(selection);
   const documentation = { baseline, discovery, evidence, source, reviewedRanges: history.reviewedRanges };
   validateDocumentation(documentation);
-  const mapped = checkMapping(selection, members, history);
+  const mapped = validateCodeMapping({ ...selection, ...history, members, inventoryRef: inputs.run.snapshot.inventoryRef });
   validateSourceUsage({ ...documentation, snapshotRef, componentIds, mapped });
   validateSystemEntryPoints({ ...documentation, snapshotRef, componentIds, mapped });
   const fileEntries = checkEntryFacts(selection);
