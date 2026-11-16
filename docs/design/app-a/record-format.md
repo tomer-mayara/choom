@@ -615,16 +615,30 @@ Do not publish facts that depend on analysis with different inputs.
 
 Stage 4 `collect` saves `behavior-entry-candidates.json`: the candidates that the
 pinned Choom behavior entry rules found in the source files of the graph scope
-and in the `package.json` files of the snapshot.
+and in the `package.json` files of the snapshot, and the files that the default
+patterns of the Knip plugins in the Stage 2 profile select.
 The [stage 4 cookbook](step-4-cookbook.md#find-the-behavior-entry-candidates)
 gives the rules, the fields and the limits. The Stage 4 entry analysis names the
 record as `behaviorEntryCandidatesRef`, and the Stage 5 entry analysis keeps that
 value. The Stage 4/5 publisher refuses any other value.
 
 `behaviorEntries` and the candidates are different records. A candidate is tool
-evidence that a syntax rule found (`found: syntax-rule`). A behavior entry is a
+evidence that a syntax rule found (`found: syntax-rule`), or a file that a Knip
+plugin pattern selects (`found: knip-plugin-pattern`). A behavior entry is a
 reviewed record with a component owner and a reviewed source range. A behavior
 entry can cite a candidate in its `evidenceRefs`.
+
+The Knip plugin patterns come from the Stage 2 `preflight.json` that the Knip
+receipts of the entry analysis name (`knipRunsRef`, then `preflightRef`). Stage 2
+keeps every Knip plugin turned off and records the patterns that it copies in place
+of the plugins (see the
+[Stage 2 cookbook](step-2-cookbook.md#knip-plugin-patterns)):
+
+| Field of `preflight.json` | Meaning |
+| --- | --- |
+| `pluginEntryPatterns` | Each copied pattern, as `knip-profile.json` holds it in the entry patterns of its workspace: `workspace`, `manifest` (the `package.json` whose dependency turned the plugin on: the workspace manifest or the manifest of a workspace that holds it), `plugin` (the Knip plugin name), `dependency`, `field` (`entry`, or `production` with a final `!` on the pattern) and `pattern`. |
+| `pluginPatternsNotCopied` | Each static pattern of a found plugin that the profile does not copy, with the same fields and the pattern of Knip, and `reason`: it names a settings file, or it is a negation. |
+| `pluginsNotCopied` | Each found plugin that adds no pattern: `workspace` (or `null` for a manifest that is not a workspace of the plan), `manifest`, `plugin`, `dependency` and `reason`. |
 
 When the selected entry analysis names the candidates, the shared record checks
 of Stages 4, 5 and 6 check them against the saved snapshot:
@@ -633,15 +647,15 @@ of Stages 4, 5 and 6 check them against the saved snapshot:
   current snapshot with `formatVersion: 1`. `status` is `partial` when
   `omittedCandidates` is more than 0, and `completed` otherwise.
 - `rulesRef` is a registered artifact whose SHA-256 is `rulesSha256`. Each
-  candidate and each settings gap names a rule of that list by `ruleId`,
-  `ruleVersion` and `entryKind`.
-- Each candidate has exactly the fields of the record, `found: syntax-rule`,
-  `role: test` with a `roleRef` or `role: unknown` with `roleRef: null`, a
-  `nameReason` only when `name` is null, and a `handlerReason` only when
-  `handler` is null. Collect gives `role: test` only when a role record of the
-  Stage 1 review (`review-001`) whose roles include `tests` has a selector that
-  is the exact path of the file or a folder that holds it; a glob selector or
-  another role name gives no test role.
+  syntax-rule candidate and each settings gap names a rule of that list by
+  `ruleId`, `ruleVersion` and `entryKind`.
+- Each syntax-rule candidate has exactly the fields of the record,
+  `found: syntax-rule`, `role: test` with a `roleRef` or `role: unknown` with
+  `roleRef: null`, a `nameReason` only when `name` is null, and a
+  `handlerReason` only when `handler` is null. Collect gives `role: test` only
+  when a role record of the Stage 1 review (`review-001`) whose roles include
+  `tests` has a selector that is the exact path of the file or a folder that
+  holds it; a glob selector or another role name gives no test role.
 - `path` and `sha256` name an indexed file of the inventory. `range` lies in the
   saved text of that file, and the text at the range is `expression`, or starts
   with it when `truncated` is true. Lines end at CRLF, CR, LF, U+2028 and
@@ -654,9 +668,18 @@ of Stages 4, 5 and 6 check them against the saved snapshot:
   `rootDir`.
 - A gap is an `unknown-settings-value` gap, which the checks locate as they
   locate a candidate, or a `missing-compiler-input` gap.
+- A candidate with `found: knip-plugin-pattern` has exactly `found`, `role`,
+  `roleRef`, `path`, `sha256`, `workspace`, `manifest`, `plugin`, `dependency`,
+  `field`, `pattern` and `patternRef`, with the role rule of the other candidates.
+  `patternRef` is the preflight record that the Knip receipts of the entry
+  analysis name, followed by `#/pluginEntryPatterns/` and an index of that list. The
+  pattern there has the same `workspace`, `manifest`, `plugin`, `dependency`,
+  `field` and `pattern`. `path` and `sha256` name an indexed file of the inventory.
 
 These checks show that the candidates match the saved files. They do not show
-that a candidate is a real entry or that the list is complete.
+that a candidate is a real entry or that the list is complete. The checks do not
+match a Knip plugin pattern against its path again, as they do not run the rules
+again.
 
 ## Code mapping
 

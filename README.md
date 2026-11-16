@@ -753,6 +753,33 @@ bun test ./packages/producer/test/interface/stage-4/rule-lists.test.ts
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
 ```
 
+Stage 2 runs Knip 6.44.1 with every plugin turned off, so Knip loads no settings
+file of the target. A plugin set to `{ config: [] }` can still load a settings file
+that a package script or a second plugin names, as
+`packages/producer/test/interface/stage-2/knip-plugin-settings.test.ts` records. In
+place of the plugins, Stage 2 prepare copies the default `entry` and `production`
+patterns of each Knip plugin that a dependency of a workspace manifest turns on, from
+the plugin definitions of the installed Knip (`stage-2-plugin-patterns.ts`), into
+the entry patterns of the workspace. `preflight.json` records each copied pattern
+with its plugin, dependency and manifest (`pluginEntryPatterns`), and each pattern
+and plugin that it does not copy, with the reason. Knip's report lists issues, not
+entries, so Stage 4 collect (`stage-4-plugin-entries.ts`) lists each indexed file
+that a copied pattern selects as a behavior entry candidate with
+`found: knip-plugin-pattern`, after the syntax-rule candidates. The shared record
+checks check its source against the preflight record. The `@producer @docker`
+scenarios run Stage 2 with the pinned Knip image, then Stage 3 and Stage 4 collect,
+on a Next.js app and on a Vite app whose settings file is a probe script; the CI
+`producer` job runs them. The native interface test runs the same profile with the
+local Knip. The [Stage 2 cookbook](docs/design/app-a/step-2-cookbook.md#knip-plugin-patterns)
+gives the rules and their limits. Run the focused checks of the Knip plugin patterns
+with:
+
+```sh
+bun test ./packages/producer/test/unit/stage-2-plugin-patterns.test.ts ./packages/producer/test/unit/stage-4-plugin-entries.test.ts ./packages/producer/test/unit/record-behavior-candidates.test.ts
+bun test ./packages/producer/test/interface/stage-2/knip-plugin-settings.test.ts ./packages/producer/test/interface/stage-2/knip-plugin-patterns.test.ts ./packages/producer/test/interface/stage-2/entry-analysis.test.ts ./packages/producer/test/interface/stage-4/plugin-entries.test.ts
+bun run test:producer:docker
+```
+
 Stage 4 `stage-4-inspect collect` also applies the pinned list of Choom resource
 access rules (`packages/producer/rules/resource-access-rules.yaml`, with its
 [contract](cookbook/interfaces/resource-access-rules.tsp)) to the source files of
@@ -1010,12 +1037,14 @@ ran from their cookbooks is in TypeScript modules: the Stage 1 settings collecto
 (`stage-1-settings.ts`), the Stage 2 steps (`stage-2-handoff.ts`,
 `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`,
 `stage-2-knip-run.ts` and `stage-2-finish.ts`) and the input consolidation command
-(`stage-2-consolidate-inputs.ts`). The Stage 3 helper (`stage-3-commands.ts`) uses
+(`stage-2-consolidate-inputs.ts`). The Knip profile takes the Knip plugin patterns
+from `stage-2-plugin-patterns.ts`. The Stage 3 helper (`stage-3-commands.ts`) uses
 `stage-3-inputs.ts` for the checked run and snapshot files, `stage-3-collect.ts`
 for the evidence of `collect`, `stage-3-text-search.ts` with `ripgrep.ts` for
 the text search, and `stage-3-exports.ts` for the exports action. The Stage 4
 inspection helper (`stage-4-inspect.ts`) uses `stage-4-source-sites.ts` for the
-source sites, `stage-4-review-prompt.ts` for the review prompt and
+source sites, `stage-4-review-prompt.ts` for the review prompt,
+`stage-4-plugin-entries.ts` for the candidates of the Knip plugin patterns and
 `stage-4-references.ts` for the references action. The Stage 5
 helper (`stage-5-commands.ts`) uses `stage-5-inputs.ts` for the checked run and
 snapshot files, `stage-5-query.ts` with `stage-5-syntax.ts` for the evidence

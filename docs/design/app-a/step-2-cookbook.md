@@ -219,8 +219,10 @@ expression. Keep one file candidate even if that file registers several HTTP
 routes or MCP tools. Review those operations in Stages 4 and 5. A generated
 or declaration entry does not prove a source entry.
 Do not infer production use from compiler inclusion or a directory name.
-This profile uses Knip 6.44.1 with all framework plugins disabled. Do not rely
-on those plugins to discover entries; metadata and script discovery still apply.
+This profile keeps every plugin of Knip 6.44.1 turned off, so no settings file
+runs. It adds the default entry file-name patterns of the plugins that the
+dependencies turn on. Do not rely on plugin settings files or plugin code to
+discover entries; metadata and script discovery still apply.
 
 Return only complete JSON, without Markdown fences, placeholders, or commentary.
 Use exactly these top-level fields:
@@ -291,7 +293,9 @@ The generator validates the plan and produces Choom-owned configuration for
 sets `preprocessor` to an empty array, and supplies no custom compilers. Knip's
 core still reads package fields and parses script text. Its built-in text
 compilers remain available; disabling framework plugins does not disable them.
-The preflight lists the approved core parsers for this pinned version.
+The preflight lists the approved core parsers for this pinned version. In place of
+the plugins, the profile copies the default entry patterns of the plugins that the
+dependencies turn on; see [Knip plugin patterns](#knip-plugin-patterns).
 
 The image check and analysis also set `KNIP_DISABLE_RAW_TRANSFER=1`. Knip 6.44.1
 otherwise enables an experimental parser path that can request a large memory
@@ -315,14 +319,73 @@ from the saved snapshot to make the check pass.
 
 `prepare` runs [`stage-2-knip-profile.ts`](../../../packages/producer/src/stage-2-knip-profile.ts).
 It checks the plan and writes `knip-profile.json`: every plugin of Knip 6.44.1 set
-to `false`, `preprocessor: []`, and the plan's workspace patterns. It writes the
-decision, the reasons and the digests of the plan, profile and inventory to
+to `false`, `preprocessor: []`, and the plan's workspace patterns, followed by the
+copied plugin patterns of each workspace. It writes the decision, the reasons, the
+digests of the plan, profile and inventory, and the records of the plugin patterns to
 `preflight.json`. Review the status and every reason.
 
 Expected: `preflight.json` and `knip-profile.json`. The runner must not use a
 profile marked `unsupported`.
 A missing or invalid plan is an input error. Ask the LLM to correct it before
 continuing. An unsupported profile is an explicit skipped tool outcome.
+
+### Knip plugin patterns
+
+A Knip plugin set to `{ config: [] }` adds its default entries, but Knip 6.44.1 can
+still load a settings file through it, and a settings file can be a script. Knip
+loads a settings file that a package script names for the plugin, such as
+`vite build --config vite.custom.config.js` or the folder of `next build web`, and a
+settings file that a second turned-on plugin names, such as `babel.config.js` that
+the Expo plugin names. The producer tests record these cases. So the profile keeps
+every plugin turned off, and Knip loads no settings file of the target.
+
+In place of the plugins, `prepare` reads the plugin definitions of the installed
+Knip 6.44.1 with [`stage-2-plugin-patterns.ts`](../../../packages/producer/src/stage-2-plugin-patterns.ts).
+A plugin is found for a workspace of the plan when one of its enablers, a package
+name or a name pattern, matches a dependency or a development dependency of the
+workspace manifest, or of the manifest of a plan workspace that holds it, as Knip
+turns plugins on. Knip uses a root-only plugin only in the root workspace. For each
+found plugin, the profile copies the static `entry` patterns of the plugin, and its
+`production` patterns with a final `!`, the form of a production entry, into the
+entry patterns of the workspace. It does not copy:
+
+- a pattern that names a settings file: a settings-file pattern (`config`) of a
+  plugin of Knip 6.44.1, or a pattern whose file name holds `config` or ends with
+  `rc`, such as `tailwind.config.{js,ts}` or `.bumprc`. A settings file stays a plain
+  file, not an entry;
+- a negation, such as `!src/pages/**/_*`, because in the entry patterns of the
+  workspace it would also remove the entries of the plan and of other plugins.
+
+`preflight.json` records each copied pattern in `pluginEntryPatterns`, each pattern
+that it did not copy in `pluginPatternsNotCopied`, and in `pluginsNotCopied` each
+found plugin that adds no pattern, with the reason: a plugin whose entries come only
+from its settings file or its own code, such as Vite, which reads its start files from
+`index.html`; a plugin whose patterns all stay out; a root-only plugin of another
+workspace; and a plugin of a manifest that is not a workspace of the plan. It keeps
+`disabledPlugins`, the list of every plugin. For a Next.js app, the record has
+entries such as:
+
+```json
+"pluginEntryPatterns": [
+  { "workspace": ".", "manifest": "package.json", "plugin": "next", "dependency": "next",
+    "field": "production", "pattern": "{,src/}app/**/{layout,page,route,template}.{js,jsx,ts,tsx}!" }
+],
+"pluginsNotCopied": [
+  { "workspace": ".", "manifest": "package.json", "plugin": "postcss", "dependency": "next",
+    "reason": "Knip 6.44.1 gives this plugin no static entry or production patterns: its entries come from its settings file or from its own code, which this profile does not run." }
+]
+```
+
+Only the file-name patterns come from the plugins. The profile runs no plugin code,
+so it loses the entries that this code finds: the resolve steps of the plugins, such
+as the start files that the Vite plugin reads from `index.html`, the readers of
+`.vue`, `.svelte` and `.astro` files, and the syntax visitors of the plugins. The
+copied patterns are the defaults of Knip 6.44.1, and a settings file that changes
+them is not read. An entry that only a settings file names comes from the Choom
+settings rules of Stage 4 or stays a gap. Knip's report lists issues, not entries, so
+Stage 4 `collect` lists the files that the copied patterns select as behavior entry
+candidates; see the
+[Stage 4 cookbook](step-4-cookbook.md#find-the-behavior-entry-candidates).
 
 ## 4. Run Knip against the saved snapshot
 

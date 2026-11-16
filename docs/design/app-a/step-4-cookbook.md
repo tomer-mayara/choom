@@ -374,9 +374,12 @@ explicit. Do not fill an unknown permission policy from source callers.
 
 `collect` applies the pinned list of Choom behavior entry rules to the source
 files of the graph scope and saves the candidates in
-`behavior-entry-candidates.json`. A behavior entry starts a path such as route →
-invoice creation → storage. A candidate is a place to read: a syntax rule found
-it. It is not a proven entry.
+`behavior-entry-candidates.json`. It also lists the files that the default patterns
+of the Knip plugins in the Stage 2 profile select (see
+[The candidates of the Knip plugin patterns](#the-candidates-of-the-knip-plugin-patterns)).
+A behavior entry starts a path such as route → invoice creation → storage. A
+candidate is a place to read: a syntax rule or a plugin pattern found it. It is not
+a proven entry.
 
 The list is `packages/producer/rules/behavior-entry-rules.yaml` in the tool
 checkout, and its contract is
@@ -709,7 +712,9 @@ from a setting: the special files of the `app` folder, such as `page.tsx` and
 as `proxy.ts` (formerly `middleware.ts`) and `instrumentation.ts`. No property of
 `next.config.*` names entry files as literal values: `pageExtensions` names file
 extensions, and `exportPathMap` and `webpack` are functions. So a
-`settings-literal` rule cannot find these entries. This is left for a later ticket.
+`settings-literal` rule cannot find these entries. The Next.js plugin of Knip 6.44.1
+has default patterns for these files, and the Stage 2 profile copies them, so each
+such file of a workspace that depends on `next` is a `knip-plugin-pattern` candidate.
 
 The `cli-command` rules also do not find, or do not name, these commands:
 
@@ -756,14 +761,58 @@ The `cli-bin` rule also does not find, or does not name, these commands and file
 - A bin file that npm cannot run: the rule does not check that the file starts with
   `#!/usr/bin/env node`, that it runs, or that npm installs the package.
 
+#### The candidates of the Knip plugin patterns
+
+Stage 2 keeps every Knip plugin turned off, so Knip loads no settings file. In place
+of the plugins, its profile copies the default entry patterns of the Knip 6.44.1
+plugins that the dependencies of a workspace manifest turn on, and records each
+copied pattern in `pluginEntryPatterns` of its `preflight.json` (see the
+[Stage 2 cookbook](step-2-cookbook.md#knip-plugin-patterns)). Knip's report lists
+issues, not entries, so `collect` finds the files of these patterns itself. It reads
+the preflight record that the Knip receipts of the selected entry analysis name
+(`knipRunsRef`, then `preflightRef`), and the workspaces of the Knip profile
+(`profileRef`). Each indexed regular file that a copied pattern selects is a
+candidate with `found: knip-plugin-pattern`:
+
+- The pattern matches the path in the folder of its workspace, with picomatch and dot
+  files, as Knip globs, and without the final `!` of a production pattern. A file of
+  another workspace of the profile inside that folder is left to the patterns of that
+  workspace. A workspace that only Knip finds, from the `workspaces` field of a
+  manifest, is not known, so its files can match a pattern of an outer workspace.
+- `workspace`, `manifest`, `plugin`, `dependency`, `field` and `pattern` are the
+  source of the pattern, and `patternRef` names it, such as
+  `s2-001-preflight#/pluginEntryPatterns/6`. `role` and `roleRef` follow the role rule
+  of the syntax-rule candidates. The candidate has no range, name or handler: the
+  file is the entry.
+- The candidates come after the syntax-rule candidates, by the order of the copied
+  patterns and then of the paths, and the limit of 10000 candidates applies to all of
+  them. A file that a settings rule and a plugin pattern both find is listed for each,
+  with its own source.
+
+A plugin pattern is a default of Knip 6.44.1 and shows only a framework convention:
+a settings file can change it, and the profile does not read settings files. Knip
+may not read a selected file, such as a `.vue` file without the Vue plugin. An entry
+that only a settings file names, such as a Vite input, is a syntax-rule candidate of
+the settings rules or a gap. The files of the patterns are candidates, not roots of
+the Stage 4 graph, which come from the entry patterns of the plan. For a Next.js app,
+the page `app/page.tsx` gives:
+
+```json
+{ "found": "knip-plugin-pattern", "role": "unknown", "roleRef": null, "path": "app/page.tsx",
+  "sha256": "b2f6ca49f1602dfbea9399a853dda8334cbf2026f6e1a3356f26ae699bcd42af",
+  "workspace": ".", "manifest": "package.json", "plugin": "next", "dependency": "next", "field": "production",
+  "pattern": "{,src/}app/**/{layout,page,route,template}.{js,jsx,ts,tsx}!",
+  "patternRef": "s2-001-preflight#/pluginEntryPatterns/6" }
+```
+
 | Record field | Meaning |
 | --- | --- |
 | `formatVersion`, `attemptId`, `snapshotRef`, `status` | `1`, the Stage 4 attempt ID, the snapshot ID, and `completed`, or `partial` when the limit of 10000 candidates omitted some. |
 | `rulesRef`, `rulesSha256` | The copy of the rule list that start saved, and its SHA-256. |
 | `settingsRef`, `rolesRef` | `settings-001`, whose compiler settings the helper used, and `review-001`, whose role records give the roles. |
 | `scope` | `files`, the source files of the graph scope; and `groups`, for each graph group, its import pass (`graphContext` and `graphContextRef`), its `compilerSettingsRef` and the files that it read. The `package.json` files that the `package-bin` rule reads are not in `scope`. |
-| `queryOptions`, `tool`, `virtualRoot` | As in the references record. `tool` also names the picomatch version that matched the `fileGlob` of the settings-literal rules. |
-| `candidates` | Each candidate, in the order of the scope files and then in source order, then the candidates of the `package-bin` rule in the order of the inventory: `ruleId`, `ruleVersion`, `entryKind`, `found` (`syntax-rule`), `role`, `roleRef`, `path`, `sha256`, `range`, `expression`, `truncated`, `name`, `nameReason`, `handler` (`path` and `range`, and also `evidence` for a `package-bin` candidate, or `null`) and `handlerReason`. |
+| `queryOptions`, `tool`, `virtualRoot` | As in the references record. `tool` also names the picomatch version that matched the `fileGlob` of the settings-literal rules and the Knip plugin patterns. |
+| `candidates` | Each candidate, in the order of the scope files and then in source order, then the candidates of the `package-bin` rule in the order of the inventory: `ruleId`, `ruleVersion`, `entryKind`, `found` (`syntax-rule`), `role`, `roleRef`, `path`, `sha256`, `range`, `expression`, `truncated`, `name`, `nameReason`, `handler` (`path` and `range`, and also `evidence` for a `package-bin` candidate, or `null`) and `handlerReason`. Then each file of a Knip plugin pattern, by the order of the copied patterns and then of the paths: `found` (`knip-plugin-pattern`), `role`, `roleRef`, `path`, `sha256`, `workspace`, `manifest`, `plugin`, `dependency`, `field`, `pattern` and `patternRef`. |
 | `omittedCandidates` | The number of candidates after the limit. |
 | `gaps` | Each value of a `settings-literal` rule that is not a literal, and each value of the `package-bin` rule that is not a path, located like a candidate, with `reason`; and each compiler input that the snapshot does not hold, as in the references record. |
 | `outsideReads`, `notes` | As in the references record. |
@@ -819,7 +868,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "omittedCandidates": 0,
   "gaps": [],
   "outsideReads": ["..."],
-  "notes": ["A candidate is a call, a settings entry or a bin command that a Choom syntax rule found (found: syntax-rule). ...", "..."]
+  "notes": ["A candidate is a call, a settings entry or a bin command that a Choom syntax rule found (found: syntax-rule), or a file that a Knip plugin pattern of the Stage 2 profile selects (found: knip-plugin-pattern). ...", "..."]
 }
 ```
 
