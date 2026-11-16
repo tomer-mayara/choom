@@ -326,6 +326,11 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
     - **CI:** the `web` job now has 25 minutes, not 15. Its main step grew from
       7 min 15 s on GA-00c to 12 min 46 s on GA-11b2, and the first run of
       tomer-mayara/choom#92 stopped at the 15-minute limit.
+    - **A flaky browser step from GA-11b2:** the keyboard scenario "Reach tabs
+      and disclosures with visible keyboard focus" counted the Copy decision
+      actions before React showed the opened disclosure. The step now waits
+      for the content first (tomer-mayara/choom#92). Under CPU load, it failed
+      in 3 of 20 runs before the fix and in 0 of 30 runs after it.
     - **D5 changes no behavior:** the documents now say that the GA-08
       settings-file filter tests only names, and they list its known misses. A
       list of settings files kept by hand needs an owner decision.
