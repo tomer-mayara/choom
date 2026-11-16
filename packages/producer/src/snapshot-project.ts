@@ -242,6 +242,18 @@ export function openSyntaxReader(snapshot: SnapshotFiles, tools: ProjectTools): 
   };
 }
 
+// Parses the saved bytes of one snapshot file as the syntax reader parses the file:
+// as UTF-8 text, without compiler settings, below the virtual root. The shared record
+// checks use it: they read the bytes and check them against the inventory themselves.
+// Bytes that are not UTF-8 text stop the parse.
+export function parseSnapshotText(path: string, bytes: Buffer, tools: ProjectTools): TsMorph.ts.SourceFile {
+  const virtual = posix.join(virtualRoot, path);
+  const memory = new tools.InMemoryFileSystemHost();
+  memory.writeFileSync(virtual, utf8.decode(bytes));
+  const project = new tools.Project({ fileSystem: memory, compilerOptions: syntaxOnly.compilerOptions as TsMorph.CompilerOptions });
+  return project.addSourceFileAtPath(virtual).compilerNode;
+}
+
 // The parser diagnostics of a parsed file. TypeScript keeps them in an internal field.
 export function parseDiagnostics(source: TsMorph.ts.SourceFile): TsMorph.ts.Diagnostic[] {
   return (source as TsMorph.ts.SourceFile & { parseDiagnostics?: TsMorph.ts.Diagnostic[] }).parseDiagnostics ?? [];

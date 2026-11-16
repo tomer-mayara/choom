@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import * as tsMorph from "ts-morph";
-import { openSnapshotProject, type OutsideRead, type ProjectSettings, type SnapshotProject } from "../../src/snapshot-project.ts";
+import { openSnapshotProject, openSyntaxReader, type OutsideRead, parseSnapshotText, type ProjectSettings, type SnapshotProject }
+  from "../../src/snapshot-project.ts";
 import type { InventoryFile } from "../../src/stage-1-settings.ts";
 import { makeScratch, removeScratch } from "../support/commands.ts";
 import { writeFiles } from "../support/stage-1-run.ts";
@@ -113,5 +114,25 @@ describe("openSnapshotProject", () => {
         reason: "src/app.ts names the type package node in a reference types directive, but the snapshot holds no " +
           "declaration file for it." },
     ]);
+  });
+});
+
+// The record checks read and check the saved bytes of a file themselves, then parse
+// them. The parse must give the tree that the syntax reader gives for the saved file.
+describe("parseSnapshotText", () => {
+  const shape = (source: tsMorph.ts.SourceFile) => ({ fileName: source.fileName, text: source.text,
+    statements: source.statements.map((statement) => [statement.kind, statement.pos, statement.end]) });
+
+  test("parses the saved bytes of a file as the syntax reader parses the file", () => {
+    const text = "\uFEFF// A header.\r\nexport function price(): number;\r\nexport function price() { return 1; }\r\n";
+    writeFiles(snapshotRoot, { "src/price.ts": text });
+    const inventory = [{ path: "src/price.ts", kind: "file", bytes: Buffer.byteLength(text), sha256: sha256(text) }];
+    const read = openSyntaxReader({ files: inventory, snapshotRoot }, tsMorph)("src/price.ts", shape);
+    expect(shape(parseSnapshotText("src/price.ts", Buffer.from(text), tsMorph))).toEqual(read);
+    expect(read.text).toBe(text.slice(1));
+  });
+
+  test("stops at bytes that are not UTF-8 text", () => {
+    expect(() => parseSnapshotText("src/price.ts", Buffer.from([0x61, 0xff, 0x0a]), tsMorph)).toThrow(TypeError);
   });
 });
