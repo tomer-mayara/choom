@@ -31,13 +31,6 @@ export const noPathOwner = "no-path-owner";
 export interface SymbolPart { symbol: string; owner: string; ranges: SourceRange[] }
 export interface RestPart { owner: string | null; ranges: SourceRange[] }
 
-// The text of the file at a list of ranges, in the order of the ranges.
-export function textAt(text: string, ranges: readonly SourceRange[]): string {
-  const lineStarts = [0, ...[...text.matchAll(/\n/g)].map((match) => match.index + 1)];
-  const offset = ({ line, column }: { line: number; column: number }): number => (lineStarts[line - 1] ?? Number.NaN) + column - 1;
-  return ranges.map(([start, end]) => text.slice(offset(start), offset(end))).join("");
-}
-
 // Replaces the whole-file unit of billing.ts with a symbol unit for each symbol part and a rest unit.
 export function divideBilling(mapping: CodeMapping, baseline: StageFiveBaseline, symbols: readonly SymbolPart[], rest: RestPart): void {
   const sha256 = createHash("sha256").update(billingText).digest("hex");

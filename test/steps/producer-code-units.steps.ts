@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
-import { billingFile, billingPath, billingRestRanges, billingText, computePriceRanges, divideBilling, noPathOwner, textAt }
+import { billingFile, billingPath, billingRestRanges, billingText, computePriceRanges, divideBilling, noPathOwner }
   from "../../packages/producer/test/fixtures/stage-5-publication/divided-file.ts";
 import { type CodeMapping, component, type MappingUnit, publishStageFive, type StageFivePublication, stageFivePublication }
   from "../../packages/producer/test/fixtures/stage-5-publication/fixture.ts";
 import type { CommandResult } from "../../packages/producer/test/support/commands.ts";
 import { folderState } from "../../packages/producer/test/support/producer-record.ts";
+import { textAt } from "../../packages/producer/test/support/source-ranges.ts";
 
 // The scenarios publish the Stage 4 review of a small run whose snapshot holds
 // billing.ts, run Stage 5 start and collect through the command line, and check a
