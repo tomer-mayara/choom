@@ -1,11 +1,14 @@
 import { beforeAll, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import * as tsMorph from "ts-morph";
 import * as yaml from "yaml";
 import { callCandidates, type EntryCandidate, entryQuery } from "../../src/behavior-entry-calls.ts";
 import { behaviorEntryRulesPath, readRuleList } from "../../src/behavior-entry-rules.ts";
-import type { BehaviorEntryCallRule } from "../../src/generated/contracts.ts";
+import { type SettingsFindings, settingsCandidates, settingsRules } from "../../src/behavior-entry-settings.ts";
+import type { BehaviorEntryCallRule, BehaviorEntrySettingsLiteralRule } from "../../src/generated/contracts.ts";
+import type { Picomatch } from "../../src/stage-4-graph-profile.ts";
 import { toolsRoot, withScratch } from "../support/commands.ts";
 import { type Files, projectOf } from "../support/snapshot-files.ts";
 import { rangeIn } from "../support/source-ranges.ts";
@@ -13,8 +16,11 @@ import { rangeIn } from "../support/source-ranges.ts";
 // The call rules of the pinned rule list of the producer, each on a sample call
 // that the documentation of its library shows. Each rule finds its sample with the
 // name and the handler of the sample, and no rule finds the same call on another
-// receiver with the same name. The test reads the real list, so a new call rule
-// needs a sample here.
+// receiver with the same name. The settings-literal rules of the list, each on a
+// sample settings file in the form that the documentation of its tool shows: each
+// rule finds the literal entries of its sample, each computed entry is a gap with a
+// reason, and no rule reads the same text in a file that its glob does not match.
+// The test reads the real list, so a new rule needs a sample here.
 //
 // A receiver is the documented code that makes the value whose method a group of
 // rules calls, or that imports the class whose new call a rule finds, and other code
@@ -197,8 +203,54 @@ const sandboxedAsLiteral = "import { Worker } from 'bullmq';\n\nconst worker = n
 const sandboxedFiles: Files = { "bullmq-sandboxed/variable.ts": sandboxedInVariable,
   "bullmq-sandboxed/literal.ts": sandboxedAsLiteral };
 
-const callRules = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules
-  .filter((rule): rule is BehaviorEntryCallRule => rule.kind === "call");
+// A frontend build tool: the kind of entry that its settings name, the names of its
+// settings files, and other files that can hold the same text but that the tool does
+// not read as its settings, by a description.
+interface SettingsTool { entryKind: string; files: string[]; others: Record<string, string> }
+// A sample settings file of a rule. Each entry is a part of the file in which « and »
+// mark a string literal, and the name that it gives. Each gap is a part of the file in
+// which « and » mark a value that the code computes.
+interface SettingsSample { tool: SettingsTool; file: string; text: string; entries: [string, string][]; gaps: string[] }
+
+// Vite looks for a settings file with one of these names in the project root. A file
+// with another name is a settings file only when the --config option of the vite
+// command names it.
+const vite: SettingsTool = { entryKind: "frontend-entry",
+  files: ["vite.config.js", "vite.config.mjs", "vite.config.ts", "vite.config.cjs", "vite.config.mts", "vite.config.cts"],
+  others: { "the settings file of Rollup": "rollup.config.js", "the settings file of Vitest": "vitest.config.js",
+    "a settings file that only the --config option of vite names": "vite.config.production.js",
+    "a source file": "src/settings.js" } };
+const lines = (...parts: string[]): string => parts.join("\n") + "\n";
+
+// The sample settings file of each settings-literal rule, by rule ID. The guides of Vite
+// resolve each entry from the folder of the settings file with a call, so each sample
+// keeps one such entry and gives the other as a path literal.
+const settingsSamples: Record<string, SettingsSample> = {
+  // The Multi-Page App example of the Vite guide Building for Production before Vite 8.
+  "vite-build-rollup-options-input": { tool: vite, file: "vite.config.js", text: lines(
+    "import { dirname, resolve } from 'node:path'",
+    "import { fileURLToPath } from 'node:url'",
+    "import { defineConfig } from 'vite'",
+    "",
+    "const __dirname = dirname(fileURLToPath(import.meta.url))",
+    "",
+    "export default defineConfig({",
+    "  build: {",
+    "    rollupOptions: {",
+    "      input: {",
+    "        main: 'index.html',",
+    "        nested: resolve(__dirname, 'nested/index.html'),",
+    "      },",
+    "    },",
+    "  },",
+    "})"),
+  entries: [["main: «'index.html'»", "index.html"]], gaps: ["nested: «resolve(__dirname, 'nested/index.html')»"] },
+};
+
+const ruleList = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules;
+const callRules = ruleList.filter((rule): rule is BehaviorEntryCallRule => rule.kind === "call");
+const settingsLiteralRules = ruleList.filter((rule): rule is BehaviorEntrySettingsLiteralRule => rule.kind === "settings-literal");
+const picomatch = createRequire(import.meta.url)("picomatch") as Picomatch;
 const plain = (call: string): string => call.replace("«", "").replace("»", "");
 // The text of a file: a receiver, then the call.
 const fileText = (start: string, call: string): string => start + "\n" + plain(call) + "\n";
@@ -216,14 +268,32 @@ function sampleFiles(): Files {
   }));
 }
 
-// The candidates of all the call rules in each file. One snapshot project holds the
-// files. Each file is a module, so the files do not share their top-level names.
+const settingsPath = (rule: BehaviorEntrySettingsLiteralRule, file: string): string => `${rule.id}/${file}`;
+
+// The sample settings file and the other files of its tool, with the same text, of each
+// settings-literal rule that has a sample.
+function settingsSampleFiles(): Files {
+  return Object.fromEntries(settingsLiteralRules.flatMap((rule) => {
+    const sample = settingsSamples[rule.id];
+    if (sample === undefined) return [];
+    return [sample.file, ...Object.values(sample.tool.others)].map((file) => [settingsPath(rule, file), sample.text]);
+  }));
+}
+
+// The candidates of all the call rules, and the candidates and the gaps of all the
+// settings-literal rules, in each file. One snapshot project holds the files. Each file
+// is a module, so the files do not share their top-level names.
 let found = new Map<string, EntryCandidate[]>();
+let foundSettings = new Map<string, SettingsFindings>();
 beforeAll(() => {
   const files = { ...sampleFiles(), ...sandboxedFiles };
-  found = withScratch((scratch) => {
-    const query = entryQuery(projectOf(scratch, files, { allowJs: true, moduleDetection: tsMorph.ts.ModuleDetectionKind.Force }));
-    return new Map(Object.keys(files).map((path) => [path, callCandidates(query, path, callRules)]));
+  const settingsFiles = settingsSampleFiles();
+  withScratch((scratch) => {
+    const query = entryQuery(projectOf(scratch, { ...files, ...settingsFiles },
+      { allowJs: true, moduleDetection: tsMorph.ts.ModuleDetectionKind.Force }));
+    const rules = settingsRules(settingsLiteralRules, picomatch);
+    found = new Map(Object.keys(files).map((path) => [path, callCandidates(query, path, callRules)]));
+    foundSettings = new Map(Object.keys(settingsFiles).map((path) => [path, settingsCandidates(query, path, rules)]));
   });
 }, 60_000);
 
@@ -265,3 +335,44 @@ test("bullmq-worker gives the variable of a sandboxed processor path as the hand
       handlerReason: "The handler argument is not a function or a name, so the rule does not follow the value that it gives." }],
   ]);
 });
+
+function settingsSampleOf(rule: BehaviorEntrySettingsLiteralRule): SettingsSample {
+  const sample = settingsSamples[rule.id];
+  if (sample === undefined) throw new Error(`The settings-literal rule ${rule.id} has no sample. Add a documented settings file.`);
+  return sample;
+}
+
+// The range and the text of the part of a file that « and » mark, or of the whole text without marks.
+function site(text: string, at: string) {
+  return { range: rangeIn(text, at), expression: at.includes("«") ? at.slice(at.indexOf("«") + 1, at.indexOf("»")) : at,
+    truncated: false };
+}
+
+test("each settings-literal rule of the pinned list has a sample, and each sample has its rule in the list", () => {
+  expect(Object.keys(settingsSamples).sort()).toEqual(settingsLiteralRules.map(({ id }) => id).sort());
+});
+
+test.each(settingsLiteralRules.map((rule) => [rule.id, rule] as const))(
+  "%s finds the literal entries of its sample settings file, and a gap with a reason for each computed entry", (_id, rule) => {
+    const sample = settingsSampleOf(rule);
+    const identity = { ruleId: rule.id, ruleVersion: rule.version, entryKind: sample.tool.entryKind };
+    expect(foundSettings.get(settingsPath(rule, sample.file))).toEqual({
+      candidates: sample.entries.map(([at, name]) => ({ ...identity, ...site(sample.text, at), name, nameReason: null,
+        handler: null, handlerReason: "A settings-literal rule finds a settings entry, which has no handler." })),
+      gaps: sample.gaps.map((at) => ({ kind: "unknown-settings-value", ...identity, ...site(sample.text, at),
+        reason: "The value at the property path is not a string literal, so it is known only at run time." })),
+    });
+  });
+
+test.each(settingsLiteralRules.flatMap((rule) => Object.entries(settingsSamples[rule.id]?.tool.others ?? {})
+  .map(([other, file]) => [rule.id, other, settingsPath(rule, file)] as const)))(
+  "no settings-literal rule reads the sample settings of %s in %s", (_id, _other, path) => {
+    expect(foundSettings.get(path)).toEqual({ candidates: [], gaps: [] });
+  });
+
+test.each(settingsLiteralRules.map((rule) => [rule.id, rule] as const))(
+  "the glob of %s matches each settings file name of its tool, in the root of the snapshot and in a folder", (_id, rule) => {
+    const { forFile } = settingsRules([rule], picomatch);
+    const paths = settingsSampleOf(rule).tool.files.flatMap((file) => [file, `apps/web/${file}`]);
+    expect(paths.filter((path) => forFile(path).length === 0)).toEqual([]);
+  });

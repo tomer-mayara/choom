@@ -348,3 +348,15 @@ rules:
     callPath: new Worker
     nameArgument: 0
     handlerArgument: 1
+  # The entries of a Vite build that the Rollup options of the build name, such as
+  # build: { rollupOptions: { input: { main: 'index.html', nested: 'nested/index.html' } } }
+  # in vite.config.js. The input is a path, an array of paths or an object whose property
+  # values are paths. Vite 8 renames these options rolldownOptions and keeps
+  # rollupOptions as an alias.
+  - id: vite-build-rollup-options-input
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: build.rollupOptions.input
