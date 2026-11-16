@@ -148,6 +148,24 @@ describe("binCandidates names the file that a command runs only with evidence", 
       handlerReason: "The snapshot holds the bin file bin/run, but it is not UTF-8 text, so the record gives no range for it." });
   });
 
+  // The shared record checks read the file of a handler only up to a limit (64 MiB), so the
+  // Stage 4 publisher would refuse a record with a larger handler file. The test sets a small limit.
+  test("a handler file larger than the limit of the record checks gives no range, so the handler is null with a reason", () => {
+    const text = json({ bin: { run: "bin/cli.js", tool: "./dist/cli.js" } });
+    const handlers = (sourceLimit: number) => withScratch((scratch) => binCandidates({ ...binSnapshot(snapshotOf(scratch,
+      { "package.json": text, "bin/cli.js": cli, "src/cli.ts": source }), tsMorph, { snapshotId: "snap", configs: [config()] },
+      "settings-001"), sourceLimit }, "package.json", [rule])).candidates.map(({ handler, handlerReason }) =>
+      ({ path: handler?.path ?? null, handlerReason }));
+    const [smaller, larger] = [cli, source].map((file) => Buffer.byteLength(file)).sort((left, right) => left - right) as
+      [number, number];
+    // A file of exactly the limit has a range: the record checks refuse only a larger file.
+    expect(handlers(larger)).toEqual([{ path: "bin/cli.js", handlerReason: null }, { path: "src/cli.ts", handlerReason: null }]);
+    const tooLarge = (path: string): string => `The handler file ${path} is larger than ${smaller - 1} bytes, the largest ` +
+      "file that the record checks read, so the record gives no range for it.";
+    expect(handlers(smaller - 1)).toEqual([{ path: null, handlerReason: tooLarge("bin/cli.js") },
+      { path: null, handlerReason: tooLarge("src/cli.ts") }]);
+  });
+
   test("the range of a whole file does not count a byte order mark, and ends after its last line end", () => {
     const text = json({ bin: { run: "bin/cli.js" } });
     const [found] = findingsIn({ "package.json": text, "bin/cli.js": "﻿#!/usr/bin/env node\r\nrun();\r\n" }).candidates;

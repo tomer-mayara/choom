@@ -4,6 +4,7 @@ import type { EntryCandidate, SourceSite } from './behavior-entry-calls.ts';
 import type { SettingsGap } from './behavior-entry-settings.ts';
 import { located, type Named } from './call-rules.ts';
 import type { BehaviorEntryPackageBinRule } from './generated/contracts.ts';
+import { sourceLimit } from './record-candidates.ts';
 import { type Fields, object } from './record-checks.ts';
 import type { SourcePosition } from './snapshot-exports.ts';
 import { parseDiagnostics, type ProjectTools, virtualRoot } from './snapshot-project.ts';
@@ -32,11 +33,13 @@ export interface LinkedFile extends SourceSite { evidence: BinEvidence }
 export interface BinCandidate extends Omit<EntryCandidate, 'handler'> { handler: LinkedFile | null }
 export interface BinFindings { candidates: BinCandidate[]; gaps: SettingsGap[] }
 // The saved snapshot as the rules read it: the indexed files, their checked bytes and the settings record.
+// sourceLimit is the largest handler file, in bytes, that the shared record checks read (record-candidates.ts).
 export interface BinSnapshot {
   ts: Ts;
   files: ReadonlySet<string>;
   read(path: string): Buffer;
   settings: Fields; settingsRef: string;
+  sourceLimit: number;
 }
 type Linked = Pick<BinCandidate, 'handler' | 'handlerReason'>;
 
@@ -61,7 +64,7 @@ const reasons = {
 export function binSnapshot(snapshot: SnapshotFiles, tools: ProjectTools, settings: Fields, settingsRef: string): BinSnapshot {
   const fileSystem = new SnapshotFileSystem(snapshot, tools);
   const files = new Set(snapshot.files.filter(file => file.kind === 'file').map(file => file.path));
-  return { ts: tools.ts, files, settings, settingsRef,
+  return { ts: tools.ts, files, settings, settingsRef, sourceLimit,
     read: path => fileSystem.readSnapshotBytes(fileSystem.indexed.get(virtualRoot + '/' + path) as InventoryFile) };
 }
 
@@ -132,8 +135,13 @@ function endOf(text: string): SourcePosition {
 }
 
 // The whole file, from its first character to the position after its last character.
+// A larger file than the record checks read gives no range, so that the publisher can check the record.
 function wholeFile(snapshot: BinSnapshot, path: string, evidence: BinEvidence): Linked {
-  const text = textOf(snapshot.read(path));
+  const bytes = snapshot.read(path);
+  if (bytes.length > snapshot.sourceLimit) return { handler: null, handlerReason: 'The handler file ' + path +
+    ' is larger than ' + snapshot.sourceLimit + ' bytes, the largest file that the record checks read, so the record gives ' +
+    'no range for it.' };
+  const text = textOf(bytes);
   if (text === undefined) return { handler: null, handlerReason: 'The snapshot holds the bin file ' + path +
     ', but it is not UTF-8 text, so the record gives no range for it.' };
   return { handler: { path, range: [{ line: 1, column: 1 }, endOf(text)], evidence }, handlerReason: null };

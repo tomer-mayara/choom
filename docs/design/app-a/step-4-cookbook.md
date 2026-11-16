@@ -546,7 +546,8 @@ candidate:
 - Otherwise `handler` is `null` with `handlerReason`, such as for `./build/server.js`
   when no saved configuration with `outDir` and `rootDir` compiles a source file to
   it. A bin file that is not UTF-8 text gives no range, so its `handler` is `null`
-  too.
+  too. So does a handler file larger than 64 MiB, the largest file whose text the
+  shared record checks read, so that the Stage 4/5 publisher can check the record.
 
 | Rule | `kind` | Candidate | Rule ID |
 | --- | --- | --- | --- |

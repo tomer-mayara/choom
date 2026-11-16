@@ -21,7 +21,9 @@ export interface Sites { label: string; indexed: Map<unknown, Fields>; textOf(pa
 // A checked record and the rules of its saved rule list.
 export interface SavedRecord { record: Fields & { candidates: unknown[]; gaps: unknown[] }; rules: Fields[] }
 
-const sourceLimit = 64 * 1024 * 1024;
+// The largest saved file, in bytes, whose text the checks read for a site. The package-bin
+// rule of Stage 4 collect gives no handler range in a larger file.
+export const sourceLimit = 64 * 1024 * 1024;
 const projectGapKeys = ['kind', 'input', 'missing', 'subjectRefs', 'reason'];
 // The label at the start of a message, such as Behavior entry.
 const capital = (label: string): string => label.charAt(0).toUpperCase() + label.slice(1);
