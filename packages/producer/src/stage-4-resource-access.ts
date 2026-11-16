@@ -51,8 +51,9 @@ export const resourceAccessNotes = [
     '(receiver-import), or its typePath on a value whose declared type comes from the import (receiver-type): a parameter, ' +
     'a parameter property, a class or interface property, or a variable with a type annotation whose type reference ' +
     'leads, through the imports and exports and the type aliases of the snapshot files, to a type that the import exports. ' +
-    'The snapshot holds no package types, so the type checker does not check the type itself. A call of the same method on ' +
-    'another receiver is not a candidate of the rule.',
+    'The snapshot holds no installed package, so the type checker does not check the type itself. A type shim of a package ' +
+    'in a snapshot file, such as declare module \'knex\' { ... }, gives only types, so the import of the package stays. A ' +
+    'call of the same method on another receiver is not a candidate of the rule.',
   'operation and resourceKind come from the rule. name is the text of a string literal or of a template literal without ' +
     'substitutions at the argument nameArgument of the call nameCall of the rule, counted back from the call that the rule ' +
     'found; any other name is null with nameReason. identity is inferred-from-name when the candidate has a name, and ' +

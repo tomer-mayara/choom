@@ -62,6 +62,14 @@ describe("accessMatches matches a call whose receiver comes from the import", ()
     expect(matchesIn({ [servicePath]: text }, [knexInsert, knexUpdate])).toEqual([]);
   });
 
+  test.each([
+    ["a shorthand type shim", "declare module 'knex';\n"],
+    ["a type shim with a default export", "declare module 'knex' {\n  function knex(config: unknown): any;\n  export default knex;\n}\n"],
+  ])("a client of a package that %s of the snapshot declares", (_name, shim) => {
+    const text = client + "db('invoices').insert(row);\n";
+    expect(matchesIn({ "src/types.d.ts": shim, [servicePath]: text })).toEqual([matchAt(text, "db('invoices').insert(row)")]);
+  });
+
   test("not a client that a namespace import of another snapshot file holds, as for the behavior entry rules", () => {
     const files = { "src/db.ts": client + "export { db };\n",
       [servicePath]: "import * as database from './db';\ndatabase.db('invoices').insert(row);\n" };
@@ -103,6 +111,20 @@ describe("accessMatches matches a call whose receiver has a declared type of the
       "  const db = client;\n  return db('invoices').insert(row);\n}\n", typedCall],
   ])("%s", (_name, text, call) => {
     expect(matchesIn({ [servicePath]: text })).toEqual([typedMatch(text, call)]);
+  });
+
+  // A type shim gives the types of a package that the snapshot does not hold. The type still comes from the package.
+  // A shorthand shim gives no types, so TypeScript refuses them, but the walk reads the name of the default import.
+  test.each([
+    ["a shorthand type shim", "declare module 'knex';\n", "import knex from 'knex';\n", "knex.Knex"],
+    ["a type shim with the type", "declare module 'knex' {\n  export interface Knex { (table: string): any }\n}\n",
+      "import type { Knex } from 'knex';\n", "Knex"],
+    ["a type shim with a namespace of the default export", "declare module 'knex' {\n  function knex(config: unknown): " +
+      "knex.Knex;\n  namespace knex {\n    interface Knex { (table: string): any }\n  }\n  export default knex;\n}\n",
+    "import knex from 'knex';\n", "knex.Knex"],
+  ])("a parameter with a type of a package that %s of the snapshot declares", (_name, shim, imports, type) => {
+    const text = typed(imports, type);
+    expect(matchesIn({ "src/types.d.ts": shim, [servicePath]: text })).toEqual([typedMatch(text)]);
   });
 
   test("a variable with the type keeps the value of the import when it has one", () => {

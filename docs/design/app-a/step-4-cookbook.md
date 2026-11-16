@@ -581,6 +581,11 @@ name back to the import:
 - the imports and the exports of other snapshot files, such as
   `import { app } from './app'`.
 
+A type shim of a package in a snapshot file, such as `declare module 'express';`
+or `declare module 'bullmq' { ... }` in `src/types.d.ts`, gives only the types of
+the package. The helper does not follow an import into such a shim: the value
+still comes from the import of the package.
+
 A call with the same method name on another receiver, such as `cache.get(...)` on
 a `Map`, is not a candidate. The default export, a namespace import and `require`
 of a module are one value, as they are for a CommonJS package. For each candidate:
@@ -916,12 +921,14 @@ and:
   type is that type, with `confidence: receiver-type`: a parameter such as
   `db: Knex`, a parameter property such as `constructor(private readonly db: Knex)`,
   a class or interface property, or a variable with a type annotation. The snapshot
-  holds no package types, so the type checker cannot read the type itself. The
+  holds no installed package, so the type checker cannot read the type itself. The
   helper follows the type reference to its import binding, as it follows a value:
   through the imports and exports of snapshot files, the type aliases of the
   snapshot, a qualified name such as `knex.Knex`, and a union with `null` or
-  `undefined`. A type path ends with the last steps of the call path, and the type
-  stands for the value of the steps before them: `Knex` stands for `knex()`.
+  `undefined`. A type shim of the package in a snapshot file, such as
+  `declare module 'knex' { ... }`, does not replace the import binding. A type
+  path ends with the last steps of the call path, and the type stands for the
+  value of the steps before them: `Knex` stands for `knex()`.
 - `nameCall` and `nameArgument`: the name of the resource is the argument at
   `nameArgument` of the call at `nameCall`, counted back from the call that the rule
   finds: `0` for that call and `1` for the last call of the call path. The Knex rules

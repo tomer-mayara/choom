@@ -72,6 +72,28 @@ describe("callCandidates matches a call whose receiver comes from the import", (
       { path: "src/orders.ts", range: rangeIn(orders, orders.trimEnd()) })]);
   });
 
+  // A type shim gives the types of a package that the snapshot does not hold. The value still comes from the package.
+  test.each([
+    ["a shorthand type shim", "declare module 'express';\n"],
+    ["a type shim with a default export", "declare module 'express' {\n  function express(): any;\n  export default express;\n}\n"],
+  ])("an app of a package that %s of the snapshot declares", (_name, shim) => {
+    const text = "import express from 'express';\nconst app = express();\n" + handlerText + "app.get('/orders', list);\n";
+    expect(candidatesIn({ "src/types.d.ts": shim, [serverPath]: text })).toEqual([routeAt(text, "app.get('/orders', list)")]);
+  });
+
+  test("a class and a require call of packages that type shims of the snapshot declare, and a re-export of a snapshot file", () => {
+    const shims = "declare module 'hono' {\n  export class Hono {\n    get(path: string, handler: unknown): Hono;\n  }\n}\n" +
+      "declare module 'express';\n";
+    const api = "import { Hono } from './hono';\n" + handlerText + "const api = new Hono();\napi.get('/orders', list);\n";
+    const script = "const express = require('express');\nconst app = express();\n" + handlerText + "app.get('/orders', list);\n";
+    const files = { "types/shims.d.ts": shims, "src/hono.ts": "export { Hono } from 'hono';\n", "src/api.ts": api,
+      "src/server.js": script };
+    expect(candidatesIn(files, "src/api.ts", [honoGet])).toEqual([{ ...routeAt(api, "api.get('/orders', list)"),
+      ruleId: "hono-route-get", handler: { path: "src/api.ts", range: rangeIn(api, "const «list = () => 'orders'»;") } }]);
+    expect(candidatesIn(files, "src/server.js")).toEqual([{ ...routeAt(script, "app.get('/orders', list)"),
+      handler: { path: "src/server.js", range: rangeIn(script, "const «list = () => 'orders'»;") } }]);
+  });
+
   test.each([
     ["the get of a Map", "const app = new Map<string, unknown>();\n"],
     ["the get of an app from another library", "import express from 'other';\nconst app = express();\n"],

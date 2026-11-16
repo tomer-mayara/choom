@@ -55,8 +55,15 @@ const nameReasons = {
 
 export const snapshotSource = (fileName: string): boolean => fileName.startsWith(virtualRoot + '/') &&
   !fileName.includes('/node_modules/');
-const inSnapshot = (symbol: TsSymbol | undefined): boolean => (symbol?.declarations ?? []).length > 0 &&
-  (symbol?.declarations ?? []).every(item => snapshotSource(item.getSourceFile().fileName));
+// A declaration in an ambient module of a package, such as the type shims declare
+// module 'express'; and declare module 'bullmq' { ... }. Such a module gives only the
+// types of the package; the value comes from the package. A relative module name
+// augments a snapshot file.
+const inPackageShim = (ts: Ts, node: Node): boolean => ts.findAncestor(node, item => ts.isModuleDeclaration(item) &&
+  ts.isStringLiteral(item.name) && !ts.isExternalModuleNameRelative(item.name.text)) !== undefined;
+// Whether the snapshot source declares a symbol: each declaration is in a snapshot file, outside a type shim of a package.
+const inSnapshot = (ts: Ts, symbol: TsSymbol | undefined): boolean => (symbol?.declarations ?? []).length > 0 &&
+  (symbol?.declarations ?? []).every(item => snapshotSource(item.getSourceFile().fileName) && !inPackageShim(ts, item));
 export const samePath = (left: ValuePath, right: ValuePath): boolean => left.module === right.module &&
   left.steps.length === right.steps.length && left.steps.every((part, index) => part === right.steps[index]);
 
@@ -140,7 +147,7 @@ function requiredModule({ ts, checker }: Checking, node: Node): string | undefin
   if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || node.expression.text !== 'require') return undefined;
   const [name] = node.arguments;
   if (node.arguments.length !== 1 || name === undefined || !ts.isStringLiteralLike(name)) return undefined;
-  return inSnapshot(checker.getSymbolAtLocation(node.expression)) ? undefined : name.text;
+  return inSnapshot(ts, checker.getSymbolAtLocation(node.expression)) ? undefined : name.text;
 }
 
 // The value that an import, a re-export or a JavaScript require gives: its module and the export that it names.
@@ -178,13 +185,14 @@ export function propertyName(ts: Ts, element: TsMorph.ts.BindingElement): { text
 
 // The value of a symbol: an import binding, after the imports and exports of snapshot
 // files one alias at a time, so that an import or re-export of a package keeps its
-// module name; or the value of a variable or a default export.
+// module name, also when a type shim of the snapshot declares the package; or the value
+// of a variable or a default export.
 function symbolPath(query: Checking, symbol: TsSymbol | undefined, depth: number): ValuePath | undefined {
   const { ts, checker } = query;
   if (symbol === undefined || depth > depthLimit) return undefined;
   if (symbol.flags & ts.SymbolFlags.Alias) {
     const next = checker.getImmediateAliasedSymbol(symbol);
-    return inSnapshot(next) ? symbolPath(query, next, depth + 1) : importBinding(query, symbol.declarations?.[0]);
+    return inSnapshot(ts, next) ? symbolPath(query, next, depth + 1) : importBinding(query, symbol.declarations?.[0]);
   }
   const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
   if (declaration !== undefined && ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name))
@@ -214,14 +222,15 @@ function entityPath(query: Checking, name: TsMorph.ts.EntityName, depth: number)
 }
 
 // The type that a type name names: a type of an import, after the imports and exports
-// of snapshot files, or the type of a type alias of the snapshot.
+// of snapshot files, or the type of a type alias of the snapshot. A type shim of the
+// snapshot does not replace the import of the package.
 function namedType(query: Checking, name: TsMorph.ts.EntityName, depth: number): ValuePath | undefined {
   const { ts, checker } = query;
   if (depth > depthLimit) return undefined;
   if (!ts.isIdentifier(name)) return typeOf(entityPath(query, name, depth + 1));
   let symbol = checker.getSymbolAtLocation(name);
   for (let steps = 0; steps < depthLimit && symbol !== undefined && symbol.flags & ts.SymbolFlags.Alias &&
-    inSnapshot(checker.getImmediateAliasedSymbol(symbol)); steps++) symbol = checker.getImmediateAliasedSymbol(symbol);
+    inSnapshot(ts, checker.getImmediateAliasedSymbol(symbol)); steps++) symbol = checker.getImmediateAliasedSymbol(symbol);
   const alias = symbol?.declarations?.find(item => ts.isTypeAliasDeclaration(item));
   if (alias !== undefined) return typePath(query, alias.type, depth + 1);
   return symbol !== undefined && symbol.flags & ts.SymbolFlags.Alias ? typeOf(importBinding(query, symbol.declarations?.[0])) : undefined;
