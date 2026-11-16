@@ -133,3 +133,35 @@ describe("accessMatches records a literal name, and an unknown name with a reaso
     expect({ name: found?.name, nameReason: found?.nameReason }).toEqual({ name, nameReason });
   });
 });
+
+// The source context of a match: the function or the method that holds the call, or the module.
+describe("accessMatches records the function or the method that holds the call, or the module", () => {
+  const contextIn = (text: string): unknown => withScratch((scratch) =>
+    accessMatches(entryQuery(projectOf(scratch, { [servicePath]: text })), servicePath, [knexInsert])
+      .map(({ context }) => context));
+  const insert = "db('invoices').insert(row)";
+  const holder = (kind: string, name: string | null, text: string, marked: string) => ({ kind, name, range: rangeIn(text, marked) });
+
+  test.each([
+    ["a method of a class, with the name of the class", "class InvoiceService {\n  create() {\n    return " + insert +
+      ";\n  }\n}\n", "method", "InvoiceService.create", "create() {\n    return " + insert + ";\n  }"],
+    ["a constructor", "class InvoiceService {\n  constructor() {\n    " + insert + ";\n  }\n}\n", "method",
+      "InvoiceService.constructor", "constructor() {\n    " + insert + ";\n  }"],
+    ["a method of an object", "const repository = {\n  save() {\n    return " + insert + ";\n  },\n};\n", "method", "save",
+      "save() {\n    return " + insert + ";\n  }"],
+    ["a function declaration", "export function save() {\n  return " + insert + ";\n}\n", "function", "save",
+      "export function save() {\n  return " + insert + ";\n}"],
+    ["an arrow function in a variable", "export const save = () => " + insert + ";\n", "function", "save",
+      "() => " + insert],
+    ["an arrow function in a property of a class", "class Store {\n  save = () => " + insert + ";\n}\n", "function",
+      "Store.save", "() => " + insert],
+    ["an anonymous function", "export const routes = [() => " + insert + "];\n", "function", null, "() => " + insert],
+  ])("%s", (_name, body, kind, name, marked) => {
+    const text = client + body;
+    expect(contextIn(text)).toEqual([holder(kind, name, text, marked)]);
+  });
+
+  test("the module, when no function holds the call", () => {
+    expect(contextIn(client + insert + ";\n")).toEqual([{ kind: "module", name: null, range: null }]);
+  });
+});
