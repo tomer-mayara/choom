@@ -7,6 +7,9 @@ Feature: Find behavior entry candidates
   name and the handler. A syntax rule found the candidate, so it is a place to
   inspect and not a proven entry. A name that the code makes at run time stays
   unknown, with a reason.
+  The route rules find the route methods of Express apps and routers, Fastify
+  servers and Hono apps. Each route rule finds one method, so the rule of a route
+  candidate names its method, and the path of the route is the name.
 
   Scenario: A rule finds a candidate
     Given a saved snapshot that calls a registration function from the rule list
@@ -18,3 +21,8 @@ Feature: Find behavior entry candidates
     Given a saved snapshot in which the registered name is made at run time
     When the operator collects behavior entry candidates
     Then the candidate has an unknown name and a reason
+
+  Scenario: Find the routes of HTTP servers
+    Given a saved snapshot with the routes of an Express router, a Fastify server and a Hono app
+    When the operator collects behavior entry candidates
+    Then each route has a candidate that names its method, its path and its handler

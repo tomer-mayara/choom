@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
+import { parse } from "yaml";
 import { type ExtraFile, inspectStageFour, type StageFourAttempt, stageFourAttempt }
   from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import type { CommandResult } from "../../packages/producer/test/support/commands.ts";
 
 // The scenarios prepare a run after Stage 3, run Stage 4 start through the command
 // line and collect the Stage 4 source evidence, which applies the pinned rule list
-// of the tool checkout. Its starter rule finds the get routes of an Express app:
-// a call of get on the app that the call express() made. The toolchain and graph
-// phases of the fixture need no Docker.
+// of the tool checkout. Its route rules find the route methods of HTTP servers. For
+// example, express-route-get finds a call of get on the app that the call express()
+// made. The toolchain and graph phases of the fixture need no Docker.
 interface Position { line?: unknown; column?: unknown }
 interface Candidate {
   ruleId?: unknown; ruleVersion?: unknown; entryKind?: unknown; found?: unknown; path?: unknown; range?: Position[];
@@ -18,6 +19,7 @@ interface Candidate {
   handlerReason?: unknown;
 }
 interface CandidatesRecord { status?: unknown; candidates?: Candidate[] }
+interface SavedRule { id?: unknown; version?: unknown; library?: unknown; callPath?: unknown }
 
 interface BehaviorEntriesWorld extends World {
   behaviorAttempt?: StageFourAttempt;
@@ -31,18 +33,44 @@ const handler: ExtraFile = { path: handlerPath, text: "export function listOrder
 const server = (route: string): ExtraFile => ({ path: "src/server.ts", text: "import express from 'express';\n" +
   "import { listOrders } from './orders';\n\nconst resource = process.env.RESOURCE ?? 'orders';\nconst app = express();\n" +
   `app.get(${route}, listOrders);\n` });
+// The routes of three HTTP servers, as the guides of their libraries write them: an
+// Express router, a Fastify server whose route has options before its handler, and
+// a Hono app. No route is a get route.
+const birds: ExtraFile = { path: "src/birds.ts", text: "import { Router } from 'express';\n\nconst router = Router();\n\n" +
+  "router.post('/birds', (req, res) => {\n  res.send('Add a bird');\n});\n\nexport default router;\n" };
+const books: ExtraFile = { path: "src/books.ts", text: "import { Hono } from 'hono';\n\nconst app = new Hono();\n\n" +
+  "app.delete('/books/:id', (c) => c.text('Deleted'));\n\nexport default app;\n" };
+const orderHandlers: ExtraFile = { path: "src/order-handlers.ts",
+  text: "export async function updateOrder() {\n  return { updated: true };\n}\n" };
+const orders: ExtraFile = { path: "src/orders.ts", text: "import Fastify from 'fastify';\n" +
+  "import { updateOrder } from './order-handlers';\n\nconst fastify = Fastify({ logger: true });\n" +
+  "const opts = { schema: { params: { type: 'object' } } };\n\nfastify.put('/orders/:id', opts, updateOrder);\n" };
 const position = (line: number, column: number): Position => ({ line, column });
 
-// The only candidate of the record that collect saved.
-function onlyCandidate(world: BehaviorEntriesWorld): Candidate {
+// The candidates of the record that collect saved.
+function savedCandidates(world: BehaviorEntriesWorld): Candidate[] {
   const command = world.behaviorCommand;
   assert.ok(command && world.behaviorAttempt, "Collect the candidates first.");
   assert.equal(command.status, 0, command.stderr);
   const record = JSON.parse(readFileSync(join(world.behaviorAttempt.attempt, "behavior-entry-candidates.json"), "utf8")) as
     CandidatesRecord;
   assert.equal(record.status, "completed");
-  assert.equal(record.candidates?.length, 1);
-  return record.candidates[0] as Candidate;
+  return record.candidates ?? [];
+}
+
+// The only candidate of the record that collect saved.
+function onlyCandidate(world: BehaviorEntriesWorld): Candidate {
+  const candidates = savedCandidates(world);
+  assert.equal(candidates.length, 1);
+  return candidates[0] as Candidate;
+}
+
+// The rules of the copy of the rule list that Stage 4 start saved in the attempt.
+function savedRules(world: BehaviorEntriesWorld): SavedRule[] {
+  assert.ok(world.behaviorAttempt, "Prepare a saved snapshot first.");
+  const list = parse(readFileSync(join(world.behaviorAttempt.attempt, "behavior-entry-rules.yaml"), "utf8")) as
+    { rules?: SavedRule[] };
+  return list.rules ?? [];
 }
 
 After({ tags: "@producer" }, function (this: BehaviorEntriesWorld) {
@@ -57,6 +85,11 @@ Given("a saved snapshot that calls a registration function from the rule list", 
 Given("a saved snapshot in which the registered name is made at run time", { timeout: 120_000 },
   function (this: BehaviorEntriesWorld) {
     this.behaviorAttempt = stageFourAttempt([server("'/' + resource"), handler]);
+  });
+
+Given("a saved snapshot with the routes of an Express router, a Fastify server and a Hono app", { timeout: 120_000 },
+  function (this: BehaviorEntriesWorld) {
+    this.behaviorAttempt = stageFourAttempt([birds, books, orderHandlers, orders]);
   });
 
 When("the operator collects behavior entry candidates", { timeout: 120_000 }, function (this: BehaviorEntriesWorld) {
@@ -82,4 +115,23 @@ Then("the candidate has an unknown name and a reason", function (this: BehaviorE
   const { name, nameReason, expression } = onlyCandidate(this);
   assert.deepEqual({ name, nameReason, expression }, { name: null, expression: "app.get('/' + resource, listOrders)",
     nameReason: "The name argument is not a string literal, so the name is known only at run time." });
+});
+
+// Each route rule finds one method, so the saved rule of a candidate names the method:
+// the last name of its callPath, such as post in Router().post.
+Then("each route has a candidate that names its method, its path and its handler", function (this: BehaviorEntriesWorld) {
+  const rules = savedRules(this);
+  const routes = savedCandidates(this).map(({ ruleId, ruleVersion, entryKind, path, name, handler: found }) => {
+    const rule = rules.find(({ id, version }) => id === ruleId && version === ruleVersion);
+    const method = typeof rule?.callPath === "string" ? rule.callPath.split(".").at(-1) : undefined;
+    return { ruleId, library: rule?.library, method, entryKind, path, name, handler: found };
+  });
+  assert.deepEqual(routes, [
+    { ruleId: "express-router-post", library: "express", method: "post", entryKind: "http-route", path: birds.path,
+      name: "/birds", handler: { path: birds.path, range: [position(5, 23), position(7, 2)] } },
+    { ruleId: "hono-route-delete", library: "hono", method: "delete", entryKind: "http-route", path: books.path,
+      name: "/books/:id", handler: { path: books.path, range: [position(5, 26), position(5, 50)] } },
+    { ruleId: "fastify-route-put", library: "fastify", method: "put", entryKind: "http-route", path: orders.path,
+      name: "/orders/:id", handler: { path: orderHandlers.path, range: [position(1, 1), position(3, 2)] } },
+  ]);
 });
