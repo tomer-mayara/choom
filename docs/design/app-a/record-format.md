@@ -606,7 +606,10 @@ of Stages 4, 5 and 6 check them against the saved snapshot:
 - Each candidate has exactly the fields of the record, `found: syntax-rule`,
   `role: test` with a `roleRef` or `role: unknown` with `roleRef: null`, a
   `nameReason` only when `name` is null, and a `handlerReason` only when
-  `handler` is null.
+  `handler` is null. Collect gives `role: test` only when a role record of the
+  Stage 1 review (`review-001`) whose roles include `tests` has a selector that
+  is the exact path of the file or a folder that holds it; a glob selector or
+  another role name gives no test role.
 - `path` and `sha256` name an indexed file of the inventory. `range` lies in the
   saved text of that file, and the text at the range is `expression`, or starts
   with it when `truncated` is true. Lines end at CRLF, CR, LF, U+2028 and

@@ -429,10 +429,12 @@ of a module are one value, as they are for a CommonJS package. For each candidat
   `handlerReason`: for example a parameter, the result of a call such as
   `asyncHandler(listOrders)`, or an import of a package.
 - `role` is `test` when a role record of the Stage 1 review (`review-001`) whose
-  roles name `tests` or `test` selects the file: by its exact path, by a folder
-  that holds it, or by a glob. `roleRef` names the first such record. Otherwise
-  `role` is `unknown`: the rules do not show whether the code is application or
-  tooling code.
+  roles include `tests` has a selector that is the exact path of the file or a
+  folder that holds it. The Stage 1 cookbook asks for exact file and directory
+  selectors and names this role `tests`, so a glob selector, a selector such as
+  `./test`, and another role name such as `test` give no test role. `roleRef`
+  names the first such record. Otherwise `role` is `unknown`: the rules do not
+  show whether the code is application or tooling code.
 
 A `settings-literal` rule reads the value of `export default`, `export =` or the
 last `module.exports =` of the file, through a call with one argument, such as
@@ -458,7 +460,7 @@ a missing candidate does not show that the code has no entry:
 | `rulesRef`, `rulesSha256` | The copy of the rule list that start saved, and its SHA-256. |
 | `settingsRef`, `rolesRef` | `settings-001`, whose compiler settings the helper used, and `review-001`, whose role records give the roles. |
 | `scope` | `files`, the source files of the graph scope; and `groups`, for each graph group, its import pass (`graphContext` and `graphContextRef`), its `compilerSettingsRef` and the files that it read. |
-| `queryOptions`, `tool`, `virtualRoot` | As in the references record. `tool` also names the picomatch version that matched the globs. |
+| `queryOptions`, `tool`, `virtualRoot` | As in the references record. `tool` also names the picomatch version that matched the `fileGlob` of the settings-literal rules. |
 | `candidates` | Each candidate, in the order of the scope files and then in source order: `ruleId`, `ruleVersion`, `entryKind`, `found` (`syntax-rule`), `role`, `roleRef`, `path`, `sha256`, `range`, `expression`, `truncated`, `name`, `nameReason`, `handler` (`path` and `range`, or `null`) and `handlerReason`. |
 | `omittedCandidates` | The number of candidates after the limit. |
 | `gaps` | Each value of a `settings-literal` rule that is not a literal, located like a candidate, with `reason`; and each compiler input that the snapshot does not hold, as in the references record. |

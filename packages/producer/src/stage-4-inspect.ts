@@ -322,7 +322,7 @@ function behaviorEntries(current: InspectState): Fields {
   const review = current.artifacts.get(stageOneReviewRef);
   assert(review, 'The run has no registered Stage 1 review ' + stageOneReviewRef + '.');
   const rules = saved(behaviorEntryRulesFile);
-  // picomatch matches the globs of the rules and of the Stage 1 role records.
+  // picomatch matches the fileGlob of the settings-literal rules.
   const picomatch = trustedModule('picomatch', 'picomatch') as Picomatch;
   const { version } = trustedModule('picomatch/package.json', 'picomatch') as { version: string };
   return behaviorEntryRecord({ attemptId: id, snapshotRef: current.handoff.snapshotRef,

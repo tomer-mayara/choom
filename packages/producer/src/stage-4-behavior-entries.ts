@@ -35,7 +35,8 @@ interface Group { settings: FileSettings; index: number; pass: Fields; files: So
 // Stage 1 finish registers the review that holds the role records of the run with this ID.
 export const stageOneReviewRef = 'review-001';
 const candidateLimit = 10000;
-const testRoleNames = new Set<unknown>(['tests', 'test']);
+// The role name of test files in the Stage 1 review, from the list of its cookbook.
+const testRole = 'tests';
 
 // What each record covers and what it does not, in the words of the record.
 export const behaviorEntryNotes = [
@@ -59,9 +60,10 @@ export const behaviorEntryNotes = [
     'export = or module.exports =, through a call with one argument and the const declarations of the file. Each string ' +
     'literal at the end of its propertyPath, in an array there or as a property value of an object there, is a candidate. ' +
     'Each other value is a gap of kind unknown-settings-value. Nothing runs the file.',
-  'role is test when a role record of rolesRef whose roles name tests or test selects the file: by its exact path, a folder ' +
-    'that holds it, or a glob. roleRef names the first such record. Otherwise role is unknown: the rules do not show whether ' +
-    'the code is application or tooling code.',
+  'role is test when a role record of rolesRef whose roles include tests has a selector that is the exact path of the ' +
+    'file or a folder that holds it, as the Stage 1 cookbook asks for exact file and directory selectors. roleRef names the ' +
+    'first such record. A glob selector and another role name, such as test, give no test role. Otherwise role is unknown: ' +
+    'the rules do not show whether the code is application or tooling code.',
   'A range starts at the first character and ends after the last character. Lines and columns start at 1 and count UTF-16 ' +
     'code units. A byte order mark is not counted. expression holds at most 4096 code units, and truncated says when it is ' +
     'shorter than the site. At most 10000 candidates are saved; omittedCandidates counts the others.',
@@ -69,17 +71,16 @@ export const behaviorEntryNotes = [
   outsideReadsNote,
 ];
 
-// The role of each file: test when a role record of the review whose roles name
-// tests or test selects the file by its exact path, a folder that holds it, or a glob.
-export function testRoles(review: Fields, reviewRef: string, picomatch: Picomatch): (path: string) => FileRole {
+// The role of each file: test when a role record of the review whose roles include
+// tests has a selector that is the exact path of the file or a folder that holds it,
+// as the Stage 1 cookbook asks for exact file and directory selectors. A glob selector
+// and another role name give no test role.
+export function testRoles(review: Fields, reviewRef: string): (path: string) => FileRole {
   const records = (Array.isArray(review.roles) ? review.roles as unknown[] : []).flatMap((record, index) => {
     const { selector, roles } = object(record) ? record : {};
-    if (!text(selector) || !Array.isArray(roles) || !roles.some(role => testRoleNames.has(role))) return [];
-    const relative = selector.replace(/^\.\//, '');
-    const folder = relative.replace(/\/+$/, '');
-    const glob = picomatch(relative, { dot: true });
-    return [{ roleRef: reviewRef + '#/roles/' + index,
-      selects: (path: string) => path === relative || path.startsWith(folder + '/') || glob(path) }];
+    if (!text(selector) || !Array.isArray(roles) || !roles.includes(testRole)) return [];
+    const folder = selector.endsWith('/') ? selector : selector + '/';
+    return [{ roleRef: reviewRef + '#/roles/' + index, selects: (path: string) => path === selector || path.startsWith(folder) }];
   });
   return path => {
     const found = records.find(record => record.selects(path));
@@ -115,7 +116,7 @@ export function behaviorEntryRecord(input: BehaviorEntryInput): Fields {
   const callRules = input.rules.rules.filter((rule): rule is BehaviorEntryCallRule => rule.kind === 'call');
   const settingRules = settingsRules(input.rules.rules
     .filter((rule): rule is BehaviorEntrySettingsLiteralRule => rule.kind === 'settings-literal'), picomatch);
-  const roleOf = testRoles(input.review, input.reviewRef, picomatch);
+  const roleOf = testRoles(input.review, input.reviewRef);
   const candidates: Fields[] = []; const gaps = new Map<string, unknown>(); const outsideReads = new Map<string, OutsideRead>();
   let omittedCandidates = 0;
   const groups = groupsOf(profile, input.settings).map(group => {
