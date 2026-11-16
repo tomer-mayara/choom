@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { helperCall } from "../../src/cli.ts";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
 
 // Stage 6 on the Stage 6 producer fixture (fixtures/entry-points/producer.mjs): a
@@ -16,6 +18,8 @@ export interface StageSixFixture<Baseline = BaselineId> {
 interface BaselineId { id: string }
 // The fixture is JavaScript. Each caller states the baseline fields that it uses.
 interface FixtureModule<Baseline> { producerFixture(change?: (baseline: Baseline) => void): StageSixFixture<Baseline> }
+// The receipts of a Stage 6 action record the helper process that ran it.
+export interface CommandRecord { args: string[]; cwd: string; environment: Record<string, string> }
 
 const fixtureModule = new URL("../fixtures/entry-points/producer.mjs", import.meta.url);
 
@@ -37,4 +41,60 @@ function stageSixSettings(work: string, id: string): Record<string, string> {
 export function stageSix(work: string, id: string, args: readonly string[], settings: Record<string, string> = {},
   tools = toolsRoot): CommandResult {
   return runCli(["stage-6", ...args], { ...stageSixSettings(work, id), ...settings }, tools);
+}
+
+// The node on PATH, which runs the command line. The command line starts the same
+// program for the helper, by its full path.
+const node = JSON.parse(spawnSync("node", ["-p", "JSON.stringify({ program: process.execPath, version: process.version })"],
+  { encoding: "utf8" }).stdout) as { program: string; version: string };
+export const nodeVersion = node.version;
+
+// The command record of a Stage 6 action in this checkout: the arguments of the
+// helper process, the folder that it ran in, and the four settings.
+export function stageSixCommandRecord(work: string, id: string, args: readonly string[]): CommandRecord {
+  const call = helperCall(["stage-6", ...args], node.program);
+  if (call === undefined) throw new Error("The producer command line has no stage-6 command.");
+  return { args: [call.program, ...call.args], cwd: process.cwd(),
+    environment: { CHOOM_WORK: work, CHOOM_TOOLS: toolsRoot, CHOOM_STAGE6_ID: id, CHOOM_STAGE6: join(work, "evidence", id) } };
+}
+
+export const jsonText = (value: unknown): string => JSON.stringify(value, null, 2) + "\n";
+
+// The fixed records of the fixture.
+export const fixtureRecords = { runRef: "fixture-run", snapshotRef: "fixture-snapshot", baselineRef: "fixture-baseline",
+  baselinePath: "baselines/fixture-baseline/baseline.yaml", discoveryPath: "runs/fixture-run/discovery.yaml" };
+
+// The validation result that every Stage 6 action of the fixture reports.
+export function fixtureValidation(id: string): Record<string, unknown> {
+  const { runRef, snapshotRef, baselineRef } = fixtureRecords;
+  return { formatVersion: 1, attemptId: id, runRef, snapshotRef, baselineRef, status: "verified",
+    registeredArtifactsVerified: 15, indexedFilesVerified: 3, evidenceRefsResolved: 42, sourceRecordsVerified: 1, graphContexts: 1,
+    mappedFiles: 3, unknownOwners: 0, components: 3, interfaces: 1, resources: 0, rules: 0, behaviorEntries: 1, inspectedPaths: 0,
+    observations: 0, questions: 0, gaps: 1, limits: [
+      "Deterministic records, digests, source ranges and references only. No target execution or new tool analysis.",
+      "The separate readiness review records semantic judgments and limits. Proposed intent remains proposed.",
+    ] };
+}
+
+// The result of a successful finish of the attempt `id` of the fixture.
+export function publishedResult(id: string): Record<string, unknown> {
+  const { baselinePath, discoveryPath } = fixtureRecords;
+  return { ...fixtureValidation(id), status: "stage6-published", baselinePath, discoveryPath, discoveryRef: `${id}-discovery`,
+    writes: ["operator-finish.started.json", "operator-finish.json", baselinePath, discoveryPath, "discovery.yaml", "run.yaml"] };
+}
+
+// A copy of the fixture after a successful Stage 6 start of the attempt `id`.
+export async function startedFixture(id: string): Promise<StageSixFixture> {
+  const fixture = await stageSixFixture();
+  const started = stageSix(fixture.work, id, ["start", fixture.review]);
+  if (started.status !== 0) throw new Error(`Stage 6 start failed: ${started.stderr}`);
+  return fixture;
+}
+
+// A copy of the fixture after a successful Stage 6 start and finish of the attempt `id`.
+export async function publishedFixture(id: string): Promise<StageSixFixture> {
+  const fixture = await startedFixture(id);
+  const finished = stageSix(fixture.work, id, ["finish"]);
+  if (finished.status !== 0) throw new Error(`Stage 6 finish failed: ${finished.stderr}`);
+  return fixture;
 }
