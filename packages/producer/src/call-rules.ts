@@ -11,7 +11,8 @@ import type { Checking, SourceRange } from './snapshot-references.ts';
 // names the module of an import and the steps from the value of the module. The type
 // checker follows each local name to that import: a default, named, renamed or
 // namespace import, import = and require, a variable that holds a value of the
-// import or a part of it, and the imports and exports of other snapshot files. It
+// import or a part of it, and the imports and exports of other snapshot files, with
+// the CommonJS exports module.exports = … and exports.name = … of a JavaScript file. It
 // does not follow a function parameter. The default export, a namespace import and
 // require of a module are one value, as they are for a CommonJS package. A value
 // that no import gives can have a declared type of an import instead: a parameter,
@@ -183,10 +184,20 @@ export function propertyName(ts: Ts, element: TsMorph.ts.BindingElement): { text
   return ts.isObjectBindingPattern(element.parent) && (ts.isIdentifier(property) || ts.isStringLiteral(property)) ? property : undefined;
 }
 
+// The value that a CommonJS export of a JavaScript file gives: the right side of
+// module.exports = …, exports.name = … or module.exports.name = …. The type checker
+// declares such an export at the assignment, or at the left side of the assignment.
+function assignedValue(ts: Ts, declaration: Node): Node | undefined {
+  const assignment = ts.isBinaryExpression(declaration) ? declaration : declaration.parent;
+  return assignment !== undefined && ts.isBinaryExpression(assignment) &&
+    assignment.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+    (assignment === declaration || assignment.left === declaration) ? assignment.right : undefined;
+}
+
 // The value of a symbol: an import binding, after the imports and exports of snapshot
 // files one alias at a time, so that an import or re-export of a package keeps its
 // module name, also when a type shim of the snapshot declares the package; or the value
-// of a variable or a default export.
+// of a variable, a default export or a CommonJS export.
 function symbolPath(query: Checking, symbol: TsSymbol | undefined, depth: number): ValuePath | undefined {
   const { ts, checker } = query;
   if (symbol === undefined || depth > depthLimit) return undefined;
@@ -199,6 +210,8 @@ function symbolPath(query: Checking, symbol: TsSymbol | undefined, depth: number
     return (declaration.initializer && valuePath(query, declaration.initializer, depth + 1)) ?? declaredType(query, declaration, depth);
   if (declaration !== undefined && ts.isExportAssignment(declaration)) return valuePath(query, declaration.expression, depth + 1);
   if (declaration === undefined) return undefined;
+  const assigned = assignedValue(ts, declaration);
+  if (assigned !== undefined) return valuePath(query, assigned, depth + 1);
   if (!ts.isBindingElement(declaration)) return declaredType(query, declaration, depth);
   const holder = declaration.parent.parent;
   const name = propertyName(ts, declaration);

@@ -59,7 +59,8 @@ export const behaviorEntryNotes = [
     'package.json of the inventory outside the node_modules folders.',
   'A call rule finds a call whose callee is its callPath on the value of its import. The type checker follows local names to ' +
     'the import: default, named, renamed and namespace imports, import =, require, variables that hold a value of the import ' +
-    'or a part of it, and the imports and exports of other snapshot files. A type shim of a package in a snapshot file, such as ' +
+    'or a part of it, and the imports and exports of other snapshot files, with the CommonJS exports module.exports = ... and ' +
+    'exports.name = ... of a JavaScript file. A type shim of a package in a snapshot file, such as ' +
     'declare module \'express\';, gives only types, so the import of the package stays. A function parameter, a later ' +
     'assignment and a call on the result of another call are not followed, so such calls are not candidates. Only the calls ' +
     'of the sameValueMethods of a rule are passed: they give the value that they are called on, such as the builder calls of ' +

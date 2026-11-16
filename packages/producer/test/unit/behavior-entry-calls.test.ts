@@ -72,6 +72,21 @@ describe("callCandidates matches a call whose receiver comes from the import", (
       { path: "src/orders.ts", range: rangeIn(orders, orders.trimEnd()) })]);
   });
 
+  // A JavaScript file exports a value of the import with an assignment, and another file requires it.
+  test.each([
+    { form: "module.exports = an expression", file: "src/app.js", exported: "module.exports = express();\n",
+      required: "const app = require('./app');\n", local: "app", rule: expressGet },
+    { form: "exports.name = an expression", file: "src/router.js", exported: "exports.router = express.Router();\n",
+      required: "const { router } = require('./router');\n", local: "router", rule: routerGet },
+    { form: "module.exports.name = an expression", file: "src/app.js", exported: "module.exports.app = express();\n",
+      required: "const { app } = require('./app');\n", local: "app", rule: expressGet },
+  ])("a value that $form of another snapshot file exports", ({ file, exported, required, local, rule }) => {
+    const routes = required + handlerText + `${local}.get('/orders', list);\n`;
+    const files = { [file]: "const express = require('express');\n" + exported, "src/routes.js": routes };
+    expect(candidatesIn(files, "src/routes.js", [rule])).toEqual([{ ...routeAt(routes, `${local}.get('/orders', list)`),
+      ruleId: rule.id, handler: { path: "src/routes.js", range: rangeIn(routes, "const «list = () => 'orders'»;") } }]);
+  });
+
   // A type shim gives the types of a package that the snapshot does not hold. The value still comes from the package.
   test.each([
     ["a shorthand type shim", "declare module 'express';\n"],

@@ -579,7 +579,10 @@ name back to the import:
 - a variable that holds a value of the import or a part of it, such as
   `const app = express()` or `const { Router } = express`;
 - the imports and the exports of other snapshot files, such as
-  `import { app } from './app'`.
+  `import { app } from './app'`;
+- the CommonJS exports of a JavaScript file, such as `module.exports = express()`
+  with `const app = require('./app')`, or `exports.router = express.Router()` with
+  `const { router } = require('./router')`.
 
 A type shim of a package in a snapshot file, such as `declare module 'express';`
 or `declare module 'bullmq' { ... }` in `src/types.d.ts`, gives only the types of
@@ -617,7 +620,8 @@ a missing candidate does not show that the code has no entry:
 
 - a call on a value that a function gets as a parameter, such as
   `function routes(app) { app.get(...) }`;
-- a value that a later assignment gives;
+- a value that a later assignment gives, such as `app = express()` after
+  `let app`, other than a CommonJS export;
 - a value that a function returns, such as `app` after `const app = createApp()`;
 - a call on the result of another call, such as
   `app.get('/a', list).post('/b', create)`, unless the rule lists the method of
