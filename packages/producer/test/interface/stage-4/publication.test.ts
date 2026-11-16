@@ -77,6 +77,38 @@ function refusedInCheck(fixture: StageFourPublication, message: string): void {
   expect(folderState(fixture.work)).toEqual(before);
 }
 
+// A new entry candidate of the Stage 4 entry analysis whose file is JavaScript or
+// TypeScript must be a root of the saved graph; a new candidate of another file need not.
+describe("the Stage 4/5 publisher with new entry candidates", () => {
+  const guide: ExtraFile = { path: "docs/guide.md", text: "# Guide\n" };
+  const added = (id: string, path: string) => ({ id, expression: id, path, workspace: ".", roles: ["application"],
+    origin: "script", evidenceRefs: ["launch-settings#/cli"] });
+  function withAdded(candidates: unknown[], use: (fixture: StageFourPublication) => void): void {
+    const fixture = stageFourPublication(undefined, [guide], toolsRoot, (records) => {
+      const entry = records["entry-analysis.yaml"] as { candidates: unknown[] };
+      entry.candidates = [...entry.candidates, ...candidates];
+    });
+    try {
+      use(fixture);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+
+  test("accepts a new entry of a root file and a new entry of a file that is not JavaScript or TypeScript", () => {
+    withAdded([added("cli-again", "cli.ts"), added("guide-entry", guide.path)], (fixture) => {
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified" });
+    });
+  }, 60_000);
+
+  test("refuses a new JavaScript or TypeScript entry outside the saved roots, and writes nothing", () => {
+    withAdded([added("http-entry", "http.ts")], (fixture) => {
+      refusedInCheck(fixture, "New JavaScript/TypeScript entry is outside the saved root set: http-entry. " +
+        "Revisit entry and graph analysis.");
+    });
+  }, 60_000);
+});
+
 describe("the Stage 4/5 publisher with Stage 4 excerpt requests", () => {
   test("accepts a completed excerpt request and a failed one", () => {
     withPublication((fixture) => {

@@ -11,9 +11,10 @@ const picomatch = createRequire(import.meta.url)("picomatch") as Picomatch;
 const sourceFiles = [{ path: "src/app.ts", sha256: "a".repeat(64) }, { path: "src/view.jsx", sha256: "b".repeat(64) }];
 const roots = [{ path: "src/app.ts", evidenceRefs: ["s2-check-entry-plan#/workspaces/0/entry/0"] }];
 
-function profileFor(settings: Record<string, unknown>, scope = sourceFiles, packages: Record<string, string> = {}): GraphProfile {
-  const indexed = new Map<string, IndexedFile>([...scope, ...Object.keys(packages).map((path) => ({ path, sha256: "c".repeat(64) }))]
-    .map((file) => [file.path, { ...file, kind: "file", bytes: 10 }]));
+function profileFor(settings: Record<string, unknown>, scope = sourceFiles, packages: Record<string, string> = {},
+  outside: string[] = []): GraphProfile {
+  const indexed = new Map<string, IndexedFile>([...scope, ...[...Object.keys(packages), ...outside].map((path) =>
+    ({ path, sha256: "c".repeat(64) }))].map((file) => [file.path, { ...file, kind: "file", bytes: 10 }]));
   const readIndexed = (path: string): Buffer => {
     if (packages[path] === undefined) throw new Error("Not an indexed package.json: " + path);
     return Buffer.from(packages[path]);
@@ -62,6 +63,24 @@ describe("the Stage 4 graph profile", () => {
   test("refuses a settings record that names an unknown parsing profile", () => {
     expect(() => profileFor({ configs: [], parsingProfile: { id: "choom-default-v9" } }))
       .toThrow(new Error("The settings record names an unknown parsing profile: choom-default-v9"));
+  });
+
+  // The Stage 3 scope holds the JavaScript and TypeScript files of the snapshot. Each
+  // other indexed JavaScript or TypeScript file is outside the scope and not assessed.
+  test("takes the JavaScript and TypeScript files of the scope, and lists the other indexed ones as outside the scope", () => {
+    const scope = ["a.ts", "b.tsx", "c.mts", "d.cts", "e.d.ts", "f.js", "g.jsx", "h.mjs", "i.cjs"]
+      .map((path) => ({ path, sha256: "a".repeat(64) }));
+    const profile = profileFor({ configs: [], parsingProfile: choomDefaultProfile }, scope, {},
+      ["notes.md", "data.json", "view.vue", "app.ts.map", "lib/outside.ts", "lib/outside.cjs"]);
+    expect((profile.graph.sourceFiles as { path: string }[]).map(({ path }) => path)).toEqual(scope.map(({ path }) => path));
+    expect(profile.notes.outsideScope).toEqual(["lib/outside.ts", "lib/outside.cjs"]
+      .map((path) => ({ path, sha256: "c".repeat(64), status: "unassessed" })));
+  });
+
+  test("refuses a scope file that is not JavaScript or TypeScript", () => {
+    for (const path of ["notes.md", "data.json", "view.vue", "app.ts.map"])
+      expect(() => profileFor({ configs: [], parsingProfile: choomDefaultProfile }, [...sourceFiles, { path, sha256: "c".repeat(64) }]))
+        .toThrow(new Error("This profile needs saved JS/TS source with no glob characters in its filenames."));
   });
 });
 

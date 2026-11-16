@@ -33,3 +33,36 @@ describe("the Stage 4 rule records", () => {
     expect(candidatesOf("resource-access-candidates.json")).toEqual(paths.map((path) => [path, "knex-select", path]));
   });
 });
+
+// Each record saves the first 10000 candidates in its order and counts the others. Here
+// src/many.ts has 10001 routes and 10001 Knex queries. The behavior entry record has
+// a package-bin candidate and a Knip plugin pattern candidate after the routes.
+describe("the limit of the Stage 4 rule records", () => {
+  const count = 10001;
+  const many: ExtraFile = { path: "src/many.ts", text: "import express from 'express';\nimport knex from 'knex';\n\n" +
+    "const app = express();\nconst db = knex({ client: 'pg' });\n" + Array.from({ length: count },
+      (_, index) => `app.get('/${index}', () => db('t${index}').select('id'));\n`).join("") };
+  const tool: ExtraFile = { path: "tool/package.json", text: JSON.stringify({ name: "tool", bin: { tool: "cli.js" } }) + "\n" };
+  const checked: ExtraFile = { path: "test/a.test.ts", text: "export const checked = true;\n" };
+  const pattern = { workspace: ".", manifest: "package.json", plugin: "vitest", dependency: "vitest", field: "entry",
+    pattern: "**/*.test.ts" };
+  const limited = collectedAttempt([many, tool, checked], [pattern]);
+  // The status, the number of saved and of omitted candidates, the rules of the saved
+  // candidates, and the name of the last one.
+  const limitOf = (name: string): unknown => {
+    const { status, candidates, omittedCandidates } = limited.saved(name) as { status: unknown; candidates: Json[];
+      omittedCandidates: unknown };
+    return { status, saved: candidates.length, omittedCandidates, rules: [...new Set(candidates.map(({ ruleId }) => ruleId))],
+      last: candidates.at(-1)?.name };
+  };
+
+  test("the behavior entry record saves the first 10000 routes and counts the last route, the bin and the plugin file", () => {
+    expect(limitOf("behavior-entry-candidates.json")).toEqual({ status: "partial", saved: 10000, omittedCandidates: 3,
+      rules: ["express-route-get"], last: "/9999" });
+  });
+
+  test("the resource access record saves the first 10000 queries and counts the last query", () => {
+    expect(limitOf("resource-access-candidates.json")).toEqual({ status: "partial", saved: 10000, omittedCandidates: 1,
+      rules: ["knex-select"], last: "t9999" });
+  });
+});
