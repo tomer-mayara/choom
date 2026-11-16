@@ -207,7 +207,8 @@ unresolved candidates in the assessment limits or discovery gaps. Verify any
 interface link against the current baseline. Treat a graph root or publicAccess
 value as a lead for review.
 
-Use formatVersion: 4 with systemEntryPoints. Set its snapshotRef to this run's
+Use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
+file. Set its snapshotRef to this run's
 snapshot and mappingRef to the candidate discovery.codeMappingRef, including
 when carrying entries from Stage 4. With no entry assessment, use the version
 required by the other fields (version 3 for sourceUsage). Retain structured interface
