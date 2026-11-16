@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ts } from "ts-morph";
 import { type ExtraFile, inspectStageFour, type StageFourAttempt, stageFourAttempt }
@@ -162,11 +162,19 @@ beforeAll(() => {
 afterAll(() => rmSync(fixture.root, { recursive: true, force: true }));
 
 // The parser record names ts-morph, its TypeScript and Node, and the digest of each tool file that ts-morph loaded.
+// The tool files that loading ts-morph from this checkout adds to the module cache, as the parser record lists them.
+const parserModules = ["@ts-morph/common/dist/ts-morph-common.js", "@ts-morph/common/dist/typescript.js",
+  "balanced-match/dist/commonjs/index.js", "brace-expansion/dist/commonjs/index.js", "code-block-writer/script/mod.js",
+  "code-block-writer/script/utils/string_utils.js", "fdir/dist/index.cjs", "minimatch/dist/commonjs/assert-valid-pattern.js",
+  "minimatch/dist/commonjs/ast.js", "minimatch/dist/commonjs/brace-expressions.js", "minimatch/dist/commonjs/escape.js",
+  "minimatch/dist/commonjs/index.js", "minimatch/dist/commonjs/unescape.js", "path-browserify/index.js", "picomatch/index.js",
+  "picomatch/lib/constants.js", "picomatch/lib/parse.js", "picomatch/lib/picomatch.js", "picomatch/lib/scan.js",
+  "picomatch/lib/utils.js", "tinyglobby/dist/index.cjs", "ts-morph/dist/ts-morph.js", "ts-morph/package.json"];
+
 function expectParser(parser: unknown, name: string): void {
   const { modules, ...versions } = parser as Json & { modules: Record<string, string> };
   expect(versions).toEqual({ name, node: nodeVersion, tsMorph: tsMorphVersion, typescript: ts.version });
-  expect(Object.keys(modules)).toEqual(expect.arrayContaining(["ts-morph/package.json", "ts-morph/dist/ts-morph.js",
-    "@ts-morph/common/dist/ts-morph-common.js", "@ts-morph/common/dist/typescript.js"]));
+  expect(Object.keys(modules)).toEqual(parserModules);
   for (const [path, digest] of Object.entries(modules)) expect({ path, digest }).toEqual({ path, digest: sha256(installed(path)) });
 }
 
@@ -335,6 +343,49 @@ describe("Stage 4 trusted parser", () => {
       expect({ status: result.status, stdout: result.stdout }).toEqual({ status: 1, stdout: "" });
       expect(result.stderr).toContain("Error: Trusted parser changed since collect.");
       expect(existsSync(join(attempt.attempt, "operator-excerpt-001.started.json"))).toBe(false);
+    } finally {
+      rmSync(attempt.root, { recursive: true, force: true });
+      removeScratch(scratch);
+    }
+  }, 60_000);
+});
+
+// A copied tool checkout in which a trusted package is a link to the package of this
+// checkout, so that the package resolves outside the copied checkout.
+function linkedPackageAttempt(scratch: string, name: string): StageFourAttempt {
+  const attempt = stageFourAttempt([], copyToolCheckout(scratch));
+  rmSync(join(attempt.tools, "node_modules", name), { recursive: true, force: true });
+  symlinkSync(join(toolsRoot, "node_modules", name), join(attempt.tools, "node_modules", name));
+  return attempt;
+}
+
+describe("Stage 4 trusted packages", () => {
+  test.each([
+    ["YAML", "yaml"],
+    ["ts-morph", "ts-morph"],
+  ])("refuses %s that resolves outside the tool checkout, before it saves a receipt", (label, name) => {
+    const scratch = makeScratch();
+    const attempt = linkedPackageAttempt(scratch, name);
+    try {
+      const result = inspectStageFour(attempt, ["collect"]);
+      expect({ status: result.status, stdout: result.stdout }).toEqual({ status: 1, stdout: "" });
+      expect(result.stderr).toContain(`Error: Use ${label} from the trusted checkout.`);
+      expect(existsSync(join(attempt.attempt, "operator-collect.started.json"))).toBe(false);
+    } finally {
+      rmSync(attempt.root, { recursive: true, force: true });
+      removeScratch(scratch);
+    }
+  }, 60_000);
+
+  test("collect refuses picomatch that resolves outside the tool checkout, with a failed receipt and no candidates", () => {
+    const scratch = makeScratch();
+    const attempt = linkedPackageAttempt(scratch, "picomatch");
+    try {
+      const message = "Use picomatch from the trusted checkout.";
+      expect(inspectStageFour(attempt, ["collect"])).toEqual({ status: 1, stdout: "", stderr: message + "\n" });
+      expect(JSON.parse(readFileSync(join(attempt.attempt, "operator-collect.json"), "utf8")) as Json)
+        .toMatchObject({ status: "failed", exitCode: 1, reason: message });
+      expect(existsSync(join(attempt.attempt, "behavior-entry-candidates.json"))).toBe(false);
     } finally {
       rmSync(attempt.root, { recursive: true, force: true });
       removeScratch(scratch);
