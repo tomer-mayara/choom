@@ -315,12 +315,12 @@ function artifactMap(): Record<string, { path: string; sha256: string }> {
   return artifacts;
 }
 
-// picomatch from the trusted checkout, for the globs of the rules and of the Stage 1 role records.
-function loadPicomatch(): { picomatch: Picomatch; version: string } {
-  const path = require.resolve('picomatch');
-  assert(path.startsWith(join(tools, 'node_modules/picomatch') + '/'), 'Use picomatch from the trusted checkout.');
+// A package from the trusted checkout and its version, by a name in a variable, as Stage 4 start loads picomatch.
+function trustedPackage(name: string): { module: unknown; version: string } {
+  const path = require.resolve(name);
+  assert(path.startsWith(join(tools, 'node_modules', name) + '/'), 'Use ' + name + ' from the trusted checkout.');
   read(path);
-  return { picomatch: require(path) as Picomatch, version: (require('picomatch/package.json') as { version: string }).version };
+  return { module: require(path), version: (require(name + '/package.json') as { version: string }).version };
 }
 
 // The behavior entry candidates of the rule list that Stage 4 start saved.
@@ -328,14 +328,15 @@ function behaviorEntries(current: InspectState): Fields {
   const review = current.artifacts.get(stageOneReviewRef);
   assert(review, 'The run has no registered Stage 1 review ' + stageOneReviewRef + '.');
   const rules = saved(behaviorEntryRulesFile);
-  const { picomatch, version } = loadPicomatch();
+  // picomatch matches the globs of the rules and of the Stage 1 role records.
+  const { module: picomatch, version } = trustedPackage('picomatch');
   return behaviorEntryRecord({ attemptId: id, snapshotRef: current.handoff.snapshotRef,
     snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
     profile: current.profile, profileRef: artifactId('graph-profile.json'),
     settings: savedSettings(current.artifacts.get(settingsRef), current.handoff.snapshotRef),
     rules: readRuleList(rules, yaml), rulesRef: artifactId(behaviorEntryRulesFile), rulesSha256: hash(rules),
-    review: parse(utf8(review, stageOneReviewRef)) as Fields, reviewRef: stageOneReviewRef, tsMorph, parser, picomatch,
-    picomatchVersion: version });
+    review: parse(utf8(review, stageOneReviewRef)) as Fields, reviewRef: stageOneReviewRef, tsMorph, parser,
+    picomatch: picomatch as Picomatch, picomatchVersion: version });
 }
 
 function collect(current: InspectState): string[] {
