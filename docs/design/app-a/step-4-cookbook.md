@@ -783,7 +783,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "snapshotRef": "snapshot-001",
   "status": "completed",
   "rulesRef": "s4-001-file@behavior-entry-rules.yaml",
-  "rulesSha256": "f636298fbb985f30f7616ebfab5c1ff70eeb37892a3cb1d3d431d86cd96f8adb",
+  "rulesSha256": "a93e71ce93ad533b36bf2b5443463bb8a9b9cb8dc33202f1eb3e26403672711e",
   "settingsRef": "settings-001",
   "rolesRef": "review-001",
   "scope": {

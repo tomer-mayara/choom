@@ -734,10 +734,10 @@ route candidates of an Express router, a Fastify server and a Hono app, the
 start sites of a worker thread and a BullMQ queue worker, and the entries of a
 Vite settings file, with a gap for an entry that the code computes.
 They also collect the commands of a commander program and a yargs program, and
-the bin commands of a package, each with the file that it runs only with evidence. The
+the bin commands of a package, each linked to the file that it runs only with evidence. The
 [Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-behavior-entry-candidates)
 gives the rules and their limits. Each call rule of the list needs a sample call
-from the documentation of its library, and each settings-literal rule a sample
+from the documentation of its library, each settings-literal rule a sample
 settings file in the form that the documentation of its tool shows,
 and each package-bin rule a sample package.json from the npm documentation, in
 `packages/producer/test/unit/behavior-entry-rule-samples.test.ts`. Run the focused

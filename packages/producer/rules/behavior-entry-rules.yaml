@@ -1,6 +1,7 @@
 # The pinned list of Choom behavior entry rules. Stage 4 start saves a copy of this
 # file and its SHA-256, and Stage 4 collect applies the rules to the source files of
-# the graph scope. The contract is cookbook/interfaces/behavior-entry-rules.tsp.
+# the graph scope, and the package-bin rule to the package.json files of the snapshot.
+# The contract is cookbook/interfaces/behavior-entry-rules.tsp.
 # A rule that changes keeps its ID and gets the next version.
 # Each http-route rule finds the calls of one route method, so the rule of a candidate
 # names the method. Its ID says the library, the receiver and the method.
