@@ -51,7 +51,8 @@ export function dividedFileBytes(path: string, file: SavedFile, read: (path: str
   assert(Buffer.from(bytes.toString('utf8')).equals(bytes), cannot('the file is not UTF-8 text.'));
   return bytes;
 }
-const lineBreaks = (text: string): number => text.match(/\r\n|[\r\n\u2028\u2029]/g)?.length ?? 0;
+
+const lineBreaks =(text: string): number => text.match(/\r\n|[\r\n\u2028\u2029]/g)?.length ?? 0;
 
 // The top-level statement that holds a node.
 function topStatement(source: SourceFile, node: TsMorph.ts.Node): Statement {
