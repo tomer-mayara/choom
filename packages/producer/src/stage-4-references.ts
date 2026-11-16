@@ -50,8 +50,9 @@ const unresolvedRelative = 'The compiler settings do not resolve this relative m
 const unresolvedAlias = 'The compiler settings do not resolve this paths alias, so the query cannot tell whether it ' +
   'names the module of the symbol.';
 // The JavaScript files of the scope are part of the compiler program only with allowJs.
-const queryOptions = { allowJs: true };
-const checker = 'ts-morph snapshot project (TypeScript type checker)';
+export const queryOptions = { allowJs: true };
+// The name of the tool in the records of the queries that use the type checker.
+export const checkerTool = 'ts-morph snapshot project (TypeScript type checker)';
 
 // What each record covers and what it does not, in the words of the record.
 export const referencesNotes = [
@@ -216,7 +217,7 @@ function scopeFile(profile: Fields, path: string): SourceFile {
 }
 
 // The import pass of the graph profile group that holds the file, and its index in the profile.
-function importPass(profile: Fields, settings: FileSettings, path: string): { index: number; pass: Fields } {
+export function importPass(profile: Fields, settings: FileSettings, path: string): { index: number; pass: Fields } {
   const contexts = profile.contexts as Fields[];
   const index = contexts.findIndex(context => context.id === settings.group + '-import');
   const pass = contexts[index];
@@ -242,7 +243,7 @@ export function referencesRecord(input: ReferencesInput): Fields {
     formatVersion: 1, attemptId, snapshotRef: input.snapshotRef, status: 'completed', path, sha256: file.sha256, symbol,
     settingsRef, compilerSettingsRef: settings.ref, compilerSettings: settings.record, queryOptions,
     scope: { graphContext: pass.id, graphContextRef: input.profileRef + '#/contexts/' + index, files: scope },
-    tool: { ...input.parser, name: checker }, virtualRoot,
+    tool: { ...input.parser, name: checkerTool }, virtualRoot,
     completeness: unresolved.length ? 'partial' : 'complete-within-scope',
     declarations, references, unresolved, gaps: project.gaps(), outsideReads: project.outsideReads(), notes: referencesNotes,
   };

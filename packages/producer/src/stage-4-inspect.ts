@@ -9,18 +9,21 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
+import { behaviorEntryRulesFile, behaviorEntryRulesPath, checkPinnedRuleList, readRuleList } from './behavior-entry-rules.ts';
 import { savedSettings, settingsRef } from './compiler-settings.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
 import { syntaxParser } from './snapshot-project.ts';
 import { directory, safePath } from './stage-3-inputs.ts';
+import { behaviorEntryRecord, stageOneReviewRef } from './stage-4-behavior-entries.ts';
+import type { Picomatch } from './stage-4-graph-profile.ts';
 import { referencesRecord } from './stage-4-references.ts';
 import { reviewPrompt } from './stage-4-review-prompt.ts';
 import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 
 // The Stage 4 source collection helper. collect saves the source sites of the
-// graph profile scope, the first excerpts, the review prompt and the proposed
-// artifact map; excerpt saves a requested range of an indexed file; references
+// graph profile scope, the behavior entry candidates of the rule list that start saved,
+// the first excerpts, the review prompt and the proposed artifact map; excerpt saves a requested range of an indexed file; references
 // saves the references to a symbol of a source file of the graph scope. Each action
 // first checks that the attempt is still the one that Stage 4 start, toolchain and
 // run prepared, then saves a receipt and appends its outcome to the command log.
@@ -76,7 +79,8 @@ const require = createRequire(join(tools, 'package.json'));
 const yamlPath = require.resolve('yaml');
 assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/'), 'Use YAML from the trusted checkout.');
 read(yamlPath);
-const { parse } = require(yamlPath) as typeof Yaml;
+const yaml = require(yamlPath) as typeof Yaml;
+const { parse } = yaml;
 const parsed = (name: string): Fields => parse(utf8(saved(name), name)) as Fields;
 
 // ts-morph and its own copy of TypeScript from the trusted checkout. The parser
@@ -120,8 +124,8 @@ function receipt(phase: string, required: string[]): void {
 
 // The handoff of the completed start, with the unchanged drafts, saved documents and graph profile.
 function startedHandoff(): Fields {
-  // The documents that Stage 4 start saved; the attempt holds no producer code.
-  const frozen = ['step-4-cookbook.md', 'record-format.md'];
+  // The documents and the rule list that Stage 4 start saved; the attempt holds no producer code.
+  const frozen = ['step-4-cookbook.md', 'record-format.md', behaviorEntryRulesFile];
   receipt('start', ['handoff.json', 'graph-profile.json', 'graph-profile-notes.json', ...frozen,
     'run.before.yaml', 'discovery.before.yaml', 'baseline.before.yaml']);
   const handoff = json('handoff.json');
@@ -134,6 +138,7 @@ function startedHandoff(): Fields {
   for (const [name, digest] of Object.entries(handoff.toolInputDigests as Fields))
     assert(hash(saved(name)) === digest, 'Saved tool changed: ' + name);
   assert(hash(saved('graph-profile.json')) === handoff.graphProfileSha256, 'Graph profile changed.');
+  checkPinnedRuleList(saved(behaviorEntryRulesFile), read(join(tools, behaviorEntryRulesPath)));
   return handoff;
 }
 
@@ -309,6 +314,29 @@ function artifactMap(): Record<string, { path: string; sha256: string }> {
   return artifacts;
 }
 
+// picomatch from the trusted checkout, for the globs of the rules and of the Stage 1 role records.
+function loadPicomatch(): { picomatch: Picomatch; version: string } {
+  const path = require.resolve('picomatch');
+  assert(path.startsWith(join(tools, 'node_modules/picomatch') + '/'), 'Use picomatch from the trusted checkout.');
+  read(path);
+  return { picomatch: require(path) as Picomatch, version: (require('picomatch/package.json') as { version: string }).version };
+}
+
+// The behavior entry candidates of the rule list that Stage 4 start saved.
+function behaviorEntries(current: InspectState): Fields {
+  const review = current.artifacts.get(stageOneReviewRef);
+  assert(review, 'The run has no registered Stage 1 review ' + stageOneReviewRef + '.');
+  const rules = saved(behaviorEntryRulesFile);
+  const { picomatch, version } = loadPicomatch();
+  return behaviorEntryRecord({ attemptId: id, snapshotRef: current.handoff.snapshotRef,
+    snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
+    profile: current.profile, profileRef: artifactId('graph-profile.json'),
+    settings: savedSettings(current.artifacts.get(settingsRef), current.handoff.snapshotRef),
+    rules: readRuleList(rules, yaml), rulesRef: artifactId(behaviorEntryRulesFile), rulesSha256: hash(rules),
+    review: parse(utf8(review, stageOneReviewRef)) as Fields, reviewRef: stageOneReviewRef, tsMorph, parser, picomatch,
+    picomatchVersion: version });
+}
+
 function collect(current: InspectState): string[] {
   // The checked read of each source file keeps the messages of a changed file and a file that
   // is not UTF-8 text. The snapshot project then reads the same checked bytes.
@@ -316,13 +344,14 @@ function collect(current: InspectState): string[] {
     sourceFiles: current.profile.sourceFiles as SourceFile[],
     snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
     check: path => { utf8(current.source(path), path); } }));
+  saveJson('behavior-entry-candidates.json', behaviorEntries(current));
   saveJson('source-excerpts.json', initialExcerpts(current));
   save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,
     entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt }));
   saveJson('artifact-map.json', { formatVersion: 1, attemptId: id, snapshotRef: current.handoff.snapshotRef,
     status: 'proposed', artifacts: artifactMap(),
     limits: ['This map is not registered yet. It omits itself, the mutable command log, and later files.'] });
-  return ['source-sites.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'];
+  return ['source-sites.json', 'behavior-entry-candidates.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'];
 }
 
 // The source sites that a completed collect saved, unchanged since then.
@@ -394,7 +423,8 @@ try {
   state();
   record.status = 'completed'; record.exitCode = 0;
   record.digests = Object.fromEntries(outputs.map(name => [name, hash(saved(name))]));
-  console.log(action === 'collect' ? 'Saved source sites, bounded excerpts, and the Stage 4 review prompt.' : 'Saved ' + outputs[0] + '.');
+  console.log(action === 'collect' ? 'Saved source sites, behavior entry candidates, bounded excerpts, and the Stage 4 review prompt.'
+    : 'Saved ' + outputs[0] + '.');
 } catch (error) {
   record.status = 'failed'; record.exitCode = 1; record.reason = (error as Error).message;
   process.exitCode = 1; console.error((error as Error).message);

@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import type * as Yaml from 'yaml';
+import { behaviorEntryRulesFile, behaviorEntryRulesPath, checkPinnedRuleList, readRuleList } from './behavior-entry-rules.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, object, text } from './record-checks.ts';
 import { graphProfile, type IndexedFile, type Picomatch, type ProfileFacts, safePath } from './stage-4-graph-profile.ts';
@@ -49,9 +50,10 @@ const self = fileURLToPath(import.meta.url);
 const [action = '', ...args] = process.argv.slice(2);
 const { CHOOM_WORK, CHOOM_TOOLS } = process.env;
 const id = process.env.CHOOM_STAGE4_ID ?? '';
-// Start saves the documents that the stage follows. Every action runs the producer
-// code in the tool checkout after the producer code check.
-const toolsToFreeze = ['step-4-cookbook.md', 'record-format.md'];
+// Start saves the documents that the stage follows and the behavior entry rule list,
+// which the producer code record does not cover. Every action runs the producer code in
+// the tool checkout after the producer code check, and refuses a changed rule list.
+const toolsToFreeze = ['step-4-cookbook.md', 'record-format.md', behaviorEntryRulesFile];
 // The graph helper in the tool checkout, and its path in the container, where each
 // run mounts it. Node runs a .mts file as an ES module and removes its types, with
 // no package.json and no module format detection.
@@ -93,7 +95,8 @@ assert(work !== tools && !tools.startsWith(work + '/'), 'Keep trusted tools outs
 const attempt = join(directory(join(work, 'evidence')), id);
 assert(!process.env.CHOOM_STAGE4 || process.env.CHOOM_STAGE4 === attempt, 'CHOOM_STAGE4 does not match the attempt.');
 // The cookbooks and record format stay in docs/design/app-a; the code is in packages/producer/src.
-const sourceTool = (name: string): string => join(tools, name.endsWith('.md') ? 'docs/design/app-a' : 'packages/producer/src', name);
+const sourceTool = (name: string): string => name === behaviorEntryRulesFile ? join(tools, behaviorEntryRulesPath)
+  : join(tools, name.endsWith('.md') ? 'docs/design/app-a' : 'packages/producer/src', name);
 const sourceSelf = sourceTool('stage-4-commands.ts');
 assert(self === sourceSelf, 'Use the Stage 4 helper in the trusted checkout.');
 refuseChangedProducerCode(work, tools);
@@ -104,7 +107,8 @@ function trustedModule(name: string): unknown {
     'Install ' + name + ' in the trusted tool checkout.');
   return require(path);
 }
-const { parse } = trustedModule('yaml') as typeof Yaml;
+const yaml = trustedModule('yaml') as typeof Yaml;
+const { parse } = yaml;
 const saved = (name: string): Buffer => { assert(safePath(name), 'Invalid attempt path.'); return read(join(attempt, name)); };
 const json = (name: string) => JSON.parse(saved(name).toString());
 const save = (name: string, bytes: string | Buffer): void => {
@@ -241,6 +245,7 @@ function checkFrozen(current: StageState): void {
   assert(isDeepStrictEqual(handoff.toolInputDigests, digests(toolsToFreeze)) &&
     handoff.graphProfileSha256 === hash(saved('graph-profile.json')) &&
     handoff.profileNotesSha256 === hash(saved('graph-profile-notes.json')), 'A frozen tool or profile changed.');
+  checkPinnedRuleList(saved(behaviorEntryRulesFile), read(sourceTool(behaviorEntryRulesFile)));
 }
 function receipt(phase: string): void {
   const value = json('operator-' + phase + '.json');
@@ -429,6 +434,7 @@ if (action === 'start') {
   const prepared = graphProfile({ attemptId: id, settings: current.settings, plan: current.plan, loading: current.loading,
     indexed: current.indexed, facts: current.facts, loadPicomatch: () => trustedModule('picomatch') as Picomatch, readIndexed });
   const frozen = Object.fromEntries(toolsToFreeze.map(name => [name, read(sourceTool(name))]));
+  readRuleList(frozen[behaviorEntryRulesFile] as Buffer, yaml);
   mkdirSync(attempt);
   for (const [name, bytes] of Object.entries(frozen)) save(name, bytes);
   for (const name of drafts) save(name + '.before.yaml', current.inputs[name] as Buffer);

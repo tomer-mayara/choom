@@ -132,6 +132,10 @@ function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], sett
     jsonText({ formatVersion: 1, snapshotId: snapshotRef, files: inventoryFiles }));
   register("s1-file@evidence%2Fproducer.json", "evidence/producer.json", jsonText(producerReceipt(toolsRoot)));
   register("settings-001", "evidence/settings.json", jsonText(settingsRecord(work, inventoryFiles, settings)));
+  // The Stage 1 review. Its role record makes the test folder a test folder.
+  register("review-001", "evidence/review.yaml", yamlText({ formatVersion: 1, snapshotRef, reviewedFiles: [],
+    roles: [{ selector: "test", roles: ["tests"], basis: "observed", evidenceRefs: [inventoryRef] }],
+    workspaceDeclarations: [], questions: [], gaps: [], llmReview: "recorded" }));
   register("launch-settings", "evidence/launch-settings.json",
     jsonText({ cli: "choom serve", http: ["GET /orders"], unresolved: "plugin command" }));
   const planSha256 = register(planRef, "evidence/s2-check/entry-plan.json",

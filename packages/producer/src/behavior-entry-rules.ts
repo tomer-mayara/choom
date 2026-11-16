@@ -1,7 +1,6 @@
 import type * as Yaml from 'yaml';
 import type { BehaviorEntryRule, BehaviorEntryRuleList } from './generated/contracts.ts';
 import { assert, exact, object } from './record-checks.ts';
-import { readBoundedYaml } from './stage-6-records.ts';
 
 // The pinned list of Choom behavior entry rules and its check against the contract
 // in cookbook/interfaces/behavior-entry-rules.tsp. The list is one YAML file in the
@@ -63,7 +62,21 @@ export function checkRuleList(value: unknown): BehaviorEntryRuleList {
   return value as unknown as BehaviorEntryRuleList;
 }
 
-// Reads a rule list from its YAML bytes with the bounded YAML profile of the saved records.
+// Reads a rule list from its YAML bytes: UTF-8 text with one YAML document, unique
+// keys and no aliases. The list is producer data, so the bounded profile of the saved
+// run records does not apply; that profile also needs the baseline rules, which a
+// helper outside the tool checkout cannot load before it refuses to run.
 export function readRuleList(bytes: Buffer, yaml: typeof Yaml): BehaviorEntryRuleList {
-  return checkRuleList(readBoundedYaml(bytes, yaml, 'Behavior entry rule list'));
+  const text = bytes.toString('utf8');
+  assert(Buffer.from(text).equals(bytes), 'The behavior entry rule list must use UTF-8.');
+  const document = yaml.parseDocument(text, { uniqueKeys: true, merge: false, prettyErrors: false });
+  assert(!document.errors.length && !document.warnings.length, 'The behavior entry rule list must contain valid YAML: ' +
+    [...document.errors, ...document.warnings].map(problem => problem.message).join(' '));
+  return checkRuleList(document.toJS({ maxAliasCount: 0 }));
+}
+
+// Refuses a tool checkout whose rule list differs from the copy that Stage 4 start saved.
+export function checkPinnedRuleList(savedCopy: Buffer, checkout: Buffer): void {
+  assert(savedCopy.equals(checkout), 'The behavior entry rule list changed since Stage 4 start: ' + behaviorEntryRulesPath +
+    '. Restore it or start a new attempt.');
 }

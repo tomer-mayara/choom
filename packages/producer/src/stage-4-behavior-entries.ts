@@ -1,0 +1,146 @@
+import { callCandidates, type EntryCandidate, entryQuery } from './behavior-entry-calls.ts';
+import { behaviorEntryRulesPath } from './behavior-entry-rules.ts';
+import { type SettingsGap, settingsCandidates, settingsRules } from './behavior-entry-settings.ts';
+import { type FileSettings, fileSettings, settingsRef } from './compiler-settings.ts';
+import type { BehaviorEntryCallRule, BehaviorEntryRuleList, BehaviorEntrySettingsLiteralRule } from './generated/contracts.ts';
+import { type Fields, object, text } from './record-checks.ts';
+import { openSnapshotProject, type OutsideRead, outsideReadsNote, type ProjectTools, virtualRoot } from './snapshot-project.ts';
+import type { SnapshotFiles } from './stage-1-settings.ts';
+import type { Picomatch, SourceFile } from './stage-4-graph-profile.ts';
+import { checkerTool, importPass, queryOptions } from './stage-4-references.ts';
+
+// The record of behavior entry candidates that Stage 4 collect saves. It applies the
+// rule list that Stage 4 start saved to each source file of the graph scope, in the
+// snapshot project of the graph group of the file, with the compiler settings of the
+// group as the references action chooses them. A candidate is a place to read: a
+// syntax rule found it, and it is not a proven entry. The role of a candidate comes
+// from the role records of the Stage 1 review, the rule of the run for file roles.
+export interface BehaviorEntryInput {
+  attemptId: string; snapshotRef: unknown;
+  // The indexed files of the saved snapshot and its folder, which the snapshot project reads.
+  snapshot: SnapshotFiles;
+  // The checked graph profile and its artifact ID, and the registered settings record.
+  profile: Fields; profileRef: string; settings: Fields;
+  // The rule list that Stage 4 start saved, its artifact ID and its SHA-256.
+  rules: BehaviorEntryRuleList; rulesRef: string; rulesSha256: string;
+  // The registered Stage 1 review and its artifact ID.
+  review: Fields; reviewRef: string;
+  // ts-morph and picomatch from the trusted checkout, and the parser record that collect saves with the source sites.
+  tsMorph: ProjectTools; parser: Fields; picomatch: Picomatch; picomatchVersion: string;
+}
+export interface FileRole { role: 'test' | 'unknown'; roleRef: string | null }
+// The files of the scope that one graph group reads, with its settings and its import pass.
+interface Group { settings: FileSettings; index: number; pass: Fields; files: SourceFile[] }
+
+// Stage 1 finish registers the review that holds the role records of the run with this ID.
+export const stageOneReviewRef = 'review-001';
+const candidateLimit = 10000;
+const testRoleNames = new Set<unknown>(['tests', 'test']);
+
+// What each record covers and what it does not, in the words of the record.
+export const behaviorEntryNotes = [
+  'A candidate is a call or a settings entry that a Choom syntax rule found (found: syntax-rule). It is a place to read, not a ' +
+    'proven entry: it does not show that the code runs, that the handler is reachable, or that the list is complete.',
+  'The rules are the copy of ' + behaviorEntryRulesPath + ' that Stage 4 start saved (rulesRef and rulesSha256). Each later ' +
+    'Stage 4 action refuses a tool checkout whose rule list differs from that copy.',
+  'The scope is the source files of the graph profile (scope.files). Each file is read in the snapshot project of its graph ' +
+    'group (scope.groups), with the compiler settings of the group, chosen as for the Stage 4 references action, and with ' +
+    'allowJs. Files outside the scope are not searched.',
+  'A call rule finds a call whose callee is its callPath on the value of its import. The type checker follows local names to ' +
+    'the import: default, named, renamed and namespace imports, import =, require, variables that hold a value of the import ' +
+    'or a part of it, and the imports and exports of other snapshot files. A function parameter, a later assignment and a call ' +
+    'on the result of another candidate call are not followed, so such calls are not candidates. The default export, a ' +
+    'namespace import and require of a module are one value, as for a CommonJS package.',
+  'A call that does not have the arguments that the rule names is not a candidate. A name is the text of a string literal or ' +
+    'of a template literal without substitutions; any other name is null with nameReason. A function in the call is the ' +
+    'handler, with its own range. A handler name resolves to its declaration after its aliases, as the Stage 4 references ' +
+    'action follows them. Otherwise the handler is null with handlerReason.',
+  'A settings-literal rule reads the settings object of a file of the scope that matches its fileGlob: export default, ' +
+    'export = or module.exports =, through a call with one argument and the const declarations of the file. Each string ' +
+    'literal at the end of its propertyPath, in an array there or as a property value of an object there, is a candidate. ' +
+    'Each other value is a gap of kind unknown-settings-value. Nothing runs the file.',
+  'role is test when a role record of rolesRef whose roles name tests or test selects the file: by its exact path, a folder ' +
+    'that holds it, or a glob. roleRef names the first such record. Otherwise role is unknown: the rules do not show whether ' +
+    'the code is application or tooling code.',
+  'A range starts at the first character and ends after the last character. Lines and columns start at 1 and count UTF-16 ' +
+    'code units. A byte order mark is not counted. expression holds at most 4096 code units, and truncated says when it is ' +
+    'shorter than the site. At most 10000 candidates are saved; omittedCandidates counts the others.',
+  'gaps also lists each compiler input that the snapshot does not hold, as in the Stage 4 references record.',
+  outsideReadsNote,
+];
+
+// The role of each file: test when a role record of the review whose roles name
+// tests or test selects the file by its exact path, a folder that holds it, or a glob.
+export function testRoles(review: Fields, reviewRef: string, picomatch: Picomatch): (path: string) => FileRole {
+  const records = (Array.isArray(review.roles) ? review.roles as unknown[] : []).flatMap((record, index) => {
+    const { selector, roles } = object(record) ? record : {};
+    if (!text(selector) || !Array.isArray(roles) || !roles.some(role => testRoleNames.has(role))) return [];
+    const relative = selector.replace(/^\.\//, '');
+    const folder = relative.replace(/\/+$/, '');
+    const glob = picomatch(relative, { dot: true });
+    return [{ roleRef: reviewRef + '#/roles/' + index,
+      selects: (path: string) => path === relative || path.startsWith(folder + '/') || glob(path) }];
+  });
+  return path => {
+    const found = records.find(record => record.selects(path));
+    return found === undefined ? { role: 'unknown', roleRef: null } : { role: 'test', roleRef: found.roleRef };
+  };
+}
+
+// The graph groups of the scope, in the order of their first file: the files whose
+// first compiler context is the group, its settings and its import pass.
+function groupsOf(profile: Fields, settings: Fields): Group[] {
+  const groups = new Map<string, Group>();
+  for (const file of profile.sourceFiles as SourceFile[]) {
+    const chosen = fileSettings(settings, file);
+    const group = groups.get(chosen.group) ?? { settings: chosen, ...importPass(profile, chosen, file.path), files: [] };
+    groups.set(chosen.group, group);
+    group.files.push(file);
+  }
+  return [...groups.values()];
+}
+
+function savedCandidate(file: SourceFile, candidate: EntryCandidate, role: FileRole): Fields {
+  const { ruleId, ruleVersion, entryKind, ...site } = candidate;
+  return { ruleId, ruleVersion, entryKind, found: 'syntax-rule', ...role, path: file.path, sha256: file.sha256, ...site };
+}
+
+function savedGap(file: SourceFile, gap: SettingsGap): Fields {
+  const { kind, ruleId, ruleVersion, entryKind, ...site } = gap;
+  return { kind, ruleId, ruleVersion, entryKind, path: file.path, sha256: file.sha256, ...site };
+}
+
+export function behaviorEntryRecord(input: BehaviorEntryInput): Fields {
+  const { picomatch, profile } = input;
+  const callRules = input.rules.rules.filter((rule): rule is BehaviorEntryCallRule => rule.kind === 'call');
+  const settingRules = settingsRules(input.rules.rules
+    .filter((rule): rule is BehaviorEntrySettingsLiteralRule => rule.kind === 'settings-literal'), picomatch);
+  const roleOf = testRoles(input.review, input.reviewRef, picomatch);
+  const candidates: Fields[] = []; const gaps = new Map<string, unknown>(); const outsideReads = new Map<string, OutsideRead>();
+  let omittedCandidates = 0;
+  const groups = groupsOf(profile, input.settings).map(group => {
+    const project = openSnapshotProject(input.snapshot, { ...group.settings.project,
+      compilerOptions: { ...group.settings.project.compilerOptions, ...queryOptions } }, input.tsMorph);
+    for (const path of group.pass.sourceFiles as string[]) project.sourceFile(path);
+    const query = entryQuery(project);
+    for (const file of group.files) {
+      const settings = settingsCandidates(query, file.path, settingRules);
+      for (const candidate of [...callCandidates(query, file.path, callRules), ...settings.candidates]) {
+        if (candidates.length < candidateLimit) candidates.push(savedCandidate(file, candidate, roleOf(file.path)));
+        else omittedCandidates++;
+      }
+      for (const gap of settings.gaps) gaps.set(JSON.stringify(savedGap(file, gap)), savedGap(file, gap));
+    }
+    for (const gap of project.gaps()) gaps.set(JSON.stringify(gap), gap);
+    for (const read of project.outsideReads()) outsideReads.set(read.operation + ' ' + read.path, read);
+    return { graphContext: group.pass.id, graphContextRef: input.profileRef + '#/contexts/' + group.index,
+      compilerSettingsRef: group.settings.ref, files: group.files.map(file => file.path) };
+  });
+  return {
+    formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: omittedCandidates ? 'partial' : 'completed',
+    rulesRef: input.rulesRef, rulesSha256: input.rulesSha256, settingsRef, rolesRef: input.reviewRef,
+    scope: { files: (profile.sourceFiles as SourceFile[]).map(file => file.path), groups }, queryOptions,
+    tool: { ...input.parser, name: checkerTool, picomatch: input.picomatchVersion }, virtualRoot,
+    candidates, omittedCandidates, gaps: [...gaps.values()], outsideReads: [...outsideReads.values()], notes: behaviorEntryNotes,
+  };
+}
