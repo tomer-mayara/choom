@@ -9,14 +9,13 @@ import type { ResourceAccessRuleList } from "../../src/generated/contracts.ts";
 import { checkResourceRuleList, resourceAccessRuleList } from "../../src/resource-access-rules.ts";
 import { readRules } from "../../src/rule-lists.ts";
 import { toolsRoot } from "../support/commands.ts";
+import { type Change, changedList, refusedBy, rule } from "../support/rule-list-contract.ts";
 
 // The contract of the pinned resource access rule list: the generated structural
 // schema and the runtime check of the producer accept and refuse the same shapes.
 // The runtime check also refuses a repeated rule ID, a name call that the call path
 // or the type path does not have, and a type path that does not end with the last
 // steps of the call path.
-type Rule = Record<string, unknown>;
-type Change = (input: { formatVersion: unknown; rules: Rule[] } & Record<string, unknown>) => void;
 
 const structure = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }))
   .compile({ $ref: "ResourceAccessRuleList.json" });
@@ -31,27 +30,6 @@ function ruleList(): ResourceAccessRuleList {
       callPath: "new Pool().query", typePath: "Pool.query", nameCall: 0, nameArgument: 0 },
   ] };
 }
-
-function changed(change: Change): unknown {
-  const input = ruleList() as unknown as Parameters<Change>[0];
-  change(input);
-  return input;
-}
-
-const rule = (input: Parameters<Change>[0], index: number): Rule => {
-  const item = input.rules[index];
-  if (item === undefined) throw new Error(`The rule list fixture needs rule ${index}.`);
-  return item;
-};
-
-const refusedByRuntime = (input: unknown): boolean => {
-  try {
-    checkResourceRuleList(input);
-    return false;
-  } catch {
-    return true;
-  }
-};
 
 test("the runtime check returns the generated rule list contract", () => {
   expectTypeOf<ReturnType<typeof checkResourceRuleList>>().toEqualTypeOf<ResourceAccessRuleList>();
@@ -94,9 +72,9 @@ test.each<[string, Change]>([
   ["no name argument", (input) => { rule(input, 0).nameArgument = null; }],
   ["a name argument word", (input) => { rule(input, 0).nameArgument = "last"; }],
 ])("both boundaries refuse %s", (_name, change) => {
-  const input = changed(change);
+  const input = changedList(ruleList(), change);
   expect(structure(input)).toBe(false);
-  expect(refusedByRuntime(input)).toBe(true);
+  expect(refusedBy(checkResourceRuleList, input)).toBe(true);
 });
 
 test.each<[string, Change, string]>([
@@ -109,7 +87,7 @@ test.each<[string, Change, string]>([
   ["a name call that the type path does not have", (input) => { rule(input, 2).nameCall = 1; },
     "Invalid resource access rule 3 (pg-pool-query): the type path has no call at the name call 1."],
 ])("the structural schema accepts and the runtime check refuses %s", (_name, change, message) => {
-  const input = changed(change);
+  const input = changedList(ruleList(), change);
   expect(structure(input)).toBe(true);
   expect(() => checkResourceRuleList(input)).toThrow(message);
 });

@@ -1,18 +1,17 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { resourceAccessRuleList } from "../../../src/resource-access-rules.ts";
 import { resourceAccessNotes } from "../../../src/stage-4-resource-access.ts";
-import { type ExtraFile, inspectStageFour, type StageFourAttempt, stageFourAttempt }
-  from "../../fixtures/stage-4-publication/fixture.ts";
-import { makeScratch, removeScratch, runCli, toolsRoot } from "../../support/commands.ts";
+import type { ExtraFile } from "../../fixtures/stage-4-publication/fixture.ts";
+import { collectedAttempt } from "../../support/collected-attempt.ts";
+import { toolsRoot } from "../../support/commands.ts";
 import { rangeIn } from "../../support/source-ranges.ts";
-import { stagedRun } from "../../support/staged-run.ts";
-import { copyToolCheckout } from "../../support/tool-checkout.ts";
 
-// Stage 4 start saves the pinned resource access rule list of the tool checkout and
-// its SHA-256, and collect applies it to the source files of the graph scope. The
+// Stage 4 collect applies the pinned resource access rule list that start saved to the
+// source files of the graph scope; the rule-lists suite checks the saved copy and its
+// pin. The
 // snapshot writes and reads Knex tables through a typed client and through a client
 // of another snapshot file, and queries a pg pool, which no rule names.
 type Json = Record<string, unknown>;
@@ -29,16 +28,8 @@ const reports = "import { Pool } from 'pg';\n\nconst pool = new Pool();\nexport 
 const files: ExtraFile[] = [{ path: "src/db.ts", text: database }, { path: "src/invoices.ts", text: invoices },
   { path: "src/orders.ts", text: orders }, { path: "src/reports.ts", text: reports }];
 
-let fixture: StageFourAttempt;
-const saved = (name: string): Json => JSON.parse(readFileSync(join(fixture.attempt, name), "utf8")) as Json;
-
-beforeAll(() => {
-  fixture = stageFourAttempt(files);
-  const collect = inspectStageFour(fixture, ["collect"]);
-  if (collect.status !== 0) throw new Error("Stage 4 collect failed: " + collect.stderr);
-}, 120_000);
-
-afterAll(() => rmSync(fixture.root, { recursive: true, force: true }));
+const collected = collectedAttempt(files);
+const saved = (name: string): Json => collected.saved(name);
 
 // The site fields of a candidate at a call of a file of the fixture.
 function site(text: string, path: string, call: string): Json {
@@ -52,13 +43,6 @@ function knexCandidate(ruleId: string, operation: string, confidence: string, va
 }
 
 describe("Stage 4 start and collect", () => {
-  test("start saves the resource access rule list of the tool checkout and records its SHA-256 with the other tool inputs", () => {
-    const rules = readFileSync(join(toolsRoot, resourceAccessRuleList.path));
-    expect(readFileSync(join(fixture.attempt, rulesFile)).equals(rules)).toBe(true);
-    expect((saved("handoff.json").toolInputDigests as Json)[rulesFile]).toBe(sha256(rules));
-    expect(Object.keys(saved("operator-start.json").digests as Json)).toContain(rulesFile);
-  });
-
   test("collect saves each candidate with its rule, site, operation, name, identity and context, and no owner", () => {
     const { tool, outsideReads, notes, ...record } = saved("resource-access-candidates.json");
     const paths = ["cli.ts", "http.ts", "src/db.ts", "src/invoices.ts", "src/orders.ts", "src/reports.ts"];
@@ -95,46 +79,6 @@ describe("Stage 4 start and collect", () => {
     expect(sites.filter((item) => item.kind === "resource-call-candidate").map((item) => item.expression))
       .toEqual(["pool.query('SELECT total FROM invoices')"]);
     expect((saved("operator-collect.json").digests as Json)["resource-access-candidates.json"])
-      .toBe(sha256(readFileSync(join(fixture.attempt, "resource-access-candidates.json"))));
+      .toBe(sha256(readFileSync(join(collected.attempt().attempt, "resource-access-candidates.json"))));
   });
-});
-
-describe("Stage 4 pinned resource access rule list", () => {
-  const changedMessage = "The resource access rule list changed since Stage 4 start: " + resourceAccessRuleList.path +
-    ". Restore it or start a new attempt.";
-
-  test("each later action refuses a tool checkout whose rule list changed after start, before it saves a receipt", () => {
-    const scratch = makeScratch();
-    const attempt = stageFourAttempt([], copyToolCheckout(scratch));
-    try {
-      appendFileSync(join(attempt.tools, resourceAccessRuleList.path), "# A later change.\n");
-      const collect = inspectStageFour(attempt, ["collect"]);
-      expect({ status: collect.status, stdout: collect.stdout }).toEqual({ status: 1, stdout: "" });
-      expect(collect.stderr).toContain(changedMessage);
-      expect(existsSync(join(attempt.attempt, "operator-collect.started.json"))).toBe(false);
-      const graph = runCli(["stage-4", "run"], { CHOOM_TOOLS: attempt.tools, CHOOM_WORK: attempt.work, CHOOM_STAGE4_ID: id,
-        CHOOM_STAGE4: attempt.attempt }, attempt.tools);
-      expect({ status: graph.status, stdout: graph.stdout }).toEqual({ status: 1, stdout: "" });
-      expect(graph.stderr).toContain(changedMessage);
-    } finally {
-      rmSync(attempt.root, { recursive: true, force: true });
-      removeScratch(scratch);
-    }
-  }, 60_000);
-
-  test("start refuses a rule list that does not follow the contract and creates no attempt", () => {
-    const scratch = makeScratch();
-    try {
-      const tools = copyToolCheckout(scratch);
-      const work = join(scratch, "run");
-      stagedRun(work, 3, { tools });
-      writeFileSync(join(tools, resourceAccessRuleList.path), "formatVersion: 1\nrules: []\n");
-      const start = runCli(["stage-4", "start"], { CHOOM_TOOLS: tools, CHOOM_WORK: work, CHOOM_STAGE4_ID: id }, tools);
-      expect({ status: start.status, stdout: start.stdout }).toEqual({ status: 1, stdout: "" });
-      expect(start.stderr).toContain("Invalid resource access rule list: use formatVersion: 1 and a list of rules, with no other field.");
-      expect(existsSync(join(work, "evidence", id))).toBe(false);
-    } finally {
-      removeScratch(scratch);
-    }
-  }, 60_000);
 });
