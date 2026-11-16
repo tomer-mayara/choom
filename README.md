@@ -707,11 +707,13 @@ with a reason, its handler range or `null` with a reason, its role and
 analysis names the record, and the shared record checks check its ranges against
 the saved snapshot. The `@producer` scenarios collect the candidate of an
 Express route and of a route whose name the code makes at run time, the
-route candidates of an Express router, a Fastify server and a Hono app, and the
-start sites of a worker thread and a BullMQ queue worker. The
+route candidates of an Express router, a Fastify server and a Hono app, the
+start sites of a worker thread and a BullMQ queue worker, and the entries of a
+Vite settings file, with a gap for an entry that the code computes. The
 [Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-behavior-entry-candidates)
 gives the rules and their limits. Each call rule of the list needs a sample call
-from the documentation of its library in
+from the documentation of its library, and each settings-literal rule a sample
+settings file in the form that the documentation of its tool shows, in
 `packages/producer/test/unit/behavior-entry-rule-samples.test.ts`. Run the focused
 checks of the behavior entry candidates with:
 

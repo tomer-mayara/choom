@@ -10,8 +10,8 @@ import { rangeIn } from "../support/source-ranges.ts";
 
 // settingsCandidates on a saved snapshot: the literal values at the property path of
 // the settings object of a file that matches the glob of a settings-literal rule. The
-// snapshot project reads the file; nothing runs it. These rules are test data: the
-// pinned rule list of the producer has no settings-literal rule yet.
+// snapshot project reads the file; nothing runs it. These rules are test data, not the
+// rules of the pinned list: behavior-entry-rule-samples.test.ts checks those.
 const picomatch = createRequire(import.meta.url)("picomatch") as Picomatch;
 const viteInput: BehaviorEntrySettingsLiteralRule = { id: "vite-build-input", version: 1, library: "vite",
   entryKind: "frontend-entry", kind: "settings-literal", fileGlob: "**/vite.config.{js,ts}", propertyPath: "build.rollupOptions.input" };

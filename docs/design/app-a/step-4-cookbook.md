@@ -384,10 +384,11 @@ copy of the list as `behavior-entry-rules.yaml` and records its SHA-256 in
 differs from that copy, before it saves a receipt. Restore the list or start a new
 attempt. A rule that changes keeps its ID and gets the next version.
 
-The list holds the `http-route` rules of HTTP servers and the `worker-thread` and
-`queue-worker` rules of workers and queues, which the tables below give. Later
-tickets add the rules of command line tools and frontend settings. Each rule has
-an `id`, a `version`, the `library`, the `entryKind` and one of two kinds:
+The list holds the `http-route` rules of HTTP servers, the `worker-thread` and
+`queue-worker` rules of workers and queues, and the `frontend-entry` rules of Vite
+settings, which the tables below give. A later ticket adds the rules of command
+line tools. Each rule has an `id`, a `version`, the `library`, the `entryKind` and
+one of two kinds:
 
 - A `call` rule finds a call whose callee is its `callPath` on the value of its
   `importName`, a module name such as `express` or `node:worker_threads`. Write
@@ -405,8 +406,7 @@ an `id`, a `version`, the `library`, the `entryKind` and one of two kinds:
   candidate. For example, `app.get('title')` reads a setting of an Express app.
 - A `settings-literal` rule reads the literal value at its `propertyPath`, such as
   `build.rollupOptions.input`, in the settings object of a file of the scope that
-  matches its `fileGlob`, such as `**/vite.config.{js,ts}`. The pinned list has no
-  such rule yet.
+  matches its `fileGlob`, such as `**/vite.config.{js,mjs,cjs,ts,mts,cts}`.
 
 The `http-route` rules find the route methods of four kinds of server values.
 Each rule finds one method. The path is the name (`nameArgument: 0`) and the last
@@ -443,6 +443,30 @@ name, as the call writes it. A worker thread runs its file, so its candidate has
 The rules do not resolve a worker file to a snapshot file. Node.js resolves a
 relative path, such as `./worker.js`, from the working directory of the process,
 not from the file that starts the worker.
+
+The `frontend-entry` rules are `settings-literal` rules. They read the entries that
+a Vite settings file names: `vite.config` with the extension `js`, `mjs`, `cjs`,
+`ts`, `mts` or `cts`, the names that Vite looks for, in any folder of the scope
+(`fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'`). Each rule reads one
+property. Its value is a path, an array of paths or an object whose property values
+are paths:
+
+| Setting | `propertyPath` | Rule ID |
+| --- | --- | --- |
+| The input of the build in the Rollup options, such as `build: { rollupOptions: { input: { main: 'index.html', nested: 'nested/index.html' } } }`. Vite 8 renames these options `rolldownOptions` and keeps `rollupOptions` as an alias. | `build.rollupOptions.input` | `vite-build-rollup-options-input` |
+| The input of the build in the Rolldown options of Vite 8, such as `build: { rolldownOptions: { input: ['index.html', 'nested/index.html'] } }` | `build.rolldownOptions.input` | `vite-build-rolldown-options-input` |
+| The top-level input of Vite 8, such as `input: { main: 'index.html' }`. Vite also uses it in development, and an input of the build options replaces it for the build. | `input` | `vite-input` |
+| The entry of a library that Vite builds in library mode, such as `build: { lib: { entry: 'lib/main.js', name: 'MyLib' } }` | `build.lib.entry` | `vite-build-lib-entry` |
+
+A settings candidate names the settings file and an entry: its `path` is the
+settings file, its `range` and `expression` are the string literal, and `name` is
+the text of the literal, such as `index.html`. A settings entry has no handler, so
+the candidate has `handler: null`, with a `handlerReason`. Each value that is not a
+string literal, such as `resolve(import.meta.dirname, 'nested/index.html')`, is a
+gap of kind `unknown-settings-value` at that value, with a reason. The rules do not
+resolve a name to a snapshot file. Vite resolves a relative path from the project
+root or from the folder where the build runs, so read the settings file and the
+build command before you map a name to a file.
 
 The helper reads each file of the scope in the snapshot project of its graph
 group, with the compiler settings of the group, chosen as for the references
@@ -551,6 +575,45 @@ The worker and queue rules also do not find, or do not name, these workers:
 - The workers of other queue libraries, such as `queue.process(...)` of Bull, and
   the `Worker` class of another package.
 
+The `frontend-entry` rules also do not find, or do not name, these entries:
+
+- The default entry. When no setting names an input, Vite builds `index.html` in
+  the project root: the folder where the `vite` command runs, or the folder that
+  the `root` setting names. The rules give no candidate and no gap for it, so look
+  for that file in the snapshot.
+- The modules that an HTML entry loads, such as `/src/main.ts` in
+  `<script type="module" src="/src/main.ts">` of `index.html`. The rules do not read
+  HTML. Read each page that a candidate or the default entry names.
+- An entry that the code computes is a gap, not a candidate. The examples of the
+  Vite guide compute each entry, such as
+  `resolve(import.meta.dirname, 'nested/index.html')`, so their entries are gaps.
+- Settings that a function makes, such as the conditional config
+  `defineConfig(({ command, mode }) => { ... })` or an async function, and settings
+  that a call with more than one argument makes, such as
+  `mergeConfig(base, { ... })`: each rule gives a gap at that value, with a reason,
+  and no candidate.
+- `lib: false`, which turns library mode off: the library entry rule gives a gap,
+  because the value on its path is not an object literal.
+- `build.ssr`. As a string, it names the entry of an SSR build, such as
+  `ssr: 'src/entry-server.js'`; as `true`, the input is the SSR entry. A rule for it
+  would record `true` as a gap with the reason of a value that is known only at run
+  time, so the list has no rule for it. The `--ssr` option of the command, such as
+  `vite build --ssr src/entry-server.js`, is not in the settings file either.
+- The settings of an environment, such as
+  `environments.ssr.build.rolldownOptions.input`: a `propertyPath` has fixed names,
+  and an environment can have any name.
+- A settings file with another name, which only the `--config` option of the
+  `vite` command names, such as `vite.config.production.ts`; the settings of Vitest
+  in `vitest.config.*`; and an input that a Vite plugin adds.
+
+The list has no rule for Next.js. Next.js finds its entries from its folders, not
+from a setting: the special files of the `app` folder, such as `page.tsx` and
+`route.ts`, the files of the `pages` folder, both also under `src`, and files such
+as `proxy.ts` (formerly `middleware.ts`) and `instrumentation.ts`. No property of
+`next.config.*` names entry files as literal values: `pageExtensions` names file
+extensions, and `exportPathMap` and `webpack` are functions. So a
+`settings-literal` rule cannot find these entries. This is left for a later ticket.
+
 | Record field | Meaning |
 | --- | --- |
 | `formatVersion`, `attemptId`, `snapshotRef`, `status` | `1`, the Stage 4 attempt ID, the snapshot ID, and `completed`, or `partial` when the limit of 10000 candidates omitted some. |
@@ -575,7 +638,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "snapshotRef": "snapshot-001",
   "status": "completed",
   "rulesRef": "s4-001-file@behavior-entry-rules.yaml",
-  "rulesSha256": "a877afb91a69355cabedda2a2319a001e1bace3729887bb21c558ab4e786c1e2",
+  "rulesSha256": "ef664c019ea28cca91cb7d3e23e143f4891094dbd955797da4549d72257f52c2",
   "settingsRef": "settings-001",
   "rolesRef": "review-001",
   "scope": {
