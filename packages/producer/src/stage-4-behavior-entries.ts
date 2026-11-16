@@ -129,7 +129,7 @@ export function behaviorEntryRecord(input: BehaviorEntryInput): Fields {
         if (candidates.length < candidateLimit) candidates.push(savedCandidate(file, candidate, roleOf(file.path)));
         else omittedCandidates++;
       }
-      for (const gap of settings.gaps) gaps.set(JSON.stringify(savedGap(file, gap)), savedGap(file, gap));
+      for (const gap of settings.gaps.map(item => savedGap(file, item))) gaps.set(JSON.stringify(gap), gap);
     }
     for (const gap of project.gaps()) gaps.set(JSON.stringify(gap), gap);
     for (const read of project.outsideReads()) outsideReads.set(read.operation + ' ' + read.path, read);

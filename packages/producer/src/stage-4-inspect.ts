@@ -22,8 +22,9 @@ import { reviewPrompt } from './stage-4-review-prompt.ts';
 import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 
 // The Stage 4 source collection helper. collect saves the source sites of the
-// graph profile scope, the behavior entry candidates of the rule list that start saved,
-// the first excerpts, the review prompt and the proposed artifact map; excerpt saves a requested range of an indexed file; references
+// graph profile scope, the behavior entry candidates of the rule list that start
+// saved, the first excerpts, the review prompt and the proposed artifact map;
+// excerpt saves a requested range of an indexed file; references
 // saves the references to a symbol of a source file of the graph scope. Each action
 // first checks that the attempt is still the one that Stage 4 start, toolchain and
 // run prepared, then saves a receipt and appends its outcome to the command log.

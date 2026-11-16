@@ -178,6 +178,8 @@ Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
 proposed. Retain an unknown owner with a specific reason where evidence is
 insufficient. Do not create a utilities group to eliminate unknowns.
+The entry-analysis update keeps behaviorEntryCandidatesRef of the selected
+entry analysis. Its candidates are places to read, not proven entries.
 
 Review the saved system scope for launch paths and externally callable
 operations. Use saved launch settings and behavior entries. Read each
