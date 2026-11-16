@@ -326,6 +326,12 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
     - **CI:** the `web` job now has 25 minutes, not 15. Its main step grew from
       7 min 15 s on GA-00c to 12 min 46 s on GA-11b2, and the first run of
       tomer-mayara/choom#92 stopped at the 15-minute limit.
+    - **CI apt mirrors:** the `web` and `desktop` jobs used one apt mirror,
+      `mirrors.kernel.org`, which the runners could not reach on 2026-11-16.
+      The list now holds the Azure mirror of the runner, the Canonical
+      archive and `mirrors.kernel.org`, so apt uses the next one when a
+      mirror fails (tomer-mayara/choom#92, and tomer-mayara/choom#96 for
+      `main`).
     - **A flaky browser step from GA-11b2:** the keyboard scenario "Reach tabs
       and disclosures with visible keyboard focus" counted the Copy decision
       actions before React showed the opened disclosure. The step now waits
