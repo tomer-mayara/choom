@@ -18,8 +18,9 @@ type Ts = typeof TsMorph.ts;
 type Node = TsMorph.ts.Node;
 type TsSymbol = TsMorph.ts.Symbol;
 // A value of an import: the module name and the steps from the value of the module,
-// each .name for a property, () for a call and new() for a new call.
-export interface ValuePath { module: string; steps: string[] }
+// each .name for a property, () for a call and new() for a new call. `calls` holds the
+// call or new call of each call step of a value of the source, in order; a rule path has none.
+export interface ValuePath { module: string; steps: string[]; calls: Node[] }
 // The callee path of a rule, and whether the rule finds a new call.
 export interface RulePath extends ValuePath { newCall: boolean }
 // The program and the type checker of the files that a snapshot project holds.
@@ -51,17 +52,19 @@ const inSnapshot = (symbol: TsSymbol | undefined): boolean => (symbol?.declarati
 export const samePath = (left: ValuePath, right: ValuePath): boolean => left.module === right.module &&
   left.steps.length === right.steps.length && left.steps.every((part, index) => part === right.steps[index]);
 
-// Adds a step to a value path. The default export of a module is the value of the module.
-function step(path: ValuePath, next: string): ValuePath {
-  return next === '.default' && path.steps.length === 0 ? path : { module: path.module, steps: [...path.steps, next] };
+// Adds a step to a value path, with the node of a call step. The default export of a module is the value of the module.
+function step(path: ValuePath, next: string, call?: Node): ValuePath {
+  if (next === '.default' && path.steps.length === 0) return path;
+  return { module: path.module, steps: [...path.steps, next], calls: call === undefined ? path.calls : [...path.calls, call] };
 }
+const moduleValue = (module: string): ValuePath => ({ module, steps: [], calls: [] });
 
 // The callee path of a rule: its call path from the value of its import. The first name of the path is
 // importName itself for the value of the module, and otherwise the name of an export of the module.
 export function rulePath(importName: string, callPath: string): RulePath {
   const { head, steps, newCall } = callPathParts(callPath);
-  const module = { module: importName, steps: [] };
-  const path = steps.reduce(step, head === importName ? module : step(module, '.' + head));
+  const module = moduleValue(importName);
+  const path = steps.reduce((value, next) => step(value, next), head === importName ? module : step(module, '.' + head));
   return { ...path, newCall };
 }
 
@@ -99,7 +102,7 @@ function requiredModule({ ts, checker }: Checking, node: Node): string | undefin
 function importBinding(query: Checking, declaration: Node | undefined): ValuePath | undefined {
   const { ts } = query;
   const from = (specifier: Node | undefined): ValuePath | undefined =>
-    specifier !== undefined && ts.isStringLiteralLike(specifier) ? { module: specifier.text, steps: [] } : undefined;
+    specifier !== undefined && ts.isStringLiteralLike(specifier) ? moduleValue(specifier.text) : undefined;
   const exported = (base: ValuePath | undefined, name: { text: string }): ValuePath | undefined => base && step(base, '.' + name.text);
   if (declaration === undefined) return undefined;
   if (ts.isImportClause(declaration)) return from(declaration.parent.moduleSpecifier);
@@ -113,7 +116,7 @@ function importBinding(query: Checking, declaration: Node | undefined): ValuePat
     return ts.isExternalModuleReference(declaration.moduleReference) ? from(declaration.moduleReference.expression) : undefined;
   const loaded = (node: Node | undefined): ValuePath | undefined => {
     const module = node === undefined ? undefined : requiredModule(query, node);
-    return module === undefined ? undefined : { module, steps: [] };
+    return module === undefined ? undefined : moduleValue(module);
   };
   if (ts.isVariableDeclaration(declaration)) return loaded(declaration.initializer);
   const holder = declaration.parent?.parent;
@@ -158,11 +161,12 @@ export function valuePath(query: Checking, node: Node, depth = 0): ValuePath | u
   if (ts.isIdentifier(expression)) return symbolPath(query, checker.getSymbolAtLocation(expression), depth + 1);
   const property = member(ts, expression);
   const loaded = requiredModule(query, expression);
-  if (loaded !== undefined) return { module: loaded, steps: [] };
+  if (loaded !== undefined) return moduleValue(loaded);
   const base = property?.object ?? (ts.isCallExpression(expression) || ts.isNewExpression(expression) ? expression.expression : undefined);
   const value = base === undefined ? undefined : valuePath(query, base, depth + 1);
   if (value === undefined) return undefined;
-  return step(value, property !== undefined ? '.' + property.name.text : ts.isNewExpression(expression) ? 'new()' : '()');
+  if (property !== undefined) return step(value, '.' + property.name.text);
+  return step(value, ts.isNewExpression(expression) ? 'new()' : '()', expression);
 }
 
 // The argument at a position. The last argument must come after the name argument.
