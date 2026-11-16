@@ -633,7 +633,9 @@ packet and failed attempt as evidence; do not overwrite their frozen files.
 
 Finish the command log first. Do not redirect finalizer
 output into the attempt directory: the finalizer registers all files there by
-digest. Do not edit them after successful finalization.
+digest. Do not edit them after successful finalization. After it, the helper
+refuses every `stage-3` action on this attempt before it saves a receipt or adds
+to `commands.md`; use `stage-3-finish verify` to check the attempt.
 
 ```sh
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-3-finish

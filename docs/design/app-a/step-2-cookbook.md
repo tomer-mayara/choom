@@ -661,7 +661,9 @@ registry. Do not register the working `run.yaml`, `discovery.yaml`, or
 `baseline.yaml` as immutable evidence; use saved copies.
 
 Do not redirect this command's output into the attempt directory: the command
-hashes every file there. After it succeeds, leave those files unchanged. A
+hashes every file there. After it succeeds, leave those files unchanged.
+`run.yaml` then registers them, so the driver refuses every later action on this
+attempt before it saves a receipt or adds to `commands.md`. A
 change to the selected analysis needs a new attempt with its own evidence, or a
 new run after component recovery. For a minor explanatory correction, follow
 [start here](start-here.md#record-a-correction).

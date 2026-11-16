@@ -8,7 +8,7 @@ import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
 import { appendCommandLog, cookbookPrompt } from './attempt-files.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
-import { assert, type Fields, hash } from './record-checks.ts';
+import { assert, type Fields, hash, object } from './record-checks.ts';
 import { ripgrepVersion, runRipgrep } from './ripgrep.ts';
 import { collect, type Output } from './stage-3-collect.ts';
 import { exportsRecord } from './stage-3-exports.ts';
@@ -81,16 +81,17 @@ const logs = (prefix: string): string[] => ['.started.json', '.stdout.txt', '.st
 const require = createRequire(join(tools, 'package.json'));
 const modules = join(tools, 'node_modules') + '/';
 
+// A module of the trusted tool checkout, from the node_modules folder of the checkout.
+function load(name: string, file = ''): unknown {
+  const path = require.resolve(name + file);
+  assert(path.startsWith(modules + name + '/'), 'Install ' + name + ' in the trusted tool checkout.');
+  read(path);
+  return require(path);
+}
+
 // The trusted tools of the checkout: YAML, ts-morph with its TypeScript, and ripgrep,
 // with their versions and the digest of each tool file that this action loaded.
 function loadTools(): Toolchain {
-  function load(name: string, file = ''): unknown {
-    const path = require.resolve(name + file);
-    assert(path.startsWith(modules + name + '/'), 'Install ' + name + ' in the trusted tool checkout.');
-    read(path);
-    return require(path);
-  }
-
   const { parse } = load('yaml') as typeof Yaml;
   const tsMorph = load('ts-morph') as typeof TsMorph;
   const { version: tsMorphVersion } = load('ts-morph', '/package.json') as { version: string };
@@ -131,12 +132,24 @@ function reserve(): Reservation {
   }
 }
 
+// run.yaml registers each file of a published attempt under an ID that starts with
+// the attempt ID and -file@. Those files are evidence, so an action on a published
+// attempt stops before it saves a receipt or adds to the command log.
+function refusePublishedAttempt(): void {
+  const { parse } = load('yaml') as typeof Yaml;
+  const run = parse(read(join(work, 'run.yaml')).toString()) as Fields | null | undefined;
+  assert(!object(run?.artifacts) || !Object.keys(run.artifacts).some(key => key.startsWith(id + '-file@')),
+    'Attempt ' + id + ' is published: run.yaml registers its files, so they must stay unchanged. ' +
+    'Check it with stage-3-finish verify.');
+}
+
 // The checks before a new attempt folder exists, or before a later action uses its attempt.
 function prepare(): Prepared | undefined {
   refuseChangedProducerCode(work, tools);
   if (action !== 'start') {
     directory(attempt);
     assert(self === sourceHelper, 'Use the Stage 3 helper in the trusted checkout.');
+    refusePublishedAttempt();
     return undefined;
   }
   assert(self === sourceHelper && !exists(attempt), 'Start from CHOOM_TOOLS with a fresh attempt ID.');

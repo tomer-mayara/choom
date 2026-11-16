@@ -448,6 +448,17 @@ function finish(): never {
   process.exit(result.status ?? 1);
 }
 
+// run.yaml registers each file of a published attempt under an ID that starts with
+// the attempt ID and -file@. Those files are evidence, so an action on a published
+// attempt stops here, before it saves a receipt or adds to commands.md.
+function refusePublishedAttempt(): void {
+  const run = parse(read(work, 'run.yaml').toString());
+  if (!object(run?.artifacts) || !Object.keys(run.artifacts).some(key => key.startsWith(id + '-file@'))) return;
+  writeSync(2, 'Attempt ' + id + ' is published: run.yaml registers its files, so they must stay unchanged. ' +
+    'Use a new attempt ID for more Stage 2 work.\n');
+  process.exit(1);
+}
+
 const checkoutDriver = join(tools, 'packages/producer/src/stage-2-commands.ts');
 if (action === 'start') assert(self === checkoutDriver, 'Start from the tool checkout.');
 else {
@@ -455,6 +466,7 @@ else {
     'Use the Stage 2 driver in the trusted checkout with a prepared attempt.');
 }
 refuseChangedProducerCode(work, tools);
+if (action !== 'start') refusePublishedAttempt();
 if (action === 'start') {
   mkdirSync(attempt);
   save('commands.md', '# Stage 2 commands\n');

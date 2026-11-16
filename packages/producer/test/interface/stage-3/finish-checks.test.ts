@@ -97,6 +97,23 @@ describe("Stage 3 finish checks", () => {
     expect({ status: again.status, stderr: again.stderr }).toEqual({ status: 1, stderr: "run.yaml changed after checkpointing.\n" });
   }, 60_000);
 
+  // run.yaml registers the files of a published attempt as evidence. Each later action
+  // refuses the attempt before it saves a receipt or adds to the command log.
+  test("refuses each action on the published attempt, changes no file of the run, and still verifies", () => {
+    const attempt = newAttempt("published-actions");
+    expect(finishStageThree(attempt).finish?.status).toBe(0);
+    const before = folderState(attempt.work);
+    for (const args of [["excerpt", "app.ts", "1", "1"], ["text-search", "value"], ["exports", "app.ts"], ["collect"],
+      ["save-review", attempt.review]]) {
+      const result = stageThree(attempt, ["stage-3", ...args]);
+      expect({ args, status: result.status, stdout: result.stdout, stderr: result.stderr }).toEqual({ args, status: 1,
+        stdout: "", stderr: `Attempt ${attempt.id} is published: run.yaml registers its files, so they must stay unchanged. ` +
+          "Check it with stage-3-finish verify.\n" });
+    }
+    expect(folderState(attempt.work)).toEqual(before);
+    expect(stageThree(attempt, ["stage-3-finish", "verify"]).status).toBe(0);
+  }, 60_000);
+
   test("publishes a packet that cites a text-search record, and registers the record and the raw ripgrep output", () => {
     const attempt = newAttempt("text-search");
     const cited = `${attempt.id}-file@text-search-001.json#/matches/0`;

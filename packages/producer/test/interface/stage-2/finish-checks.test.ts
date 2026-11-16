@@ -4,6 +4,7 @@ import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs
 import { join } from "node:path";
 import { parse } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
+import { folderState } from "../../support/producer-record.ts";
 import { analysisPacket, candidate, entryAnalysis, finishAttempt, priorQuestion, runAttempt, savedJson, stageOneRun,
   stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
 
@@ -78,6 +79,24 @@ describe("Stage 2 finish checks", () => {
     expect(results.finish?.status).toBe(0);
     const discovery = parse(readFileSync(join(prepared.work, "discovery.yaml"), "utf8")) as JsonRecord;
     expect(discovery.entryAnalysisRef).toBe(`${id}-entry-analysis`);
+  });
+
+  // run.yaml registers the files of a published attempt as evidence. Each later action
+  // refuses the attempt before it saves a receipt or adds to the command log.
+  test("refuses each action on the published attempt and changes no file of the run", () => {
+    const prepared = restoredAttempt();
+    expect(finishAttempt(prepared, scratch, entryAnalysis(id, { reviewedFiles: [source] })).finish?.status).toBe(0);
+    const before = folderState(prepared.work);
+    const review = join(scratch, `${id}-review`);
+    const actions: [string, string[]][] = [["excerpt", ["app.ts", "1", "1", "Check the entry module."]], ["plan", [review]],
+      ["prepare", []], ["toolchain", []], ["run", []], ["save-review", [review]], ["finish", []]];
+    for (const [action, args] of actions) {
+      const result = stageTwo(prepared, action, args);
+      expect({ action, status: result.status, stdout: result.stdout, stderr: result.stderr }).toEqual({ action, status: 1,
+        stdout: "", stderr: `Attempt ${id} is published: run.yaml registers its files, so they must stay unchanged. ` +
+          "Use a new attempt ID for more Stage 2 work.\n" });
+    }
+    expect(folderState(prepared.work)).toEqual(before);
   });
 
   test.each(cases)("refuses an analysis in which $name and leaves the drafts unchanged", ({ change, message }) => {
