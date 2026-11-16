@@ -242,16 +242,41 @@ export function openSyntaxReader(snapshot: SnapshotFiles, tools: ProjectTools): 
   };
 }
 
+// The syntax tree of one snapshot file and the type checker of a program that holds only that file.
+export interface CheckedText { source: TsMorph.ts.SourceFile; checker: TsMorph.ts.TypeChecker }
+
+// The compiler options of a program of one file: a JavaScript file is part of the
+// program, and the program loads no library file. They do not change the parse.
+const oneFileProgram: TsMorph.CompilerOptions = { allowJs: true, noLib: true };
+
+// A project that holds one snapshot file alone: its saved bytes as UTF-8 text,
+// below the virtual root, on a file system in memory that holds no other file.
+// Bytes that are not UTF-8 text stop the parse.
+function oneFileProject(path: string, bytes: Buffer, tools: ProjectTools, compilerOptions: TsMorph.CompilerOptions): TsMorph.SourceFile {
+  const virtual = posix.join(virtualRoot, path);
+  const memory = new tools.InMemoryFileSystemHost();
+  memory.writeFileSync(virtual, utf8.decode(bytes));
+  return new tools.Project({ fileSystem: memory, compilerOptions }).addSourceFileAtPath(virtual);
+}
+
 // Parses the saved bytes of one snapshot file as the syntax reader parses the file:
 // as UTF-8 text, without compiler settings, below the virtual root. The shared record
 // checks use it: they read the bytes and check them against the inventory themselves.
 // Bytes that are not UTF-8 text stop the parse.
 export function parseSnapshotText(path: string, bytes: Buffer, tools: ProjectTools): TsMorph.ts.SourceFile {
-  const virtual = posix.join(virtualRoot, path);
-  const memory = new tools.InMemoryFileSystemHost();
-  memory.writeFileSync(virtual, utf8.decode(bytes));
-  const project = new tools.Project({ fileSystem: memory, compilerOptions: syntaxOnly.compilerOptions as TsMorph.CompilerOptions });
-  return project.addSourceFileAtPath(virtual).compilerNode;
+  return oneFileProject(path, bytes, tools, syntaxOnly.compilerOptions as TsMorph.CompilerOptions).compilerNode;
+}
+
+// Parses the saved bytes of one snapshot file as parseSnapshotText does, and binds the
+// names of that file with the type checker of a program that holds only that file.
+// The checker finds which declaration of the file each name uses. It reads no other
+// file, so it resolves no import. The caller reads and checks the bytes.
+export function checkSnapshotText(path: string, bytes: Buffer, tools: ProjectTools): CheckedText {
+  const file = oneFileProject(path, bytes, tools, oneFileProgram);
+  const program = file.getProject().getProgram().compilerObject;
+  const source = program.getSourceFile(file.getFilePath());
+  assert(source, 'The program of the file does not hold ' + path + '.');
+  return { source, checker: program.getTypeChecker() };
 }
 
 // The parser diagnostics of a parsed file. TypeScript keeps them in an internal field.

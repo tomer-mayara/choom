@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import * as tsMorph from "ts-morph";
-import { openSnapshotProject, openSyntaxReader, type OutsideRead, parseSnapshotText, type ProjectSettings, type SnapshotProject }
-  from "../../src/snapshot-project.ts";
+import { checkSnapshotText, openSnapshotProject, openSyntaxReader, type OutsideRead, parseSnapshotText, type ProjectSettings,
+  type SnapshotProject } from "../../src/snapshot-project.ts";
 import type { InventoryFile } from "../../src/stage-1-settings.ts";
 import { makeScratch, removeScratch } from "../support/commands.ts";
 import { writeFiles } from "../support/stage-1-run.ts";
@@ -134,5 +134,51 @@ describe("parseSnapshotText", () => {
 
   test("stops at bytes that are not UTF-8 text", () => {
     expect(() => parseSnapshotText("src/price.ts", Buffer.from([0x61, 0xff, 0x0a]), tsMorph)).toThrow(TypeError);
+  });
+});
+
+// The Stage 5 parts action reads and checks the saved bytes of a file, then binds
+// the names of that file alone with the type checker.
+describe("checkSnapshotText", () => {
+  const price = "import { round } from './round';\n\nexport function price(round2: number): number {\n" +
+    "  const round3 = round2;\n  return round(round3);\n}\n";
+  // The identifiers of a file with a given text, in source order.
+  function names(source: tsMorph.ts.SourceFile, text: string): tsMorph.ts.Identifier[] {
+    const found: tsMorph.ts.Identifier[] = [];
+    const visit = (node: tsMorph.ts.Node): void => {
+      if (tsMorph.ts.isIdentifier(node) && node.text === text) found.push(node);
+      tsMorph.ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return found;
+  }
+
+  test("parses the saved bytes as parseSnapshotText does, and binds each use of a name to its declaration", () => {
+    const { source, checker } = checkSnapshotText("src/price.ts", Buffer.from(price), tsMorph);
+    const parsed = parseSnapshotText("src/price.ts", Buffer.from(price), tsMorph);
+    expect(source.statements.map((statement) => [statement.kind, statement.pos, statement.end]))
+      .toEqual(parsed.statements.map((statement) => [statement.kind, statement.pos, statement.end]));
+    const [imported, used] = names(source, "round").map((name) => checker.getSymbolAtLocation(name));
+    expect(imported).toBeDefined();
+    expect(used).toBe(imported);
+  });
+
+  test("reads no other file, so an import of another file does not resolve", () => {
+    writeFiles(snapshotRoot, { "src/round.ts": "export function round(value: number): number {\n  return value;\n}\n" });
+    const { source, checker } = checkSnapshotText("src/price.ts", Buffer.from(price), tsMorph);
+    const statement = source.statements[0] as tsMorph.ts.ImportDeclaration;
+    expect(checker.getSymbolAtLocation(statement.moduleSpecifier)).toBeUndefined();
+  });
+
+  test("binds the names of a JavaScript file, with a require call that the compiler reads as an import", () => {
+    const text = "const money = require('./money');\nfunction total() {\n  return money.round(1);\n}\n";
+    const { source, checker } = checkSnapshotText("src/total.js", Buffer.from(text), tsMorph);
+    const [declared, used] = names(source, "money").map((name) => checker.getSymbolAtLocation(name));
+    expect(used).toBe(declared);
+    expect((declared?.flags ?? 0) & tsMorph.ts.SymbolFlags.Alias).toBeTruthy();
+  });
+
+  test("stops at bytes that are not UTF-8 text", () => {
+    expect(() => checkSnapshotText("src/price.ts", Buffer.from([0x61, 0xff, 0x0a]), tsMorph)).toThrow(TypeError);
   });
 });
