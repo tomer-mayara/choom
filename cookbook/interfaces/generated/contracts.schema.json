@@ -3559,6 +3559,17 @@
                             "type": "null"
                         }
                     ]
+                },
+                "nameCall": {
+                    "$ref": "behaviorEntryNameCall.json"
+                },
+                "sameValueMethods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "behaviorEntryMethodName.json"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
                 }
             },
             "required": [
@@ -3621,6 +3632,20 @@
             "minimum": 0,
             "maximum": 255
         },
+        "behaviorEntryNameCall": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryNameCall.json",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "behaviorEntryMethodName": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "behaviorEntryMethodName.json",
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$"
+        },
         "BehaviorEntrySettingsLiteralRule": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "BehaviorEntrySettingsLiteralRule.json",
@@ -3674,6 +3699,37 @@
             "maxLength": 200,
             "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*$"
         },
+        "BehaviorEntryPackageBinRule": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BehaviorEntryPackageBinRule.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "behaviorEntryRuleId.json"
+                },
+                "version": {
+                    "$ref": "behaviorEntryRuleVersion.json"
+                },
+                "library": {
+                    "$ref": "behaviorEntryText.json"
+                },
+                "entryKind": {
+                    "$ref": "behaviorEntryKind.json"
+                },
+                "kind": {
+                    "type": "string",
+                    "const": "package-bin"
+                }
+            },
+            "required": [
+                "id",
+                "version",
+                "library",
+                "entryKind",
+                "kind"
+            ],
+            "additionalProperties": false
+        },
         "BehaviorEntryRuleList": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "BehaviorEntryRuleList.json",
@@ -3706,6 +3762,9 @@
                 },
                 {
                     "$ref": "BehaviorEntrySettingsLiteralRule.json"
+                },
+                {
+                    "$ref": "BehaviorEntryPackageBinRule.json"
                 }
             ]
         },

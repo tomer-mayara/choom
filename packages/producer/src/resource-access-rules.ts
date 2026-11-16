@@ -1,7 +1,7 @@
 import type { ResourceAccessRule, ResourceAccessRuleList } from './generated/contracts.ts';
 import { assert } from './record-checks.ts';
-import { callPathParts, checkRuleFields, type FieldCheck, fieldChecks, listedRules, matching, ruleFolder, type RuleList,
-  ruleMessage } from './rule-lists.ts';
+import { callCount, callPathParts, checkRuleFields, type FieldCheck, fieldChecks, listedRules, matching, ruleFolder,
+  type RuleList, ruleMessage } from './rule-lists.ts';
 
 // The pinned list of Choom resource access rules and its check against the contract
 // in cookbook/interfaces/resource-access-rules.tsp. The list is one YAML file in the
@@ -22,21 +22,18 @@ const ruleFields: Record<string, FieldCheck> = {
   nameArgument: fieldChecks.position,
 };
 
-// The number of calls and new calls among the steps of a path.
-const calls = (steps: readonly string[]): number => steps.filter(step => step === '()' || step === 'new()').length;
-
 function checkRule(rule: unknown, number: number, ids: Set<unknown>): void {
   const message = ruleMessage(label, rule, number);
   checkRuleFields(rule, message, ruleFields, ids);
   const { callPath, typePath, nameCall } = rule as ResourceAccessRule;
   const { steps } = callPathParts(callPath);
-  assert(nameCall <= calls(steps), message + 'the call path has no call at the name call ' + nameCall + '.');
+  assert(nameCall <= callCount(steps), message + 'the call path has no call at the name call ' + nameCall + '.');
   if (typePath === null) return;
   const typed = callPathParts(typePath).steps;
   const last = steps.slice(steps.length - typed.length);
   assert(typed.length <= steps.length && typed.every((step, index) => step === last[index]),
     message + 'the type path does not end with the last steps of the call path.');
-  assert(nameCall <= calls(typed), message + 'the type path has no call at the name call ' + nameCall + '.');
+  assert(nameCall <= callCount(typed), message + 'the type path has no call at the name call ' + nameCall + '.');
 }
 
 // The rule list, after the check of each rule.

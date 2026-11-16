@@ -46,6 +46,18 @@ export function callPathParts(path: string): { head: string; steps: string[]; ne
   return { head, steps, newCall };
 }
 
+// The number of calls and new calls among the steps of a path.
+export const callCount = (steps: readonly string[]): number => steps.filter(step => step === '()' || step === 'new()').length;
+
+// The methods that a call path calls, such as command in program.command().action: each
+// name that a call follows. The first name calls no method when it is the import name
+// itself or default, which both name the value of the module.
+export function calledMethods(importName: string, path: string): string[] {
+  const { head, steps } = callPathParts(path);
+  const names = head === importName || head === 'default' ? steps : ['.' + head, ...steps];
+  return names.flatMap((name, index) => name.startsWith('.') && names[index + 1] === '()' ? [name.slice(1)] : []);
+}
+
 // The start of each message about a rule: its list, its number and its ID.
 export function ruleMessage(label: string, rule: unknown, number: number): string {
   const id = object(rule) ? rule.id : undefined;
@@ -53,10 +65,15 @@ export function ruleMessage(label: string, rule: unknown, number: number): strin
 }
 
 // Exactly the fields of the contract, each with its check, and an ID that no earlier rule of the list uses.
-export function checkRuleFields(rule: unknown, message: string, fields: Record<string, FieldCheck>, ids: Set<unknown>): void {
+// A rule can leave out an optional field; a field that it has follows its check.
+export function checkRuleFields(rule: unknown, message: string, fields: Record<string, FieldCheck>, ids: Set<unknown>,
+  optional: Record<string, FieldCheck> = {}): void {
   const record = object(rule) ? rule : {};
-  assert(exact(rule, Object.keys(fields)), message + 'use exactly the fields ' + Object.keys(fields).join(', ') + '.');
-  for (const [field, check] of Object.entries(fields)) assert(check(record[field]), message + 'the field ' + field +
+  const given = Object.entries(optional).filter(([field]) => Object.hasOwn(record, field));
+  const optionalNames = Object.keys(optional).length ? ', and optionally ' + Object.keys(optional).join(', ') : '';
+  assert(exact(rule, [...Object.keys(fields), ...given.map(([field]) => field)]), message + 'use exactly the fields ' +
+    Object.keys(fields).join(', ') + optionalNames + '.');
+  for (const [field, check] of [...Object.entries(fields), ...given]) assert(check(record[field]), message + 'the field ' + field +
     ' does not follow the contract.');
   assert(!ids.has(record.id), message + 'the ID is already used.');
   ids.add(record.id);

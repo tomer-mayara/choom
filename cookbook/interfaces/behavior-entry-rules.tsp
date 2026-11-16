@@ -5,9 +5,11 @@ using TypeSpec.JsonSchema;
 // The pinned list of Choom behavior entry rules. The producer keeps it as one YAML
 // file, packages/producer/rules/behavior-entry-rules.yaml. Stage 4 start saves a
 // copy and its SHA-256, and Stage 4 collect applies the rules to the source files
-// of the graph scope. A match is a candidate to inspect, not a proven entry.
-// Runtime validation also refuses a repeated rule ID and a call rule that names
-// one argument as both the name and the handler.
+// of the graph scope and to the package.json files of the snapshot. A match is a
+// candidate to inspect, not a proven entry. Runtime validation also refuses a
+// repeated rule ID, a call rule that names one argument of one call as both the
+// name and the handler, a name call that the call path does not have or that names
+// no name argument, and a call path that calls a method of its sameValueMethods.
 @jsonSchema
 namespace Choom.Producer;
 
@@ -54,6 +56,17 @@ scalar behaviorEntryCallPath extends string;
 @maxValue(255)
 scalar behaviorEntryArgument extends integer;
 
+// The call that holds the name, counted back from the call that the rule finds:
+// 0 for that call, 1 for the last call of the call path, 2 for the call before it.
+@minValue(0)
+@maxValue(255)
+scalar behaviorEntryNameCall extends integer;
+
+// The name of a method, such as description.
+@pattern("^[A-Za-z_$][A-Za-z0-9_$]*$")
+@maxLength(128)
+scalar behaviorEntryMethodName extends string;
+
 // A glob of snapshot-relative paths, as picomatch matches it with dot files, such
 // as **/vite.config.{js,ts}. It does not start with / and has no space or backslash.
 @pattern("^[^/\\s\\\\][^\\s\\\\]*$")
@@ -65,9 +78,10 @@ scalar behaviorEntryFileGlob extends string;
 @maxLength(200)
 scalar behaviorEntryPropertyPath extends string;
 
-// A rule that finds a call whose callee is callPath. The name and the handler are
-// arguments of that call: a position, last for the last argument, or null for none.
-// A call that does not have the arguments that the rule names is not a match.
+// A rule that finds a call whose callee is callPath. The handler is an argument of
+// that call: a position, last for the last argument, or null for none. The name is
+// the argument at nameArgument, or null for none, of the call at nameCall. A call
+// that does not have the arguments that the rule names is not a match.
 @extension("additionalProperties", false)
 model BehaviorEntryCallRule {
   id: behaviorEntryRuleId;
@@ -79,6 +93,19 @@ model BehaviorEntryCallRule {
   callPath: behaviorEntryCallPath;
   nameArgument: behaviorEntryArgument | null;
   handlerArgument: behaviorEntryArgument | "last" | null;
+
+  // The call whose argument is the name, such as 1 for the command call of
+  // program.command('serve').action(serve), which the rule program.command().action
+  // finds. Without nameCall, the name is an argument of the call that the rule finds.
+  nameCall?: behaviorEntryNameCall;
+
+  // The methods whose call gives the value that it is called on, such as the builder
+  // methods of a command. A call of such a method does not change the value, so the
+  // rule also finds its call path with these calls in it: program.command().action
+  // with description also finds program.command('serve').description('Start').action(serve).
+  @minItems(1)
+  @uniqueItems
+  sameValueMethods?: behaviorEntryMethodName[];
 }
 
 // A rule that reads the literal value at a property path of the settings object
@@ -95,9 +122,24 @@ model BehaviorEntrySettingsLiteralRule {
   propertyPath: behaviorEntryPropertyPath;
 }
 
+// A rule that reads the bin field of each package.json of the snapshot, outside the
+// node_modules folders, without running anything. Each command that the field names
+// is a candidate. Its handler is the source file that the command runs only with
+// evidence: the snapshot holds the bin file, or a saved compiler setting compiles a
+// source file of the snapshot to it. Otherwise the handler is null with a reason.
+@extension("additionalProperties", false)
+model BehaviorEntryPackageBinRule {
+  id: behaviorEntryRuleId;
+  version: behaviorEntryRuleVersion;
+  library: behaviorEntryText;
+  entryKind: behaviorEntryKind;
+  kind: "package-bin";
+}
+
 union BehaviorEntryRule {
   BehaviorEntryCallRule,
   BehaviorEntrySettingsLiteralRule,
+  BehaviorEntryPackageBinRule,
 }
 
 @extension("additionalProperties", false)

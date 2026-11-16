@@ -12,8 +12,10 @@ import { type Change, changedList, refusedBy, rule } from "../support/rule-list-
 
 // The contract of the pinned behavior entry rule list: the generated structural
 // schema and the runtime check of the producer accept and refuse the same shapes.
-// The runtime check also refuses a repeated rule ID and a call rule that names one
-// argument as both the name and the handler.
+// The runtime check also refuses a repeated rule ID, a call rule that names one
+// argument of one call as both the name and the handler, a name call that the call
+// path does not have or that names no name argument, and a call path that calls a
+// method of its sameValueMethods.
 
 const structure = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }))
   .compile({ $ref: "BehaviorEntryRuleList.json" });
@@ -28,6 +30,10 @@ function ruleList(): BehaviorEntryRuleList {
       callPath: "new Hono().get", nameArgument: null, handlerArgument: 1 },
     { id: "vite-build-input", version: 1, library: "vite", entryKind: "frontend-entry", kind: "settings-literal",
       fileGlob: "**/vite.config.{js,ts}", propertyPath: "build.rollupOptions.input" },
+    { id: "commander-program-command", version: 1, library: "commander", entryKind: "cli-command", kind: "call",
+      importName: "commander", callPath: "program.command().action", nameArgument: 0, handlerArgument: 0, nameCall: 1,
+      sameValueMethods: ["description", "option"] },
+    { id: "package-bin", version: 1, library: "npm", entryKind: "cli-bin", kind: "package-bin" },
   ] };
 }
 
@@ -35,7 +41,7 @@ test("the runtime check returns the generated rule list contract", () => {
   expectTypeOf<ReturnType<typeof checkRuleList>>().toEqualTypeOf<BehaviorEntryRuleList>();
 });
 
-test("call and settings-literal rules conform at both boundaries without a change", () => {
+test("call, settings-literal and package-bin rules conform at both boundaries without a change", () => {
   const input = ruleList();
   expect(structure(input)).toBe(true);
   expect(checkRuleList(input)).toEqual(input);
@@ -79,6 +85,15 @@ test.each<[string, Change]>([
   ["a file glob with a space", (input) => { rule(input, 3).fileGlob = "vite config.ts"; }],
   ["a property path with an empty name", (input) => { rule(input, 3).propertyPath = "build..input"; }],
   ["a property path with an index", (input) => { rule(input, 3).propertyPath = "build.input[0]"; }],
+  ["a negative name call", (input) => { rule(input, 4).nameCall = -1; }],
+  ["a name call that is not an integer", (input) => { rule(input, 4).nameCall = 0.5; }],
+  ["an empty list of same value methods", (input) => { rule(input, 4).sameValueMethods = []; }],
+  ["a same value method that is not a name", (input) => { rule(input, 4).sameValueMethods = ["description()"]; }],
+  ["a repeated same value method", (input) => { rule(input, 4).sameValueMethods = ["option", "option"]; }],
+  ["a settings-literal rule with a name call", (input) => { rule(input, 3).nameCall = 0; }],
+  ["a package-bin rule with a call field", (input) => { rule(input, 5).callPath = "program.command().action"; }],
+  ["a package-bin rule with a settings field", (input) => { rule(input, 5).fileGlob = "**/package.json"; }],
+  ["a package-bin rule without its entry kind", (input) => { delete rule(input, 5).entryKind; }],
 ])("both boundaries refuse %s", (_name, change) => {
   const input = changedList(ruleList(), change);
   expect(structure(input)).toBe(false);
@@ -90,6 +105,15 @@ test.each<[string, Change, string]>([
     "Invalid behavior entry rule 2 (express-route-get): the ID is already used."],
   ["one argument as both the name and the handler", (input) => { rule(input, 0).handlerArgument = 0; },
     "Invalid behavior entry rule 1 (express-route-get): the name argument and the handler argument are the same."],
+  ["one argument of the found call as both the name and the handler", (input) => { rule(input, 4).nameCall = 0; },
+    "Invalid behavior entry rule 5 (commander-program-command): the name argument and the handler argument are the same."],
+  ["a name call that the call path does not have", (input) => { rule(input, 4).nameCall = 2; },
+    "Invalid behavior entry rule 5 (commander-program-command): the call path has no call at the name call 2."],
+  ["a name call without a name argument", (input) => { rule(input, 4).nameArgument = null; },
+    "Invalid behavior entry rule 5 (commander-program-command): the rule names a name call but no name argument."],
+  ["a call path that calls a method of its same value methods", (input) => { rule(input, 4).sameValueMethods = ["command"]; },
+    "Invalid behavior entry rule 5 (commander-program-command): the call path calls command, a method of sameValueMethods, " +
+    "so the rule finds no call."],
 ])("the structural schema accepts and the runtime check refuses %s", (_name, change, message) => {
   const input = changedList(ruleList(), change);
   expect(structure(input)).toBe(true);

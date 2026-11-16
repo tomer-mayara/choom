@@ -10,9 +10,19 @@ export interface BehaviorEntryCallRule {
   callPath: behaviorEntryCallPath;
   nameArgument: behaviorEntryArgument | null;
   handlerArgument: behaviorEntryArgument | "last" | null;
+  nameCall?: behaviorEntryNameCall;
+  sameValueMethods?: Array<behaviorEntryMethodName>;
 }
 
-export type BehaviorEntryRule = BehaviorEntryCallRule | BehaviorEntrySettingsLiteralRule;
+export interface BehaviorEntryPackageBinRule {
+  id: behaviorEntryRuleId;
+  version: behaviorEntryRuleVersion;
+  library: behaviorEntryText;
+  entryKind: behaviorEntryKind;
+  kind: "package-bin";
+}
+
+export type BehaviorEntryRule = BehaviorEntryCallRule | BehaviorEntrySettingsLiteralRule | BehaviorEntryPackageBinRule;
 
 export interface BehaviorEntryRuleList {
   formatVersion: 1;
@@ -55,7 +65,11 @@ export type behaviorEntryFileGlob = string;
 
 export type behaviorEntryKind = string;
 
+export type behaviorEntryMethodName = string;
+
 export type behaviorEntryModuleName = string;
+
+export type behaviorEntryNameCall = number;
 
 export type behaviorEntryPropertyPath = string;
 
