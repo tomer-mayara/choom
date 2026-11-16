@@ -25,6 +25,10 @@ function show(baseline: Baseline) {
   render(<ArchitectureDiagram baseline={baseline} layout={{ nodes: [] }} baselineSha256={sha256} />);
 }
 
+// The baseline example names a parent, as a next version does. The producer records
+// decisions only about a first version, which a run publishes with no parent.
+const firstVersion = (baseline: Baseline = baselineExample()): Baseline => ({ ...baseline, parentId: null });
+
 function openRecordedDetails(component: string) {
   fireEvent.click(screen.getByRole("button", { name: "Baseline details" }));
   fireEvent.click(within(screen.getByRole("region", { name: "Components" })).getByRole("button", { name: component }));
@@ -35,7 +39,7 @@ const entry = (itemId: string, field: string) =>
   `# Baseline baseline-example, SHA-256 ${sha256}\n- action: accept\n  itemId: ${itemId}\n  field: ${field}\n`;
 
 test("Copy decision copies an accept entry for the Billing purpose and changes no baseline value", async () => {
-  const baseline = baselineExample();
+  const baseline = firstVersion();
   const original = structuredClone(baseline);
   show(baseline);
   openRecordedDetails("Billing, billing");
@@ -48,7 +52,7 @@ test("Copy decision copies an accept entry for the Billing purpose and changes n
 });
 
 test("each proposed statement has the action, and an accepted statement has none", () => {
-  show(baselineExample());
+  show(firstVersion());
   openRecordedDetails("Checkout, checkout");
   for (const field of ["purpose", "membership"]) expect(screen.getByRole("button", { name: `Copy decision for checkout.${field}` })).toBeTruthy();
   expect(within(screen.getByRole("group", { name: "Grouping reason" })).getByText("Accepted (recorded)")).toBeTruthy();
@@ -57,14 +61,22 @@ test("each proposed statement has the action, and an accepted statement has none
 });
 
 test("the built-in example has no file digest, so it offers no decision", () => {
-  render(<ArchitectureDiagram baseline={baselineExample()} layout={{ nodes: [] }} />);
+  render(<ArchitectureDiagram baseline={firstVersion()} layout={{ nodes: [] }} />);
   openRecordedDetails("Billing, billing");
+  expect(screen.queryByRole("button", { name: /^Copy decision/ })).toBeNull();
+});
+
+test("a next version, which names its parent, offers no decision for its proposed statements", () => {
+  const nextVersion = { ...baselineExample(), id: "baseline-example-decisions-001", parentId: "baseline-example" };
+  show(nextVersion);
+  openRecordedDetails("Billing, billing");
+  expect(within(screen.getByRole("group", { name: "Purpose" })).getByText("Proposed")).toBeTruthy();
   expect(screen.queryByRole("button", { name: /^Copy decision/ })).toBeNull();
 });
 
 test("a failed copy keeps the entry readable for a manual copy", async () => {
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => { throw new Error("Denied"); } } });
-  show(baselineExample());
+  show(firstVersion());
   openRecordedDetails("Billing, billing");
   const purpose = within(screen.getByRole("group", { name: "Purpose" }));
   fireEvent.click(purpose.getByRole("button", { name: "Copy decision for billing.purpose" }));
@@ -73,7 +85,7 @@ test("a failed copy keeps the entry readable for a manual copy", async () => {
 });
 
 test("resource, rule and interface statements use the field paths of the shared statement list", async () => {
-  show(enrichedBaseline());
+  show(firstVersion(enrichedBaseline()));
   fireEvent.click(screen.getByRole("button", { name: "Baseline details" }));
   fireEvent.click(within(screen.getByRole("region", { name: "Resources" })).getByRole("button", { name: "Invoices, invoice-store" }));
   for (const field of ["identity", "owner", "accessRules"]) expect(screen.getByRole("button", { name: `Copy decision for invoice-store.${field}` })).toBeTruthy();

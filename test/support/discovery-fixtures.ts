@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { stringify } from "yaml";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { baselineExample } from "./baseline-fixtures.ts";
 
 export const deferredFile = "src/legacy/exporter.ts";
@@ -8,10 +9,11 @@ export const deferredReason = "The old exporter has no declared entry and no sin
 /**
  * A saved baseline file and a version 2 discovery result for its exact bytes,
  * written by hand in the shape of CR-004: two questions about Billing and one
- * deferred file that names no baseline item.
+ * deferred file that names no baseline item. The baseline is a first version with
+ * no parent, as a run publishes it, so the viewer can copy a decision for it.
  */
 export function discoveryFixture() {
-  const baseline = baselineExample();
+  const baseline: Baseline = { ...baselineExample(), parentId: null };
   const baselineText = stringify(baseline);
   const sha256 = createHash("sha256").update(baselineText).digest("hex");
   const result = {

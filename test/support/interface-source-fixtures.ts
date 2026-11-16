@@ -3,6 +3,8 @@ import { interfaceExampleFixture } from "./interface-example-fixtures.ts";
 
 export function interfaceSourceFixture(variant: "compact" | "reading" | "owned-list" = "compact") {
   const baseline = interfaceExampleFixture();
+  // A first version with no parent, so that each proposed statement offers Copy decision.
+  baseline.parentId = null;
   const item = fixtureItem(baseline.interfaces);
   const docs = item.documentation;
   if (!docs) throw new Error("Source fixtures need interface documentation.");

@@ -311,7 +311,10 @@ for that statement, after a YAML comment that names the baseline ID and file
 digest. To correct the value, change the action to `correct` and add `oldValue`
 and `newValue`. The producer records the decision; the viewer changes no file
 and not the open baseline. An accepted statement and the built-in example have
-no Copy decision. See [CR-004](docs/change-requests/CR-004-discovery-in-viewer.md).
+no Copy decision. A next version, which names its parent in `parentId`, has no
+Copy decision either: the producer records decisions only about the baseline
+that a run published, which has no parent. See
+[CR-004](docs/change-requests/CR-004-discovery-in-viewer.md).
 
 ## Development commands
 

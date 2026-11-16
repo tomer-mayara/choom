@@ -13,12 +13,17 @@ export interface DecisionBaseline {
   readonly statements: ReadonlyMap<string, StatementState>;
 }
 
-/** A view of a saved baseline file provides it. The built-in example has no file digest, so it has none. */
+/**
+ * A view of a saved baseline file provides it. The built-in example has no file
+ * digest, so it has none. A next version, which names its parent, has none too:
+ * the producer records decisions only about the baseline that a run published,
+ * which has no parent.
+ */
 export const DecisionContext = createContext<DecisionBaseline | null>(null);
 
-/** The decision binding of a saved baseline file, or null without a file digest. */
+/** The decision binding of a saved baseline file, or null without a file digest or for a next version. */
 export function useDecisionBaseline(baseline: ReadonlyData<Baseline>, sha256: string | undefined): DecisionBaseline | null {
-  return useMemo(() => sha256 === undefined ? null : { id: baseline.id, sha256,
+  return useMemo(() => sha256 === undefined || baseline.parentId !== null ? null : { id: baseline.id, sha256,
     statements: new Map(baselineStatements(baseline).map(({ itemId, field, statement }) => [`${itemId}.${field}`, statement])) },
   [baseline, sha256]);
 }
