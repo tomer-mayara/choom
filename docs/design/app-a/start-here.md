@@ -7,6 +7,9 @@ and update the progress report before assigning the next stage. All six stages
 belong to design Step 1. If you were assigned only one stage, follow the worker
 assignment and do not take the manager role.
 
+For the first real run on Choom itself, also follow
+[First real run](first-real-run.md).
+
 The result is a proposed architecture model and a record of its evidence and
 limits. Component health, redesign and independent replaceability belong to the
 next design steps. After Step 1, use the separate
