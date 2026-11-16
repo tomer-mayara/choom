@@ -19,6 +19,9 @@ const source = { id: `${id}-source-excerpt-001`, snapshotRef: "snapshot-check", 
   sha256: createHash("sha256").update(app.text).digest("hex"), lines: [1, 1] };
 const question = (questionId: string): JsonRecord => ({ id: questionId, subjectRefs: ["app.ts"], text: "Is app.ts used?",
   evidenceRefs: ["inventory-001"] });
+// The analysis with one gap that cites the evidence reference.
+const gapEvidence = (ref: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis, gaps: [{ id: `${id}-gap-001`,
+  kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.", evidenceRefs: [ref] }] });
 
 const cases: FinishCase[] = [
   { name: "an earlier discovery question is removed", change: (analysis) => ({ ...analysis, questions: [] }),
@@ -32,10 +35,16 @@ const cases: FinishCase[] = [
   { name: "a reviewed source has no saved excerpt",
     change: (analysis) => ({ ...analysis, reviewedFiles: [{ ...source, id: `${id}-source-other` }] }),
     message: `Copy the exact saved excerpt source ID and range: ${id}-source-other` },
-  { name: "a gap cites unknown evidence",
-    change: (analysis) => ({ ...analysis, gaps: [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"],
-      reason: "Knip did not run.", evidenceRefs: ["missing-artifact"] }] }),
+  { name: "a gap cites unknown evidence", change: gapEvidence("missing-artifact"),
     message: "Unknown evidence reference: missing-artifact" },
+  { name: "a gap cites a JSON Pointer that is not a path", change: gapEvidence(`${id}-knip-runs#runs`),
+    message: `Invalid JSON Pointer: ${id}-knip-runs#runs` },
+  { name: "a gap cites a missing key", change: gapEvidence(`${id}-knip-runs#/missing`),
+    message: `Unresolved JSON Pointer: ${id}-knip-runs#/missing` },
+  { name: "a gap cites a JSON Pointer with an escape other than ~0 and ~1", change: gapEvidence(`${id}-knip-runs#/runs~2`),
+    message: `Invalid JSON Pointer escape: ${id}-knip-runs#/runs~2` },
+  { name: "a gap cites a list item with a leading zero", change: gapEvidence(`${id}-knip-runs#/runs/00`),
+    message: `Invalid array JSON Pointer: ${id}-knip-runs#/runs/00` },
   { name: "a candidate names a path outside the inventory",
     change: (analysis) => ({ ...analysis, candidates: [{ ...candidate(id), path: "missing.ts" }] }),
     message: `Invalid or duplicate candidate: ${id}-candidate-001` },

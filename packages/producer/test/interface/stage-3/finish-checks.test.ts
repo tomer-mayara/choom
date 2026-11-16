@@ -40,6 +40,12 @@ const cases: FinishCase[] = [
     message: "Missing inspection priorities." },
   { name: "an inspection priority cites unknown evidence",
     change: (packet) => { firstPriority(packet).evidenceRefs = ["missing"]; }, message: "Unknown evidence: missing" },
+  { name: "an inspection priority cites a JSON Pointer that is not a path",
+    change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@artifact-map.json#artifacts"]; },
+    message: "Invalid JSON Pointer: s3-check-file@artifact-map.json#artifacts" },
+  { name: "an inspection priority cites a missing key",
+    change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@artifact-map.json#/missing"]; },
+    message: "Unresolved JSON Pointer: s3-check-file@artifact-map.json#/missing" },
 ];
 
 let scratch = "";
