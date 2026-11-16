@@ -1050,8 +1050,8 @@ saved file. A refusal starts with "The viewer could not open the fixed discovery
 result." and names the field, such as
 `The discovery result is invalid at questions.0: Unrecognized key: "answer"`.
 Stages 1 to 5 check each question and gap with the same rules before they save
-it (see [Discovery](#discovery)), so a working discovery that they published
-passes this check. Do not edit saved files to pass it.
+it (see [Discovery](#discovery)), so a record does not first fail here after
+earlier stages froze it. Do not edit saved files to pass the check.
 
 Stage 6 writes the fixed discovery result as YAML without aliases, also when the
 working discovery repeats a value through a YAML alias. Before it saves any file,
