@@ -379,3 +379,13 @@ rules:
     kind: settings-literal
     fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
     propertyPath: input
+  # The entries of a library that Vite builds in library mode, such as
+  # build: { lib: { entry: 'lib/main.js', name: 'MyLib' } }. The entry is a path, an
+  # array of paths or an object whose property values are paths.
+  - id: vite-build-lib-entry
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: build.lib.entry

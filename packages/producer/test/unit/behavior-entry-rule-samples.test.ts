@@ -272,6 +272,36 @@ const settingsSamples: Record<string, SettingsSample> = {
     "  },",
     "})"),
   entries: [["main: «'index.html'»", "index.html"]], gaps: ["nested: «resolve(import.meta.dirname, 'nested/index.html')»"] },
+  // The Library Mode examples of the Vite 8 guide: an object of entries, and Rolldown
+  // options without an input.
+  "vite-build-lib-entry": { tool: vite, file: "vite.config.js", text: lines(
+    "import { resolve } from 'node:path'",
+    "import { defineConfig } from 'vite'",
+    "",
+    "export default defineConfig({",
+    "  build: {",
+    "    lib: {",
+    "      entry: {",
+    "        'my-lib': 'lib/main.js',",
+    "        secondary: resolve(import.meta.dirname, 'lib/secondary.js'),",
+    "      },",
+    "      name: 'MyLib',",
+    "    },",
+    "    rolldownOptions: {",
+    "      // make sure to externalize deps that shouldn't be bundled",
+    "      // into your library",
+    "      external: ['vue'],",
+    "      output: {",
+    "        // Provide global variables to use in the UMD build",
+    "        // for externalized deps",
+    "        globals: {",
+    "          vue: 'Vue',",
+    "        },",
+    "      },",
+    "    },",
+    "  },",
+    "})"),
+  entries: [["'my-lib': «'lib/main.js'»", "lib/main.js"]], gaps: ["secondary: «resolve(import.meta.dirname, 'lib/secondary.js')»"] },
 };
 
 const ruleList = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules;
