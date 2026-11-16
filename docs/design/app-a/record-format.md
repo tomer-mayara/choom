@@ -167,7 +167,7 @@ makes the [next baseline version](#next-baseline-version) from it.
 | Collection | Exact item fields |
 | --- | --- |
 | `components` | `id`, `name`, `purpose`, `membership`, `groupingReason`; optional `parent`. |
-| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2–4 also permit `documentation`. |
+| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2–5 also permit `documentation`. |
 | `resources` | `id`, `name`, `identity`, `owner`, `accessRules`. |
 | `rules` | `id`, `name`, `subject`, `expected`, `check`. |
 
