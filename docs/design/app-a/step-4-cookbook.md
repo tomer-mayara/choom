@@ -495,7 +495,7 @@ finds the commands of one kind of program:
 | --- | --- | --- | --- |
 | A commander program on the program export, such as `program.command('clone <source> [destination]').description('...').action(clone)` after `import { program } from 'commander'` | `commander`, `program.command().action` | The rule finds the action call. The name is the first argument of the command call (`nameCall: 1`, `nameArgument: 0`), and the action is the handler (`handlerArgument: 0`). `sameValueMethods` lists the 40 methods of `Command` that have a form that returns the command itself, as the typings of commander 15 declare them, except `action`, `command` and `parse`. | `commander-program-command` |
 | A commander program that `new Command()` makes, such as `const program = new Command()` after `import { Command } from 'commander'` | `commander`, `new Command().command().action` | The same | `commander-class-command` |
-| A yargs program, such as `yargs(hideBin(process.argv)).command('serve [port]', 'start the server', builder, handler)` after `import yargs from 'yargs'` | `yargs`, `yargs().command` | The name is the first argument (`nameArgument: 0`), and the last argument is the handler (`handlerArgument: last`). `sameValueMethods` lists the 65 methods of a yargs instance that return the instance in yargs 18, `command` among them, so each command call of one chain is a candidate. | `yargs-command` |
+| A yargs program, such as `yargs(hideBin(process.argv)).command('serve [port]', 'start the server', builder, handler)` after `import yargs from 'yargs'` | `yargs`, `yargs().command` | The name is the first argument (`nameArgument: 0`), and argument 3 is the handler (`handlerArgument: 3`), as the yargs documentation writes `.command(cmd, desc, builder, handler)`; middlewares can follow it. `sameValueMethods` lists the 65 methods of a yargs instance that return the instance in yargs 18, `command` among them, so each command call of one chain is a candidate. | `yargs-command` |
 
 A command candidate names its command and its action. `name` is the first argument
 of the command call as the call writes it, with the arguments of the command, such
@@ -736,11 +736,8 @@ The `cli-command` rules also do not find, or do not name, these commands:
   name, so it is not a candidate. Read the module: its `command` property is the
   name and its `handler` property is the handler. The command modules of a folder
   that `commandDir('commands')` loads are not candidates either.
-- A yargs command call whose last argument is not the action: the description of
-  `.command('init', 'set up the project')`, which gives `handler: null` with a
-  reason, the builder of `.command('remote', 'manage remotes', builder)`, and the
-  middlewares of `.command(cmd, desc, builder, handler, middlewares)`, which the
-  candidate gives as its handler. Read the call before you use the handler.
+- A yargs command without a handler argument, such as `.command(cmd, desc)` or
+  `.command(cmd, desc, builder)`, is not a candidate.
 - A command that a builder function adds on its parameter, such as
   `(yargs) => yargs.command('add <name>', ...)`, and a command call of a chain after
   a method that `sameValueMethods` does not list, such as a method of a later
@@ -783,7 +780,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "snapshotRef": "snapshot-001",
   "status": "completed",
   "rulesRef": "s4-001-file@behavior-entry-rules.yaml",
-  "rulesSha256": "a93e71ce93ad533b36bf2b5443463bb8a9b9cb8dc33202f1eb3e26403672711e",
+  "rulesSha256": "48bcfe0262d65477f65ff2a2954af2d548fa8b032a76b9337becb83752522f6a",
   "settingsRef": "settings-001",
   "rolesRef": "review-001",
   "scope": {

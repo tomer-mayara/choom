@@ -249,6 +249,20 @@ const sandboxedAsLiteral = "import { Worker } from 'bullmq';\n\nconst worker = n
 const sandboxedFiles: Files = { "bullmq-sandboxed/variable.ts": sandboxedInVariable,
   "bullmq-sandboxed/literal.ts": sandboxedAsLiteral };
 
+// The yargs documentation writes a command as .command(cmd, desc, builder, handler), so
+// the handler is argument 3. Middlewares can follow the handler, as in the command
+// middleware example of the yargs documentation. A command without a handler argument,
+// such as the get command with a builder object of the yargs documentation, has no action.
+// The samples call yargs(hideBin(process.argv)) for the yargs instance.
+const yargsStart = "import yargs from 'yargs';\nimport { hideBin } from 'yargs/helpers';\n\n";
+const yargsMiddlewares = yargsStart + "const mwFunc1 = argv => console.log('I\\'m a middleware function');\n" +
+  "const mwFunc2 = argv => console.log('I\\'m another middleware function');\n\nyargs(hideBin(process.argv))\n" +
+  "  .command('myCommand', 'some command', {}, function (argv) {\n    console.log('Running myCommand!');\n" +
+  "  }, [mwFunc1, mwFunc2]).parse();\n";
+const yargsBuilderOnly = yargsStart + "yargs(hideBin(process.argv))\n  .command('get', 'make a get HTTP request', {\n" +
+  "    url: {\n      alias: 'u',\n      default: 'http://yargs.js.org/'\n    }\n  })\n  .help()\n  .parse();\n";
+const yargsFiles: Files = { "yargs-forms/middlewares.js": yargsMiddlewares, "yargs-forms/builder-only.js": yargsBuilderOnly };
+
 // A frontend build tool: the kind of entry that its settings name, the names of its
 // settings files, and other files that can hold the same text but that the tool does
 // not read as its settings, by a description.
@@ -424,7 +438,7 @@ function settingsSampleFiles(): Files {
 let found = new Map<string, EntryCandidate[]>();
 let foundSettings = new Map<string, SettingsFindings>();
 beforeAll(() => {
-  const files = { ...sampleFiles(), ...sandboxedFiles };
+  const files = { ...sampleFiles(), ...sandboxedFiles, ...yargsFiles };
   const settingsFiles = { ...settingsSampleFiles(), [conditionalPath]: conditionalSettings };
   withScratch((scratch) => {
     const query = entryQuery(projectOf(scratch, { ...files, ...settingsFiles },
@@ -471,6 +485,16 @@ test("bullmq-worker gives the variable of a sandboxed processor path as the hand
       range: rangeIn(sandboxedInVariable, "const «processorFile = path.join(__dirname, 'my_processor.js')»;") } }],
     [{ ruleId: "bullmq-worker", name: "foo", handler: null,
       handlerReason: "The handler argument is not a function or a name, so the rule does not follow the value that it gives." }],
+  ]);
+});
+
+test("yargs-command gives the handler at argument 3 before middlewares, and no candidate for a command without a handler", () => {
+  const handlers = Object.keys(yargsFiles).map((path) =>
+    found.get(path)?.map(({ ruleId, name, handler, handlerReason }) => ({ ruleId, name, handler, handlerReason })));
+  expect(handlers).toEqual([
+    [{ ruleId: "yargs-command", name: "myCommand", handlerReason: null, handler: { path: "yargs-forms/middlewares.js",
+      range: rangeIn(yargsMiddlewares, "{}, «function (argv) {\n    console.log('Running myCommand!');\n  }»") } }],
+    [],
   ]);
 });
 

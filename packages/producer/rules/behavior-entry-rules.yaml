@@ -444,10 +444,12 @@ rules:
   # The commands of a yargs program, such as
   # yargs(hideBin(process.argv)).command('serve [port]', 'start the server', builder, handler)
   # after import yargs from 'yargs'. The name is the first argument, with the arguments of
-  # the command, and the last argument is the handler. A command call gives the yargs
-  # instance that it is called on, so one chain can have several command calls:
-  # sameValueMethods lists each method of a yargs instance that returns the instance, as
-  # yargs 18 writes them, command among them.
+  # the command. The handler is argument 3, as the yargs documentation writes
+  # .command(cmd, desc, builder, handler); middlewares can follow it. A yargs command
+  # without a handler argument, such as .command(cmd, desc) or .command(cmd, desc, builder),
+  # is not a candidate. A command call gives the yargs instance that it is called on, so
+  # one chain can have several command calls: sameValueMethods lists each method of a yargs
+  # instance that returns the instance, as yargs 18 writes them, command among them.
   - id: yargs-command
     version: 1
     library: yargs
@@ -456,7 +458,7 @@ rules:
     importName: yargs
     callPath: yargs().command
     nameArgument: 0
-    handlerArgument: last
+    handlerArgument: 3
     sameValueMethods: [addHelpOpt, addShowHiddenOpt, alias, array, boolean, check, choices, coerce, command, commandDir,
       commands, completion, config, conflicts, count, default, defaults, demand, demandCommand, demandOption,
       deprecateOption, describe, detectLocale, env, epilog, epilogue, example, exitProcess, fail, global, group, help,
