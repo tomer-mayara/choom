@@ -17,6 +17,11 @@ Feature: Find behavior entry candidates
   input of the build, without running the file. A string literal is a candidate with
   the settings file, the range of the value and the entry. An entry that the code
   computes is a gap with a reason.
+  The command rules find the commands of commander and yargs programs. The command
+  is the name, and its action is the handler. The bin rule reads the bin field of
+  each package file. Each command that the field names is a candidate. It names the
+  source file that the command runs only with evidence: the file is in the snapshot,
+  or a saved compiler setting compiles a source file of the snapshot to it.
 
   Scenario: A rule finds a candidate
     Given a saved snapshot that calls a registration function from the rule list
@@ -45,3 +50,10 @@ Feature: Find behavior entry candidates
     Then the literal entry has a candidate that names the settings file, the range of the value and the entry
     And it is marked as found by a syntax rule, not as a proven entry
     And the computed entry is a gap with a reason
+
+  Scenario: Find the commands of command line tools
+    Given a saved snapshot with a commander program, a yargs program and a package whose bin field names three commands
+    When the operator collects behavior entry candidates
+    Then each command of the programs has a candidate that names the command and its action range
+    And each bin command has a candidate that names the command and the range of its value in the package file
+    And a bin command names its source file only with evidence, and otherwise gives the reason
