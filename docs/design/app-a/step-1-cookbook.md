@@ -266,11 +266,12 @@ excerpt's exact source ID, snapshot ID, path, digest and saved range; never inve
 or rename them. The source ID is distinct from the excerpt artifactRef.
 Use verified workspace membership only when supplied deterministic evidence
 establishes it. Give questions/gaps distinct stable IDs such as s1-question-001
-and s1-gap-001. Do not reuse artifact IDs. Cite supplied artifact IDs or source
-record IDs; exact JSON fields can use JSON Pointers. Missing inputs cite saved
-diagnostics or exclusions. Every role, question, gap and workspace declaration
-needs evidence. Empty lists mean only that no item was established in the stated
-scope. A complete review may have gaps. Never invent a passed check.
+and s1-gap-001. Do not reuse artifact IDs or the baseline ID. Cite supplied
+artifact IDs or source record IDs; exact JSON fields can use JSON Pointers.
+Missing inputs cite saved diagnostics or exclusions. Every role, question, gap
+and workspace declaration needs evidence. Empty lists mean only that no item was
+established in the stated scope. A complete review may have gaps. Never invent a
+passed check.
 ```
 
 Create a review folder outside `CHOOM_WORK`. Save the LLM's complete result as
@@ -335,7 +336,10 @@ settings record, such as `settings-001#/gaps/0`. After them, it adds the
 `git-unavailable` gap of the Git identity record when Git evidence is not
 available, as `s1-git-identity-gap-001` with `git-identity-001#/gaps/0` as
 evidence. `finish` refuses a review question or gap with one of these IDs, and a
-Git identity record that is not valid. It registers all evidence, including the
+Git identity record that is not valid. It also refuses a question or gap with the
+baseline ID (`CHOOM_BASELINE_ID`): Stages 4 to 6 reserve that ID for the fixed
+baseline, and later stages keep each question and gap unchanged.
+It registers all evidence, including the
 producer code record, the Git identity record as `git-identity-001` and the Git
 calls, and `inventory.mjs` with computed SHA-256 digests, then writes
 `run.yaml` last. No manual digest entry or analysis-record editing is needed.

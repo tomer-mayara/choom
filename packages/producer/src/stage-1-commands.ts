@@ -389,7 +389,11 @@ function checkReviewItems(review: Review, evidence: ReviewEvidence): void {
 }
 
 // The IDs of the gaps that finish adds stay unique: no review question or gap uses them.
-function checkReservedIds(review: Review, added: AddedGaps[]): void {
+// No question or gap uses the baseline ID either: Stages 4 to 6 reserve it for the
+// fixed baseline, and later stages keep each question and gap unchanged.
+function checkReservedIds(review: Review, added: AddedGaps[], baselineId: string): void {
+  for (const item of [...review.questions, ...review.gaps])
+    assert(item.id !== baselineId, 'The ID ' + item.id + ' is reserved for the baseline. Use a different ID.');
   for (const { record, gaps } of added) {
     const reserved = new Set<unknown>(gaps.map(gap => gap.id));
     for (const item of [...review.questions, ...review.gaps])
@@ -455,7 +459,7 @@ function finish(inputs: StageOneInputs): void {
   const { bytes, review } = readReview(reviewDir, inputs);
   const evidence = reviewSources(review, inventory);
   checkReviewItems(review, evidence);
-  checkReservedIds(review, added);
+  checkReservedIds(review, added, inputs.baselineId);
   checkSuppliedScope(bytes.get('review-scope.json') as Buffer, inputs, review, evidence);
   publish(inputs, bytes, review, inventory, added.flatMap(({ gaps }) => gaps));
 }

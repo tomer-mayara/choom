@@ -39,6 +39,11 @@ const reviewCases: ReviewCase[] = [
     message: "Invalid role." },
   { name: "a question uses an artifact ID", change: (packet) => { listItem(packet, "questions").id = "inventory-001"; },
     message: "Invalid question or gap." },
+  // Stages 4 to 6 reserve the baseline ID for the fixed baseline, and later stages keep each question and gap.
+  { name: "a question uses the baseline ID", change: (packet) => { listItem(packet, "questions").id = "baseline-check"; },
+    message: "The ID baseline-check is reserved for the baseline. Use a different ID." },
+  { name: "a gap uses the baseline ID", change: (packet) => { listItem(packet, "gaps").id = "baseline-check"; },
+    message: "The ID baseline-check is reserved for the baseline. Use a different ID." },
   { name: "the scope omits required evidence",
     change: (packet) => { packet.scope.suppliedArtifactRefs = (packet.scope.suppliedArtifactRefs as string[])
       .filter((ref) => ref !== "settings-001"); },

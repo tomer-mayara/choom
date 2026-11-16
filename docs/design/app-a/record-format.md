@@ -56,7 +56,9 @@ baseline item ID uses lowercase letters, digits and hyphens.
 The baseline ID is reserved. Stage 6 saves the fixed baseline under that ID, so
 no model record can use it: no component, interface, resource, rule, question,
 gap or other record. Stages 4, 5 and 6 refuse it with the same check, so a Stage 4
-or Stage 5 draft that uses it fails before the stage closes. Each publication
+or Stage 5 draft that uses it fails before the stage closes. Stage 1 `finish`
+refuses it as the ID of a question or gap, because later stages keep each
+question and gap unchanged. Each publication
 also reserves the IDs of the records that it saves, such as the Stage 4 or 5
 `publication.json` receipt, and the Stage 6 discovery result and attempt files.
 The refusal names the reserved ID.
