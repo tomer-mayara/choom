@@ -4,7 +4,7 @@ import { settingsRef } from './compiler-settings.ts';
 import type { ResourceAccessRule, ResourceAccessRuleList } from './generated/contracts.ts';
 import { assert, type Fields } from './record-checks.ts';
 import { type AccessMatch, accessMatches, sourceContext } from './resource-access-calls.ts';
-import { ruleFolder } from './rule-lists.ts';
+import { resourceAccessRuleList } from './resource-access-rules.ts';
 import { outsideReadsNote, virtualRoot } from './snapshot-project.ts';
 import type { SourceFile } from './stage-4-graph-profile.ts';
 import { checkerTool, queryOptions } from './stage-4-references.ts';
@@ -26,8 +26,8 @@ export interface ResourceAccessInput extends ScopeInput {
   // The parser record that collect saves with the source sites.
   parser: Fields;
 }
-// The source sites that collect saved, and their artifact ID.
-export interface SavedSites { record: Fields; ref: string }
+// The artifact ID of the source sites that collect saved, and the saved sites of each file with their index.
+export interface SavedSites { ref: string; ofFile(path: string): { site: Fields; index: number }[] }
 // The file of a candidate and the import pass of its graph group.
 interface Where { path: string; sha256: string; graphContext: string }
 type Node = TsMorph.ts.Node;
@@ -42,8 +42,8 @@ export const resourceAccessNotes = [
   'A candidate is a call that a Choom resource access rule found (confidence receiver-import or receiver-type), or a ' +
     'resource call site of sourceSitesRef that no rule found (confidence name-only). It is a site to read, not proven ' +
     'resource access: it does not show that the code runs, and the list is not complete.',
-  'The rules are the copy of ' + ruleFolder + 'resource-access-rules.yaml that Stage 4 start saved (rulesRef and ' +
-    'rulesSha256). Each later Stage 4 action refuses a tool checkout whose rule list differs from that copy.',
+  'The rules are the copy of ' + resourceAccessRuleList.path + ' that Stage 4 start saved (rulesRef and rulesSha256). ' +
+    'Each later Stage 4 action refuses a tool checkout whose rule list differs from that copy.',
   'The scope is the source files of the graph profile (scope.files). Each file is read in the snapshot project of its graph ' +
     'group (scope.groups), with the compiler settings of the group, chosen as for the Stage 4 references action, and with ' +
     'allowJs. Files outside the scope are not searched.',
@@ -74,12 +74,23 @@ export const resourceAccessNotes = [
   outsideReadsNote,
 ];
 
+// The source sites that collect saved, with their artifact ID, by file.
+export function savedSites(record: Fields, ref: string): SavedSites {
+  const byFile = new Map<unknown, { site: Fields; index: number }[]>();
+  for (const [index, site] of (record.sites as Fields[]).entries()) {
+    const sites = byFile.get(site.path) ?? [];
+    sites.push({ site, index });
+    byFile.set(site.path, sites);
+  }
+  return { ref, ofFile: path => byFile.get(path) ?? [] };
+}
+
 // The saved resource call sites of a file, by their node in the syntax tree of the type
 // checker. Collect saved the sites of the file in the order of the same walk, so the
 // n-th site of the walk is the n-th saved site of the file. A resource call site that
 // does not match its saved site means that the two syntax trees differ, so the record stops.
 function savedSiteRefs(ts: typeof TsMorph.ts, source: TsMorph.ts.SourceFile, path: string, sites: SavedSites): Map<Node, string> {
-  const saved = (sites.record.sites as Fields[]).flatMap((site, index) => site.path === path ? [{ site, index }] : []);
+  const saved = sites.ofFile(path);
   const refs = new Map<Node, string>();
   fileSites(ts, source).forEach(({ node, site: [kind] }, order) => {
     const match = saved[order];
@@ -111,7 +122,11 @@ export function fileAccessCandidates(query: RuleQuery, file: SourceFile, rules: 
   graphContext: string): Fields[] {
   const { ts } = query;
   const matches = new Map<Node, AccessMatch[]>();
-  for (const match of accessMatches(query, file.path, rules)) matches.set(match.call, [...matches.get(match.call) ?? [], match]);
+  for (const match of accessMatches(query, file.path, rules)) {
+    const found = matches.get(match.call) ?? [];
+    found.push(match);
+    matches.set(match.call, found);
+  }
   const source = query.program.getSourceFile(virtualRoot + '/' + file.path) as TsMorph.ts.SourceFile;
   const siteRefs = savedSiteRefs(ts, source, file.path, sites);
   const where = { path: file.path, sha256: file.sha256, graphContext };
@@ -130,7 +145,7 @@ export function fileAccessCandidates(query: RuleQuery, file: SourceFile, rules: 
 export function resourceAccessRecord(input: ResourceAccessInput): Fields {
   const candidates: Fields[] = [];
   let omittedCandidates = 0;
-  const sites = { record: input.sites, ref: input.sitesRef };
+  const sites = savedSites(input.sites, input.sitesRef);
   const scope = readScope(input, (query, file, graphContext) => {
     for (const candidate of fileAccessCandidates(query, file, input.rules.rules, sites, graphContext)) {
       if (candidates.length < candidateLimit) candidates.push(candidate);

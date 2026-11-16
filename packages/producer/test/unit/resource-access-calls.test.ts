@@ -61,6 +61,12 @@ describe("accessMatches matches a call whose receiver comes from the import", ()
   ])("not %s", (_name, text) => {
     expect(matchesIn({ [servicePath]: text }, [knexInsert, knexUpdate])).toEqual([]);
   });
+
+  test("not a client that a namespace import of another snapshot file holds, as for the behavior entry rules", () => {
+    const files = { "src/db.ts": client + "export { db };\n",
+      [servicePath]: "import * as database from './db';\ndatabase.db('invoices').insert(row);\n" };
+    expect(matchesIn(files)).toEqual([]);
+  });
 });
 
 // A function that writes a row with a client of the type in `type`, imported as `imports` gives it.

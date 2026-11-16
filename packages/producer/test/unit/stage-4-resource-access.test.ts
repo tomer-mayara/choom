@@ -4,7 +4,7 @@ import * as tsMorph from "ts-morph";
 import { entryQuery } from "../../src/behavior-entry-calls.ts";
 import type { ResourceAccessRule } from "../../src/generated/contracts.ts";
 import type { Fields } from "../../src/record-checks.ts";
-import { fileAccessCandidates } from "../../src/stage-4-resource-access.ts";
+import { fileAccessCandidates, savedSites } from "../../src/stage-4-resource-access.ts";
 import { sourceSites } from "../../src/stage-4-source-sites.ts";
 import { withScratch } from "../support/commands.ts";
 import { projectOf, snapshotOf } from "../support/snapshot-files.ts";
@@ -35,7 +35,7 @@ function candidatesOf(change: (sites: Fields & { sites: Fields[] }) => void = ()
       snapshot: snapshotOf(scratch, { [path]: text }), check: () => {}, tsMorph, parser: {} }) as Fields & { sites: Fields[] };
     change(sites);
     return fileAccessCandidates(entryQuery(projectOf(scratch, { [path]: text })), { path, sha256 }, [knexInsert, fileWrite],
-      { record: sites, ref: sitesRef }, graphContext);
+      savedSites(sites, sitesRef), graphContext);
   });
 }
 

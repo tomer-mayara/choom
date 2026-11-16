@@ -190,8 +190,8 @@ function namedType(query: Checking, name: TsMorph.ts.EntityName, depth: number):
   if (depth > depthLimit) return undefined;
   if (!ts.isIdentifier(name)) return typeOf(entityPath(query, name, depth + 1));
   let symbol = checker.getSymbolAtLocation(name);
-  while (symbol !== undefined && symbol.flags & ts.SymbolFlags.Alias && inSnapshot(checker.getImmediateAliasedSymbol(symbol)))
-    symbol = checker.getImmediateAliasedSymbol(symbol);
+  for (let steps = 0; steps < depthLimit && symbol !== undefined && symbol.flags & ts.SymbolFlags.Alias &&
+    inSnapshot(checker.getImmediateAliasedSymbol(symbol)); steps++) symbol = checker.getImmediateAliasedSymbol(symbol);
   const alias = symbol?.declarations?.find(item => ts.isTypeAliasDeclaration(item));
   if (alias !== undefined) return typePath(query, alias.type, depth + 1);
   return symbol !== undefined && symbol.flags & ts.SymbolFlags.Alias ? typeOf(importBinding(query, symbol.declarations?.[0])) : undefined;
@@ -231,7 +231,11 @@ export function valuePath(query: Checking, node: Node, depth = 0): ValuePath | u
   const base = property?.object ?? (ts.isCallExpression(expression) || ts.isNewExpression(expression) ? expression.expression : undefined);
   const value = base === undefined ? undefined : valuePath(query, base, depth + 1);
   // A property of a value that no import gives, such as this.db, can have a declared type of an import.
-  if (value === undefined) return property && symbolPath(query, checker.getSymbolAtLocation(property.name), depth + 1);
+  if (value === undefined) {
+    const symbol = property && checker.getSymbolAtLocation(property.name);
+    const declaration = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
+    return declaration && declaredType(query, declaration, depth);
+  }
   if (property !== undefined) return step(value, '.' + property.name.text);
   return step(value, ts.isNewExpression(expression) ? 'new()' : '()', expression);
 }
