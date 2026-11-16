@@ -346,13 +346,14 @@ When("the user reaches Workspace with the keyboard", async function (this: Movem
 });
 Then("its name and leading focus edge stay visible at the same zoom", async function (this: MovementWorld) {
   const browser = page(this);
-  const bounds = await header(this, "workspace").boundingBox();
-  const canvas = await browser.locator(".react-flow").boundingBox();
+  // Tab focus can scroll the canvas element until the next frame. Check the view after it settles.
+  const { bounds, canvas, camera: settledCamera } = await driver(this).readSettled(async () => ({ camera: await camera(this),
+    bounds: await header(this, "workspace").boundingBox(), canvas: await browser.locator(".react-flow").boundingBox() }));
   assert.ok(bounds && canvas && this.movementCamera);
   assert.ok(bounds.width > canvas.width, "The focused header must really exceed the canvas width.");
   assert.ok(bounds.x >= canvas.x && bounds.x < canvas.x + 12, "The leading name and focus edge must remain visible.");
   assert.ok(bounds.y >= canvas.y && bounds.y < canvas.y + canvas.height);
-  assert.equal((await camera(this)).zoom, this.movementCamera.zoom);
+  assert.equal(settledCamera.zoom, this.movementCamera.zoom);
 });
 
 Given("keyboard focus is on an owned-interface entry in Workspace inspection", async function (this: MovementWorld) {
