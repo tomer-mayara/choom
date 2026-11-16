@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
-import { analysisPacket, candidate, entryAnalysis, finishAttempt, priorQuestion, runAttempt, savedJson, stageOneRun,
-  stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
+import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, priorQuestion, runAttempt, savedJson,
+  stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
 
 // Finish checks the complete attempt before it changes either draft. The
 // prepared attempt has no package manifest, so preflight skips Knip. Each case
@@ -135,6 +135,47 @@ describe("Stage 2 finish checks", () => {
     expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
       .toEqual({ status: 1, stdout: "", stderr: "Snapshot inventory changed. Start a new snapshot.\n" });
     expect(drafts(prepared)).toEqual(before);
+  });
+
+  // Finish registers every attempt file, so it checks each phase receipt again: a file
+  // that changed after its phase is refused, also when no later check reads it.
+  test.each([
+    ["the plan response", "llm/plan-response.json"],
+    ["the plan call record", "llm/plan-call.yaml"],
+    ["a saved prepare command", "operator-prepare-inventory.sh"],
+    ["the toolchain selection", "toolchain-selection.json"],
+    ["a saved excerpt", "excerpt-001.json"],
+  ])("refuses %s that changed after its phase, and leaves the drafts unchanged", (_name, file) => {
+    const prepared = restoredAttempt();
+    const before = drafts(prepared);
+    appendFileSync(join(prepared.folder, file), "\n");
+    const results = finishAttempt(prepared, scratch);
+    expect(results["save-review"]?.status).toBe(0);
+    expect({ status: results.finish?.status, refused: results.finish?.stderr.includes(`Error: Saved phase input or output changed: ${file}\n`) })
+      .toEqual({ status: 1, refused: true });
+    expect(drafts(prepared)).toEqual(before);
+  });
+
+  // A plan from start has no plan receipt. Finish still checks each saved LLM call
+  // record and response for hidden reasoning before it registers them.
+  test("refuses a plan packet that no receipt covers when its call record does not say that hidden reasoning was not saved", () => {
+    const folder = join(scratch, "plan-from-start");
+    const work = join(folder, "run");
+    stageOneRun(work, [app]);
+    const attempt = stageTwoAttempt(work, id);
+    const plan = join(folder, "entry-plan.json");
+    writeFileSync(plan, JSON.stringify(entryPlan(id), null, 2) + "\n");
+    for (const [action, args] of [["start", [plan]], ["prepare", []], ["toolchain", []], ["run", []]] as const)
+      expect({ action, status: stageTwo(attempt, action, [...args]).status }).toEqual({ action, status: 0 });
+    mkdirSync(join(attempt.folder, "llm"));
+    writeFileSync(join(attempt.folder, "llm/plan-call.yaml"), "provider: unknown\nmodel: unknown\ndate: unknown\nsettings: unknown\n");
+    writeFileSync(join(attempt.folder, "llm/plan-response.json"), readFileSync(plan));
+    const before = drafts(attempt);
+    const results = finishAttempt(attempt, folder);
+    expect(results["save-review"]?.status).toBe(0);
+    expect({ status: results.finish?.status, refused: results.finish?.stderr.includes(
+      "Error: Record hiddenReasoning: not-saved in llm/plan-call.yaml.\n") }).toEqual({ status: 1, refused: true });
+    expect(drafts(attempt)).toEqual(before);
   });
 
   test("refuses to finish before the analysis packet is saved", () => {

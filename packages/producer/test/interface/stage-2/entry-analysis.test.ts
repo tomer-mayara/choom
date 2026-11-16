@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parse } from "yaml";
 import { producerSource, withScratch } from "../../support/commands.ts";
@@ -174,6 +174,27 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         { path: `evidence/${id}/${name}`, sha256: sha256(saved(name)) }]));
       expect(Object.fromEntries(Object.entries(run.artifacts).filter(([key]) => key.startsWith(id)))).toEqual(expected);
       expect(candidate(id)).toMatchObject({ path: "app.ts" });
+    });
+  }, 60_000);
+
+  // knip-runs.json records the SHA-256 of each raw output that the run saved, so
+  // finish refuses a raw report that changed after the run.
+  test("finish refuses a raw Knip report that changed after the run", () => {
+    withScratch((scratch) => {
+      const work = join(scratch, "run");
+      stageOneRun(work);
+      const attempt = stageTwoAttempt(work, id, { PATH: pathWithDoubles(scratch), DOCKER_DOUBLE_LOG: join(scratch, "docker.log") });
+      expect(Object.values(runAttempt(attempt, scratch)).map(({ status }) => status)).toEqual([0, 0, 0, 0, 0]);
+      const saved = (name: string): Buffer => readFileSync(join(attempt.folder, name));
+      const [normal] = (savedJson(attempt, "knip-runs.json") as unknown as { runs: JsonRecord[] }).runs;
+      expect(normal).toMatchObject({ mode: "normal", stdout: "knip-normal.stdout.txt", stderr: "knip-normal.stderr.txt",
+        stdoutSha256: sha256(saved("knip-normal.stdout.txt")), stderrSha256: sha256(saved("knip-normal.stderr.txt")) });
+      appendFileSync(join(attempt.folder, "knip-normal.stdout.txt"), "\n");
+      const before = ["run.yaml", "discovery.yaml"].map((name) => readFileSync(join(work, name), "utf8"));
+      const finish = finishAttempt(attempt, scratch).finish;
+      expect({ status: finish?.status, stdout: finish?.stdout, stderr: finish?.stderr }).toEqual({ status: 1, stdout: "",
+        stderr: "Recorded Knip output changed: knip-normal.stdout.txt. Use a new attempt.\n" });
+      expect(["run.yaml", "discovery.yaml"].map((name) => readFileSync(join(work, name), "utf8"))).toEqual(before);
     });
   }, 60_000);
 });

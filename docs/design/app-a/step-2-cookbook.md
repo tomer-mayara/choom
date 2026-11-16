@@ -530,6 +530,9 @@ Expected: `knip-runs.json` records normal and production outcomes, with raw outp
 diagnostics. If Docker is unavailable or preflight rejects the profile, record
 skipped outcomes and their reasons. If production analysis was not selected,
 its receipt records that decision and the plan's reason.
+Each command result names its raw stdout and stderr files with their SHA-256
+(`stdoutSha256` and `stderrSha256`), so `finish` refuses a raw output that
+changed after the run.
 
 The runner uses the [Knip CLI](https://knip.dev/reference/cli) with its built-in
 JSON reporter. An exit code of `0` or `1` with valid issue JSON is a completed tool
@@ -660,6 +663,10 @@ inspection summary to point to the saved reviews and this entry analysis.
 The baseline remains unchanged. The run stays `in-progress`.
 
 The driver finishes the command log and requires saved LLM call records before publication.
+First it checks each phase receipt again: every file that start, plan, prepare,
+toolchain, run, an excerpt request or save-review saved must still have the
+digest that its receipt records. It also checks each saved LLM call record and
+response again for hidden reasoning, also a plan packet that no plan receipt covers.
 The saved `inventory.mjs` must already have a digest in the stage 1 artifact
 registry. As start does, finish compares the saved snapshot with the registered
 inventory with the checkout code, and does not run `inventory.mjs`.

@@ -240,9 +240,11 @@ function digests(names: string[]): Record<string, string> {
   return Object.fromEntries(names.map(name => [name, hash(saved(name))]));
 }
 
-function receiptFor(phase: string) {
+// The receipt of a phase, after a check that each file that it names still has its
+// recorded digest. A numbered excerpt phase, such as excerpt-001, has the action excerpt.
+function receiptFor(phase: string, phaseAction = phase) {
   const receipt = json('operator-' + phase + '.json');
-  assert(receipt.action === phase && receipt.attemptId === id && object(receipt.digests),
+  assert(receipt.action === phaseAction && receipt.attemptId === id && object(receipt.digests),
     'Unexpected phase receipt: ' + phase);
   for (const [name, digest] of Object.entries(receipt.digests))
     assert(hash(saved(name)) === digest, 'Saved phase input or output changed: ' + name);
@@ -435,10 +437,36 @@ function phase(context: PhaseContext): void {
   runPhase(context);
 }
 
+// Finish registers every attempt file. So each phase receipt must still name the
+// bytes that its phase saved: the files of start, plan, prepare, toolchain, run,
+// each excerpt request and save-review. A toolchain or excerpt receipt can record a failure.
+function checkPhaseReceipts(): void {
+  const start = receiptFor('start');
+  const planned = !Object.hasOwn(start.digests, planFile);
+  assert(start.exitCode === 0 && (!planned || receiptFor('plan').exitCode === 0) && receiptFor('prepare').exitCode === 0 &&
+    receiptFor('run').exitCode === 0 && receiptFor('save-review').exitCode === 0,
+  'Start, plan, prepare, run and save-review must succeed before finish.');
+  receiptFor('toolchain');
+  for (const name of readdirSync(attempt).filter(name => /^operator-excerpt-[0-9]+\.json$/.test(name)))
+    receiptFor(name.slice('operator-'.length, -'.json'.length), 'excerpt');
+}
+
+// The checks of plan and save-review run again on each saved LLM call record and
+// response, also on a plan packet that no plan receipt covers.
+function checkSavedLlmRecords(): void {
+  const packets: [string, string][] = [['llm/plan-call.yaml', 'llm/plan-response.json'],
+    ['llm/analysis-call.yaml', 'llm/analysis-response.md']];
+  for (const [call, response] of packets) {
+    if (![call, response].some(name => lstatSync(join(attempt, name), { throwIfNoEntry: false }))) continue;
+    checkReasoningNotSaved(parse(saved(call).toString()), call);
+    checkVisibleResponse(saved(response).toString(), response);
+  }
+}
+
 function finish(): never {
   state(true);
-  assert(receiptFor('start').exitCode === 0 && receiptFor('run').exitCode === 0 && receiptFor('save-review').exitCode === 0,
-    'Start, run and save-review must succeed before finish.');
+  checkPhaseReceipts();
+  checkSavedLlmRecords();
   const script = 'operator-finish.sh';
   save(script, 'set -eCu\n' + runModule(modules.finish));
   appendFileSync(join(attempt, 'commands.md'), '\n' + utc() + ' Publish with ' + JSON.stringify([process.execPath, self, 'finish']) +

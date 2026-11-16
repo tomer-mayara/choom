@@ -735,7 +735,7 @@ bun test ./packages/producer/test/interface/stage-5/parts.test.ts ./packages/pro
 
 Each stage that saves an LLM call record refuses a saved response with a hidden
 reasoning block and a call record without `hiddenReasoning: not-saved`: Stage 1
-finish, Stage 2 plan and save-review, the Stage 3 finalizer, the Stage 4/5
+finish, Stage 2 plan, save-review and finish, the Stage 3 finalizer, the Stage 4/5
 publisher and the Stage 6 readiness review. Run the focused checks of the visible
 LLM response with:
 

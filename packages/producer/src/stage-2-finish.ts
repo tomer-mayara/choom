@@ -290,6 +290,23 @@ function checkReceipts(finish: Finish, run: Fields): void {
     const matches = (receipts.runs as Fields[]).filter(item => item?.mode === mode);
     assert(matches.length === 1 && ['completed', 'failed', 'skipped'].includes(matches[0]?.status as string), `Invalid ${mode} receipt.`);
   }
+  checkKnipOutputs(finish, receipts);
+}
+
+// Each command of the Knip receipts names its saved stdout and stderr files with their
+// SHA-256: the Docker context and image checks, the input check, each run and its cleanup.
+// A skipped run and a cleanup that Docker did by itself saved no output.
+function checkKnipOutputs(finish: Finish, receipts: Fields): void {
+  const runs = receipts.runs as Fields[];
+  const commands = [(receipts.dockerEndpoint as Fields | undefined)?.check, receipts.imageCheck,
+    (receipts.inputView as Fields | undefined)?.verification, ...runs, ...runs.map(run => run.cleanup)];
+  const saved = (item: unknown): item is Fields => object(item) && (typeof item.stdout === 'string' || typeof item.stderr === 'string');
+  for (const command of commands.filter(saved)) {
+    for (const [name, digest] of [[command.stdout, command.stdoutSha256], [command.stderr, command.stderrSha256]]) {
+      const bytes = finish.buffers.get(`${finish.id}-file@${encodeURIComponent(String(name))}`);
+      assert(text(name) && bytes !== undefined && hash(bytes) === digest, `Recorded Knip output changed: ${String(name)}. Use a new attempt.`);
+    }
+  }
 }
 
 function checkAnalysis(finish: Finish, plan: Fields): Fields {

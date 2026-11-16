@@ -1,4 +1,4 @@
-import { closeSync, openSync } from 'node:fs';
+import { closeSync, createReadStream, openSync } from 'node:fs';
 import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -7,9 +7,12 @@ import { isAbsolute, join, resolve, sep } from 'node:path';
 // The Stage 2 run action runs this module in the tool checkout. It runs Knip on the inventory-only input in normal and production
 // mode, each in a container with no network, and saves raw output and receipts.
 // A missing image, an unsupported profile or a failed check gives skipped runs.
+// Each command result names its saved stdout and stderr files with their SHA-256, so
+// finish refuses an output that changed after the run.
 interface CommandResult {
   command: string; args: string[]; startedAt: string; finishedAt: string | null; exitCode: number | null;
   signal: string | null; timedOut: boolean; errors: string[]; stdout: string; stderr: string;
+  stdoutSha256: string | null; stderrSha256: string | null;
 }
 interface DockerEndpoint { selector: string; context: string | null; endpoint: string | null; check: CommandResult | null }
 interface Receipt {
@@ -86,6 +89,13 @@ const receipt: Receipt = {
   dockerEndpoint: { selector, context: dockerContext, endpoint: null, check: null },
 };
 
+// The SHA-256 of a saved output file, read in parts so that a large report stays on disk.
+async function savedDigest(name: string): Promise<string> {
+  const digest = createHash('sha256');
+  for await (const chunk of createReadStream(join(attempt, name))) digest.update(chunk as Buffer);
+  return digest.digest('hex');
+}
+
 // Numeric file descriptors keep raw output on disk without buffering it in memory.
 async function command(program: string, args: string[], stem: string, timeoutMs: number): Promise<CommandResult> {
   if (program === 'docker' && selectedEndpoint) args = ['--host', selectedEndpoint, ...args];
@@ -97,7 +107,7 @@ async function command(program: string, args: string[], stem: string, timeoutMs:
   catch (error) { closeSync(outputFd); throw error; }
   const result: CommandResult = {
     command: program, args, startedAt: new Date().toISOString(), finishedAt: null,
-    exitCode: null, signal: null, timedOut: false, errors: [], stdout, stderr,
+    exitCode: null, signal: null, timedOut: false, errors: [], stdout, stderr, stdoutSha256: null, stderrSha256: null,
   };
   try {
     await new Promise<void>(resolve => {
@@ -128,6 +138,8 @@ async function command(program: string, args: string[], stem: string, timeoutMs:
     closeSync(errorFd);
     result.finishedAt = new Date().toISOString();
   }
+  result.stdoutSha256 = await savedDigest(stdout);
+  result.stderrSha256 = await savedDigest(stderr);
   return result;
 }
 const docker = (args: string[], stem: string, timeoutMs: number): Promise<CommandResult> => command('docker', args, stem, timeoutMs);
