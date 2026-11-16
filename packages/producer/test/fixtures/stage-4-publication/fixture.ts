@@ -118,8 +118,10 @@ function settingsRecord(work: string, inventoryFiles: InventoryFile[], settings:
     snapshotRoot: realpathSync(join(work, "snapshot")), extraConfigs: [] }, { tsMorph, parsingProfile: choomDefaultProfile });
 }
 
-// The drafts and registered records that a run has after Stage 3 finish.
-function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], settings: FixtureSettings): void {
+// The drafts and registered records that a run has after Stage 3 finish. The Stage 2
+// preflight record holds the copied Knip plugin patterns of the root workspace.
+function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], settings: FixtureSettings,
+  pluginEntryPatterns: readonly unknown[]): void {
   const artifacts: Record<string, { path: string; sha256: string }> = {};
   const register = (ref: string, path: string, text: string): string => {
     write(join(work, path), text);
@@ -140,9 +142,10 @@ function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], sett
     jsonText({ cli: "choom serve", http: ["GET /orders"], unresolved: "plugin command" }));
   const planSha256 = register(planRef, "evidence/s2-check/entry-plan.json",
     jsonText({ formatVersion: 1, snapshotRef, workspaces: [{ dir: ".", entry: ["cli.ts"] }] }));
-  const profileSha256 = register("s2-check-knip-profile", "evidence/s2-check/knip-profile.json", jsonText({ formatVersion: 1, snapshotRef }));
+  const profileSha256 = register("s2-check-knip-profile", "evidence/s2-check/knip-profile.json", jsonText({ formatVersion: 1,
+    snapshotRef, workspaces: { ".": { entry: ["cli.ts"], project: ["**/*.ts"] } } }));
   const preflightSha256 = register("s2-check-knip-preflight", "evidence/s2-check/knip-preflight.json",
-    jsonText({ formatVersion: 1, snapshotRef }));
+    jsonText({ formatVersion: 1, snapshotRef, pluginEntryPatterns, pluginPatternsNotCopied: [], pluginsNotCopied: [] }));
   register(knipRunsRef, "evidence/s2-check/knip-runs.json", jsonText({ formatVersion: 1, snapshotRef,
     profileRef: "s2-check-knip-profile", preflightRef: "s2-check-knip-preflight", runs: [],
     inputDigests: { planSha256, profileSha256, preflightSha256, inventorySha256 } }));
@@ -268,13 +271,14 @@ export function startStageFour(root: string, work: string, tools = toolsRoot): S
   return { root, work, attempt, tools };
 }
 
-// Prepares the run after Stage 3 with the extra snapshot files, runs Stage 4
-// start, and writes the toolchain and graph phases. The source collection is next.
+// Prepares the run after Stage 3 with the extra snapshot files and the copied Knip
+// plugin patterns of Stage 2, runs Stage 4 start, and writes the toolchain and graph
+// phases. The source collection is next.
 export function stageFourAttempt(extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
-  settings: FixtureSettings = "profile"): StageFourAttempt {
+  settings: FixtureSettings = "profile", pluginEntryPatterns: readonly unknown[] = []): StageFourAttempt {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "choom-stage-4-publication-"));
   const work = join(root, "run");
-  writeStageThreeRun(work, extraFiles, settings);
+  writeStageThreeRun(work, extraFiles, settings, pluginEntryPatterns);
   return startStageFour(root, work, tools);
 }
 

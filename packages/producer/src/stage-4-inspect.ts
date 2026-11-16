@@ -19,6 +19,7 @@ import { syntaxParser } from './snapshot-project.ts';
 import { directory, safePath } from './stage-3-inputs.ts';
 import { behaviorEntryRecord, stageOneReviewRef } from './stage-4-behavior-entries.ts';
 import type { Picomatch } from './stage-4-graph-profile.ts';
+import { registeredPluginPatterns } from './stage-4-plugin-entries.ts';
 import { referencesRecord } from './stage-4-references.ts';
 import { resourceAccessRecord } from './stage-4-resource-access.ts';
 import { reviewPrompt } from './stage-4-review-prompt.ts';
@@ -335,7 +336,8 @@ function behaviorEntries(current: InspectState): Fields {
     settings: savedSettings(current.artifacts.get(settingsRef), current.handoff.snapshotRef),
     rules: readRuleList(rules, yaml), rulesRef: artifactId(behaviorEntryRulesFile), rulesSha256: hash(rules),
     review: parse(utf8(review, stageOneReviewRef)) as Fields, reviewRef: stageOneReviewRef, tsMorph, parser,
-    picomatch, picomatchVersion: version });
+    picomatch, picomatchVersion: version,
+    pluginPatterns: registeredPluginPatterns(current.artifacts, current.entry.knipRunsRef) });
 }
 
 function collect(current: InspectState): string[] {

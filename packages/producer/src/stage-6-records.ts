@@ -456,7 +456,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   // requires the names.
   const candidates = (ref: unknown): CandidateInputs => ({ ref, snapshotRef, artifacts: inputs.artifacts, indexed,
     document: selection.document, readSource: inputs.readSource });
-  if (entry.behaviorEntryCandidatesRef !== undefined) validateBehaviorCandidates(candidates(entry.behaviorEntryCandidatesRef));
+  if (entry.behaviorEntryCandidatesRef !== undefined) validateBehaviorCandidates(candidates(entry.behaviorEntryCandidatesRef),
+    (selection.document(entry.knipRunsRef) as Fields).preflightRef);
   const profile = selection.document(graph.profileRef) as Fields;
   validateGraph({ graph, graphRef: discovery.dependenciesRef, profile, entry, indexed, resolve, claim, evidence });
   checkResourceAccess(selection, behavior, history.historyRefs);

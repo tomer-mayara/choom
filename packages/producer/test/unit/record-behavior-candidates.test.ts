@@ -21,8 +21,13 @@ const server = "import express from 'express';\nconst app = express();\napp.get(
 const config = "\uFEFFexport default {\r\n  build: { rollupOptions: { input: page } },\r\n};\r\n";
 const packageText = "{\n  \"bin\": { \"run\": \"bin/cli.js\", \"tool\": \"dist/tool.js\" }\n}\n";
 const cli = "#!/usr/bin/env node\nconsole.log('run');\n";
+const page = "export default function Page() {\n  return null;\n}\n";
 const files: Record<string, string> = { "src/server.ts": server, "vite.config.ts": config, "package.json": packageText,
-  "bin/cli.js": cli };
+  "bin/cli.js": cli, "app/page.tsx": page };
+// The Stage 2 preflight record that the Knip receipts name, with one copied plugin pattern.
+const preflightRef = "s2-x-preflight";
+const copied = { workspace: ".", manifest: "package.json", plugin: "next", dependency: "next", field: "production",
+  pattern: "app/**/page.tsx!" };
 const rules = { formatVersion: 1, rules: [{ id: "express-route-get", version: 1, entryKind: "http-route" },
   { id: "vite-build-input", version: 1, entryKind: "frontend-entry" },
   { id: "package-bin", version: 1, library: "npm", entryKind: "cli-bin", kind: "package-bin" }] };
@@ -48,7 +53,8 @@ function inputs(change: Change = () => {}, ref: unknown = candidatesRef): Candid
   change(value);
   const artifacts = new Map<string, Artifact>();
   for (const [id, path, saved] of [[candidatesRef, "evidence/s4-x/behavior-entry-candidates.json", value],
-    [rulesRef, "evidence/s4-x/behavior-entry-rules.yaml", rules], ["launch", "evidence/launch.json", { cli: "serve" }]] as const) {
+    [rulesRef, "evidence/s4-x/behavior-entry-rules.yaml", rules], ["launch", "evidence/launch.json", { cli: "serve" }],
+    [preflightRef, "evidence/s2-x/preflight.json", { pluginEntryPatterns: [copied] }]] as const) {
     const bytes = Buffer.from(JSON.stringify(saved));
     artifacts.set(id, { path, bytes, sha256: sha256(bytes) });
   }
@@ -77,12 +83,12 @@ const withBins = (change: Change = () => {}): CandidateInputs => inputs((value) 
 
 describe("validateBehaviorCandidates", () => {
   test("accepts candidates and gaps that lie in the saved files, and counts the candidates", () => {
-    expect(validateBehaviorCandidates(inputs())).toBe(1);
+    expect(validateBehaviorCandidates(inputs(), preflightRef)).toBe(1);
   });
 
   test("accepts a truncated expression that starts the saved text of its range", () => {
-    expect(validateBehaviorCandidates(inputs((value) => Object.assign(candidate(value), { expression: "app.get(", truncated: true }))))
-      .toBe(1);
+    expect(validateBehaviorCandidates(inputs((value) => Object.assign(candidate(value), { expression: "app.get(", truncated: true })),
+      preflightRef)).toBe(1);
   });
 
   test.each<[string, Change, string]>([
@@ -120,14 +126,14 @@ describe("validateBehaviorCandidates", () => {
       "Behavior entry gap 0 differs from the saved text at its range."],
     ["a gap of an unknown kind", (value) => { (value.gaps[1] as Json).kind = "other"; }, "Invalid behavior entry gap 1."],
   ])("refuses %s", (_name, change, message) => {
-    expect(() => validateBehaviorCandidates(inputs(change))).toThrow(message);
+    expect(() => validateBehaviorCandidates(inputs(change), preflightRef)).toThrow(message);
   });
 
   test.each([
     ["an artifact that is not a candidates record", "launch"],
     ["an artifact that the run does not register", "s4-x-file@missing.json"],
   ])("refuses a reference to %s", (_name, ref) => {
-    expect(() => validateBehaviorCandidates(inputs(undefined, ref)))
+    expect(() => validateBehaviorCandidates(inputs(undefined, ref), preflightRef))
       .toThrow(`The entry analysis names ${ref} as its behavior entry candidates, which is not a saved candidates record.`);
   });
 });
@@ -136,10 +142,10 @@ describe("validateBehaviorCandidates", () => {
 // bin file, or a configuration of the settings record compiles the source file to it.
 describe("validateBehaviorCandidates with the candidates of a package-bin rule", () => {
   test("accepts a handler with the evidence of the bin file or of the compiler output, and a null handler with a reason", () => {
-    expect(validateBehaviorCandidates(withBins())).toBe(3);
+    expect(validateBehaviorCandidates(withBins(), preflightRef)).toBe(3);
     expect(validateBehaviorCandidates(withBins((value) => {
       Object.assign(value.candidates[2] as Json, { handler: null, handlerReason: "No evidence names the file." });
-    }))).toBe(3);
+    }), preflightRef)).toBe(3);
   });
 
   test.each<[string, Change]>([
@@ -151,6 +157,43 @@ describe("validateBehaviorCandidates with the candidates of a package-bin rule",
     ["evidence in the handler of a call candidate", (value) => {
       Object.assign(candidate(value).handler as Json, { evidence: { kind: "snapshot-file", binFile: "src/server.ts" } }); }],
   ])("refuses %s", (_name, change) => {
-    expect(() => validateBehaviorCandidates(withBins(change))).toThrow(/^Invalid behavior entry candidate [0-2]\.$/);
+    expect(() => validateBehaviorCandidates(withBins(change), preflightRef)).toThrow(/^Invalid behavior entry candidate [0-2]\.$/);
+  });
+});
+
+// A file that a copied Knip plugin pattern of the Stage 2 profile selected, after the syntax-rule candidate.
+describe("validateBehaviorCandidates with a Knip plugin pattern candidate", () => {
+  const withPattern = (change: (item: Json) => void = () => {}): Change => (value) => {
+    const item: Json = { found: "knip-plugin-pattern", role: "unknown", roleRef: null, path: "app/page.tsx", sha256: sha256(page),
+      ...copied, patternRef: preflightRef + "#/pluginEntryPatterns/0" };
+    change(item);
+    value.candidates.push(item);
+  };
+
+  test("accepts a candidate whose source is the copied pattern that patternRef names", () => {
+    expect(validateBehaviorCandidates(inputs(withPattern()), preflightRef)).toBe(2);
+    expect(validateBehaviorCandidates(inputs(withPattern((item) => Object.assign(item,
+      { role: "test", roleRef: "review-001#/roles/0" }))), preflightRef)).toBe(2);
+  });
+
+  test.each<[string, (item: Json) => void, string]>([
+    ["a pattern of another record", (item) => { item.patternRef = "s2-y-preflight#/pluginEntryPatterns/0"; },
+      "Invalid behavior entry candidate 1."],
+    ["a pattern that the record does not hold", (item) => { item.patternRef = preflightRef + "#/pluginEntryPatterns/1"; },
+      "Invalid behavior entry candidate 1."],
+    ["a plugin other than the plugin of the pattern", (item) => { item.plugin = "vitest"; }, "Invalid behavior entry candidate 1."],
+    ["a pattern other than the copied pattern", (item) => { item.pattern = "app/**/*.tsx!"; }, "Invalid behavior entry candidate 1."],
+    ["a candidate with another field", (item) => { item.range = []; }, "Invalid behavior entry candidate 1."],
+    ["a test role without its role record", (item) => { item.role = "test"; }, "Invalid behavior entry candidate 1."],
+    ["a path outside the inventory", (item) => { item.path = "app/missing.tsx"; },
+      "Behavior entry candidate 1 names a file that is not in the saved inventory: app/missing.tsx."],
+    ["a digest other than the inventory digest", (item) => { item.sha256 = sha256("other"); },
+      "Behavior entry candidate 1 names a file that is not in the saved inventory: app/page.tsx."],
+  ])("refuses %s", (_name, change, message) => {
+    expect(() => validateBehaviorCandidates(inputs(withPattern(change)), preflightRef)).toThrow(message);
+  });
+
+  test("refuses the candidate when the Knip receipts name no registered preflight record", () => {
+    expect(() => validateBehaviorCandidates(inputs(withPattern()), "s2-x-missing")).toThrow("Invalid behavior entry candidate 1.");
   });
 });

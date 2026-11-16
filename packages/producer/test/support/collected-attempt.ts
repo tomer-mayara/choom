@@ -6,17 +6,18 @@ import { type ExtraFile, inspectStageFour, type StageFourAttempt, stageFourAttem
 
 // A Stage 4 attempt for the tests of a suite. Before the tests, Stage 4 start, the
 // graph phases and collect run once on a run after Stage 3 with the extra snapshot
-// files; after the tests, the attempt is removed.
+// files and the copied Knip plugin patterns of Stage 2; after the tests, the attempt
+// is removed.
 export interface CollectedAttempt {
   attempt(): StageFourAttempt;
   // A JSON file that the attempt saved.
   saved(name: string): Record<string, unknown>;
 }
 
-export function collectedAttempt(files: readonly ExtraFile[]): CollectedAttempt {
+export function collectedAttempt(files: readonly ExtraFile[], pluginEntryPatterns: readonly unknown[] = []): CollectedAttempt {
   let fixture: StageFourAttempt | undefined;
   beforeAll(() => {
-    fixture = stageFourAttempt(files);
+    fixture = stageFourAttempt(files, undefined, undefined, pluginEntryPatterns);
     const collect = inspectStageFour(fixture, ["collect"]);
     if (collect.status !== 0) throw new Error("Stage 4 collect failed: " + collect.stderr);
   }, 120_000);

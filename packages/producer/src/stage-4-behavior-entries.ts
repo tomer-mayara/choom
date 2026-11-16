@@ -9,6 +9,7 @@ import { type Fields, object, text } from './record-checks.ts';
 import { outsideReadsNote, type ProjectTools, virtualRoot } from './snapshot-project.ts';
 import type { SnapshotFiles } from './stage-1-settings.ts';
 import type { Picomatch, SourceFile } from './stage-4-graph-profile.ts';
+import { pluginPatternCandidates, type PluginPatternSource } from './stage-4-plugin-entries.ts';
 import { checkerTool, queryOptions } from './stage-4-references.ts';
 import { readScope } from './stage-4-rule-scope.ts';
 
@@ -16,9 +17,10 @@ import { readScope } from './stage-4-rule-scope.ts';
 // rule list that Stage 4 start saved to each source file of the graph scope, in the
 // snapshot project of the graph group of the file, with the compiler settings of the
 // group as the references action chooses them, and the package-bin rules to each
-// package.json of the snapshot. A candidate is a place to read: a syntax rule found
-// it, and it is not a proven entry. The role of a candidate comes from the role
-// records of the Stage 1 review, the rule of the run for file roles.
+// package.json of the snapshot. It adds the files that the Knip plugin patterns of
+// the Stage 2 profile select. A candidate is a place to read: a syntax rule or a
+// plugin pattern found it, and it is not a proven entry. The role of a candidate
+// comes from the role records of the Stage 1 review, the rule of the run for file roles.
 export interface BehaviorEntryInput {
   attemptId: string; snapshotRef: unknown;
   // The indexed files of the saved snapshot and its folder, which the snapshot project reads.
@@ -31,6 +33,8 @@ export interface BehaviorEntryInput {
   review: Fields; reviewRef: string;
   // ts-morph and picomatch from the trusted checkout, and the parser record that collect saves with the source sites.
   tsMorph: ProjectTools; parser: Fields; picomatch: Picomatch; picomatchVersion: string;
+  // The Knip plugin patterns that the Stage 2 profile copied.
+  pluginPatterns: PluginPatternSource;
 }
 export interface FileRole { role: 'test' | 'unknown'; roleRef: string | null }
 // Saves the candidates of a file, up to the limit of the record.
@@ -44,8 +48,9 @@ const testRole = 'tests';
 
 // What each record covers and what it does not, in the words of the record.
 export const behaviorEntryNotes = [
-  'A candidate is a call, a settings entry or a bin command that a Choom syntax rule found (found: syntax-rule). It is a place ' +
-    'to read, not a proven entry: it does not show that the code runs, that the handler is reachable, or that the list is complete.',
+  'A candidate is a call, a settings entry or a bin command that a Choom syntax rule found (found: syntax-rule), or a file ' +
+    'that a Knip plugin pattern of the Stage 2 profile selects (found: knip-plugin-pattern). It is a place to read, not a ' +
+    'proven entry: it does not show that the code runs, that the handler is reachable, or that the list is complete.',
   'The rules are the copy of ' + behaviorEntryRulesPath + ' that Stage 4 start saved (rulesRef and rulesSha256). Each later ' +
     'Stage 4 action refuses a tool checkout whose rule list differs from that copy.',
   'The scope is the source files of the graph profile (scope.files). Each file is read in the snapshot project of its graph ' +
@@ -73,6 +78,12 @@ export const behaviorEntryNotes = [
     'file that the command runs, only with evidence (handler.evidence): snapshot-file when the snapshot holds the bin file, or ' +
     'compiler-output when a fully parsed configuration of settingsRef with outDir and rootDir compiles a source file of the ' +
     'snapshot that it selects to the bin file. Otherwise the handler is null with handlerReason.',
+  'A knip-plugin-pattern candidate is an indexed file that a copied pattern of the registered Stage 2 preflight record ' +
+    '(patternRef, in pluginEntryPatterns) selects in the folder of its workspace, with picomatch and dot files, as Knip ' +
+    'globs. The pattern is a default of Knip 6.44.1 for a plugin that the dependency of the manifest turns on. A file of an ' +
+    'inner workspace of the profile is left to the patterns of that workspace; a workspace that only Knip finds is not ' +
+    'known. Knip runs no plugin and loads no settings file, so an entry that only a settings file names is a syntax-rule ' +
+    'candidate or a gap. Knip may not read a selected file, such as a .vue file. These files are not graph roots.',
   'role is test when a role record of rolesRef whose roles include tests has a selector that is the exact path of the ' +
     'file or a folder that holds it, as the Stage 1 cookbook asks for exact file and directory selectors. roleRef names the ' +
     'first such record. A glob selector and another role name, such as test, give no test role. Otherwise role is unknown: ' +
@@ -146,6 +157,10 @@ export function behaviorEntryRecord(input: BehaviorEntryInput): Fields {
     return settings.gaps.map(item => savedGap(file, item));
   });
   const binGaps = packageBins(input, binRules, save);
+  for (const candidate of pluginPatternCandidates(input.pluginPatterns, input.snapshot.files, picomatch, roleOf)) {
+    if (candidates.length < candidateLimit) candidates.push(candidate);
+    else omittedCandidates++;
+  }
   return {
     formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: omittedCandidates ? 'partial' : 'completed',
     rulesRef: input.rulesRef, rulesSha256: input.rulesSha256, settingsRef, rolesRef: input.reviewRef,
