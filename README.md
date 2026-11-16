@@ -678,6 +678,28 @@ bun test ./packages/producer/test/unit/snapshot-references.test.ts ./packages/pr
 bun test ./packages/producer/test/interface/stage-4/references.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts ./packages/producer/test/interface/stage-3/exports.test.ts
 ```
 
+Stage 4 `stage-4-inspect collect` also applies the pinned list of Choom behavior
+entry rules (`packages/producer/rules/behavior-entry-rules.yaml`, with its
+[contract](cookbook/interfaces/behavior-entry-rules.tsp)) to the source files of
+the graph scope. Stage 4 start saves a copy of the list and its SHA-256, and each
+later Stage 4 action refuses a changed list. Each candidate in
+`behavior-entry-candidates.json` names its rule, its call site, its name or `null`
+with a reason, its handler range or `null` with a reason, its role and
+`found: syntax-rule`: a candidate is not a proven entry. The Stage 4 entry
+analysis names the record, and the shared record checks check its ranges against
+the saved snapshot. The `@producer` scenarios collect the candidate of an
+Express route and of a route whose name the code makes at run time. The
+[Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-behavior-entry-candidates)
+gives the rules and their limits. Run the focused checks of the behavior entry
+candidates with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/behavior-entry-rules.test.ts ./packages/producer/test/unit/behavior-entry-calls.test.ts ./packages/producer/test/unit/behavior-entry-settings.test.ts ./packages/producer/test/unit/stage-4-behavior-entries.test.ts ./packages/producer/test/unit/record-behavior-candidates.test.ts
+bun test ./packages/producer/test/interface/behavior-entry-rules.test.ts ./packages/producer/test/interface/stage-4/behavior-entries.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
+bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
+```
+
 Run the focused checks of the producer code record with:
 
 ```sh

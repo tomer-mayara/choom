@@ -222,8 +222,11 @@ describe("Stage 4 collect", () => {
     // The LLM can ask for the references to a symbol.
     expect(prompt).toContain("To find where a top-level symbol is used, request its references with a snapshot-relative path " +
       "and the symbol name.");
+    // The LLM reads the behavior entry candidates as places to read, and names them in the entry analysis.
+    expect(prompt).toContain("A candidate is a place to read, not a proven behavior entry");
+    expect(prompt).toContain("Name the file in the entry analysis as behaviorEntryCandidatesRef.");
     // The digest of the prompt text without the working folder: the text itself does not change.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("7bc7cac678add6338849b750b913e38cec1bfaab831fbd1f924fbe498d0ec06c");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("6fb0659082385083afdab8f48f00ecc032230e0ecb6b10eb1328340c1d6d6638");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

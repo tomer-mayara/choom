@@ -21,6 +21,7 @@ publish the proposed model into the working drafts.
 - [3. Collect dependency evidence](#3-collect-dependency-evidence)
 - [Recover an incomplete saved input](#recover-an-incomplete-saved-input)
 - [4. Collect source evidence](#4-collect-source-evidence)
+  - [Find the behavior entry candidates](#find-the-behavior-entry-candidates)
   - [Find the references to a symbol](#find-the-references-to-a-symbol)
 - [5. Ask the LLM to recover components](#5-ask-the-llm-to-recover-components)
 - [6. Check the proposed result](#6-check-the-proposed-result)
@@ -42,7 +43,9 @@ The helper first checks the [producer code record](record-format.md#producer-cod
 of the run. It then verifies the working drafts and every registered artifact. It
 requires completed stage 3 inspection priorities, a selected entry analysis that
 supports Knip reuse, and an empty initial baseline. It saves checkpoints and
-copies of this cookbook and the record format into the new attempt. Every later
+copies of this cookbook, the record format and the behavior entry rule list into
+the new attempt, and refuses a rule list that does not follow its contract (see
+[Find the behavior entry candidates](#find-the-behavior-entry-candidates)). Every later
 command, the inspection helper and the publication commands in section 6 run from
 the tool checkout and make the same producer code check first.
 The input remains the empty version 1 seed. Versions 1 and 2 remain readable.
@@ -303,6 +306,7 @@ level. It saves:
 | Artifact | Contents |
 | --- | --- |
 | `source-sites.json` | Import and re-export syntax, dynamic imports, and candidate resource calls. Includes query scope, the parser record, diagnostics, and limits. The parser record names the parser, Node, ts-morph and the TypeScript that it brings, and the digest of each tool file that ts-morph loaded. |
+| `behavior-entry-candidates.json` | The candidates of the pinned behavior entry rules in the source files of the graph scope: their rule, site, name, handler and role, the gaps, the scope and the limits. See [Find the behavior entry candidates](#find-the-behavior-entry-candidates). |
 | `source-excerpts.json` | A bounded initial selection from priority files, entry candidates and component declarations, with file hashes, truncation and skipped paths. |
 | `review-prompt.md` | The LLM review instructions with the current paths and evidence references. |
 | `artifact-map.json` | Proposed artifact IDs and digests available at collection time. It omits itself, the mutable command log, and later files. |
@@ -358,6 +362,169 @@ file owner; parent containment does not add a caller. Each use needs the actual
 reviewed caller and all supporting binding ranges with matching located notes.
 Keep unassessed interfaces, scoped empty results, and operator-command limits
 explicit. Do not fill an unknown permission policy from source callers.
+
+### Find the behavior entry candidates
+
+`collect` applies the pinned list of Choom behavior entry rules to the source
+files of the graph scope and saves the candidates in
+`behavior-entry-candidates.json`. A behavior entry starts a path such as route →
+invoice creation → storage. A candidate is a place to read: a syntax rule found
+it. It is not a proven entry.
+
+The list is `packages/producer/rules/behavior-entry-rules.yaml` in the tool
+checkout, and its contract is
+[behavior-entry-rules.tsp](../../../cookbook/interfaces/behavior-entry-rules.tsp).
+The producer code record does not cover this file. So Stage 4 `start` checks the
+list against the contract and refuses a list that does not follow it. It saves a
+copy of the list as `behavior-entry-rules.yaml` and records its SHA-256 in
+`handoff.json`, in `toolInputDigests`. Each later Stage 4 action (`toolchain`,
+`run`, `collect`, `excerpt` and `references`) refuses a tool checkout whose list
+differs from that copy, before it saves a receipt. Restore the list or start a new
+attempt. A rule that changes keeps its ID and gets the next version.
+
+The list holds one rule now, `express-route-get`: the `get` routes of an Express
+app. Later tickets add the rules of HTTP servers, workers and queues, command line
+tools and frontend settings. Each rule has an `id`, a `version`, the `library`, the
+`entryKind` and one of two kinds:
+
+- A `call` rule finds a call whose callee is its `callPath` on the value of its
+  `importName`, a module name such as `express` or `node:worker_threads`. Write
+  `callPath` as JavaScript that starts with a name that the import gives:
+  `importName` itself for the value of the module (its default export, its
+  `export =` value or what `require` gives), or else the name of an export of the
+  module. Each `()` is a call and each `.name` a property, and the path ends with
+  a name. With `new ` at the start, the first `()` is a `new` call, and a path with
+  no `()` finds a `new` call of the path itself. So `express().get` finds
+  `app.get(...)` after `const app = express()`, `Router().get` finds
+  `router.get(...)` after `const router = Router()` or `express.Router()`, and
+  `new Worker` finds `new Worker(...)`. `nameArgument` and `handlerArgument` give
+  the zero-based positions of the name and of the handler, `last` for the last
+  argument, or `null` for none. A call that does not have these arguments is not a
+  candidate. For example, `app.get('title')` reads a setting of an Express app.
+- A `settings-literal` rule reads the literal value at its `propertyPath`, such as
+  `build.rollupOptions.input`, in the settings object of a file of the scope that
+  matches its `fileGlob`, such as `**/vite.config.{js,ts}`. The pinned list has no
+  such rule yet.
+
+The helper reads each file of the scope in the snapshot project of its graph
+group, with the compiler settings of the group, chosen as for the references
+action, and with `allowJs`. For a `call` rule, the type checker follows each local
+name back to the import:
+
+- default, named, renamed and namespace imports, `import =` and `require`;
+- a variable that holds a value of the import or a part of it, such as
+  `const app = express()` or `const { Router } = express`;
+- the imports and the exports of other snapshot files, such as
+  `import { app } from './app'`.
+
+A call with the same method name on another receiver, such as `cache.get(...)` on
+a `Map`, is not a candidate. The default export, a namespace import and `require`
+of a module are one value, as they are for a CommonJS package. For each candidate:
+
+- `name` is the text of a string literal or of a template literal without
+  substitutions. Any other name is `null`, with `nameReason`.
+- `handler` is a function in the call, with its own range, or the declaration
+  that a handler name names after its aliases, as the references action follows
+  them. Its `path` can be another file. Otherwise `handler` is `null`, with
+  `handlerReason`: for example a parameter, the result of a call such as
+  `asyncHandler(listOrders)`, or an import of a package.
+- `role` is `test` when a role record of the Stage 1 review (`review-001`) whose
+  roles name `tests` or `test` selects the file: by its exact path, by a folder
+  that holds it, or by a glob. `roleRef` names the first such record. Otherwise
+  `role` is `unknown`: the rules do not show whether the code is application or
+  tooling code.
+
+A `settings-literal` rule reads the value of `export default`, `export =` or the
+last `module.exports =` of the file, through a call with one argument, such as
+`defineConfig({ ... })`, and through the `const` declarations of the file. Each
+string literal at the end of `propertyPath`, in an array there, or as a property
+value of an object there, is a candidate with no handler. Each other value is a gap
+of kind `unknown-settings-value`, with its site and a reason. Nothing runs the file.
+
+The helper does not find these entries, and the record has no entry for them, so
+a missing candidate does not show that the code has no entry:
+
+- a call on a value that a function gets as a parameter, such as
+  `function routes(app) { app.get(...) }`;
+- a value that a later assignment gives;
+- a call on the result of another candidate call, such as
+  `app.route('/orders').get(...)`;
+- the files outside the graph scope, and source that is not JavaScript or
+  TypeScript.
+
+| Record field | Meaning |
+| --- | --- |
+| `formatVersion`, `attemptId`, `snapshotRef`, `status` | `1`, the Stage 4 attempt ID, the snapshot ID, and `completed`, or `partial` when the limit of 10000 candidates omitted some. |
+| `rulesRef`, `rulesSha256` | The copy of the rule list that start saved, and its SHA-256. |
+| `settingsRef`, `rolesRef` | `settings-001`, whose compiler settings the helper used, and `review-001`, whose role records give the roles. |
+| `scope` | `files`, the source files of the graph scope; and `groups`, for each graph group, its import pass (`graphContext` and `graphContextRef`), its `compilerSettingsRef` and the files that it read. |
+| `queryOptions`, `tool`, `virtualRoot` | As in the references record. `tool` also names the picomatch version that matched the globs. |
+| `candidates` | Each candidate, in the order of the scope files and then in source order: `ruleId`, `ruleVersion`, `entryKind`, `found` (`syntax-rule`), `role`, `roleRef`, `path`, `sha256`, `range`, `expression`, `truncated`, `name`, `nameReason`, `handler` (`path` and `range`, or `null`) and `handlerReason`. |
+| `omittedCandidates` | The number of candidates after the limit. |
+| `gaps` | Each value of a `settings-literal` rule that is not a literal, located like a candidate, with `reason`; and each compiler input that the snapshot does not hold, as in the references record. |
+| `outsideReads`, `notes` | As in the references record. |
+
+A range has 1-based lines and columns, as in the references record. `expression`
+holds at most 4096 code units, and `truncated` is `true` when the site is longer.
+A small snapshot with a route file and a test file gives this record. The snapshot
+ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
+
+```json
+{
+  "formatVersion": 1,
+  "attemptId": "s4-001",
+  "snapshotRef": "snapshot-001",
+  "status": "completed",
+  "rulesRef": "s4-001-file@behavior-entry-rules.yaml",
+  "rulesSha256": "0ea2bdde3687c2a56646e3554be00120e57b8cd043d1692d4d439156ba55bee9",
+  "settingsRef": "settings-001",
+  "rolesRef": "review-001",
+  "scope": {
+    "files": ["src/orders.ts", "src/server.ts", "test/routes.test.ts"],
+    "groups": [{ "graphContext": "choom-default-v1-import", "graphContextRef": "s4-001-file@graph-profile.json#/contexts/0",
+      "compilerSettingsRef": "settings-001#/parsingProfile", "files": ["src/orders.ts", "src/server.ts", "test/routes.test.ts"] }]
+  },
+  "queryOptions": { "allowJs": true },
+  "tool": { "name": "ts-morph snapshot project (TypeScript type checker)", "node": "v26.13.0", "tsMorph": "28.0.0",
+    "typescript": "6.0.2", "modules": { "ts-morph/dist/ts-morph.js": "..." }, "picomatch": "4.0.7" },
+  "virtualRoot": "/repo",
+  "candidates": [
+    { "ruleId": "express-route-get", "ruleVersion": 1, "entryKind": "http-route", "found": "syntax-rule",
+      "role": "unknown", "roleRef": null, "path": "src/server.ts",
+      "sha256": "be5271009e2bf18c99451e75f668079e83aeb47e12eff9cb6d037b1583eff0cd",
+      "range": [{ "line": 6, "column": 1 }, { "line": 6, "column": 31 }],
+      "expression": "app.get('/orders', listOrders)", "truncated": false, "name": "/orders", "nameReason": null,
+      "handler": { "path": "src/orders.ts", "range": [{ "line": 1, "column": 1 }, { "line": 3, "column": 2 }] },
+      "handlerReason": null },
+    { "ruleId": "express-route-get", "ruleVersion": 1, "entryKind": "http-route", "found": "syntax-rule",
+      "role": "unknown", "roleRef": null, "path": "src/server.ts",
+      "sha256": "be5271009e2bf18c99451e75f668079e83aeb47e12eff9cb6d037b1583eff0cd",
+      "range": [{ "line": 7, "column": 1 }, { "line": 7, "column": 55 }],
+      "expression": "app.get('/' + resource, (request: unknown) => request)", "truncated": false, "name": null,
+      "nameReason": "The name argument is not a string literal, so the name is known only at run time.",
+      "handler": { "path": "src/server.ts", "range": [{ "line": 7, "column": 25 }, { "line": 7, "column": 54 }] },
+      "handlerReason": null },
+    { "ruleId": "express-route-get", "ruleVersion": 1, "entryKind": "http-route", "found": "syntax-rule",
+      "role": "test", "roleRef": "review-001#/roles/0", "path": "test/routes.test.ts",
+      "sha256": "aadf4a92204785b5926e2f3e9e245a864e69344ac1087091a86ad4df5d1c6afa",
+      "range": [{ "line": 3, "column": 1 }, { "line": 3, "column": 31 }],
+      "expression": "app.get('/health', () => 'ok')", "truncated": false, "name": "/health", "nameReason": null,
+      "handler": { "path": "test/routes.test.ts", "range": [{ "line": 3, "column": 20 }, { "line": 3, "column": 30 }] },
+      "handlerReason": null }
+  ],
+  "omittedCandidates": 0,
+  "gaps": [],
+  "outsideReads": ["..."],
+  "notes": ["A candidate is a call or a settings entry that a Choom syntax rule found (found: syntax-rule). ...", "..."]
+}
+```
+
+Read the site and the handler of a candidate before a claim. The review can cite
+the record, or one candidate, as evidence, such as
+`s4-001-file@behavior-entry-candidates.json#/candidates/0`, and the Stage 4 entry
+analysis names the record as `behaviorEntryCandidatesRef` (see the
+[record format](record-format.md#behavior-entry-candidates)). The publisher checks
+each candidate and gap against the saved snapshot.
 
 ### Find the references to a symbol
 
@@ -603,6 +770,8 @@ Use the stage 3 inspection priorities and the separate graph contexts.
 Request additional numbered source excerpts when needed.
 Request the references to a top-level symbol (a path and a symbol name) when
 you need to know where it is used; then read the reference ranges.
+Read the behavior entry candidates as places to read, not as proven entries,
+and name them in the entry analysis as behaviorEntryCandidatesRef.
 Recover the apparent intended architecture; do not recommend redesigns.
 Keep source-use assessments separate from allowedConsumers.
 Review launch settings, behavior entries and each external operation's
@@ -646,7 +815,7 @@ The following table explains their purpose:
 | Baseline | Components, supported interfaces, resource owners, and intended rules. Statements use `{value, status: proposed, evidenceRefs}`. Unknown intent is `null` with a question or gap. |
 | Code mapping | Explicit file scope, one direct component owner per file or `owner: null`, reasons, and supporting evidence. Exact mapped files belong here; membership selectors belong in the baseline. |
 | Resource observations | Inspected access sites, access kind, target identity or explicit unknown target, context, and source evidence. Observed access does not establish permission. |
-| Entry analysis update | Preserve entry history and Knip limits. Add supported behavior entries and references to the separate graph reachability results. |
+| Entry analysis update | Preserve entry history and Knip limits. Add supported behavior entries and references to the separate graph reachability results. Name the behavior entry candidates of collect as `behaviorEntryCandidatesRef`. |
 | Discovery update | Overview, completed inspected paths, proposed fact references, questions, and gaps. `baselineRef` stays unset until the fixed baseline is saved in stage 6. |
 | Review record | The prompt, the complete visible response, supplied evidence, exposed model metadata with `hiddenReasoning: not-saved`, and exact source ranges actually inspected. Do not save hidden reasoning. Do not invent unavailable API metadata. |
 
@@ -681,6 +850,9 @@ guidance before `finish`. Check the complete model and fact records:
   do not duplicate direct ownership.
 - An inspected path cites the source that supports its entry, steps, and component
   references. Planned paths stay in the priorities, not in `inspectedPaths`.
+- A behavior entry rests on reviewed source ranges. A behavior entry candidate is a
+  place to read; it does not make a behavior entry, and a missing candidate does
+  not show that there is no entry.
 - Reachability retains its context, roots, edge policy, stopped edges, and limits.
   No report difference or unreachable file is treated as proof of unused code.
 - Resource observations and intended ownership remain separate. Unknown targets,

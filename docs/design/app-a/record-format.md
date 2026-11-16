@@ -76,6 +76,13 @@ where to read; it is not a reviewed source range and does not prove a call. A
 `completeness` of `complete-within-scope` means that the query found no
 unresolved entry, not that the references are complete.
 
+The behavior entry candidates of Stage 4 `collect`
+(`behavior-entry-candidates.json`, see
+[Behavior entry candidates](#behavior-entry-candidates)) are tool evidence too.
+Cite the record, or one candidate with a JSON Pointer, such as
+`s4-001-file@behavior-entry-candidates.json#/candidates/0`. A candidate shows
+where to read. It is not a reviewed source range and does not prove an entry.
+
 Use saved numbered excerpts for source claims. An excerpt being available does
 not mean it was read by the LLM. A source review record must use the exact saved
 excerpt ID, snapshot ID, hash and range. Request another excerpt for a different
@@ -535,7 +542,8 @@ Use these fields:
 | `llmReview` | `recorded`. |
 | `knipAssessment` | `{action: reuse, reason, evidenceRefs}`; explain why the saved analysis remains applicable. |
 | `reachability` | The context-specific graph selection described below. |
-| `behaviorEntries` | Source-supported behavior entry records. May be empty when none were established. |
+| `behaviorEntries` | Source-supported behavior entry records. May be empty when none were established. A behavior entry candidate is not a behavior entry; a behavior entry can cite one. |
+| `behaviorEntryCandidatesRef` | Stage 4: the candidates that its `collect` saved, such as `s4-001-file@behavior-entry-candidates.json`. Stage 5: the value of the selected Stage 4 entry analysis. See [Behavior entry candidates](#behavior-entry-candidates). |
 
 A `reviewedFiles` item has `id`, `snapshotRef`, `path`, `sha256`, and
 `lines: [first, last]`. It must match a saved excerpt. An inspected range does not
@@ -571,6 +579,45 @@ helpers cannot rewind the model. A later root/settings change needs a new run
 with a new capture and corrected settings. That capture can use the saved
 snapshot as its source if the original exclusions and limits remain explicit.
 Do not publish facts that depend on analysis with different inputs.
+
+## Behavior entry candidates
+
+Stage 4 `collect` saves `behavior-entry-candidates.json`: the candidates that the
+pinned Choom behavior entry rules found in the source files of the graph scope.
+The [stage 4 cookbook](step-4-cookbook.md#find-the-behavior-entry-candidates)
+gives the rules, the fields and the limits. The Stage 4 entry analysis names the
+record as `behaviorEntryCandidatesRef`, and the Stage 5 entry analysis keeps that
+value. The Stage 4/5 publisher refuses any other value.
+
+`behaviorEntries` and the candidates are different records. A candidate is tool
+evidence that a syntax rule found (`found: syntax-rule`). A behavior entry is a
+reviewed record with a component owner and a reviewed source range. A behavior
+entry can cite a candidate in its `evidenceRefs`.
+
+When the selected entry analysis names the candidates, the shared record checks
+of Stages 4, 5 and 6 check them against the saved snapshot:
+
+- The name is a registered `behavior-entry-candidates.json` artifact of the
+  current snapshot with `formatVersion: 1`. `status` is `partial` when
+  `omittedCandidates` is more than 0, and `completed` otherwise.
+- `rulesRef` is a registered artifact whose SHA-256 is `rulesSha256`. Each
+  candidate and each settings gap names a rule of that list by `ruleId`,
+  `ruleVersion` and `entryKind`.
+- Each candidate has exactly the fields of the record, `found: syntax-rule`,
+  `role: test` with a `roleRef` or `role: unknown` with `roleRef: null`, a
+  `nameReason` only when `name` is null, and a `handlerReason` only when
+  `handler` is null.
+- `path` and `sha256` name an indexed file of the inventory. `range` lies in the
+  saved text of that file, and the text at the range is `expression`, or starts
+  with it when `truncated` is true. Lines end at CRLF, CR, LF, U+2028 and
+  U+2029, as TypeScript counts them, and a byte order mark is not counted.
+- A `handler` names an indexed file, and its `range` lies in the saved text of
+  that file.
+- A gap is an `unknown-settings-value` gap, which the checks locate as they
+  locate a candidate, or a `missing-compiler-input` gap.
+
+These checks show that the candidates match the saved files. They do not show
+that a candidate is a real entry or that the list is complete.
 
 ## Code mapping
 

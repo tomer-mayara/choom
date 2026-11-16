@@ -10,6 +10,12 @@ const evidenceRequests = `Request a snapshot-relative path and line range when m
   `and the symbol name. A references record lists sites to read. It does not prove calls, and its unresolved sites can hide ` +
   `other uses.\n\n`;
 
+// How the reviewer uses the behavior entry candidates that the pinned syntax rules found.
+const behaviorCandidates = `behavior-entry-candidates.json lists the calls and settings entries that the pinned Choom ` +
+  `behavior entry rules found. A candidate is a place to read, not a proven behavior entry: read its site and its handler ` +
+  `before you record a behavior entry, cite the candidate in its evidenceRefs, and keep a null name or handler unknown with ` +
+  `its reason. Name the file in the entry analysis as behaviorEntryCandidatesRef.\n\n`;
+
 export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt }: PromptFacts): string {
   return `# Stage 4 component recovery review\n\n` +
     `Run: ${runRef}\nSnapshot: ${snapshotRef}\nAttempt: ${attemptId}\n` +
@@ -20,7 +26,7 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `Do not use the live checkout, excluded paths, or external information. Use saved numbered excerpts for source review. ` +
     evidenceRequests +
     `Read ${entryAnalysisRef}, its inspection priorities, graph-profile.json, graph-results.json, source-sites.json, ` +
-    `source-excerpts.json, and the saved step-4-cookbook.md. Review source in priority order. ` +
+    `behavior-entry-candidates.json, source-excerpts.json, and the saved step-4-cookbook.md. Review source in priority order. ` +
     `A file query or a graph scan is not a source inspection. Record only ranges actually read.\n\n` +
     `Recover the apparent intended components. Use documents, callers, tests, and completed source paths as evidence. ` +
     `Existing folders, component.yaml declarations, graph clusters, and dependency edges are clues; they do not alone establish intent. ` +
@@ -28,6 +34,7 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `Keep each graph context separate. Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
     `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
     `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n` +
+    behaviorCandidates +
     `Review saved launch settings and behavior entries for system entry points. Inspect each external operation's ` +
     `registration or host binding. Trace built files to source only with saved evidence. Use the candidate file mapping ` +
     `for direct start and handler owners. Preserve separate operations that share a handler. Keep unresolved candidates ` +
