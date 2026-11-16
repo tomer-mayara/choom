@@ -11,7 +11,7 @@ import { type CommandResult, runCli } from "../../support/commands.ts";
 // records. A test changes the proposed baseline, and then the code mapping, whose
 // whole-file units the fixture makes from the exact paths of the changed baseline.
 type Json = Record<string, unknown>;
-export interface Position { line: number; column: number }
+interface Position { line: number; column: number }
 export type SourceRange = [Position, Position];
 interface Statement<Value> { value: Value; status: "proposed"; evidenceRefs: string[] }
 export interface SymbolSelector { path: string; symbol: string }
@@ -34,7 +34,7 @@ export interface StageFiveChanges {
   mapping?(mapping: CodeMapping, baseline: StageFiveBaseline): void;
 }
 
-export const stageFiveAttemptId = "s5-check";
+const stageFiveAttemptId = "s5-check";
 const stageFourEntryRef = "s4-check-entry-analysis";
 const stageFiveEntryRef = `${stageFiveAttemptId}-entry-analysis`;
 const evidenceRefs = ["launch-settings"];
@@ -42,7 +42,7 @@ const artifactId = (name: string): string => `${stageFiveAttemptId}-file@${encod
 const jsonText = (value: unknown): string => JSON.stringify(value, null, 2) + "\n";
 // The saved YAML must not use anchors or aliases.
 const yamlText = (value: unknown): string => stringify(value, { aliasDuplicateObjects: false });
-export const statement = <Value>(value: Value): Statement<Value> => ({ value, status: "proposed", evidenceRefs: [...evidenceRefs] });
+const statement = <Value>(value: Value): Statement<Value> => ({ value, status: "proposed", evidenceRefs: [...evidenceRefs] });
 
 // The membership statement of a component of the proposed Stage 5 baseline.
 export function membershipRef(baseline: StageFiveBaseline, componentId: string): string {
