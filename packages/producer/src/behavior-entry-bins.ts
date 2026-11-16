@@ -13,10 +13,11 @@ import { type InventoryFile, SnapshotFileSystem, type SnapshotFiles } from './st
 // the bin field of each package.json of the snapshot outside the node_modules folders,
 // as JSON text; nothing runs. It reads only a file that JSON.parse accepts, as npm does,
 // and takes the ranges from the syntax tree of TypeScript. The field is one path, for
-// the command of the package name, or an object whose keys are command names and whose
-// values are paths. Each path is a candidate at its value. Its name is the command as
-// npm installs it: the last part of the key or of the package name, so without a scope.
-// Each other value is a gap.
+// the command of the package name; an array of paths, each for the command of its
+// basename; or an object whose keys are command names and whose values are paths. Each
+// path is a candidate at its value. Its name is the command as npm installs it: the last
+// part of the key, of the package name or of the path in an array, so without a scope.
+// Each other value is a gap, and so is an array with an element that is not a path.
 // The handler of a candidate is the whole file that the command runs, only with evidence:
 // the snapshot holds the bin file (snapshot-file), or a fully parsed configuration of the
 // settings record compiles a source file of the snapshot that it selects to the bin file,
@@ -47,7 +48,9 @@ const sourceExtensions: Record<string, string[]> = {
 };
 const reasons = {
   notJson: 'The file is not a valid JSON object, so the rule cannot read its bin field.',
-  notPaths: 'The bin field is not a path or an object of paths, so npm installs no command from it.',
+  notPaths: 'The bin field is not a path, an array of paths or an object of paths, so npm installs no command from it.',
+  notPathElement: 'An element of the bin array is not a path. npm stops with an error when it reads such a field, so it ' +
+    'installs no command from it.',
   notPath: 'The value of the command is not a path, so npm installs no command for it.',
   noPackageName: 'The bin field is one path and the package has no name, so npm installs no command for it.',
   noName: 'The command name is empty when npm keeps only its last part, so npm installs no command for it.',
@@ -155,12 +158,24 @@ function commandName(key: string | undefined, missing: string): Named {
   return name === '' ? { name: null, nameReason: reasons.noName } : { name, nameReason: null };
 }
 
+// Why npm installs no command from the whole bin field, or undefined when npm reads the field.
+// npm takes one path, an array of paths or an object; it stops with an error on an array
+// with an element that is not a string.
+function fieldReason(ts: Ts, bin: Node): string | undefined {
+  if (ts.isArrayLiteralExpression(bin)) return bin.elements.every(element => ts.isStringLiteral(element)) ? undefined
+    : reasons.notPathElement;
+  return ts.isStringLiteral(bin) || ts.isObjectLiteralExpression(bin) ? undefined : reasons.notPaths;
+}
+
 // The commands of a bin field, each with its name and its value: one path, for the command
-// of the package name, or the values of an object by command name. Another field has none.
+// of the package name; each path of an array, for the command of the basename of the path
+// with its extension, as npm names it; or the values of an object by command name.
 function commandsOf(ts: Ts, bin: Node, packageName: Node | undefined): [Named, Node][] {
   if (ts.isStringLiteral(bin))
     return [[commandName(packageName !== undefined && ts.isStringLiteral(packageName) ? packageName.text : undefined,
       reasons.noPackageName), bin]];
+  if (ts.isArrayLiteralExpression(bin)) return bin.elements.filter(element => ts.isStringLiteral(element))
+    .map(element => [commandName(posix.basename(element.text), reasons.noName), element]);
   return ts.isObjectLiteralExpression(bin) ? [...properties(ts, bin)].map(([key, value]) => [commandName(key, reasons.noName), value])
     : [];
 }
@@ -177,14 +192,14 @@ export function binCandidates(snapshot: BinSnapshot, path: string, rules: readon
   const parsed = strictJson(text) && parseDiagnostics(source).length === 0;
   const fields = parsed && root !== undefined && ts.isObjectLiteralExpression(root) ? properties(ts, root) : undefined;
   const bin = fields?.get('bin');
-  const commands = bin === undefined ? [] : commandsOf(ts, bin, fields?.get('name'));
+  const binReason = bin === undefined ? undefined : fieldReason(ts, bin);
+  const commands = bin === undefined || binReason !== undefined ? [] : commandsOf(ts, bin, fields?.get('name'));
   for (const rule of rules) {
     const identity = { ruleId: rule.id, ruleVersion: rule.version, entryKind: rule.entryKind };
     const gap = (node: Node, reason: string): SettingsGap => ({ kind: 'unknown-settings-value', ...identity,
       ...located(source, node), reason });
     if (fields === undefined) findings.gaps.push(gap(parsed && root !== undefined ? root : source, reasons.notJson));
-    else if (bin !== undefined && !ts.isStringLiteral(bin) && !ts.isObjectLiteralExpression(bin)) findings.gaps.push(gap(bin,
-      reasons.notPaths));
+    else if (bin !== undefined && binReason !== undefined) findings.gaps.push(gap(bin, binReason));
     for (const [name, value] of commands) {
       if (ts.isStringLiteral(value)) findings.candidates.push({ ...identity, ...located(source, value), ...name,
         ...linkOf(snapshot, posix.dirname(path), value.text) });

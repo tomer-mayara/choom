@@ -74,6 +74,14 @@ describe("binCandidates gives each command of the bin field with its name and th
       name, fileOf("bin/cli.js", cli, { kind: "snapshot-file", binFile: "bin/cli.js" }))]);
   });
 
+  // npm-normalize-package-bin, which bin-links of npm uses, names the command of each path of an array by its basename.
+  test("an array of paths names the command of each path by its file name, with its extension, as npm does", () => {
+    const text = json({ name: "tools", bin: ["bin/cli.js", "./tools/check"] });
+    expect(findingsIn({ "package.json": text, "bin/cli.js": cli })).toEqual({ gaps: [], candidates: [
+      binAt(text, "«\"bin/cli.js\"»", "cli.js", fileOf("bin/cli.js", cli, { kind: "snapshot-file", binFile: "bin/cli.js" })),
+      binAt(text, "«\"./tools/check\"»", "check", null, unlinked("tools/check"))] });
+  });
+
   test("one path without a package name has a null name with a reason", () => {
     const text = json({ bin: "./bin/cli.js" });
     expect(findingsIn({ "package.json": text, "bin/cli.js": cli }).candidates).toEqual([{
@@ -154,8 +162,13 @@ describe("binCandidates gives a gap for a value that names no file", () => {
     expression: marked.includes("«") ? marked.slice(marked.indexOf("«") + 1, marked.indexOf("»")) : marked, truncated: false, reason });
 
   test.each([
-    ["a bin field that is not a path or an object", json({ bin: 7 }), "\"bin\": «7»",
-      "The bin field is not a path or an object of paths, so npm installs no command from it."],
+    ["a bin field that is not a path, an array or an object", json({ bin: 7 }), "\"bin\": «7»",
+      "The bin field is not a path, an array of paths or an object of paths, so npm installs no command from it."],
+    // npm stops with an error on such an array, so it installs none of the commands of the field.
+    ["an array with an element that is not a path", json({ bin: ["bin/cli.js", 7] }),
+      "\"bin\": «[\n    \"bin/cli.js\",\n    7\n  ]»",
+      "An element of the bin array is not a path. npm stops with an error when it reads such a field, so it installs no " +
+      "command from it."],
     ["a command whose value is not a path", json({ bin: { run: ["cli.js"] } }), "\"run\": «[\n      \"cli.js\"\n    ]»",
       "The value of the command is not a path, so npm installs no command for it."],
     ["a file that is not valid JSON", "{ \"bin\": ", "{ \"bin\": ",

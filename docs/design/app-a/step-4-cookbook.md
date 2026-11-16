@@ -515,7 +515,8 @@ of the chain. The candidates of one chain are in the order of the chain.
 The `cli-bin` rule has the ID `package-bin` and the kind `package-bin`. It
 reads the `bin` field of each `package.json` of the inventory outside the
 `node_modules` folders, as JSON text; nothing runs. The field is one path, for the
-command of the package name, or an object whose keys are command names and whose
+command of the package name; an array of paths, each for the command of its file
+name, as npm installs it; or an object whose keys are command names and whose
 values are paths, such as `"bin": { "myapp": "bin/cli.js" }`. Each path is a
 candidate:
 
@@ -523,6 +524,8 @@ candidate:
   `"bin/cli.js"` with its quotes.
 - `name` is the command as npm installs it: the key, or the package name for one
   path, without folders or a scope, such as `tools` for the package `@acme/tools`.
+  For a path of an array, it is the file name of the path with its extension, such
+  as `cli.js` for `"bin": ["bin/cli.js"]`, because npm names the command so.
   When the field is one path and the package has no name, `name` is `null` with
   `nameReason`.
 - `handler` is the whole file that the command runs, from line 1, column 1 to the
@@ -563,8 +566,10 @@ With `"outDir": "dist"` and `"rootDir": "src"` in `tsconfig.json`, the command
   "handlerReason": null }
 ```
 
-Each other value of the field, such as a number or an array, is a gap of kind
-`unknown-settings-value` at that value, with a reason. A `package.json` whose value
+Each other value of the field, such as a number, is a gap of kind
+`unknown-settings-value` at that value, with a reason. An array with an element that
+is not a path, such as `["bin/cli.js", 7]`, is one gap at the field and gives no
+candidate, because npm stops with an error on it. A `package.json` whose value
 is not a JSON object is a gap at that value, and one that is not valid JSON is a gap
 at the whole file. Valid JSON is text that `JSON.parse` accepts after a byte order
 mark, as npm reads a `package.json`. So a comment, a trailing comma, single quotes or
