@@ -614,7 +614,8 @@ Do not publish facts that depend on analysis with different inputs.
 ## Behavior entry candidates
 
 Stage 4 `collect` saves `behavior-entry-candidates.json`: the candidates that the
-pinned Choom behavior entry rules found in the source files of the graph scope.
+pinned Choom behavior entry rules found in the source files of the graph scope
+and in the `package.json` files of the snapshot.
 The [stage 4 cookbook](step-4-cookbook.md#find-the-behavior-entry-candidates)
 gives the rules, the fields and the limits. The Stage 4 entry analysis names the
 record as `behaviorEntryCandidatesRef`, and the Stage 5 entry analysis keeps that
@@ -646,7 +647,11 @@ of Stages 4, 5 and 6 check them against the saved snapshot:
   with it when `truncated` is true. Lines end at CRLF, CR, LF, U+2028 and
   U+2029, as TypeScript counts them, and a byte order mark is not counted.
 - A `handler` names an indexed file, and its `range` lies in the saved text of
-  that file.
+  that file. It has exactly `path` and `range`. The handler of a candidate of a
+  `package-bin` rule also has `evidence`, which names how the record links the
+  file: `kind: snapshot-file` and `binFile`, the path of the handler, or
+  `kind: compiler-output` with `binFile`, `compilerSettingsRef`, `outDir` and
+  `rootDir`.
 - A gap is an `unknown-settings-value` gap, which the checks locate as they
   locate a candidate, or a `missing-compiler-input` gap.
 

@@ -311,7 +311,7 @@ level. It saves:
 | Artifact | Contents |
 | --- | --- |
 | `source-sites.json` | Import and re-export syntax, dynamic imports, and candidate resource calls. Includes query scope, the parser record, diagnostics, and limits. The parser record names the parser, Node, ts-morph and the TypeScript that it brings, and the digest of each tool file that ts-morph loaded. |
-| `behavior-entry-candidates.json` | The candidates of the pinned behavior entry rules in the source files of the graph scope: their rule, site, name, handler and role, the gaps, the scope and the limits. See [Find the behavior entry candidates](#find-the-behavior-entry-candidates). |
+| `behavior-entry-candidates.json` | The candidates of the pinned behavior entry rules in the source files of the graph scope and in the `package.json` files of the snapshot: their rule, site, name, handler and role, the gaps, the scope and the limits. See [Find the behavior entry candidates](#find-the-behavior-entry-candidates). |
 | `resource-access-candidates.json` | The candidates of the pinned resource access rules in the source files of the graph scope, and the resource call sites of `source-sites.json` that no rule found: their operation, name, confidence and source context, the scope and the limits. See [Find the resource access candidates](#find-the-resource-access-candidates). |
 | `source-excerpts.json` | A bounded initial selection from priority files, entry candidates and component declarations, with file hashes, truncation and skipped paths. |
 | `review-prompt.md` | The LLM review instructions with the current paths and evidence references. |
@@ -390,10 +390,10 @@ differs from that copy, before it saves a receipt. Restore the list or start a n
 attempt. A rule that changes keeps its ID and gets the next version.
 
 The list holds the `http-route` rules of HTTP servers, the `worker-thread` and
-`queue-worker` rules of workers and queues, and the `frontend-entry` rules of Vite
-settings, which the tables below give. A later ticket adds the rules of command
-line tools. Each rule has an `id`, a `version`, the `library`, the `entryKind` and
-one of two kinds:
+`queue-worker` rules of workers and queues, the `frontend-entry` rules of Vite
+settings, and the `cli-command` and `cli-bin` rules of command line tools, which
+the tables below give. Each rule has an `id`, a `version`, the `library`, the
+`entryKind` and one of three kinds:
 
 - A `call` rule finds a call whose callee is its `callPath` on the value of its
   `importName`, a module name such as `express` or `node:worker_threads`. Write
@@ -409,9 +409,24 @@ one of two kinds:
   the zero-based positions of the name and of the handler, `last` for the last
   argument, or `null` for none. A call that does not have these arguments is not a
   candidate. For example, `app.get('title')` reads a setting of an Express app.
+
+  Two optional fields serve chains of calls. `nameCall` names the call that holds
+  the name, counted back from the call that the rule finds: `0`, the value without
+  the field, for that call, `1` for the last call of the call path, such as the
+  command call of `program.command('serve').action(serve)` for
+  `program.command().action`, and `2` for the call before it. `sameValueMethods`
+  lists the methods whose call gives the value that it is called on, such as the
+  builder methods of a command. The rule passes the calls of these methods
+  anywhere in the chain: `program.command().action` with `description` also finds
+  `program.command('serve').description('Start the server').action(serve)`. The
+  check refuses a name call that the call path does not have or that names no
+  name argument, and a call path that calls one of its `sameValueMethods`, because
+  such a rule finds no call.
 - A `settings-literal` rule reads the literal value at its `propertyPath`, such as
   `build.rollupOptions.input`, in the settings object of a file of the scope that
   matches its `fileGlob`, such as `**/vite.config.{js,mjs,cjs,ts,mts,cts}`.
+- A `package-bin` rule has no other fields. It reads the `bin` field of each
+  `package.json` of the snapshot.
 
 The `http-route` rules find the route methods of four kinds of server values.
 Each rule finds one method. The path is the name (`nameArgument: 0`) and the last
@@ -473,6 +488,82 @@ resolve a name to a snapshot file. Vite resolves a relative path from the projec
 root or from the folder where the build runs, so read the settings file and the
 build command before you map a name to a file.
 
+The `cli-command` rules find the commands of command line programs. Each rule
+finds the commands of one kind of program:
+
+| Program | `importName`, `callPath` | Name, handler and same value methods | Rule ID |
+| --- | --- | --- | --- |
+| A commander program on the program export, such as `program.command('clone <source> [destination]').description('...').action(clone)` after `import { program } from 'commander'` | `commander`, `program.command().action` | The rule finds the action call. The name is the first argument of the command call (`nameCall: 1`, `nameArgument: 0`), and the action is the handler (`handlerArgument: 0`). `sameValueMethods` lists the 40 methods of `Command` that have a form that returns the command itself, as the typings of commander 15 declare them, except `action`, `command` and `parse`. | `commander-program-command` |
+| A commander program that `new Command()` makes, such as `const program = new Command()` after `import { Command } from 'commander'` | `commander`, `new Command().command().action` | The same | `commander-class-command` |
+| A yargs program, such as `yargs(hideBin(process.argv)).command('serve [port]', 'start the server', builder, handler)` after `import yargs from 'yargs'` | `yargs`, `yargs().command` | The name is the first argument (`nameArgument: 0`), and the last argument is the handler (`handlerArgument: last`). `sameValueMethods` lists the 65 methods of a yargs instance that return the instance in yargs 18, `command` among them, so each command call of one chain is a candidate. | `yargs-command` |
+
+A command candidate names its command and its action. `name` is the first argument
+of the command call as the call writes it, with the arguments of the command, such
+as `clone <source> [destination]` or `serve [port]`; the command name is its first
+word. `handler` is the action. The `range` and `expression` of a commander candidate
+are the action call, from the start of its chain, such as `program` or
+`program.command('split')`. Those of a yargs candidate are its command call, from
+the start of its chain, so the call of a later command holds the earlier commands
+of the chain. The candidates of one chain are in the order of the chain.
+
+The `cli-bin` rule has the ID `package-bin` and the kind `package-bin`. It
+reads the `bin` field of each `package.json` of the inventory outside the
+`node_modules` folders, as JSON text; nothing runs. The field is one path, for the
+command of the package name, or an object whose keys are command names and whose
+values are paths, such as `"bin": { "myapp": "bin/cli.js" }`. Each path is a
+candidate:
+
+- `path` is the `package.json`, and `range` and `expression` are the value, such as
+  `"bin/cli.js"` with its quotes.
+- `name` is the command as npm installs it: the key, or the package name for one
+  path, without folders or a scope, such as `tools` for the package `@acme/tools`.
+  When the field is one path and the package has no name, `name` is `null` with
+  `nameReason`.
+- `handler` is the whole file that the command runs, from line 1, column 1 to the
+  end of the file, only with evidence. npm resolves the path in the folder of the
+  package and keeps a path that leaves the folder in it, and so do the rules.
+  `handler.evidence` names the evidence:
+  - `snapshot-file`: the snapshot holds the bin file. `binFile` is its path, which
+    is the path of the handler.
+  - `compiler-output`: a fully parsed configuration of the settings record
+    (`settings-001`) compiles a source file of the snapshot to the bin file.
+    `compilerSettingsRef` names the configuration, such as
+    `settings-001#/configs/0`. The bin file is in its `outDir`, and the source file
+    has the same path in its `rootDir`, with a source extension of the extension of
+    the bin file: `.ts`, `.tsx`, `.js` or `.jsx` for `.js`, `.tsx` or `.jsx` for
+    `.jsx`, `.mts` or `.mjs` for `.mjs`, and `.cts` or `.cjs` for `.cjs`. The
+    configuration selects the source file. `binFile`, `outDir` and `rootDir` are
+    snapshot paths, with `.` for the root.
+- Otherwise `handler` is `null` with `handlerReason`, such as for `./build/server.js`
+  when no saved configuration with `outDir` and `rootDir` compiles a source file to
+  it. A bin file that is not UTF-8 text gives no range, so its `handler` is `null`
+  too.
+
+| Rule | `kind` | Candidate | Rule ID |
+| --- | --- | --- | --- |
+| The commands of the `bin` field of a `package.json` | `package-bin` | `entryKind: cli-bin`, the command name, the range of the value, and the file that the command runs with its evidence, or `null` with a reason | `package-bin` |
+
+With `"outDir": "dist"` and `"rootDir": "src"` in `tsconfig.json`, the command
+`"string-util": "./dist/string-util.js"` gives this candidate; the digest is cut:
+
+```json
+{ "ruleId": "package-bin", "ruleVersion": 1, "entryKind": "cli-bin", "found": "syntax-rule", "role": "unknown",
+  "roleRef": null, "path": "package.json", "sha256": "...",
+  "range": [{ "line": 7, "column": 20 }, { "line": 7, "column": 43 }], "expression": "\"./dist/string-util.js\"",
+  "truncated": false, "name": "string-util", "nameReason": null,
+  "handler": { "path": "src/string-util.ts", "range": [{ "line": 1, "column": 1 }, { "line": 9, "column": 1 }],
+    "evidence": { "kind": "compiler-output", "binFile": "dist/string-util.js",
+      "compilerSettingsRef": "settings-001#/configs/0", "outDir": "dist", "rootDir": "src" } },
+  "handlerReason": null }
+```
+
+Each other value of the field, such as a number or an array, is a gap of kind
+`unknown-settings-value` at that value, with a reason. A `package.json` whose value
+is not a JSON object is a gap at that value, and one that is not valid JSON is a gap
+at the whole file. A `package.json` that is not UTF-8 text
+gives no candidate and no gap, because a gap needs a range in the saved text; the
+settings record reads each `package.json`.
+
 The helper reads each file of the scope in the snapshot project of its graph
 group, with the compiler settings of the group, chosen as for the references
 action, and with `allowJs`. For a `call` rule, the type checker follows each local
@@ -517,10 +608,11 @@ a missing candidate does not show that the code has no entry:
   `function routes(app) { app.get(...) }`;
 - a value that a later assignment gives;
 - a value that a function returns, such as `app` after `const app = createApp()`;
-- a call on the result of another candidate call, such as
-  `app.get('/a', list).post('/b', create)`;
+- a call on the result of another call, such as
+  `app.get('/a', list).post('/b', create)`, unless the rule lists the method of
+  that call in its `sameValueMethods`;
 - the files outside the graph scope, and source that is not JavaScript or
-  TypeScript.
+  TypeScript, except the `package.json` files that the `package-bin` rule reads.
 
 The `http-route` rules also do not find these routes:
 
@@ -619,16 +711,64 @@ as `proxy.ts` (formerly `middleware.ts`) and `instrumentation.ts`. No property o
 extensions, and `exportPathMap` and `webpack` are functions. So a
 `settings-literal` rule cannot find these entries. This is left for a later ticket.
 
+The `cli-command` rules also do not find, or do not name, these commands:
+
+- A nested command, such as `program.command('brew').command('tea').action(...)`: a
+  command call makes a new command, so `command` is not a same value method of the
+  commander rules. A command of a `new Command('brew')`, such as
+  `brew.command('tea').action(...)`, is a candidate of `commander-class-command`.
+- The action of the program itself, such as `program.argument('<name>').action(...)`
+  without a command call, and the action of a command that the code makes with
+  `new Command('build')` or `createCommand('build')` and adds with `addCommand`,
+  such as `new Command('build').action(...)`.
+- A stand-alone executable command, such as
+  `program.command('start <service>', 'start named service')`: it has no action, and
+  commander runs the file `<program>-start`. A command call with a description gives
+  the program, not the new command, so an action call after it is the action of the
+  program. The rules do not see the description, so such an action call is a
+  candidate with the name of the command.
+- The default export of commander before version 7, such as
+  `const program = require('commander')`, the yargs singleton, such as
+  `require('yargs').command(...)`, which yargs 18 no longer has, and the module name
+  `yargs/yargs`: a rule finds the calls of one module name.
+- A yargs command module, such as `.command(serveModule)` or
+  `.command(require('./commands/serve'))`: the call has no handler argument after the
+  name, so it is not a candidate. Read the module: its `command` property is the
+  name and its `handler` property is the handler. The command modules of a folder
+  that `commandDir('commands')` loads are not candidates either.
+- A yargs command call whose last argument is not the action: the description of
+  `.command('init', 'set up the project')`, which gives `handler: null` with a
+  reason, the builder of `.command('remote', 'manage remotes', builder)`, and the
+  middlewares of `.command(cmd, desc, builder, handler, middlewares)`, which the
+  candidate gives as its handler. Read the call before you use the handler.
+- A command that a builder function adds on its parameter, such as
+  `(yargs) => yargs.command('add <name>', ...)`, and a command call of a chain after
+  a method that `sameValueMethods` does not list, such as a method of a later
+  version of the library.
+
+The `cli-bin` rule also does not find, or does not name, these commands and files:
+
+- The commands of a folder, such as `"directories": { "bin": "./bin" }`, which npm
+  reads only without a `bin` field, and the scripts of the `scripts` field.
+- The `bin` field of a `package.json` in a `node_modules` folder.
+- The source of a bin file that another build tool makes, such as an esbuild,
+  tsup or Rollup bundle, or that a configuration without `rootDir` makes:
+  TypeScript then takes a folder that it computes, and the settings record does not
+  save it. A configuration with `outFile` puts all the output in one file. Read the
+  build settings and the build command.
+- A bin file that npm cannot run: the rule does not check that the file starts with
+  `#!/usr/bin/env node`, that it runs, or that npm installs the package.
+
 | Record field | Meaning |
 | --- | --- |
 | `formatVersion`, `attemptId`, `snapshotRef`, `status` | `1`, the Stage 4 attempt ID, the snapshot ID, and `completed`, or `partial` when the limit of 10000 candidates omitted some. |
 | `rulesRef`, `rulesSha256` | The copy of the rule list that start saved, and its SHA-256. |
 | `settingsRef`, `rolesRef` | `settings-001`, whose compiler settings the helper used, and `review-001`, whose role records give the roles. |
-| `scope` | `files`, the source files of the graph scope; and `groups`, for each graph group, its import pass (`graphContext` and `graphContextRef`), its `compilerSettingsRef` and the files that it read. |
+| `scope` | `files`, the source files of the graph scope; and `groups`, for each graph group, its import pass (`graphContext` and `graphContextRef`), its `compilerSettingsRef` and the files that it read. The `package.json` files that the `package-bin` rule reads are not in `scope`. |
 | `queryOptions`, `tool`, `virtualRoot` | As in the references record. `tool` also names the picomatch version that matched the `fileGlob` of the settings-literal rules. |
-| `candidates` | Each candidate, in the order of the scope files and then in source order: `ruleId`, `ruleVersion`, `entryKind`, `found` (`syntax-rule`), `role`, `roleRef`, `path`, `sha256`, `range`, `expression`, `truncated`, `name`, `nameReason`, `handler` (`path` and `range`, or `null`) and `handlerReason`. |
+| `candidates` | Each candidate, in the order of the scope files and then in source order, then the candidates of the `package-bin` rule in the order of the inventory: `ruleId`, `ruleVersion`, `entryKind`, `found` (`syntax-rule`), `role`, `roleRef`, `path`, `sha256`, `range`, `expression`, `truncated`, `name`, `nameReason`, `handler` (`path` and `range`, and also `evidence` for a `package-bin` candidate, or `null`) and `handlerReason`. |
 | `omittedCandidates` | The number of candidates after the limit. |
-| `gaps` | Each value of a `settings-literal` rule that is not a literal, located like a candidate, with `reason`; and each compiler input that the snapshot does not hold, as in the references record. |
+| `gaps` | Each value of a `settings-literal` rule that is not a literal, and each value of the `package-bin` rule that is not a path, located like a candidate, with `reason`; and each compiler input that the snapshot does not hold, as in the references record. |
 | `outsideReads`, `notes` | As in the references record. |
 
 A range has 1-based lines and columns, as in the references record. `expression`
@@ -643,7 +783,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "snapshotRef": "snapshot-001",
   "status": "completed",
   "rulesRef": "s4-001-file@behavior-entry-rules.yaml",
-  "rulesSha256": "ef664c019ea28cca91cb7d3e23e143f4891094dbd955797da4549d72257f52c2",
+  "rulesSha256": "f636298fbb985f30f7616ebfab5c1ff70eeb37892a3cb1d3d431d86cd96f8adb",
   "settingsRef": "settings-001",
   "rolesRef": "review-001",
   "scope": {
@@ -682,7 +822,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "omittedCandidates": 0,
   "gaps": [],
   "outsideReads": ["..."],
-  "notes": ["A candidate is a call or a settings entry that a Choom syntax rule found (found: syntax-rule). ...", "..."]
+  "notes": ["A candidate is a call, a settings entry or a bin command that a Choom syntax rule found (found: syntax-rule). ...", "..."]
 }
 ```
 

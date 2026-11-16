@@ -721,7 +721,8 @@ bun test ./packages/producer/test/interface/stage-4/references.test.ts ./package
 Stage 4 `stage-4-inspect collect` also applies the pinned list of Choom behavior
 entry rules (`packages/producer/rules/behavior-entry-rules.yaml`, with its
 [contract](cookbook/interfaces/behavior-entry-rules.tsp)) to the source files of
-the graph scope. Stage 4 start saves a copy of the list and its SHA-256, and each
+the graph scope and to the `package.json` files of the snapshot.
+Stage 4 start saves a copy of the list and its SHA-256, and each
 later Stage 4 action refuses a changed list. Each candidate in
 `behavior-entry-candidates.json` names its rule, its call site, its name or `null`
 with a reason, its handler range or `null` with a reason, its role and
@@ -731,17 +732,21 @@ the saved snapshot. The `@producer` scenarios collect the candidate of an
 Express route and of a route whose name the code makes at run time, the
 route candidates of an Express router, a Fastify server and a Hono app, the
 start sites of a worker thread and a BullMQ queue worker, and the entries of a
-Vite settings file, with a gap for an entry that the code computes. The
+Vite settings file, with a gap for an entry that the code computes.
+They also collect the commands of a commander program and a yargs program, and
+the bin commands of a package, each with the file that it runs only with evidence. The
 [Stage 4 cookbook](docs/design/app-a/step-4-cookbook.md#find-the-behavior-entry-candidates)
 gives the rules and their limits. Each call rule of the list needs a sample call
 from the documentation of its library, and each settings-literal rule a sample
-settings file in the form that the documentation of its tool shows, in
+settings file in the form that the documentation of its tool shows,
+and each package-bin rule a sample package.json from the npm documentation, in
 `packages/producer/test/unit/behavior-entry-rule-samples.test.ts`. Run the focused
 checks of the behavior entry candidates with:
 
 ```sh
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/behavior-entry-rules.test.ts ./packages/producer/test/unit/behavior-entry-calls.test.ts ./packages/producer/test/unit/behavior-entry-settings.test.ts ./packages/producer/test/unit/stage-4-behavior-entries.test.ts ./packages/producer/test/unit/record-behavior-candidates.test.ts
+bun test ./packages/producer/test/unit/behavior-entry-bins.test.ts
 bun test ./packages/producer/test/unit/behavior-entry-rule-samples.test.ts
 bun test ./packages/producer/test/interface/behavior-entry-rules.test.ts ./packages/producer/test/interface/stage-4/behavior-entries.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
 bun test ./packages/producer/test/interface/stage-4/rule-lists.test.ts
