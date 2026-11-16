@@ -382,10 +382,10 @@ copy of the list as `behavior-entry-rules.yaml` and records its SHA-256 in
 differs from that copy, before it saves a receipt. Restore the list or start a new
 attempt. A rule that changes keeps its ID and gets the next version.
 
-The list holds the `http-route` rules of HTTP servers, which the table below
-gives. Later tickets add the rules of workers and queues, command line tools and
-frontend settings. Each rule has an `id`, a `version`, the `library`, the
-`entryKind` and one of two kinds:
+The list holds the `http-route` rules of HTTP servers and the `worker-thread` and
+`queue-worker` rules of workers and queues, which the tables below give. Later
+tickets add the rules of command line tools and frontend settings. Each rule has
+an `id`, a `version`, the `library`, the `entryKind` and one of two kinds:
 
 - A `call` rule finds a call whose callee is its `callPath` on the value of its
   `importName`, a module name such as `express` or `node:worker_threads`. Write
@@ -423,6 +423,24 @@ such as `fastify().post` for `fastify-route-post`. The record has no method fiel
 `name` is the path as the call writes it. `handler` is the last argument, so route
 options before the handler, as in `fastify.put('/orders/:id', opts, updateOrder)`,
 and the earlier handlers of a route with several handlers do not change it.
+
+The `worker-thread` and `queue-worker` rules find the `new Worker(...)` calls that
+start a worker. A rule finds the calls of one module name, so `node:worker_threads`
+and `worker_threads` each have a rule:
+
+| Worker | `importName`, `callPath` | `entryKind` | Name and handler | Rule ID |
+| --- | --- | --- | --- | --- |
+| A worker thread, such as `new Worker('./worker.js', { workerData })` after `import { Worker } from 'node:worker_threads'` | `node:worker_threads`, `new Worker` | `worker-thread` | The worker file is the name (`nameArgument: 0`). The call has no handler (`handlerArgument: null`): the worker runs its file. | `node-worker-threads-worker` |
+| A worker thread after an import or a `require` of `worker_threads`, such as `const { Worker } = require('worker_threads')` | `worker_threads`, `new Worker` | `worker-thread` | The same | `worker-threads-worker` |
+| A BullMQ queue worker, such as `new Worker('foo', async job => { ... }, { connection })` after `import { Worker } from 'bullmq'` | `bullmq`, `new Worker` | `queue-worker` | The queue name is the name (`nameArgument: 0`) and the processor is the handler (`handlerArgument: 1`). Options can follow the processor, so the handler is not the last argument. | `bullmq-worker` |
+
+A worker candidate names the start site of the worker: its `range` and
+`expression` are the `new Worker(...)` call. `name` is the worker file or the queue
+name, as the call writes it. A worker thread runs its file, so its candidate has
+`handler: null`, with the `handlerReason` that the rule names no handler argument.
+The rules do not resolve a worker file to a snapshot file. Node.js resolves a
+relative path, such as `./worker.js`, from the working directory of the process,
+not from the file that starts the worker.
 
 The helper reads each file of the scope in the snapshot project of its graph
 group, with the compiler settings of the group, chosen as for the references
@@ -502,6 +520,35 @@ options object, such as `fastify.get('/', { schema, handler })`, `handler` is
 `null` with a reason, or the declaration of the options object when the last
 argument is its name.
 
+The worker and queue rules also do not find, or do not name, these workers:
+
+- A worker file that is not a string literal, such as `__filename`,
+  `new URL('./worker.js', import.meta.url)` or `path.join(__dirname, 'worker.js')`:
+  `name` is `null` with `nameReason`. The examples of the Node.js documentation
+  use `__filename` and `new URL(import.meta.url)`.
+- A worker thread with the option `eval: true`: the first argument is JavaScript
+  code, so `name` is that code, not a file.
+- A BullMQ sandboxed processor: the processor is the path of a file that BullMQ
+  runs in another process, not a function. A path as a string literal, such as
+  `new Worker('foo', './processor.js')`, and a URL that the call makes, such as
+  `pathToFileURL(file)`, give `handler: null` with a reason. A name, such as
+  `processorFile` after
+  `const processorFile = path.join(__dirname, 'my_processor.js')` as the BullMQ
+  guide writes it, gives the declaration of that variable as the handler. Read it
+  to find the processor file.
+- A BullMQ worker without a processor argument, such as `new Worker('my-queue')`
+  for jobs that the code fetches itself: the call does not have the handler
+  argument that the rule names, so it is not a candidate. A `null` processor gives
+  `handler: null` with a reason.
+- Web Workers: the `Worker` global of browser code, such as
+  `new Worker(new URL('./worker.js', import.meta.url), { type: 'module' })` with no
+  import. The rules find only the `Worker` class of an import of
+  `node:worker_threads`, `worker_threads` or `bullmq`.
+- A child process of `child_process.fork`, such as `fork('./child.js')`, and a
+  worker process of `cluster.fork()`: the list has no rule for processes.
+- The workers of other queue libraries, such as `queue.process(...)` of Bull, and
+  the `Worker` class of another package.
+
 | Record field | Meaning |
 | --- | --- |
 | `formatVersion`, `attemptId`, `snapshotRef`, `status` | `1`, the Stage 4 attempt ID, the snapshot ID, and `completed`, or `partial` when the limit of 10000 candidates omitted some. |
@@ -526,7 +573,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "snapshotRef": "snapshot-001",
   "status": "completed",
   "rulesRef": "s4-001-file@behavior-entry-rules.yaml",
-  "rulesSha256": "5427381cd3d7798bc605eafa1261fe6b3f9b70ab4665ecc91080c0bf1f8849a2",
+  "rulesSha256": "a877afb91a69355cabedda2a2319a001e1bace3729887bb21c558ab4e786c1e2",
   "settingsRef": "settings-001",
   "rolesRef": "review-001",
   "scope": {
