@@ -77,6 +77,12 @@ describe("callCandidates matches a call whose receiver comes from the import", (
     expect(candidatesIn({ [serverPath]: text })).toEqual([]);
   });
 
+  test("not an app that a parameter with a type of the import holds: a call rule has no type path", () => {
+    const text = "import express, { type Express } from 'express';\n" + handlerText +
+      "export function routes(app: Express) {\n  app.get('/orders', list);\n}\n";
+    expect(candidatesIn({ [serverPath]: text })).toEqual([]);
+  });
+
   test("a named export of the module, a new call and a call on the object that a new call makes", () => {
     const text = "import express, { Router } from 'express';\nimport { Worker } from 'node:worker_threads';\n" +
       "import { Hono } from 'hono';\n" + handlerText + "const router = Router();\nrouter.get('/orders', list);\n" +

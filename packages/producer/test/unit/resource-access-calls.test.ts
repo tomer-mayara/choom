@@ -63,6 +63,60 @@ describe("accessMatches matches a call whose receiver comes from the import", ()
   });
 });
 
+// A function that writes a row with a client of the type in `type`, imported as `imports` gives it.
+const typed = (imports: string, type = "Knex"): string => imports +
+  `export async function save(db: ${type}) {\n  await db('invoices').insert(row);\n}\n`;
+const typedCall = "db('invoices').insert(row)";
+
+describe("accessMatches matches a call whose receiver has a declared type of the import", () => {
+  const typedMatch = (text: string, call = typedCall): Record<string, unknown> =>
+    ({ ...matchAt(text, call), confidence: "receiver-type" });
+
+  test.each([
+    ["a parameter with a type of the import", typed("import type { Knex } from 'knex';\n")],
+    ["a parameter with the type or undefined", typed("import type { Knex } from 'knex';\n", "(Knex | undefined)")],
+    ["a type in a namespace of a default import", typed("import knex from 'knex';\n", "knex.Knex")],
+    ["a type alias of the snapshot", typed("import type { Knex } from 'knex';\ntype Database = Knex;\n", "Database")],
+    ["a type that another snapshot file exports", typed("import type { Database } from './db';\n", "Database")],
+  ])("%s", (_name, text) => {
+    const files = { [servicePath]: text, "src/db.ts": "import type { Knex } from 'knex';\nexport type Database = Knex;\n" };
+    expect(matchesIn(files)).toEqual([typedMatch(text)]);
+  });
+
+  test.each([
+    ["a parameter property of a class", "import { Knex } from 'knex';\nexport class InvoiceService {\n" +
+      "  constructor(private readonly db: Knex) {}\n\n  create() {\n    return this.db('invoices').insert(row);\n  }\n}\n",
+    "this.db('invoices').insert(row)"],
+    ["a property of a class", "import type { Knex } from 'knex';\nclass Store {\n  db?: Knex;\n\n" +
+      "  save() {\n    return this.db('invoices').insert(row);\n  }\n}\n", "this.db('invoices').insert(row)"],
+    ["a property of an interface", "import type { Knex } from 'knex';\ninterface Deps { db: Knex }\n" +
+      "export function save(deps: Deps) {\n  return deps.db('invoices').insert(row);\n}\n", "deps.db('invoices').insert(row)"],
+    ["a variable with the type and a value of another function", "import type { Knex } from 'knex';\n" +
+      "declare function connect(): Knex;\nconst db: Knex = connect();\ndb('invoices').insert(row);\n", typedCall],
+    ["a variable that holds a typed parameter", "import type { Knex } from 'knex';\nexport function save(client: Knex) {\n" +
+      "  const db = client;\n  return db('invoices').insert(row);\n}\n", typedCall],
+  ])("%s", (_name, text, call) => {
+    expect(matchesIn({ [servicePath]: text })).toEqual([typedMatch(text, call)]);
+  });
+
+  test("a variable with the type keeps the value of the import when it has one", () => {
+    const text = "import knex, { type Knex } from 'knex';\nconst db: Knex = knex({ client: 'pg' });\ndb('invoices').insert(row);\n";
+    expect(matchesIn({ [servicePath]: text })).toEqual([matchAt(text, typedCall)]);
+  });
+
+  test.each([
+    ["a type of another library", typed("import type { Knex } from 'other-db';\n")],
+    ["a type of the snapshot with the name of the type", typed("interface Knex { (table: string): " +
+      "{ insert(row: unknown): unknown } }\n")],
+    ["another type of the import", typed("import type { Knex } from 'knex';\n", "Knex.QueryBuilder")],
+    ["a union of two types", typed("import type { Knex } from 'knex';\n", "Knex | string")],
+    ["a method whose return type is the type", "import type { Knex } from 'knex';\nclass Store {\n  client(): Knex {\n" +
+      "    return connect();\n  }\n\n  save() {\n    return this.client('invoices').insert(row);\n  }\n}\n"],
+  ])("not %s", (_name, text) => {
+    expect(matchesIn({ [servicePath]: text })).toEqual([]);
+  });
+});
+
 describe("accessMatches records a literal name, and an unknown name with a reason", () => {
   test.each([
     ["a string literal", "'invoices'", "invoices", null],

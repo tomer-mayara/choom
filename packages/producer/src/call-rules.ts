@@ -13,7 +13,12 @@ import type { Checking, SourceRange } from './snapshot-references.ts';
 // namespace import, import = and require, a variable that holds a value of the
 // import or a part of it, and the imports and exports of other snapshot files. It
 // does not follow a function parameter. The default export, a namespace import and
-// require of a module are one value, as they are for a CommonJS package.
+// require of a module are one value, as they are for a CommonJS package. A value
+// that no import gives can have a declared type of an import instead: a parameter,
+// a variable or a property whose type annotation names a type that the import
+// exports, such as db: Knex. Its value path starts with one type step, type:Knex,
+// which only the type path of a rule has; type:Knex.Transaction names a type in a
+// namespace, and type: alone the type of the value of the module.
 type Ts = typeof TsMorph.ts;
 type Node = TsMorph.ts.Node;
 type TsSymbol = TsMorph.ts.Symbol;
@@ -66,6 +71,16 @@ export function rulePath(importName: string, callPath: string): RulePath {
   const module = moduleValue(importName);
   const path = steps.reduce((value, next) => step(value, next), head === importName ? module : step(module, '.' + head));
   return { ...path, newCall };
+}
+
+// The type path of a rule: the same call written from a type of its import. The
+// first name of the path is importName itself for the type of the value of the
+// module, and otherwise the name of a type that the module exports. The rule finds
+// the calls of its call path, new calls or not.
+export function typeRulePath(importName: string, typePath: string, callPath: string): RulePath {
+  const { head, steps } = callPathParts(typePath);
+  const type = { module: importName, steps: ['type:' + (head === importName ? '' : head)], calls: [] };
+  return { ...steps.reduce((value: ValuePath, next) => step(value, next), type), newCall: callPathParts(callPath).newCall };
 }
 
 // The expression inside parentheses and type or non-null assertions.
@@ -143,14 +158,65 @@ function symbolPath(query: Checking, symbol: TsSymbol | undefined, depth: number
   }
   const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
   if (declaration !== undefined && ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name))
-    return declaration.initializer === undefined ? undefined : valuePath(query, declaration.initializer, depth + 1);
+    return (declaration.initializer && valuePath(query, declaration.initializer, depth + 1)) ?? declaredType(query, declaration, depth);
   if (declaration !== undefined && ts.isExportAssignment(declaration)) return valuePath(query, declaration.expression, depth + 1);
-  if (declaration === undefined || !ts.isBindingElement(declaration)) return undefined;
+  if (declaration === undefined) return undefined;
+  if (!ts.isBindingElement(declaration)) return declaredType(query, declaration, depth);
   const holder = declaration.parent.parent;
   const name = propertyName(ts, declaration);
   const base = ts.isVariableDeclaration(holder) && holder.initializer !== undefined && name !== undefined
     ? valuePath(query, holder.initializer, depth + 1) : undefined;
   return base && name && step(base, '.' + name.text);
+}
+
+// The value path of a type of an import: one type step, with the names of the type.
+function typeOf(path: ValuePath | undefined): ValuePath | undefined {
+  if (path === undefined || !path.steps.every(part => part.startsWith('.'))) return undefined;
+  return { module: path.module, steps: ['type:' + path.steps.map(part => part.slice(1)).join('.')], calls: [] };
+}
+
+// The value of a name of a type or of a namespace: a name or a qualified name, such as knex in knex.Knex.
+function entityPath(query: Checking, name: TsMorph.ts.EntityName, depth: number): ValuePath | undefined {
+  const { ts, checker } = query;
+  if (ts.isIdentifier(name)) return symbolPath(query, checker.getSymbolAtLocation(name), depth + 1);
+  const left = entityPath(query, name.left, depth + 1);
+  return left && step(left, '.' + name.right.text);
+}
+
+// The type that a type name names: a type of an import, after the imports and exports
+// of snapshot files, or the type of a type alias of the snapshot.
+function namedType(query: Checking, name: TsMorph.ts.EntityName, depth: number): ValuePath | undefined {
+  const { ts, checker } = query;
+  if (depth > depthLimit) return undefined;
+  if (!ts.isIdentifier(name)) return typeOf(entityPath(query, name, depth + 1));
+  let symbol = checker.getSymbolAtLocation(name);
+  while (symbol !== undefined && symbol.flags & ts.SymbolFlags.Alias && inSnapshot(checker.getImmediateAliasedSymbol(symbol)))
+    symbol = checker.getImmediateAliasedSymbol(symbol);
+  const alias = symbol?.declarations?.find(item => ts.isTypeAliasDeclaration(item));
+  if (alias !== undefined) return typePath(query, alias.type, depth + 1);
+  return symbol !== undefined && symbol.flags & ts.SymbolFlags.Alias ? typeOf(importBinding(query, symbol.declarations?.[0])) : undefined;
+}
+
+// The type of a type node: a type reference, in parentheses or in a union with null or undefined.
+function typePath(query: Checking, node: TsMorph.ts.TypeNode, depth: number): ValuePath | undefined {
+  const { ts } = query;
+  let type = node;
+  while (ts.isParenthesizedTypeNode(type)) type = type.type;
+  const nullish = (item: TsMorph.ts.TypeNode): boolean => item.kind === ts.SyntaxKind.UndefinedKeyword ||
+    (ts.isLiteralTypeNode(item) && item.literal.kind === ts.SyntaxKind.NullKeyword);
+  const members = ts.isUnionTypeNode(type) ? type.types.filter(item => !nullish(item)) : [type];
+  const [only] = members;
+  return members.length === 1 && only !== undefined && ts.isTypeReferenceNode(only) ? namedType(query, only.typeName, depth + 1)
+    : undefined;
+}
+
+// The declared type of a parameter, a variable or a property with a type annotation. A
+// function or a method declares the type of what it returns, so it gives no type.
+function declaredType(query: Checking, declaration: Node, depth: number): ValuePath | undefined {
+  const { ts } = query;
+  const typed = ts.isParameter(declaration) || ts.isVariableDeclaration(declaration) || ts.isPropertyDeclaration(declaration) ||
+    ts.isPropertySignature(declaration);
+  return typed && declaration.type !== undefined ? typePath(query, declaration.type, depth + 1) : undefined;
 }
 
 // The value of an expression of the import, or undefined when it does not come from an import.
@@ -164,7 +230,8 @@ export function valuePath(query: Checking, node: Node, depth = 0): ValuePath | u
   if (loaded !== undefined) return moduleValue(loaded);
   const base = property?.object ?? (ts.isCallExpression(expression) || ts.isNewExpression(expression) ? expression.expression : undefined);
   const value = base === undefined ? undefined : valuePath(query, base, depth + 1);
-  if (value === undefined) return undefined;
+  // A property of a value that no import gives, such as this.db, can have a declared type of an import.
+  if (value === undefined) return property && symbolPath(query, checker.getSymbolAtLocation(property.name), depth + 1);
   if (property !== undefined) return step(value, '.' + property.name.text);
   return step(value, ts.isNewExpression(expression) ? 'new()' : '()', expression);
 }
