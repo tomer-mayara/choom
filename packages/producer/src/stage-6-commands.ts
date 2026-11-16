@@ -9,7 +9,7 @@ import { directory, ensureDirectory, file, fileNames, type OwnedFile, type Owned
   removeOwnedDirectories, requireNames, saveNew, stillOwned, withLock } from './stage-6-files.ts';
 import { type CheckedInventory, draftNames, loadYaml, plainId, readRegistry, type SnapshotIdentity, type TrustedYaml,
   verifyInventory } from './stage-6-inputs.ts';
-import { factKeys, packetFiles, readBaselineYaml, type RunRecord, validateRecords } from './stage-6-records.ts';
+import { factKeys, fixedDiscovery, packetFiles, readBaselineYaml, type RunRecord, validateRecords } from './stage-6-records.ts';
 
 // The Stage 6 helper. preflight and start check the finalized Stage 5 drafts and
 // the readiness packet; start saves the checkpoints, the packet and the prepared
@@ -134,17 +134,18 @@ function readStageFive({ drafts, packet, yaml }: { drafts: Files; packet: Files;
   const reservedIds = [refs.discoveryRef, ...attemptRecords.map(artifactId)];
   const counts = validateRecords({ run, baseline, discovery, artifacts, packet, draftDigests, reservedIds,
     inventory: verified.inventory, parse: yaml.parse, readSource: verified.readSource });
-  const fixed = discovery as Fields;
+  const working = discovery as Fields;
   assert(!artifacts.has(refs.baselineRef) && !artifacts.has(refs.discoveryRef) &&
     ![...artifacts.values()].some(item => [refs.baselinePath, refs.discoveryPath].includes(item.path)),
   'A fixed baseline or discovery artifact is already registered.');
+  // The fixed baseline is the reviewed baseline draft, byte for byte; the fixed discovery result names its SHA-256.
+  const fixed = fixedDiscovery(working, refs.baselineRef, drafts.get('baseline.yaml') as Buffer);
   const candidates = new Map([
     ['baseline.candidate.yaml', drafts.get('baseline.yaml') as Buffer],
-    ['discovery.candidate.yaml', Buffer.from(yaml.stringify({ ...fixed, baselineRef: refs.baselineRef }))],
+    ['discovery.candidate.yaml', Buffer.from(yaml.stringify(fixed))],
   ]);
-  assert(same(parse(candidates.get('discovery.candidate.yaml')), { ...fixed, baselineRef: refs.baselineRef }),
-    'Fixed discovery serialization changed the reviewed result.');
-  return { run, drafts, artifacts, candidates, facts: stageFacts({ run, refs, verified, artifacts, draftDigests, discovery: fixed }),
+  assert(same(parse(candidates.get('discovery.candidate.yaml')), fixed), 'Fixed discovery serialization changed the reviewed result.');
+  return { run, drafts, artifacts, candidates, facts: stageFacts({ run, refs, verified, artifacts, draftDigests, discovery: working }),
     validation: { formatVersion: 1, attemptId: id, runRef: refs.runRef, snapshotRef: refs.snapshotRef,
       baselineRef: refs.baselineRef, status: 'verified', registeredArtifactsVerified: artifacts.size,
       indexedFilesVerified: (verified.inventory.files as unknown[]).length, ...counts,

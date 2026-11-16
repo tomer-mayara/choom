@@ -59,9 +59,11 @@ beforeAll(async () => {
 
 afterAll(() => rmSync(fixture.root, { recursive: true, force: true }));
 
-// The fixed discovery result: the reviewed working discovery and the ID of the fixed baseline.
+// The fixed discovery result: the reviewed working discovery with formatVersion 2,
+// the ID of the fixed baseline and the SHA-256 of the saved baseline file.
 function fixedDiscovery(): string {
-  return stringify({ ...(parse(draft("discovery.yaml").toString("utf8")) as Json), baselineRef });
+  return stringify({ ...(parse(draft("discovery.yaml").toString("utf8")) as Json), formatVersion: 2, baselineRef,
+    baselineDigest: sha256(draft("baseline.yaml")) });
 }
 
 // The digests of the files of the trusted YAML package, by path in the package, in path order.
@@ -184,6 +186,12 @@ describe("Stage 6 actions on the producer fixture", () => {
     expect(runFile("discovery.yaml").toString("utf8")).toBe(fixedDiscovery());
     const { completedAt } = attemptJson("operator-finish.json");
     expect(runFile("run.yaml").toString("utf8")).toBe(expectedRunManifest(String(completedAt)));
+  });
+
+  test("the fixed discovery result names the saved baseline file by its ID and its SHA-256", () => {
+    const discovery = parse(runFile(discoveryPath).toString("utf8")) as Json;
+    expect(discovery).toMatchObject({ formatVersion: 2, baselineRef, baselineDigest: sha256(runFile(baselinePath)) });
+    expect(discovery.baselineDigest).toMatch(/^[0-9a-f]{64}$/);
   });
 
   test("verify reports the completed result and writes nothing", () => {

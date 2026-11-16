@@ -6,7 +6,7 @@ import { validateBehaviorCandidates } from './record-behavior-candidates.ts';
 import type { CandidateInputs } from './record-candidates.ts';
 import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
   from './record-baseline.ts';
-import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, strings, text } from './record-checks.ts';
+import { type Artifact, assert, exact, type Fields, hash, json, list, object, oneOf, strings, text } from './record-checks.ts';
 import { type MappedOwners, validateCodeMapping } from './record-code-mapping.ts';
 import { validateGraph } from './record-graph.ts';
 import { validateResourceCandidates } from './record-resource-candidates.ts';
@@ -470,4 +470,12 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
 // Stage 6 additionally supplies and validates a readiness packet.
 export function validateDiscoveryRecords(inputs: RecordInputs): RecordCounts {
   return validateRecords({ ...inputs, packet: undefined });
+}
+
+// The fixed discovery result that Stage 6 saves (formatVersion 2): the checked
+// working discovery with the ID of the fixed baseline and the SHA-256 of the bytes
+// of its saved file, as 64 lowercase hexadecimal characters. All other fields stay
+// the same, in the same order.
+export function fixedDiscovery(working: Fields, baselineRef: string, baselineFile: Buffer): Fields {
+  return { ...working, formatVersion: 2, baselineRef, baselineDigest: hash(baselineFile) };
 }
