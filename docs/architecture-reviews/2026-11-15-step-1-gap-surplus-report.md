@@ -131,7 +131,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 
 | Ticket | PR | State |
 |---|---|---|
-| Report | tomer-mayara/choom#57 | Draft |
+| Report | tomer-mayara/choom#57 | Merged into `main` (squash commit f99ca97). tomer-mayara/choom#58 still targets the old report branch: rebase the stack onto `main` and retarget tomer-mayara/choom#58 before it merges. |
 | GA-03a | tomer-mayara/choom#58 | Draft |
 | GA-01c | tomer-mayara/choom#59 | Draft |
 | GA-11a | tomer-mayara/choom#60 | Draft. The owner approved GA-11b, and with it the CR-004 text, on 2026-11-16 (recorded in the GA-11b1 PR). |
@@ -166,6 +166,10 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-08 | tomer-mayara/choom#89 | Draft. This PR also records plan change 17 and D23 (path A, which replaces D15). Every plugin stays `false`. The plugin patterns are copied into the Stage 2 profile, and Stage 4 lists their files with `found: knip-plugin-pattern`. The first real run of the `@docker` scenarios is in CI. |
 | GA-11b1 | tomer-mayara/choom#90 | Draft. This PR also records the owner's approval of GA-11b and the CR-004 text, and plan change 18. The Stage 6 helper is now TypeScript, with no change of behavior. Stage 6 saves discovery version 2 with `baselineDigest`, and `verify` checks it. |
 | GA-11b2 | tomer-mayara/choom#91 | Draft. The viewer part of CR-004: a discovery contract and decoder (refuses version 1 and another baseline digest), placement on baseline items with an Unplaced list and a deferred group, the duplication report's load rules, and Copy decision (a GA-01a `accept` entry). Stage 6 also checks the fixed discovery result with the viewer contract, so the producer cannot publish a result that the viewer refuses. |
+| Review fixes A1–A6 | tomer-mayara/choom#92 | Draft. Plan change 19. Stage 6 saves the fixed discovery result as the viewer reads it; `baseline decide` runs the checks of `baseline next` and saves a record all or nothing; no Copy decision on a next version; files are divided only with the pinned ts-morph. The CI `web` job now has 25 minutes. |
+| Review fixes C1–C6 | tomer-mayara/choom#93 | Draft. Plan change 19. `import()` in a `.cts` file gets the condition that TypeScript gives it; a type shim keeps the import of its package; CommonJS exports are followed; candidates keep the order of the scope files; one copy of the candidate limit and of the source-file rule; a resource type path needs a step. |
+| Review fixes D1–D6 | tomer-mayara/choom#94 | Draft. Plan change 19. The `package-bin` rule reads strict JSON, arrays and large files as npm does; `export default function` settings get the right reason; the GA-08 settings-file filter is documented as a test of names; plugins that Knip turns on without a dependency are recorded. |
+| Review fixes B1–B7 | tomer-mayara/choom#95 | Draft. This PR also records plan change 19. An action on a published Stage 2 or Stage 3 attempt changes nothing; Stage 2 finish checks every phase again; Stage 2 checks the snapshot inventory with checkout code; more saved forms of hidden reasoning are refused; one shared evidence resolver; the question and gap contract is checked where each record enters; Stage 1 reserves the baseline ID. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
@@ -195,10 +199,10 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
    1254). One layout scenario, "the full two-line name, both entry counts, and
    duplication marker fit in the component header", fails locally on the base
    before any change. CI passes it.
-6. **D4 refinement, proposed:** a mechanical edit does not trigger the
-   TypeScript conversion. A mechanical edit changes only an import path, an
-   entry in a list, a mount path or a comment. A change to the logic of a file
-   still converts it first (rule 5).
+6. **D4 refinement (approved with plan changes 6 to 16):** a mechanical
+   edit does not trigger the TypeScript conversion. A mechanical edit changes
+   only an import path, an entry in a list, a mount path or a comment. A change
+   to the logic of a file still converts it first (rule 5).
    - GA-00c made only mechanical edits to `.mjs` files: the import path in
      `stage-4-5-publish.mjs`, the import path and one entry of the reserved-ID
      list in `stage-6-commands.mjs`, and the expected messages in
@@ -206,8 +210,9 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
    - GA-00e did more. In each of the seven Stage 3–6 helpers it added the
      producer-code check, removed the old saved-copy comparisons and changed
      paths (59 lines added, 57 removed in total). It did not convert them,
-     because the edits were small. The owner decides if this exception stays.
-     Each of these files is converted when a later ticket changes its logic
+     because the edits were small. The owner approved this exception with
+     plan changes 6 to 16. Each of these files is converted when a later
+     ticket changes its logic
      (GA-12 converts `stage-3-finish.mjs` and `stage-4-5-publish.mjs`).
 7. **GA-12 scope.** The check covers every saved LLM call. Stage 6 also saves
    one, in its readiness packet, which the ticket did not list. There is no
@@ -311,6 +316,20 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
       stays version 1, because only Stage 6 knows the fixed baseline bytes.
     - **GA-11b2 (viewer):** the steps of GA-11b in `@choom/baseline-model` and
       the viewer, as CR-004 says.
+19. **Final review of the stack (2026-11-16; the owner has not reviewed it
+    yet).** A review of the whole stack (tomer-mayara/choom#58 to
+    tomer-mayara/choom#91) found 25 defects in four areas. A reviewer probe or a
+    clear code path showed each one. Four PRs fix them, each fix with a test
+    that failed first. They are stacked on GA-11b2 in this order:
+    tomer-mayara/choom#92 (A), tomer-mayara/choom#93 (C), tomer-mayara/choom#94
+    (D) and tomer-mayara/choom#95 (B).
+    - **CI:** the `web` job now has 25 minutes, not 15. Its main step grew from
+      7 min 15 s on GA-00c to 12 min 46 s on GA-11b2, and the first run of
+      tomer-mayara/choom#92 stopped at the 15-minute limit.
+    - **D5 changes no behavior:** the documents now say that the GA-08
+      settings-file filter tests only names, and they list its known misses. A
+      list of settings files kept by hand needs an owner decision.
+    - "Open after the final review" below lists what stays open.
 
 ### How to work every ticket
 
@@ -402,7 +421,7 @@ record its current behavior.
 | D19 | G4 | Git identity only. History is left to Step 2 planning. |
 | D20 | Old discovery files in the viewer | Approved by the owner on 2026-11-15. The viewer refuses a discovery result without `baselineDigest`, because an ID alone can match the wrong baseline. Old runs need a new run to show in the viewer. |
 | D22 | Format of the decision file | Approved by the owner on 2026-11-15. The decision file is YAML, as the CR-004 text says. The producer reads it with the bounded YAML profile of a baseline and saves its exact bytes as `decisions/<id>.yaml`. |
-| D23 | G8 | Approved by the owner on 2026-11-16 (path A). It replaces D15, because Knip 6.44.1 still runs settings files that package scripts name, even with `config: []`. Every Knip plugin stays `false`. For each plugin whose package is a dependency of a manifest, Stage 2 copies the plugin's default `entry` and `production` patterns from the installed Knip, with the plugin, the dependency and the manifest. Patterns of settings files are not copied. Lost: plugin `resolve` steps (such as Vite's `index.html` start files), the `.vue`, `.svelte` and `.astro` readers, and the plugins' syntax visitors. |
+| D23 | G8 | Approved by the owner on 2026-11-16 (path A). It replaces D15, because Knip 6.44.1 still runs settings files that package scripts name, even with `config: []`. Every Knip plugin stays `false`. For each plugin whose package is a dependency of a manifest, Stage 2 copies the plugin's default `entry` and `production` patterns from the installed Knip, with the plugin, the dependency and the manifest. Patterns of settings files are not copied. Lost: plugin `resolve` steps (such as Vite's `index.html` start files), the `.vue`, `.svelte` and `.astro` readers, and the plugins' syntax visitors. Review fixes D5 and D6 (tomer-mayara/choom#94): the settings-file filter tests only names, so it has known misses, which the Stage 2 cookbook lists. For example, it copies `vercel.*` and `dangerfile.*`, and it leaves out one Mastra pattern. A plugin that Knip turns on without a dependency, such as `node` or `yarn`, is recorded in `pluginsNotCopied`, and none of its patterns is copied. |
 
 ### Ticket map and order
 
@@ -1385,8 +1404,75 @@ you want them fixed:
   `src/platform` files two owners (`src/domain/starter-baseline.ts:10-17`).
   This is a small fix: add `parent` links or `excludePaths`.
 - **Defect 4:** the Knip image base tag and its transitive dependencies are not
-  pinned (`step-2-cookbook.md:663-665`).
+  pinned (`packages/producer/src/stage-2-tool-image.ts:15`, and the same text
+  in `packages/producer/src/stage-4-commands.ts:330`; GA-00b2 moved it out of
+  `step-2-cookbook.md`).
 - **P1–P13:** the partial findings. GA-11b works around P1 (unknown subjects
   become "Unplaced"). GA-00c fixes defect 1. GA-12 and GA-00e touch P7 but do
   not close it (P7 also asks for a prompt-version field, a template check, and
   a check that cited evidence was supplied).
+
+### Open after the final review
+
+Every ticket of this plan has a draft PR (tomer-mayara/choom#58 to
+tomer-mayara/choom#91, and tomer-mayara/choom#66 for the plan update). The
+review-fix PRs are tomer-mayara/choom#92 to tomer-mayara/choom#95. These
+items stay open.
+
+**Owner decisions:**
+
+- D21 (plan change 4): a symbol name is any JavaScript identifier name, with no
+  reserved-word list. GA-02a does this as proposed.
+- Plan change 18 (the GA-11b split) and plan change 19 (the final review,
+  with the CI `web` job limit of 25 minutes).
+- D5: keep the GA-08 settings-file filter as a test of names, or keep a list of
+  settings files by hand. Some files are unclear, such as `dangerfile.*`,
+  `plopfile.*` and `sanity.config.*`.
+
+**Before the stack merges:**
+
+- tomer-mayara/choom#58 targets the old report branch (see the PR table).
+- The branch `claude/gracious-sagan-q3vcj9-flaky-header` fixes the flaky
+  scenario "Reach a large header with the keyboard". It has no PR yet.
+
+**Limits that the PRs record and do not fix:**
+
+- Producer:
+  - `recover-capture.ts` still saves `settings.mts` in the new run folder and
+    runs it, as B3 was for `inventory.mjs`.
+  - Suspected, not shown by a probe: the publisher can register stray files
+    of an attempt folder.
+  - Stage 2 finish refusals print a stack trace.
+  - A bad `%` escape in an evidence reference gives a bare "URI malformed".
+- Hidden reasoning (GA-12): a key such as `reasoning_content`, a string field
+  named `thinking`, and tags in fenced blocks or inline code are not refused.
+- Questions and gaps: Stages 1 to 3 count the 4 MiB text budget only over the
+  questions and gaps. A draft near that limit can still fail at Stage 6.
+- Entry and resource rules:
+  - The rules do not follow a function parameter (`routes(app)`) or a value in
+    an object literal.
+  - Next.js finds its entries from its folders, and no rule reads them.
+  - A global `declare var require` in a snapshot `.d.ts` turns off every
+    JavaScript `require` match, with no gap.
+  - The deprecated `module` settings None, AMD, UMD and System give the
+    `require` condition.
+  - `export { config as default }` gives the reason "has no export default".
+  - A `package.json` over 64 MiB with a `bin` field gives a candidate that the
+    publisher refuses.
+  - Stage 1 and Stage 2 refuse a `package.json` with a byte order mark, and
+    Stage 4 reads it.
+- Code units: the Stage 5 `parts` request is not required, and the site checks
+  in a divided file stay at file level.
+- Viewer:
+  - Lists are not virtualized: 5,000 unplaced records take about 3 s to show.
+  - Inter is not bundled, so the layout depends on the fonts of the system. With
+    DejaVu Sans and a root font size of 110%, the plot at 320×640 is smaller
+    than 100 px.
+- Copies that a later DRY ticket can share:
+  - the safe-path rule (about 12 copies) and the frame-wait helpers of the
+    browser tests (7);
+  - the trusted-checkout loaders, and `safe`, `directory` and the digest check
+    in several producer modules;
+  - the bounded YAML reader in the producer and in the viewer;
+  - the 4 MiB string budget in the app and in `@choom/baseline-model`;
+  - the source-file rule in `stage-3-collect.ts`.
