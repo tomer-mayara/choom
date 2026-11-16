@@ -523,6 +523,11 @@ with the user. Give the next team the complete working folder and the fixed
 discovery path.
 The discovery record is the entry point into the result. A diagram or prose
 summary is a view of those records, not a substitute for them.
+A reader can attach the fixed discovery result to its baseline in the viewer
+(**Discovery**, then **Open discovery result**) to read its questions and gaps
+beside the items that they name, and copy a decision-file entry for a statement.
+The viewer needs discovery `formatVersion: 2`; see
+[CR-004](../../change-requests/CR-004-discovery-in-viewer.md).
 Include any `run-notes.md` corrections and the tool revision used for the run.
 State that duplicated interfaces are **not checked**, with the reason, unless a
 separate assessment already exists. Hand off the fixed baseline, snapshot and

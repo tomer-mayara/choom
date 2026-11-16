@@ -167,3 +167,28 @@ Ticket GA-11b in the
 [Step 1 gap report](../architecture-reviews/2026-11-15-step-1-gap-surplus-report.md#ga-11b-viewer-shows-discovery-questions-and-gaps)
 implements this change. It starts with the acceptance scenarios that the report
 lists. The **Copy decision** action needs GA-01a first.
+
+GA-11b has two parts. GA-11b1 does the producer work above. GA-11b2 does the
+viewer work:
+
+- The [acceptance scenarios](../../cookbook/behavior/baseline-viewer/discovery-result.feature)
+  open a discovery result, refuse a result for another baseline file, and copy a
+  decision.
+- [discovery-result.tsp](../../cookbook/interfaces/discovery-result.tsp) is the
+  contract of the part that the viewer reads. `validateDiscoveryResult` in
+  `@choom/baseline-model/discovery-result` checks a result against a saved
+  baseline file: the kind, version 2, the fields, the limits, the unique IDs, and
+  the baseline ID and digest. The producer can use the same check.
+- `src/lib/discovery-result-yaml.ts` reads the selected file with the bounded YAML
+  reader of a baseline, with the outcomes of
+  [discovery-result-codec.tsp](../../cookbook/interfaces/discovery-result-codec.tsp).
+  `src/lib/discovery-placement.ts` places each question and gap on the items that
+  it names.
+- `LoadWorkflow` in `src/architecture/load-workflow.ts` attaches the result with
+  the rules of the duplication report.
+- The **Discovery** panel, the component badge, the lists in the item details and
+  **Copy decision** are in `src/components/`: `discovery-panel.tsx`,
+  `discovery-records.tsx`, `component-header.tsx` and `copy-decision.tsx`. The
+  copied entry is an `accept` entry of the GA-01a decision file
+  (`src/lib/decision-entry.ts`). The desktop picker gets a title for the new file
+  kind and uses the same read-only document command.

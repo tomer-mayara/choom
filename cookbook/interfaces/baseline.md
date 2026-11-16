@@ -156,6 +156,26 @@ rules, so the viewer accepts it as any other baseline. The
 [record format](../../docs/design/app-a/record-format.md#next-baseline-version)
 gives the producer command that saves it.
 
+The [discovery result contract](discovery-result.tsp) defines the part of a fixed
+discovery result, `formatVersion: 2`, that the viewer reads: `kind`,
+`baselineRef`, `baselineDigest`, `questions` and `gaps`. The other top-level
+fields of the [record format](../../docs/design/app-a/record-format.md#discovery)
+must be present, and the viewer does not read their values. A question has
+exactly `id`, `subjectRefs`, `text` and `evidenceRefs`; a gap has exactly `id`,
+`kind`, `subjectRefs`, `reason` and `evidenceRefs`. Any gap kind is kept.
+`validateDiscoveryResult` in `@choom/baseline-model/discovery-result` takes the
+parsed value and a baseline with the SHA-256 of its saved bytes, reads no file,
+and returns the result or its first problem. It checks, in order: the kind; the
+format version (version 1 has no digest, decision D20); the fields and the
+limits; the IDs, which are unique across questions and gaps; and the baseline ID
+and digest. The limits are 5,000 questions and gaps together, 1 to 100 subject
+references each, at least one evidence reference, 16 KiB of UTF-8 for a text,
+4 KiB for an ID, a kind or a reference, and 4 MiB for all string values of the
+file together, counted as for the duplication report. A limit refuses the file;
+no record is dropped. The viewer places a question or gap on each component,
+interface, resource and rule whose ID equals a subject reference or starts it
+before a dot, and lists a record with a subject that names no item as unplaced.
+
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
 copies of the reviewed empty and full `work-choom` baselines. Tests use repository
 paths and need no external checkout or companion records. The version 5 example
@@ -193,6 +213,7 @@ bun test ./test/interface/domain/baseline.test.ts
 bun test ./test/interface/domain/interface-documentation.test.ts
 bun test ./packages/baseline-model/test/unit/baseline-decisions.test.ts ./test/interface/domain/baseline-decisions.test.ts
 bun test ./packages/baseline-model/test/unit/item-statements.test.ts
+bun test ./packages/baseline-model/test/unit/discovery-result.test.ts ./test/interface/domain/discovery-result.test.ts
 bun run test:integration
 bun run check:contracts
 ```

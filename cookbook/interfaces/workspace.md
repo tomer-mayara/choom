@@ -41,6 +41,16 @@ a failed baseline open preserves it. **Remove report** clears the attachment,
 invalidates pending report results and clears report-specific retry state. It
 does not write either file or cancel a baseline load.
 
+**Open discovery result** uses the same load slot and the same rules. The
+[discovery codec](discovery-result-codec.tsp) refuses version 1, which has no
+baseline digest, and binds a version 2 result to the baseline ID and the SHA-256
+of the original file bytes. It checks the complete file before the workflow
+attaches it in one step. A refused, failed or cancelled load and a late result
+keep the baseline and both attachments. A successful baseline open removes the
+discovery result too. **Remove discovery result** removes only the discovery
+result, its pending load and its retry state. The duplication report and the
+discovery result are independent; both can be attached.
+
 **Retry** rereads the resolved selection when available. If selection itself
 failed, Retry opens the picker again. A browser File that is no longer readable
 produces safe guidance to select the corresponding baseline or report again.
@@ -51,8 +61,8 @@ exceptions produce a bounded stage-specific error without raw paths or text.
 ## Publication and rendering
 
 [workspace-view.ts](../../src/architecture/workspace-view.ts) exposes Open
-Baseline, Open duplication report, Remove report, Cancel, Retry, subscriptions,
-and snapshot queries. Disposal stays
+Baseline, Open duplication report, Remove report, Open discovery result, Remove
+discovery result, Cancel, Retry, subscriptions, and snapshot queries. Disposal stays
 with the owner. The workflow copies and deeply freezes each baseline and layout
 before publication, including recursive rule JSON, statement lists, and positions.
 It does not freeze references held by collaborators. Repeated snapshot reads
@@ -60,6 +70,8 @@ are stable; later progress reuses the current baseline and layout.
 Subscription changes during notification do not repeat the same notification.
 Reports are also copied and deeply frozen before publication. The
 [report contract](interface-duplication.md) defines bounds and binding rules.
+Discovery results are copied and frozen in the same way; the
+[baseline notes](baseline.md) give their bounds and placement rules.
 
 Duplicates uses the existing inspector. Finding counts include directly owned
 interfaces and exclude justified distinctions. Unknown-owner findings remain
@@ -82,6 +94,8 @@ below the parent inspection header. Missing or invalid output fails the load.
 that prepared data without file access or layout work. It gives React Flow its
 own mutable position records. Components show their names and the number of
 interfaces they directly own. Counts exclude descendant and unknown owners.
+With an attached discovery result, a component also shows the number of
+recorded questions and gaps that name it or one of its fields.
 A parent has a border around its children and one small inspection header.
 Names can wrap to two lines in a bounded header. Accessible names and panel
 details keep the full text. ELK rectangle packing prepares the component overview.

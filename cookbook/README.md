@@ -31,6 +31,11 @@ behavior too: Stage 2 copies the default entry patterns of Knip plugins and neve
 It owns the [discovery digest](behavior/producer/discovery-digest.feature)
 behavior too: Stage 6 binds the discovery result to the saved baseline file by its SHA-256.
 
+The workspace also owns the [discovery result](behavior/baseline-viewer/discovery-result.feature)
+behavior: a reader attaches the discovery result of the open baseline file, reads
+its recorded questions and gaps beside the items that they name, and copies a
+decision-file entry. The baseline model owns its [contract](interfaces/discovery-result.tsp).
+
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
 baseline file input to validation, layout, and the view. The baseline model,
 duplication model, and desktop adapter have separate import boundaries. The

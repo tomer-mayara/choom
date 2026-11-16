@@ -268,6 +268,51 @@ See the [report contract](cookbook/interfaces/interface-duplication.md),
 [assessment commands](docs/design/app-a/duplication-assessment.md), and
 [CR-002](docs/change-requests/CR-002-duplicated-interface-detection.md).
 
+## Discovery questions and gaps
+
+After opening a saved baseline, choose **Discovery**, then **Open discovery
+result**. Select the `discovery.yaml` of the run that saved the baseline. It must
+have `formatVersion: 2`, and its `baselineRef` and `baselineDigest` must match
+the ID and the SHA-256 of the original baseline file bytes. The viewer refuses
+version 1, which has no digest, because an ID alone can match the wrong
+baseline. Make a new run with a producer that writes version 2. The built-in
+example has no file digest, so it cannot have a discovery result.
+
+The viewer reads only the selected file. It does not open the files that the
+result names, load evidence or run checks. It shows each recorded question and
+gap beside the items that it names. A subject reference names an item when it
+equals the item's ID or starts with the ID and a dot, such as `billing.purpose`.
+A component header shows the number of recorded questions and gaps about the
+component or its fields; those about its interfaces are in the interface
+details. The details of each component, interface, resource and rule list the
+records that name it. **Unplaced** in the Discovery panel lists the records with
+a subject that names no item, such as a file. Deferred gaps have their own group,
+which the reader can collapse. A gap kind that the viewer does not know keeps
+its recorded text.
+
+The lists keep their history, so the viewer says **recorded questions** and
+**recorded gaps**, never open or unresolved. They are items to review, **not
+defects**. Without an attachment, the viewer says **No discovery result
+attached**.
+
+The limits are 16 MiB with the parser limits of a baseline, 5,000 questions and
+gaps together, 100 subject references for each, 16 KiB of UTF-8 for a text,
+4 KiB for an ID or a reference, and 4 MiB for all text values together. A larger
+file is refused with a message; no record is dropped. Loading follows the rules
+of the duplication report: one load at a time, Cancel and Retry, and a refused
+file keeps the baseline and both attachments. Opening another baseline removes
+the discovery result, and **Remove discovery result** removes only the
+discovery result. A duplication report and a discovery result can be attached
+together.
+
+Each proposed statement in the details panel has **Copy decision**. It copies an
+`accept` entry of the [decision file](docs/design/app-a/record-format.md#decision-record)
+for that statement, after a YAML comment that names the baseline ID and file
+digest. To correct the value, change the action to `correct` and add `oldValue`
+and `newValue`. The producer records the decision; the viewer changes no file
+and not the open baseline. An accepted statement and the built-in example have
+no Copy decision. See [CR-004](docs/change-requests/CR-004-discovery-in-viewer.md).
+
 ## Development commands
 
 | Command | Purpose |
@@ -403,6 +448,23 @@ bun test --preload ./test/preload.ts ./test/unit/components/interface-duplicatio
 bun run test:e2e --tags @interface-duplication
 bun run test:behavior:packaged --tags @interface-duplication
 ```
+
+Run the discovery result checks with:
+
+```sh
+bun test ./packages/baseline-model/test/unit/discovery-result.test.ts ./test/interface/domain/discovery-result.test.ts
+bun test ./test/interface/lib/discovery-result-yaml.test.ts ./test/interface/lib/decision-entry.test.ts
+bun test ./test/unit/lib/discovery-placement.test.ts ./test/unit/architecture/discovery-workflow.test.ts
+bun test --preload ./test/preload.ts ./test/unit/components/discovery-result.test.tsx ./test/unit/components/copy-decision.test.tsx
+bun run test:e2e --tags @discovery-result
+```
+
+The unit suite of `@choom/baseline-model` checks the kind, version 1, the
+binding, the repeated IDs and each limit at its bound. The interface suites
+compare the generated schema of the contract with the runtime schema, check the
+codec outcomes and check a copied entry with `validateDecisions` of the decision
+contract. The browser scenarios open a baseline and a hand-written version 2
+discovery result through the real file inputs.
 
 Run the system-entry marker checks with:
 
@@ -1056,6 +1118,8 @@ baseline (`validateDecisions`) and makes the next version from it
 (`nextBaselineVersion`). The `./item-statements` export lists the
 statements of a baseline with their paths, for the decision checks, the
 producer record checks and the viewer's Recorded statements.
+The `./discovery-result` export checks a version 2 discovery result against a
+saved baseline file (`validateDiscoveryResult`), for the viewer.
 
 The [producer](packages/producer/component.yaml) is the `@choom/producer` Bun
 workspace. It holds the manual Stage 1 to 6 helpers, the duplication helpers,
