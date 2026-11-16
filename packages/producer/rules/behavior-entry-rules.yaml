@@ -16,3 +16,69 @@ rules:
     callPath: express().get
     nameArgument: 0
     handlerArgument: last
+  # The other route methods of an Express app, such as app.post('/orders', createOrder)
+  # after const app = express(). Each rule finds one method, so the rule names the method
+  # of its candidate. The path is the name and the last argument is the handler.
+  - id: express-route-post
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-put
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-patch
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-delete
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-options
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-head
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().head
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-all
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().all
+    nameArgument: 0
+    handlerArgument: last

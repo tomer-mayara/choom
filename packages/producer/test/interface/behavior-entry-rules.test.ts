@@ -63,13 +63,13 @@ test("call and settings-literal rules conform at both boundaries without a chang
   expect(checkRuleList(input)).toEqual(input);
 });
 
-test("the pinned rule list of the producer conforms at both boundaries and holds the starter rule", () => {
+// The unit test of the rule samples checks what each rule of the list finds.
+test("the pinned rule list of the producer conforms at both boundaries and keeps the starter rule unchanged", () => {
   const bytes = readFileSync(join(toolsRoot, behaviorEntryRulesPath));
   const list = readRuleList(bytes, yaml);
   expect(structure(yaml.parse(bytes.toString("utf8")))).toBe(true);
-  expect(list).toEqual({ formatVersion: 1, rules: [{ id: "express-route-get", version: 1, library: "express",
-    entryKind: "http-route", kind: "call", importName: "express", callPath: "express().get", nameArgument: 0,
-    handlerArgument: "last" }] });
+  expect(list.rules).toContainEqual({ id: "express-route-get", version: 1, library: "express", entryKind: "http-route",
+    kind: "call", importName: "express", callPath: "express().get", nameArgument: 0, handlerArgument: "last" });
 });
 
 test.each<[string, Change]>([
