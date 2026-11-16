@@ -28,7 +28,7 @@ const llmCall = { provider: "unknown", model: "unknown", date: "unknown", settin
 
 // The order of the files in the inventory of a Stage 1 capture: the names of each
 // folder in sorted order. Stage 2 start and finish compare the inventory with the snapshot.
-function captureOrder(snapshot: SnapshotFile[]): SnapshotFile[] {
+export function captureOrder(snapshot: SnapshotFile[]): SnapshotFile[] {
   const compare = (first: string[], second: string[]): number => {
     const index = first.findIndex((name, at) => name !== second[at]);
     return index < 0 ? 0 : (first[index] as string) < (second[index] as string) ? -1 : 1;

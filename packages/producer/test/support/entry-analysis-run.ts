@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { inspectStageFour, type StageFourAttempt, startStageFour } from "../fixtures/stage-4-publication/fixture.ts";
 import { type CommandResult, makeScratch, removeScratch } from "./commands.ts";
 import type { KnipProject } from "./knip-plugin-projects.ts";
-import { entryAnalysis, finishAttempt, planPacket, priorQuestion, stageTwo, stageTwoAttempt, type StageTwoAttempt }
+import { captureOrder, entryAnalysis, finishAttempt, planPacket, priorQuestion, stageTwo, stageTwoAttempt, type StageTwoAttempt }
   from "./stage-2-attempt.ts";
 import { finishStageThree, stageThreeAttempt } from "./stage-3-attempt.ts";
 import { stagedRun, stagedSnapshotRef } from "./staged-run.ts";
@@ -36,8 +36,9 @@ function completed(label: string, results: Record<string, CommandResult>): void 
 
 function runStageTwo(root: string, project: KnipProject): StageTwoAttempt {
   const work = join(root, "stage-2-run");
-  // Stage 4 collect reads the role records of the Stage 1 review; this one has none.
-  stagedRun(work, 1, { snapshot: project.snapshot, questions: [priorQuestion], review: { formatVersion: 1,
+  // Stage 4 collect reads the role records of the Stage 1 review; this one has none. Stage 2
+  // start checks that the inventory lists the snapshot files in the order of a Stage 1 capture.
+  stagedRun(work, 1, { snapshot: captureOrder(project.snapshot), questions: [priorQuestion], review: { formatVersion: 1,
     snapshotRef: stagedSnapshotRef, reviewedFiles: [], roles: [], workspaceDeclarations: [], questions: [], gaps: [],
     llmReview: "recorded" } });
   const attempt = stageTwoAttempt(work, "s2-check");
