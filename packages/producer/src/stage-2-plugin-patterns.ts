@@ -4,9 +4,10 @@
 // settings file, which can be a script. Instead the profile copies the static
 // `entry` and `production` patterns of each such plugin into the entry patterns of
 // the workspace, in the form that Knip gives a production entry (a final `!`), and
-// records their source. A pattern that names a settings file stays out, so the
-// settings file stays a plain file, and a negation stays out, because in the entry
-// patterns of a workspace it would also remove other entries.
+// records their source. A pattern that looks like a settings file by its name stays
+// out, so such a file stays a plain file, and a negation stays out, because in the
+// entry patterns of a workspace it would also remove other entries. The settings-file
+// test reads only names, so it has known misses (see namesSettingsFile).
 
 // The fields of a plugin definition of Knip 6.44.1 that the selection reads. `enablers`
 // holds dependency names and patterns, or a text when files turn the plugin on.
@@ -33,11 +34,13 @@ export interface PluginPatterns { copied: CopiedPattern[]; patternsNotCopied: Pa
 export const pluginReasons = {
   noStaticPatterns: 'Knip 6.44.1 gives this plugin no static entry or production patterns: its entries come from its ' +
     'settings file or from its own code, which this profile does not run.',
-  everyPatternLeftOut: 'Each static pattern of this plugin names a settings file or is a negation, so the profile copies none.',
+  everyPatternLeftOut: 'Each static pattern of this plugin looks like a settings file by its name or is a negation, so the ' +
+    'profile copies none.',
   rootOnly: 'Knip 6.44.1 uses this plugin only in the root workspace.',
   notWorkspace: 'The manifest is not the manifest of a workspace of the entry plan, so the profile has no entry patterns ' +
     'for its folder.',
-  settingsFile: 'The pattern names a settings file, which stays a plain file and not an entry.',
+  settingsFile: 'The pattern looks like a settings file by its name: it is a settings-file pattern (config) of a plugin, or ' +
+    'its file name holds config or its first part ends with rc. Such a file stays a plain file, not an entry.',
   negation: 'The pattern is a negation. In the entry patterns of the workspace, it would also remove the entries of the ' +
     'plan and of the other plugins.',
   notRelative: 'The pattern is not a relative pattern in the workspace.',
@@ -68,10 +71,14 @@ function dependencyFor(plugin: KnipPlugin, names: string[]): string | undefined 
   return undefined;
 }
 
-// Whether a pattern names a settings file: a settings-file pattern (`config`) of a
-// plugin of Knip, or a file name that holds `config` or that ends with `rc`, such
-// as `tailwind.config.{js,ts}` or `.bumprc`. Some plugins of Knip 6.44.1 list their
-// settings files as entry patterns.
+// Whether a pattern looks like a settings file by its name: a settings-file pattern
+// (`config`) of a plugin of Knip, or a file name that holds `config` or whose first
+// part ends with `rc`, such as `tailwind.config.{js,ts}` or `.bumprc`. Some plugins of
+// Knip 6.44.1 list their settings files as entry patterns, and Knip marks only the
+// `config` patterns as settings files. So this test of names has known misses, which
+// the Stage 2 cookbook lists: it is false for settings files such as
+// `vercel.{js,mjs,cjs,ts,mts}` and `dangerfile.{js,cjs,mjs,ts}`, and true for the Mastra
+// agent pattern of the `config`, `instructions`, `memory` and `workspace` files.
 function namesSettingsFile(pattern: string, settingsPatterns: Set<string>): boolean {
   const fileName = pattern.slice(pattern.lastIndexOf('/') + 1);
   return settingsPatterns.has(pattern) || /config/i.test(fileName) || /rc$/i.test(fileName.replace(/^\./, '').split('.')[0] ?? '');

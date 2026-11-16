@@ -134,8 +134,13 @@ writeFileSync(join(attempt, 'preflight.json'), JSON.stringify({
   limits: ['Every Knip plugin is turned off, so Knip loads no settings file of the target.',
     'For each plugin that a dependency or a development dependency of a workspace manifest turns on, or of the manifest ' +
     'of a workspace that holds it, the profile copies the default entry and production patterns of the plugin from Knip ' +
-    '6.44.1 into the entry patterns of the workspace (pluginEntryPatterns). A pattern that names a settings file and a ' +
-    'negation are not copied (pluginPatternsNotCopied). A plugin without static patterns adds nothing (pluginsNotCopied).',
+    '6.44.1 into the entry patterns of the workspace (pluginEntryPatterns). A pattern that looks like a settings file by ' +
+    'its name and a negation are not copied (pluginPatternsNotCopied). A plugin without static patterns adds nothing ' +
+    '(pluginsNotCopied).',
+    'The settings-file test reads only names: a settings-file pattern (config) of a plugin, or a file name that holds ' +
+    'config or whose first part ends with rc. So the profile copies some settings files, such as ' +
+    '.dependency-cruiser.{js,cjs,mjs,json}, vercel.{js,mjs,cjs,ts,mts} and dangerfile.{js,cjs,mjs,ts}, and it does not ' +
+    'copy the Mastra pattern of the config, instructions, memory and workspace files of an agent.',
     'Only these file-name patterns come from the plugins. The profile runs no plugin code, so it loses the entries that ' +
     'this code finds: the resolve steps of the plugins, such as the start files that the Vite plugin reads from index.html, ' +
     'the readers of .vue, .svelte and .astro files, and the syntax visitors of the plugins. A settings file that changes ' +

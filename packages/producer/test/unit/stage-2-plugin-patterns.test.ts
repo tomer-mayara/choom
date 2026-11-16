@@ -22,6 +22,15 @@ const root = (value: Record<string, unknown>): SnapshotManifest => manifest("pac
 const source = (plugin: string, dependency: string, workspace = ".", path = "package.json") =>
   ({ workspace, manifest: path, plugin, dependency });
 
+// The plugin definitions of the installed Knip 6.44.1 by name, in the order of its plugin names.
+async function installedPlugins(): Promise<Map<string, KnipPlugin>> {
+  const knip = join(toolsRoot, "node_modules/knip/dist");
+  const { pluginNames } = await import(pathToFileURL(join(knip, "types/PluginNames.js")).href) as { pluginNames: string[] };
+  const { Plugins } = await import(pathToFileURL(join(knip, "plugins/index.js")).href) as
+    { Plugins: Record<string, Omit<KnipPlugin, "name">> };
+  return new Map(pluginNames.map((name) => [name, { ...Plugins[name], name }]));
+}
+
 describe("pluginEntryPatterns", () => {
   test("copies the entry and production patterns of the plugins that a workspace manifest turns on", () => {
     const found = pluginEntryPatterns([root({ dependencies: { next: "16.0.0" }, devDependencies: { vitest: "3.0.0" } })],
@@ -102,17 +111,35 @@ describe("pluginEntryPatterns", () => {
   });
 
   test("the plugins of the installed Knip 6.44.1: Next.js pages are copied, and Vite and Svelte add nothing", async () => {
-    const knip = join(toolsRoot, "node_modules/knip/dist");
-    const { pluginNames } = await import(pathToFileURL(join(knip, "types/PluginNames.js")).href) as { pluginNames: string[] };
-    const { Plugins } = await import(pathToFileURL(join(knip, "plugins/index.js")).href) as
-      { Plugins: Record<string, Omit<KnipPlugin, "name">> };
-    const plugins = pluginNames.map((name) => ({ ...Plugins[name], name }));
-    const found = pluginEntryPatterns([root({ dependencies: { next: "16.0.0", svelte: "5.0.0", vite: "8.0.0" } })], plugins);
+    const plugins = await installedPlugins();
+    const found = pluginEntryPatterns([root({ dependencies: { next: "16.0.0", svelte: "5.0.0", vite: "8.0.0" } })],
+      [...plugins.values()]);
     // Knip 6.44.1 also turns on its PostCSS and Vercel OG plugins for the next package.
     expect(found.copied.filter(({ plugin }) => plugin === "next").map(({ field, pattern }) => ({ field, pattern }))).toEqual(
-      (Plugins.next?.production as string[]).map((pattern) => ({ field: "production", pattern: pattern + "!" })));
+      (plugins.get("next")?.production as string[]).map((pattern) => ({ field: "production", pattern: pattern + "!" })));
     expect(found.pluginsNotCopied.map(({ plugin, reason }) => ({ plugin, reason }))).toEqual([
       { plugin: "postcss", reason: pluginReasons.noStaticPatterns }, { plugin: "svelte", reason: pluginReasons.everyPatternLeftOut },
       { plugin: "vite", reason: pluginReasons.noStaticPatterns }]);
+  });
+
+  // The settings-file test reads only names, and Knip 6.44.1 marks only the config patterns of a plugin
+  // as settings files. These are its known misses, as the Stage 2 cookbook lists them.
+  test("the known misses of the settings-file test with the plugins of the installed Knip 6.44.1", async () => {
+    const plugins = await installedPlugins();
+    const dependencies = Object.fromEntries(["@vercel/config", "cypress", "danger", "dependency-cruiser", "mastra", "sanity",
+      "size-limit", "vitepress"].map((name) => [name, "1.0.0"]));
+    const found = pluginEntryPatterns([root({ dependencies })], [...plugins.values()]);
+    // It copies these patterns of settings files, so Stage 4 lists their files as behavior entry candidates.
+    expect(found.copied.map(({ plugin, field, pattern }) => ({ plugin, field, pattern }))).toEqual(expect.arrayContaining([
+      ["cypress", "cypress/plugins/index.js"], ["danger", "dangerfile.{js,cjs,mjs,ts}"],
+      ["dependency-cruiser", ".dependency-cruiser.{js,cjs,mjs,json}"], ["sanity", "sanity.cli.{ts,js}"],
+      ["size-limit", ".size-limit"], ["size-limit", ".size-limit.{json,ts,js,cjs,mjs,mts,cts}"],
+      ["vercel", "vercel.{js,mjs,cjs,ts,mts}"], ["vitepress", ".vitepress/config/index.{js,ts,mjs,mts,cjs,cts}"],
+    ].map(([plugin, pattern]) => ({ plugin, field: "entry", pattern }))));
+    // It leaves out the agent pattern of Mastra, because one of its file names holds config.
+    expect(found.patternsNotCopied.filter(({ plugin }) => plugin === "mastra")[0]).toEqual({ ...source("mastra", "mastra"),
+      field: "production", pattern: "src/mastra/agents/*/*(subagents/*/){config,instructions,memory,workspace}.{js,ts}",
+      reason: "The pattern looks like a settings file by its name: it is a settings-file pattern (config) of a plugin, or " +
+        "its file name holds config or its first part ends with rc. Such a file stays a plain file, not an entry." });
   });
 });

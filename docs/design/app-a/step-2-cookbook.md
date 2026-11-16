@@ -349,12 +349,29 @@ found plugin, the profile copies the static `entry` patterns of the plugin, and 
 `production` patterns with a final `!`, the form of a production entry, into the
 entry patterns of the workspace. It does not copy:
 
-- a pattern that names a settings file: a settings-file pattern (`config`) of a
-  plugin of Knip 6.44.1, or a pattern whose file name holds `config` or ends with
-  `rc`, such as `tailwind.config.{js,ts}` or `.bumprc`. A settings file stays a plain
-  file, not an entry;
+- a pattern that looks like a settings file by its name: a settings-file pattern
+  (`config`) of a plugin of Knip 6.44.1, or a pattern whose file name holds `config`
+  or whose first part ends with `rc`, such as `tailwind.config.{js,ts}` or `.bumprc`.
+  Such a file stays a plain file, not an entry;
 - a negation, such as `!src/pages/**/_*`, because in the entry patterns of the
   workspace it would also remove the entries of the plan and of other plugins.
+
+The settings-file test is a test of names. Knip 6.44.1 marks only the `config`
+patterns of a plugin as settings files, and some plugins list other settings files as
+`entry` patterns. So the test has these known misses with the plugins of Knip 6.44.1,
+which a unit test of `stage-2-plugin-patterns.ts` checks:
+
+- It copies these patterns of settings files, so Stage 4 lists their files as
+  behavior entry candidates: `.dependency-cruiser.{js,cjs,mjs,json}`
+  (dependency-cruiser), `vercel.{js,mjs,cjs,ts,mts}` (Vercel), `.size-limit` and
+  `.size-limit.{json,ts,js,cjs,mjs,mts,cts}` (size-limit, which leaves out
+  `size-limit.config.*`), `.vitepress/config/index.{js,ts,mjs,mts,cjs,cts}`
+  (VitePress, which leaves out `.vitepress/config.*`), `dangerfile.{js,cjs,mjs,ts}`
+  (Danger), `cypress/plugins/index.js` (Cypress) and `sanity.cli.{ts,js}` (Sanity).
+- It does not copy the Mastra production pattern
+  `src/mastra/agents/*/*(subagents/*/){config,instructions,memory,workspace}.{js,ts}`,
+  because one of its file names is `config`. So the `instructions`, `memory` and
+  `workspace` files of a Mastra agent are not entries of the profile.
 
 `preflight.json` records each copied pattern in `pluginEntryPatterns`, each pattern
 that it did not copy in `pluginPatternsNotCopied`, and in `pluginsNotCopied` each
