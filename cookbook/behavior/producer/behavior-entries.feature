@@ -10,6 +10,9 @@ Feature: Find behavior entry candidates
   The route rules find the route methods of Express apps and routers, Fastify
   servers and Hono apps. Each route rule finds one method, so the rule of a route
   candidate names its method, and the path of the route is the name.
+  The worker rules find the start sites of worker threads and of BullMQ queue
+  workers. The worker file or the queue name is the name. The processor of a queue
+  worker is its handler. A worker thread has no handler: it runs its file.
 
   Scenario: A rule finds a candidate
     Given a saved snapshot that calls a registration function from the rule list
@@ -26,3 +29,8 @@ Feature: Find behavior entry candidates
     Given a saved snapshot with the routes of an Express router, a Fastify server and a Hono app
     When the operator collects behavior entry candidates
     Then each route has a candidate that names its method, its path and its handler
+
+  Scenario: Find the start sites of workers and queues
+    Given a saved snapshot that starts a worker thread and a BullMQ queue worker
+    When the operator collects behavior entry candidates
+    Then each worker has a candidate that names its file or its queue, its start site and its handler, if it has one

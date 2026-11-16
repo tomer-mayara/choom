@@ -11,7 +11,8 @@ import type { CommandResult } from "../../packages/producer/test/support/command
 // line and collect the Stage 4 source evidence, which applies the pinned rule list
 // of the tool checkout. Its route rules find the route methods of HTTP servers. For
 // example, express-route-get finds a call of get on the app that the call express()
-// made. The toolchain and graph phases of the fixture need no Docker.
+// made. Its worker rules find the new Worker calls that start worker threads and
+// queue workers. The toolchain and graph phases of the fixture need no Docker.
 interface Position { line?: unknown; column?: unknown }
 interface Candidate {
   ruleId?: unknown; ruleVersion?: unknown; entryKind?: unknown; found?: unknown; path?: unknown; range?: Position[];
@@ -45,6 +46,15 @@ const orderHandlers: ExtraFile = { path: "src/order-handlers.ts",
 const orders: ExtraFile = { path: "src/orders.ts", text: "import Fastify from 'fastify';\n" +
   "import { updateOrder } from './order-handlers';\n\nconst fastify = Fastify({ logger: true });\n" +
   "const opts = { schema: { params: { type: 'object' } } };\n\nfastify.put('/orders/:id', opts, updateOrder);\n" };
+// A worker thread that runs a file, and a BullMQ worker that runs a named processor for
+// the jobs of a queue, as the guides of Node.js and BullMQ write them.
+const resize: ExtraFile = { path: "src/resize.ts", text: "import { Worker } from 'node:worker_threads';\n\n" +
+  "export function resize(width: number) {\n  return new Worker('./resize-worker.js', { workerData: { width } });\n}\n" };
+const emailJobs: ExtraFile = { path: "src/email-jobs.ts",
+  text: "export async function sendEmail(job: { data: unknown }) {\n  return job.data;\n}\n" };
+const emailWorker: ExtraFile = { path: "src/email-worker.ts", text: "import { Worker } from 'bullmq';\n" +
+  "import { sendEmail } from './email-jobs';\n\nconst connection = { host: 'localhost', port: 6379 };\n\n" +
+  "export const worker = new Worker('emails', sendEmail, { connection });\n" };
 const position = (line: number, column: number): Position => ({ line, column });
 
 // The candidates of the record that collect saved.
@@ -92,6 +102,11 @@ Given("a saved snapshot with the routes of an Express router, a Fastify server a
     this.behaviorAttempt = stageFourAttempt([birds, books, orderHandlers, orders]);
   });
 
+Given("a saved snapshot that starts a worker thread and a BullMQ queue worker", { timeout: 120_000 },
+  function (this: BehaviorEntriesWorld) {
+    this.behaviorAttempt = stageFourAttempt([emailJobs, emailWorker, resize]);
+  });
+
 When("the operator collects behavior entry candidates", { timeout: 120_000 }, function (this: BehaviorEntriesWorld) {
   assert.ok(this.behaviorAttempt, "Prepare a saved snapshot first.");
   this.behaviorCommand = inspectStageFour(this.behaviorAttempt, ["collect"]);
@@ -135,3 +150,20 @@ Then("each route has a candidate that names its method, its path and its handler
       name: "/orders/:id", handler: { path: orderHandlers.path, range: [position(1, 1), position(3, 2)] } },
   ]);
 });
+
+// The start site of a worker is its new Worker call. The name is the worker file of a
+// worker thread or the queue of a queue worker. A worker thread runs its file, so its
+// rule names no handler.
+Then("each worker has a candidate that names its file or its queue, its start site and its handler, if it has one",
+  function (this: BehaviorEntriesWorld) {
+    const workers = savedCandidates(this).map(({ ruleId, entryKind, path, range, expression, name, handler: found,
+      handlerReason }) => ({ ruleId, entryKind, path, range, expression, name, handler: found, handlerReason }));
+    assert.deepEqual(workers, [
+      { ruleId: "bullmq-worker", entryKind: "queue-worker", path: emailWorker.path, range: [position(6, 23), position(6, 70)],
+        expression: "new Worker('emails', sendEmail, { connection })", name: "emails",
+        handler: { path: emailJobs.path, range: [position(1, 1), position(3, 2)] }, handlerReason: null },
+      { ruleId: "node-worker-threads-worker", entryKind: "worker-thread", path: resize.path,
+        range: [position(4, 10), position(4, 69)], expression: "new Worker('./resize-worker.js', { workerData: { width } })",
+        name: "./resize-worker.js", handler: null, handlerReason: "The rule names no handler argument." },
+    ]);
+  });
