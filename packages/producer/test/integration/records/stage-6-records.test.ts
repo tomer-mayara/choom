@@ -212,6 +212,21 @@ const refusedCases: [string, (records: Records) => void, string][] = [
   ["code units smaller than a file", (records) => {
     records.mapping.scope.unitKind = "symbol";
   }, "Invalid selected code mapping scope."],
+  ["a code mapping without one of the indexed files", (records) => { records.mapping.units.pop(); },
+    "Invalid selected code mapping scope."],
+  ["a file that the code mapping lists twice", (records) => {
+    records.mapping.units[1] = { ...records.mapping.units[0] as MappingUnit, id: "unit-again" };
+  }, "Invalid mapped unit or inspection coverage: cli.ts"],
+  ["an unknown owner that names a membership", (records) => {
+    unownedFirstFile("Owner unknown.")(records);
+    Object.assign(records.mapping.units[0] ?? {}, { membershipRef: `${proposal}#/components/0/membership` });
+  }, "Unknown unit selects a membership: cli.ts"],
+  ["a mapped unit that names the membership of another component", (records) => {
+    Object.assign(records.mapping.units[0] ?? {}, { membershipRef: `${proposal}#/components/1/membership` });
+  }, "Mapped membership reference differs from proposed intent: cli.ts"],
+  ["a behavior entry of a component that does not own its file", (records) => {
+    Object.assign(records.entry.behaviorEntries[0] ?? {}, { componentRef: "cli" });
+  }, "Behavior entry differs from the mapped source owner: http-route"],
   ["a glob membership selector", (records) => {
     findComponent(records, "cli").membership.value.paths = ["*.ts"];
   }, "The baseline is invalid at components.0.membership.value.paths.0 (component cli): " +
