@@ -1,5 +1,6 @@
 import type * as TsMorph from 'ts-morph';
-import { type EntryCandidate, type EntryQuery, located, unwrapped } from './behavior-entry-calls.ts';
+import type { EntryCandidate, EntryQuery } from './behavior-entry-calls.ts';
+import { located, unwrapped } from './call-rules.ts';
 import type { BehaviorEntrySettingsLiteralRule } from './generated/contracts.ts';
 import { assert } from './record-checks.ts';
 import { virtualRoot } from './snapshot-project.ts';
