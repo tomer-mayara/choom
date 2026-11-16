@@ -151,6 +151,12 @@ describe("validateCodeMapping with a symbol selector that cannot divide its file
       .toThrow(new Error("The symbol selectors cannot divide billing.ts: the file is not UTF-8 text."));
   });
 
+  test("refuses a file whose saved bytes differ from the inventory digest", () => {
+    const checks = inputs(dividedRun());
+    checks.readSource = (path) => Buffer.from(path === "billing.ts" ? billing.replace("count * 2", "count * 3") : "export function start() {}\n");
+    expect(() => validateCodeMapping(checks)).toThrow(new Error("Changed source file: billing.ts"));
+  });
+
   test("refuses a file larger than 2 MiB", () => {
     const checks = inputs(dividedRun());
     checks.indexed.set("billing.ts", { ...checks.indexed.get("billing.ts"), bytes: 2 * 1024 * 1024 + 1 });
