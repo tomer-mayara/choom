@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 import { expect, type Page } from "@playwright/test";
+
+/** A view that still changes after this time has not settled. */
+const settleTimeoutMs = 2_000;
 
 export interface BaselineOpeningView {
   headings: string[];
@@ -40,5 +44,27 @@ export class BaselineBrowserDriver {
         (node) => ({ id: node.getAttribute("data-id") ?? "", text: node.innerText })),
       buttons: Array.from(document.querySelectorAll<HTMLButtonElement>("button"), (node) => node.innerText.trim()),
     }));
+  }
+
+  /**
+   * Read the value again after each new animation frame, and return it when two readings are equal.
+   * Some browser work ends only in the next frame, for example a scroll that keyboard focus causes.
+   */
+  async readSettled<T>(read: () => Promise<T>): Promise<T> {
+    const deadline = Date.now() + settleTimeoutMs;
+    let previous = await this.readAfterPaint(read);
+    while (Date.now() < deadline) {
+      const current = await this.readAfterPaint(read);
+      if (isDeepStrictEqual(current, previous)) return current;
+      previous = current;
+    }
+    assert.fail(`The browser view must stay the same across animation frames within ${settleTimeoutMs} ms.`);
+  }
+
+  private async readAfterPaint<T>(read: () => Promise<T>): Promise<T> {
+    await this.page.evaluate(() => new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    }));
+    return read();
   }
 }
