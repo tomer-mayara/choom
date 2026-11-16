@@ -197,8 +197,8 @@ function attemptInput(run: RunRecord, drafts: Map<string, Buffer>): { attemptFil
   return { attemptFiles, get };
 }
 
-// The numbered requests of each stage after collect: excerpts, and in Stage 4 also references.
-const requestPhase = new RegExp('^(?:' + (stage === '4' ? 'excerpt|references' : 'excerpt') + ')-[0-9]+$');
+// The numbered requests of each stage after collect: excerpts, in Stage 4 also references, and in Stage 5 also parts.
+const requestPhase = new RegExp('^(?:' + (stage === '4' ? 'excerpt|references' : 'excerpt|parts') + ')-[0-9]+$');
 
 // Each required phase and each numbered request completed, and its recorded outputs did not change.
 // A failed request has no output.

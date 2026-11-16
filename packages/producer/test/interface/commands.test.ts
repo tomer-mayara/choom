@@ -31,7 +31,7 @@ const usageCases: UsageCase[] = [
   { helper: "stage-4-5-publish.ts", args: [], status: 1,
     message: "Use check STAGE REVIEW_DIR, finish STAGE REVIEW_DIR, or verify STAGE (4 or 5)." },
   { helper: "stage-5-commands.ts", args: [], attempt: { CHOOM_STAGE5_ID: "s5-check" }, status: 1,
-    message: "Use start, collect, or excerpt PATH FIRST LAST." },
+    message: "Use start, collect, excerpt PATH FIRST LAST, or parts PATH SYMBOL [SYMBOL ...]." },
   { helper: "stage-6-commands.mjs", args: [], attempt: { CHOOM_STAGE6_ID: "s6-check" }, status: 1,
     message: "Use preflight REVIEW_DIR, start REVIEW_DIR, check, finish, or verify." },
   { helper: "duplication-commands.mjs", args: [], status: 1,

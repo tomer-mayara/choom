@@ -144,13 +144,17 @@ export function stageFiveCollection(extraFiles: readonly ExtraFile[]): StageFive
   return { ...stageFour, stageFive: join(stageFour.work, "evidence", stageFiveAttemptId) };
 }
 
-// Publishes the Stage 4 review of a run with the extra snapshot files, runs Stage 5
-// start and collect, and writes the Stage 5 packet with the changes.
-export function stageFivePublication(extraFiles: readonly ExtraFile[], changes: StageFiveChanges = {}): StageFivePublication {
-  const collected = stageFiveCollection(extraFiles);
+// Writes the Stage 5 packet of a collected run with the changes, in a separate review folder.
+export function writeStageFivePacket(collected: StageFiveCollection, changes: StageFiveChanges = {}): StageFivePublication {
   const reviewFive = join(collected.root, "review-5");
   writeReview(reviewFive, packetRecords(collected.work, changes));
   return { ...collected, reviewFive };
+}
+
+// Publishes the Stage 4 review of a run with the extra snapshot files, runs Stage 5
+// start and collect, and writes the Stage 5 packet with the changes.
+export function stageFivePublication(extraFiles: readonly ExtraFile[], changes: StageFiveChanges = {}): StageFivePublication {
+  return writeStageFivePacket(stageFiveCollection(extraFiles), changes);
 }
 
 // Runs one Stage 4/5 publisher action for Stage 5 on the fixture, as an operator does.

@@ -11,14 +11,16 @@ import { assert, type Fields, hash, object, text } from './record-checks.ts';
 import { runLayout } from './run-layout.mjs';
 import { directory, read } from './stage-3-inputs.ts';
 import { checkpoint, digest, draftNames, readState, safe, type StageState } from './stage-5-inputs.ts';
+import { partsRecord } from './stage-5-parts.ts';
 import { collectEvidence, excerpt, type SavedScope, scopeFor } from './stage-5-query.ts';
 
 // The Stage 5 helper. start checks the run after the published Stage 4 review and
 // saves the checkpoints, the documents that the stage follows, the query scope and
 // the handoff with the pinned tool versions; collect saves the remaining-code
 // evidence, the review prompt and the proposed artifact map; excerpt saves a
-// requested range. Each action saves a receipt and appends its outcome to the
-// command log.
+// requested range; parts saves the parts of a file that named symbols divide, with
+// the dependencies of the file at both levels. Each action saves a receipt and
+// appends its outcome to the command log.
 interface Versions { node: string; yaml: string; tsMorph: string; typescript: string; modules: Record<string, string> }
 // YAML, and ts-morph with its own copy of TypeScript, which the syntax query uses.
 interface Toolchain { parse: (text: string) => unknown; tsMorph: typeof TsMorph; versions: Versions }
@@ -50,8 +52,10 @@ const exists = (path: string): boolean => Boolean(lstatSync(path, { throwIfNoEnt
 const utc = (): string => new Date().toISOString();
 const errorText = (error: unknown): string => String((error as { message?: unknown }).message ?? error);
 
-assert((['start', 'collect'].includes(action) && args.length === 0) || (action === 'excerpt' && args.length === 3),
-  'Use start, collect, or excerpt PATH FIRST LAST.');
+// The actions that the operator can repeat. Each request takes the next number of its action.
+const numbered = ['excerpt', 'parts'];
+assert((['start', 'collect'].includes(action) && args.length === 0) || (action === 'excerpt' && args.length === 3) ||
+  (action === 'parts' && args.length >= 2), 'Use start, collect, excerpt PATH FIRST LAST, or parts PATH SYMBOL [SYMBOL ...].');
 assert(/^s5-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id), 'Set CHOOM_STAGE5_ID to an s5-... ID.');
 const work = directory(CHOOM_WORK);
 const tools = directory(CHOOM_TOOLS);
@@ -126,12 +130,12 @@ function reviewPrompt(state: StageState): string {
   });
 }
 
-// Saves the started record of this action. Each excerpt request takes the next free number.
+// Saves the started record of this action. Each excerpt or parts request takes the next free number of its action.
 function reserve(): Reservation {
   const command = { args: [process.execPath, self, action, ...args], cwd: process.cwd(),
     environment: { CHOOM_WORK: work, CHOOM_TOOLS: tools, CHOOM_STAGE5: attempt, CHOOM_STAGE5_ID: id } };
   for (let index = 1; ; index++) {
-    const phase = action === 'excerpt' ? 'excerpt-' + String(index).padStart(3, '0') : action;
+    const phase = numbered.includes(action) ? action + '-' + String(index).padStart(3, '0') : action;
     const prefix = 'operator-' + phase;
     const started = { formatVersion: 1, attemptId: id, action, phase, command, startedAt: utc() };
     try {
@@ -139,7 +143,7 @@ function reserve(): Reservation {
       return { phase, prefix, started };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      if (action === 'excerpt') continue;
+      if (numbered.includes(action)) continue;
       throw new Error('This action was already started. Keep the attempt unchanged and use a new ID.');
     }
   }
@@ -205,13 +209,28 @@ function collectAction({ state, toolchain }: Started, prefix: string, output: Ou
   return `Saved ${count('remaining-units.json', 'units')} owner-null units, ${count('inspection-coverage.json', 'units')} coverage records, ${count('source-candidates.json', 'candidates')} syntax candidates and ${count('source-excerpts.json', 'excerpts')} excerpts.`;
 }
 
+// The message of a request that saved one record.
+const savedRecord = (name: string): string => `Saved ${artifactId(name)} at ${join(attempt, name)} (SHA-256 ${hash(saved(name))}).`;
+
 function excerptAction({ state }: Started, phase: string, output: Output): string {
   requireCompleted('collect', collectOutputs);
   const [path = '', first = '', last = ''] = args;
   assert(safe(path) && [first, last].every(value => /^[1-9][0-9]*$/.test(value)), 'Use excerpt PATH FIRST LAST with positive line numbers.');
   const name = phase + '.json';
   output(name, encode({ ...state.header, id: id + '-source-' + phase, ...excerpt(state, path, Number(first), Number(last)) }));
-  return `Saved ${artifactId(name)} at ${join(attempt, name)} (SHA-256 ${hash(saved(name))}).`;
+  return savedRecord(name);
+}
+
+// Saves the parts of an indexed file that the symbols divide, with the dependencies of the file at both levels.
+function partsAction({ state, toolchain }: Started, phase: string, output: Output): string {
+  requireCompleted('collect', collectOutputs);
+  const [path = '', ...symbols] = args;
+  const file = state.indexed.get(path);
+  assert(file, 'File is outside the inventory: ' + path);
+  const name = phase + '.json';
+  output(name, encode(partsRecord({ header: state.header, path, symbols, file, read: state.readIndexed,
+    sites: state.sourceSites, sitesRef: state.sourceSitesRef, tools: { tsMorph: toolchain.tsMorph, versions: toolchain.versions } })));
+  return savedRecord(name);
 }
 
 // Appends the outcome to the command log, saves the logs and the receipt of the action and prints its message.
@@ -247,8 +266,9 @@ function main(): void {
     if (prepared) message = startAction(prepared, output);
     else {
       const started = startedAttempt();
-      message = action === 'collect' ? collectAction(started, reservation.prefix, output, outputs)
-        : excerptAction(started, reservation.phase, output);
+      if (action === 'collect') message = collectAction(started, reservation.prefix, output, outputs);
+      else if (action === 'excerpt') message = excerptAction(started, reservation.phase, output);
+      else message = partsAction(started, reservation.phase, output);
     }
   } catch (error) {
     errorMessage = errorText(error).slice(0, 500);

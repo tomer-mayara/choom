@@ -184,6 +184,7 @@ beforeAll(() => {
   results.excerptBeforeStart = stageFive(["excerpt", "README.md", "1", "1"]);
   results.start = stageFive(["start"]);
   results.excerptBeforeCollect = stageFive(["excerpt", "README.md", "1", "1"]);
+  results.partsBeforeCollect = stageFive(["parts", "init/module.ts", "start"]);
   results.collect = stageFive(["collect"]);
   for (const request of excerptRequests) excerpts.push(stageFive(["excerpt", ...request]));
   results.repeatedCollect = stageFive(["collect"]);
@@ -339,6 +340,12 @@ describe("Stage 5 excerpt", () => {
     expect(results.excerptBeforeCollect).toEqual({ status: 1, stdout: "",
       stderr: `ENOENT: no such file or directory, lstat '${join(attempt, "operator-collect.json")}'\n` });
     expect(saved("operator-excerpt-001.json")).toMatchObject({ phase: "excerpt-001", status: "failed", exitCode: 1, digests: {} });
+  });
+
+  test("refuses a parts request before collect", () => {
+    expect(results.partsBeforeCollect).toEqual({ status: 1, stdout: "",
+      stderr: `ENOENT: no such file or directory, lstat '${join(attempt, "operator-collect.json")}'\n` });
+    expect(saved("operator-parts-001.json")).toMatchObject({ phase: "parts-001", status: "failed", exitCode: 1, digests: {} });
   });
 
   test("saves a numbered range with the omitted ranges", () => {
