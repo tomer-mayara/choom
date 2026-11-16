@@ -582,8 +582,12 @@ classification is needed.
 
 Do not invent provider IDs, timestamps or token counts. Use the real call date
 when available. The finalizer refuses a response with a hidden reasoning block,
-such as a `<thinking>` block or a raw provider response with thinking content,
-and a call record without `hiddenReasoning: not-saved`. The response and reviewed
+and a call record without `hiddenReasoning: not-saved`. Outside a fenced code
+block, it refuses a line that starts with a `<thinking`, `<reasoning`,
+`<redacted_thinking` or `<think>` tag, a complete block of these tags after other
+text on a line, and a raw provider JSON response, a JSON line or an event stream
+`data:` line with a `thinking`, `redacted_thinking` or `reasoning` block or a part
+with `thought: true`. A tag in inline code does not count. The response and reviewed
 ranges record the LLM's work; the collector's file list is not a list of files
 read by the LLM.
 

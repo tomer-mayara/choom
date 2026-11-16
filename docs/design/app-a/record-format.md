@@ -33,10 +33,17 @@ visible response. Do not save hidden reasoning.
 
 The folder must contain exactly these files. The visible response can use fenced
 blocks for the five records. Their contents must match the individual files.
-The publisher refuses a response in which a line outside a fenced block starts
-with a `<thinking`, `<reasoning` or `<redacted_thinking` tag, and a response
-that is a raw provider JSON response with a `thinking`, `redacted_thinking` or
-`reasoning` block. It also refuses a call record without `hiddenReasoning: not-saved`.
+The publisher refuses a response with hidden reasoning outside the fenced blocks:
+
+- A line that starts with a `<thinking`, `<reasoning` or `<redacted_thinking`
+  tag, or with a `<think>` tag.
+- A complete block of one of these tags after other text, such as
+  `The review follows. <thinking>...</thinking>`. A tag in inline code does not count.
+- A raw provider JSON response, a JSON line, or a `data:` line of an event
+  stream that holds a `thinking`, `redacted_thinking` or `reasoning` block, or
+  a part with `thought: true`.
+
+It also refuses a call record without `hiddenReasoning: not-saved`.
 Do not write into the attempt or change the working drafts before publication.
 
 ## IDs and evidence

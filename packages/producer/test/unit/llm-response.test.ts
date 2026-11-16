@@ -25,6 +25,16 @@ const refusedResponses: [string, string][] = [
   ["a raw provider response with a nested reasoning item", json({ output: [{ type: "reasoning", summary: [] },
     { type: "message", content: [{ type: "output_text", text: "The review follows." }] }] })],
   ["a JSON array of content blocks", `  ${JSON.stringify([{ type: "thinking", thinking: "Check." }])}  `],
+  ["a think block of an open-weight model", "<think>\nThe CLI starts first.\n</think>\n\nThe review follows.\n"],
+  ["a thinking block after text on the same line", "The review follows. <thinking>Check the CLI.</thinking>\nformatVersion: 1\n"],
+  ["a reasoning block that starts after text and ends on a later line",
+    "The review follows. <reasoning>\nCheck the CLI.\n</reasoning>\nformatVersion: 1\n"],
+  ["a raw provider response with a thought part", json({ candidates: [{ content: { parts: [
+    { text: "Check the CLI.", thought: true }, { text: "The review follows." }] } }] })],
+  ["a raw provider event stream with a thinking block", "event: content_block_start\n" +
+    `data: ${JSON.stringify({ type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "" } })}\n\n`],
+  ["JSON lines with a reasoning item", `${JSON.stringify({ type: "reasoning", summary: [] })}\n` +
+    `${JSON.stringify({ type: "message", content: [{ type: "output_text", text: "The review follows." }] })}\n`],
 ];
 
 const acceptedResponses: [string, string][] = [
@@ -37,6 +47,12 @@ const acceptedResponses: [string, string][] = [
   ["JSON with a text block only", json({ content: [{ type: "text", text: "The review follows." }] })],
   ["a JSON entry plan", json({ formatVersion: 1, candidates: [{ id: "s2-candidate-001", roles: ["application"] }] })],
   ["text that starts like JSON but is not JSON", "{ The review follows. }\n"],
+  ["both tags in inline code", "The answer omits the `<thinking>` and `</thinking>` tags.\n"],
+  ["a word that starts like a tag", "<thinker> is not a tag of a reasoning block.\n"],
+  ["a closing tag before an opening tag", "The answer has no </thinking> tag and no <thinking> block.\n"],
+  ["a stream of text only", `data: ${JSON.stringify({ type: "content_block_delta", delta: { type: "text_delta", text: "The review." } })}\n`],
+  ["a stream line inside a fenced code block", `${fence}text\ndata: ${JSON.stringify({ content_block: { type: "thinking" } })}\n${fence}\n`],
+  ["a JSON value that names thought as text", json({ content: [{ type: "text", text: "The review follows.", thought: "none" }] })],
 ];
 
 describe("checkVisibleResponse", () => {
