@@ -74,8 +74,20 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         planSha256: sha256(saved("entry-plan.json")), profileSha256: sha256(saved("knip-profile.json")),
         inventory: { ref: "inventory-001", path: "evidence/inventory.json", sha256: sha256(inventory) },
         status: "eligible", reasons: [], environment: { KNIP_DISABLE_RAW_TRANSFER: "1" },
-        disabledPlugins: plugins, approvedCoreParsers: ["JS/TS", "MDX", "Sass/SCSS", "Less", "Stylus", "TSRX"],
-        limits: ["All framework plugins disabled.", "Missing dependencies remain missing.",
+        // The manifest has no dependencies, so no plugin adds a pattern.
+        disabledPlugins: plugins, pluginEntryPatterns: [], pluginPatternsNotCopied: [], pluginsNotCopied: [],
+        approvedCoreParsers: ["JS/TS", "MDX", "Sass/SCSS", "Less", "Stylus", "TSRX"],
+        limits: ["Every Knip plugin is turned off, so Knip loads no settings file of the target.",
+          "For each plugin that a dependency or a development dependency of a workspace manifest turns on, or of the " +
+          "manifest of a workspace that holds it, the profile copies the default entry and production patterns of the " +
+          "plugin from Knip 6.44.1 into the entry patterns of the workspace (pluginEntryPatterns). A pattern that names a " +
+          "settings file and a negation are not copied (pluginPatternsNotCopied). A plugin without static patterns adds " +
+          "nothing (pluginsNotCopied).",
+          "Only these file-name patterns come from the plugins. The profile runs no plugin code, so it loses the entries " +
+          "that this code finds: the resolve steps of the plugins, such as the start files that the Vite plugin reads from " +
+          "index.html, the readers of .vue, .svelte and .astro files, and the syntax visitors of the plugins. A settings " +
+          "file that changes the entries of its tool is not read.",
+          "Missing dependencies remain missing.",
           "Explicit workspaces and entries do not replace metadata-discovered workspaces or roots.",
           "Knip reports issues, not its complete root set or reachability."] });
       const inputRoot = join(work, "knip-input-" + sha256(inventory));

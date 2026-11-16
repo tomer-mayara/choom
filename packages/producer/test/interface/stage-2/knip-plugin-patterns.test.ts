@@ -52,9 +52,12 @@ describe("the Knip plugin patterns of the Stage 2 profile", () => {
         expect({ mode, completed: status === 0 || status === 1, unused: unused.filter((file) => file === nextPage) })
           .toEqual({ mode, completed: true, unused: [] });
       }
-      expect(savedJson(attempt, "preflight.json").pluginEntryPatterns).toContainEqual({ workspace: ".",
-        manifest: "package.json", plugin: "next", dependency: "next", field: "production",
-        pattern: "{,src/}app/**/{layout,page,route,template}.{js,jsx,ts,tsx}!" });
+      const copied = savedJson(attempt, "preflight.json").pluginEntryPatterns as JsonRecord[];
+      expect(copied).toContainEqual({ workspace: ".", manifest: "package.json", plugin: "next", dependency: "next",
+        field: "production", pattern: "{,src/}app/**/{layout,page,route,template}.{js,jsx,ts,tsx}!" });
+      // The workspace keeps the entry patterns of the plan, followed by the copied patterns.
+      expect((savedJson(attempt, "knip-profile.json").workspaces as JsonRecord)["."]).toEqual({
+        entry: ["app.ts!", ...copied.map(({ pattern }) => pattern)], project: ["**/*.{ts,tsx}!"] });
     });
   }, 60_000);
 

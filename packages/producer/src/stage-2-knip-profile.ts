@@ -3,11 +3,13 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { resolve, join, posix } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type KnipPlugin, pluginEntryPatterns, type SnapshotManifest } from './stage-2-plugin-patterns.ts';
 
 // The Stage 2 prepare action runs this module in the tool checkout, after the
 // driver checked the producer code record of the run. It checks the entry plan,
-// writes the fixed profile for Knip 6.44.1 with every framework plugin turned
-// off, and writes the preflight decision.
+// writes the fixed profile for Knip 6.44.1 with every plugin turned off and the
+// default entry patterns of the plugins that the dependencies turn on, and writes
+// the preflight decision.
 // Saved JSON and YAML stay unchecked values until the checks below read them.
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 interface Workspace { dir: string; entry: unknown; project: unknown }
@@ -72,6 +74,9 @@ function savedData(file: InventoryFile): string {
   if (hash(bytes) !== file.sha256) throw new Error(`Snapshot changed: ${file.path}`);
   return bytes.toString('utf8');
 }
+// The package manifests that parse, with the workspace of the plan whose manifest each is.
+const manifests: SnapshotManifest[] = [];
+const workspaceOf = new Map(Object.keys(workspaces).map(dir => [dir === '.' ? 'package.json' : `${dir}/package.json`, dir]));
 // A manifest setting that this profile does not load makes the profile unsupported.
 function manifestReasons(file: InventoryFile): string[] {
   if (statSync(resolve(work, 'snapshot', file.path)).size > 2 * 1024 * 1024)
@@ -81,6 +86,8 @@ function manifestReasons(file: InventoryFile): string[] {
   try {
     const value = file.path.endsWith('.json') ? JSON.parse(contents) : parse(contents);
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected a mapping');
+    if (posix.basename(file.path) === 'package.json')
+      manifests.push({ path: file.path, workspace: workspaceOf.get(file.path) ?? null, value });
     if (posix.basename(file.path) === 'package.json' && Object.hasOwn(value, 'knip'))
       found.push(`${file.path} contains knip configuration, which this profile does not load.`);
     if (posix.basename(file.path) === 'pnpm-workspace.yaml' && Object.hasOwn(value, 'include'))
@@ -97,6 +104,17 @@ const knipRoot = realpathSync(resolve(process.env.CHOOM_TOOLS as string, 'node_m
 if (JSON.parse(readFileSync(join(knipRoot, 'package.json')).toString()).version !== '6.44.1')
   throw new Error('This profile requires Knip 6.44.1.');
 const { pluginNames }: { pluginNames: string[] } = await import(pathToFileURL(join(knipRoot, 'dist/types/PluginNames.js')).href);
+// The plugin definitions of the installed Knip give the enablers and the default patterns.
+const { Plugins }: { Plugins: Record<string, Omit<KnipPlugin, 'name'>> } =
+  await import(pathToFileURL(join(knipRoot, 'dist/plugins/index.js')).href);
+const planOrder = (manifest: SnapshotManifest): number =>
+  manifest.workspace === null ? Infinity : Object.keys(workspaces).indexOf(manifest.workspace);
+const plugins = pluginEntryPatterns(manifests.sort((left, right) => planOrder(left) - planOrder(right)),
+  pluginNames.map(name => ({ ...Plugins[name], name })));
+for (const { workspace, pattern } of plugins.copied) {
+  const entry = workspaces[workspace]?.entry as string[];
+  if (!entry.includes(pattern)) workspaces[workspace] = { ...workspaces[workspace], entry: [...entry, pattern] };
+}
 const profile = { ...Object.fromEntries(pluginNames.map(name => [name, false])), preprocessor: [], workspaces };
 const profileBytes = JSON.stringify(profile, null, 2);
 writeFileSync(join(attempt, 'knip-profile.json'), profileBytes, { flag: 'wx' });
@@ -107,8 +125,19 @@ writeFileSync(join(attempt, 'preflight.json'), JSON.stringify({
   status: reasons.length ? 'unsupported' : 'eligible', reasons,
   environment: { KNIP_DISABLE_RAW_TRANSFER: '1' },
   disabledPlugins: pluginNames,
+  pluginEntryPatterns: plugins.copied, pluginPatternsNotCopied: plugins.patternsNotCopied,
+  pluginsNotCopied: plugins.pluginsNotCopied,
   approvedCoreParsers: ['JS/TS', 'MDX', 'Sass/SCSS', 'Less', 'Stylus', 'TSRX'],
-  limits: ['All framework plugins disabled.', 'Missing dependencies remain missing.',
+  limits: ['Every Knip plugin is turned off, so Knip loads no settings file of the target.',
+    'For each plugin that a dependency or a development dependency of a workspace manifest turns on, or of the manifest ' +
+    'of a workspace that holds it, the profile copies the default entry and production patterns of the plugin from Knip ' +
+    '6.44.1 into the entry patterns of the workspace (pluginEntryPatterns). A pattern that names a settings file and a ' +
+    'negation are not copied (pluginPatternsNotCopied). A plugin without static patterns adds nothing (pluginsNotCopied).',
+    'Only these file-name patterns come from the plugins. The profile runs no plugin code, so it loses the entries that ' +
+    'this code finds: the resolve steps of the plugins, such as the start files that the Vite plugin reads from index.html, ' +
+    'the readers of .vue, .svelte and .astro files, and the syntax visitors of the plugins. A settings file that changes ' +
+    'the entries of its tool is not read.',
+    'Missing dependencies remain missing.',
     'Explicit workspaces and entries do not replace metadata-discovered workspaces or roots.',
     'Knip reports issues, not its complete root set or reachability.']
 }, null, 2), { flag: 'wx' });
