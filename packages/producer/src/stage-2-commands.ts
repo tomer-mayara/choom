@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
+import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 
 // The Stage 2 driver. Every action runs from the tool checkout, after it checks
@@ -228,6 +229,8 @@ function validatePlan(bytes: Buffer, { discovery, artifacts, inventory }: RunSta
   assert(workspaces.has('.'), 'The entry plan must include the root workspace.');
   const reviewed = reviewedSources(artifacts, inventory, paths);
   checkPlanRecords(plan, discovery, { ids: new Set(), artifacts, reviewed }, workspaces, paths);
+  // The entry analysis must keep the questions and gaps of the plan, so they enter the run here.
+  checkQuestionsAndGaps({ questions: plan.questions, gaps: plan.gaps });
 }
 
 function digests(names: string[]): Record<string, string> {

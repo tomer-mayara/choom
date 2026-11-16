@@ -1369,6 +1369,9 @@ Preserve the prior questions and gaps unchanged in this prototype. Append notes
 that cite the earlier IDs when evidence resolves part of a gap. Keep conflicting
 documents and code visible. Do not create a utilities component to absorb
 unexplained files. Stage 5 accounts for remaining code.
+Keep each new question and gap within the limits of the viewer in
+[record-format.md](record-format.md#discovery), such as 1 to 100 `subjectRefs`;
+the publisher refuses a record over a limit.
 Rewrite current summaries and limits to match the proposed packet; the historical
 preservation rule does not apply to stale overview text or current counts.
 

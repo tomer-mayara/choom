@@ -46,6 +46,12 @@ const cases: FinishCase[] = [
   { name: "an inspection priority cites a missing key",
     change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@artifact-map.json#/missing"]; },
     message: "Unresolved JSON Pointer: s3-check-file@artifact-map.json#/missing" },
+  { name: "a new question has 101 subject references", change: (packet) => {
+    packet.analysis.questions = [...packet.analysis.questions as unknown[], { id: "s3-check-question-001",
+      subjectRefs: Array.from({ length: 101 }, (_, index) => `file-${index}.ts`), text: "Which files load plugins?",
+      evidenceRefs: ["s3-check-file@loading-search.json"] }];
+  }, message: "The questions and gaps do not match the discovery contract of the viewer. The discovery result exceeds a limit " +
+    "at questions.1.subjectRefs: The limit is 100 subject references for each question or gap." },
   { name: "an inspection priority cites a JSON Pointer into a file that is not JSON or YAML",
     change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@operator-start.stdout.txt#/0"]; },
     message: "Only a .json, .yaml or .yml file can take a JSON Pointer: s3-check-file@operator-start.stdout.txt#/0" },

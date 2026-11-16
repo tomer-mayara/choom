@@ -238,8 +238,11 @@ Use exactly these top-level fields:
   id, expression, path, workspace, roles, origin, evidenceRefs
 - workspaces: an array of records with exactly these fields:
   dir, entry, project
-- questions: records with id, subjectRefs, text, evidenceRefs
-- gaps: records with id, kind, subjectRefs, reason, evidenceRefs
+- questions: records with exactly id, subjectRefs, text, evidenceRefs
+- gaps: records with exactly id, kind, subjectRefs, reason, evidenceRefs
+- Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef.
+  A text or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference
+  at most 4 KiB. Use at most 5,000 questions and gaps together.
 
 Candidate rules:
 - Start new IDs with the attempt ID. Use stable IDs within this attempt.
@@ -588,8 +591,11 @@ Use exactly these top-level fields:
 - candidates: records with id, expression, path, workspace, roles, origin,
   and evidenceRefs, using the same meanings as the supplied plan
 - reviewedFiles: records with id, snapshotRef, path, sha256, and lines: [first, last]
-- questions: records with id, subjectRefs, text, and evidenceRefs
-- gaps: records with id, kind, subjectRefs, reason, and evidenceRefs
+- questions: records with exactly id, subjectRefs, text, and evidenceRefs
+- gaps: records with exactly id, kind, subjectRefs, reason, and evidenceRefs.
+  Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef.
+  A text or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference
+  at most 4 KiB. Use at most 5,000 questions and gaps together.
 - reachability: {status: not-assessed, reason: a short explanation}
 - llmReview: recorded
 

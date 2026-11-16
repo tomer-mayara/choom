@@ -24,6 +24,11 @@ const resourceCandidates = `resource-access-candidates.json lists the calls that
   `inferred ownership: a matching name does not prove the same resource, and a candidate names no owner. Name the file in ` +
   `resource-access.json as resourceAccessCandidatesRef.\n\n`;
 
+// The limits of the viewer for each question and gap. Every stage checks them where a record enters the run.
+const questionAndGapLimits = `Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef; ` +
+  `a text or reason has at most 16 KiB of UTF-8, an ID, a kind or a reference at most 4 KiB, and there are at most 5,000 ` +
+  `questions and gaps. `;
+
 export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt }: PromptFacts): string {
   return `# Stage 4 component recovery review\n\n` +
     `Run: ${runRef}\nSnapshot: ${snapshotRef}\nAttempt: ${attemptId}\n` +
@@ -77,7 +82,7 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `Keep all known uses even when other callers remain unassessed. Check the separate source-use and reader limits in record-format.md.\n\n` +
     `Prepare the complete external review packet in the saved record-format.md and step-4-cookbook.md. ` +
     `It includes the proposed baseline, code mapping, resource observations, entry analysis, discovery and LLM review records. ` +
-    `Preserve prior questions and gaps unchanged and append resolution notes with links to the old IDs. ` +
+    `Preserve prior questions and gaps unchanged and append resolution notes with links to the old IDs. ${questionAndGapLimits}` +
     `Unknown owners and contract promises stay null with reasons. Keep excluded inputs and uninspected regions visible. ` +
     `If supported entry or Knip setting changes are needed, report them before interpreting affected issues.\n\n` +
     `Do not edit the working drafts or register this attempt during review. Save the complete visible LLM response ` +

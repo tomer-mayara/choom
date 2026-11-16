@@ -178,6 +178,10 @@ before a dot, and lists a record with a subject that names no item as unplaced.
 Stage 6 of the producer runs the same check on the fixed discovery result before
 it saves a file. It also reads the exact bytes of the file back with the bounded
 YAML reader of the viewer, so it never publishes a result that the viewer refuses.
+`validateQuestionsAndGaps` applies the same rules to the questions and gaps of any
+value, before a fixed result exists, and counts the text budget over the whole
+value. The producer stages run it where a question or gap enters a run, because
+later stages keep each question and gap unchanged.
 
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
 copies of the reviewed empty and full `work-choom` baselines. Tests use repository

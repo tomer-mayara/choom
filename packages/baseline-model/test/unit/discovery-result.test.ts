@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { validateDiscoveryResult } from "../../src/discovery-result.ts";
+import { type DiscoveryProblemCode, validateDiscoveryResult, validateQuestionsAndGaps } from "../../src/discovery-result.ts";
 import {
   discoveryFixture, type DiscoveryInput as Input, discoveryRecord as record, discoveryRecordCopies as copies,
 } from "../../../../test/support/discovery-fixtures.ts";
@@ -120,4 +120,43 @@ test("exactly 5,000 questions and gaps and exactly 4 MiB of text values are acce
   expect(atBudget.outcome.status).toBe("valid");
   const overBudget = check((value) => { value.overview = structuredClone(atBudget.input.overview); value.runRef = "run-0010"; });
   expect(overBudget.outcome).toMatchObject({ status: "invalid", code: "limit-exceeded" });
+});
+
+// The producer stages check the questions and gaps of a run with the same rules where
+// each record enters the run, before Stage 6 makes the fixed result. The value is a
+// working discovery of formatVersion 1, which names no baseline.
+function workingCheck(change: (input: Input) => void = () => {}) {
+  const { result } = discoveryFixture();
+  const { baselineRef: _ref, baselineDigest: _digest, ...working } = structuredClone(result);
+  const input = { ...working, formatVersion: 1 } as unknown as Input;
+  change(input);
+  return validateQuestionsAndGaps(input);
+}
+
+test("the questions and gaps of a working discovery that names no baseline are accepted", () => {
+  expect(workingCheck()).toEqual({ status: "valid" });
+  expect(validateQuestionsAndGaps({ questions: [], gaps: [] })).toEqual({ status: "valid" });
+});
+
+test.each<[string, (input: Input) => void, DiscoveryProblemCode, string]>([
+  ["another field on a question", (input) => { record(input.questions).answer = "Yes."; }, "invalid-document",
+    'The discovery result is invalid at questions.0: Unrecognized key: "answer"'],
+  ["an ID that a question and a gap both use", (input) => { record(input.gaps).id = record(input.questions).id; }, "invalid-document",
+    "The discovery result is invalid at gaps.0.id: The ID s3-001-question-001 is used more than once. Each question and gap needs its own ID."],
+  ["101 subject references", (input) => {
+    record(input.gaps).subjectRefs = Array.from({ length: 101 }, (_, index) => `src/file-${index}.ts`);
+  }, "limit-exceeded", "The discovery result exceeds a limit at gaps.0.subjectRefs: The limit is 100 subject references for each question or gap."],
+  ["a reason of 16 KiB and one byte", (input) => { record(input.gaps).reason = "x".repeat(16 * 1024 + 1); }, "limit-exceeded",
+    "The discovery result exceeds a limit at gaps.0.reason: The UTF-8 text limit is 16384 bytes."],
+  ["a kind of 4 KiB and one byte", (input) => { record(input.gaps).kind = "k".repeat(4097); }, "limit-exceeded",
+    "The discovery result exceeds a limit at gaps.0.kind: The UTF-8 text limit is 4096 bytes."],
+  ["5,001 questions and gaps together", (input) => {
+    input.questions = copies(input.questions, 2_600, "question");
+    input.gaps = copies(input.gaps, 2_401, "gap");
+  }, "limit-exceeded", "The discovery result has 5001 questions and gaps. The limit is 5000 together."],
+  ["more than 4 MiB of text values in another field", (input) => {
+    input.overview = { text: "x".repeat(4 * 1024 * 1024), evidenceRefs: [] };
+  }, "limit-exceeded", "The text values of the discovery result are more than 4194304 UTF-8 bytes (4 MiB) together."],
+])("the questions and gaps of a working discovery with %s are refused", (_name, change, code, message) => {
+  expect(workingCheck(change)).toEqual({ status: "invalid", code, message });
 });

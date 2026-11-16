@@ -246,7 +246,10 @@ the exact bytes back as the viewer reads them, so the YAML limits of the viewer,
 such as 250,000 lines, apply to the file too. `verify` reads the saved file in
 the same way. A refusal starts with "The viewer could not open the fixed
 discovery result." and names the field or the limit. Stage 6 then saves nothing.
-Earlier stages keep questions and gaps unchanged, so start a new run.
+Stages 1 to 5 check each question and gap with the same rules before they save
+it, so a record does not first fail here after earlier stages froze it. A file
+over the YAML limits can still fail here; then start a new run with a smaller
+discovery result.
 
 The existing root `run.yaml` remains the canonical manifest for this manual
 run. Its registry gives the fixed files' paths and digests. The baseline's own

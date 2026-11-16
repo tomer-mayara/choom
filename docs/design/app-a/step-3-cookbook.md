@@ -507,8 +507,8 @@ planRef: the previous analysis's planRef
 knipRunsRef: the previous analysis's knipRunsRef
 candidates: records with id, expression, path, workspace, roles, origin, evidenceRefs
 reviewedFiles: records with id, snapshotRef, path, sha256, lines: [first, last]
-questions: records with id, subjectRefs, text, evidenceRefs
-gaps: records with id, kind, subjectRefs, reason, evidenceRefs
+questions: records with exactly id, subjectRefs, text, evidenceRefs
+gaps: records with exactly id, kind, subjectRefs, reason, evidenceRefs
 reachability: {status: not-assessed, reason: an evidence-supported explanation}
 llmReview: recorded
 knipAssessment: {action: reuse or rerun-required, reason: an explanation, evidenceRefs: [...]}
@@ -528,6 +528,9 @@ Do not copy stale future-work prose or rewrite preserved question/gap history.
 Start every new question, gap, source-record, and priority ID with {{ID}}-.
 New question, gap, candidate, source-record, and priority IDs must be unique and
 must not equal artifact IDs. Reserve {{ID}}-entry-analysis and {{ID}}-file@ for artifacts.
+Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef. A text
+or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference at most
+4 KiB. Use at most 5,000 questions and gaps together.
 Use registered evidence IDs, supplied source-record IDs, or exact JSON Pointers
 into JSON or YAML records. Cite another file whole, without a pointer.
 

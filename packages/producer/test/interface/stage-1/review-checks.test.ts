@@ -52,6 +52,15 @@ const reviewCases: ReviewCase[] = [
     message: "Invalid role." },
   { name: "a question uses an artifact ID", change: (packet) => { listItem(packet, "questions").id = "inventory-001"; },
     message: "Invalid question or gap." },
+  // Later stages keep each question and gap unchanged, and Stage 6 saves them only when
+  // the viewer can open them. So Stage 1 checks the question and gap contract of the viewer.
+  { name: "a gap has 101 subject references",
+    change: (packet) => { listItem(packet, "gaps").subjectRefs = Array.from({ length: 101 }, (_, index) => `file-${index}.ts`); },
+    message: "The questions and gaps do not match the discovery contract of the viewer. The discovery result exceeds a limit " +
+      "at gaps.0.subjectRefs: The limit is 100 subject references for each question or gap." },
+  { name: "a question has another field", change: (packet) => { listItem(packet, "questions").answer = "Yes."; },
+    message: "The questions and gaps do not match the discovery contract of the viewer. " +
+      'The discovery result is invalid at questions.0: Unrecognized key: "answer"' },
   // Stages 4 to 6 reserve the baseline ID for the fixed baseline, and later stages keep each question and gap.
   { name: "a question uses the baseline ID", change: (packet) => { listItem(packet, "questions").id = "baseline-check"; },
     message: "The ID baseline-check is reserved for the baseline. Use a different ID." },

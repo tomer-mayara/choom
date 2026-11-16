@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve, relative, posix } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
+import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
 
@@ -322,6 +323,7 @@ function checkAnalysis(finish: Finish, plan: Fields): Fields {
     checkSource(finish, source);
   }
   issues(finish, analysis, 'analysis'); preserve(finish.id, plan, analysis);
+  checkQuestionsAndGaps({ questions: analysis.questions, gaps: analysis.gaps });
   const identifiers = new Set(Object.keys(finish.artifacts));
   const records = (key: string): Fields[] => analysis[key] as Fields[];
   for (const item of [...records('candidates'), ...records('reviewedFiles'), ...records('questions'), ...records('gaps')]) {

@@ -45,6 +45,11 @@ const cases: FinishCase[] = [
     message: `Invalid JSON Pointer escape: ${id}-knip-runs#/runs~2` },
   { name: "a gap cites a list item with a leading zero", change: gapEvidence(`${id}-knip-runs#/runs/00`),
     message: `Invalid array JSON Pointer: ${id}-knip-runs#/runs/00` },
+  { name: "a new gap has a reason of 16 KiB and one byte",
+    change: (analysis) => ({ ...analysis, gaps: [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"],
+      reason: "x".repeat(16 * 1024 + 1), evidenceRefs: [`${id}-knip-runs`] }] }),
+    message: "The questions and gaps do not match the discovery contract of the viewer. The discovery result exceeds a limit " +
+      "at gaps.0.reason: The UTF-8 text limit is 16384 bytes." },
   { name: "a gap cites a JSON Pointer into a file that is not JSON or YAML",
     change: gapEvidence(`${id}-file@operator-start.stdout.txt#/0`),
     message: `Only a .json, .yaml or .yml file can take a JSON Pointer: ${id}-file@operator-start.stdout.txt#/0` },

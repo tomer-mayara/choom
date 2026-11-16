@@ -270,6 +270,10 @@ Preserve prior questions, gaps and evidence in this manual prototype. Append
 linked resolution notes when the new evidence answers part of an earlier
 record. Explain any new deferral using the checked scope and evidence.
 Do not infer unused code from missing edges or a tool issue alone.
+Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least
+one evidenceRef. A text or reason has at most 16 KiB of UTF-8, and an ID, a kind
+or a reference at most 4 KiB. Use at most 5,000 questions and gaps together.
+For a deferral of many files, name a folder or a component in subjectRefs.
 
 Rewrite current overview text, mapping/resource limits and counts to describe
 this packet. Do not append a current count while leaving an obsolete count or

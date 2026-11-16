@@ -58,7 +58,7 @@ function withinTextBudget(value: unknown): boolean {
   return true;
 }
 
-function checkRecords(result: DiscoveryResult, context: z.RefinementCtx): void {
+function checkRecords(result: Pick<DiscoveryResult, "questions" | "gaps">, context: z.RefinementCtx): void {
   const count = result.questions.length + result.gaps.length;
   if (count > recordLimit) context.addIssue({ code: "custom", params: limit,
     message: `The discovery result has ${count} questions and gaps. The limit is ${recordLimit} together.` });
@@ -130,6 +130,26 @@ function bindingProblem({ baselineRef, baselineDigest }: DiscoveryResult, { base
   if (baselineDigest !== sha256) return invalid("baseline-mismatch", "The discovery result is for the baseline file with " +
     `SHA-256 ${baselineDigest}, but the open baseline file has SHA-256 ${shownValue(sha256)}. ${reopen}`);
   return undefined;
+}
+
+// The questions and gaps of any value, with the record rules of the fixed result. The
+// other fields are kept, so that the text budget counts them too.
+const questionsAndGapsSchema = z.looseObject({ questions: records(question), gaps: records(gap) }).superRefine(checkRecords);
+
+/** The questions and gaps of a discovery are valid, or the first problem that the checks found. */
+export type QuestionsAndGapsCheck = { readonly status: "valid" } | Extract<DiscoveryCheck, { status: "invalid" }>;
+
+/**
+ * Checks the questions and gaps of a discovery with the rules of
+ * validateDiscoveryResult, before the fixed result exists: the exact fields and
+ * the limits of each question and gap, at most 5,000 of them together, unique IDs,
+ * and at most 4 MiB for all text values of the input. It checks no other field.
+ * The producer stages check each question and gap with it where the record enters
+ * a run, because later stages keep each question and gap unchanged.
+ */
+export function validateQuestionsAndGaps(input: unknown): QuestionsAndGapsCheck {
+  const parsed = questionsAndGapsSchema.safeParse(input);
+  return parsed.success ? { status: "valid" } : shapeProblem(parsed.error.issues[0]) as Extract<DiscoveryCheck, { status: "invalid" }>;
 }
 
 /**

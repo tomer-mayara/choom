@@ -989,8 +989,22 @@ The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
 A question or gap has exactly these fields. A linked note that answers or narrows
 an earlier record is a new question or gap with the same fields; it names the ID
-of the earlier record, such as in its `subjectRefs`. Stage 6 refuses a question
-or gap with another field (see [Fixed discovery result](#fixed-discovery-result)).
+of the earlier record, such as in its `subjectRefs`.
+
+The questions and gaps keep the limits of the viewer, from the discovery contract
+of `@choom/baseline-model` (`validateQuestionsAndGaps`). Each question or gap has
+1 to 100 `subjectRefs` and at least one evidence reference. A `text` or `reason`
+has at most 16 KiB of UTF-8, and an ID, a `kind` or a reference at most 4 KiB. The
+IDs are unique across questions and gaps, there are at most 5,000 questions and
+gaps together, and all text values of the discovery have at most 4 MiB together.
+For a deferral of many files, name a folder or a component in `subjectRefs`.
+Later stages keep each question and gap unchanged, so every stage checks these
+rules where a record enters the run: Stage 1 `finish`, Stage 2 `plan` and
+`finish`, the Stage 3 finalizer, and the Stage 4/5 publisher with the shared
+record checks. A refusal starts with "The questions and gaps do not match the
+discovery contract of the viewer." and names the field, such as
+`The discovery result exceeds a limit at gaps.0.subjectRefs`. Stage 6 checks the
+fixed result again (see [Fixed discovery result](#fixed-discovery-result)).
 
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership
@@ -1035,8 +1049,9 @@ makes this check before it saves any file, and `verify` makes it again on the
 saved file. A refusal starts with "The viewer could not open the fixed discovery
 result." and names the field, such as
 `The discovery result is invalid at questions.0: Unrecognized key: "answer"`.
-Earlier stages keep their questions and gaps unchanged, so a run with such a
-record cannot complete: start a new run, and do not edit saved files.
+Stages 1 to 5 check each question and gap with the same rules before they save
+it (see [Discovery](#discovery)), so a working discovery that they published
+passes this check. Do not edit saved files to pass it.
 
 Stage 6 writes the fixed discovery result as YAML without aliases, also when the
 working discovery repeats a value through a YAML alias. Before it saves any file,

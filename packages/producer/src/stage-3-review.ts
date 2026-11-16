@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
+import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { assert, evidenceBase, exact, type Fields, object, type PointerMessages, resolveEvidence, strings, text }
   from './record-checks.ts';
 
@@ -228,6 +229,7 @@ function checkIssues({ previous, discovery }: ReviewInputs, analysis: Fields, so
       if (isNew) addedIssues.push(item);
     }
   }
+  checkQuestionsAndGaps({ questions: analysis.questions, gaps: analysis.gaps });
   return addedIssues;
 }
 

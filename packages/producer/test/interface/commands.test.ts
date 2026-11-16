@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cpSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { producerReceipt } from "../../src/producer-code.ts";
 import { producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
@@ -57,9 +57,12 @@ function recordedRun(scratch: string): string {
   return work;
 }
 
-// A copy of a helper outside the tool checkout, with the producer modules that it imports.
+// A copy of a helper outside the tool checkout, with the producer modules that it imports
+// and a link to the installed packages of the checkout, such as @choom/baseline-model.
+// So the copy loads, and its own check of where it runs refuses it.
 function helperCopy(folder: string, helper: string): string {
   cpSync(producerSource, folder, { recursive: true });
+  if (!existsSync(join(folder, "node_modules"))) symlinkSync(join(toolsRoot, "node_modules"), join(folder, "node_modules"));
   return join(folder, helper);
 }
 

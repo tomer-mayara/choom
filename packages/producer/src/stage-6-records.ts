@@ -3,6 +3,7 @@ import type { Baseline } from '@choom/baseline-model/contracts';
 import { validateDiscoveryResult } from '@choom/baseline-model/discovery-result';
 import type * as Yaml from 'yaml';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
+import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { validateBehaviorCandidates } from './record-behavior-candidates.ts';
 import type { CandidateInputs } from './record-candidates.ts';
 import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
@@ -246,9 +247,9 @@ function checkWorkingDiscovery(discovery: unknown, run: RunRecord): asserts disc
 
 // The viewer opens a fixed discovery result with the discovery contract of
 // @choom/baseline-model (CR-004). The contract asks for exactly the fields of each
-// question and gap, for its limits and for unique IDs, which the checks of Stages 1
-// to 5 do not ask for. So Stage 6 makes, publishes and verifies only a fixed
-// discovery result that the viewer can open.
+// question and gap, for its limits and for unique IDs. Stages 1 to 5 check the
+// questions and gaps with the same rules where they enter the run, and Stage 6
+// makes, publishes and verifies only a fixed discovery result that the viewer can open.
 function checkViewerDiscovery(fixed: Fields, baselineRef: string, baselineFile: Buffer): void {
   const viewer = validateDiscoveryResult(fixed, { baseline: { id: baselineRef }, sha256: hash(baselineFile) });
   if (viewer.status === 'invalid') throw new Error('The viewer could not open the fixed discovery result. ' + viewer.message);
@@ -300,6 +301,7 @@ function checkIssues({ discovery, entry, claim, evidence }: Selection): void {
       evidence(issue);
     }
   }
+  checkQuestionsAndGaps(discovery);
 }
 
 function selectedHistory({ discovery, document, snapshotRef, source }: Selection): History {

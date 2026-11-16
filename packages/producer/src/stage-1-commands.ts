@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
+import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
@@ -462,6 +463,7 @@ function finish(inputs: StageOneInputs): void {
   const evidence = reviewSources(review, inventory);
   checkReviewItems(review, evidence);
   checkReservedIds(review, added, inputs.baselineId);
+  checkQuestionsAndGaps({ questions: review.questions, gaps: [...review.gaps, ...added.flatMap(({ gaps }) => gaps)] });
   checkSuppliedScope(bytes.get('review-scope.json') as Buffer, inputs, review, evidence);
   publish(inputs, bytes, review, inventory, added.flatMap(({ gaps }) => gaps));
 }

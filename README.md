@@ -545,6 +545,16 @@ bun test ./packages/producer/test/integration/records/fixed-discovery.test.ts ./
 bun test ./packages/producer/test/interface/stage-6/refusals.test.ts
 ```
 
+Stages 1 to 5 check each question and gap with the same rules
+(`validateQuestionsAndGaps`) where it enters the run: Stage 1 finish, Stage 2
+plan and finish, the Stage 3 finalizer and the shared record checks of the
+Stage 4/5 publisher. Run the focused checks with:
+
+```sh
+bun test ./packages/baseline-model/test/unit/discovery-result.test.ts ./packages/producer/test/integration/records/fixed-discovery.test.ts
+bun test ./packages/producer/test/interface/stage-1/review-checks.test.ts ./packages/producer/test/interface/stage-2/plan-checks.test.ts ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
+```
+
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require

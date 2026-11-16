@@ -32,6 +32,11 @@ const cases: PlanCase[] = [
   { name: "a candidate cites a JSON Pointer into a file that is not JSON or YAML",
     plan: (id) => entryPlan(id, { candidates: [{ ...candidate(id), evidenceRefs: ["exclusions-001#/0"] }] }),
     message: "Only a .json, .yaml or .yml file can take a JSON Pointer: exclusions-001#/0" },
+  { name: "a new gap has 101 subject references",
+    plan: (id) => entryPlan(id, { gaps: [{ id: `${id}-gap-001`, kind: "deferral", reason: "Not reviewed in this attempt.",
+      subjectRefs: Array.from({ length: 101 }, (_, index) => `file-${index}.ts`), evidenceRefs: ["inventory-001"] }] }),
+    message: "The questions and gaps do not match the discovery contract of the viewer. The discovery result exceeds a limit " +
+      "at gaps.0.subjectRefs: The limit is 100 subject references for each question or gap." },
   { name: "an earlier question changed",
     plan: (id) => entryPlan(id, { questions: [{ ...priorQuestion, text: "Changed." }] }),
     message: "Changed prior record: s1-question-001" },

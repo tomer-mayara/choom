@@ -76,9 +76,11 @@ describe("the shared record checks of a fixed discovery result", () => {
 
 // The viewer opens a fixed discovery result with the discovery contract of
 // @choom/baseline-model (CR-004): the exact fields of each question and gap, its
-// limits and unique IDs. The checks of Stages 1 to 5 do not ask for exact question
-// and gap fields, so Stage 6 checks the fixed result with that contract.
+// limits and unique IDs. Earlier stages keep each question and gap unchanged, so
+// the shared checks of Stages 4 and 5 already refuse a record that breaks the
+// contract, as Stages 1, 2 and 3 do. Stage 6 checks the fixed result again.
 const viewerRefusal = "The viewer could not open the fixed discovery result. ";
+const contractRefusal = "The questions and gaps do not match the discovery contract of the viewer. ";
 const viewerCases: [string, (records: Records) => void, string][] = [
   ["another field on a question", (records) => {
     const question = { id: "question-1", subjectRefs: ["cli"], text: "Is the CLI the only start?", evidenceRefs, answer: "Yes." };
@@ -89,11 +91,14 @@ const viewerCases: [string, (records: Records) => void, string][] = [
     const subjectRefs = Array.from({ length: 101 }, (_, index) => `subject-${index}`);
     for (const gaps of [records.discovery.gaps, records.entry.gaps]) Object.assign(gaps[0] ?? {}, { subjectRefs: [...subjectRefs] });
   }, "The discovery result exceeds a limit at gaps.0.subjectRefs: The limit is 100 subject references for each question or gap."],
+  ["more than 4 MiB of text values", (records) => {
+    records.discovery.overview = { text: "x".repeat(4 * 1024 * 1024), evidenceRefs };
+  }, "The text values of the discovery result are more than 4194304 UTF-8 bytes (4 MiB) together."],
 ];
 
 describe("the fixed discovery result that the viewer opens", () => {
-  test.each(viewerCases)("a working discovery with %s passes the shared checks of Stages 4 and 5", (_name, change) => {
-    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ components: 2 });
+  test.each(viewerCases)("the shared checks of Stages 4 and 5 refuse a working discovery with %s", (_name, change, message) => {
+    expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(new Error(contractRefusal + message));
   });
 
   test.each(viewerCases)("Stage 6 does not make a fixed result from a working discovery with %s", (_name, change, message) => {

@@ -258,9 +258,14 @@ reviewedFiles: records with id, snapshotRef, path, sha256, lines: [first, last]
 roles: records with selector, roles, basis (observed or inferred), evidenceRefs
 workspaceDeclarations: records with path, patterns, membershipStatus
   (verified or unverified), evidenceRefs
-questions: records with id, subjectRefs, text, evidenceRefs
-gaps: records with id, kind, subjectRefs, reason, evidenceRefs
+questions: records with exactly id, subjectRefs, text, evidenceRefs
+gaps: records with exactly id, kind, subjectRefs, reason, evidenceRefs
 llmReview: recorded
+
+Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef. A text
+or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference at most
+4 KiB. Use at most 5,000 questions and gaps together. Later stages keep each
+question and gap unchanged, and the viewer cannot open a record over these limits.
 
 Only supplied excerpts you actually inspected go in reviewedFiles. Copy each
 excerpt's exact source ID, snapshot ID, path, digest and saved range; never invent
