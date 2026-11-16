@@ -127,49 +127,52 @@ implementation" records what changed after work started.
 
 ### Changes during implementation
 
-Each ticket is a draft PR. Each PR targets the branch of the PR before it.
+Each ticket is a PR. Each PR was stacked on the branch of the PR before it. On
+2026-11-16 the owner asked to merge the whole stack. Every PR then targeted
+`main`, and the top PR (tomer-mayara/choom#95) merged the stack with one merge
+commit, so the commits of each PR are in `main` (see "How the stack merged").
 
 | Ticket | PR | State |
 |---|---|---|
-| Report | tomer-mayara/choom#57 | Merged into `main` (squash commit f99ca97). tomer-mayara/choom#58 still targets the old report branch: rebase the stack onto `main` and retarget tomer-mayara/choom#58 before it merges. |
-| GA-03a | tomer-mayara/choom#58 | Draft |
-| GA-01c | tomer-mayara/choom#59 | Draft |
-| GA-11a | tomer-mayara/choom#60 | Draft. The owner approved GA-11b, and with it the CR-004 text, on 2026-11-16 (recorded in the GA-11b1 PR). |
-| GA-DOC | tomer-mayara/choom#61 | Draft |
-| GA-00a | tomer-mayara/choom#62 | Draft |
-| GA-00b | tomer-mayara/choom#63 | Draft |
-| GA-00d | tomer-mayara/choom#64 | Draft |
-| GA-03b | tomer-mayara/choom#65 | Draft |
-| Plan update | tomer-mayara/choom#66 | Draft. D21 needs owner approval. |
-| GA-00b2 | tomer-mayara/choom#67 | Draft |
-| GA-00e | tomer-mayara/choom#68 | Draft |
-| GA-00c | tomer-mayara/choom#69 | Draft. This PR also records plan changes 6 and 7. |
-| GA-12 | tomer-mayara/choom#70 | Draft |
-| GA-09 | tomer-mayara/choom#71 | Draft. This PR also records plan change 8. |
-| GA-04 | tomer-mayara/choom#72 | Draft. This PR also records plan change 9. |
-| GA-05 | tomer-mayara/choom#73 | Draft. This PR also records plan changes 10 and 11. |
-| GA-06a | tomer-mayara/choom#74 | Draft. This PR also records plan changes 12 and 13. |
-| GA-06a2 | tomer-mayara/choom#75 | Draft. This PR also records plan change 14. |
-| GA-10a | tomer-mayara/choom#76 | Draft. This PR also records plan changes 15 and 16. |
-| GA-10b | tomer-mayara/choom#77 | Draft. This PR also records the approval of plan changes 6 to 16. |
-| GA-01a | tomer-mayara/choom#78 | Draft. This PR also records D22. |
-| GA-06b | tomer-mayara/choom#79 | Draft. The query command is the Stage 4 inspect action `references PATH SYMBOL`, where the design places focused source queries. |
-| GA-01b | tomer-mayara/choom#80 | Draft |
-| GA-07a | tomer-mayara/choom#81 | Draft. Stage 4 collect saves the candidates as `behavior-entry-candidates.json`, and the entry analysis names it as `behaviorEntryCandidatesRef`. The ticket said `behaviorEntries`, but that field already holds reviewed entries that the LLM writes. The list starts with one rule, the Express `get` route, which the scenarios use. |
-| GA-07b | tomer-mayara/choom#82 | Draft. 30 route rules (Express app and router, Fastify, Hono). The method comes from the rule, so the record does not change. Every call rule needs a documented sample in a data-driven test. |
-| GA-07c | tomer-mayara/choom#83 | Draft. 3 rules: `new Worker` of `node:worker_threads` and of `worker_threads` (the worker file is the name, no handler), and BullMQ `new Worker` (the queue is the name, argument 1 is the handler). |
-| GA-02a | tomer-mayara/choom#84 | Draft. Not as the ticket says: a part of a file names its file by `path` and `sha256`, not by `fileRef`, and it has `ranges`, not one `range`, because the rest is often split. Only Stage 5 divides files, with the scope `unitKind: file-or-part`. The LLM writes the units, and the checks require exactly the units that `divideFile` gives. D21 is done as proposed. |
-| GA-07e | tomer-mayara/choom#85 | Draft. 4 Vite `settings-literal` rules: `build.rollupOptions.input`, `build.rolldownOptions.input`, the top-level `input` and `build.lib.entry`. There is no Next.js rule, because `next.config.*` names no entry files as literals; Next.js finds its entries from its folders. |
-| GA-07f | tomer-mayara/choom#86 | Draft. A second pinned rule list (knex starter rules) with `typePath` and `nameCall`. Stage 4 collect saves `resource-access-candidates.json` with the confidence `receiver-import`, `receiver-type` or `name-only`, `identity: inferred-from-name`, and no owner. `resource-access.json` names it as `resourceAccessCandidatesRef`. The rule-list and call-rule code is now shared with GA-07a. |
-| GA-02b | tomer-mayara/choom#87 | Draft. Not as the ticket says: a new Stage 5 request, `parts PATH SYMBOL...`, saves `parts-NNN.json`, because Stage 5 `collect` never sees a divided file. A part is named by its symbol or `rest`, not by a unit ID. An import goes to the part that holds all uses of its names. `shared`, `unreferenced` and `not-resolved` imports stay at file level. |
-| GA-07d | tomer-mayara/choom#88 | Draft. The engine changes, test first, as the ticket table allows: call rules get the optional fields `nameCall` and `sameValueMethods`. There are commander and yargs command rules (the yargs handler is argument 3), and a new rule kind, `package-bin`, which links a bin file to its source only with evidence (the snapshot file, or the saved `outDir` and `rootDir`). |
-| GA-08 | tomer-mayara/choom#89 | Draft. This PR also records plan change 17 and D23 (path A, which replaces D15). Every plugin stays `false`. The plugin patterns are copied into the Stage 2 profile, and Stage 4 lists their files with `found: knip-plugin-pattern`. The first real run of the `@docker` scenarios is in CI. |
-| GA-11b1 | tomer-mayara/choom#90 | Draft. This PR also records the owner's approval of GA-11b and the CR-004 text, and plan change 18. The Stage 6 helper is now TypeScript, with no change of behavior. Stage 6 saves discovery version 2 with `baselineDigest`, and `verify` checks it. |
-| GA-11b2 | tomer-mayara/choom#91 | Draft. The viewer part of CR-004: a discovery contract and decoder (refuses version 1 and another baseline digest), placement on baseline items with an Unplaced list and a deferred group, the duplication report's load rules, and Copy decision (a GA-01a `accept` entry). Stage 6 also checks the fixed discovery result with the viewer contract, so the producer cannot publish a result that the viewer refuses. |
-| Review fixes A1–A6 | tomer-mayara/choom#92 | Draft. Plan change 19. Stage 6 saves the fixed discovery result as the viewer reads it; `baseline decide` runs the checks of `baseline next` and saves a record all or nothing; no Copy decision on a next version; files are divided only with the pinned ts-morph. The CI `web` job now has 25 minutes. |
-| Review fixes C1–C6 | tomer-mayara/choom#93 | Draft. Plan change 19. `import()` in a `.cts` file gets the condition that TypeScript gives it; a type shim keeps the import of its package; CommonJS exports are followed; candidates keep the order of the scope files; one copy of the candidate limit and of the source-file rule; a resource type path needs a step. |
-| Review fixes D1–D6 | tomer-mayara/choom#94 | Draft. Plan change 19. The `package-bin` rule reads strict JSON, arrays and large files as npm does; `export default function` settings get the right reason; the GA-08 settings-file filter is documented as a test of names; plugins that Knip turns on without a dependency are recorded. |
-| Review fixes B1–B7 | tomer-mayara/choom#95 | Draft. This PR also records plan change 19. An action on a published Stage 2 or Stage 3 attempt changes nothing; Stage 2 finish checks every phase again; Stage 2 checks the snapshot inventory with checkout code; more saved forms of hidden reasoning are refused; one shared evidence resolver; the question and gap contract is checked where each record enters; Stage 1 reserves the baseline ID. |
+| Report | tomer-mayara/choom#57 | Merged into `main` (squash commit f99ca97). |
+| GA-03a | tomer-mayara/choom#58 | Merged |
+| GA-01c | tomer-mayara/choom#59 | Merged |
+| GA-11a | tomer-mayara/choom#60 | Merged. The owner approved GA-11b, and with it the CR-004 text, on 2026-11-16 (recorded in the GA-11b1 PR). |
+| GA-DOC | tomer-mayara/choom#61 | Merged |
+| GA-00a | tomer-mayara/choom#62 | Merged |
+| GA-00b | tomer-mayara/choom#63 | Merged |
+| GA-00d | tomer-mayara/choom#64 | Merged |
+| GA-03b | tomer-mayara/choom#65 | Merged |
+| Plan update | tomer-mayara/choom#66 | Merged. D21 needs owner approval. |
+| GA-00b2 | tomer-mayara/choom#67 | Merged |
+| GA-00e | tomer-mayara/choom#68 | Merged |
+| GA-00c | tomer-mayara/choom#69 | Merged. This PR also records plan changes 6 and 7. |
+| GA-12 | tomer-mayara/choom#70 | Merged |
+| GA-09 | tomer-mayara/choom#71 | Merged. This PR also records plan change 8. |
+| GA-04 | tomer-mayara/choom#72 | Merged. This PR also records plan change 9. |
+| GA-05 | tomer-mayara/choom#73 | Merged. This PR also records plan changes 10 and 11. |
+| GA-06a | tomer-mayara/choom#74 | Merged. This PR also records plan changes 12 and 13. |
+| GA-06a2 | tomer-mayara/choom#75 | Merged. This PR also records plan change 14. |
+| GA-10a | tomer-mayara/choom#76 | Merged. This PR also records plan changes 15 and 16. |
+| GA-10b | tomer-mayara/choom#77 | Merged. This PR also records the approval of plan changes 6 to 16. |
+| GA-01a | tomer-mayara/choom#78 | Merged. This PR also records D22. |
+| GA-06b | tomer-mayara/choom#79 | Merged. The query command is the Stage 4 inspect action `references PATH SYMBOL`, where the design places focused source queries. |
+| GA-01b | tomer-mayara/choom#80 | Merged |
+| GA-07a | tomer-mayara/choom#81 | Merged. Stage 4 collect saves the candidates as `behavior-entry-candidates.json`, and the entry analysis names it as `behaviorEntryCandidatesRef`. The ticket said `behaviorEntries`, but that field already holds reviewed entries that the LLM writes. The list starts with one rule, the Express `get` route, which the scenarios use. |
+| GA-07b | tomer-mayara/choom#82 | Merged. 30 route rules (Express app and router, Fastify, Hono). The method comes from the rule, so the record does not change. Every call rule needs a documented sample in a data-driven test. |
+| GA-07c | tomer-mayara/choom#83 | Merged. 3 rules: `new Worker` of `node:worker_threads` and of `worker_threads` (the worker file is the name, no handler), and BullMQ `new Worker` (the queue is the name, argument 1 is the handler). |
+| GA-02a | tomer-mayara/choom#84 | Merged. Not as the ticket says: a part of a file names its file by `path` and `sha256`, not by `fileRef`, and it has `ranges`, not one `range`, because the rest is often split. Only Stage 5 divides files, with the scope `unitKind: file-or-part`. The LLM writes the units, and the checks require exactly the units that `divideFile` gives. D21 is done as proposed. |
+| GA-07e | tomer-mayara/choom#85 | Merged. 4 Vite `settings-literal` rules: `build.rollupOptions.input`, `build.rolldownOptions.input`, the top-level `input` and `build.lib.entry`. There is no Next.js rule, because `next.config.*` names no entry files as literals; Next.js finds its entries from its folders. |
+| GA-07f | tomer-mayara/choom#86 | Merged. A second pinned rule list (knex starter rules) with `typePath` and `nameCall`. Stage 4 collect saves `resource-access-candidates.json` with the confidence `receiver-import`, `receiver-type` or `name-only`, `identity: inferred-from-name`, and no owner. `resource-access.json` names it as `resourceAccessCandidatesRef`. The rule-list and call-rule code is now shared with GA-07a. |
+| GA-02b | tomer-mayara/choom#87 | Merged. Not as the ticket says: a new Stage 5 request, `parts PATH SYMBOL...`, saves `parts-NNN.json`, because Stage 5 `collect` never sees a divided file. A part is named by its symbol or `rest`, not by a unit ID. An import goes to the part that holds all uses of its names. `shared`, `unreferenced` and `not-resolved` imports stay at file level. |
+| GA-07d | tomer-mayara/choom#88 | Merged. The engine changes, test first, as the ticket table allows: call rules get the optional fields `nameCall` and `sameValueMethods`. There are commander and yargs command rules (the yargs handler is argument 3), and a new rule kind, `package-bin`, which links a bin file to its source only with evidence (the snapshot file, or the saved `outDir` and `rootDir`). |
+| GA-08 | tomer-mayara/choom#89 | Merged. This PR also records plan change 17 and D23 (path A, which replaces D15). Every plugin stays `false`. The plugin patterns are copied into the Stage 2 profile, and Stage 4 lists their files with `found: knip-plugin-pattern`. The first real run of the `@docker` scenarios is in CI. |
+| GA-11b1 | tomer-mayara/choom#90 | Merged. This PR also records the owner's approval of GA-11b and the CR-004 text, and plan change 18. The Stage 6 helper is now TypeScript, with no change of behavior. Stage 6 saves discovery version 2 with `baselineDigest`, and `verify` checks it. |
+| GA-11b2 | tomer-mayara/choom#91 | Merged. The viewer part of CR-004: a discovery contract and decoder (refuses version 1 and another baseline digest), placement on baseline items with an Unplaced list and a deferred group, the duplication report's load rules, and Copy decision (a GA-01a `accept` entry). Stage 6 also checks the fixed discovery result with the viewer contract, so the producer cannot publish a result that the viewer refuses. |
+| Review fixes A1–A6 | tomer-mayara/choom#92 | Merged. Plan change 19. Stage 6 saves the fixed discovery result as the viewer reads it; `baseline decide` runs the checks of `baseline next` and saves a record all or nothing; no Copy decision on a next version; files are divided only with the pinned ts-morph. The CI `web` job now has 25 minutes. |
+| Review fixes C1–C6 | tomer-mayara/choom#93 | Merged. Plan change 19. `import()` in a `.cts` file gets the condition that TypeScript gives it; a type shim keeps the import of its package; CommonJS exports are followed; candidates keep the order of the scope files; one copy of the candidate limit and of the source-file rule; a resource type path needs a step. |
+| Review fixes D1–D6 | tomer-mayara/choom#94 | Merged. Plan change 19. The `package-bin` rule reads strict JSON, arrays and large files as npm does; `export default function` settings get the right reason; the GA-08 settings-file filter is documented as a test of names; plugins that Knip turns on without a dependency are recorded. |
+| Review fixes B1–B7 | tomer-mayara/choom#95 | Merged. This PR also records plan change 19. An action on a published Stage 2 or Stage 3 attempt changes nothing; Stage 2 finish checks every phase again; Stage 2 checks the snapshot inventory with checkout code; more saved forms of hidden reasoning are refused; one shared evidence resolver; the question and gap contract is checked where each record enters; Stage 1 reserves the baseline ID. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
@@ -1425,7 +1428,7 @@ you want them fixed:
 
 ### Open after the final review
 
-Every ticket of this plan has a draft PR (tomer-mayara/choom#58 to
+Every ticket of this plan has a merged PR (tomer-mayara/choom#58 to
 tomer-mayara/choom#91, and tomer-mayara/choom#66 for the plan update). The
 review-fix PRs are tomer-mayara/choom#92 to tomer-mayara/choom#95. These
 items stay open.
@@ -1440,18 +1443,22 @@ items stay open.
   settings files by hand. Some files are unclear, such as `dangerfile.*`,
   `plopfile.*` and `sanity.config.*`.
 
-**Before the stack merges:**
+**How the stack merged:**
 
-- tomer-mayara/choom#58 targets the old report branch (see the PR table).
-- The CI `web` job fails on tomer-mayara/choom#63, tomer-mayara/choom#64,
-  tomer-mayara/choom#65 and tomer-mayara/choom#66. GA-00b added a test whose
-  scratch folder holds a read-only copy, and a runner without root rights
-  cannot remove it (`EACCES` in `local-checks.test.ts`). GA-00b2
-  (tomer-mayara/choom#67) fixes the cleanup in `test/support/commands.ts`.
-  When the stack is rebased onto `main`, move that fix into GA-00b.
-- tomer-mayara/choom#96 (draft, on `main`) fixes the flaky scenario "Reach a
-  large header with the keyboard". The stack has the same step, so the
-  rebase onto `main` brings the fix into the stack.
+- tomer-mayara/choom#57 was squash-merged, so the stack branches did not hold
+  its commit. Instead of a rebase of the stack, `main` (with tomer-mayara/choom#57
+  and tomer-mayara/choom#96) was merged into the top branch of the stack. The
+  report in `main` had the same bytes as the report that the stack started
+  from, so that merge kept the stack's report.
+- tomer-mayara/choom#96 fixes the flaky scenario "Reach a large header with the
+  keyboard". It merged into `main` first, so the stack has the fix.
+- Every PR of the stack then targeted `main`, and tomer-mayara/choom#95 merged
+  with a merge commit after its CI passed on the merged tree.
+- The heads of tomer-mayara/choom#63 to tomer-mayara/choom#66 keep a test whose
+  scratch folder holds a read-only copy, which a runner without root rights
+  cannot remove (`EACCES` in `local-checks.test.ts`). GA-00b2
+  (tomer-mayara/choom#67) fixes the cleanup. No state of `main` has the failing
+  test, because the stack merged with one merge commit.
 
 **Limits that the PRs record and do not fix:**
 
