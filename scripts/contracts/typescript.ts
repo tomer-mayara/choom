@@ -56,7 +56,9 @@ function primitiveReference(type: Type): string | undefined {
     if (value === null || !Number.isFinite(value)) throw new Error(`Unsupported numeric literal: ${type.valueAsString}`);
     return JSON.stringify(value);
   }
-  if (type.kind === "Intrinsic" && (type.name === "null" || type.name === "void")) return type.name;
+  // `unknown` is a field that a contract checks by name only, such as the
+  // discovery result fields that the viewer does not read.
+  if (type.kind === "Intrinsic" && (type.name === "null" || type.name === "void" || type.name === "unknown")) return type.name;
   if (type.kind === "Scalar" && type.namespace?.name === "TypeSpec") {
     if (type.name === "string" || type.name === "boolean") return type.name;
     if (type.name === "integer" || type.name === "float64") return "number";

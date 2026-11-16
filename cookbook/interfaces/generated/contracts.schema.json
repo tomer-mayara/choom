@@ -2410,6 +2410,152 @@
                 }
             ]
         },
+        "DiscoveryQuestion": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryQuestion.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "discoveryReference.json"
+                },
+                "subjectRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "discoveryReference.json"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                },
+                "text": {
+                    "$ref": "discoveryText.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "discoveryReference.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "id",
+                "subjectRefs",
+                "text",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "discoveryReference": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "discoveryReference.json",
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "\\S"
+        },
+        "discoveryText": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "discoveryText.json",
+            "type": "string",
+            "maxLength": 16384,
+            "pattern": "\\S"
+        },
+        "DiscoveryGap": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryGap.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "discoveryReference.json"
+                },
+                "kind": {
+                    "$ref": "discoveryReference.json"
+                },
+                "subjectRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "discoveryReference.json"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                },
+                "reason": {
+                    "$ref": "discoveryText.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "discoveryReference.json"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "id",
+                "kind",
+                "subjectRefs",
+                "reason",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoveryResult": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryResult.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 2
+                },
+                "kind": {
+                    "type": "string",
+                    "const": "architecture-discovery"
+                },
+                "baselineRef": {
+                    "$ref": "baselineId.json"
+                },
+                "baselineDigest": {
+                    "$ref": "baselineFileDigest.json"
+                },
+                "runRef": {},
+                "entryAnalysisRef": {},
+                "codeMappingRef": {},
+                "dependenciesRef": {},
+                "resourceAccessRef": {},
+                "overview": {},
+                "inspectedPaths": {},
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DiscoveryQuestion.json"
+                    },
+                    "maxItems": 5000
+                },
+                "gaps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DiscoveryGap.json"
+                    },
+                    "maxItems": 5000
+                }
+            },
+            "required": [
+                "formatVersion",
+                "kind",
+                "baselineRef",
+                "baselineDigest",
+                "runRef",
+                "entryAnalysisRef",
+                "codeMappingRef",
+                "dependenciesRef",
+                "resourceAccessRef",
+                "overview",
+                "inspectedPaths",
+                "questions",
+                "gaps"
+            ],
+            "additionalProperties": false
+        },
         "Baseline": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "Baseline.json",

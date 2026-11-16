@@ -1,6 +1,7 @@
 import "./baseline.tsp";
 import "./baseline-codec.tsp";
 import "./baseline-decisions.tsp";
+import "./discovery-result.tsp";
 import "./behavior-entry-rules.tsp";
 import "./resource-access-rules.tsp";
 import "./desktop.tsp";

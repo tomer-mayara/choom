@@ -15,11 +15,14 @@ import type { ReadonlyData } from "./readonly-data.ts";
 const decisionValue = z.custom<BaselineDecisionValue>(isJsonData, { message: "Expected JSON data." });
 const statement = { itemId: baselineId, field: baselineText };
 
+/** The SHA-256 of the saved baseline file bytes, as a decision file and a discovery result give it. */
+export const baselineFileDigestSchema = z.string().regex(/^[a-f0-9]{64}$/, "Expected a SHA-256 of 64 lowercase hexadecimal digits.");
+
 export const baselineDecisionsSchema = z.strictObject({
   formatVersion: z.literal(1),
   id: baselineId.max(128, "The decision record ID limit is 128 characters."),
   baselineRef: baselineId,
-  baselineDigest: z.string().regex(/^[a-f0-9]{64}$/, "Expected a SHA-256 of 64 lowercase hexadecimal digits."),
+  baselineDigest: baselineFileDigestSchema,
   decider: z.strictObject({ name: baselineText, kind: z.literal("human") }),
   decidedAt: z.iso.datetime("Expected an RFC 3339 time in UTC, such as 2026-11-15T10:30:00Z."),
   entries: z.array(z.discriminatedUnion("action", [

@@ -399,6 +399,37 @@ export interface BaselineV5 {
   systemEntryPoints?: BaselineSystemEntryPoints;
 }
 
+export interface DiscoveryGap {
+  id: discoveryReference;
+  kind: discoveryReference;
+  subjectRefs: Array<discoveryReference>;
+  reason: discoveryText;
+  evidenceRefs: Array<discoveryReference>;
+}
+
+export interface DiscoveryQuestion {
+  id: discoveryReference;
+  subjectRefs: Array<discoveryReference>;
+  text: discoveryText;
+  evidenceRefs: Array<discoveryReference>;
+}
+
+export interface DiscoveryResult {
+  formatVersion: 2;
+  kind: "architecture-discovery";
+  baselineRef: baselineId;
+  baselineDigest: baselineFileDigest;
+  runRef: unknown;
+  entryAnalysisRef: unknown;
+  codeMappingRef: unknown;
+  dependenciesRef: unknown;
+  resourceAccessRef: unknown;
+  overview: unknown;
+  inspectedPaths: unknown;
+  questions: Array<DiscoveryQuestion>;
+  gaps: Array<DiscoveryGap>;
+}
+
 export interface ProposedAccessPointsStatement {
   value: Array<baselineText> | null;
   status: "proposed";
@@ -490,3 +521,7 @@ export type baselineSymbolName = baselineText;
 export type baselineSymbolPath = baselineText;
 
 export type baselineText = string;
+
+export type discoveryReference = string;
+
+export type discoveryText = string;

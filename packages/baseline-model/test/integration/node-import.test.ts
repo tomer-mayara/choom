@@ -16,6 +16,7 @@ import { baselineSchema } from "@choom/baseline-model";
 import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 import "@choom/baseline-model/baseline-decisions";
 import "@choom/baseline-model/contracts";
+import "@choom/baseline-model/discovery-result";
 import "@choom/baseline-model/item-statements";
 import "@choom/baseline-model/readonly-data";
 

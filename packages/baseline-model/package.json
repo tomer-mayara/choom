@@ -9,6 +9,7 @@
     "./baseline-decisions": "./src/baseline-decisions.ts",
     "./baseline-format": "./src/baseline-format.ts",
     "./contracts": "./src/generated/contracts.ts",
+    "./discovery-result": "./src/discovery-result.ts",
     "./item-statements": "./src/item-statements.ts",
     "./readonly-data": "./src/readonly-data.ts"
   },
