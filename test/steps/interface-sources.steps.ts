@@ -215,7 +215,10 @@ When("the user reads all Sources disclosures with the keyboard", async function 
     }
     await focusedVisible(this, summary);
     await page(this).keyboard.press("Enter");
-    await expect(sources(this).locator(`details[data-section='${key}']`)).toHaveAttribute("open");
+    const opened = sources(this).locator(`details[data-section='${key}']`);
+    await expect(opened).toHaveAttribute("open");
+    // The browser opens the disclosure before React shows its content, and the next count reads that content.
+    await expect(opened.locator(":scope > :not(summary)").first()).toBeVisible();
   }
 });
 Then("source controls stay visible and the page has no horizontal overflow", async function (this: SourcesWorld) {
