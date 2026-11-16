@@ -490,6 +490,7 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
 
 // Stages 4 and 5 validate the same discovery contract before saving working drafts.
 // Stage 6 additionally supplies and validates a readiness packet.
+// Stage 6 verify validates the saved fixed records with the saved baseline file (baselineFile).
 export function validateDiscoveryRecords(inputs: RecordInputs): RecordCounts {
   return validateRecords({ ...inputs, packet: undefined });
 }

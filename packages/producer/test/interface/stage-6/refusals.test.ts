@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
@@ -31,10 +32,19 @@ const usage = "Use preflight REVIEW_DIR, start REVIEW_DIR, check, finish, or ver
 const lockPath = (run: StageSixFixture): string => join(run.work, ".stage-6-publish.lock");
 const preflight = (run: StageSixFixture): Action => ({ args: ["preflight", run.review] });
 
-function changeRunYaml(run: StageSixFixture, change: (manifest: Json) => void): void {
-  const manifest = parse(readFileSync(join(run.work, "run.yaml"), "utf8")) as Json;
-  change(manifest);
-  writeFileSync(join(run.work, "run.yaml"), stringify(manifest));
+function changeYaml(path: string, change: (record: Json) => void): void {
+  const record = parse(readFileSync(path, "utf8")) as Json;
+  change(record);
+  writeFileSync(path, stringify(record));
+}
+const changeRunYaml = (run: StageSixFixture, change: (manifest: Json) => void): void => changeYaml(join(run.work, "run.yaml"), change);
+
+// The refusal of a fixed discovery result whose baselineDigest is not the SHA-256 of the saved baseline file.
+function digestMismatch(run: StageSixFixture): string {
+  const discovery = parse(readFileSync(join(run.work, fixtureRecords.discoveryPath), "utf8")) as Json;
+  const saved = createHash("sha256").update(readFileSync(join(run.work, fixtureRecords.baselinePath))).digest("hex");
+  return `The discovery result names the baseline digest ${String(discovery.baselineDigest)}, ` +
+    `but the SHA-256 of the saved baseline file is ${saved}.`;
 }
 
 async function runIn(state: RunState): Promise<StageSixFixture> {
@@ -115,8 +125,23 @@ const verifyCases: RefusalCase[] = [
     arrange: (run) => { appendFileSync(join(run.work, "discovery.yaml"), "# edited\n"); return { args: ["verify"] }; } },
   { name: "a changed fixed discovery", state: "published", message: "Fixed records do not match the prepared result.",
     arrange: (run) => { appendFileSync(join(run.work, fixtureRecords.discoveryPath), "# edited\n"); return { args: ["verify"] }; } },
-  { name: "a changed fixed baseline", state: "published", message: "Fixed records do not match the prepared result.",
+  // The fixed discovery result names the SHA-256 of the fixed baseline file, so a changed baseline file breaks that binding.
+  { name: "a changed fixed baseline", state: "published", message: digestMismatch,
     arrange: (run) => { appendFileSync(join(run.work, fixtureRecords.baselinePath), "# edited\n"); return { args: ["verify"] }; } },
+  { name: "a fixed discovery result with another baseline digest", state: "published", message: digestMismatch,
+    arrange: (run) => {
+      changeYaml(join(run.work, fixtureRecords.discoveryPath), (discovery) => { discovery.baselineDigest = "0123456789abcdef".repeat(4); });
+      return { args: ["verify"] };
+    } },
+  { name: "a fixed discovery result of formatVersion 1, in the form of an older Stage 6", state: "published",
+    message: "Expected a complete fixed discovery result of formatVersion 2 with baselineRef and baselineDigest.",
+    arrange: (run) => {
+      changeYaml(join(run.work, fixtureRecords.discoveryPath), (discovery) => {
+        discovery.formatVersion = 1;
+        delete discovery.baselineDigest;
+      });
+      return { args: ["verify"] };
+    } },
   { name: "a finish receipt with another status", state: "published", message: "Invalid Stage 6 publication receipt.",
     arrange: (run) => {
       const path = join(run.work, "evidence", id, "operator-finish.json");
