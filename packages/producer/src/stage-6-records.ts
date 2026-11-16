@@ -517,3 +517,23 @@ export function fixedDiscovery(working: Fields, baselineRef: string, baselineFil
   checkViewerDiscovery(fixed, baselineRef, baselineFile);
   return fixed;
 }
+
+// A saved fixed discovery result, read as the viewer reads its file: with the
+// bounded YAML profile, so the YAML limits of the viewer apply to the bytes too.
+export function readFixedDiscoveryYaml(bytes: Buffer, yaml: typeof Yaml): unknown {
+  try {
+    return readBoundedYaml(bytes, yaml, 'Fixed discovery result');
+  } catch (error) {
+    throw new Error('The viewer could not open the fixed discovery result. ' + (error as Error).message);
+  }
+}
+
+// The file of the fixed discovery result: YAML text without aliases, which
+// readFixedDiscoveryYaml reads back to the same result. A result within the limits
+// of the discovery contract can still give a file that the viewer refuses, such
+// as a file with more than 250,000 lines; Stage 6 then refuses the result.
+export function fixedDiscoveryYaml(fixed: Fields, yaml: typeof Yaml): Buffer {
+  const bytes = Buffer.from(yaml.stringify(fixed, { aliasDuplicateObjects: false }));
+  assert(same(readFixedDiscoveryYaml(bytes, yaml), fixed), 'Fixed discovery serialization changed the reviewed result.');
+  return bytes;
+}

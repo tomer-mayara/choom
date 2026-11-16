@@ -9,8 +9,8 @@ import { directory, ensureDirectory, file, fileNames, type OwnedFile, type Owned
   removeOwnedDirectories, requireNames, saveNew, stillOwned, withLock } from './stage-6-files.ts';
 import { type CheckedInventory, draftNames, loadYaml, plainId, readRegistry, type SnapshotIdentity, type TrustedYaml,
   verifyInventory } from './stage-6-inputs.ts';
-import { factKeys, fixedDiscovery, packetFiles, readBaselineYaml, type RecordInputs, type RunRecord, validateDiscoveryRecords,
-  validateRecords } from './stage-6-records.ts';
+import { factKeys, fixedDiscovery, fixedDiscoveryYaml, packetFiles, readBaselineYaml, readFixedDiscoveryYaml, type RecordInputs,
+  type RunRecord, validateDiscoveryRecords, validateRecords } from './stage-6-records.ts';
 
 // The Stage 6 helper. preflight and start check the finalized Stage 5 drafts and
 // the readiness packet; start saves the checkpoints, the packet and the prepared
@@ -150,12 +150,12 @@ function readStageFive({ drafts, packet, yaml }: { drafts: Files; packet: Files;
     ![...artifacts.values()].some(item => [refs.baselinePath, refs.discoveryPath].includes(item.path)),
   'A fixed baseline or discovery artifact is already registered.');
   // The fixed baseline is the reviewed baseline draft, byte for byte; the fixed discovery result names its SHA-256.
+  // Each action checks that the viewer can open the exact bytes of the fixed discovery result, before it saves a file.
   const fixed = fixedDiscovery(working, refs.baselineRef, drafts.get('baseline.yaml') as Buffer);
   const candidates = new Map([
     ['baseline.candidate.yaml', drafts.get('baseline.yaml') as Buffer],
-    ['discovery.candidate.yaml', Buffer.from(yaml.stringify(fixed))],
+    ['discovery.candidate.yaml', fixedDiscoveryYaml(fixed, yaml)],
   ]);
-  assert(same(parse(candidates.get('discovery.candidate.yaml')), fixed), 'Fixed discovery serialization changed the reviewed result.');
   return { run, drafts, artifacts, candidates, recordInputs,
     facts: stageFacts({ run, refs, verified, artifacts, draftDigests, discovery: working }),
     validation: { formatVersion: 1, attemptId: id, runRef: refs.runRef, snapshotRef: refs.snapshotRef,
@@ -459,10 +459,11 @@ function verifyCompleted(input: Prepared): Fields {
     discovery: { id: state.facts.discoveryRef, path: state.facts.discoveryPath, sha256: hash(discovery) },
   }), 'Fixed record receipt differs from the prepared result.');
   // The saved fixed records pass the shared record checks, and the fixed discovery
-  // result names the saved baseline file by its ID and its SHA-256.
+  // result names the saved baseline file by its ID and its SHA-256. The saved
+  // discovery file is read as the viewer reads it.
   const savedBaseline = file(work, state.facts.baselinePath);
   validateDiscoveryRecords({ ...state.recordInputs, baseline: readBaselineYaml(savedBaseline, yaml),
-    discovery: yaml.parse(file(work, state.facts.discoveryPath).toString('utf8')), baselineFile: savedBaseline });
+    discovery: readFixedDiscoveryYaml(file(work, state.facts.discoveryPath), yaml), baselineFile: savedBaseline });
   const expectedRun = completeManifest(input, phase, receipt.completedAt);
   requireWorkingDrafts(new Map([['run.yaml', expectedRun], ['baseline.yaml', baseline], ['discovery.yaml', discovery]]));
   assert(file(work, state.facts.baselinePath).equals(baseline) && file(work, state.facts.discoveryPath).equals(discovery),

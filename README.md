@@ -525,13 +525,20 @@ bun test ./packages/producer/test/interface/stage-6
 
 Each Stage 6 action also checks the fixed discovery result with the discovery
 contract of the viewer (`validateDiscoveryResult`), before it saves a file, and
-`verify` checks the saved file again. So Stage 6 never publishes a result that
-the viewer refuses, such as a question with another field. The fixed-discovery
-suite checks such refusals, and the viewer-discovery suite opens the saved
-result of the Stage 6 producer fixture with the viewer codec:
+`verify` checks the saved file again. Stage 6 writes the file as YAML without
+aliases and reads the exact bytes back with the bounded YAML profile of the
+viewer (`fixedDiscoveryYaml` and `readFixedDiscoveryYaml`), and `verify` reads the
+saved file in the same way. So Stage 6 never publishes a result that the viewer
+refuses, such as a question with another field or a file with more than 250,000
+lines. The fixed-discovery suite checks the refusals of the contract, the Stage 6
+refusal suite refuses a file over the YAML limits and a saved file with an
+alias, and the viewer-discovery suite opens the saved result of the Stage 6
+producer fixture with the viewer codec, also when its working discovery repeats
+a list through a YAML alias:
 
 ```sh
 bun test ./packages/producer/test/integration/records/fixed-discovery.test.ts ./packages/producer/test/integration/records/viewer-discovery.test.ts
+bun test ./packages/producer/test/interface/stage-6/refusals.test.ts
 ```
 
 The producer interface tests also run in `check:contracts`. The duplication tests execute the

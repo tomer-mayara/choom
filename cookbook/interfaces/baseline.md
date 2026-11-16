@@ -176,7 +176,8 @@ no record is dropped. The viewer places a question or gap on each component,
 interface, resource and rule whose ID equals a subject reference or starts it
 before a dot, and lists a record with a subject that names no item as unplaced.
 Stage 6 of the producer runs the same check on the fixed discovery result before
-it saves a file, so it never publishes a result that the viewer refuses.
+it saves a file. It also reads the exact bytes of the file back with the bounded
+YAML reader of the viewer, so it never publishes a result that the viewer refuses.
 
 The two reviewed fixture files live in `test/fixtures/baseline-viewer/`. They are
 copies of the reviewed empty and full `work-choom` baselines. Tests use repository

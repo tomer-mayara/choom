@@ -516,7 +516,8 @@ The final Stage 6 verification must succeed. Confirm that:
    retained explanatory defect is identified precisely in readiness or run notes.
 7. The fixed discovery result has `formatVersion: 2` and names the fixed baseline
    by its ID and the SHA-256 of its file (`baselineDigest`).
-   Stage 6 also checks that the viewer can open it.
+   Stage 6 also checks that the viewer can open it: the result and the exact
+   bytes of its file.
 
 Set the final `progress.md` status after verification. Link the fixed baseline
 and discovery, summarize the checks and remaining limits, and share the report

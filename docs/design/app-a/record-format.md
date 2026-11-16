@@ -448,7 +448,8 @@ sourceUsage:
 ### Reader limits
 
 The publisher and Stage 6 use the viewer's bounded YAML profile before parsing
-the baseline. It permits one UTF-8 YAML document with JSON-compatible values.
+the baseline. Stage 6 also reads the file of the fixed discovery result with it.
+It permits one UTF-8 YAML document with JSON-compatible values.
 Aliases, anchors, explicit tags, directives, duplicate keys, non-string keys,
 and invalid flow separators are rejected. Limits are 16 MiB per baseline,
 32 YAML levels, 250,000 YAML nodes and line breaks, and 1,500,000 lexer tokens.
@@ -1017,6 +1018,16 @@ result." and names the field, such as
 `The discovery result is invalid at questions.0: Unrecognized key: "answer"`.
 Earlier stages keep their questions and gaps unchanged, so a run with such a
 record cannot complete: start a new run, and do not edit saved files.
+
+Stage 6 writes the fixed discovery result as YAML without aliases, also when the
+working discovery repeats a value through a YAML alias. Before it saves any file,
+it reads the exact bytes back as the viewer reads them, with the bounded YAML
+profile of the [reader limits](#reader-limits), and `verify` reads the saved file
+with the same profile. A result within the limits above can still give a file
+that the profile refuses, such as a file with more than 250,000 lines. Stage 6
+refuses it too, for example with "The viewer could not open the fixed discovery
+result. Fixed discovery result exceeds the YAML structure limit." Start a new
+run with a smaller discovery result.
 
 ## Check, publish and verify
 

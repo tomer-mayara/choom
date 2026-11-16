@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { helperCall } from "../../src/cli.ts";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
@@ -97,4 +99,30 @@ export async function publishedFixture(id: string): Promise<StageSixFixture> {
   const finished = stageSix(fixture.work, id, ["finish"]);
   if (finished.status !== 0) throw new Error(`Stage 6 finish failed: ${finished.stderr}`);
   return fixture;
+}
+
+// The working discovery of the fixture and the registered files of Stage 5 that a
+// test can give new text.
+export const stageFiveFiles = { discovery: "discovery.yaml", proposal: "evidence/s5-fixture/discovery.proposed.yaml",
+  entryAnalysis: "evidence/s5-fixture/entry-analysis.yaml" };
+
+// Gives files of the run new text before Stage 6 starts, as Stage 5 could have
+// saved them. `files` maps a path in the run folder to its new text. run.yaml and
+// the readiness review then name the new SHA-256 of each changed file and of
+// run.yaml, so Stage 6 checks the new text.
+export function rewriteStageFiveFiles(fixture: StageSixFixture, files: Record<string, string>): void {
+  const sha256 = (text: string | Buffer): string => createHash("sha256").update(text).digest("hex");
+  const digests = new Map<string, string>();
+  const replaceDigests = (text: string): string =>
+    [...digests].reduce((current, [before, after]) => current.replaceAll(before, after), text);
+  for (const [path, text] of Object.entries(files)) {
+    digests.set(sha256(readFileSync(join(fixture.work, path))), sha256(text));
+    writeFileSync(join(fixture.work, path), text);
+  }
+  const run = readFileSync(join(fixture.work, "run.yaml"), "utf8");
+  const nextRun = replaceDigests(run);
+  digests.set(sha256(run), sha256(nextRun));
+  writeFileSync(join(fixture.work, "run.yaml"), nextRun);
+  for (const name of ["readiness.yaml", "llm/analysis-response.md"])
+    writeFileSync(join(fixture.review, name), replaceDigests(readFileSync(join(fixture.review, name), "utf8")));
 }

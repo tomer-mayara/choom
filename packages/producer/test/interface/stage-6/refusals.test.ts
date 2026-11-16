@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { type CommandResult, makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
-import { fixtureRecords, publishedFixture, type StageSixFixture, stageSix, stageSixFixture, startedFixture }
-  from "../../support/stage-6-run.ts";
+import { fixtureRecords, publishedFixture, rewriteStageFiveFiles, type StageSixFixture, stageFiveFiles, stageSix, stageSixFixture,
+  startedFixture } from "../../support/stage-6-run.ts";
 import { copyToolCheckout } from "../../support/tool-checkout.ts";
 
 // The refusals of the Stage 6 actions, with their messages. Each case prepares a
@@ -46,6 +46,30 @@ function digestMismatch(run: StageSixFixture): string {
   return `The discovery result names the baseline digest ${String(discovery.baselineDigest)}, ` +
     `but the SHA-256 of the saved baseline file is ${saved}.`;
 }
+
+// 2,600 questions with 100 subject references each, in the working discovery and
+// the selected entry analysis. The records keep every limit of the discovery
+// contract, but the saved fixed result has more than 250,000 lines, which the YAML
+// reader of the viewer refuses. The working files are JSON, which is YAML.
+function manyQuestions(run: StageSixFixture): Action {
+  const questions = Array.from({ length: 2_600 }, (_, index) => ({ id: `question-${index}`,
+    subjectRefs: Array.from({ length: 100 }, (_, ref) => `subject-${ref}`), text: "Who owns this code?", evidenceRefs: ["launch-settings"] }));
+  const withQuestions = (path: string): string =>
+    JSON.stringify({ ...(parse(readFileSync(join(run.work, path), "utf8")) as Json), questions });
+  const discovery = withQuestions(stageFiveFiles.discovery);
+  rewriteStageFiveFiles(run, { [stageFiveFiles.discovery]: discovery, [stageFiveFiles.proposal]: discovery,
+    [stageFiveFiles.entryAnalysis]: withQuestions(stageFiveFiles.entryAnalysis) });
+  return preflight(run);
+}
+
+// A saved fixed discovery result with the same data, in which a YAML alias repeats one list.
+function sharedList(run: StageSixFixture): Action {
+  const path = join(run.work, fixtureRecords.discoveryPath);
+  writeFileSync(path, readFileSync(path, "utf8").replace("inspectedPaths: []\nquestions: []\n", "inspectedPaths: &none []\nquestions: *none\n"));
+  return { args: ["verify"] };
+}
+
+const viewerRefusal = "The viewer could not open the fixed discovery result. ";
 
 async function runIn(state: RunState): Promise<StageSixFixture> {
   if (state === "started") return startedFixture(id);
@@ -99,6 +123,8 @@ const startCases: RefusalCase[] = [
     } },
   { name: "a publication temporary file", state: "after Stage 5", message: "Publication temporary file already exists: run",
     arrange: (run) => { writeFileSync(join(run.work, ".stage-6-run.next.yaml"), ""); return preflight(run); } },
+  { name: "a fixed discovery result whose file has more lines than the YAML reader of the viewer reads", state: "after Stage 5",
+    message: `${viewerRefusal}Fixed discovery result exceeds the YAML structure limit.`, arrange: manyQuestions },
   { name: "a second start", state: "started", message: "Start with a fresh attempt ID.", arrange: (run) => ({ args: ["start", run.review] }) },
 ];
 
@@ -125,6 +151,9 @@ const verifyCases: RefusalCase[] = [
     arrange: (run) => { appendFileSync(join(run.work, "discovery.yaml"), "# edited\n"); return { args: ["verify"] }; } },
   { name: "a changed fixed discovery", state: "published", message: "Fixed records do not match the prepared result.",
     arrange: (run) => { appendFileSync(join(run.work, fixtureRecords.discoveryPath), "# edited\n"); return { args: ["verify"] }; } },
+  // verify reads the saved file as the viewer reads it, before it compares the bytes.
+  { name: "a fixed discovery result that repeats a list through a YAML alias", state: "published",
+    message: `${viewerRefusal}Fixed discovery result YAML anchors and explicit tags are unsupported.`, arrange: sharedList },
   // The fixed discovery result names the SHA-256 of the fixed baseline file, so a changed baseline file breaks that binding.
   { name: "a changed fixed baseline", state: "published", message: digestMismatch,
     arrange: (run) => { appendFileSync(join(run.work, fixtureRecords.baselinePath), "# edited\n"); return { args: ["verify"] }; } },
