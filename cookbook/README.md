@@ -20,6 +20,8 @@ It owns the [baseline versions](behavior/producer/baseline-versions.feature)
 behavior too: it makes the next baseline version from recorded decisions.
 It also owns the [behavior entry candidates](behavior/producer/behavior-entries.feature)
 behavior: Stage 4 applies its pinned behavior entry rules to the source.
+It owns the [code units](behavior/producer/code-units.feature) behavior too:
+symbol selectors divide a file into code units, which the producer checks on the saved snapshot.
 
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
 baseline file input to validation, layout, and the view. The baseline model,
