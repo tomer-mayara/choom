@@ -82,3 +82,79 @@ rules:
     callPath: express().all
     nameArgument: 0
     handlerArgument: last
+  # The route methods of an Express router, such as router.post('/orders', createOrder)
+  # after const router = express.Router(), or after const router = Router() with
+  # import { Router } from 'express'. The path is the name in the router, without the
+  # path that app.use gives the router. The last argument is the handler.
+  - id: express-router-get
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().get
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-post
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-put
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-patch
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-delete
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-options
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-head
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().head
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-all
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().all
+    nameArgument: 0
+    handlerArgument: last

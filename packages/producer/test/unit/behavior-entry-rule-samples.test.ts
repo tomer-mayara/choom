@@ -29,9 +29,17 @@ const expressApp: Receiver = { extension: "js", entryKind: "http-route",
     "the app of another package": "const express = require('other')\nconst app = express()\n",
     "a local function with the name of the import": "function express() {\n  return new Map()\n}\nconst app = express()\n",
   } };
+// The router of the Express routing guide (birds.js).
+const expressRouter: Receiver = { extension: "js", entryKind: "http-route",
+  start: "const express = require('express')\nconst router = express.Router()\n", others: {
+    "a Map": "const router = new Map()\n",
+    "the router of another package": "const express = require('other')\nconst router = express.Router()\n",
+    "a local object with the name of the import": "const express = { Router: () => new Map() }\nconst router = express.Router()\n",
+  } };
 
 // The routes of the Express routing guide and the basic routing example. A method that
-// they do not show has the form of the methods that they show, as app.METHOD allows.
+// they do not show has the form of the methods that they show, as app.METHOD and
+// router.METHOD allow.
 const samples: Record<string, Sample> = {
   "express-route-get": { receiver: expressApp, name: "/example/b", call: "app.get('/example/b', (req, res, next) => {\n" +
     "  console.log('the response will be sent by the next function ...')\n  next()\n}, «(req, res) => {\n" +
@@ -50,6 +58,22 @@ const samples: Record<string, Sample> = {
     call: "app.head('/user', «(req, res) => {\n  res.send('Got a HEAD request at /user')\n}»)" },
   "express-route-all": { receiver: expressApp, name: "/secret", call: "app.all('/secret', «(req, res, next) => {\n" +
     "  console.log('Accessing the secret section ...')\n  next() // pass control to the next handler\n}»)" },
+  "express-router-get": { receiver: expressRouter, name: "/",
+    call: "router.get('/', «(req, res) => {\n  res.send('Birds home page')\n}»)" },
+  "express-router-post": { receiver: expressRouter, name: "/",
+    call: "router.post('/', «(req, res) => {\n  res.send('Add a bird')\n}»)" },
+  "express-router-put": { receiver: expressRouter, name: "/about",
+    call: "router.put('/about', «(req, res) => {\n  res.send('Replace about birds')\n}»)" },
+  "express-router-patch": { receiver: expressRouter, name: "/about",
+    call: "router.patch('/about', «(req, res) => {\n  res.send('Change about birds')\n}»)" },
+  "express-router-delete": { receiver: expressRouter, name: "/about",
+    call: "router.delete('/about', «(req, res) => {\n  res.send('Delete about birds')\n}»)" },
+  "express-router-options": { receiver: expressRouter, name: "/about",
+    call: "router.options('/about', «(req, res) => {\n  res.send('Options of about birds')\n}»)" },
+  "express-router-head": { receiver: expressRouter, name: "/about",
+    call: "router.head('/about', «(req, res) => {\n  res.send('About birds')\n}»)" },
+  "express-router-all": { receiver: expressRouter, name: "/about", call: "router.all('/about', «(req, res, next) => {\n" +
+    "  console.log('Time: ', Date.now())\n  next()\n}»)" },
 };
 
 const callRules = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules
