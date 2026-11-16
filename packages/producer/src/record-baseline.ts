@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { baselineSchema } from '@choom/baseline-model';
-import { supportsSourceUsage, supportsSystemEntryPoints } from '@choom/baseline-model/baseline-format';
+import { supportsSourceUsage, supportsSymbolSelectors, supportsSystemEntryPoints } from '@choom/baseline-model/baseline-format';
 import type { Baseline, BaselineDecisions, BaselineDocumentation, BaselineInterface, BaselineSourceUse }
   from '@choom/baseline-model/contracts';
 import { baselineStatements, documentationStatements, type DocumentationStatement, itemStatementFields, type StatementState }
@@ -17,7 +17,7 @@ import { type SourceRecords, validateSourceLocation } from './record-sources.ts'
 const collectionKeys = ['components', 'interfaces', 'resources', 'rules'] as const;
 const itemKinds = new Map<unknown, string>([['components', 'component'], ['interfaces', 'interface'],
   ['resources', 'resource'], ['rules', 'rule']]);
-const producerVersions = [1, 2, 3, 4];
+const producerVersions = [1, 2, 3, 4, 5];
 
 export interface BaselineInputs {
   baseline: Baseline;
@@ -71,16 +71,29 @@ function checkParent(baseline: unknown, made: VersionDecisions | undefined): voi
     'but the decision record ' + link.path + ' is for the baseline ' + saved.decisions.baselineRef + '.');
 }
 
+// Each component has at least one membership path. In version 5, a component can
+// own only symbols, so it has at least one path or symbol.
+function checkMembershipSelectors(component: unknown, id: string, version: unknown): void {
+  const empty = (value: unknown): boolean => Array.isArray(value) && value.length === 0;
+  const membership = field(field(component, 'membership'), 'value');
+  const paths = field(membership, 'paths');
+  const symbols = field(membership, 'symbols');
+  if (version === 5) assert(!empty(paths) || (symbols !== undefined && !empty(symbols)), 'Component ' + id +
+    ' has no membership paths or symbols. The producer needs at least one path or symbol for each component.');
+  else assert(!empty(paths), 'Component ' + id + ' has no membership paths. The producer needs at least one path for each component.');
+}
+
 // The producer profile: what the producer writes, on top of the shared baseline
-// rules. It writes formatVersion 1 to 4: a first version of a baseline, or a
+// rules. It writes formatVersion 1 to 5: a first version of a baseline, or a
 // next version that a decision record makes. The baseline has at least one
 // component. Each component, also a parent that only groups other components,
-// has a purpose, a grouping reason and at least one path. A question or gap does
-// not replace these values. The profile runs first, so that each case has its
-// own message.
+// has a purpose, a grouping reason and at least one path, or in version 5 at least
+// one path or symbol. A question or gap does not replace these values. The profile
+// runs first, so that each case has its own message.
 function checkProducerProfile(baseline: unknown, made: VersionDecisions | undefined): void {
   const version = field(baseline, 'formatVersion');
-  assert(oneOf(producerVersions, version), 'The producer writes baseline formatVersion 1, 2, 3 or 4, not ' + JSON.stringify(version) + '.');
+  assert(oneOf(producerVersions, version), 'The producer writes baseline formatVersion 1, 2, 3, 4 or 5, not ' +
+    JSON.stringify(version) + '.');
   checkParent(baseline, made);
   const components = field(baseline, 'components');
   if (!Array.isArray(components)) return;
@@ -91,9 +104,21 @@ function checkProducerProfile(baseline: unknown, made: VersionDecisions | undefi
       'Component ' + id + ' has no purpose. The producer needs a purpose for each component.');
     assert(field(field(component, 'groupingReason'), 'value') !== null,
       'Component ' + id + ' has no grouping reason. The producer needs a grouping reason for each component.');
-    const paths = field(field(field(component, 'membership'), 'value'), 'paths');
-    assert(!Array.isArray(paths) || paths.length > 0,
-      'Component ' + id + ' has no membership paths. The producer needs at least one path for each component.');
+    checkMembershipSelectors(component, id, version);
+  }
+}
+
+// A symbol has one direct owner: two components cannot name the same symbol of a file.
+function checkSymbolOwners(baseline: Baseline): void {
+  if (!supportsSymbolSelectors(baseline)) return;
+  const owners = new Map<string, string>();
+  for (const { id, membership } of baseline.components) {
+    for (const { path, symbol } of membership.value.symbols ?? []) {
+      const key = JSON.stringify([path, symbol]);
+      const owner = owners.get(key);
+      assert(owner === undefined, `The symbol ${symbol} of ${path} has two owners: ${owner} and ${id}. A symbol has one direct owner.`);
+      owners.set(key, id);
+    }
   }
 }
 
@@ -183,6 +208,7 @@ export function checkBaselineDocument(value: unknown, made?: VersionDecisions): 
   checkProducerProfile(value, made);
   const result = baselineSchema.safeParse(value);
   if (!result.success) throw new Error(sharedRuleMessage(value, result.error.issues[0]));
+  checkSymbolOwners(result.data);
   if (made === undefined) checkProposedIntent(result.data);
   else checkDecidedStatements(result.data, made);
   checkDisplayLimits(result.data);
