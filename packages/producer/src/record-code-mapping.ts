@@ -138,14 +138,14 @@ function checkPartUnit(context: Context, unit: Fields, kind: string): void {
 }
 
 // The syntax tree of a saved file that symbol selectors divide, from bytes that the checks read and check.
-function savedSource(inputs: MappingInputs, path: string, file: Fields): TsMorph.ts.SourceFile {
+function savedSource(inputs: MappingInputs, path: string, file: Fields, tools: ProjectTools): TsMorph.ts.SourceFile {
   const cannot = (reason: string): string => `The symbol selectors cannot divide ${path}: ${reason}`;
   assert(sourceExtension.test(path), cannot('the file is not JavaScript or TypeScript.'));
   assert((file.bytes as number) <= sourceLimit, cannot('the file is larger than 2 MiB.'));
   const bytes = inputs.readSource(path, sourceLimit);
   assert(hash(bytes) === file.sha256, 'Changed source file: ' + path);
   assert(Buffer.from(bytes.toString('utf8')).equals(bytes), cannot('the file is not UTF-8 text.'));
-  return parseSnapshotText(path, bytes, checkoutTools());
+  return parseSnapshotText(path, bytes, tools);
 }
 
 // The fields of a part unit that the division gives: its kind, symbol, owner and
@@ -162,9 +162,10 @@ const inKeyOrder = (units: Fields[]): Fields[] =>
 // The units of a divided file are the units that its symbol selectors give in the saved snapshot.
 function checkDivision({ inputs, selectors, units }: Context, path: unknown, symbols: Map<string, unknown>): void {
   const file = inputs.indexed.get(path);
-  assert(file !== undefined, `The symbol selector ${[...symbols.keys()].join(', ')} of ${String(path)} matched nothing: ` +
+  assert(file !== undefined, `The symbol selector ${String([...symbols.keys()][0])} of ${String(path)} matched nothing: ` +
     'the file is not in the saved inventory.');
-  const division = divideFile(checkoutTools().ts, savedSource(inputs, path as string, file), [...symbols.keys()]);
+  const tools = checkoutTools();
+  const division = divideFile(tools.ts, savedSource(inputs, path as string, file, tools), [...symbols.keys()]);
   const rest = restOwner(path as string, selectors);
   const expected: Fields[] = division.symbols.map(({ symbol, ranges }) =>
     ({ unitKind: 'symbol', symbol, owner: symbols.get(symbol), ranges }));
