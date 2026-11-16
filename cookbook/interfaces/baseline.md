@@ -122,8 +122,10 @@ In version 5, `paths` can be empty when `symbols` is not empty, but each
 membership needs at least one path or symbol. Versions 1 to 4 keep a non-empty
 `paths` list and reject `symbols`. As for paths, the reader checks only the
 selector syntax. It does not open files, check that a file declares the symbol,
-or check ownership across components. The producer does not write version 5
-yet; ticket GA-02a adds that.
+or check ownership across components. The producer writes version 5 from Stage 5.
+Its record checks refuse two owners of one symbol and a symbol that the file does not
+declare, and they divide each named file into code units on the saved snapshot; see
+the [record format](../../docs/design/app-a/record-format.md#version-5-symbol-selectors).
 
 Rule values are JSON objects or null. Keep nested values and all own keys,
 including `__proto__`, without running expressions. Reject non-JSON values and

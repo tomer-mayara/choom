@@ -54,8 +54,10 @@ without a system-entry assessment. Use version 4 when a
 [system-entry assessment](record-format.md#version-4-system-entry-points)
 is present. Both formats retain version 2
 [interface documentation](record-format.md#version-2-interface-documentation)
-and signatures. When both assessments are present, they must name the same
-snapshot and candidate mapping.
+and signatures. Stage 4 maps whole files and does not write version 5: the
+publisher refuses it. Stage 5 can divide a file by
+[symbol selectors](record-format.md#version-5-symbol-selectors). When both
+assessments are present, they must name the same snapshot and candidate mapping.
 Keep unknown facts explicit. Review a source range before claiming that it
 supports an example; a collected excerpt alone is insufficient. Check the full
 baseline against the reader limits before publication.
@@ -910,7 +912,7 @@ The following table explains their purpose:
 | Proposed record | Required content |
 | --- | --- |
 | Baseline | Components, supported interfaces, resource owners, and intended rules. Statements use `{value, status: proposed, evidenceRefs}`. Unknown intent is `null` with a question or gap. |
-| Code mapping | Explicit file scope, one direct component owner per file or `owner: null`, reasons, and supporting evidence. Exact mapped files belong here; membership selectors belong in the baseline. |
+| Code mapping | Explicit file scope (`unitKind: file`), one direct component owner per file or `owner: null`, reasons, and supporting evidence. Exact mapped files belong here; membership selectors belong in the baseline. Stage 4 keeps each file whole. |
 | Resource observations | Inspected access sites, access kind, target identity or explicit unknown target, context, and source evidence. Observed access does not establish permission. |
 | Entry analysis update | Preserve entry history and Knip limits. Add supported behavior entries and references to the separate graph reachability results. Name the behavior entry candidates of collect as `behaviorEntryCandidatesRef`. |
 | Discovery update | Overview, completed inspected paths, proposed fact references, questions, and gaps. `baselineRef` stays unset until the fixed baseline is saved in stage 6. |

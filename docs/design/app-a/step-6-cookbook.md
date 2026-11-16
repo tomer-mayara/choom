@@ -12,8 +12,10 @@ artifact is an error, not a coverage gap that the helper can ignore.
 The helper supports this Mode A first-baseline profile: retained Knip inputs
 and completed dependency graphs with explicit partial coverage. Other result
 formats need a separate validator.
-Baseline versions 1 to 4 use the same shared record checks as Stages 4 and 5.
-For versions 2 to 4, review each documented entry, example, source note and exact
+Baseline versions 1 to 5 use the same shared record checks as Stages 4 and 5,
+which also divide each file that a version 5 symbol selector names on the saved
+snapshot and compare it with the [code units](record-format.md#divided-files).
+For versions 2 to 5, review each documented entry, example, source note and exact
 unknown-field subject against the
 [record contract](record-format.md#version-2-interface-documentation). A
 source-reviewed example means that its cited saved lines were reviewed; it does

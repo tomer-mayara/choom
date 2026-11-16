@@ -24,7 +24,7 @@ visible response. Do not save hidden reasoning.
 | `baseline.proposed.yaml` | Complete proposed baseline. |
 | `discovery.proposed.yaml` | Complete working discovery; no `baselineRef` yet. |
 | `entry-analysis.yaml` | Complete updated entry analysis. |
-| `code-mapping.json` | Every inventory file, with one owner or an explicit unknown owner. |
+| `code-mapping.json` | Every inventory file, or in Stage 5 the parts of a file that symbol selectors divide, with one owner or an explicit unknown owner. |
 | `resource-access.json` | Source-supported resource observations. |
 | `llm/analysis-prompt.md` | Full instructions supplied to the LLM. |
 | `llm/analysis-response.md` | Complete visible response, including the exact text of all five candidate records above. No thinking or reasoning blocks and no raw provider output. |
@@ -99,22 +99,24 @@ described as future work beside a newly appended correction.
 All versions have `formatVersion`, `id`, `parentId`, `components`,
 `interfaces`, `resources`, and `rules`. The first version of a baseline has
 `parentId: null`; a [next version](#next-baseline-version) names its parent.
-Versions 3 and 4 permit `sourceUsage`. Version 4 also permits `systemEntryPoints`. The
-top-level fields are strict in every version. The producer writes versions 1
-to 4 only. The shared reader also accepts version 5, which the producer does
-not write yet; see [Version 5 symbol selectors](#version-5-symbol-selectors). Keep the initial baseline
+Versions 3 to 5 permit `sourceUsage`. Versions 4 and 5 also permit `systemEntryPoints`, and
+version 5 permits [symbol selectors](#version-5-symbol-selectors). The
+top-level fields are strict in every version. Stage 4 writes versions 1 to 4;
+Stage 5 can also write version 5, which Stage 6 saves. Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
 
 The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
 
 1. The **producer profile**, which is stricter than the shared rules. The
-   producer writes `formatVersion` 1 to 4. Stages 4 to 6 write only the first
+   producer writes `formatVersion` 1 to 5. Stages 4 to 6 write only the first
    version (`parentId: null`); `baseline next` writes the
    [next version](#next-baseline-version). The baseline has at least one
    component. Each component,
    also a parent that only groups other components, has a non-null `purpose`,
    a non-null `groupingReason` and at least one path in `membership.value.paths`.
+   In version 5, a component can own only symbols: it needs at least one path
+   or symbol.
    A question or gap does not make a null purpose or grouping reason valid.
    Each of these cases has its own message.
 2. The **shared baseline rules**: `baselineSchema` in `@choom/baseline-model`,
@@ -123,18 +125,21 @@ The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
    the path, the item and the rule, for example `The baseline is invalid at
    components.0.parent.value (component cli): Component parents must not form a
    cycle.`
-3. Every statement is `proposed`, and the baseline is within the
+3. No two components name the same symbol of a file: a symbol has one direct
+   owner. Every statement is `proposed`, and the baseline is within the
    [viewer limits](#reader-limits).
 4. The run checks: model IDs, resolved evidence, a question or gap for each
    unknown value, the run snapshot and selected mapping, mapped owners, and saved
-   source ranges.
+   source ranges. The run checks divide each file that a symbol selector names, on
+   the saved snapshot, and compare the parts with the [code mapping](#code-mapping).
 
 Stage 1 still creates the empty version 1 seed. Versions 1 and 2 remain strict:
 version 1 has no interface `documentation`, and neither permits `sourceUsage`.
 Use `formatVersion: 4` when recording a system-entry assessment. When it is
 absent, use version 3 for source use, version 2 for interface documentation,
 or version 1 for the original fields. Version 4 retains version 2 interface
-documentation and version 3 source use, with their checks and limits. Stage 6
+documentation and version 3 source use, with their checks and limits. In Stage 5,
+use version 5 when symbol selectors divide a file; it retains the version 4 fields. Stage 6
 validates the selected version and saves its exact bytes. Completed runs keep
 their saved version.
 
@@ -160,7 +165,7 @@ makes the [next baseline version](#next-baseline-version) from it.
   an exact snapshot-relative path or a subtree ending in `/**`. Other glob forms
   are unsupported. A selector cannot contain `#`, so that a symbol reference such
   as `src/a.ts#decode` is not read as a path. Version 5 names symbols in a
-  separate field, which the producer does not write yet. Select a file whose name contains
+  separate field; see [Version 5 symbol selectors](#version-5-symbol-selectors). Select a file whose name contains
   `#` through a subtree of its folder. Selectors must assign at most one direct
   owner. Exclude a child's files from its parent; containment does not duplicate
   ownership.
@@ -522,9 +527,21 @@ version 2 to 4 fields, checks, and limits, and the version 3 and 4 arrow rules.
 The reader checks the syntax only. See the
 [baseline contract](../../../cookbook/interfaces/baseline.md) for the full rules.
 
-The producer does not write version 5 yet. The producer profile in the Stage 4/5
-publisher and Stage 6 refuses it, so a run publishes versions 1 to 4 only.
-Ticket GA-02a adds symbol selectors to the code mapping and the producer.
+The producer writes version 5 from Stage 5 on, and `baseline next` keeps it.
+Stage 4 maps whole files, and Stage 5 starts from that mapping, so the Stage 4/5
+publisher refuses version 5 and a mapping of files and parts in Stage 4. The
+producer adds these rules to the reader's checks:
+
+- A version 5 component can own only symbols: `paths` can be empty when
+  `symbols` is not.
+- A symbol has one direct owner: two components cannot name the same
+  `{ path, symbol }`. As for paths, a parent does not repeat its child's symbols.
+- Each selector divides its file. The record checks find the parts in the syntax
+  tree of the saved file and compare them with the units of the
+  [code mapping](#code-mapping). A selector whose file does not declare the
+  symbol at the top level matches nothing and is refused, and the message names
+  the selector. A reserved word is not refused for its spelling: `default` names
+  an anonymous default export.
 
 ## Entry analysis
 
@@ -630,15 +647,17 @@ and a nonempty `limits` string array. The scope has:
 ```text
 inventoryRef: current inventory artifact ID
 basis: all-inventoried-regular-files
-unitKind: file
+unitKind: file, or file-or-part in Stage 5 when symbol selectors divide a file
 inspectionMeaning: explanation of reviewed vs unreviewed
 selectedEntryAnalysisRef: current attempt entry-analysis ID
 historicalEntryAnalysisRefs: predecessor IDs, newest first, following the whole chain
 ```
 
-Every inventory file appears exactly once in `units`. Each unit has `id`,
+A code unit is a file or a recorded part of a file. Start with files. Divide a
+file only when a boundary inside it needs examination. With `unitKind: file`,
+every inventory file appears exactly once in `units`. Each unit has `id`,
 `path`, `sha256`, nonempty `roles`, `owner`, `membershipRef`, `inspection`,
-`reason`, and nonempty `evidenceRefs`.
+`reason`, and nonempty `evidenceRefs`. Stage 4 always uses `unitKind: file`.
 
 An owner is a component ID or null. With an owner, `membershipRef` points to that
 component's membership statement in the proposed baseline. With no owner, it is
@@ -653,6 +672,83 @@ an unknown exclusive owner. Shared artifact links do not assign ownership.
 A mixed test can follow its main workflow owner while exercising another
 component. Explain unknown ownership and deferred inspection using the checked
 scope and missing evidence, without a catch-all component or unused-code claim.
+
+### Divided files
+
+With `unitKind: file-or-part`, each unit also has `unitKind`: `file`, `symbol`
+or `rest`. The [symbol selectors](#version-5-symbol-selectors) of a version 5
+baseline divide each file that they name; every other inventory file is one
+`file` unit with the fields above. A divided file has no file unit. It has:
+
+- one `symbol` unit for each symbol that a selector names in the file, owned by
+  the component of the selector;
+- one `rest` unit for all other text of the file, when there is other text. Its
+  owner is the component whose path selectors select the file, by the rules of a
+  file unit. When no path selector selects the file, the rest has
+  `owner: null`, `membershipRef: null` and `reason: no-path-owner`.
+
+A symbol unit has exactly `id`, `unitKind`, `path`, `sha256`, `symbol`,
+`ranges`, `roles`, `owner`, `membershipRef`, `inspection`, `reason` and
+`evidenceRefs`. A rest unit has the same fields without `symbol`. `path` and
+`sha256` name the inventory file, as for a file unit. `ranges` is a nonempty
+list of `[start, end]` ranges of `{ line, column }` positions, 1-based, from the
+first character to the position after the last character. A rest often has
+several ranges, because a symbol can be in the middle of the file.
+
+The two units of `src/billing.ts`, a file of 10 lines, when the selector of
+`pricing` names `computePrice` on lines 7 to 10 and `billing` owns the file by its
+paths:
+
+```json
+[
+  { "id": "s5-001-unit-billing-price", "unitKind": "symbol", "path": "src/billing.ts",
+    "sha256": "<inventory digest>", "symbol": "computePrice",
+    "ranges": [[{ "line": 7, "column": 1 }, { "line": 10, "column": 2 }]],
+    "roles": ["source"], "owner": "pricing",
+    "membershipRef": "s5-001-file@baseline.proposed.yaml#/components/3/membership",
+    "inspection": "reviewed", "reason": "Pricing names computePrice.", "evidenceRefs": ["s5-001-source-excerpt-002"] },
+  { "id": "s5-001-unit-billing-rest", "unitKind": "rest", "path": "src/billing.ts",
+    "sha256": "<inventory digest>",
+    "ranges": [[{ "line": 1, "column": 1 }, { "line": 7, "column": 1 }], [{ "line": 10, "column": 2 }, { "line": 11, "column": 1 }]],
+    "roles": ["source"], "owner": "billing",
+    "membershipRef": "s5-001-file@baseline.proposed.yaml#/components/2/membership",
+    "inspection": "reviewed", "reason": "The paths of billing select the file.", "evidenceRefs": ["s5-001-source-excerpt-002"] }
+]
+```
+
+The producer finds the parts in the syntax tree of the saved file and runs no
+code:
+
+- A symbol is the name of a top-level declaration of the file: a function,
+  class, interface, type, enum or namespace, or a variable statement that
+  declares one name. An anonymous default export (`export default function ()
+  {}`, `export default class {}` or `export default` with a value) is the symbol
+  `default`; a named default export is the symbol of its name. Imports,
+  re-exports and other statements are not symbols. They stay in the rest, with
+  the module setup, comments and white space.
+- A symbol unit holds each declaration of the name, with the comments directly
+  above it, with no blank line between, and the comments after it on its last
+  line. Declarations of the name that follow each other, such as the overloads
+  of a function, share one range. Separate declarations of one name, such as two
+  parts of a merged interface, give several ranges.
+- The ranges of the units of a file cover its text with no gap and no overlap.
+  Lines end at CRLF, CR, LF, U+2028 and U+2029, as TypeScript counts them, and a
+  byte order mark is not counted.
+
+The record checks of Stages 5 and 6 divide each such file and refuse units that
+differ from these parts. The refusal gives the units that the file must
+have, with their owners and ranges; copy them into the mapping. The checks also
+refuse a selector of a name that the file does not declare at the top level, a
+declaration with several names, such as `export const a = 1, b = 2`, and a file
+with syntax errors, a file that is not JavaScript or TypeScript, is not UTF-8
+text or is larger than 2 MiB. They refuse a file unit of a divided file, and
+symbol or rest units of a file that no selector divides.
+
+The `inspection` of a part follows its file, as for a file unit. The checks of
+the source sites stay at file level: a behavior entry, a resource observation, a
+source use or a system entry in a divided file can name the owner of any unit of
+that file. The dependencies of file parts are not recorded yet: the graph edges,
+the Stage 5 evidence and these checks name whole files.
 
 ## Resource observations
 

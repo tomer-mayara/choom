@@ -624,7 +624,8 @@ Version 4 retains version 3 and can add `systemEntryPoints`, as defined in
 Version 5 retains version 4 and can add symbol selectors (`symbols: [{ path, symbol }]`)
 to a component's membership, as defined in the
 [record contract](app-a/record-format.md#version-5-symbol-selectors). The viewer
-checks their syntax only, and the producer does not write version 5 yet.
+checks their syntax only. The producer writes version 5 from Stage 5, and it divides
+each named file into code units on the saved snapshot.
 The viewer keeps legacy permission arrows for versions 1/2. Versions 3 to 5 use
 only saved application/tooling value uses for arrows, with known consumer and
 provider components. Other references stay readable in details. It never infers a source

@@ -63,7 +63,8 @@ or interface Overview, and Back returns to the component entry.
 Version 5 retains version 4 and lets a component's membership also name
 symbols in a file, such as `computePrice` in `billing/invoice.ts`. Component
 details list them under **Membership → Symbols**. The viewer checks their syntax
-only; the producer does not write version 5 yet. Try the
+only. The producer writes version 5 in Stage 5 and checks each symbol against the
+saved snapshot. Try the
 [symbol membership example](test/fixtures/baseline-viewer/symbol-membership.yaml).
 Versions 1 and 2 keep their strict fields. An interface's **Original record** disclosure retains all saved
 values, including documentation and statement references.
@@ -575,6 +576,23 @@ bun test ./packages/producer/test/interface/stage-5 ./packages/producer/test/uni
 bun test ./packages/producer/test/interface/stage-4/inspect.test.ts
 ```
 
+In Stage 5, the symbol selectors of a version 5 baseline divide a file into code
+units: one unit for each named top-level symbol and one rest unit for all other
+text. `divideFile` in `code-units.ts` finds the parts in the syntax tree of the
+saved file and runs no code. The shared record checks (`record-code-mapping.ts`)
+divide each such file again and refuse a code mapping whose units differ, with the
+units that the file must have. Stage 4 keeps whole files. The
+[record format](docs/design/app-a/record-format.md#divided-files) gives the shape
+and the rules. The `@producer` scenarios check a Stage 5 packet that divides a file
+through the command line. Run the focused checks of the code units with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/code-units.test.ts ./packages/producer/test/unit/record-code-mapping.test.ts ./packages/producer/test/unit/snapshot-project.test.ts
+bun test ./packages/producer/test/integration/records/code-units.test.ts ./packages/producer/test/integration/records/stage-6-records.test.ts
+bun test ./packages/producer/test/interface/stage-5/code-units.test.ts ./packages/producer/test/interface/stage-4/code-units.test.ts
+```
+
 Each stage that saves an LLM call record refuses a saved response with a hidden
 reasoning block and a call record without `hiddenReasoning: not-saved`: Stage 1
 finish, Stage 2 plan and save-review, the Stage 3 finalizer, the Stage 4/5
@@ -953,6 +971,8 @@ source queries of Stages 3, 4 and 5 read their files with its syntax reader.
 `snapshot-references.ts` finds the references to a symbol of one of its files, and
 `compiler-settings.ts` chooses the compiler settings of a file for the Stage 3
 exports and Stage 4 references actions.
+`code-units.ts` divides one parsed file by named top-level symbols into code units
+for the checks of the code mapping.
 Every stage action runs the code in the tool checkout. Stage 1 start saves the
 producer code record (`producer-code.ts`): the package version, the Git commit
 when there is one, and one digest of
@@ -967,7 +987,7 @@ and 5 also the record format, as records; Stages 3 and 5 read their review promp
 from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types of
 `run-layout.mjs`. The shared record validator of Stages 4 to 6
 (`stage-6-records.ts` with `record-baseline.ts`, `record-sources.ts`,
-`record-graph.ts` and `record-checks.ts`) checks the baseline shape with
+`record-graph.ts`, `record-code-mapping.ts` and `record-checks.ts`) checks the baseline shape with
 `@choom/baseline-model`, as the viewer does, and adds the producer profile, the
 reserved IDs and the checks against the saved run records. `llm-response.ts`
 holds the design rule "Do not save hidden reasoning": every stage that saves an

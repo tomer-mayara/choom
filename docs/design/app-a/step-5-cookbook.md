@@ -39,7 +39,8 @@ drafts. The baseline must still be proposed, before Stage 6 saves a fixed versio
 Versions 1 to 4 keep their own strict fields. Use version 3 for
 [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when `systemEntryPoints`
-is present. Both formats retain the
+is present. Use version 5 when [symbol selectors](record-format.md#version-5-symbol-selectors)
+divide a file; it keeps the version 4 fields. These formats retain the
 [interface documentation](record-format.md#version-2-interface-documentation)
 and signatures from version 2.
 It first checks the [producer code record](record-format.md#producer-code-record)
@@ -181,6 +182,20 @@ insufficient. Do not create a utilities group to eliminate unknowns.
 The entry-analysis update keeps behaviorEntryCandidatesRef of the selected
 entry analysis. Its candidates are places to read, not proven entries.
 
+Start with files. Divide a file only when a boundary inside it needs
+examination: reviewed source shows that a top-level declaration of the file
+has another direct owner than the rest of the file. To divide it, use
+formatVersion: 5 and name the declaration in the membership of its owner as
+symbols: [{path, symbol}]. The symbol is the name of the top-level
+declaration; default names an anonymous default export. A declaration with
+several names, such as const a = 1, b = 2, cannot be a symbol. In the code
+mapping, use unitKind: file-or-part and give each unit its unitKind. Map the
+divided file as one symbol unit for each symbol and one rest unit for all other
+text. The rest belongs to the component whose paths select the file, or has
+owner null with reason no-path-owner. The producer finds the ranges of the
+units in the saved syntax tree: copy the ranges that the publisher check
+gives, because it refuses other ranges.
+
 Review the saved system scope for launch paths and externally callable
 operations. Use saved launch settings and behavior entries. Read each
 operation's registration or host binding. Trace built entry files to source
@@ -272,6 +287,11 @@ The LLM must distinguish these decisions:
   must not duplicate its child's direct ownership.
 - **Unknown ownership:** explain why the evidence does not select one owner.
   A shared test or contract may stay unknown without creating a new component.
+- **Divided file:** a top-level declaration of a file has another supported
+  direct owner than the rest of the file. Name the symbol in the owner's
+  membership and map the file as its parts; see
+  [divided files](record-format.md#divided-files). Keep the file whole when the
+  evidence does not show such a boundary.
 - **Deferred inspection:** name the affected paths and the checked evidence,
   then explain why deeper inspection stops. A bulk parser scan is not that
   explanation, nor is an arbitrary analysis budget. State the missing evidence
@@ -332,6 +352,11 @@ guidance to the complete packet before `finish`. Check that:
 
 - Every inventory unit remains in the mapping with one direct owner or an
   explicit unknown owner and a reason. Selectors and exact ownership agree.
+- A divided file has exactly the symbol units and the rest unit that its symbol
+  selectors give, with the ranges that the check gives. If the check refuses the
+  units, it lists the units that the file must have; copy them into the packet.
+  The dependencies of file parts are not recorded yet: graph edges and source
+  sites in a divided file stay at file level.
 - Evidence references, source hashes and numbered ranges resolve. Only ranges
   actually read by the LLM appear as new inspections.
 - Continuing component IDs remain stable. Changed intent stays proposed and

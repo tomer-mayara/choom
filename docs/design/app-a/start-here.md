@@ -76,8 +76,10 @@ supported literal signature with parameters and return type. Keep an unsupported
 complete declaration unknown with its exact field gap; do not invent types or
 infer them from prose. Preserve supported descriptions, examples, and evidence.
 Stage 6 saves the validated proposal without changing its bytes. Choom reads
-versions 1 to 5 without running source analysis. The producer does not write
-[version 5](record-format.md#version-5-symbol-selectors) yet.
+versions 1 to 5 without running source analysis. Stage 5 can write
+[version 5](record-format.md#version-5-symbol-selectors), whose symbol selectors
+divide a file into [code units](record-format.md#divided-files); Stage 4 keeps
+each file whole.
 
 Use one trusted tool revision and the pinned environment for a run. Stage 1
 `start` saves the [producer code record](record-format.md#producer-code-record)
@@ -582,6 +584,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
+| `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest |
 | `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |
 | `baseline-commands.ts`, `baseline-decide.ts`, `decision-record.ts` | The baseline command (`baseline decide`): check a YAML decision file against the published baseline of a completed run, and save it once as `decisions/<id>.yaml`; and the reader of a decision file and of a saved record, with the bounded YAML profile. See the [decision record](record-format.md#decision-record) |
 | `baseline-next.ts`, `version-folder.ts` | The next action of the baseline command (`baseline next`): make the next baseline version from a saved decision record, check it, and save it once with its version record; and the save of the version folder, all or nothing, through a temporary folder and one rename. See the [next baseline version](record-format.md#next-baseline-version) |
