@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 import type * as TsMorph from 'ts-morph';
 import type { EntryCandidate, SourceSite } from './behavior-entry-calls.ts';
-import type { SettingsFindings, SettingsGap } from './behavior-entry-settings.ts';
+import type { SettingsGap } from './behavior-entry-settings.ts';
 import { located, type Named } from './call-rules.ts';
 import type { BehaviorEntryPackageBinRule } from './generated/contracts.ts';
 import { type Fields, object } from './record-checks.ts';
@@ -27,6 +27,7 @@ export type BinEvidence = { kind: 'snapshot-file'; binFile: string } |
 // A file that a command runs: the whole file, with the evidence that links it.
 export interface LinkedFile extends SourceSite { evidence: BinEvidence }
 export interface BinCandidate extends Omit<EntryCandidate, 'handler'> { handler: LinkedFile | null }
+export interface BinFindings { candidates: BinCandidate[]; gaps: SettingsGap[] }
 // The saved snapshot as the rules read it: the indexed files, their checked bytes and the settings record.
 export interface BinSnapshot {
   ts: Ts;
@@ -158,9 +159,9 @@ function commandsOf(ts: Ts, bin: Node, packageName: Node | undefined): [Named, N
 
 // The candidates and the gaps of the package-bin rules in one package.json of the snapshot.
 // A file that is not UTF-8 text gives neither: a gap has a range in the saved text.
-export function binCandidates(snapshot: BinSnapshot, path: string, rules: readonly BehaviorEntryPackageBinRule[]): SettingsFindings {
+export function binCandidates(snapshot: BinSnapshot, path: string, rules: readonly BehaviorEntryPackageBinRule[]): BinFindings {
   const { ts } = snapshot;
-  const findings: SettingsFindings & { candidates: BinCandidate[] } = { candidates: [], gaps: [] };
+  const findings: BinFindings = { candidates: [], gaps: [] };
   const text = rules.length ? textOf(snapshot.read(path)) : undefined;
   if (text === undefined) return findings;
   const source = ts.parseJsonText(path, text);

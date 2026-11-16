@@ -4,13 +4,15 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import * as tsMorph from "ts-morph";
 import * as yaml from "yaml";
+import { binCandidates, binSnapshot, packageFiles } from "../../src/behavior-entry-bins.ts";
 import { callCandidates, type EntryCandidate, entryQuery } from "../../src/behavior-entry-calls.ts";
 import { behaviorEntryRulesPath, readRuleList } from "../../src/behavior-entry-rules.ts";
 import { type SettingsFindings, settingsCandidates, settingsRules } from "../../src/behavior-entry-settings.ts";
-import type { BehaviorEntryCallRule, BehaviorEntrySettingsLiteralRule } from "../../src/generated/contracts.ts";
+import type { BehaviorEntryCallRule, BehaviorEntryPackageBinRule, BehaviorEntrySettingsLiteralRule }
+  from "../../src/generated/contracts.ts";
 import type { Picomatch } from "../../src/stage-4-graph-profile.ts";
 import { toolsRoot, withScratch } from "../support/commands.ts";
-import { type Files, projectOf } from "../support/snapshot-files.ts";
+import { type Files, projectOf, snapshotOf } from "../support/snapshot-files.ts";
 import { rangeIn } from "../support/source-ranges.ts";
 
 // The call rules of the pinned rule list of the producer, each on a sample call
@@ -20,6 +22,9 @@ import { rangeIn } from "../support/source-ranges.ts";
 // sample settings file in the form that the documentation of its tool shows: each
 // rule finds the literal entries of its sample, each computed entry is a gap with a
 // reason, and no rule reads the same text in a file that its glob does not match.
+// The package-bin rules of the list, each on a sample package.json in the form that
+// the npm documentation shows: each rule finds the command with the file that it runs,
+// and no rule reads a file that is not a package.json of the package.
 // The test reads the real list, so a new rule needs a sample here.
 //
 // A receiver is the documented code that makes the value whose method a group of
@@ -364,9 +369,25 @@ const conditionalSettings = lines(
   "})");
 const conditionalPath = "vite-conditional/vite.config.js";
 
+// A sample package.json of a package-bin rule, with the files of the snapshot that its
+// commands run. « and » mark the value of a command in the text.
+interface BinSample { text: string; command: string; name: string; files: Files }
+
+// The sample package.json of each package-bin rule, by rule ID: the bin field of the npm
+// documentation of package.json, with the file that the command runs, which starts with
+// #!/usr/bin/env node as the documentation asks.
+const binSamples: Record<string, BinSample> = {
+  "package-bin": { text: "{\n  \"bin\": {\n    \"myapp\": \"bin/cli.js\"\n  }\n}\n", command: "\"myapp\": «\"bin/cli.js\"»",
+    name: "myapp", files: { "bin/cli.js": "#!/usr/bin/env node\nconsole.log('myapp');\n" } },
+};
+// Files that can hold the same text but that are not a package.json of the package, by a description.
+const binOthers: Record<string, string> = { "the package.json of an installed package": "node_modules/myapp/package.json",
+  "the lock file of npm": "package-lock.json", "another JSON file": "bin.json" };
+
 const ruleList = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules;
 const callRules = ruleList.filter((rule): rule is BehaviorEntryCallRule => rule.kind === "call");
 const settingsLiteralRules = ruleList.filter((rule): rule is BehaviorEntrySettingsLiteralRule => rule.kind === "settings-literal");
+const binRules = ruleList.filter((rule): rule is BehaviorEntryPackageBinRule => rule.kind === "package-bin");
 const picomatch = createRequire(import.meta.url)("picomatch") as Picomatch;
 const plain = (call: string): string => call.replace("«", "").replace("»", "");
 // The text of a file: a receiver, then the call.
@@ -493,6 +514,26 @@ test.each(settingsLiteralRules.map((rule) => [rule.id, rule] as const))(
     const paths = settingsSampleOf(rule).tool.files.flatMap((file) => [file, `apps/web/${file}`]);
     expect(paths.filter((path) => forFile(path).length === 0)).toEqual([]);
   });
+
+test("each package-bin rule of the pinned list has a sample, and each sample has its rule in the list", () => {
+  expect(Object.keys(binSamples).sort()).toEqual(binRules.map(({ id }) => id).sort());
+});
+
+test.each(binRules.map((rule) => [rule.id, rule] as const))(
+  "%s finds the command of its sample package.json with the file that the command runs", (_id, rule) => {
+    const sample = binSamples[rule.id];
+    if (sample === undefined) throw new Error(`The package-bin rule ${rule.id} has no sample. Add a documented package.json.`);
+    const findings = withScratch((scratch) => binCandidates(binSnapshot(snapshotOf(scratch, { "package.json": sample.text,
+      ...sample.files }), tsMorph, { configs: [] }, "settings-001"), "package.json", [rule]));
+    const [path = "", text = ""] = Object.entries(sample.files)[0] ?? [];
+    expect(findings).toEqual({ gaps: [], candidates: [{ ruleId: rule.id, ruleVersion: rule.version, entryKind: "cli-bin",
+      ...site(sample.text, sample.command), name: sample.name, nameReason: null,
+      handler: { path, range: rangeIn(text, text), evidence: { kind: "snapshot-file", binFile: path } }, handlerReason: null }] });
+  });
+
+test.each(Object.entries(binOthers))("no package-bin rule reads %s, %s", (_other, path) => {
+  expect(packageFiles([path])).toEqual([]);
+});
 
 test("each Vite rule gives a gap with a reason, and no candidate, for the settings that a function makes", () => {
   const settingsFunction = conditionalSettings.slice(conditionalSettings.indexOf("({ command"),

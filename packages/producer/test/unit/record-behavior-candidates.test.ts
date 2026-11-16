@@ -19,9 +19,13 @@ const server = "import express from 'express';\nconst app = express();\napp.get(
   "function list() {\n  return 'orders';\n}\n";
 // A byte order mark and CRLF line ends: ranges count neither the mark nor a CR as a column.
 const config = "\uFEFFexport default {\r\n  build: { rollupOptions: { input: page } },\r\n};\r\n";
-const files: Record<string, string> = { "src/server.ts": server, "vite.config.ts": config };
+const packageText = "{\n  \"bin\": { \"run\": \"bin/cli.js\", \"tool\": \"dist/tool.js\" }\n}\n";
+const cli = "#!/usr/bin/env node\nconsole.log('run');\n";
+const files: Record<string, string> = { "src/server.ts": server, "vite.config.ts": config, "package.json": packageText,
+  "bin/cli.js": cli };
 const rules = { formatVersion: 1, rules: [{ id: "express-route-get", version: 1, entryKind: "http-route" },
-  { id: "vite-build-input", version: 1, entryKind: "frontend-entry" }] };
+  { id: "vite-build-input", version: 1, entryKind: "frontend-entry" },
+  { id: "package-bin", version: 1, library: "npm", entryKind: "cli-bin", kind: "package-bin" }] };
 const site = (path: string, at: string): Json => {
   const text = files[path] ?? "";
   return { path, sha256: sha256(text), range: rangeIn(text.replace("\uFEFF", ""), at),
@@ -55,6 +59,21 @@ function inputs(change: Change = () => {}, ref: unknown = candidatesRef): Candid
 }
 
 const candidate = (value: Parameters<Change>[0]): Json => value.candidates[0] as Json;
+// A candidate of the package-bin rule, whose handler names the whole file that the command runs with its evidence.
+const binCandidate = (at: string, name: string, handler: Json | null, handlerReason: string | null = null): Json =>
+  ({ ruleId: "package-bin", ruleVersion: 1, entryKind: "cli-bin", found: "syntax-rule", role: "unknown", roleRef: null,
+    ...site("package.json", at), name, nameReason: null, handler, handlerReason });
+const runCommand = (): Json => binCandidate("\"run\": «\"bin/cli.js\"»", "run", { path: "bin/cli.js", range: rangeIn(cli, cli),
+  evidence: { kind: "snapshot-file", binFile: "bin/cli.js" } });
+const toolCommand = (): Json => binCandidate("\"tool\": «\"dist/tool.js\"»", "tool", { path: "src/server.ts",
+  range: rangeIn(server, server), evidence: { kind: "compiler-output", binFile: "dist/tool.js",
+    compilerSettingsRef: "settings-001#/configs/0", outDir: "dist", rootDir: "src" } });
+// The evidence of the handler of a candidate: 1 for the run command, 2 for the tool command.
+const evidence = (value: Parameters<Change>[0], index = 1): Json => ((value.candidates[index] as Json).handler as Json).evidence as Json;
+const withBins = (change: Change = () => {}): CandidateInputs => inputs((value) => {
+  value.candidates.push(runCommand(), toolCommand());
+  change(value);
+});
 
 describe("validateBehaviorCandidates", () => {
   test("accepts candidates and gaps that lie in the saved files, and counts the candidates", () => {
@@ -110,5 +129,28 @@ describe("validateBehaviorCandidates", () => {
   ])("refuses a reference to %s", (_name, ref) => {
     expect(() => validateBehaviorCandidates(inputs(undefined, ref)))
       .toThrow(`The entry analysis names ${ref} as its behavior entry candidates, which is not a saved candidates record.`);
+  });
+});
+
+// The handler of a package-bin candidate also names its evidence: the snapshot holds the
+// bin file, or a configuration of the settings record compiles the source file to it.
+describe("validateBehaviorCandidates with the candidates of a package-bin rule", () => {
+  test("accepts a handler with the evidence of the bin file or of the compiler output, and a null handler with a reason", () => {
+    expect(validateBehaviorCandidates(withBins())).toBe(3);
+    expect(validateBehaviorCandidates(withBins((value) => {
+      Object.assign(value.candidates[2] as Json, { handler: null, handlerReason: "No evidence names the file." });
+    }))).toBe(3);
+  });
+
+  test.each<[string, Change]>([
+    ["a handler without its evidence", (value) => { delete ((value.candidates[1] as Json).handler as Json).evidence; }],
+    ["evidence of an unknown kind", (value) => { evidence(value).kind = "guess"; }],
+    ["evidence of the bin file that names another file", (value) => { evidence(value).binFile = "bin/other.js"; }],
+    ["compiler output evidence without its configuration", (value) => { delete evidence(value, 2).compilerSettingsRef; }],
+    ["evidence with another field", (value) => { evidence(value).reason = "Seen."; }],
+    ["evidence in the handler of a call candidate", (value) => {
+      Object.assign(candidate(value).handler as Json, { evidence: { kind: "snapshot-file", binFile: "src/server.ts" } }); }],
+  ])("refuses %s", (_name, change) => {
+    expect(() => validateBehaviorCandidates(withBins(change))).toThrow(/^Invalid behavior entry candidate [0-2]\.$/);
   });
 });

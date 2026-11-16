@@ -162,6 +162,19 @@ describe("the Stage 4/5 publisher with the behavior entry candidates of collect"
     }, undefined, [route]);
   }, 60_000);
 
+  // The bin field names cli.ts, a file of the snapshot, as the file of a command.
+  const toolPackage: ExtraFile = { path: "package.json", text: "{\n  \"name\": \"choom-tools\",\n  \"bin\": { \"choom\": \"./cli.ts\" }\n}\n" };
+
+  test("checks a bin candidate and the file that its command runs, with the evidence, and publishes", () => {
+    withPublication((fixture) => {
+      const record = JSON.parse(readFileSync(join(fixture.attempt, "behavior-entry-candidates.json"), "utf8")) as
+        { candidates: { name: unknown; handler: unknown }[] };
+      expect(record.candidates.map(({ name, handler }) => ({ name, handler }))).toEqual([{ name: "choom", handler: { path: "cli.ts",
+        range: [{ line: 1, column: 1 }, { line: 2, column: 1 }], evidence: { kind: "snapshot-file", binFile: "cli.ts" } } }]);
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified" });
+    }, undefined, [toolPackage]);
+  }, 60_000);
+
   test("refuses an entry analysis that does not name the candidates, and a candidates record that changed after collect", () => {
     const unnamed = stageFourPublication(undefined, [], toolsRoot, (records) => {
       delete records["entry-analysis.yaml"]?.behaviorEntryCandidatesRef;

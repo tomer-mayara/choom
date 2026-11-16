@@ -463,3 +463,13 @@ rules:
       positional, recommendCommands, require, required, requiresArg, scriptName, showCompletionScript, showHelp,
       showHelpOnFail, showHidden, showVersion, skipValidation, strict, strictCommands, strictOptions, string,
       updateLocale, updateStrings, usage, usageConfiguration, version, wrap]
+  # The commands that the bin field of a package.json names, as npm installs them, such as
+  # "bin": { "myapp": "bin/cli.js" }, or "bin": "bin/cli.js" for the command of the package
+  # name. Each path is a candidate at its value. Its handler is the file that the command
+  # runs, only with evidence: the snapshot holds the bin file, or a saved compiler setting
+  # compiles a source file of the snapshot to it. Otherwise the handler is null.
+  - id: package-bin
+    version: 1
+    library: npm
+    entryKind: cli-bin
+    kind: package-bin
