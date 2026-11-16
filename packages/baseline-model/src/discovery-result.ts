@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baselineFileDigestSchema, type SavedBaseline } from "./baseline-decisions.ts";
+import { baselineFileDigestSchema } from "./baseline-decisions.ts";
 import { baselineId, baselineText } from "./baseline-statements.ts";
 import type { DiscoveryResult } from "./generated/contracts.ts";
 import { utf8Bounded, utf8Length } from "./utf8-limits.ts";
@@ -25,6 +25,12 @@ const gap = z.strictObject({ id: reference, kind: reference, subjectRefs, reason
 
 /** Why a discovery result cannot be shown with a saved baseline. */
 export type DiscoveryProblemCode = "unsupported-version" | "invalid-document" | "limit-exceeded" | "baseline-mismatch";
+
+/** The saved baseline file that a discovery result must name: the baseline ID and the SHA-256 of the file bytes. */
+export interface DiscoveryBaseline {
+  readonly baseline: { readonly id: string };
+  readonly sha256: string;
+}
 
 /** The checked discovery result, or the first problem that the checks found. */
 export type DiscoveryCheck =
@@ -118,7 +124,7 @@ function shapeProblem(issue: z.core.$ZodIssue | undefined): DiscoveryCheck {
     : `The discovery result is invalid: ${message}`);
 }
 
-function bindingProblem({ baselineRef, baselineDigest }: DiscoveryResult, { baseline, sha256 }: SavedBaseline): DiscoveryCheck | undefined {
+function bindingProblem({ baselineRef, baselineDigest }: DiscoveryResult, { baseline, sha256 }: DiscoveryBaseline): DiscoveryCheck | undefined {
   if (baselineRef !== baseline.id) return invalid("baseline-mismatch", "The discovery result is for baseline " +
     `${shownValue(baselineRef)}, but the open baseline is ${shownValue(baseline.id)}. ${reopen}`);
   if (baselineDigest !== sha256) return invalid("baseline-mismatch", "The discovery result is for the baseline file with " +
@@ -134,7 +140,7 @@ function bindingProblem({ baselineRef, baselineDigest }: DiscoveryResult, { base
  * the SHA-256 of the baseline file. The result keeps every record in its saved
  * order; a limit refuses the file and never drops a record.
  */
-export function validateDiscoveryResult(input: unknown, saved: SavedBaseline): DiscoveryCheck {
+export function validateDiscoveryResult(input: unknown, saved: DiscoveryBaseline): DiscoveryCheck {
   const early = kindProblem(field(input, "kind")) ?? versionProblem(field(input, "formatVersion"));
   if (early) return early;
   const parsed = discoveryResultSchema.safeParse(input);

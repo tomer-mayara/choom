@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { fixedDiscovery, type RecordInputs, validateDiscoveryRecords } from "../../../src/stage-6-records.ts";
-import { digest, recordInputs } from "../../support/stage-6-records.ts";
+import { digest, evidenceRefs, recordInputs, type Records } from "../../support/stage-6-records.ts";
 
 // The fixed discovery result that Stage 6 saves (formatVersion 2), and its check by
 // the shared record checks against the saved baseline file. The checks run the
@@ -71,5 +71,41 @@ describe("the shared record checks of a fixed discovery result", () => {
   test("refuse a fixed discovery result as a working draft", () => {
     const { baselineFile: _file, ...draft } = fixedInputs();
     expect(() => validateDiscoveryRecords(draft)).toThrow(new Error("Expected complete working discovery with no fixed baseline reference."));
+  });
+});
+
+// The viewer opens a fixed discovery result with the discovery contract of
+// @choom/baseline-model (CR-004): the exact fields of each question and gap, its
+// limits and unique IDs. The checks of Stages 1 to 5 do not ask for exact question
+// and gap fields, so Stage 6 checks the fixed result with that contract.
+const viewerRefusal = "The viewer could not open the fixed discovery result. ";
+const viewerCases: [string, (records: Records) => void, string][] = [
+  ["another field on a question", (records) => {
+    const question = { id: "question-1", subjectRefs: ["cli"], text: "Is the CLI the only start?", evidenceRefs, answer: "Yes." };
+    records.discovery.questions = [structuredClone(question)];
+    records.entry.questions = [question];
+  }, 'The discovery result is invalid at questions.0: Unrecognized key: "answer"'],
+  ["a gap with 101 subject references", (records) => {
+    const subjectRefs = Array.from({ length: 101 }, (_, index) => `subject-${index}`);
+    for (const gaps of [records.discovery.gaps, records.entry.gaps]) Object.assign(gaps[0] ?? {}, { subjectRefs: [...subjectRefs] });
+  }, "The discovery result exceeds a limit at gaps.0.subjectRefs: The limit is 100 subject references for each question or gap."],
+];
+
+describe("the fixed discovery result that the viewer opens", () => {
+  test.each(viewerCases)("a working discovery with %s passes the shared checks of Stages 4 and 5", (_name, change) => {
+    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ components: 2 });
+  });
+
+  test.each(viewerCases)("Stage 6 does not make a fixed result from a working discovery with %s", (_name, change, message) => {
+    const inputs = recordInputs(change);
+    expect(() => fixedDiscovery(inputs.discovery as Json, "base-1", baselineFile(inputs))).toThrow(new Error(viewerRefusal + message));
+  });
+
+  // A saved fixed result with the same records, as an edit after publication could make it.
+  test.each(viewerCases)("Stage 6 verify refuses a saved fixed result with %s", (_name, change, message) => {
+    const inputs = recordInputs(change);
+    const file = baselineFile(inputs);
+    const discovery = { ...(inputs.discovery as Json), formatVersion: 2, baselineRef: "base-1", baselineDigest: digest(file) };
+    expect(() => validateDiscoveryRecords({ ...inputs, discovery, baselineFile: file })).toThrow(new Error(viewerRefusal + message));
   });
 });

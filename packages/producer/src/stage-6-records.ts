@@ -1,5 +1,6 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type { Baseline } from '@choom/baseline-model/contracts';
+import { validateDiscoveryResult } from '@choom/baseline-model/discovery-result';
 import type * as Yaml from 'yaml';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { validateBehaviorCandidates } from './record-behavior-candidates.ts';
@@ -246,9 +247,19 @@ function checkWorkingDiscovery(discovery: unknown, run: RunRecord): asserts disc
   assert(exact(working, discoveryKeys), 'Unexpected working discovery fields.');
 }
 
+// The viewer opens a fixed discovery result with the discovery contract of
+// @choom/baseline-model (CR-004). The contract asks for exactly the fields of each
+// question and gap, for its limits and for unique IDs, which the checks of Stages 1
+// to 5 do not ask for. So Stage 6 makes, publishes and verifies only a fixed
+// discovery result that the viewer can open.
+function checkViewerDiscovery(fixed: Fields, baselineRef: string, baselineFile: Buffer): void {
+  const viewer = validateDiscoveryResult(fixed, { baseline: { id: baselineRef }, sha256: hash(baselineFile) });
+  if (viewer.status === 'invalid') throw new Error('The viewer could not open the fixed discovery result. ' + viewer.message);
+}
+
 // The fixed discovery result that Stage 6 saved (formatVersion 2): the fields of a
 // complete working discovery, the ID of the baseline and the SHA-256 of the bytes
-// of its saved file.
+// of its saved file, in the form that the viewer opens.
 function checkFixedDiscovery(discovery: unknown, run: RunRecord, baseline: unknown, baselineFile: Buffer): asserts discovery is Fields {
   const fixed = discovery as Fields | null | undefined;
   assert(fixed?.formatVersion === 2 && fixed.kind === 'architecture-discovery' && fixed.runRef === run.id &&
@@ -261,6 +272,7 @@ function checkFixedDiscovery(discovery: unknown, run: RunRecord, baseline: unkno
   const sha256 = hash(baselineFile);
   assert(fixed.baselineDigest === sha256,
     `The discovery result names the baseline digest ${fixed.baselineDigest}, but the SHA-256 of the saved baseline file is ${sha256}.`);
+  checkViewerDiscovery(fixed, String(fixed.baselineRef), baselineFile);
 }
 
 function select(inputs: RecordInputs): Selection {
@@ -498,7 +510,10 @@ export function validateDiscoveryRecords(inputs: RecordInputs): RecordCounts {
 // The fixed discovery result that Stage 6 saves (formatVersion 2): the checked
 // working discovery with the ID of the fixed baseline and the SHA-256 of the bytes
 // of its saved file, as 64 lowercase hexadecimal characters. All other fields stay
-// the same, in the same order.
+// the same, in the same order. Every Stage 6 action makes it, so a result that the
+// viewer cannot open stops Stage 6 before it publishes anything.
 export function fixedDiscovery(working: Fields, baselineRef: string, baselineFile: Buffer): Fields {
-  return { ...working, formatVersion: 2, baselineRef, baselineDigest: hash(baselineFile) };
+  const fixed = { ...working, formatVersion: 2, baselineRef, baselineDigest: hash(baselineFile) };
+  checkViewerDiscovery(fixed, baselineRef, baselineFile);
+  return fixed;
 }
