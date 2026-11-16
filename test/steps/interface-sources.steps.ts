@@ -204,7 +204,15 @@ When("the user reads all Sources disclosures with the keyboard", async function 
   await focusedVisible(this, panel(this).getByRole("tab", { name: "Sources", exact: true }));
   for (const key of sourceSections) {
     const summary = sources(this).locator(`details[data-section='${key}'] summary`);
-    for (let step = 0; step < 3 && !await summary.evaluate((element) => element === document.activeElement); step++) await page(this).keyboard.press("Tab");
+    // An open Recorded statements list has a Copy decision action for each proposed statement; each one stays visible too.
+    const actions = await sources(this).getByRole("button", { name: /^Copy decision for / }).count();
+    for (let step = 0; step < 3 + actions && !await summary.evaluate((element) => element === document.activeElement); step++) {
+      await page(this).keyboard.press("Tab");
+      const focused = page(this).locator(":focus");
+      if (await focused.evaluate((element) => element.getAttribute("aria-label")?.startsWith("Copy decision for ") ?? false)) {
+        await focusedVisible(this, focused);
+      }
+    }
     await focusedVisible(this, summary);
     await page(this).keyboard.press("Enter");
     await expect(sources(this).locator(`details[data-section='${key}']`)).toHaveAttribute("open");

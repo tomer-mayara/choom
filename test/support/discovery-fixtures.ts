@@ -46,21 +46,23 @@ export function discoveryRecord(list: Record<string, unknown>[], index = 0): Rec
   return item;
 }
 
-/** Copies of the first record of the list, each with its own ID. */
+/** Copies of the first record of the list, each with its own ID and its own lists. */
 export function discoveryRecordCopies(list: Record<string, unknown>[], count: number, prefix: string): Record<string, unknown>[] {
-  return Array.from({ length: count }, (_, index) => ({ ...discoveryRecord(list), id: `${prefix}-${index}` }));
+  return Array.from({ length: count }, (_, index) => ({ ...structuredClone(discoveryRecord(list)), id: `${prefix}-${index}` }));
 }
 
 /** The fixture with one more record on each other item kind: an interface of Billing, a resource and a rule. */
 export function discoveryOnEveryItemKind(): DiscoveryFixture {
   const fixture = discoveryFixture();
-  const evidenceRefs = ["s4-001-file@review.yaml"];
+  // Each record gets its own list, so that the YAML writer gives no anchors, which the viewer refuses.
+  const evidenceRefs = () => ["s4-001-file@review.yaml"];
   fixture.result.questions.push({ id: "s4-001-question-002", subjectRefs: ["invoice-api.allowedConsumers"],
-    text: "May Checkout use the Invoice API?", evidenceRefs });
+    text: "May Checkout use the Invoice API?", evidenceRefs: evidenceRefs() });
   fixture.result.gaps.push(
-    { id: "s4-001-gap-001", kind: "unknown-owner", subjectRefs: ["invoice-store.owner"], reason: "No code writes the invoice store.", evidenceRefs },
+    { id: "s4-001-gap-001", kind: "unknown-owner", subjectRefs: ["invoice-store.owner"], reason: "No code writes the invoice store.",
+      evidenceRefs: evidenceRefs() },
     { id: "s4-001-gap-002", kind: "a-kind-that-the-viewer-does-not-know", subjectRefs: ["invoice-access.check"],
-      reason: "The access rule has no check yet.", evidenceRefs },
+      reason: "The access rule has no check yet.", evidenceRefs: evidenceRefs() },
   );
   return fixture;
 }

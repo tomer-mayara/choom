@@ -328,13 +328,14 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
   return (<DiscoveryContext value={reading}><DecisionContext value={decisions}>
     <section aria-labelledby="current-diagram-heading" className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border px-4 py-2 sm:flex-nowrap">
-        <h1 id="current-diagram-heading" tabIndex={-1} className="w-full min-w-0 truncate text-base font-semibold sm:w-auto sm:flex-1" title={baseline.id}>{baseline.id}</h1>
+        <h1 id="current-diagram-heading" tabIndex={-1} className="min-w-0 flex-1 truncate text-base font-semibold" title={baseline.id}>{baseline.id}</h1>
         <p id="item-inspection-hint" className="sr-only lg:not-sr-only lg:text-xs lg:text-muted-foreground">Select to inspect. Drag a header or use arrow keys to move it.</p>
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-4 sm:[&>button]:text-sm">
+        {/* In a narrow window, Discovery shares the heading row, so that the plot keeps its height. */}
+        <Button variant="outline" className="px-2 text-xs sm:px-4 sm:text-sm" onClick={(event) => openPanel({ kind: "discovery" }, event.currentTarget, event.detail === 0)}>Discovery</Button>
+        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-4 sm:[&>button]:text-sm">
           <Button id="baseline-details-control" variant="outline" onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>Baseline details</Button>
           <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget, event.detail === 0)}>Rules ({baseline.rules.length})</Button>
           <Button variant="outline" onClick={(event) => openPanel({ kind: "duplicates" }, event.currentTarget, event.detail === 0)}>Duplicates</Button>
-          <Button variant="outline" onClick={(event) => openPanel({ kind: "discovery" }, event.currentTarget, event.detail === 0)}>Discovery</Button>
         </div>
       </div>
       {incompleteInterfaces > 0 || sourceNotice || entryNotices.length > 0 ? (
