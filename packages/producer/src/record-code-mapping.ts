@@ -3,8 +3,8 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import type * as TsMorph from 'ts-morph';
-import { divideFile, pathOwners, type PathSelectors, restOwner } from './code-units.ts';
-import { assert, exact, type Fields, hash, oneOf, strings, text } from './record-checks.ts';
+import { divideFile, dividedFileBytes, pathOwners, type PathSelectors, restOwner, type SavedFile } from './code-units.ts';
+import { assert, exact, type Fields, oneOf, strings, text } from './record-checks.ts';
 import { parseSnapshotText, type ProjectTools } from './snapshot-project.ts';
 
 // Part of the shared validation: the selected code mapping. Its scope names the
@@ -53,9 +53,6 @@ interface Context {
 }
 interface SymbolSelector { path: string; symbol: string }
 
-// The input limit of the Stage 5 syntax query.
-const sourceLimit = 2 * 1024 * 1024;
-const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const partFields: Record<string, string[]> = {
   symbol: ['id', 'unitKind', 'path', 'sha256', 'symbol', 'ranges', 'roles', 'owner', 'membershipRef', 'inspection', 'reason',
     'evidenceRefs'],
@@ -139,13 +136,8 @@ function checkPartUnit(context: Context, unit: Fields, kind: string): void {
 
 // The syntax tree of a saved file that symbol selectors divide, from bytes that the checks read and check.
 function savedSource(inputs: MappingInputs, path: string, file: Fields, tools: ProjectTools): TsMorph.ts.SourceFile {
-  const cannot = (reason: string): string => `The symbol selectors cannot divide ${path}: ${reason}`;
-  assert(sourceExtension.test(path), cannot('the file is not JavaScript or TypeScript.'));
-  assert((file.bytes as number) <= sourceLimit, cannot('the file is larger than 2 MiB.'));
-  const bytes = inputs.readSource(path, sourceLimit);
-  assert(hash(bytes) === file.sha256, 'Changed source file: ' + path);
-  assert(Buffer.from(bytes.toString('utf8')).equals(bytes), cannot('the file is not UTF-8 text.'));
-  return parseSnapshotText(path, bytes, tools);
+  const saved: SavedFile = { bytes: file.bytes as number, sha256: file.sha256 as string };
+  return parseSnapshotText(path, dividedFileBytes(path, saved, inputs.readSource), tools);
 }
 
 // The fields of a part unit that the division gives: its kind, symbol, owner and

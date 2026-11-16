@@ -1,5 +1,5 @@
 import type * as TsMorph from 'ts-morph';
-import { assert } from './record-checks.ts';
+import { assert, hash } from './record-checks.ts';
 import { type SourcePosition, sourcePosition, topLevelNames } from './snapshot-exports.ts';
 import { parseDiagnostics, snapshotPath } from './snapshot-project.ts';
 
@@ -28,10 +28,29 @@ export interface FileDivision { symbols: SymbolPart[]; rest: SourceRange[] }
 // The path selectors of a component membership.
 export interface PathSelectors { paths?: readonly string[]; excludePaths?: readonly string[] }
 export interface RestOwner { owner: unknown; reason?: 'no-path-owner' }
+// The inventory record of a saved file: its size in bytes and its SHA-256 digest.
+export interface SavedFile { bytes: number; sha256: string }
 // The start offset and the end offset of a part of the text.
 type Span = [number, number];
 
+// The input limit of the Stage 5 syntax query.
+const sourceLimit = 2 * 1024 * 1024;
+const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const anonymousDefaultName = 'default';
+
+// The saved bytes of a file that symbols divide. The file must be JavaScript or
+// TypeScript, at most 2 MiB and UTF-8 text, and the bytes that `read` gives must
+// have the inventory digest. The record checks and the Stage 5 parts action refuse
+// the same files with the same messages.
+export function dividedFileBytes(path: string, file: SavedFile, read: (path: string, limit: number) => Buffer): Buffer {
+  const cannot = (reason: string): string => `The symbol selectors cannot divide ${path}: ${reason}`;
+  assert(sourceExtension.test(path), cannot('the file is not JavaScript or TypeScript.'));
+  assert(file.bytes <= sourceLimit, cannot('the file is larger than 2 MiB.'));
+  const bytes = read(path, sourceLimit);
+  assert(hash(bytes) === file.sha256, 'Changed source file: ' + path);
+  assert(Buffer.from(bytes.toString('utf8')).equals(bytes), cannot('the file is not UTF-8 text.'));
+  return bytes;
+}
 const lineBreaks = (text: string): number => text.match(/\r\n|[\r\n\u2028\u2029]/g)?.length ?? 0;
 
 // The top-level statement that holds a node.
