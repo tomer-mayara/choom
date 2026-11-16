@@ -1,12 +1,11 @@
-import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import * as yaml from 'yaml';
 import { baselineSchema } from '@choom/baseline-model';
 import { nextBaselineVersion, type SavedBaseline } from '@choom/baseline-model/baseline-decisions';
 import type { BaselineDecider, BaselineDecisions } from '@choom/baseline-model/contracts';
 import { type CompletedRun, readCompletedRun, readRegisteredFile } from './completed-run.ts';
 import { checkDecider, runModelCalls } from './decider-check.ts';
-import { checkDecisionFileSize, decisionRecordPath, parseDecisionYaml, readDecisionRecord } from './decision-record.ts';
+import { checkDecisionFileSize, decisionRecordPath, parseDecisionYaml, saveDecisionRecord } from './decision-record.ts';
 import { nextVersionText } from './next-version-checks.ts';
 import { assert, hash } from './record-checks.ts';
 import { pathsOverlap } from './run-layout.mjs';
@@ -74,24 +73,6 @@ export function publishedBaseline(run: CompletedRun): SavedBaseline {
   return { baseline: parsed.data, sha256: run.baseline.sha256 };
 }
 
-// Saves the bytes once. A record with the same ID is never replaced, also when
-// the content is the same. The saved record is read back as a later reader does.
-function saveRecord(run: CompletedRun, id: string, bytes: Buffer): string {
-  const folder = join(run.folder, 'decisions');
-  if (lstatSync(folder, { throwIfNoEntry: false }) === undefined) mkdirSync(folder, { recursive: true });
-  assert(lstatSync(folder).isDirectory(), 'decisions in the run folder is not a folder.');
-  const path = decisionRecordPath(id);
-  try {
-    writeFileSync(join(run.folder, path), bytes, { flag: 'wx' });
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-    throw new Error(`The decision record ${id} is saved already: ${path}. A saved decision record does not change. ` +
-      'Give new decisions a new ID.');
-  }
-  assert(readDecisionRecord(run, id).sha256 === hash(bytes), 'The saved decision record changed while it was saved: ' + path);
-  return path;
-}
-
 function recordedOutput(decisions: BaselineDecisions, path: string, bytes: Buffer, calls: { path: string; model: string }[]):
   RecordedDecisions {
   return { status: 'decisions-recorded', id: decisions.id, path, sha256: hash(bytes), baselineRef: decisions.baselineRef,
@@ -117,5 +98,5 @@ export function recordDecisions(runFolder: string, decisionFile: string): Record
   const sha256 = hash(bytes);
   nextVersionText(version, { link: { id: decisions.id, path: decisionRecordPath(decisions.id), sha256 }, saved: { sha256, decisions } },
     refuse);
-  return recordedOutput(decisions, saveRecord(run, decisions.id, bytes), bytes, calls);
+  return recordedOutput(decisions, saveDecisionRecord(run, decisions.id, bytes), bytes, calls);
 }

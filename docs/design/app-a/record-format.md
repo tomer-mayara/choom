@@ -1411,7 +1411,16 @@ saved form in [Next baseline version](#next-baseline-version), and refuses with
 the same messages. So it never saves a record that `baseline next` refuses, such
 as a record whose ID gives the version the ID of an item. Then it saves the exact
 bytes of the file once, comments included, as `decisions/<id>.yaml`. A second
-save with the same ID is refused, also when the content is the same. The
+save with the same ID is refused, also when the content is the same.
+The save is all or nothing (`saveDecisionRecord` in `decision-record.ts`). The
+command writes the bytes into a new temporary file in `decisions/`, whose name
+starts with `.next-` and so cannot be a record ID, and reads them back there.
+Then a hard link gives the file its final name, which never replaces a record,
+and the command removes the temporary name. After any failure, such as a full
+disk, it removes the temporary file and refuses with
+`Cannot save the decision record decisions/<id>.yaml: <cause>`, so no part of the
+record stays and you can record the decisions again. Only a hard stop of the
+process, such as a power loss, can leave a `.next-` file; remove it. The
 baseline, the discovery result, `run.yaml` and every other file of the run stay
 unchanged, so `run.yaml` does not register the record. The command prints JSON,
 as the stage helpers do: the record path and its SHA-256, the baseline, the

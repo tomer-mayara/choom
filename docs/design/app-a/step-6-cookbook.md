@@ -333,6 +333,8 @@ version that `baseline next` makes from the record, so it refuses a record that
 has the name of a model in the run's LLM call records. This check is a process
 rule: it does not prove that a person decided. The command saves the exact file
 once as `decisions/<id>.yaml` and prints its SHA-256; keep it with the run notes.
+The save is all or nothing: a failed command, such as on a full disk, leaves no
+part of the record, so you can run it again with the same ID.
 It does not change the baseline or another file of the run. Use a new ID for new
 decisions.
 

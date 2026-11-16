@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { readCompletedRun } from "../../src/completed-run.ts";
-import { decisionRecordPath, parseDecisionYaml, readDecisionRecord } from "../../src/decision-record.ts";
+import { mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { type CompletedRun, readCompletedRun } from "../../src/completed-run.ts";
+import { decisionRecordPath, parseDecisionYaml, readDecisionRecord, saveDecisionRecord } from "../../src/decision-record.ts";
 import { withScratch } from "../support/commands.ts";
 import { smallRunBaselinePath, writeSmallCompletedRun } from "../support/completed-run.ts";
 
@@ -114,6 +114,96 @@ describe("a saved decision record", () => {
     withScratch((scratch) => {
       const run = runWith(scratch, { "decisions-001": "#".repeat(limit + 1) });
       expect(() => readDecisionRecord(run, "decisions-001")).toThrow(new Error("Decision file exceeds the 16 MiB file limit."));
+    });
+  });
+});
+
+// Saving a decision record once, all or nothing. A test write function stands in
+// for a write that fails, as a full disk can make it fail after part of the bytes.
+describe("saving a decision record", () => {
+  const bytes = Buffer.from(decisionYaml);
+  const recordPath = "decisions/decisions-001.yaml";
+  const noRecord = `The run has no decision record decisions-001: ${recordPath} is missing or is not a regular file.`;
+
+  // A completed run with no decisions folder, or with the saved records `records`.
+  // A failed save can leave the decisions folder that it made, with no file in it.
+  function newRun(scratch: string, records: Record<string, string> = {}): CompletedRun {
+    const work = join(scratch, "run");
+    writeSmallCompletedRun(work, [{ path: smallRunBaselinePath, text: "formatVersion: 1\n" }]);
+    if (Object.keys(records).length > 0) mkdirSync(join(work, "decisions"));
+    for (const [id, text] of Object.entries(records)) writeFileSync(join(work, decisionRecordPath(id)), text);
+    return readCompletedRun(work);
+  }
+
+  // A write function that saves `saved` as a new file, records its path, and then fails with `failure`, if given.
+  function recordedWrite(saved: Buffer, failure?: string): { paths: string[]; write(path: string): void } {
+    const paths: string[] = [];
+    return { paths, write(path) {
+      paths.push(path);
+      writeFileSync(path, saved, { flag: "wx" });
+      if (failure !== undefined) throw new Error(failure);
+    } };
+  }
+
+  test("saves the exact bytes once as decisions/<id>.yaml, and leaves no other file", () => {
+    withScratch((scratch) => {
+      const run = newRun(scratch);
+      expect(saveDecisionRecord(run, "decisions-001", bytes)).toBe(recordPath);
+      expect(readdirSync(join(run.folder, "decisions"))).toEqual(["decisions-001.yaml"]);
+      expect(readFileSync(join(run.folder, recordPath))).toEqual(bytes);
+    });
+  });
+
+  test("leaves nothing when the write stops after the first entry, and a later save works", () => {
+    withScratch((scratch) => {
+      const run = newRun(scratch);
+      // The first part is a valid decision file with only the first entry.
+      const firstEntry = recordedWrite(bytes.subarray(0, bytes.indexOf("  - action: correct")), "EFBIG: file too large, write");
+      expect(() => saveDecisionRecord(run, "decisions-001", bytes, firstEntry.write)).toThrow(new Error(
+        `Cannot save the decision record ${recordPath}: EFBIG: file too large, write`));
+      expect(readdirSync(join(run.folder, "decisions"))).toEqual([]);
+      expect(() => readDecisionRecord(run, "decisions-001")).toThrow(new Error(noRecord));
+      // The bytes go into a temporary file in decisions/ whose name cannot be a record ID.
+      expect(firstEntry.paths.map((path) => dirname(path))).toEqual([join(run.folder, "decisions")]);
+      expect(basename(firstEntry.paths[0] ?? "")).toMatch(/^\.next-/);
+      saveDecisionRecord(run, "decisions-001", bytes);
+      expect(readDecisionRecord(run, "decisions-001").bytes).toEqual(bytes);
+    });
+  });
+
+  test("leaves nothing when the saved file reads back with other bytes, and keeps the other records", () => {
+    withScratch((scratch) => {
+      const run = newRun(scratch, { "decisions-000": decisionYaml });
+      const other = recordedWrite(Buffer.from("other"));
+      expect(() => saveDecisionRecord(run, "decisions-001", bytes, other.write)).toThrow(new Error(`Cannot save the decision record ` +
+        `${recordPath}: The saved decision record changed while it was saved: ${recordPath}`));
+      expect(readdirSync(join(run.folder, "decisions"))).toEqual(["decisions-000.yaml"]);
+    });
+  });
+
+  test("refuses a record ID that is saved already, writes nothing and keeps the saved record", () => {
+    withScratch((scratch) => {
+      const run = newRun(scratch, { "decisions-001": "kept\n" });
+      const writes = recordedWrite(bytes);
+      expect(() => saveDecisionRecord(run, "decisions-001", bytes, writes.write)).toThrow(new Error("The decision record decisions-001 " +
+        `is saved already: ${recordPath}. A saved decision record does not change. Give new decisions a new ID.`));
+      expect(writes.paths).toEqual([]);
+      expect(readdirSync(join(run.folder, "decisions"))).toEqual(["decisions-001.yaml"]);
+      expect(readFileSync(join(run.folder, recordPath), "utf8")).toBe("kept\n");
+    });
+  });
+
+  test("does not replace a record with the same ID that another writer saves at the same time", () => {
+    withScratch((scratch) => {
+      const run = newRun(scratch);
+      const otherWriter = (path: string): void => {
+        writeFileSync(path, bytes, { flag: "wx" });
+        writeFileSync(join(run.folder, recordPath), "other writer\n", { flag: "wx" });
+      };
+      expect(() => saveDecisionRecord(run, "decisions-001", bytes, otherWriter)).toThrow(new Error("The decision record decisions-001 " +
+        `is saved already: ${recordPath}. A saved decision record does not change. Give new decisions a new ID.`));
+      expect(readdirSync(join(run.folder, "decisions"))).toEqual(["decisions-001.yaml"]);
+      expect(readFileSync(join(run.folder, recordPath), "utf8")).toBe("other writer\n");
     });
   });
 });

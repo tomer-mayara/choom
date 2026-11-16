@@ -934,7 +934,8 @@ LLM call records. That check is a process rule; it does not prove that a person
 decided. The command also runs the checks of the next version that `baseline
 next` makes from the record (`next-version-checks.ts`), so it refuses a record
 that `baseline next` would refuse, with the same message. The command saves the
-exact file once as `decisions/<id>.yaml` and
+exact file once as `decisions/<id>.yaml`, all or nothing: it writes a temporary
+file, reads it back and links it to its final name (`saveDecisionRecord`). It
 changes no other file of the run. `readDecisionRecord` in `decision-record.ts`
 reads a saved record with the same rules. The
 [record format](docs/design/app-a/record-format.md#decision-record) gives the
@@ -943,7 +944,7 @@ correction from YAML files that start with a comment, for a run that the Stage 6
 command line completed, and refuse a decider that is the model of the run and a
 correction of a value that the baseline does not have. The unit suites check the
 decision contract rules, the statements of a baseline, the YAML decision file and
-the saved record, the completed run reader and the decider check; the interface
+the saved record with its all-or-nothing save, the completed run reader and the decider check; the interface
 suite checks the contract; the integration suite runs the command. Run them with:
 
 ```sh
