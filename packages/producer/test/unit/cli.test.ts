@@ -16,7 +16,7 @@ describe("producer command line mapping", () => {
       ["stage-4-inspect", "stage-4-inspect.ts"],
       ["stage-4-5-publish", "stage-4-5-publish.ts"],
       ["stage-5", "stage-5-commands.ts"],
-      ["stage-6", "stage-6-commands.mjs"],
+      ["stage-6", "stage-6-commands.ts"],
       ["baseline", "baseline-commands.ts"],
       ["duplication", "duplication-commands.mjs"],
       ["recover-capture", "recover-capture.ts"],

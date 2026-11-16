@@ -32,7 +32,7 @@ const usageCases: UsageCase[] = [
     message: "Use check STAGE REVIEW_DIR, finish STAGE REVIEW_DIR, or verify STAGE (4 or 5)." },
   { helper: "stage-5-commands.ts", args: [], attempt: { CHOOM_STAGE5_ID: "s5-check" }, status: 1,
     message: "Use start, collect, excerpt PATH FIRST LAST, or parts PATH SYMBOL [SYMBOL ...]." },
-  { helper: "stage-6-commands.mjs", args: [], attempt: { CHOOM_STAGE6_ID: "s6-check" }, status: 1,
+  { helper: "stage-6-commands.ts", args: [], attempt: { CHOOM_STAGE6_ID: "s6-check" }, status: 1,
     message: "Use preflight REVIEW_DIR, start REVIEW_DIR, check, finish, or verify." },
   { helper: "duplication-commands.mjs", args: [], status: 1,
     message: "Use start RUN OUTPUT ID, collect OUTPUT, skip OUTPUT REASON, review OUTPUT INPUT_JSON, or publish OUTPUT." },
@@ -162,7 +162,7 @@ describe("trusted commands check the producer code, then find their own files be
       const work = recordedRun(scratch);
       const review = join(scratch, "review");
       mkdirSync(review);
-      const result = runHelper(join(producerSource, "stage-6-commands.mjs"), ["start", review], { CHOOM_TOOLS: toolsRoot,
+      const result = runHelper(join(producerSource, "stage-6-commands.ts"), ["start", review], { CHOOM_TOOLS: toolsRoot,
         CHOOM_WORK: work, CHOOM_STAGE6_ID: "s6-check", CHOOM_STAGE6: join(work, "evidence", "s6-check") });
       expect(result.status).toBe(1);
       expect(result.stderr).toBe("Unexpected readiness packet file set.\n");

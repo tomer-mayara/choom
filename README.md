@@ -431,6 +431,18 @@ producer's mapping and evidence rules against a frozen Stage 5 packet. The
 [record format](docs/design/app-a/record-format.md#version-4-system-entry-points)
 describes the review and publication requirements.
 
+The Stage 6 suites run preflight, start, check, finish and verify on the Stage 6
+producer fixture through the command line. They record each result, the
+receipts, the prepared and fixed records, the completed run manifest with its
+coverage summaries, the refusals with their messages, and a start or finish that
+fails after it wrote files. For a failure, a fault double
+(`packages/producer/test/support/doubles/stage-6-faults.ts`) runs as a Node
+preload in the helper process and makes one file operation fail. Run them with:
+
+```sh
+bun test ./packages/producer/test/interface/stage-6
+```
+
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require
@@ -1049,7 +1061,12 @@ source sites, `stage-4-review-prompt.ts` for the review prompt,
 helper (`stage-5-commands.ts`) uses `stage-5-inputs.ts` for the checked run and
 snapshot files, `stage-5-query.ts` with `stage-5-syntax.ts` for the evidence
 of `collect`, and `stage-5-parts.ts` with `part-dependencies.ts` for the parts
-action. `attempt-files.ts` holds the review prompt of a saved cookbook and
+action.
+The Stage 6 helper (`stage-6-commands.ts`) uses `stage-6-inputs.ts` for the
+trusted YAML package, the registered artifacts and the indexed snapshot files,
+and `stage-6-files.ts` for its checked reads, the files and folders that it owns
+and the publication lock.
+`attempt-files.ts` holds the review prompt of a saved cookbook and
 the command log of Stages 3 and 5. The snapshot project (`snapshot-project.ts`)
 opens a ts-morph project on the in-memory file system of the Stage 1 settings
 collector, and `snapshot-exports.ts` lists the exports of one of its files. The

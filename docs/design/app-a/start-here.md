@@ -555,7 +555,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
 | `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
-| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-5-commands.ts`, `stage-6-commands.mjs` | Stage preparation, evidence collection or publication commands |
+| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-5-commands.ts`, `stage-6-commands.ts` | Stage preparation, evidence collection or publication commands |
 | `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it. Its in-memory file system of the snapshot is also the file system of the snapshot project |
 | `stage-1-git.ts`, `stage-1-exclusions.ts` | The Git identity record that Stage 1 capture saves, and the reader of the capture exclusion rules that it uses |
 | `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record |
@@ -593,6 +593,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
 | `stage-5-parts.ts`, `part-dependencies.ts` | The record of the Stage 5 parts action (`stage-5 parts`): the parts of one file that named symbols divide, with the dependencies of the file at both levels; and the placement of each loading site of a divided file in the part that uses it, or at file level with a reason, with the type checker of the saved file |
+| `stage-6-inputs.ts`, `stage-6-files.ts` | The checked inputs of each Stage 6 action: the trusted YAML package, the registered artifacts and the indexed snapshot files; and the file operations of Stage 6: checked reads, the files and folders that an action owns and can remove again, and the publication lock |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
 | `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest and the checked read of a file that symbols divide |

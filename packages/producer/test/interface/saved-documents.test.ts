@@ -112,7 +112,7 @@ describe("stage starts save their documents and no producer code", () => {
     const fixture = await stageSixFixture();
     try {
       const attempt = join(fixture.work, "evidence/s6-new");
-      const result = runHelper(code("stage-6-commands.mjs"), ["start", fixture.review], { CHOOM_TOOLS: toolsRoot,
+      const result = runHelper(code("stage-6-commands.ts"), ["start", fixture.review], { CHOOM_TOOLS: toolsRoot,
         CHOOM_WORK: fixture.work, CHOOM_STAGE6_ID: "s6-new", CHOOM_STAGE6: attempt });
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
       const sources = { "step-6-cookbook.md": documents("step-6-cookbook.md") };
