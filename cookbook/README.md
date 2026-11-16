@@ -26,6 +26,8 @@ It owns the [dependencies of divided files](behavior/producer/part-dependencies.
 behavior too: Stage 5 places each import of a divided file in the part that uses it.
 It owns the [resource access sites](behavior/producer/resource-access.feature)
 behavior too: Stage 4 applies its pinned resource access rules to the source.
+It owns the [Knip plugin patterns](behavior/producer/knip-plugins.feature)
+behavior too: Stage 2 copies the default entry patterns of Knip plugins and never runs a settings file.
 
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
 baseline file input to validation, layout, and the view. The baseline model,

@@ -17,6 +17,7 @@ artifacts:
     - path: ../../cookbook/behavior/producer/code-units.feature
     - path: ../../cookbook/behavior/producer/part-dependencies.feature
     - path: ../../cookbook/behavior/producer/resource-access.feature
+    - path: ../../cookbook/behavior/producer/knip-plugins.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
