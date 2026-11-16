@@ -622,6 +622,9 @@ a missing candidate does not show that the code has no entry:
   `function routes(app) { app.get(...) }`;
 - a value that a later assignment gives, such as `app = express()` after
   `let app`, other than a CommonJS export;
+- a value in an object literal, such as `app` of
+  `module.exports = { app: express() }` or of
+  `export const config = { app: express() }`;
 - a value that a function returns, such as `app` after `const app = createApp()`;
 - a call on the result of another call, such as
   `app.get('/a', list).post('/b', create)`, unless the rule lists the method of

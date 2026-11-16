@@ -61,9 +61,10 @@ export const behaviorEntryNotes = [
     'or a part of it, and the imports and exports of other snapshot files, with the CommonJS exports module.exports = ... and ' +
     'exports.name = ... of a JavaScript file. A type shim of a package in a snapshot file, such as ' +
     'declare module \'express\';, gives only types, so the import of the package stays. A function parameter, a later ' +
-    'assignment and a call on the result of another call are not followed, so such calls are not candidates. Only the calls ' +
-    'of the sameValueMethods of a rule are passed: they give the value that they are called on, such as the builder calls of ' +
-    'a command. The default export, a namespace import and require of a module are one value, as for a CommonJS package.',
+    'assignment, a value in an object literal and a call on the result of another call are not followed, so such calls are ' +
+    'not candidates. Only the calls of the sameValueMethods of a rule are passed: they give the value that they are called ' +
+    'on, such as the builder calls of a command. The default export, a namespace import and require of a module are one ' +
+    'value, as for a CommonJS package.',
   'A call that does not have the arguments that the rule names is not a candidate. The name is an argument of the call at the ' +
     'nameCall of the rule, counted back from the call that the rule found, such as the command call before an action call; ' +
     'without nameCall, of the call that the rule found. A name is the text of a string literal or of a template literal ' +
