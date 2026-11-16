@@ -22,6 +22,8 @@ It also owns the [behavior entry candidates](behavior/producer/behavior-entries.
 behavior: Stage 4 applies its pinned behavior entry rules to the source.
 It owns the [code units](behavior/producer/code-units.feature) behavior too:
 symbol selectors divide a file into code units, which the producer checks on the saved snapshot.
+It owns the [dependencies of divided files](behavior/producer/part-dependencies.feature)
+behavior too: Stage 5 places each import of a divided file in the part that uses it.
 It owns the [resource access sites](behavior/producer/resource-access.feature)
 behavior too: Stage 4 applies its pinned resource access rules to the source.
 

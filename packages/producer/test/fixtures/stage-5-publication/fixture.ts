@@ -28,7 +28,9 @@ export interface MappingUnit {
   unitKind?: string; symbol?: string; ranges?: SourceRange[]; [field: string]: unknown;
 }
 export interface CodeMapping { scope: Json; units: MappingUnit[]; [field: string]: unknown }
-export interface StageFivePublication extends StageFourPublication { stageFive: string; reviewFive: string }
+// A run after the published Stage 4 review whose Stage 5 start and collect ran, and the Stage 5 attempt folder.
+export interface StageFiveCollection extends StageFourPublication { stageFive: string }
+export interface StageFivePublication extends StageFiveCollection { reviewFive: string }
 export interface StageFiveChanges {
   baseline?(baseline: StageFiveBaseline): void;
   mapping?(mapping: CodeMapping, baseline: StageFiveBaseline): void;
@@ -128,17 +130,27 @@ function writeReview(review: string, records: Record<string, unknown>): void {
   }
 }
 
+// Runs one action of the Stage 5 helper on the fixture, as an operator does.
+export function runStageFive(fixture: StageFourPublication, args: readonly string[]): CommandResult {
+  return runCli(["stage-5", ...args], stageEnvironment(fixture.work, fixture.tools), fixture.tools);
+}
+
+// Publishes the Stage 4 review of a run with the extra snapshot files, and runs Stage 5 start and collect.
+export function stageFiveCollection(extraFiles: readonly ExtraFile[]): StageFiveCollection {
+  const stageFour = stageFourPublication(undefined, extraFiles);
+  checked(publishStageFour(stageFour, "finish"), "Stage 4 publication");
+  checked(runStageFive(stageFour, ["start"]), "Stage 5 start");
+  checked(runStageFive(stageFour, ["collect"]), "Stage 5 collect");
+  return { ...stageFour, stageFive: join(stageFour.work, "evidence", stageFiveAttemptId) };
+}
+
 // Publishes the Stage 4 review of a run with the extra snapshot files, runs Stage 5
 // start and collect, and writes the Stage 5 packet with the changes.
 export function stageFivePublication(extraFiles: readonly ExtraFile[], changes: StageFiveChanges = {}): StageFivePublication {
-  const stageFour = stageFourPublication(undefined, extraFiles);
-  checked(publishStageFour(stageFour, "finish"), "Stage 4 publication");
-  const environment = stageEnvironment(stageFour.work, stageFour.tools);
-  checked(runCli(["stage-5", "start"], environment, stageFour.tools), "Stage 5 start");
-  checked(runCli(["stage-5", "collect"], environment, stageFour.tools), "Stage 5 collect");
-  const reviewFive = join(stageFour.root, "review-5");
-  writeReview(reviewFive, packetRecords(stageFour.work, changes));
-  return { ...stageFour, stageFive: join(stageFour.work, "evidence", stageFiveAttemptId), reviewFive };
+  const collected = stageFiveCollection(extraFiles);
+  const reviewFive = join(collected.root, "review-5");
+  writeReview(reviewFive, packetRecords(collected.work, changes));
+  return { ...collected, reviewFive };
 }
 
 // Runs one Stage 4/5 publisher action for Stage 5 on the fixture, as an operator does.

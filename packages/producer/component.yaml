@@ -15,6 +15,7 @@ artifacts:
     - path: ../../cookbook/behavior/producer/symbol-references.feature
     - path: ../../cookbook/behavior/producer/behavior-entries.feature
     - path: ../../cookbook/behavior/producer/code-units.feature
+    - path: ../../cookbook/behavior/producer/part-dependencies.feature
     - path: ../../cookbook/behavior/producer/resource-access.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
