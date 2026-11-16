@@ -304,6 +304,25 @@ const settingsSamples: Record<string, SettingsSample> = {
   entries: [["'my-lib': «'lib/main.js'»", "lib/main.js"]], gaps: ["secondary: «resolve(import.meta.dirname, 'lib/secondary.js')»"] },
 };
 
+// The conditional config of the Vite guide Configuring Vite. A function makes the
+// settings object, so the rules cannot read it without running the file.
+const conditionalSettings = lines(
+  "import { defineConfig } from 'vite'",
+  "",
+  "export default defineConfig(({ command, mode, isSsrBuild, isPreview }) => {",
+  "  if (command === 'serve') {",
+  "    return {",
+  "      // dev specific config",
+  "    }",
+  "  } else {",
+  "    // command === 'build'",
+  "    return {",
+  "      // build specific config",
+  "    }",
+  "  }",
+  "})");
+const conditionalPath = "vite-conditional/vite.config.js";
+
 const ruleList = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules;
 const callRules = ruleList.filter((rule): rule is BehaviorEntryCallRule => rule.kind === "call");
 const settingsLiteralRules = ruleList.filter((rule): rule is BehaviorEntrySettingsLiteralRule => rule.kind === "settings-literal");
@@ -344,7 +363,7 @@ let found = new Map<string, EntryCandidate[]>();
 let foundSettings = new Map<string, SettingsFindings>();
 beforeAll(() => {
   const files = { ...sampleFiles(), ...sandboxedFiles };
-  const settingsFiles = settingsSampleFiles();
+  const settingsFiles = { ...settingsSampleFiles(), [conditionalPath]: conditionalSettings };
   withScratch((scratch) => {
     const query = entryQuery(projectOf(scratch, { ...files, ...settingsFiles },
       { allowJs: true, moduleDetection: tsMorph.ts.ModuleDetectionKind.Force }));
@@ -433,3 +452,13 @@ test.each(settingsLiteralRules.map((rule) => [rule.id, rule] as const))(
     const paths = settingsSampleOf(rule).tool.files.flatMap((file) => [file, `apps/web/${file}`]);
     expect(paths.filter((path) => forFile(path).length === 0)).toEqual([]);
   });
+
+test("each Vite rule gives a gap with a reason, and no candidate, for the settings that a function makes", () => {
+  const settingsFunction = conditionalSettings.slice(conditionalSettings.indexOf("({ command"),
+    conditionalSettings.lastIndexOf("}") + 1);
+  expect(foundSettings.get(conditionalPath)).toEqual({ candidates: [], gaps: settingsLiteralRules
+    .filter((rule) => settingsSamples[rule.id]?.tool === vite)
+    .map((rule) => ({ kind: "unknown-settings-value", ruleId: rule.id, ruleVersion: rule.version, entryKind: vite.entryKind,
+      ...site(conditionalSettings, settingsFunction), reason: "The settings object or an object on the property path is not " +
+        "an object literal, so the rule cannot read the property path without running the file." })) });
+});
