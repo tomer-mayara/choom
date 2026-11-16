@@ -566,7 +566,10 @@ With `"outDir": "dist"` and `"rootDir": "src"` in `tsconfig.json`, the command
 Each other value of the field, such as a number or an array, is a gap of kind
 `unknown-settings-value` at that value, with a reason. A `package.json` whose value
 is not a JSON object is a gap at that value, and one that is not valid JSON is a gap
-at the whole file. A `package.json` that is not UTF-8 text
+at the whole file. Valid JSON is text that `JSON.parse` accepts after a byte order
+mark, as npm reads a `package.json`. So a comment, a trailing comma, single quotes or
+a name without quotes make a gap at the whole file, although the JSON parser of
+TypeScript reads them. A `package.json` that is not UTF-8 text
 gives no candidate and no gap, because a gap needs a range in the saved text; the
 settings record reads each `package.json`.
 

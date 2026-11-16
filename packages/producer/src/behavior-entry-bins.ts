@@ -11,10 +11,12 @@ import { type InventoryFile, SnapshotFileSystem, type SnapshotFiles } from './st
 
 // The package-bin rules of the behavior entry rules on the saved snapshot. A rule reads
 // the bin field of each package.json of the snapshot outside the node_modules folders,
-// as JSON text; nothing runs. The field is one path, for the command of the package
-// name, or an object whose keys are command names and whose values are paths. Each
-// path is a candidate at its value. Its name is the command as npm installs it: the last
-// part of the key or of the package name, so without a scope. Each other value is a gap.
+// as JSON text; nothing runs. It reads only a file that JSON.parse accepts, as npm does,
+// and takes the ranges from the syntax tree of TypeScript. The field is one path, for
+// the command of the package name, or an object whose keys are command names and whose
+// values are paths. Each path is a candidate at its value. Its name is the command as
+// npm installs it: the last part of the key or of the package name, so without a scope.
+// Each other value is a gap.
 // The handler of a candidate is the whole file that the command runs, only with evidence:
 // the snapshot holds the bin file (snapshot-file), or a fully parsed configuration of the
 // settings record compiles a source file of the snapshot that it selects to the bin file,
@@ -67,6 +69,12 @@ export const packageFiles = (paths: readonly string[]): string[] =>
 // The text of saved bytes without a byte order mark, or undefined when they are not UTF-8 text.
 function textOf(bytes: Buffer): string | undefined {
   try { return utf8.decode(bytes); } catch { return undefined; }
+}
+
+// Whether JSON.parse accepts the text, as npm, Stage 1 and Stage 2 read a package.json. The JSON
+// parser of TypeScript also takes comments, trailing commas, single quotes and names without quotes.
+function strictJson(text: string): boolean {
+  try { JSON.parse(text); return true; } catch { return false; }
 }
 
 // The last property of an object for each key, in the order of its first property, as JSON.parse keeps them.
@@ -166,7 +174,7 @@ export function binCandidates(snapshot: BinSnapshot, path: string, rules: readon
   if (text === undefined) return findings;
   const source = ts.parseJsonText(path, text);
   const root = source.statements[0]?.expression;
-  const parsed = parseDiagnostics(source).length === 0;
+  const parsed = strictJson(text) && parseDiagnostics(source).length === 0;
   const fields = parsed && root !== undefined && ts.isObjectLiteralExpression(root) ? properties(ts, root) : undefined;
   const bin = fields?.get('bin');
   const commands = bin === undefined ? [] : commandsOf(ts, bin, fields?.get('name'));

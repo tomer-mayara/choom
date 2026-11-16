@@ -166,6 +166,23 @@ describe("binCandidates gives a gap for a value that names no file", () => {
     expect(findingsIn({ "package.json": text })).toEqual({ candidates: [], gaps: [gapAt(text, marked, reason)] });
   });
 
+  // npm, Stage 1 and Stage 2 read a package.json with JSON.parse. TypeScript's JSON parser also takes these texts.
+  test.each([
+    ["a comment", "{\n  // The commands of the package.\n  \"bin\": { \"myapp\": \"bin/cli.js\" }\n}\n"],
+    ["a trailing comma", "{\n  \"bin\": { \"myapp\": \"bin/cli.js\", },\n}\n"],
+    ["strings in single quotes", "{\n  'bin': { 'myapp': 'bin/cli.js' }\n}\n"],
+    ["names without quotes", "{\n  bin: { myapp: \"bin/cli.js\" }\n}\n"],
+  ])("a file with %s is not valid JSON, so the whole file is a gap", (_name, text) => {
+    expect(findingsIn({ "package.json": text, "bin/cli.js": cli })).toEqual({ candidates: [],
+      gaps: [gapAt(text, text, "The file is not a valid JSON object, so the rule cannot read its bin field.")] });
+  });
+
+  test("a byte order mark does not stop the rule, because npm skips it before JSON.parse", () => {
+    const text = json({ bin: { myapp: "bin/cli.js" } });
+    expect(findingsIn({ "package.json": "﻿" + text, "bin/cli.js": cli }).candidates.map(({ name, range }) => ({ name, range })))
+      .toEqual([{ name: "myapp", range: rangeIn(text, "\"myapp\": «\"bin/cli.js\"»") }]);
+  });
+
   test("no candidate and no gap for a package without a bin field", () => {
     expect(findingsIn({ "package.json": json({ name: "tools", main: "index.js" }) })).toEqual({ candidates: [], gaps: [] });
   });
