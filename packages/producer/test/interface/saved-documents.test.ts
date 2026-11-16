@@ -6,6 +6,7 @@ import { behaviorEntryRulesPath } from "../../src/behavior-entry-rules.ts";
 import { resourceAccessRuleList } from "../../src/resource-access-rules.ts";
 import { producerReceipt } from "../../src/producer-code.ts";
 import { producerDocuments, producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
+import { stageSixFixture } from "../support/stage-6-run.ts";
 import { stagedRun, stagedSnapshotRef as snapshotRef } from "../support/staged-run.ts";
 
 // A stage start saves copies of the documents that the stage follows, as records,
@@ -15,16 +16,12 @@ import { stagedRun, stagedSnapshotRef as snapshotRef } from "../support/staged-r
 // name comes from in the tool checkout.
 type SourceMap = Record<string, string>;
 
-interface ProducerFixture { root: string; work: string; review: string }
-interface FixtureModule { producerFixture(): ProducerFixture }
 interface Receipt { digests: Record<string, string> }
 
 const sha256 = (bytes: Buffer | string): string => createHash("sha256").update(bytes).digest("hex");
 const code = (name: string): string => join(producerSource, name);
 const producerCode = (name: unknown): boolean => /\.(?:m?ts|mjs|py)$/.test(String(name));
 const documents = (name: string): string => join(producerDocuments, name);
-// The fixture is JavaScript. This local type states only what these tests use.
-const fixtureModule = new URL("../fixtures/entry-points/producer.mjs", import.meta.url);
 
 function expectCopies(folder: string, sources: SourceMap): void {
   for (const [saved, source] of Object.entries(sources))
@@ -112,8 +109,7 @@ describe("stage starts save their documents and no producer code", () => {
   });
 
   test("Stage 6 saves its cookbook", async () => {
-    const { producerFixture } = (await import(fixtureModule.href)) as FixtureModule;
-    const fixture = producerFixture();
+    const fixture = await stageSixFixture();
     try {
       const attempt = join(fixture.work, "evidence/s6-new");
       const result = runHelper(code("stage-6-commands.mjs"), ["start", fixture.review], { CHOOM_TOOLS: toolsRoot,
