@@ -115,13 +115,15 @@ function importBindings(ts: Ts, statement: Statement): [string, Meaning][] {
   return bindings;
 }
 
+// The 1-based line and column of an offset in the text of a file.
+export function sourcePosition(source: SourceFile, offset: number): SourcePosition {
+  const { line, character } = source.getLineAndCharacterOfPosition(offset);
+  return { line: line + 1, column: character + 1 };
+}
+
 // The range of a node of a file: from its first character to the position after its last character.
 export function nodeRange(source: SourceFile, node: TsMorph.ts.Node): [SourcePosition, SourcePosition] {
-  const position = (pos: number): SourcePosition => {
-    const { line, character } = source.getLineAndCharacterOfPosition(pos);
-    return { line: line + 1, column: character + 1 };
-  };
-  return [position(node.getStart(source)), position(node.end)];
+  return [sourcePosition(source, node.getStart(source)), sourcePosition(source, node.end)];
 }
 
 function exportContext(ts: Ts, source: SourceFile): Context {

@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import type { ts as TypeScript } from 'ts-morph';
 import { assert, type Fields } from './record-checks.ts';
+import { sourcePosition } from './snapshot-exports.ts';
 import { openSyntaxReader, parseDiagnostics, type ProjectTools, syntaxParser } from './snapshot-project.ts';
 import { type Excerpt, numberedExcerpt, type RegisteredArtifact, safePath, type StageState } from './stage-3-inputs.ts';
 
@@ -119,18 +120,13 @@ function candidate(ts: Ts, node: TypeScript.Node): string | undefined {
   return callKind(ts, node, name, found);
 }
 
-function location(source: TypeScript.SourceFile, pos: number): { line: number; column: number } {
-  const { line, character } = source.getLineAndCharacterOfPosition(pos);
-  return { line: line + 1, column: character + 1 };
-}
-
 // Collects the parser diagnostics, the loading candidates and the identifier mentions
 // of the reported symbols in one parsed file.
 function scanFile(ts: Ts, source: TypeScript.SourceFile, { path, sha256 }: { path: string; sha256: string }, scan: Scan,
   targetsByName: Map<string, Target[]>): void {
   for (const diagnostic of parseDiagnostics(source)) {
     scan.diagnostics.push({
-      path, code: diagnostic.code, at: location(source, diagnostic.start ?? 0),
+      path, code: diagnostic.code, at: sourcePosition(source, diagnostic.start ?? 0),
       message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
     });
   }
@@ -140,7 +136,7 @@ function scanFile(ts: Ts, source: TypeScript.SourceFile, { path, sha256 }: { pat
     if (kind) {
       const start = node.getStart(source);
       const expression = source.text.slice(start, Math.min(node.end, start + expressionLimit));
-      const lines = [location(source, start).line, location(source, node.end - 1).line];
+      const lines = [sourcePosition(source, start).line, sourcePosition(source, node.end - 1).line];
       scan.matches.push({ path, sha256, kind, lines, expression, truncated: expression.length < node.end - start });
     }
     if (ts.isIdentifier(node)) {
@@ -148,7 +144,7 @@ function scanFile(ts: Ts, source: TypeScript.SourceFile, { path, sha256 }: { pat
         target.mentionCount++;
         if (target.mentions.length >= mentionLimit) continue;
         target.mentions.push({ path, sha256, nodeKind: 'Identifier', parentKind: ts.SyntaxKind[node.parent.kind],
-          range: [location(source, node.getStart(source)), location(source, node.end)] });
+          range: [sourcePosition(source, node.getStart(source)), sourcePosition(source, node.end)] });
       }
     }
     ts.forEachChild(node, visit);
