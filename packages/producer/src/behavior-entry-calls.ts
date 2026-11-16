@@ -1,18 +1,17 @@
 import type * as TsMorph from 'ts-morph';
+import { type Argument, argumentAt, located, member, nameOf, propertyName, ruleCalls, rulePath, type RuleQuery, snapshotSource,
+  unwrapped } from './call-rules.ts';
 import type { BehaviorEntryCallRule } from './generated/contracts.ts';
-import { assert } from './record-checks.ts';
 import { nodeRange } from './snapshot-exports.ts';
-import { type SnapshotProject, snapshotPath, virtualRoot } from './snapshot-project.ts';
+import { type SnapshotProject, snapshotPath } from './snapshot-project.ts';
 import { type Checking, declared, referenceProgram, type SourceRange } from './snapshot-references.ts';
-import { type Argument, argumentAt, located, member, nameOf, propertyName, rulePath, samePath, snapshotSource, unwrapped, valuePath }
-  from './call-rules.ts';
 
 // The call rules of the behavior entry rules on a snapshot project. A rule finds a
 // call whose callee is its call path on the value of its import, such as app.get
 // after const app = express(). The value paths of the import, and the names, come
 // from call-rules.ts. The name and the handler are arguments of the call.
 type Node = TsMorph.ts.Node;
-export interface EntryQuery extends Checking { program: TsMorph.ts.Program }
+export type EntryQuery = RuleQuery;
 // A located declaration or function of the snapshot.
 export interface SourceSite { path: string; range: SourceRange }
 export interface EntryCandidate {
@@ -85,25 +84,6 @@ export function entryQuery(project: SnapshotProject): EntryQuery {
 
 // The candidates of the call rules in one file that the project holds, in source order.
 export function callCandidates(query: EntryQuery, path: string, rules: readonly BehaviorEntryCallRule[]): EntryCandidate[] {
-  const { ts, program } = query;
-  const source = program.getSourceFile(virtualRoot + '/' + path);
-  assert(source, 'The program of the query does not hold ' + path + '.');
-  const paths = rules.map(rule => ({ rule, path: rulePath(rule.importName, rule.callPath) }));
-  const found: EntryCandidate[] = [];
-  const visit = (node: Node): void => {
-    if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
-      // The property name of the callee must be the last name of the rule. Any other callee can be a renamed import.
-      const property = member(ts, unwrapped(ts, node.expression))?.name.text;
-      const applicable = paths.filter(({ path }) => path.newCall === ts.isNewExpression(node) &&
-        (property === undefined || property === 'default' || path.steps.at(-1) === '.' + property));
-      const value = applicable.length ? valuePath(query, node.expression) : undefined;
-      for (const { rule, path } of applicable) {
-        const candidate = value !== undefined && samePath(path, value) ? candidateOf(query, source, node, rule) : undefined;
-        if (candidate !== undefined) found.push(candidate);
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return found;
+  const entries = rules.map(rule => ({ rule, path: rulePath(rule.importName, rule.callPath) }));
+  return ruleCalls(query, path, entries).flatMap(({ call, entry }) => candidateOf(query, call.getSourceFile(), call, entry.rule) ?? []);
 }

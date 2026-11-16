@@ -1,4 +1,5 @@
 import type * as TsMorph from 'ts-morph';
+import { assert } from './record-checks.ts';
 import { callPathParts } from './rule-lists.ts';
 import { nodeRange } from './snapshot-exports.ts';
 import { virtualRoot } from './snapshot-project.ts';
@@ -21,6 +22,10 @@ type TsSymbol = TsMorph.ts.Symbol;
 export interface ValuePath { module: string; steps: string[] }
 // The callee path of a rule, and whether the rule finds a new call.
 export interface RulePath extends ValuePath { newCall: boolean }
+// The program and the type checker of the files that a snapshot project holds.
+export interface RuleQuery extends Checking { program: TsMorph.ts.Program }
+// A call or new call whose callee is the path of a rule entry, and the value path of the callee.
+export interface RuleCall<Entry> { call: TsMorph.ts.CallExpression | TsMorph.ts.NewExpression; entry: Entry; value: ValuePath }
 // The range of a node of a file, and its text up to the expression limit.
 export interface Located { range: SourceRange; expression: string; truncated: boolean }
 // An argument of a call: none when the rule names no argument, spread when a spread
@@ -180,4 +185,27 @@ export function nameOf(ts: Ts, argument: Argument, none: string): Named {
   const value = unwrapped(ts, argument.node);
   if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) return { name: value.text, nameReason: null };
   return { name: null, nameReason: ts.isTemplateExpression(value) ? nameReasons.template : nameReasons.computed };
+}
+
+// The calls of one file that the project holds whose callee is the path of a rule
+// entry, in source order and then in the order of the entries.
+export function ruleCalls<Entry extends { path: RulePath }>(query: RuleQuery, path: string, entries: readonly Entry[]):
+  RuleCall<Entry>[] {
+  const { ts, program } = query;
+  const source = program.getSourceFile(virtualRoot + '/' + path);
+  assert(source, 'The program of the query does not hold ' + path + '.');
+  const found: RuleCall<Entry>[] = [];
+  const visit = (node: Node): void => {
+    if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+      // The property name of the callee must be the last name of the rule. Any other callee can be a renamed import.
+      const property = member(ts, unwrapped(ts, node.expression))?.name.text;
+      const applicable = entries.filter(({ path: rule }) => rule.newCall === ts.isNewExpression(node) &&
+        (property === undefined || property === 'default' || rule.steps.at(-1) === '.' + property));
+      const value = applicable.length ? valuePath(query, node.expression) : undefined;
+      for (const entry of applicable) if (value !== undefined && samePath(entry.path, value)) found.push({ call: node, entry, value });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
 }
