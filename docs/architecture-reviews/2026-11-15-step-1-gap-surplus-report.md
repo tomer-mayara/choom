@@ -1437,6 +1437,12 @@ items stay open.
 **Before the stack merges:**
 
 - tomer-mayara/choom#58 targets the old report branch (see the PR table).
+- The CI `web` job fails on tomer-mayara/choom#63, tomer-mayara/choom#64,
+  tomer-mayara/choom#65 and tomer-mayara/choom#66. GA-00b added a test whose
+  scratch folder holds a read-only copy, and a runner without root rights
+  cannot remove it (`EACCES` in `local-checks.test.ts`). GA-00b2
+  (tomer-mayara/choom#67) fixes the cleanup in `test/support/commands.ts`.
+  When the stack is rebased onto `main`, move that fix into GA-00b.
 - The branch `claude/gracious-sagan-q3vcj9-flaky-header` fixes the flaky
   scenario "Reach a large header with the keyboard". It has no PR yet.
 
