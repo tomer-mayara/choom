@@ -19,6 +19,8 @@ export const factKeys = ['entryAnalysisRef', 'codeMappingRef', 'dependenciesRef'
 export const packetFiles = ['readiness.yaml', 'review-scope.json', 'llm/analysis-prompt.md',
   'llm/analysis-response.md', 'llm/analysis-call.yaml'];
 const issueKeys = ['questions', 'gaps'] as const;
+// The fields of a working discovery. The fixed discovery result adds baselineRef and baselineDigest.
+const discoveryKeys = ['formatVersion', 'kind', 'runRef', ...factKeys, 'overview', 'inspectedPaths', ...issueKeys];
 const yamlNodeLimit = 250000;
 
 // The saved run manifest. The checks read only these fields.
@@ -36,6 +38,9 @@ export interface RecordInputs {
   // The IDs of the records that this stage's publication saves. The validator
   // always reserves the baseline ID too.
   reservedIds?: readonly unknown[];
+  // The bytes of the saved baseline file, when `discovery` is the fixed discovery
+  // result that Stage 6 saved (formatVersion 2) and not a working draft.
+  baselineFile?: Buffer;
 }
 export type RecordCounts = Record<string, number>;
 interface References {
@@ -238,15 +243,32 @@ function checkWorkingDiscovery(discovery: unknown, run: RunRecord): asserts disc
   assert(working?.formatVersion === 1 && working.kind === 'architecture-discovery' && working.runRef === run.id &&
     !Object.hasOwn(working, 'baselineRef') && exact(working.overview, ['text', 'evidenceRefs']) && text(working.overview.text),
   'Expected complete working discovery with no fixed baseline reference.');
-  assert(exact(working, ['formatVersion', 'kind', 'runRef', ...factKeys, 'overview', 'inspectedPaths', ...issueKeys]),
-    'Unexpected working discovery fields.');
+  assert(exact(working, discoveryKeys), 'Unexpected working discovery fields.');
+}
+
+// The fixed discovery result that Stage 6 saved (formatVersion 2): the fields of a
+// complete working discovery, the ID of the baseline and the SHA-256 of the bytes
+// of its saved file.
+function checkFixedDiscovery(discovery: unknown, run: RunRecord, baseline: unknown, baselineFile: Buffer): asserts discovery is Fields {
+  const fixed = discovery as Fields | null | undefined;
+  assert(fixed?.formatVersion === 2 && fixed.kind === 'architecture-discovery' && fixed.runRef === run.id &&
+    exact(fixed.overview, ['text', 'evidenceRefs']) && text(fixed.overview.text) &&
+    exact(fixed, [...discoveryKeys, 'baselineRef', 'baselineDigest']),
+  'Expected a complete fixed discovery result of formatVersion 2 with baselineRef and baselineDigest.');
+  const baselineId = (baseline as Fields | null | undefined)?.id;
+  assert(fixed.baselineRef === baselineId,
+    `The discovery result names the baseline ${fixed.baselineRef}, but the saved baseline has the ID ${baselineId}.`);
+  const sha256 = hash(baselineFile);
+  assert(fixed.baselineDigest === sha256,
+    `The discovery result names the baseline digest ${fixed.baselineDigest}, but the SHA-256 of the saved baseline file is ${sha256}.`);
 }
 
 function select(inputs: RecordInputs): Selection {
   const { run, artifacts, inventory, readSource } = inputs;
   const discovery = inputs.discovery;
   const snapshotRef = run.snapshot.id;
-  checkWorkingDiscovery(discovery, run);
+  if (inputs.baselineFile === undefined) checkWorkingDiscovery(discovery, run);
+  else checkFixedDiscovery(discovery, run, inputs.baseline, inputs.baselineFile);
   const baseline = checkBaselineDocument(inputs.baseline);
   const indexed = new Map((inventory.files as Fields[]).map(file => [file.path, file]));
   const document = documentReader(artifacts, inputs.parse);

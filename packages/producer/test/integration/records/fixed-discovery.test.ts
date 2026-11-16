@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fixedDiscovery, type RecordInputs } from "../../../src/stage-6-records.ts";
+import { fixedDiscovery, type RecordInputs, validateDiscoveryRecords } from "../../../src/stage-6-records.ts";
 import { digest, recordInputs } from "../../support/stage-6-records.ts";
 
 // The fixed discovery result that Stage 6 saves (formatVersion 2), and its check by
@@ -20,5 +20,56 @@ describe("the fixed discovery result", () => {
     expect(fixed).toEqual({ ...before, formatVersion: 2, baselineRef: "base-1", baselineDigest: digest(file) });
     expect(Object.keys(fixed)).toEqual([...Object.keys(before), "baselineRef", "baselineDigest"]);
     expect(working).toEqual(before);
+  });
+});
+
+// With the bytes of the saved baseline file, the shared record checks check the
+// fixed records that Stage 6 saved: the fixed baseline and the fixed discovery result.
+const otherDigest = "0123456789abcdef".repeat(4);
+
+function fixedInputs(change: (fixed: Json) => void = () => {}): RecordInputs & { baselineFile: Buffer } {
+  const inputs = recordInputs();
+  const file = baselineFile(inputs);
+  const discovery = fixedDiscovery(inputs.discovery as Json, "base-1", file);
+  change(discovery);
+  return { ...inputs, discovery, baselineFile: file };
+}
+
+const fixedForm = "Expected a complete fixed discovery result of formatVersion 2 with baselineRef and baselineDigest.";
+const refusedCases: [string, (fixed: Json) => void, (file: Buffer) => string][] = [
+  ["the digest of another baseline file", (fixed) => { fixed.baselineDigest = otherDigest; },
+    (file) => `The discovery result names the baseline digest ${otherDigest}, but the SHA-256 of the saved baseline file is ` +
+      `${digest(file)}.`],
+  ["another baseline ID", (fixed) => { fixed.baselineRef = "base-2"; },
+    () => "The discovery result names the baseline base-2, but the saved baseline has the ID base-1."],
+  ["the working discovery of version 1", (fixed) => {
+    fixed.formatVersion = 1;
+    delete fixed.baselineRef;
+    delete fixed.baselineDigest;
+  }, () => fixedForm],
+  ["the version 1 form of an older Stage 6, with baselineRef and no digest", (fixed) => {
+    fixed.formatVersion = 1;
+    delete fixed.baselineDigest;
+  }, () => fixedForm],
+  ["a fixed discovery result without its digest", (fixed) => { delete fixed.baselineDigest; }, () => fixedForm],
+  ["a fixed discovery result with another field", (fixed) => { fixed.baselineVersion = 1; }, () => fixedForm],
+  ["a fixed discovery result of another run", (fixed) => { fixed.runRef = "run-2"; }, () => fixedForm],
+];
+
+describe("the shared record checks of a fixed discovery result", () => {
+  test("accept the fixed discovery result with the ID and the SHA-256 of the saved baseline file", () => {
+    expect(validateDiscoveryRecords(fixedInputs())).toMatchObject({ mappedFiles: 2, components: 2, gaps: 1, questions: 0 });
+  });
+
+  test.each(refusedCases)("refuse %s", (_name, change, message) => {
+    const inputs = fixedInputs(change);
+    expect(() => validateDiscoveryRecords(inputs)).toThrow(new Error(message(inputs.baselineFile)));
+  });
+
+  // A working draft stays version 1. Only Stage 6 knows the bytes of the fixed
+  // baseline, so the checks of a working draft refuse a fixed discovery result.
+  test("refuse a fixed discovery result as a working draft", () => {
+    const { baselineFile: _file, ...draft } = fixedInputs();
+    expect(() => validateDiscoveryRecords(draft)).toThrow(new Error("Expected complete working discovery with no fixed baseline reference."));
   });
 });
