@@ -157,6 +157,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-01b | tomer-mayara/choom#80 | Draft |
 | GA-07a | tomer-mayara/choom#81 | Draft. Stage 4 collect saves the candidates as `behavior-entry-candidates.json`, and the entry analysis names it as `behaviorEntryCandidatesRef`. The ticket said `behaviorEntries`, but that field already holds reviewed entries that the LLM writes. The list starts with one rule, the Express `get` route, which the scenarios use. |
 | GA-07b | tomer-mayara/choom#82 | Draft. 30 route rules (Express app and router, Fastify, Hono). The method comes from the rule, so the record does not change. Every call rule needs a documented sample in a data-driven test. |
+| GA-07c | tomer-mayara/choom#83 | Draft. 3 rules: `new Worker` of `node:worker_threads` and of `worker_threads` (the worker file is the name, no handler), and BullMQ `new Worker` (the queue is the name, argument 1 is the handler). |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
