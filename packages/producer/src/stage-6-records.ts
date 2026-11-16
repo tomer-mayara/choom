@@ -442,7 +442,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   const history = selectedHistory(selection);
   const documentation = { baseline, discovery, evidence, source, reviewedRanges: history.reviewedRanges };
   validateDocumentation(documentation);
-  const mapped = validateCodeMapping({ ...selection, ...history, members, inventoryRef: inputs.run.snapshot.inventoryRef });
+  const mapped = validateCodeMapping({ ...selection, ...history, members, inventoryRef: inputs.run.snapshot.inventoryRef,
+    readSource: inputs.readSource });
   validateSourceUsage({ ...documentation, snapshotRef, componentIds, mapped });
   validateSystemEntryPoints({ ...documentation, snapshotRef, componentIds, mapped });
   const fileEntries = checkEntryFacts(selection);
