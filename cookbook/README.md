@@ -18,7 +18,7 @@ The producer also owns the [baseline decisions](behavior/producer/baseline-decis
 behavior: it records human decisions about a published baseline.
 It owns the [baseline versions](behavior/producer/baseline-versions.feature)
 behavior too: it makes the next baseline version from recorded decisions.
-The producer also owns the [behavior entry candidates](behavior/producer/behavior-entries.feature)
+It also owns the [behavior entry candidates](behavior/producer/behavior-entries.feature)
 behavior: Stage 4 applies its pinned behavior entry rules to the source.
 
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
