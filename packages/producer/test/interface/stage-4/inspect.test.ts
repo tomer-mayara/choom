@@ -232,13 +232,15 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("To find where a top-level symbol is used, request its references with a snapshot-relative path " +
       "and the symbol name.");
     // The LLM reads the behavior entry candidates as places to read, and names them in the entry analysis.
+    expect(prompt).toContain("behavior-entry-candidates.json lists the calls, the settings entries and the bin commands that " +
+      "the pinned Choom behavior entry rules found.");
     expect(prompt).toContain("A candidate is a place to read, not a proven behavior entry");
     expect(prompt).toContain("Name the file in the entry analysis as behaviorEntryCandidatesRef.");
     // The LLM keeps observed resource access separate from inferred ownership, and names the candidates.
     expect(prompt).toContain("Keep observed access separate from inferred ownership");
     expect(prompt).toContain("Name the file in resource-access.json as resourceAccessCandidatesRef.");
     // The digest of the prompt text without the working folder: the text itself does not change.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("10fa31139fb480530852af2a763cdc71665264e4bc149b90ea69edadbefa91ae");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("e5352a4a260184c9a143629bdd547318567772b8cfaa7840cfd12c3368223ab1");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

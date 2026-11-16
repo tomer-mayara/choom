@@ -11,10 +11,10 @@ const evidenceRequests = `Request a snapshot-relative path and line range when m
   `other uses.\n\n`;
 
 // How the reviewer uses the behavior entry candidates that the pinned syntax rules found.
-const behaviorCandidates = `behavior-entry-candidates.json lists the calls and settings entries that the pinned Choom ` +
-  `behavior entry rules found. A candidate is a place to read, not a proven behavior entry: read its site and its handler ` +
-  `before you record a behavior entry, cite the candidate in its evidenceRefs, and keep a null name or handler unknown with ` +
-  `its reason. Name the file in the entry analysis as behaviorEntryCandidatesRef.\n\n`;
+const behaviorCandidates = `behavior-entry-candidates.json lists the calls, the settings entries and the bin commands that ` +
+  `the pinned Choom behavior entry rules found. A candidate is a place to read, not a proven behavior entry: read its site ` +
+  `and its handler before you record a behavior entry, cite the candidate in its evidenceRefs, and keep a null name or ` +
+  `handler unknown with its reason. Name the file in the entry analysis as behaviorEntryCandidatesRef.\n\n`;
 
 // How the reviewer uses the resource access candidates, and keeps observed access separate from inferred ownership.
 const resourceCandidates = `resource-access-candidates.json lists the calls that the pinned Choom resource access rules ` +
