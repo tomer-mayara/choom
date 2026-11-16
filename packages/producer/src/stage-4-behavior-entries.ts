@@ -1,13 +1,14 @@
-import { callCandidates, type EntryCandidate, entryQuery } from './behavior-entry-calls.ts';
+import { callCandidates, type EntryCandidate } from './behavior-entry-calls.ts';
 import { behaviorEntryRulesPath } from './behavior-entry-rules.ts';
 import { type SettingsGap, settingsCandidates, settingsRules } from './behavior-entry-settings.ts';
-import { type FileSettings, fileSettings, settingsRef } from './compiler-settings.ts';
+import { settingsRef } from './compiler-settings.ts';
 import type { BehaviorEntryCallRule, BehaviorEntryRuleList, BehaviorEntrySettingsLiteralRule } from './generated/contracts.ts';
 import { type Fields, object, text } from './record-checks.ts';
-import { openSnapshotProject, type OutsideRead, outsideReadsNote, type ProjectTools, virtualRoot } from './snapshot-project.ts';
+import { outsideReadsNote, type ProjectTools, virtualRoot } from './snapshot-project.ts';
 import type { SnapshotFiles } from './stage-1-settings.ts';
 import type { Picomatch, SourceFile } from './stage-4-graph-profile.ts';
-import { checkerTool, importPass, queryOptions } from './stage-4-references.ts';
+import { checkerTool, queryOptions } from './stage-4-references.ts';
+import { readScope } from './stage-4-rule-scope.ts';
 
 // The record of behavior entry candidates that Stage 4 collect saves. It applies the
 // rule list that Stage 4 start saved to each source file of the graph scope, in the
@@ -29,8 +30,6 @@ export interface BehaviorEntryInput {
   tsMorph: ProjectTools; parser: Fields; picomatch: Picomatch; picomatchVersion: string;
 }
 export interface FileRole { role: 'test' | 'unknown'; roleRef: string | null }
-// The files of the scope that one graph group reads, with its settings and its import pass.
-interface Group { settings: FileSettings; index: number; pass: Fields; files: SourceFile[] }
 
 // Stage 1 finish registers the review that holds the role records of the run with this ID.
 export const stageOneReviewRef = 'review-001';
@@ -88,19 +87,6 @@ export function testRoles(review: Fields, reviewRef: string): (path: string) => 
   };
 }
 
-// The graph groups of the scope, in the order of their first file: the files whose
-// first compiler context is the group, its settings and its import pass.
-function groupsOf(profile: Fields, settings: Fields): Group[] {
-  const groups = new Map<string, Group>();
-  for (const file of profile.sourceFiles as SourceFile[]) {
-    const chosen = fileSettings(settings, file);
-    const group = groups.get(chosen.group) ?? { settings: chosen, ...importPass(profile, chosen, file.path), files: [] };
-    groups.set(chosen.group, group);
-    group.files.push(file);
-  }
-  return [...groups.values()];
-}
-
 function savedCandidate(file: SourceFile, candidate: EntryCandidate, role: FileRole): Fields {
   const { ruleId, ruleVersion, entryKind, ...site } = candidate;
   return { ruleId, ruleVersion, entryKind, found: 'syntax-rule', ...role, path: file.path, sha256: file.sha256, ...site };
@@ -117,31 +103,21 @@ export function behaviorEntryRecord(input: BehaviorEntryInput): Fields {
   const settingRules = settingsRules(input.rules.rules
     .filter((rule): rule is BehaviorEntrySettingsLiteralRule => rule.kind === 'settings-literal'), picomatch);
   const roleOf = testRoles(input.review, input.reviewRef);
-  const candidates: Fields[] = []; const gaps = new Map<string, unknown>(); const outsideReads = new Map<string, OutsideRead>();
+  const candidates: Fields[] = [];
   let omittedCandidates = 0;
-  const groups = groupsOf(profile, input.settings).map(group => {
-    const project = openSnapshotProject(input.snapshot, { ...group.settings.project,
-      compilerOptions: { ...group.settings.project.compilerOptions, ...queryOptions } }, input.tsMorph);
-    for (const path of group.pass.sourceFiles as string[]) project.sourceFile(path);
-    const query = entryQuery(project);
-    for (const file of group.files) {
-      const settings = settingsCandidates(query, file.path, settingRules);
-      for (const candidate of [...callCandidates(query, file.path, callRules), ...settings.candidates]) {
-        if (candidates.length < candidateLimit) candidates.push(savedCandidate(file, candidate, roleOf(file.path)));
-        else omittedCandidates++;
-      }
-      for (const gap of settings.gaps.map(item => savedGap(file, item))) gaps.set(JSON.stringify(gap), gap);
+  const scope = readScope(input, (query, file) => {
+    const settings = settingsCandidates(query, file.path, settingRules);
+    for (const candidate of [...callCandidates(query, file.path, callRules), ...settings.candidates]) {
+      if (candidates.length < candidateLimit) candidates.push(savedCandidate(file, candidate, roleOf(file.path)));
+      else omittedCandidates++;
     }
-    for (const gap of project.gaps()) gaps.set(JSON.stringify(gap), gap);
-    for (const read of project.outsideReads()) outsideReads.set(read.operation + ' ' + read.path, read);
-    return { graphContext: group.pass.id, graphContextRef: input.profileRef + '#/contexts/' + group.index,
-      compilerSettingsRef: group.settings.ref, files: group.files.map(file => file.path) };
+    return settings.gaps.map(item => savedGap(file, item));
   });
   return {
     formatVersion: 1, attemptId: input.attemptId, snapshotRef: input.snapshotRef, status: omittedCandidates ? 'partial' : 'completed',
     rulesRef: input.rulesRef, rulesSha256: input.rulesSha256, settingsRef, rolesRef: input.reviewRef,
-    scope: { files: (profile.sourceFiles as SourceFile[]).map(file => file.path), groups }, queryOptions,
+    scope: { files: (profile.sourceFiles as SourceFile[]).map(file => file.path), groups: scope.groups }, queryOptions,
     tool: { ...input.parser, name: checkerTool, picomatch: input.picomatchVersion }, virtualRoot,
-    candidates, omittedCandidates, gaps: [...gaps.values()], outsideReads: [...outsideReads.values()], notes: behaviorEntryNotes,
+    candidates, omittedCandidates, gaps: scope.gaps, outsideReads: scope.outsideReads, notes: behaviorEntryNotes,
   };
 }
