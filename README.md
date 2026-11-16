@@ -722,6 +722,7 @@ bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/behavior-entry-rules.test.ts ./packages/producer/test/unit/behavior-entry-calls.test.ts ./packages/producer/test/unit/behavior-entry-settings.test.ts ./packages/producer/test/unit/stage-4-behavior-entries.test.ts ./packages/producer/test/unit/record-behavior-candidates.test.ts
 bun test ./packages/producer/test/unit/behavior-entry-rule-samples.test.ts
 bun test ./packages/producer/test/interface/behavior-entry-rules.test.ts ./packages/producer/test/interface/stage-4/behavior-entries.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
+bun test ./packages/producer/test/interface/stage-4/rule-lists.test.ts
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
 ```
 
@@ -747,6 +748,7 @@ candidates with:
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/resource-access-calls.test.ts ./packages/producer/test/unit/stage-4-resource-access.test.ts ./packages/producer/test/unit/record-resource-candidates.test.ts
 bun test ./packages/producer/test/interface/resource-access-rules.test.ts ./packages/producer/test/interface/stage-4/resource-access.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
+bun test ./packages/producer/test/interface/stage-4/rule-lists.test.ts
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
 ```
 
