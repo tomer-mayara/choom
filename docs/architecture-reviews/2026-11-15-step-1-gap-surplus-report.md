@@ -159,6 +159,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-07b | tomer-mayara/choom#82 | Draft. 30 route rules (Express app and router, Fastify, Hono). The method comes from the rule, so the record does not change. Every call rule needs a documented sample in a data-driven test. |
 | GA-07c | tomer-mayara/choom#83 | Draft. 3 rules: `new Worker` of `node:worker_threads` and of `worker_threads` (the worker file is the name, no handler), and BullMQ `new Worker` (the queue is the name, argument 1 is the handler). |
 | GA-02a | tomer-mayara/choom#84 | Draft. Not as the ticket says: a part of a file names its file by `path` and `sha256`, not by `fileRef`, and it has `ranges`, not one `range`, because the rest is often split. Only Stage 5 divides files, with the scope `unitKind: file-or-part`. The LLM writes the units, and the checks require exactly the units that `divideFile` gives. D21 is done as proposed. |
+| GA-07e | tomer-mayara/choom#85 | Draft. 4 Vite `settings-literal` rules: `build.rollupOptions.input`, `build.rolldownOptions.input`, the top-level `input` and `build.lib.entry`. There is no Next.js rule, because `next.config.*` names no entry files as literals; Next.js finds its entries from its folders. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
