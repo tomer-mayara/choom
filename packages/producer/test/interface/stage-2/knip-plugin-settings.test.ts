@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { toolsRoot, withScratch } from "../../support/commands.ts";
@@ -59,6 +59,11 @@ function runKnip(scratch: string, files: Files, plugins: Record<string, unknown>
 }
 
 describe("Knip 6.44.1 plugins set to config: [] (decision D15)", () => {
+  test("the tool checkout has Knip 6.44.1, the version that these cases record", () => {
+    // Check D15 again before a change of this version.
+    expect((JSON.parse(readFileSync(join(knip, "package.json"), "utf8")) as { version: string }).version).toBe("6.44.1");
+  });
+
   test("with every plugin off, the start file and the test file are unused and no settings file runs", () => {
     withScratch((scratch) => {
       expect(runKnip(scratch, viteApp, {})).toEqual({ status: 1, ran: [],
