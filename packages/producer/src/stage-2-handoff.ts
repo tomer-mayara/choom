@@ -1,8 +1,8 @@
 import { lstatSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
 import { isAbsolute, join, relative, resolve } from 'node:path';
+import { snapshotInventory } from './snapshot-inventory.ts';
 
 // Stage 2 start runs this module in the tool checkout, after the driver checked
 // the producer code record of the run. It checks the saved Stage 1 inputs and
@@ -81,7 +81,9 @@ for (const [artifactId, record] of Object.entries<{ path: unknown; sha256: unkno
   }
 }
 
-// The saved inventory helper must print the registered inventory exactly.
+// The inventory of the saved snapshot, made with the checkout code, must be the
+// registered inventory exactly. The saved inventory.mjs stays a registered record;
+// start does not run it.
 function checkedInventory(): Buffer {
   const inventoryFile = registeredFiles.get(run.snapshot.inventoryRef);
   if (!inventoryFile) throw new Error('Missing registered snapshot inventory.');
@@ -95,11 +97,14 @@ function checkedInventory(): Buffer {
   const inventoryHelper = join(work, 'inventory.mjs');
   if (![...registeredFiles.values()].some(file => file.path === inventoryHelper))
     throw new Error('The saved inventory helper must have a registered digest.');
-  const check = spawnSync(process.execPath, [inventoryHelper], {
-    env: { ...process.env, CHOOM_WORK: work }, maxBuffer: 128 * 1024 * 1024, timeout: 60000
-  });
-  if (check.error || check.status !== 0 || !check.stdout?.equals(inventoryBytes))
-    throw new Error('Saved inventory check failed. Restore the snapshot or start a new stage-1 run.');
+  const failure = 'Saved inventory check failed. Restore the snapshot or start a new stage-1 run.';
+  let current: Buffer;
+  try {
+    current = snapshotInventory(work, run.snapshot.id);
+  } catch (error) {
+    throw new Error(failure + ' ' + (error as Error).message, { cause: error });
+  }
+  if (!current.equals(inventoryBytes)) throw new Error(failure);
   return inventoryBytes;
 }
 checkedInventory();

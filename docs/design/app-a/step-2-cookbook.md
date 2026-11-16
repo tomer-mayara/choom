@@ -123,7 +123,11 @@ the current settings or review may have newer IDs than `settings-001` or
 `review-001`. Do not replace an earlier artifact with a newer file under its old ID.
 
 Start runs [`stage-2-handoff.ts`](../../../packages/producer/src/stage-2-handoff.ts). It checks the
-saved inputs and saves draft checkpoints. If an existing artifact points to the
+saved inputs and saves draft checkpoints. It makes the inventory of the saved
+snapshot with the checkout code and compares it byte for byte with the
+registered inventory. It does not run the saved `inventory.mjs`: the run folder
+holds no trusted code, so that file stays only a registered record.
+If an existing artifact points to the
 working `discovery.yaml` or `baseline.yaml`, the module points it to the matching
 checkpoint in this new attempt. The artifact ID, bytes, and digest stay the same.
 The working drafts can then change without changing the registered evidence.
@@ -657,7 +661,9 @@ The baseline remains unchanged. The run stays `in-progress`.
 
 The driver finishes the command log and requires saved LLM call records before publication.
 The saved `inventory.mjs` must already have a digest in the stage 1 artifact
-registry. Do not register the working `run.yaml`, `discovery.yaml`, or
+registry. As start does, finish compares the saved snapshot with the registered
+inventory with the checkout code, and does not run `inventory.mjs`.
+Do not register the working `run.yaml`, `discovery.yaml`, or
 `baseline.yaml` as immutable evidence; use saved copies.
 
 Do not redirect this command's output into the attempt directory: the command

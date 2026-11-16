@@ -1325,6 +1325,11 @@ modules, `inventory-view.py`, `check-knip-image.mjs` and `stage-4-graph.ts`, do
 not check again. The duplication assessment, the input consolidation command and
 the recovery capture do not use the record.
 
+The run folder holds no trusted code. Stage 1 saves `inventory.mjs` only as a
+record of the code that lists the snapshot. Stage 2 `start` and `finish` do not
+run it: they make the inventory of the saved snapshot with the checkout code and
+compare it byte for byte with the registered inventory.
+
 ## Decision record
 
 Stage 6 publishes a baseline whose statements are all `proposed`. After Stage 6,

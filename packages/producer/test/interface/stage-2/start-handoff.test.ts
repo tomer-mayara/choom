@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { withScratch } from "../../support/commands.ts";
-import { savedJson, stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord } from "../../support/stage-2-attempt.ts";
+import { finishAttempt, runAttempt, savedJson, stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord }
+  from "../../support/stage-2-attempt.ts";
 
 // Start checks the saved Stage 1 run and saves checkpoints of the three drafts.
 // A registered artifact that points to a working draft moves to its checkpoint.
@@ -51,17 +52,33 @@ describe("Stage 2 start handoff", () => {
     { name: "a registered artifact changed", message: "Missing or changed registered artifact: inventory-001",
       change: (work) => changeRun(work, (run) => { run.artifacts["inventory-001"] = { path: "evidence/inventory.json",
         sha256: "0".repeat(64) }; }) },
-    { name: "the saved inventory helper prints a different inventory",
+    { name: "a snapshot file changed after Stage 1",
       message: "Saved inventory check failed. Restore the snapshot or start a new stage-1 run.",
-      change: (work) => {
-        writeFileSync(join(work, "inventory.mjs"), "process.stdout.write('{}');\n");
-        changeRun(work, (run) => { run.artifacts["s1-file@inventory.mjs"] = { path: "inventory.mjs",
-          sha256: sha256("process.stdout.write('{}');\n") }; });
-      } },
+      change: (work) => appendFileSync(join(work, "snapshot/app.ts"), "export const later = 2;\n") },
     { name: "the baseline is no longer empty", message: "Expected completed stage 1 and an empty baseline before stage 3.",
       change: (work) => writeFileSync(join(work, "baseline.yaml"), stringify({ formatVersion: 1, id: "baseline-check",
         parentId: null, components: [{ id: "app" }], interfaces: [], resources: [], rules: [] })) },
   ];
+
+  // The run folder is not trusted code. Start and finish compute the inventory of the
+  // saved snapshot with the code of the tool checkout, and do not run inventory.mjs.
+  test("start and finish check the snapshot without running the saved inventory helper", () => {
+    withScratch((scratch) => {
+      const work = join(scratch, "run");
+      stageOneRun(work, [{ path: "app.ts", text: "export const value = 1;\n" }]);
+      const marker = join(scratch, "inventory-helper.ran");
+      const inventory = readFileSync(join(work, "evidence/inventory.json"), "utf8");
+      const helper = `import { appendFileSync } from "node:fs";\nappendFileSync(${JSON.stringify(marker)}, "ran\\n");\n` +
+        `process.stdout.write(${JSON.stringify(inventory)});\n`;
+      writeFileSync(join(work, "inventory.mjs"), helper);
+      changeRun(work, (run) => { run.artifacts["s1-file@inventory.mjs"] = { path: "inventory.mjs", sha256: sha256(helper) }; });
+      const attempt = stageTwoAttempt(work, id);
+      const results = { ...runAttempt(attempt, scratch), ...finishAttempt(attempt, scratch) };
+      expect(Object.fromEntries(Object.entries(results).map(([action, { status }]) => [action, status]))).toEqual({
+        start: 0, plan: 0, prepare: 0, toolchain: 0, run: 0, "save-review": 0, finish: 0 });
+      expect(existsSync(marker)).toBe(false);
+    });
+  });
 
   test.each(refusals)("refuses to start when $name", ({ change, message }) => {
     withScratch((scratch) => {

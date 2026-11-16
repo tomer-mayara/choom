@@ -26,10 +26,20 @@ export const stageTwoSnapshot: SnapshotFile[] = [
 
 const llmCall = { provider: "unknown", model: "unknown", date: "unknown", settings: "unknown", hiddenReasoning: "not-saved" };
 
+// The order of the files in the inventory of a Stage 1 capture: the names of each
+// folder in sorted order. Stage 2 start and finish compare the inventory with the snapshot.
+function captureOrder(snapshot: SnapshotFile[]): SnapshotFile[] {
+  const compare = (first: string[], second: string[]): number => {
+    const index = first.findIndex((name, at) => name !== second[at]);
+    return index < 0 ? 0 : (first[index] as string) < (second[index] as string) ? -1 : 1;
+  };
+  return [...snapshot].sort((first, second) => compare(first.path.split("/"), second.path.split("/")));
+}
+
 // Saves a Stage 1 run with the given snapshot and one earlier discovery question.
 // The run records the producer code of the given tool checkout.
 export function stageOneRun(work: string, snapshot: SnapshotFile[] = stageTwoSnapshot, tools = toolsRoot): void {
-  stagedRun(work, 1, { snapshot, questions: [priorQuestion], tools });
+  stagedRun(work, 1, { snapshot: captureOrder(snapshot), questions: [priorQuestion], tools });
 }
 
 export function stageTwoAttempt(work: string, id: string, env: Record<string, string> = {}, tools = toolsRoot): StageTwoAttempt {

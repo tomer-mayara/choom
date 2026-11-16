@@ -95,7 +95,8 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 capture
 The helper copies selected files with `rsync`, then performs a checksum dry-run
 comparison. It stops on differences or unsupported filesystem items. An empty
 comparison does not prove atomic capture. The saved manifest keeps that limit.
-The helper then writes the inventory and `inventory.mjs`.
+The helper then writes the inventory and `inventory.mjs`, a record of the code
+that lists the snapshot. Later stages do not run this file.
 All later analysis reads the saved snapshot. It includes local and untracked
 files that pass the explicit exclusions; Git ignore rules do not define scope.
 

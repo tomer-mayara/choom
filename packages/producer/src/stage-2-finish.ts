@@ -1,10 +1,9 @@
-import { readFileSync, writeFileSync, readdirSync, lstatSync, realpathSync,
-  openSync, closeSync, unlinkSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, lstatSync, realpathSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve, relative, posix } from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
+import { snapshotInventory } from './snapshot-inventory.ts';
 
 // The Stage 2 finish action runs this module in the tool checkout, after the
 // driver checked the producer code record of the run. It checks every attempt
@@ -318,19 +317,21 @@ function checkAnalysis(finish: Finish, plan: Fields): Fields {
   return analysis;
 }
 
-// The saved inventory helper must still print the registered inventory.
+// The inventory of the saved snapshot, made with the checkout code, must still be
+// the registered inventory. The saved inventory.mjs stays a registered record;
+// finish does not run it.
 function checkInventory(finish: Finish, run: Fields): void {
-  const snapshot = run.snapshot as { inventoryRef: string };
-  const checkPath = join(finish.work, `.${finish.id}-inventory-check.next.json`);
+  const snapshot = run.snapshot as { id: string; inventoryRef: string };
   assert(Object.values(run.artifacts as Record<string, Entry>).some(entry => entry.path === 'inventory.mjs'),
     'The saved inventory helper must have a registered digest.');
-  const fd = openSync(checkPath, 'wx');
+  const failure = 'Snapshot inventory changed. Start a new snapshot.';
+  let current: Buffer;
   try {
-    execFileSync(process.execPath, [safeFile(finish.work, 'inventory.mjs')], {
-      env: { ...process.env, CHOOM_WORK: finish.work }, stdio: ['ignore', fd, 'inherit'], timeout: 60000
-    });
-    assert(read(checkPath).equals(finish.buffers.get(snapshot.inventoryRef) as Buffer), 'Snapshot inventory changed. Start a new snapshot.');
-  } finally { closeSync(fd); unlinkSync(checkPath); }
+    current = snapshotInventory(finish.work, snapshot.id);
+  } catch (error) {
+    throw new Error(failure + ' ' + (error as Error).message, { cause: error });
+  }
+  assert(current.equals(finish.buffers.get(snapshot.inventoryRef) as Buffer), failure);
 }
 
 function finishAttempt(): void {

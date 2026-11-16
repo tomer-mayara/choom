@@ -39,16 +39,13 @@ const cases: PreflightCase[] = [
   { name: "a manifest that is not a mapping", snapshot: [app, { path: "package.json", text: "[]\n" }],
     reasons: ["package.json: Expected a mapping"] },
   { name: "no captured root manifest", snapshot: [app], reasons: ["Workspace lacks a captured manifest: package.json"] },
-  { name: "a symbolic link in the inventory", snapshot: [...stageTwoSnapshot, { path: "link.ts", text: "", kind: "symlink" }],
-    reasons: ["Snapshot contains symbolic links; this profile does not follow them."] },
   { name: "a manifest larger than 2 MiB",
     snapshot: [app, { path: "package.json", text: JSON.stringify({ name: "fixture", padding: "x".repeat(2 * 1024 * 1024) }) }],
     reasons: ["Preflight input exceeds 2 MiB: package.json"] },
   { name: "several reasons, in check order",
-    snapshot: [app, { path: "lib/package.json", text: "{\"knip\":{}}\n" }, { path: "link.ts", text: "", kind: "symlink" }],
+    snapshot: [app, { path: "lib/package.json", text: "{\"knip\":{}}\n" }],
     plan: { workspaces: [{ dir: ".", ...rootWorkspace }, { dir: "lib", entry: [], project: ["*.ts"] }] },
     reasons: ["Workspace lacks a captured manifest: package.json",
-      "Snapshot contains symbolic links; this profile does not follow them.",
       "lib/package.json contains knip configuration, which this profile does not load."] },
 ];
 
@@ -82,6 +79,18 @@ describe("Stage 2 preflight and skip decisions", () => {
       if (eligible) expect(toolchain.stderr).toContain("No tool image was approved. Run can still record skipped Knip outcomes.");
     });
   }, 30_000);
+
+  // A Stage 1 capture never records a symbolic link. Start compares the saved snapshot
+  // with the registered inventory, so a link record stops the run before the preflight.
+  test("a symbolic link in the inventory stops Stage 2 at start", () => {
+    withScratch((scratch) => {
+      const work = join(scratch, "run");
+      stageOneRun(work, [...stageTwoSnapshot, { path: "link.ts", text: "", kind: "symlink" }]);
+      const start = stageTwo(stageTwoAttempt(work, id), "start");
+      expect(start.status).toBe(1);
+      expect(start.stderr).toContain("Error: Saved inventory check failed. Restore the snapshot or start a new stage-1 run.");
+    });
+  });
 
   test("run records two skipped outcomes with the preflight reasons", () => {
     withScratch((scratch) => {

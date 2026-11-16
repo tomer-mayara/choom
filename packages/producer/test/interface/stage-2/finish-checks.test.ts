@@ -126,6 +126,17 @@ describe("Stage 2 finish checks", () => {
     expect(existsSync(join(prepared.folder, "entry-analysis.yaml"))).toBe(false);
   });
 
+  test("refuses a snapshot that holds another file after start, and leaves the drafts unchanged", () => {
+    const prepared = restoredAttempt();
+    const before = drafts(prepared);
+    writeFileSync(join(prepared.work, "snapshot/later.ts"), "export const later = 2;\n");
+    const results = finishAttempt(prepared, scratch);
+    expect(results["save-review"]?.status).toBe(0);
+    expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
+      .toEqual({ status: 1, stdout: "", stderr: "Snapshot inventory changed. Start a new snapshot.\n" });
+    expect(drafts(prepared)).toEqual(before);
+  });
+
   test("refuses to finish before the analysis packet is saved", () => {
     const prepared = restoredAttempt();
     analysisPacket(join(scratch, `${id}-review`), id, entryAnalysis(id));
