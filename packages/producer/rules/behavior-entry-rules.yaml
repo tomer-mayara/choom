@@ -360,3 +360,12 @@ rules:
     kind: settings-literal
     fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
     propertyPath: build.rollupOptions.input
+  # The same entries with the Vite 8 name of these options, such as
+  # build: { rolldownOptions: { input: ['index.html', 'nested/index.html'] } }.
+  - id: vite-build-rolldown-options-input
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: build.rolldownOptions.input

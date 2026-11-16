@@ -245,6 +245,20 @@ const settingsSamples: Record<string, SettingsSample> = {
     "  },",
     "})"),
   entries: [["main: «'index.html'»", "index.html"]], gaps: ["nested: «resolve(__dirname, 'nested/index.html')»"] },
+  // The same pages with the Vite 8 name of the options, rolldownOptions, as an array,
+  // which the input of Rolldown also takes.
+  "vite-build-rolldown-options-input": { tool: vite, file: "vite.config.js", text: lines(
+    "import { resolve } from 'node:path'",
+    "import { defineConfig } from 'vite'",
+    "",
+    "export default defineConfig({",
+    "  build: {",
+    "    rolldownOptions: {",
+    "      input: ['index.html', resolve(import.meta.dirname, 'nested/index.html')],",
+    "    },",
+    "  },",
+    "})"),
+  entries: [["[«'index.html'»", "index.html"]], gaps: ["«resolve(import.meta.dirname, 'nested/index.html')»]"] },
 };
 
 const ruleList = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules;
