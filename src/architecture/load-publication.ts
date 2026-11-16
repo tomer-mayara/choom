@@ -1,4 +1,4 @@
-import type { Baseline } from "@choom/baseline-model/contracts";
+import type { Baseline, DiscoveryResult } from "@choom/baseline-model/contracts";
 import type { DuplicationReport } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { WorkflowOutcome, WorkflowState } from "./generated/workflow.ts";
@@ -33,8 +33,15 @@ export function ownDuplication(report: DuplicationReport, session: number): NonN
   return ownedCopy({ report, session });
 }
 
-export function publishedSnapshot(state: WorkflowState, current: LoadWorkflowSnapshot["current"] = null,
-  duplication: LoadWorkflowSnapshot["duplication"] = null): LoadWorkflowSnapshot {
+export function ownDiscovery(result: DiscoveryResult): NonNullable<LoadWorkflowSnapshot["discovery"]> {
+  return ownedCopy({ result });
+}
+
+/** The published baseline view and its attachments. */
+export type PublishedViews = Pick<LoadWorkflowSnapshot, "current" | "duplication" | "discovery">;
+
+export function publishedSnapshot(state: WorkflowState,
+  { current, duplication, discovery }: PublishedViews = { current: null, duplication: null, discovery: null }): LoadWorkflowSnapshot {
   return Object.freeze({
     state: Object.freeze({
       ...state,
@@ -42,5 +49,6 @@ export function publishedSnapshot(state: WorkflowState, current: LoadWorkflowSna
     }),
     current,
     duplication,
+    discovery,
   });
 }

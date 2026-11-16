@@ -2,10 +2,11 @@ import type { Baseline } from "@choom/baseline-model/contracts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { BaselineDisplayLimitError, displayLimitMessage } from "../lib/baseline-display-limits.ts";
 import { decodeBaselineYaml } from "../lib/baseline-yaml.ts";
+import { decodeDiscoveryResultYaml } from "../lib/discovery-result-yaml.ts";
 import { decodeDuplicationReportYaml } from "../lib/interface-duplication-yaml.ts";
 import type { ReadDocumentTextOutcome } from "../platform/generated/contracts.ts";
 import type { WorkflowFailure, WorkflowOperations, WorkflowOutcome, WorkflowStage, WorkflowState } from "./generated/workflow.ts";
-import { ownCurrentView, ownDuplication, ownOutcome, publishedSnapshot } from "./load-publication.ts";
+import { ownCurrentView, ownDiscovery, ownDuplication, ownOutcome, publishedSnapshot, type PublishedViews } from "./load-publication.ts";
 import type { LoadWorkflowSnapshot } from "./workspace-view.ts";
 
 /** A selected file remains readable for Retry; selection does not copy or write it. */
@@ -16,12 +17,19 @@ export interface SelectedBaseline {
 export interface LoadWorkflowDependencies {
   selectBaseline(signal: AbortSignal): Promise<SelectedBaseline | null>;
   selectDuplicationReport?(signal: AbortSignal): Promise<SelectedBaseline | null>;
+  selectDiscoveryResult?(signal: AbortSignal): Promise<SelectedBaseline | null>;
   layout(baseline: Baseline): Promise<ArchitectureLayout>;
 }
+
+/** A report that a load attaches to the open baseline. Each kind has its own attachment. */
+type AttachmentKind = Exclude<WorkflowState["operation"], "baseline">;
+const attachmentNames: Readonly<Record<AttachmentKind, string>> = { report: "duplication report", discovery: "discovery result" };
 
 type WorkflowBindings = {
   [Name in keyof WorkflowOperations]: () => Promise<ReturnType<WorkflowOperations[Name]>>;
 };
+
+type Current = NonNullable<LoadWorkflowSnapshot["current"]>;
 
 interface LoadOperation {
   kind: WorkflowState["operation"];
@@ -81,12 +89,9 @@ export class LoadWorkflow implements WorkflowBindings {
   };
   readonly openBaseline = (): Promise<WorkflowOutcome> => this.start("baseline");
   readonly openDuplicationReport = (): Promise<WorkflowOutcome> => this.start("report");
-  readonly removeDuplicationReport = async (): Promise<WorkflowOutcome> => {
-    if (this.active?.kind === "report" && !this.active.committed) void this.cancel();
-    if (this.previousKind === "report") { this.previousSelection = undefined; this.attempted = false; }
-    this.publish({ ...this.snapshot.state, lastOutcome: null }, this.snapshot.current, null);
-    return ownOutcome({ status: "success", durationMs: 0 });
-  };
+  readonly removeDuplicationReport = async (): Promise<WorkflowOutcome> => this.remove("report", { duplication: null });
+  readonly openDiscoveryResult = (): Promise<WorkflowOutcome> => this.start("discovery");
+  readonly removeDiscoveryResult = async (): Promise<WorkflowOutcome> => this.remove("discovery", { discovery: null });
   readonly retry = (): Promise<WorkflowOutcome> => {
     if (!this.attempted) return Promise.resolve(ownOutcome(failed("selection", "no-previous-load", "There is no previous load to retry.", performance.now())));
     return this.start(this.previousKind, this.previousSelection);
@@ -105,6 +110,14 @@ export class LoadWorkflow implements WorkflowBindings {
     this.disposed = true;
     await this.cancel();
   };
+
+  /** Removes one attachment only. A pending load of that kind cannot attach later, and Retry forgets its file. */
+  private remove(kind: AttachmentKind, removed: Partial<PublishedViews>): WorkflowOutcome {
+    if (this.active?.kind === kind && !this.active.committed) void this.cancel();
+    if (this.previousKind === kind) { this.previousSelection = undefined; this.attempted = false; }
+    this.publish({ ...this.snapshot.state, lastOutcome: null }, removed);
+    return ownOutcome({ status: "success", durationMs: 0 });
+  }
 
   private start(kind: WorkflowState["operation"], selection?: SelectedBaseline): Promise<WorkflowOutcome> {
     if (this.disposed) return Promise.resolve(ownOutcome(failed("selection", "disposed", "This workspace has been closed.", performance.now())));
@@ -127,12 +140,16 @@ export class LoadWorkflow implements WorkflowBindings {
   private async run(operation: LoadOperation, selection?: SelectedBaseline): Promise<WorkflowOutcome> {
     try {
       this.check(operation);
-      if (operation.kind === "report" && !operation.baseline) {
-        throw new LoadStopped(failed("selection", "no-baseline", "Open a saved baseline before opening a duplication report.", operation.started));
+      // The built-in example has no file digest, so it cannot have an attachment.
+      if (operation.kind !== "baseline" && !operation.baseline) {
+        throw new LoadStopped(failed("selection", "no-baseline",
+          `Open a saved baseline before opening a ${attachmentNames[operation.kind]}.`, operation.started));
       }
       // A native picker cannot be closed by an AbortSignal. Keep the slot until it returns.
-      const select = operation.kind === "baseline" ? this.dependencies.selectBaseline : this.dependencies.selectDuplicationReport;
-      if (!select) throw new LoadStopped(failed("selection", "unavailable", "Report file selection is unavailable.", operation.started));
+      const select = { baseline: this.dependencies.selectBaseline, report: this.dependencies.selectDuplicationReport,
+        discovery: this.dependencies.selectDiscoveryResult }[operation.kind];
+      if (!select) throw new LoadStopped(failed("selection", "unavailable",
+        operation.kind === "discovery" ? "Discovery result file selection is unavailable." : "Report file selection is unavailable.", operation.started));
       const selected = selection ?? await select(operation.controller.signal);
       this.check(operation);
       if (!selected) throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
@@ -144,7 +161,7 @@ export class LoadWorkflow implements WorkflowBindings {
       this.stage(operation, "validation");
       return operation.kind === "baseline"
         ? await this.loadBaseline(operation, read.text, read.sha256)
-        : this.loadReport(operation, read.text);
+        : this.loadAttachment(operation, read.text);
     } catch (error) {
       return error instanceof LoadStopped ? error.outcome
         : operation.controller.signal.aborted ? { status: "cancelled", durationMs: elapsed(operation.started) }
@@ -162,20 +179,33 @@ export class LoadWorkflow implements WorkflowBindings {
     const current = ownCurrentView(decoded.baseline, layout, sha256);
     this.check(operation);
     const outcome = this.commit(operation);
-    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, current, null);
+    // A new baseline view starts without attachments, also when the IDs repeat.
+    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, { current, duplication: null, discovery: null });
     return outcome;
   }
 
-  private loadReport(operation: LoadOperation, text: string): WorkflowOutcome {
+  /** Checks the file completely against the baseline that the load started with, then attaches it in one step. */
+  private loadAttachment(operation: LoadOperation, text: string): WorkflowOutcome {
     const current = operation.baseline;
     if (!current || current !== this.snapshot.current) throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
-    const decoded = decodeDuplicationReportYaml(text, current.baseline, current.sha256);
-    if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
-    const duplication = ownDuplication(decoded.report, ++this.reportSession);
+    const attachment = operation.kind === "report" ? this.reportAttachment(operation, text, current)
+      : this.discoveryAttachment(operation, text, current);
     this.check(operation);
     const outcome = this.commit(operation);
-    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, current, duplication);
+    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, attachment);
     return outcome;
+  }
+
+  private reportAttachment(operation: LoadOperation, text: string, { baseline, sha256 }: Current): Partial<PublishedViews> {
+    const decoded = decodeDuplicationReportYaml(text, baseline, sha256);
+    if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
+    return { duplication: ownDuplication(decoded.report, ++this.reportSession) };
+  }
+
+  private discoveryAttachment(operation: LoadOperation, text: string, { baseline, sha256 }: Current): Partial<PublishedViews> {
+    const decoded = decodeDiscoveryResultYaml(text, baseline, sha256);
+    if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
+    return { discovery: ownDiscovery(decoded.result) };
   }
 
   private commit(operation: LoadOperation): WorkflowOutcome {
@@ -206,8 +236,10 @@ export class LoadWorkflow implements WorkflowBindings {
     operation.complete(owned);
   }
 
-  private publish(state: WorkflowState, current = this.snapshot.current, duplication = this.snapshot.duplication): void {
-    this.snapshot = publishedSnapshot(state, current, duplication);
+  /** Publishes a state; each view that `changed` does not name stays as it is. */
+  private publish(state: WorkflowState, changed: Partial<PublishedViews> = {}): void {
+    const { current, duplication, discovery } = this.snapshot;
+    this.snapshot = publishedSnapshot(state, { current, duplication, discovery, ...changed });
     for (const listener of [...this.listeners]) {
       try { listener(); } catch {
         // A view observer cannot interrupt the load or take ownership of its result.

@@ -4428,6 +4428,10 @@
                         {
                             "type": "string",
                             "const": "report"
+                        },
+                        {
+                            "type": "string",
+                            "const": "discovery"
                         }
                     ]
                 },

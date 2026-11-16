@@ -15,4 +15,5 @@ union BaselineFileSelection {
 interface BaselineDialogOperations {
   selectBaselineFile(): BaselineFileSelection;
   selectDuplicationReportFile(): BaselineFileSelection;
+  selectDiscoveryResultFile(): BaselineFileSelection;
 }

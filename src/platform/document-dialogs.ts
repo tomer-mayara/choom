@@ -13,12 +13,23 @@ export async function selectBaselineFile(): Promise<ReturnType<BaselineDialogOpe
   return selectDocumentFile("baseline");
 }
 
-async function selectDocumentFile(purpose: "baseline" | "duplication report"): Promise<string | null> {
+export async function selectDiscoveryResultFile(): Promise<ReturnType<BaselineDialogOperations["selectDiscoveryResultFile"]>> {
+  return selectDocumentFile("discovery result");
+}
+
+// Every kind of file uses the same single-file picker; the app then reads it with the read-only document command.
+const pickers = {
+  baseline: { title: "Open Baseline", filter: "Architecture baseline" },
+  "duplication report": { title: "Open duplication report", filter: "Duplication report" },
+  "discovery result": { title: "Open discovery result", filter: "Discovery result" },
+} as const;
+
+async function selectDocumentFile(purpose: keyof typeof pickers): Promise<string | null> {
   if (!isDesktop()) return null;
   try {
     return fileSelection.parse(await open({
-      directory: false, multiple: false, title: purpose === "baseline" ? "Open Baseline" : "Open duplication report",
-      filters: [{ name: purpose === "baseline" ? "Architecture baseline" : "Duplication report", extensions: ["yaml", "yml"] }],
+      directory: false, multiple: false, title: pickers[purpose].title,
+      filters: [{ name: pickers[purpose].filter, extensions: ["yaml", "yml"] }],
     }));
   } catch {
     throw new Error(`The native ${purpose} picker is unavailable.`);

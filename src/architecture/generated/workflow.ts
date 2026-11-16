@@ -22,6 +22,8 @@ export interface WorkflowOperations {
   openBaseline(): WorkflowOutcome;
   openDuplicationReport(): WorkflowOutcome;
   removeDuplicationReport(): WorkflowOutcome;
+  openDiscoveryResult(): WorkflowOutcome;
+  removeDiscoveryResult(): WorkflowOutcome;
   cancel(): WorkflowOutcome | null;
   retry(): WorkflowOutcome;
 }
@@ -31,7 +33,7 @@ export type WorkflowOutcome = WorkflowSuccess | WorkflowCancelled | WorkflowBusy
 export type WorkflowStage = "selection" | "reading" | "validation" | "layout";
 
 export interface WorkflowState {
-  operation: "baseline" | "report";
+  operation: "baseline" | "report" | "discovery";
   phase: "idle" | "loading" | "cancelling";
   stage: WorkflowStage | null;
   lastOutcome: WorkflowOutcome | null;
