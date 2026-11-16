@@ -29,12 +29,20 @@ const expressApp: Receiver = { extension: "js", entryKind: "http-route",
     "the app of another package": "const express = require('other')\nconst app = express()\n",
     "a local function with the name of the import": "function express() {\n  return new Map()\n}\nconst app = express()\n",
   } };
-// The router of the Express routing guide (birds.js).
+// The router of the Express routing guide (birds.js), and a router of the Router
+// export of the express module.
 const expressRouter: Receiver = { extension: "js", entryKind: "http-route",
   start: "const express = require('express')\nconst router = express.Router()\n", others: {
     "a Map": "const router = new Map()\n",
     "the router of another package": "const express = require('other')\nconst router = express.Router()\n",
     "a local object with the name of the import": "const express = { Router: () => new Map() }\nconst router = express.Router()\n",
+  } };
+const expressRouterImported: Receiver = { extension: "ts", entryKind: "http-route",
+  start: "import { Router } from 'express';\n\nconst router = Router();\n", others: {
+    "a Map": "const router = new Map<string, unknown>();\n",
+    "the router of another package": "import { Router } from 'other';\n\nconst router = Router();\n",
+    "a local function with the name of the import": "function Router() {\n  return new Map<string, unknown>();\n}\n\n" +
+      "const router = Router();\n",
   } };
 // The server of the Fastify getting started guide, as an ES module and as CommonJS.
 const fastifyServer: Receiver = { extension: "js", entryKind: "http-route",
@@ -82,14 +90,14 @@ const samples: Record<string, Sample> = {
     call: "router.put('/about', «(req, res) => {\n  res.send('Replace about birds')\n}»)" },
   "express-router-patch": { receiver: expressRouter, name: "/about",
     call: "router.patch('/about', «(req, res) => {\n  res.send('Change about birds')\n}»)" },
-  "express-router-delete": { receiver: expressRouter, name: "/about",
-    call: "router.delete('/about', «(req, res) => {\n  res.send('Delete about birds')\n}»)" },
-  "express-router-options": { receiver: expressRouter, name: "/about",
-    call: "router.options('/about', «(req, res) => {\n  res.send('Options of about birds')\n}»)" },
-  "express-router-head": { receiver: expressRouter, name: "/about",
-    call: "router.head('/about', «(req, res) => {\n  res.send('About birds')\n}»)" },
-  "express-router-all": { receiver: expressRouter, name: "/about", call: "router.all('/about', «(req, res, next) => {\n" +
-    "  console.log('Time: ', Date.now())\n  next()\n}»)" },
+  "express-router-delete": { receiver: expressRouterImported, name: "/about",
+    call: "router.delete('/about', «(req, res) => {\n  res.send('Delete about birds');\n}»)" },
+  "express-router-options": { receiver: expressRouterImported, name: "/about",
+    call: "router.options('/about', «(req, res) => {\n  res.send('Options of about birds');\n}»)" },
+  "express-router-head": { receiver: expressRouterImported, name: "/about",
+    call: "router.head('/about', «(req, res) => {\n  res.send('About birds');\n}»)" },
+  "express-router-all": { receiver: expressRouterImported, name: "/about",
+    call: "router.all('/about', «(req, res, next) => {\n  console.log('Time: ', Date.now());\n  next();\n}»)" },
   // The routes of the Fastify getting started guide and of the shorthand methods of the
   // Fastify routes reference, fastify.METHOD(path, [options], handler). Route options
   // before the handler, as in the validation guide, keep the handler as the last argument.
