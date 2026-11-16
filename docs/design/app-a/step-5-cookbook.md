@@ -52,8 +52,9 @@ and a handoff record. The handoff records the trusted tool versions: Node, YAML,
 ts-morph and the TypeScript that it brings, and the digest of each tool file that
 start loaded. The working drafts stay unchanged. Use the trusted checkout command
 for every action. Each later action makes the same producer code check and
-verifies the saved documents and the pinned tool files before it loads them. A
-tool change requires a new attempt.
+verifies the saved documents and the pinned tool files before it loads them. The
+Stage 4/5 publisher also divides a file only with the module files of ts-morph
+that start pinned. A tool change requires a new attempt.
 
 The reported counts depend on the target. Unassigned units include tests,
 contracts, documentation, configuration and assets. The count is not a count of

@@ -146,6 +146,11 @@ The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
    unknown value, the run snapshot and selected mapping, mapped owners, and saved
    source ranges. The run checks divide each file that a symbol selector names, on
    the saved snapshot, and compare the parts with the [code mapping](#code-mapping).
+   They divide only with the ts-morph whose module files the stage start pinned:
+   the Stage 4/5 publisher checks the files against the `versions.modules` of the
+   Stage 5 start handoff, and Stage 6 against the `parserVersions` of its own
+   start. A changed file is refused, such as with `Trusted parser module changed
+   since Stage 5 start: @ts-morph/common/dist/typescript.js`.
 
 Stage 1 still creates the empty version 1 seed. Versions 1 and 2 remain strict:
 version 1 has no interface `documentation`, and neither permits `sourceUsage`.

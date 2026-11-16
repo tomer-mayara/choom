@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join, relative } from "node:path";
+import { ts } from "ts-morph";
 import { parse, stringify } from "yaml";
 import { type CommandResult, producerDocuments, toolsRoot } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
@@ -74,6 +75,18 @@ function yamlPackageDigests(): Record<string, string> {
   return Object.fromEntries(paths.map((path) => [path, sha256(readFileSync(join(root, path)))]));
 }
 
+// The module files of ts-morph that start pinned, by path below node_modules. A test below checks the paths.
+const pinnedTsMorphPaths = (): string[] =>
+  Object.keys(((attemptJson("handoff.json").parserVersions as Json).tsMorph as { modules: Record<string, string> }).modules);
+
+// The versions of the trusted ts-morph and of its TypeScript, and the digest of each module file that start pinned.
+function tsMorphPins(): Json {
+  const root = join(toolsRoot, "node_modules");
+  const { version } = JSON.parse(readFileSync(join(root, "ts-morph/package.json"), "utf8")) as Json;
+  return { tsMorph: version, typescript: ts.version,
+    modules: Object.fromEntries(pinnedTsMorphPaths().map((path) => [path, sha256(readFileSync(join(root, path)))])) };
+}
+
 function expectedHandoff(): Json {
   const run = draftRun();
   const snapshot = join(fixture.work, "snapshot");
@@ -88,7 +101,7 @@ function expectedHandoff(): Json {
     registeredArtifactDigests: Object.fromEntries(Object.entries(run.artifacts).map(([ref, item]) => [ref, item.sha256])),
     toolInputDigests: { "step-6-cookbook.md": sha256(readFileSync(join(producerDocuments, "step-6-cookbook.md"))) },
     packetDigests: Object.fromEntries(packetNames.map((name) => [name, sha256(readFileSync(join(fixture.review, name)))])),
-    parserVersions: { node: nodeVersion, yaml: yamlVersion, files: yamlPackageDigests() },
+    parserVersions: { node: nodeVersion, yaml: yamlVersion, files: yamlPackageDigests(), tsMorph: tsMorphPins() },
     validationSha256: sha256(jsonText(fixtureValidation(id))),
     candidateDigests: { "baseline.candidate.yaml": sha256(draft("baseline.yaml")), "discovery.candidate.yaml": sha256(fixedDiscovery()) } };
 }
@@ -137,6 +150,12 @@ describe("Stage 6 actions on the producer fixture", () => {
     expect(attemptFile("discovery.candidate.yaml").toString("utf8")).toBe(fixedDiscovery());
     expect(attemptFile("validation.json").toString("utf8")).toBe(jsonText(fixtureValidation(id)));
     expect(attemptFile("handoff.json").toString("utf8")).toBe(jsonText(expectedHandoff()));
+  });
+
+  test("start pins the module files of ts-morph and of its TypeScript, in path order", () => {
+    const paths = pinnedTsMorphPaths();
+    expect(paths).toEqual([...paths].sort());
+    expect(paths).toEqual(expect.arrayContaining(["ts-morph/dist/ts-morph.js", "@ts-morph/common/dist/typescript.js"]));
   });
 
   test("start saves its command and its receipt", () => {

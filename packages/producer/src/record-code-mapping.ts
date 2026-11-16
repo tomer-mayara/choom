@@ -1,6 +1,3 @@
-import { realpathSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import type * as TsMorph from 'ts-morph';
 import { divideFile, dividedFileBytes, pathOwners, type PathSelectors, restOwner, type SavedFile } from './code-units.ts';
@@ -32,6 +29,10 @@ export interface MappingInputs {
   resolve(ref: unknown): unknown;
   evidence(record: unknown): void;
   readSource(path: string, limit: number): Buffer;
+  // The ts-morph that divides a file that a symbol selector names, after the
+  // checks of the caller, such as the pins of its stage start. The check loads
+  // it once, only when a selector divides a file.
+  divisionTools(): ProjectTools;
 }
 // The direct owners of the mapped files, for the checks of the source sites. The
 // sites of a divided file stay at file level: a component owns code of the file when
@@ -58,16 +59,6 @@ const partFields: Record<string, string[]> = {
     'evidenceRefs'],
   rest: ['id', 'unitKind', 'path', 'sha256', 'ranges', 'roles', 'owner', 'membershipRef', 'inspection', 'reason', 'evidenceRefs'],
 };
-
-// The ts-morph of the tool checkout that holds this module, as the publisher takes
-// YAML from it. The checks load it only to divide a file.
-function checkoutTools(): ProjectTools {
-  const modules = fileURLToPath(new URL('../../../node_modules/', import.meta.url));
-  const require = createRequire(import.meta.url);
-  const path = require.resolve('ts-morph');
-  assert(path.startsWith(modules + 'ts-morph/') && realpathSync(path) === path, 'Use the trusted installation of ts-morph.');
-  return require(path) as ProjectTools;
-}
 
 function selectedSymbols(members: Map<unknown, Fields>): Map<unknown, Map<string, unknown>> {
   const files = new Map<unknown, Map<string, unknown>>();
@@ -152,11 +143,10 @@ const inKeyOrder = (units: Fields[]): Fields[] =>
   [...units].sort((first, second) => (unitKey(first) < unitKey(second) ? -1 : Number(unitKey(first) > unitKey(second))));
 
 // The units of a divided file are the units that its symbol selectors give in the saved snapshot.
-function checkDivision({ inputs, selectors, units }: Context, path: unknown, symbols: Map<string, unknown>): void {
+function checkDivision({ inputs, selectors, units }: Context, path: unknown, symbols: Map<string, unknown>, tools: ProjectTools): void {
   const file = inputs.indexed.get(path);
   assert(file !== undefined, `The symbol selector ${String([...symbols.keys()][0])} of ${String(path)} matched nothing: ` +
     'the file is not in the saved inventory.');
-  const tools = checkoutTools();
   const division = divideFile(tools.ts, savedSource(inputs, path as string, file, tools), [...symbols.keys()]);
   const rest = restOwner(path as string, selectors);
   const expected: Fields[] = division.symbols.map(({ symbol, ranges }) =>
@@ -182,7 +172,10 @@ export function validateCodeMapping(inputs: MappingInputs): MappedOwners {
   }
   if (parts) for (const path of inputs.indexed.keys())
     assert(context.units.has(path), `The code mapping has no unit of the indexed file ${String(path)}.`);
-  for (const [path, symbols] of context.divided) checkDivision(context, path, symbols);
+  if (context.divided.size > 0) {
+    const tools = inputs.divisionTools();
+    for (const [path, symbols] of context.divided) checkDivision(context, path, symbols, tools);
+  }
   const owners = new Map([...context.units].map(([path, units]) => [path, new Set(units.map(unit => unit.owner))]));
   return { files: owners.size, owns: (path, owner) => owners.get(path)?.has(owner) ?? false };
 }

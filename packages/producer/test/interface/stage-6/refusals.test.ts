@@ -188,6 +188,30 @@ function expectRefusal(result: CommandResult, message: string, uncaught: boolean
   }
 }
 
+// Stage 6 start pins the module files of ts-morph, which divides a file that a
+// symbol selector names, as it pins the YAML package. Each run of the case uses a
+// copy of the tool checkout, in which a ts-morph module changes after start.
+describe("Stage 6 trusted parsers", () => {
+  test.each(["finish", "verify"])("refuses %s after ts-morph changed in the tool checkout since start", async (action) => {
+    const scratch = makeScratch();
+    const tools = copyToolCheckout(scratch);
+    const run = await stageSixFixture();
+    const inCopy = (args: string[]): CommandResult => stageSix(run.work, id, args, { CHOOM_TOOLS: tools }, tools);
+    try {
+      for (const args of action === "verify" ? [["start", run.review], ["finish"]] : [["start", run.review]])
+        expect(inCopy(args)).toMatchObject({ status: 0, stderr: "" });
+      const file = "ts-morph/dist/ts-morph.js";
+      appendFileSync(join(tools, "node_modules", file), "\n// A later change.\n");
+      const before = folderState(run.work);
+      expectRefusal(inCopy([action]), `Trusted parser module changed since start: ${file}`, false);
+      expect(folderState(run.work)).toEqual(before);
+    } finally {
+      rmSync(run.root, { recursive: true, force: true });
+      removeScratch(scratch);
+    }
+  }, 120_000);
+});
+
 describe("Stage 6 refusals", () => {
   test.each([...loadCases, ...startCases, ...preparedCases, ...verifyCases])("$state: refuses $name", async (refusal) => {
     const scratch = makeScratch();

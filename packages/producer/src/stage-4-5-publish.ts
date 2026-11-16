@@ -10,7 +10,9 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { refuseChangedProducerCode } from './producer-code.ts';
 import type { Artifact, Fields } from './record-checks.ts';
 import { runLayout } from './run-layout.mjs';
+import type { ProjectTools } from './snapshot-project.ts';
 import { readBaselineYaml, type RecordCounts, type RunRecord, validateDiscoveryRecords } from './stage-6-records.ts';
+import { checkPinnedModules, loadTsMorph } from './ts-morph-modules.ts';
 
 // The Stage 4/5 publisher. check validates a reviewed packet, finish validates it
 // again and publishes it as one update of the drafts, and verify checks a
@@ -254,6 +256,16 @@ function verifiedInput(): State {
     } };
 }
 
+// Stage 5 divides a file by symbol selectors with the ts-morph of the tool checkout,
+// after the check of its module files against the pins of Stage 5 start: the
+// versions.modules of its handoff. Stage 4 maps whole files and divides none.
+function stageFiveTsMorph(state: State): ProjectTools {
+  const { tools: tsMorph, versions } = loadTsMorph();
+  const handoff = json(state.attemptFiles.get('handoff.json'));
+  checkPinnedModules(versions.modules, (handoff.versions as Fields | undefined)?.modules, 'Stage 5 start');
+  return tsMorph;
+}
+
 function reviewMetadata(packet: Packet, state: State): void {
   const scope = json(packet.get('llm/review-scope.json'));
   const call = parseBytes(packet.get('llm/analysis-call.yaml'));
@@ -313,7 +325,7 @@ function candidate(state: State, packet: Packet): Candidate {
     'Stage 5 can divide a file by symbol selectors.';
   assert(stage === '5' || baseline.formatVersion !== 5, wholeFiles);
   const counts = validateDiscoveryRecords({ run, baseline, discovery, artifacts, inventory, parse, readSource,
-    reservedIds: [refFor(receiptName)] });
+    reservedIds: [refFor(receiptName)], divisionTools: () => stageFiveTsMorph(state) });
   assert(stage === '5' || (json(packet.get('code-mapping.json')).scope as Fields).unitKind === 'file', wholeFiles);
   return { counts, baseline, discovery };
 }

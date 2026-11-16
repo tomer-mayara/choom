@@ -1,19 +1,21 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync, rmSync } from "node:fs";
+import { appendFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { billingFile, billingPath, billingRestRanges, computePriceRanges, divideBilling }
   from "../../fixtures/stage-5-publication/divided-file.ts";
 import { component, publishStageFive, type SourceRange, type StageFivePublication, stageFivePublication }
   from "../../fixtures/stage-5-publication/fixture.ts";
-import type { CommandResult } from "../../support/commands.ts";
+import { type CommandResult, makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
+import { copyToolCheckout } from "../../support/tool-checkout.ts";
 
 // The Stage 4/5 publisher in Stage 5, as an operator runs it, with a version 5
 // baseline in which Pricing names the symbol computePrice of billing.ts, which
 // Billing owns by its path. The code mapping divides billing.ts into the unit of
-// computePrice and the rest unit.
-function withDividedFile(use: (fixture: StageFivePublication) => void, symbolRanges: SourceRange[] = computePriceRanges): void {
+// computePrice and the rest unit. `tools` is the tool checkout of every action.
+function withDividedFile(use: (fixture: StageFivePublication) => void, symbolRanges: SourceRange[] = computePriceRanges,
+  tools?: string): void {
   const fixture = stageFivePublication([billingFile], {
     baseline(baseline) {
       baseline.formatVersion = 5;
@@ -24,7 +26,7 @@ function withDividedFile(use: (fixture: StageFivePublication) => void, symbolRan
       divideBilling(mapping, baseline, [{ symbol: "computePrice", owner: "pricing", ranges: symbolRanges }],
         { owner: "billing", ranges: billingRestRanges });
     },
-  });
+  }, tools);
   try {
     use(fixture);
   } finally {
@@ -64,4 +66,22 @@ describe("the Stage 4/5 publisher with a divided file in Stage 5", () => {
       expect(folderState(fixture.work)).toEqual(before);
     }, [[{ line: 8, column: 1 }, { line: 10, column: 2 }]]);
   }, 60_000);
+
+  // Stage 5 start pins the module files of ts-morph and of its TypeScript in its
+  // handoff. The publisher divides a file only with those files.
+  test("refuses to divide a file after the TypeScript of ts-morph changed since Stage 5 start, and writes nothing", () => {
+    const scratch = makeScratch();
+    try {
+      withDividedFile((fixture) => {
+        const file = "@ts-morph/common/dist/typescript.js";
+        appendFileSync(join(fixture.tools, "node_modules", file), "\n// A later change.\n");
+        const before = folderState(fixture.work);
+        expect(publishStageFive(fixture, "check")).toEqual({ status: 1, stdout: "",
+          stderr: `Trusted parser module changed since Stage 5 start: ${file}\n` });
+        expect(folderState(fixture.work)).toEqual(before);
+      }, computePriceRanges, copyToolCheckout(scratch));
+    } finally {
+      removeScratch(scratch);
+    }
+  }, 120_000);
 });

@@ -12,6 +12,7 @@ import { type MappedOwners, validateCodeMapping } from './record-code-mapping.ts
 import { validateGraph } from './record-graph.ts';
 import { validateResourceCandidates } from './record-resource-candidates.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
+import type { ProjectTools } from './snapshot-project.ts';
 
 // The shared record validator. Stages 4 and 5 check the working discovery
 // records before they save drafts; Stage 6 also checks a readiness packet before
@@ -42,6 +43,8 @@ export interface RecordInputs {
   // The bytes of the saved baseline file, when `discovery` is the fixed discovery
   // result that Stage 6 saved (formatVersion 2) and not a working draft.
   baselineFile?: Buffer;
+  // The ts-morph that divides a file that a symbol selector names, after the checks of the caller.
+  divisionTools(): ProjectTools;
 }
 export type RecordCounts = Record<string, number>;
 interface References {
@@ -479,7 +482,7 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   const documentation = { baseline, discovery, evidence, source, reviewedRanges: history.reviewedRanges };
   validateDocumentation(documentation);
   const mapped = validateCodeMapping({ ...selection, ...history, members, inventoryRef: inputs.run.snapshot.inventoryRef,
-    readSource: inputs.readSource });
+    readSource: inputs.readSource, divisionTools: inputs.divisionTools });
   validateSourceUsage({ ...documentation, snapshotRef, componentIds, mapped });
   validateSystemEntryPoints({ ...documentation, snapshotRef, componentIds, mapped });
   const fileEntries = checkEntryFacts(selection);

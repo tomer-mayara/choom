@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { parse, stringify } from "yaml";
 import { type ExtraFile, publishStageFour, stageFourPublication, type StageFourPublication }
   from "../stage-4-publication/fixture.ts";
-import { type CommandResult, runCli } from "../../support/commands.ts";
+import { type CommandResult, runCli, toolsRoot } from "../../support/commands.ts";
 
 // A run after a published Stage 4 review, with a Stage 5 attempt whose start and
 // collect ran through the command line, and a reviewed Stage 5 packet in a separate
@@ -135,9 +135,10 @@ export function runStageFive(fixture: StageFourPublication, args: readonly strin
   return runCli(["stage-5", ...args], stageEnvironment(fixture.work, fixture.tools), fixture.tools);
 }
 
-// Publishes the Stage 4 review of a run with the extra snapshot files, and runs Stage 5 start and collect.
-export function stageFiveCollection(extraFiles: readonly ExtraFile[]): StageFiveCollection {
-  const stageFour = stageFourPublication(undefined, extraFiles);
+// Publishes the Stage 4 review of a run with the extra snapshot files, and runs Stage 5 start and collect,
+// with the command line of `tools`.
+export function stageFiveCollection(extraFiles: readonly ExtraFile[], tools = toolsRoot): StageFiveCollection {
+  const stageFour = stageFourPublication(undefined, extraFiles, tools);
   checked(publishStageFour(stageFour, "finish"), "Stage 4 publication");
   checked(runStageFive(stageFour, ["start"]), "Stage 5 start");
   checked(runStageFive(stageFour, ["collect"]), "Stage 5 collect");
@@ -153,8 +154,9 @@ export function writeStageFivePacket(collected: StageFiveCollection, changes: St
 
 // Publishes the Stage 4 review of a run with the extra snapshot files, runs Stage 5
 // start and collect, and writes the Stage 5 packet with the changes.
-export function stageFivePublication(extraFiles: readonly ExtraFile[], changes: StageFiveChanges = {}): StageFivePublication {
-  return writeStageFivePacket(stageFiveCollection(extraFiles), changes);
+export function stageFivePublication(extraFiles: readonly ExtraFile[], changes: StageFiveChanges = {}, tools = toolsRoot):
+StageFivePublication {
+  return writeStageFivePacket(stageFiveCollection(extraFiles, tools), changes);
 }
 
 // Runs one Stage 4/5 publisher action for Stage 5 on the fixture, as an operator does.

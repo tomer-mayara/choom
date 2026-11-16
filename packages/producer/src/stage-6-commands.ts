@@ -7,7 +7,7 @@ import { type Artifact, assert, type Fields, hash, json, object, oneOf, text } f
 import { runLayout } from './run-layout.mjs';
 import { directory, ensureDirectory, file, fileNames, type OwnedFile, type OwnedFolder, present, removeOwned,
   removeOwnedDirectories, requireNames, saveNew, stillOwned, withLock } from './stage-6-files.ts';
-import { type CheckedInventory, draftNames, loadYaml, plainId, readRegistry, type SnapshotIdentity, type TrustedYaml,
+import { type CheckedInventory, draftNames, loadParsers, plainId, readRegistry, type SnapshotIdentity, type TrustedParsers,
   verifyInventory } from './stage-6-inputs.ts';
 import { factKeys, fixedDiscovery, fixedDiscoveryYaml, packetFiles, readBaselineYaml, readFixedDiscoveryYaml, type RecordInputs,
   type RunRecord, validateDiscoveryRecords, validateRecords } from './stage-6-records.ts';
@@ -40,7 +40,7 @@ interface State {
   // The inputs of the shared record checks of the drafts. verify checks the saved fixed records with them too.
   recordInputs: RecordInputs;
 }
-interface Prepared { state: State; prepared: Files; yaml: TrustedYaml }
+interface Prepared { state: State; prepared: Files; yaml: TrustedParsers }
 interface CommandRecord { args: string[]; cwd: string; environment: Record<string, string> }
 // The receipts, the fixed records and the staged files of a publication.
 interface Staged { phase: Files; baseline: Buffer; stagedDiscovery: OwnedFile; stagedRun: OwnedFile }
@@ -120,7 +120,7 @@ function checkStageFiveRun(run: Fields | null | undefined): asserts run is RunRe
   'Expected finalized Stage 5 and pending baseline recovery.');
 }
 
-function readStageFive({ drafts, packet, yaml }: { drafts: Files; packet: Files; yaml: TrustedYaml }): State {
+function readStageFive({ drafts, packet, yaml }: { drafts: Files; packet: Files; yaml: TrustedParsers }): State {
   const parse = (bytes: Buffer | undefined): unknown => yaml.parse((bytes as Buffer).toString('utf8'));
   const run = parse(drafts.get('run.yaml')) as Fields | null | undefined;
   const baseline = readBaselineYaml(drafts.get('baseline.yaml') as Buffer, yaml) as Fields;
@@ -142,8 +142,9 @@ function readStageFive({ drafts, packet, yaml }: { drafts: Files; packet: Files;
     'handoff.json', 'validation.json', 'commands.md', startReceiptName, finishStartedName, finishReceiptName];
   // The record validator reserves the baseline ID itself, as it does for Stages 4 and 5.
   const reservedIds = [refs.discoveryRef, ...attemptRecords.map(artifactId)];
+  // A file that a symbol selector names is divided with the ts-morph whose module files start pinned.
   const recordInputs: RecordInputs = { run, baseline, discovery, artifacts, packet, draftDigests, reservedIds,
-    inventory: verified.inventory, parse: yaml.parse, readSource: verified.readSource };
+    inventory: verified.inventory, parse: yaml.parse, readSource: verified.readSource, divisionTools: () => yaml.divisionTools };
   const counts = validateRecords(recordInputs);
   const working = discovery as Fields;
   assert(!artifacts.has(refs.baselineRef) && !artifacts.has(refs.discoveryRef) &&
@@ -184,12 +185,12 @@ function stageFacts({ run, refs, verified, artifacts, draftDigests, discovery }:
   };
 }
 
-function handoffRecord(state: State, frozenTools: Files, packet: Files, yaml: TrustedYaml): Fields {
+function handoffRecord(state: State, frozenTools: Files, packet: Files, yaml: TrustedParsers): Fields {
   return { ...state.facts, toolInputDigests: hashMap(frozenTools), packetDigests: hashMap(packet),
     parserVersions: yaml.versions, validationSha256: hash(encode(state.validation)), candidateDigests: hashMap(state.candidates) };
 }
 
-function startFiles(state: State, frozenTools: Files, packet: Files, yaml: TrustedYaml, startedAt: string): Files {
+function startFiles(state: State, frozenTools: Files, packet: Files, yaml: TrustedParsers, startedAt: string): Files {
   const files: Files = new Map([
     ...draftNames.map((name, index): [string, Buffer] => [checkpoints[index] as string, draft(state, name)]),
     ...frozenTools, ...packet, ...state.candidates,
@@ -224,7 +225,7 @@ function start(): Fields {
   const frozenTools = new Map(toolsToFreeze.map(name => [name, file(sourceFolder(name), name)]));
   requireNames(fileNames(review), packetFiles, 'readiness packet');
   const packet = new Map(packetFiles.map(name => [name, file(review, name, maxReviewBytes)]));
-  const yaml = loadYaml(tools);
+  const yaml = loadParsers(tools);
   const state = readStageFive({ drafts: workingDrafts(), packet, yaml });
   requireFreeTargets(state);
   if (action === 'preflight') return { ...state.validation, status: 'stage6-preflight-verified', writes: [] };
@@ -263,7 +264,7 @@ function loadPrepared({ completed }: { completed: boolean }): Prepared {
   const handoff = json(prepared.get('handoff.json') as Buffer) as Fields;
   const frozenTools = new Map(toolsToFreeze.map(name => [name, prepared.get(name) as Buffer]));
   assert(same(hashMap(frozenTools), handoff.toolInputDigests) && object(handoff.parserVersions), 'Missing or changed frozen tool pins.');
-  const yaml = loadYaml(tools, handoff.parserVersions);
+  const yaml = loadParsers(tools, handoff.parserVersions);
   requireNames(names, [...checkpoints, ...toolsToFreeze, ...packetFiles, ...candidateNames,
     'handoff.json', 'validation.json', 'commands.md'], 'prepared output');
   const packet = new Map(packetFiles.map(name => [name, prepared.get(name) as Buffer]));

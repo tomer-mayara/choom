@@ -194,8 +194,12 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 start \
 
 Use the helper in the trusted checkout for every command. Each command first
 checks the [producer code record](record-format.md#producer-code-record) of the
-run. Later commands also require the Node version and trusted YAML package that
-`start` recorded. The saved cookbook is a record of the instructions.
+run. Later commands also require the Node version, the trusted YAML package and
+the module files of ts-morph that `start` recorded (`parserVersions` in
+`handoff.json`). ts-morph divides each file that a symbol selector of a version 5
+baseline names. A changed module file is refused, such as with `Trusted parser
+module changed since start: ts-morph/dist/ts-morph.js`. The saved cookbook is a
+record of the instructions.
 Keep that trusted checkout version available. To verify a run created with older
 helpers, use its matching trusted checkout and tool installation. Do not update
 saved evidence copies or rehash them to match a new tool version.

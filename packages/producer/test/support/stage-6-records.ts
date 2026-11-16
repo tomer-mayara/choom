@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { RecordInputs } from "../../src/stage-6-records.ts";
+import { loadTsMorph } from "../../src/ts-morph-modules.ts";
 
 // In-memory records for the shared record validator of Stages 4, 5 and 6
 // (stage-6-records.ts), modeled on the Stage 6 producer fixture. Each call of
@@ -183,5 +184,7 @@ export function recordInputs(change: (records: Records) => void = () => {}): Rec
       preflightSha256: sha("knip-preflight"), inventorySha256: sha("inventory") } });
   return { run: { formatVersion: 1, id: runRef, snapshot: { id: snapshotRef, inventoryRef: "inventory" } },
     baseline: records.baseline, discovery: records.discovery, inventory, artifacts, parse: (text) => JSON.parse(text) as unknown,
-    readSource: (path) => Buffer.from(files[path] ?? "") };
+    readSource: (path) => Buffer.from(files[path] ?? ""),
+    // The ts-morph of this checkout. A stage also checks it against the pins of its start.
+    divisionTools: () => loadTsMorph().tools };
 }

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { checkBaselineDocument, validateBaseline } from "../../../src/record-baseline.ts";
 import { type MappedOwners, validateCodeMapping } from "../../../src/record-code-mapping.ts";
+import { loadTsMorph } from "../../../src/ts-morph-modules.ts";
 
 // The producer profile of a version 5 baseline and the code mapping of the files that
 // its symbol selectors divide. The checks run the shared baseline rules of
@@ -58,7 +59,7 @@ function mapped(billingUnits: Fields[]): MappedOwners {
       unitKind: "file-or-part", inspectionMeaning: "Saved ranges.", selectedEntryAnalysisRef: "entry", historicalEntryAnalysisRefs: [] } },
     indexed: new Map([["src/billing.ts", { path: "src/billing.ts", kind: "file", bytes: Buffer.byteLength(billing), sha256 }]]),
     members, claim: () => undefined, evidence: () => undefined, resolve: (ref) => references.get(ref as string),
-    readSource: () => Buffer.from(billing) });
+    readSource: () => Buffer.from(billing), divisionTools: () => loadTsMorph().tools });
 }
 
 const at = (line: number, column: number) => ({ line, column });

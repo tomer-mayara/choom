@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { type MappedOwners, type MappingInputs, validateCodeMapping } from "../../src/record-code-mapping.ts";
+import { loadTsMorph } from "../../src/ts-morph-modules.ts";
 
 // The code mapping checks of the shared validation on a small run, with a mapping of
 // files and parts. The other record checks are replaced by small doubles: a unit
@@ -53,6 +54,7 @@ function inputs(run: Run): MappingInputs {
     claim: () => undefined, evidence: () => undefined,
     resolve: (ref) => references.get(ref as string),
     readSource: (path) => Buffer.from(run.files[path] ?? ""),
+    divisionTools: () => loadTsMorph().tools,
   };
 }
 
@@ -163,5 +165,35 @@ describe("validateCodeMapping with a symbol selector that cannot divide its file
     checks.readSource = () => { throw new Error("The check reads no file over the limit."); };
     expect(() => validateCodeMapping(checks))
       .toThrow(new Error("The symbol selectors cannot divide billing.ts: the file is larger than 2 MiB."));
+  });
+});
+
+// The caller gives the ts-morph that divides a file, after its own checks, such as
+// the pins of the module files of ts-morph that its stage start saved.
+describe("the ts-morph that divides a file", () => {
+  test("is the ts-morph that the caller gives, loaded once for all divided files", () => {
+    const run = dividedRun();
+    run.files["copy.ts"] = billing;
+    run.units.push(unit("copy.ts", billing, { unitKind: "symbol", symbol: "computePrice", ranges: priceRanges, owner: "pricing" }),
+      unit("copy.ts", billing, { unitKind: "rest", ranges: restRanges, owner: null, reason: "no-path-owner" }));
+    run.memberships.pricing = { paths: [], symbols: [selector("computePrice"), selector("computePrice", "copy.ts")] };
+    let loads = 0;
+    const mapped = validateCodeMapping({ ...inputs(run), divisionTools: () => { loads++; return loadTsMorph().tools; } });
+    expect([mapped.owns("billing.ts", "pricing"), mapped.owns("copy.ts", "pricing"), loads]).toEqual([true, true, 1]);
+  });
+
+  test("is not loaded for a mapping with no divided file", () => {
+    const run = dividedRun();
+    run.unitKind = "file";
+    run.memberships.pricing = { paths: ["pricing.ts"] };
+    billingUnits(run, [fileUnit("billing.ts", billing, "billing")]);
+    const checks = { ...inputs(run), divisionTools: (): never => { throw new Error("No file needs ts-morph."); } };
+    expect(validateCodeMapping(checks).files).toBe(2);
+  });
+
+  test("stops the check when the caller refuses its ts-morph", () => {
+    const refusal = "Trusted parser module changed since start: ts-morph/dist/ts-morph.js";
+    const checks = { ...inputs(dividedRun()), divisionTools: (): never => { throw new Error(refusal); } };
+    expect(() => validateCodeMapping(checks)).toThrow(new Error(refusal));
   });
 });

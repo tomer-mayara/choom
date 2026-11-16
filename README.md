@@ -499,7 +499,8 @@ describes the review and publication requirements.
 The Stage 6 suites run preflight, start, check, finish and verify on the Stage 6
 producer fixture through the command line. They record each result, the
 receipts, the prepared and fixed records, the completed run manifest with its
-coverage summaries, the refusals with their messages, and a start or finish that
+coverage summaries, the refusals with their messages, a finish or verify after
+ts-morph changed in a copied tool checkout, and a start or finish that
 fails after it wrote files. For a failure, a fault double
 (`packages/producer/test/support/doubles/stage-6-faults.ts`) runs as a Node
 preload in the helper process and makes one file operation fail. Run them with:
@@ -695,7 +696,10 @@ units: one unit for each named top-level symbol and one rest unit for all other
 text. `divideFile` in `code-units.ts` finds the parts in the syntax tree of the
 saved file and runs no code. The shared record checks (`record-code-mapping.ts`)
 divide each such file again and refuse a code mapping whose units differ, with the
-units that the file must have. Stage 4 keeps whole files. The
+units that the file must have. They divide with the ts-morph whose module files
+the stage start pinned (`ts-morph-modules.ts`): the Stage 4/5 publisher checks the
+files against the Stage 5 start handoff, and Stage 6 against its own start, and
+both refuse a changed file. Stage 4 keeps whole files. The
 [record format](docs/design/app-a/record-format.md#divided-files) gives the shape
 and the rules. The `@producer` scenarios check a Stage 5 packet that divides a file
 through the command line. Run the focused checks of the code units with:
@@ -703,6 +707,7 @@ through the command line. Run the focused checks of the code units with:
 ```sh
 bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/code-units.test.ts ./packages/producer/test/unit/record-code-mapping.test.ts ./packages/producer/test/unit/snapshot-project.test.ts
+bun test ./packages/producer/test/unit/ts-morph-modules.test.ts
 bun test ./packages/producer/test/integration/records/code-units.test.ts ./packages/producer/test/integration/records/stage-6-records.test.ts
 bun test ./packages/producer/test/interface/stage-5/code-units.test.ts ./packages/producer/test/interface/stage-4/code-units.test.ts
 ```
@@ -1171,7 +1176,7 @@ snapshot files, `stage-5-query.ts` with `stage-5-syntax.ts` for the evidence
 of `collect`, and `stage-5-parts.ts` with `part-dependencies.ts` for the parts
 action.
 The Stage 6 helper (`stage-6-commands.ts`) uses `stage-6-inputs.ts` for the
-trusted YAML package, the registered artifacts and the indexed snapshot files,
+trusted YAML package and ts-morph, the registered artifacts and the indexed snapshot files,
 and `stage-6-files.ts` for its checked reads, the files and folders that it owns
 and the publication lock.
 `attempt-files.ts` holds the review prompt of a saved cookbook and
@@ -1184,6 +1189,8 @@ source queries of Stages 3, 4 and 5 read their files with its syntax reader.
 exports and Stage 4 references actions.
 `code-units.ts` divides one parsed file by named top-level symbols into code units
 for the checks of the code mapping and the Stage 5 parts action.
+`ts-morph-modules.ts` loads the ts-morph that divides a file and checks its module
+files against the pins of a stage start.
 Every stage action runs the code in the tool checkout. Stage 1 start saves the
 producer code record (`producer-code.ts`): the package version, the Git commit
 when there is one, and one digest of
