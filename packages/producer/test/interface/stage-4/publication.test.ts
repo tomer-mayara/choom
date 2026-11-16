@@ -179,6 +179,37 @@ describe("the Stage 4/5 publisher with the behavior entry candidates of collect"
   }, 60_000);
 });
 
+// The Stage 4 resource observations name the resource access candidates that collect saved.
+describe("the Stage 4/5 publisher with the resource access candidates of collect", () => {
+  const orders: ExtraFile = { path: "orders.ts", text: "import knex from 'knex';\n\nknex({ client: 'pg' })('orders').insert(row);\n" };
+
+  test("checks the candidates against the saved snapshot files, and publishes", () => {
+    withPublication((fixture) => {
+      const record = JSON.parse(readFileSync(join(fixture.attempt, "resource-access-candidates.json"), "utf8")) as
+        { candidates: { ruleId: unknown; name: unknown }[] };
+      expect(record.candidates.map(({ ruleId, name }) => ({ ruleId, name }))).toEqual([{ ruleId: "knex-insert", name: "orders" }]);
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified" });
+      expect(result(publishStageFour(fixture, "finish"))).toMatchObject({ status: "stage4-published" });
+    }, undefined, [orders]);
+  }, 60_000);
+
+  test("refuses resource observations that do not name the candidates, and a candidates record that changed after collect", () => {
+    const unnamed = stageFourPublication(undefined, [], toolsRoot, (records) => {
+      delete records["resource-access.json"]?.resourceAccessCandidatesRef;
+    });
+    try {
+      refusedInCheck(unnamed, "The resource observations must name the resource access candidates of Stage 4 collect: " +
+        "s4-check-file@resource-access-candidates.json.");
+    } finally {
+      rmSync(unnamed.root, { recursive: true, force: true });
+    }
+    withPublication((fixture) => {
+      appendFileSync(join(fixture.attempt, "resource-access-candidates.json"), "\n");
+      refusedInCheck(fixture, "Collection output changed: resource-access-candidates.json");
+    });
+  }, 60_000);
+});
+
 // The publisher checks the LLM part of the packet before it validates the records.
 interface PacketCase { name: string; file: string; change: (text: string) => string; message: string }
 

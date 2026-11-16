@@ -239,7 +239,8 @@ function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: strin
         inspectionMeaning: "Reviewed means that the review read a saved range of the file.",
         selectedEntryAnalysisRef: stageFourAnalysis, historicalEntryAnalysisRefs } },
     "resource-access.json": { formatVersion: 1, kind: "resource-observations", snapshotRef, observations: [], limits,
-      scope: { method: "source-inspection", reviewedFilesRef: `${stageFourAnalysis}#/reviewedFiles`, historicalEntryAnalysisRefs } },
+      scope: { method: "source-inspection", reviewedFilesRef: `${stageFourAnalysis}#/reviewedFiles`, historicalEntryAnalysisRefs },
+      resourceAccessCandidatesRef: artifactId("resource-access-candidates.json") },
   };
 }
 

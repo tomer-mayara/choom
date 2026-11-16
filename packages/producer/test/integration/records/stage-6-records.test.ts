@@ -72,6 +72,8 @@ interface Records {
   entry: { gaps: Issue[]; behaviorEntries: unknown[] } & Record<string, unknown>;
   mapping: { scope: { unitKind: string } & Record<string, unknown>; units: MappingUnit[] } & Record<string, unknown>;
   candidates: { candidates: Record<string, unknown>[] } & Record<string, unknown>;
+  access: Record<string, unknown>;
+  resourceCandidates: { candidates: Record<string, unknown>[] } & Record<string, unknown>;
 }
 interface Artifact { path: string; bytes: Buffer; sha256: string }
 
@@ -93,6 +95,10 @@ const graphInput = { id: "default", roots: [{ path: "cli.ts", evidenceRefs }], c
 // The behavior entry candidates that Stage 4 collect saved, and the rule list that they name.
 const candidatesRef = "s4-x-file@behavior-entry-candidates.json";
 const rules = { formatVersion: 1, rules: [{ id: "express-route-get", version: 1, entryKind: "http-route" }] };
+// The resource access candidates that Stage 4 collect saved, and the rule list and the source sites that they name.
+const resourceCandidatesRef = "s4-x-file@resource-access-candidates.json";
+const resourceRule = { library: "knex", resourceKind: "database-table", operation: "write" };
+const resourceRules = { formatVersion: 1, rules: [{ id: "knex-insert", version: 1, ...resourceRule }] };
 
 function initialRecords(): Records {
   const gaps = [{ id: "gap-1", kind: "entry", reason: "Unknown.", subjectRefs: ["plugin-candidate"], evidenceRefs: ["launch#/unresolved"] }];
@@ -124,6 +130,14 @@ function initialRecords(): Records {
         roleRef: null, path: "http.ts", sha256: digest(files["http.ts"] ?? ""), range: [{ line: 1, column: 1 }, { line: 1, column: 28 }],
         expression: "export function orders() {}", truncated: false, name: null, nameReason: "No literal name.",
         handler: null, handlerReason: "No handler." }] },
+    access: { formatVersion: 1, kind: "resource-observations", snapshotRef, scope: { historicalEntryAnalysisRefs: [],
+      method: "source-inspection", reviewedFilesRef: `${selected.entryAnalysisRef}#/reviewedFiles` }, observations: [], limits: ["l"] },
+    resourceCandidates: { formatVersion: 1, snapshotRef, status: "completed", rulesRef: "s4-x-file@resource-access-rules.yaml",
+      rulesSha256: digest(JSON.stringify(resourceRules)), sourceSitesRef: "s4-x-file@source-sites.json", omittedCandidates: 0,
+      notes: ["A candidate is not proven resource access."], gaps: [], candidates: [{ ruleId: "knex-insert", ruleVersion: 1,
+        ...resourceRule, confidence: "receiver-import", siteRef: null, path: "http.ts", sha256: location.sha256, range: [{ line: 1, column: 1 },
+          { line: 1, column: 28 }], expression: "export function orders() {}", truncated: false, name: "orders", nameReason: null,
+        identity: "inferred-from-name", context: { kind: "module", name: null, range: null, graphContext: "default-import" } }] },
   };
 }
 
@@ -151,12 +165,13 @@ function recordInputs(change: (records: Records) => void = () => {}): RecordInpu
           roots: ["cli.ts"], reached: ["cli.ts"], notReached: [], stoppedEdges: [] } }] }],
     [selected.entryAnalysisRef]: ["evidence/s5-x/entry-analysis.yaml", records.entry],
     [selected.codeMappingRef]: ["evidence/s5-x/code-mapping.json", records.mapping],
-    [selected.resourceAccessRef]: ["evidence/s5-x/resource-access.json", { formatVersion: 1, kind: "resource-observations",
-      snapshotRef, scope: { historicalEntryAnalysisRefs: [], method: "source-inspection",
-        reviewedFilesRef: `${selected.entryAnalysisRef}#/reviewedFiles` }, observations: [], limits: ["l"] }],
+    [selected.resourceAccessRef]: ["evidence/s5-x/resource-access.json", records.access],
     [proposal]: ["evidence/s5-x/baseline.proposed.yaml", records.baseline],
     [candidatesRef]: ["evidence/s4-x/behavior-entry-candidates.json", records.candidates],
     "s4-x-file@behavior-entry-rules.yaml": ["evidence/s4-x/behavior-entry-rules.yaml", rules],
+    [resourceCandidatesRef]: ["evidence/s4-x/resource-access-candidates.json", records.resourceCandidates],
+    "s4-x-file@resource-access-rules.yaml": ["evidence/s4-x/resource-access-rules.yaml", resourceRules],
+    "s4-x-file@source-sites.json": ["evidence/s4-x/source-sites.json", { formatVersion: 1, snapshotRef, sites: [] }],
   };
   const artifacts = new Map<string, Artifact>();
   const register = (ref: string, path: string, value: unknown): void => {
@@ -331,6 +346,25 @@ describe("validateDiscoveryRecords with the behavior entry candidates of Stage 4
       "The entry analysis names launch as its behavior entry candidates, which is not a saved candidates record."],
   ])("refuses %s", (_name, change, message) => {
     expect(() => validateDiscoveryRecords(recordInputs(named(change)))).toThrow(message);
+  });
+});
+
+// The resource observations of Stages 4 and 5 name the resource access candidates of Stage 4 collect. The
+// validator checks each candidate against the saved snapshot.
+describe("validateDiscoveryRecords with the resource access candidates of Stage 4", () => {
+  const named = (change: (records: Records) => void = () => {}) => (records: Records): void => {
+    records.access.resourceAccessCandidatesRef = resourceCandidatesRef;
+    change(records);
+  };
+
+  test("accepts candidates that lie in the saved snapshot", () => {
+    expect(validateDiscoveryRecords(recordInputs(named()))).toMatchObject({ mappedFiles: 2 });
+  });
+
+  test("refuses a candidate range outside the saved file", () => {
+    expect(() => validateDiscoveryRecords(recordInputs(named((records) => {
+      Object.assign(records.resourceCandidates.candidates[0] ?? {}, { range: [{ line: 1, column: 1 }, { line: 1, column: 40 }] });
+    })))).toThrow("Resource access candidate 0 has a range outside the saved file http.ts.");
   });
 });
 
