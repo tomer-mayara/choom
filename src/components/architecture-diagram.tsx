@@ -327,19 +327,24 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
 
   return (<DiscoveryContext value={reading}><DecisionContext value={decisions}>
     <section aria-labelledby="current-diagram-heading" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border px-4 py-2 sm:flex-nowrap">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:flex-nowrap sm:gap-3">
         <h1 id="current-diagram-heading" tabIndex={-1} className="min-w-0 flex-1 truncate text-base font-semibold" title={baseline.id}>{baseline.id}</h1>
         <p id="item-inspection-hint" className="sr-only lg:not-sr-only lg:text-xs lg:text-muted-foreground">Select to inspect. Drag a header or use arrow keys to move it.</p>
-        {/* In a narrow window, Discovery shares the heading row, so that the plot keeps its height. */}
-        <Button variant="outline" className="px-2 text-xs sm:px-4 sm:text-sm" onClick={(event) => openPanel({ kind: "discovery" }, event.currentTarget, event.detail === 0)}>Discovery</Button>
+        {/* In a narrow window, Discovery is a 24px control on the heading row, so it adds no height to the header. */}
+        <Button variant="outline" className="h-6 px-2 py-0 text-xs sm:h-auto sm:px-4 sm:py-2 sm:text-sm"
+          onClick={(event) => openPanel({ kind: "discovery" }, event.currentTarget, event.detail === 0)}>Discovery</Button>
         <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-4 sm:[&>button]:text-sm">
-          <Button id="baseline-details-control" variant="outline" onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>Baseline details</Button>
+          {/* A narrow window shows the short label, so that the three actions stay on one row. */}
+          <Button id="baseline-details-control" variant="outline" aria-label="Baseline details"
+            onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>
+            <span className="sm:hidden">Details</span><span className="hidden sm:inline">Baseline details</span>
+          </Button>
           <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget, event.detail === 0)}>Rules ({baseline.rules.length})</Button>
           <Button variant="outline" onClick={(event) => openPanel({ kind: "duplicates" }, event.currentTarget, event.detail === 0)}>Duplicates</Button>
         </div>
       </div>
       {incompleteInterfaces > 0 || sourceNotice || entryNotices.length > 0 ? (
-        <div className={`flex shrink-0 flex-wrap gap-x-4 border-b border-border px-4 text-xs text-muted-foreground ${incompleteInterfaces > 0 || sourceNotice ? "py-2" : "py-0.5"}`}>
+        <div className={`flex shrink-0 flex-wrap gap-x-4 border-b border-border px-4 text-xs text-muted-foreground ${incompleteInterfaces > 0 || sourceNotice ? "py-1 sm:py-2" : "py-0.5"}`}>
           {incompleteInterfaces > 0 ? <p>
             {incompleteInterfaces} {incompleteInterfaces === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.
           </p> : null}

@@ -167,7 +167,10 @@ header in baseline order. This happens once per successful open. Resizing and
 inspection preserve its pan and zoom. Fit view can zoom out to show the entire
 diagram. A single click, Enter, or Space opens
 inspection in a nonmodal side panel. On narrow windows, the panel sits below
-the canvas. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
+the canvas. There, **Discovery** is a small control on the heading row, and
+**Baseline details** shows the short label **Details**, so the other actions
+stay on one row. The top bar and the notices use less space too. Thus the
+drawing and the panel keep enough height with wide fonts. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
 (recorded)** status, **Evidence not loaded**, and its evidence references. An
 accepted statement also shows its acceptance reference. Missing optional fields
 say **Not recorded**. Null statement values say **Unknown (null)**. Empty lists and objects
