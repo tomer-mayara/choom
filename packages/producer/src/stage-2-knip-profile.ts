@@ -107,8 +107,10 @@ const { pluginNames }: { pluginNames: string[] } = await import(pathToFileURL(jo
 // The plugin definitions of the installed Knip give the enablers and the default patterns.
 const { Plugins }: { Plugins: Record<string, Omit<KnipPlugin, 'name'>> } =
   await import(pathToFileURL(join(knipRoot, 'dist/plugins/index.js')).href);
+// The manifests of the plan workspaces come first, in the order of the plan, then the others.
+const planDirs = Object.keys(workspaces);
 const planOrder = (manifest: SnapshotManifest): number =>
-  manifest.workspace === null ? Infinity : Object.keys(workspaces).indexOf(manifest.workspace);
+  manifest.workspace === null ? planDirs.length : planDirs.indexOf(manifest.workspace);
 const plugins = pluginEntryPatterns(manifests.sort((left, right) => planOrder(left) - planOrder(right)),
   pluginNames.map(name => ({ ...Plugins[name], name })));
 for (const { workspace, pattern } of plugins.copied) {
