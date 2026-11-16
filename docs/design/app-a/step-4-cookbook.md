@@ -382,9 +382,9 @@ copy of the list as `behavior-entry-rules.yaml` and records its SHA-256 in
 differs from that copy, before it saves a receipt. Restore the list or start a new
 attempt. A rule that changes keeps its ID and gets the next version.
 
-The list holds one rule now, `express-route-get`: the `get` routes of an Express
-app. Later tickets add the rules of HTTP servers, workers and queues, command line
-tools and frontend settings. Each rule has an `id`, a `version`, the `library`, the
+The list holds the `http-route` rules of HTTP servers, which the table below
+gives. Later tickets add the rules of workers and queues, command line tools and
+frontend settings. Each rule has an `id`, a `version`, the `library`, the
 `entryKind` and one of two kinds:
 
 - A `call` rule finds a call whose callee is its `callPath` on the value of its
@@ -405,6 +405,24 @@ tools and frontend settings. Each rule has an `id`, a `version`, the `library`, 
   `build.rollupOptions.input`, in the settings object of a file of the scope that
   matches its `fileGlob`, such as `**/vite.config.{js,ts}`. The pinned list has no
   such rule yet.
+
+The `http-route` rules find the route methods of four kinds of server values.
+Each rule finds one method. The path is the name (`nameArgument: 0`) and the last
+argument is the handler (`handlerArgument: last`):
+
+| Server value | `importName`, `callPath` | Methods | Rule IDs |
+| --- | --- | --- | --- |
+| An Express app, such as `const app = express()` | `express`, `express().<method>` | `get`, `post`, `put`, `patch`, `delete`, `options`, `head`, `all` | `express-route-<method>` |
+| An Express router: `express.Router()`, or `Router()` after `import { Router } from 'express'` | `express`, `Router().<method>` | The same eight methods | `express-router-<method>` |
+| A Fastify server: `Fastify()` after `import Fastify from 'fastify'`, or `require('fastify')()` | `fastify`, `fastify().<method>` | The same eight methods | `fastify-route-<method>` |
+| A Hono app, such as `const app = new Hono()` after `import { Hono } from 'hono'` | `hono`, `new Hono().<method>` | `get`, `post`, `put`, `patch`, `delete`, `options`, `all`. Hono has no `head` method: a `get` route also answers `HEAD`. | `hono-route-<method>` |
+
+A route candidate names its method through its rule. `ruleId` names the rule, and
+the `callPath` of that rule in the saved copy of the list ends with the method,
+such as `fastify().post` for `fastify-route-post`. The record has no method field.
+`name` is the path as the call writes it. `handler` is the last argument, so route
+options before the handler, as in `fastify.put('/orders/:id', opts, updateOrder)`,
+and the earlier handlers of a route with several handlers do not change it.
 
 The helper reads each file of the scope in the snapshot project of its graph
 group, with the compiler settings of the group, chosen as for the references
@@ -449,10 +467,40 @@ a missing candidate does not show that the code has no entry:
 - a call on a value that a function gets as a parameter, such as
   `function routes(app) { app.get(...) }`;
 - a value that a later assignment gives;
+- a value that a function returns, such as `app` after `const app = createApp()`;
 - a call on the result of another candidate call, such as
-  `app.route('/orders').get(...)`;
+  `app.get('/a', list).post('/b', create)`;
 - the files outside the graph scope, and source that is not JavaScript or
   TypeScript.
+
+The `http-route` rules also do not find these routes:
+
+- Express `use`, such as `app.use('/birds', birds)`: it adds middleware or a
+  router, not a route.
+- The routes of `app.route('/book')` and `router.route('/book')`, such as
+  `app.route('/book').get(...)`.
+- Fastify `route({ method, url, handler })` and Hono `on('PURGE', '/cache', ...)`:
+  the method is an argument, not the name of the call.
+- A route on the app that another call of the app gives, such as
+  `new Hono().basePath('/api').get(...)`.
+- A Hono route without a path, such as `app.post(create)`.
+- A route on a function parameter, such as a Fastify plugin
+  `async function routes(fastify) { fastify.get(...) }` that
+  `fastify.register(routes)` adds, or `function routes(app) { ... }` that
+  `routes(app)` calls.
+- A method that the table does not name, such as Express `trace`.
+- The export `fastify` of the module `fastify`, as in
+  `import { fastify } from 'fastify'`: a `callPath` that starts with the import
+  name names the value of the module, so no rule can name this export.
+- An app of the Hono presets `hono/tiny` and `hono/quick`: they are other module
+  names.
+
+The name is the path in the call. It does not include a path that another call
+adds, such as `/birds` from `app.use('/birds', birds)` in Express or `/book` from
+`app.route('/book', book)` in Hono. When a Fastify route has its handler in its
+options object, such as `fastify.get('/', { schema, handler })`, `handler` is
+`null` with a reason, or the declaration of the options object when the last
+argument is its name.
 
 | Record field | Meaning |
 | --- | --- |
@@ -478,7 +526,7 @@ ID is an example, and the tool digests, `outsideReads` and `notes` are cut:
   "snapshotRef": "snapshot-001",
   "status": "completed",
   "rulesRef": "s4-001-file@behavior-entry-rules.yaml",
-  "rulesSha256": "0ea2bdde3687c2a56646e3554be00120e57b8cd043d1692d4d439156ba55bee9",
+  "rulesSha256": "5427381cd3d7798bc605eafa1261fe6b3f9b70ab4665ecc91080c0bf1f8849a2",
   "settingsRef": "settings-001",
   "rolesRef": "review-001",
   "scope": {
