@@ -6,6 +6,8 @@ import type {
   BaselineRuleObjectStatement, BaselineTextStatement,
 } from "@choom/baseline-model/contracts";
 import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
+import { CopyDecision } from "./copy-decision.tsx";
+import { ItemDiscovery } from "./discovery-records.tsx";
 import { InterfaceDetails } from "./interface-details.tsx";
 import type { InterfaceReadingState } from "./interface-reading-state.ts";
 import { systemEntryReview } from "../lib/system-entry-points.ts";
@@ -15,7 +17,7 @@ export type ArchitecturePanel = { kind: "component"; componentId: string }
   | { kind: "interface"; interfaceId: string; entryId?: string }
   | { kind: "resource"; resourceId: string } | { kind: "baseline" } | { kind: "rules" }
   | { kind: "duplicates"; componentId?: string; interfaceId?: string }
-  | { kind: "duplicate"; findingId: string };
+  | { kind: "duplicate"; findingId: string } | { kind: "discovery" };
 
 type Statement = ReadonlyData<BaselineTextStatement | BaselineMembershipStatement | BaselineMembershipV5Statement
   | BaselineComponentReferenceStatement | BaselineAccessPointsStatement | BaselineConsumersStatement | BaselineNullableTextStatement
@@ -34,10 +36,14 @@ function Field({ name, children }: { name: string; children: ReactNode }) {
   </div>;
 }
 
-function StatementDetails({ name, statement, children }: { name: string; statement: Statement; children?: ReactNode }) {
+// `itemId` and `field` name the statement as a decision file does, such as billing.purpose.
+function StatementDetails({ name, itemId, field, statement, children }: {
+  name: string; itemId: string; field: string; statement: Statement; children?: ReactNode;
+}) {
   return <Field name={name}>
     {children ?? <RecordedValue value={statement.value} />}
     <p className="text-xs font-medium">{statement.status === "accepted" ? "Accepted (recorded)" : "Proposed"}</p>
+    <CopyDecision itemId={itemId} field={field} />
     <p className="text-xs text-muted-foreground">Evidence not loaded</p>
     <Field name="Evidence references"><RecordedValue value={statement.evidenceRefs} /></Field>
     {statement.status === "accepted" ? <Field name="Acceptance reference"><RecordedValue value={statement.acceptanceRef} /></Field> : null}
@@ -54,24 +60,25 @@ function SymbolSelectors({ symbols }: { symbols: readonly ReadonlyData<BaselineS
 function ComponentFields({ item, symbolFormat }: { item: ReadonlyData<BaselineComponent | BaselineComponentV5>; symbolFormat: boolean }) {
   const membership = item.membership.value;
   return <>
-    <StatementDetails name="Purpose" statement={item.purpose} />
-    <StatementDetails name="Membership" statement={item.membership}>
+    <StatementDetails name="Purpose" itemId={item.id} field="purpose" statement={item.purpose} />
+    <StatementDetails name="Membership" itemId={item.id} field="membership" statement={item.membership}>
       <Field name="Paths"><RecordedValue value={membership.paths} /></Field>
       <Field name="Excluded paths"><RecordedValue value={membership.excludePaths} /></Field>
       {symbolFormat ? <Field name="Symbols">
         <SymbolSelectors symbols={"symbols" in membership ? membership.symbols : undefined} />
       </Field> : null}
     </StatementDetails>
-    <StatementDetails name="Grouping reason" statement={item.groupingReason} />
-    {item.parent ? <StatementDetails name="Parent" statement={item.parent} /> : <Field name="Parent"><RecordedValue value={undefined} /></Field>}
+    <StatementDetails name="Grouping reason" itemId={item.id} field="groupingReason" statement={item.groupingReason} />
+    {item.parent ? <StatementDetails name="Parent" itemId={item.id} field="parent" statement={item.parent} />
+      : <Field name="Parent"><RecordedValue value={undefined} /></Field>}
   </>;
 }
 
 function ResourceFields({ item }: { item: ReadonlyData<BaselineResource> }) {
   return <>
-    <StatementDetails name="Identity" statement={item.identity} />
-    <StatementDetails name="Owner" statement={item.owner} />
-    <StatementDetails name="Access rules" statement={item.accessRules} />
+    <StatementDetails name="Identity" itemId={item.id} field="identity" statement={item.identity} />
+    <StatementDetails name="Owner" itemId={item.id} field="owner" statement={item.owner} />
+    <StatementDetails name="Access rules" itemId={item.id} field="accessRules" statement={item.accessRules} />
   </>;
 }
 
@@ -84,9 +91,10 @@ function RuleRow({ rule }: { rule: ReadonlyData<BaselineRule> }) {
     </summary>
     {expanded ? <div className="space-y-4 border-t border-border p-3">
       <Field name="Rule ID"><RecordedValue value={rule.id} /></Field>
-      <StatementDetails name="Subject" statement={rule.subject} />
-      <StatementDetails name="Expected" statement={rule.expected} />
-      <StatementDetails name="Check" statement={rule.check} />
+      <StatementDetails name="Subject" itemId={rule.id} field="subject" statement={rule.subject} />
+      <StatementDetails name="Expected" itemId={rule.id} field="expected" statement={rule.expected} />
+      <StatementDetails name="Check" itemId={rule.id} field="check" statement={rule.check} />
+      <ItemDiscovery itemId={rule.id} kind="rule" />
     </div> : null}
   </details>;
 }
@@ -112,7 +120,7 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
   baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel; showHeading?: boolean; contentRef?: RefObject<HTMLDivElement | null>;
   reading?: InterfaceReadingState;
 }) {
-  if (panel.kind === "duplicates" || panel.kind === "duplicate") return null;
+  if (panel.kind === "duplicates" || panel.kind === "duplicate" || panel.kind === "discovery") return null;
   if (panel.kind === "baseline") return <section className="space-y-4 wrap-anywhere">
     <Field name="Format version"><RecordedValue value={baseline.formatVersion} /></Field>
     <Field name="Baseline ID"><RecordedValue value={baseline.id} /></Field>

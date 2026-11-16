@@ -9,6 +9,8 @@ import { Button } from "./ui/button.tsx";
 import { DuplicationList } from "./duplication-list.tsx";
 import { DuplicationComparison } from "./duplication-comparison.tsx";
 import type { duplicationCounts, DuplicationControls } from "./duplication-view.ts";
+import { DiscoveryPanel } from "./discovery-panel.tsx";
+import { type DiscoveryControls, ItemDiscovery } from "./discovery-records.tsx";
 import { SystemEntryDetails } from "./system-entry-details.tsx";
 
 function InspectionContent({ baseline, inspection, duplication, counts }: {
@@ -17,6 +19,7 @@ function InspectionContent({ baseline, inspection, duplication, counts }: {
 } & DuplicationControls) {
   const { panel, navigate, sections } = inspection;
   if (!panel) return null;
+  if (panel.kind === "discovery") return <DiscoveryPanel />;
   if (panel.kind === "duplicates") return <DuplicationList baseline={baseline} report={duplication?.report} filter={panel} navigate={navigate} listState={inspection.listState} />;
   if (panel.kind === "duplicate") {
     const finding = duplication?.report.findings.find(({ id }) => id === panel.findingId);
@@ -30,6 +33,7 @@ function InspectionContent({ baseline, inspection, duplication, counts }: {
       {(counts.components.get(component.id) ?? 0) > 0 ? <Button variant="outline" data-record-id={`duplicates-${component.id}`}
         onClick={(event) => navigate({ kind: "duplicates", componentId: component.id }, event.currentTarget)}>
         Possible duplicates ({counts.components.get(component.id)})</Button> : null}
+      <ItemDiscovery itemId={component.id} kind="component" />
       {supportsSystemEntryPoints(baseline) && baseline.systemEntryPoints ? <SystemEntryDetails
         entries={baseline.systemEntryPoints.entries.filter(({ componentId }) => componentId === component.id)}
         interfaces={baseline.interfaces} navigate={navigate} /> : null}
@@ -51,6 +55,8 @@ function InspectionContent({ baseline, inspection, duplication, counts }: {
       onClick={(event) => navigate({ kind: "duplicates", interfaceId: panel.interfaceId }, event.currentTarget)}>
       Possible duplicates ({counts.interfaces.get(panel.interfaceId)})</Button> : null}
     <ArchitectureDetails baseline={baseline} panel={panel} contentRef={inspection.content} reading={inspection.reading} />
+    {panel.kind === "interface" ? <ItemDiscovery itemId={panel.interfaceId} kind="interface" /> : null}
+    {panel.kind === "resource" ? <ItemDiscovery itemId={panel.resourceId} kind="resource" /> : null}
     {panel.kind === "baseline" ? <>
       <ArchitectureRecordList title="Components" kind="component" items={baseline.components} navigate={navigate} />
       <ArchitectureRecordList title="Interfaces" kind="interface" items={baseline.interfaces} navigate={navigate} duplicateCounts={counts.interfaces} />
@@ -59,13 +65,30 @@ function InspectionContent({ baseline, inspection, duplication, counts }: {
   </div>;
 }
 
-export function ArchitectureDetailsPanel({ baseline, inspection, duplication, counts, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false }: {
+// Open discovery result and Remove discovery result, in the Discovery panel only.
+function DiscoveryActions({ discovery, onOpenDiscoveryResult, onRemoveDiscoveryResult, busy, heading }: DiscoveryControls & {
+  busy: boolean; heading: ArchitectureInspection["heading"];
+}) {
+  return <div className="flex flex-wrap gap-2 border-b border-border px-3 py-2 sm:px-5 sm:py-3 [&>button]:px-2 sm:[&>button]:px-4">
+    {onOpenDiscoveryResult ? <Button id="open-discovery-result" variant="outline" disabled={busy} onClick={onOpenDiscoveryResult}>
+      Open discovery result</Button>
+      : <p className="text-sm text-muted-foreground">Open a saved baseline before attaching a discovery result.</p>}
+    {discovery && onRemoveDiscoveryResult ? <Button variant="outline" onClick={(event) => {
+      if (document.activeElement === event.currentTarget) heading.current?.focus({ preventScroll: true });
+      onRemoveDiscoveryResult();
+    }}>Remove discovery result</Button> : null}
+  </div>;
+}
+
+export function ArchitectureDetailsPanel({ baseline, inspection, duplication, counts, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false,
+  discoveryControls = {} }: {
   baseline: ReadonlyData<Baseline>; inspection: ArchitectureInspection;
-  counts: ReturnType<typeof duplicationCounts>;
+  counts: ReturnType<typeof duplicationCounts>; discoveryControls?: DiscoveryControls;
 } & DuplicationControls) {
   const { panel, container, heading, content, close, back, canGoBack } = inspection;
   if (!panel) return null;
-  const titles = { component: "Component details", interface: "Interface details", resource: "Resource details", baseline: "Baseline details", rules: "Rules", duplicates: "Duplicates", duplicate: "Duplicate comparison" };
+  const titles = { component: "Component details", interface: "Interface details", resource: "Resource details", baseline: "Baseline details",
+    rules: "Rules", duplicates: "Duplicates", duplicate: "Duplicate comparison", discovery: "Discovery" };
   return <aside ref={container} role="dialog" aria-modal="false" aria-labelledby="inspection-title"
     className="flex min-h-0 w-full basis-1/2 shrink-0 flex-col border-t border-border bg-card md:w-96 md:basis-auto md:border-t-0 md:border-l">
     <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2 sm:px-5 sm:py-3">
@@ -83,6 +106,7 @@ export function ArchitectureDetailsPanel({ baseline, inspection, duplication, co
         onRemoveDuplicationReport();
       }}>Remove report</Button> : null}
     </div> : null}
+    {panel.kind === "discovery" ? <DiscoveryActions {...discoveryControls} busy={reportBusy} heading={heading} /> : null}
     <div ref={content} aria-label="Record content" className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
       <InspectionContent key={inspection.frameKey} baseline={baseline} inspection={inspection} duplication={duplication} counts={counts} />
     </div>

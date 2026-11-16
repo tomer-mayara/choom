@@ -36,3 +36,31 @@ export function discoveryFixture() {
 }
 
 export type DiscoveryFixture = ReturnType<typeof discoveryFixture>;
+
+/** A copy of the fixture result as plain data, for tests that change or break its shape. */
+export type DiscoveryInput = Record<string, unknown> & { questions: Record<string, unknown>[]; gaps: Record<string, unknown>[] };
+
+export function discoveryRecord(list: Record<string, unknown>[], index = 0): Record<string, unknown> {
+  const item = list[index];
+  if (item === undefined) throw new Error(`The discovery fixture needs record ${index}.`);
+  return item;
+}
+
+/** Copies of the first record of the list, each with its own ID. */
+export function discoveryRecordCopies(list: Record<string, unknown>[], count: number, prefix: string): Record<string, unknown>[] {
+  return Array.from({ length: count }, (_, index) => ({ ...discoveryRecord(list), id: `${prefix}-${index}` }));
+}
+
+/** The fixture with one more record on each other item kind: an interface of Billing, a resource and a rule. */
+export function discoveryOnEveryItemKind(): DiscoveryFixture {
+  const fixture = discoveryFixture();
+  const evidenceRefs = ["s4-001-file@review.yaml"];
+  fixture.result.questions.push({ id: "s4-001-question-002", subjectRefs: ["invoice-api.allowedConsumers"],
+    text: "May Checkout use the Invoice API?", evidenceRefs });
+  fixture.result.gaps.push(
+    { id: "s4-001-gap-001", kind: "unknown-owner", subjectRefs: ["invoice-store.owner"], reason: "No code writes the invoice store.", evidenceRefs },
+    { id: "s4-001-gap-002", kind: "a-kind-that-the-viewer-does-not-know", subjectRefs: ["invoice-access.check"],
+      reason: "The access rule has no check yet.", evidenceRefs },
+  );
+  return fixture;
+}

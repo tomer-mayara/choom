@@ -5,7 +5,9 @@ import type { z } from "zod";
 import contracts from "../../../cookbook/interfaces/generated/contracts.schema.json";
 import { discoveryResultSchema } from "@choom/baseline-model/discovery-result";
 import type { DiscoveryResult } from "@choom/baseline-model/contracts";
-import { discoveryFixture } from "../../support/discovery-fixtures.ts";
+import {
+  discoveryFixture, type DiscoveryInput as Input, discoveryRecord as record, discoveryRecordCopies as copies,
+} from "../../support/discovery-fixtures.ts";
 
 // The discovery result contract: the generated structural schema and the runtime
 // schema of @choom/baseline-model accept and refuse the same shapes. The runtime
@@ -13,23 +15,12 @@ import { discoveryFixture } from "../../support/discovery-fixtures.ts";
 // together, the 4 MiB text budget and the unique IDs.
 const structure = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }))
   .compile({ $ref: "DiscoveryResult.json" });
-type Input = Record<string, unknown> & { questions: Record<string, unknown>[]; gaps: Record<string, unknown>[] };
 type Change = (input: Input) => void;
 
 function changed(change: Change): unknown {
   const input = structuredClone(discoveryFixture().result) as unknown as Input;
   change(input);
   return input;
-}
-
-function record(list: Record<string, unknown>[], index = 0): Record<string, unknown> {
-  const item = list[index];
-  if (item === undefined) throw new Error(`The discovery fixture needs record ${index}.`);
-  return item;
-}
-
-function copies(list: Record<string, unknown>[], count: number, prefix: string): Record<string, unknown>[] {
-  return Array.from({ length: count }, (_, index) => ({ ...record(list), id: `${prefix}-${index}` }));
 }
 
 test("the runtime schema returns the generated discovery contract", () => {

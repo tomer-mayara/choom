@@ -1,24 +1,14 @@
 import { expect, test } from "bun:test";
 import { validateDiscoveryResult } from "../../src/discovery-result.ts";
-import { discoveryFixture } from "../../../../test/support/discovery-fixtures.ts";
-
-type Input = Record<string, unknown> & { questions: Record<string, unknown>[]; gaps: Record<string, unknown>[] };
+import {
+  discoveryFixture, type DiscoveryInput as Input, discoveryRecord as record, discoveryRecordCopies as copies,
+} from "../../../../test/support/discovery-fixtures.ts";
 
 function check(change: (input: Input) => void = () => {}) {
   const { baseline, sha256, result } = discoveryFixture();
   const input = structuredClone(result) as unknown as Input;
   change(input);
   return { input, outcome: validateDiscoveryResult(input, { baseline, sha256 }), sha256 };
-}
-
-function record(list: Record<string, unknown>[], index = 0): Record<string, unknown> {
-  const item = list[index];
-  if (item === undefined) throw new Error(`The discovery fixture needs record ${index}.`);
-  return item;
-}
-
-function copies(list: Record<string, unknown>[], count: number, prefix: string): Record<string, unknown>[] {
-  return Array.from({ length: count }, (_, index) => ({ ...record(list), id: `${prefix}-${index}` }));
 }
 
 test("a version 2 result for the saved baseline file keeps every record in its order", () => {
