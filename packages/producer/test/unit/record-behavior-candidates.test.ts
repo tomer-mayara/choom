@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { type CandidateInputs, validateBehaviorCandidates } from "../../src/record-behavior-candidates.ts";
+import { validateBehaviorCandidates } from "../../src/record-behavior-candidates.ts";
+import type { CandidateInputs } from "../../src/record-candidates.ts";
 import type { Artifact, Fields } from "../../src/record-checks.ts";
 import { rangeIn } from "../support/source-ranges.ts";
 
