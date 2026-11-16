@@ -7,7 +7,7 @@ import { isAbsolute, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { refuseChangedProducerCode } from './producer-code.ts';
-import { assert, type Fields, hash, object, text } from './record-checks.ts';
+import { assert, type Fields, hash, object, savedDocument, text } from './record-checks.ts';
 import { checkReview, utf8 } from './stage-3-review.ts';
 
 // The Stage 3 finalizer. It checks the saved attempt, its receipts, the earlier
@@ -196,10 +196,8 @@ function savedAttempt({ id, work, attempt, analysisRef, yaml }: Settings, run: F
   const documents = new Map<string, unknown>();
   function document(ref: string): unknown {
     assert(buffers.has(ref), 'Unknown artifact: ' + ref);
-    if (!documents.has(ref)) {
-      const bytes = utf8(buffers.get(ref) as Buffer, ref);
-      documents.set(ref, /\.ya?ml$/.test((artifacts[ref] as Entry).path) ? yaml.parse(bytes) : JSON.parse(bytes));
-    }
+    if (!documents.has(ref))
+      documents.set(ref, savedDocument((artifacts[ref] as Entry).path, utf8(buffers.get(ref) as Buffer, ref), yaml.parse));
     return documents.get(ref);
   }
   function registered(ref: unknown): unknown {
@@ -379,8 +377,8 @@ function finish(): void {
   const workspaces = checkKnipInputs(attempt, inputs);
   const checkedSourceBytes = sourceReader(inputs.paths, inputs.snapshot);
   const { analysis, currentExcerpts } = checkReview({ ...records, ...inputs, id: config.id, workspaces,
-    names: attempt.names, buffers: attempt.buffers, document: attempt.document, saved: attempt.saved,
-    receipt: attempt.receipt, checkedSourceBytes });
+    names: attempt.names, artifacts: attempt.artifacts, buffers: attempt.buffers, document: attempt.document,
+    saved: attempt.saved, receipt: attempt.receipt, checkedSourceBytes });
   const state: Finalization = { ...records, config, drafts, attempt, inputs, loading, analysis, currentExcerpts,
     checkedSourceBytes };
   finalChecks(state);

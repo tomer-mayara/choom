@@ -268,7 +268,8 @@ or rename them. The source ID is distinct from the excerpt artifactRef.
 Use verified workspace membership only when supplied deterministic evidence
 establishes it. Give questions/gaps distinct stable IDs such as s1-question-001
 and s1-gap-001. Do not reuse artifact IDs or the baseline ID. Cite supplied
-artifact IDs or source record IDs; exact JSON fields can use JSON Pointers.
+artifact IDs or source record IDs; exact JSON fields can use JSON Pointers into
+JSON or YAML records. Cite another file whole, without a pointer.
 Missing inputs cite saved diagnostics or exclusions. Every role, question, gap
 and workspace declaration needs evidence. Empty lists mean only that no item was
 established in the stated scope. A complete review may have gaps. Never invent a

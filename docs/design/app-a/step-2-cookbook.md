@@ -253,7 +253,8 @@ Candidate rules:
 - origin is package-field, script, convention, source, inference, or unknown. A filename
   convention or an inferred entry remains a candidate, not a verified runtime root.
 - evidenceRefs cites supplied artifact or source-excerpt IDs. Exact JSON fields
-  can use JSON Pointers, such as settings-002#/packages/0/data/exports.
+  can use JSON Pointers, such as settings-002#/packages/0/data/exports. Only a
+  JSON or YAML record takes a pointer; cite another file whole, without a pointer.
 
 Workspace and pattern rules:
 - Include ".". Add other workspace directories only when saved evidence supports

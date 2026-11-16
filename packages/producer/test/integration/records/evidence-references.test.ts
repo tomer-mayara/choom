@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { validateDiscoveryRecords } from "../../../src/stage-6-records.ts";
-import { recordInputs, type Records, selected } from "../../support/stage-6-records.ts";
+import { type RecordInputs, validateDiscoveryRecords } from "../../../src/stage-6-records.ts";
+import { digest, recordInputs, type Records, selected } from "../../support/stage-6-records.ts";
 
 // The evidence references that the shared record checks of Stages 4, 5 and 6
 // resolve, with the messages of these stages. The checks run the shared baseline
@@ -27,5 +27,23 @@ describe("the evidence references of the shared record checks", () => {
 
   test.each(refusedReferences)("refuse %s", (_name, ref, message) => {
     expect(() => validateDiscoveryRecords(recordInputs(citedByOverview(ref)))).toThrow(new Error(message));
+  });
+
+  // Every stage reads JSON for .json and YAML for .yaml or .yml. Another file can be
+  // cited whole, with no JSON Pointer or with an empty one, and not read.
+  const withNotes = (ref: string): RecordInputs => {
+    const inputs = recordInputs(citedByOverview(ref));
+    const bytes = Buffer.from("Plain notes: not JSON.\n");
+    inputs.artifacts.set("notes", { path: "evidence/notes.txt", bytes, sha256: digest(bytes) });
+    return inputs;
+  };
+
+  test("accept a whole saved text file", () => {
+    expect(validateDiscoveryRecords(withNotes("notes#"))).toMatchObject({ components: 2 });
+  });
+
+  test("refuse a JSON Pointer into a saved text file", () => {
+    expect(() => validateDiscoveryRecords(withNotes("notes#/0")))
+      .toThrow(new Error("Only a .json, .yaml or .yml file can take a JSON Pointer: notes#/0"));
   });
 });

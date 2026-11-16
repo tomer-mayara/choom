@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
-import { assert, exact, type Fields, object, strings, text } from './record-checks.ts';
+import { assert, evidenceBase, exact, type Fields, object, type PointerMessages, resolveEvidence, strings, text }
+  from './record-checks.ts';
 
 // The checks of the Stage 3 entry analysis and its LLM review packet against the
 // saved attempt, the earlier entry analyses and the snapshot. The Stage 3
@@ -16,6 +17,8 @@ export interface ReviewInputs {
   paths: Map<unknown, Fields>;
   workspaces: Set<unknown>;
   names: string[];
+  // The path of each registered artifact and attempt file, by its artifact ID.
+  artifacts: Record<string, { path: string }>;
   buffers: Map<string, Buffer>;
   document(ref: string): unknown;
   saved(name: string): unknown;
@@ -165,26 +168,21 @@ function checkReviewedFiles({ id, snapshotRef }: ReviewInputs, analysis: Fields,
   }
 }
 
+// The words of the Stage 3 messages for a JSON Pointer that it refuses.
+const pointerMessages: PointerMessages = { invalid: 'Invalid JSON Pointer: ', escape: 'Unresolved JSON Pointer: ',
+  index: 'Unresolved JSON Pointer: ', unresolved: 'Unresolved JSON Pointer: ' };
+
 // Each evidence reference names a saved artifact or source record, and its JSON Pointer resolves.
-function evidenceCheck({ id, buffers, document }: ReviewInputs, sources: Sources): Evidence {
+function evidenceCheck({ id, artifacts, buffers, document }: ReviewInputs, sources: Sources): Evidence {
   return function evidence(record) {
     assert(strings(record.evidenceRefs), 'Missing evidence for ' + (record.id ?? 'Knip assessment'));
     for (const ref of record.evidenceRefs) {
-      const split = ref.indexOf('#');
-      const base = split === -1 ? ref : ref.slice(0, split);
+      const base = evidenceBase(ref);
       assert(base !== id + '-entry-analysis' && (buffers.has(base) || sources.records.has(base)), 'Unknown evidence: ' + ref);
-      if (sources.records.has(base)) sources.checkSource(sources.records.get(base) as Fields);
-      if (split === -1) continue;
-      const pointer = decodeURIComponent(ref.slice(split + 1));
-      assert(pointer === '' || pointer.startsWith('/'), 'Invalid JSON Pointer: ' + ref);
-      let value: unknown = sources.records.get(base) ?? document(base);
-      for (const part of pointer === '' ? [] : pointer.slice(1).split('/')) {
-        const key = part.replaceAll('~1', '/').replaceAll('~0', '~');
-        assert(!/~(?:[^01]|$)/.test(part) && value !== null && typeof value === 'object' &&
-          (!Array.isArray(value) || /^(0|[1-9][0-9]*)$/.test(key)) && Object.hasOwn(value, key),
-        'Unresolved JSON Pointer: ' + ref);
-        value = (value as Fields)[key];
-      }
+      const source = sources.records.get(base);
+      if (source) sources.checkSource(source);
+      resolveEvidence(ref, source ? { record: source } : { path: (artifacts[base] as { path: string }).path,
+        document: () => document(base) }, pointerMessages);
     }
   };
 }

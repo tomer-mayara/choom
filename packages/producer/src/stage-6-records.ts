@@ -7,7 +7,8 @@ import { validateBehaviorCandidates } from './record-behavior-candidates.ts';
 import type { CandidateInputs } from './record-candidates.ts';
 import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
   from './record-baseline.ts';
-import { type Artifact, assert, exact, type Fields, hash, json, list, object, oneOf, strings, text } from './record-checks.ts';
+import { type Artifact, assert, exact, type Fields, hash, json, list, object, oneOf, strings, text,
+  evidenceBase, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { type MappedOwners, validateCodeMapping } from './record-code-mapping.ts';
 import { validateGraph } from './record-graph.ts';
 import { validateResourceCandidates } from './record-resource-candidates.ts';
@@ -24,6 +25,9 @@ const issueKeys = ['questions', 'gaps'] as const;
 // The fields of a working discovery. The fixed discovery result adds baselineRef and baselineDigest.
 const discoveryKeys = ['formatVersion', 'kind', 'runRef', ...factKeys, 'overview', 'inspectedPaths', ...issueKeys];
 const yamlNodeLimit = 250000;
+// The words of the messages of Stages 4 to 6 for a JSON Pointer that they refuse.
+const pointerMessages: PointerMessages = { invalid: 'Invalid JSON Pointer: ', escape: 'Unresolved evidence: ',
+  index: 'Unresolved evidence: ', unresolved: 'Unresolved evidence: ' };
 
 // The saved run manifest. The checks read only these fields.
 export interface RunRecord { id: unknown; snapshot: { id: string; inventoryRef: string }; [field: string]: unknown }
@@ -183,8 +187,7 @@ function documentReader(artifacts: Map<string, Artifact>, parse: (text: string) 
   return function document(id) {
     const artifact = artifacts.get(id as string);
     assert(artifact, 'Unknown artifact: ' + id);
-    if (!documents.has(id))
-      documents.set(id, /\.ya?ml$/.test(artifact.path) ? parse(artifact.bytes.toString('utf8')) : json(artifact.bytes));
+    if (!documents.has(id)) documents.set(id, savedDocument(artifact.path, artifact.bytes.toString('utf8'), parse));
     return documents.get(id);
   };
 }
@@ -207,23 +210,14 @@ function references(artifacts: Map<string, Artifact>, source: SourceRecords, doc
   }
   function resolve(ref: unknown): unknown {
     assert(text(ref), 'Empty evidence reference.');
-    const split = ref.indexOf('#');
-    const base = split < 0 ? ref : ref.slice(0, split);
+    const base = evidenceBase(ref);
     const record = source.records.get(base);
-    assert(artifacts.has(base) || record, 'Unknown evidence: ' + ref);
+    const artifact = artifacts.get(base);
+    assert(artifact || record, 'Unknown evidence: ' + ref);
     refs++;
     if (record) source.verify(record);
-    if (split < 0) return record;
-    const pointer = decodeURIComponent(ref.slice(split + 1));
-    assert(pointer === '' || pointer.startsWith('/'), 'Invalid JSON Pointer: ' + ref);
-    let value: unknown = record ?? document(base);
-    for (const part of pointer === '' ? [] : pointer.slice(1).split('/')) {
-      const key = part.replaceAll('~1', '/').replaceAll('~0', '~');
-      assert(!/~(?:[^01]|$)/.test(part) && value !== null && typeof value === 'object' &&
-        (!Array.isArray(value) || /^(0|[1-9][0-9]*)$/.test(key)) && Object.hasOwn(value, key), 'Unresolved evidence: ' + ref);
-      value = (value as Fields)[key];
-    }
-    return value;
+    return resolveEvidence(ref, record ? { record } : { path: (artifact as Artifact).path, document: () => document(base) },
+      pointerMessages);
   }
   function evidence(record: unknown): void {
     const fields = record as Fields;

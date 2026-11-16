@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve, relative, posix } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
+import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
 
 // The Stage 2 finish action runs this module in the tool checkout, after the
@@ -123,7 +124,7 @@ function document(finish: Finish, artifactId: string) {
   assert(finish.buffers.has(artifactId), `Unknown artifact: ${artifactId}`);
   if (!finish.documents.has(artifactId)) {
     const value = (finish.buffers.get(artifactId) as Buffer).toString('utf8');
-    finish.documents.set(artifactId, (finish.artifacts[artifactId] as Entry).path.endsWith('.json') ? JSON.parse(value) : finish.parse(value));
+    finish.documents.set(artifactId, savedDocument((finish.artifacts[artifactId] as Entry).path, value, finish.parse));
   }
   return finish.documents.get(artifactId) as Fields;
 }
@@ -177,22 +178,18 @@ function indexSources(finish: Finish): void {
   }
 }
 
+// The words of the Stage 2 finish messages for a JSON Pointer that it refuses.
+const pointerMessages: PointerMessages = { invalid: 'Invalid JSON Pointer: ', escape: 'Invalid JSON Pointer escape: ',
+  index: 'Invalid array JSON Pointer: ', unresolved: 'Unresolved JSON Pointer: ' };
+
 function reference(finish: Finish, ref: unknown): void {
   assert(text(ref), 'Empty evidence reference.');
-  const split = ref.indexOf('#');
-  const base = split < 0 ? ref : ref.slice(0, split);
-  assert(finish.buffers.has(base) || finish.sourceRecords.has(base), `Unknown evidence reference: ${ref}`);
-  if (split < 0) return;
-  const pointer = decodeURIComponent(ref.slice(split + 1));
-  assert(pointer === '' || pointer.startsWith('/'), `Invalid JSON Pointer: ${ref}`);
-  let value: unknown = finish.buffers.has(base) ? document(finish, base) : finish.sourceRecords.get(base);
-  for (const encoded of pointer === '' ? [] : pointer.slice(1).split('/')) {
-    assert(!/~(?:[^01]|$)/.test(encoded), `Invalid JSON Pointer escape: ${ref}`);
-    const key = encoded.replaceAll('~1', '/').replaceAll('~0', '~');
-    assert(!Array.isArray(value) || /^(0|[1-9][0-9]*)$/.test(key), `Invalid array JSON Pointer: ${ref}`);
-    assert(value !== null && typeof value === 'object' && own(value, key), `Unresolved JSON Pointer: ${ref}`);
-    value = (value as Fields)[key];
-  }
+  const base = evidenceBase(ref);
+  const target: EvidenceTarget | undefined = finish.buffers.has(base)
+    ? { path: (finish.artifacts[base] as Entry).path, document: () => document(finish, base) }
+    : finish.sourceRecords.has(base) ? { record: finish.sourceRecords.get(base) } : undefined;
+  assert(target, `Unknown evidence reference: ${ref}`);
+  resolveEvidence(ref, target, pointerMessages);
 }
 
 function evidence(finish: Finish, record: Fields): void {

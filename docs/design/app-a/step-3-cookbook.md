@@ -528,7 +528,8 @@ Do not copy stale future-work prose or rewrite preserved question/gap history.
 Start every new question, gap, source-record, and priority ID with {{ID}}-.
 New question, gap, candidate, source-record, and priority IDs must be unique and
 must not equal artifact IDs. Reserve {{ID}}-entry-analysis and {{ID}}-file@ for artifacts.
-Use registered evidence IDs, supplied source-record IDs, or exact JSON Pointers.
+Use registered evidence IDs, supplied source-record IDs, or exact JSON Pointers
+into JSON or YAML records. Cite another file whole, without a pointer.
 
 reviewedFiles contains only supplied source ranges actually inspected in this
 review. Copy their snapshot, path, digest and exact range. It does not list every

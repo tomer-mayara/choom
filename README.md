@@ -1209,7 +1209,8 @@ from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types o
 (`stage-6-records.ts` with `record-baseline.ts`, `record-sources.ts`,
 `record-graph.ts`, `record-code-mapping.ts` and `record-checks.ts`) checks the baseline shape with
 `@choom/baseline-model`, as the viewer does, and adds the producer profile, the
-reserved IDs and the checks against the saved run records. `llm-response.ts`
+reserved IDs and the checks against the saved run records. Every stage resolves
+an evidence reference with the one resolver in `record-checks.ts`. `llm-response.ts`
 holds the design rule "Do not save hidden reasoning": every stage that saves an
 LLM call record checks that the response holds only the visible answer and that
 the call record has `hiddenReasoning: not-saved`.

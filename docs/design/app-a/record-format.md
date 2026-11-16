@@ -74,6 +74,11 @@ An `evidenceRefs` field is a nonempty array of registered artifact IDs, proposed
 current-attempt artifact IDs, saved source-range IDs, or exact JSON Pointers into
 those records. Use `/` and `~` escaping from JSON Pointer. References must resolve
 against the saved records. A filename alone is not an evidence reference.
+Every stage resolves a reference in the same way, so a reference that one stage
+accepts stays valid in later stages. A JSON Pointer points into a source record,
+or into a JSON (`.json`) or YAML (`.yaml`, `.yml`) file. A list index is `0` or a
+number without a leading zero, so `length` is not an index. Cite another file,
+such as a `.txt` output, only whole: its ID with no pointer or with an empty one (`#`).
 `subjectRefs` identifies the files, components, statements or earlier issues
 being discussed; it is not a substitute for `evidenceRefs`.
 

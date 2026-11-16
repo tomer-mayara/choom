@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
+import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
 import { type DiscoveryGap, toolGaps } from './stage-1-gaps.ts';
@@ -353,20 +354,21 @@ function reviewSources(review: Review, inventory: Inventory): ReviewEvidence {
   return { artifacts, sources, excerpts, ids };
 }
 
+// The words of the Stage 1 messages for a JSON Pointer that it refuses.
+const pointerMessages: PointerMessages = { invalid: 'Invalid JSON Pointer: ', escape: 'Invalid JSON Pointer: ',
+  index: 'Unresolved JSON Pointer: ', unresolved: 'Unresolved JSON Pointer: ' };
+
+// An evidence reference resolves as every later stage resolves it, so later stages
+// accept each question and gap that Stage 1 saves.
 function checkReference(ref: unknown, { artifacts, sources }: ReviewEvidence): void {
   assert(text(ref), 'Empty evidence reference.');
-  const index = ref.indexOf('#'); const id = index < 0 ? ref : ref.slice(0, index);
-  assert(artifacts.has(id) || sources.has(id), 'Unknown evidence reference: ' + ref);
-  if (index < 0) return;
-  let value: unknown = sources.get(id);
-  if (!value) { const record = artifacts.get(id) as SavedArtifact; value = record.path.endsWith('.json') ? JSON.parse(record.bytes.toString()) : parse(record.bytes.toString()); }
-  const pointer = decodeURIComponent(ref.slice(index + 1));
-  assert(pointer === '' || pointer.startsWith('/'), 'Invalid JSON Pointer: ' + ref);
-  for (const encoded of pointer === '' ? [] : pointer.slice(1).split('/')) {
-    assert(!/~(?:[^01]|$)/.test(encoded), 'Invalid JSON Pointer: ' + ref);
-    const key = encoded.replaceAll('~1', '/').replaceAll('~0', '~');
-    assert(value !== null && typeof value === 'object' && Object.hasOwn(value, key), 'Unresolved JSON Pointer: ' + ref); value = at(value, key);
-  }
+  const id = evidenceBase(ref);
+  const source = sources.get(id);
+  const artifact = artifacts.get(id);
+  const target: EvidenceTarget | undefined = source ? { record: source } : artifact &&
+    { path: artifact.path, document: () => savedDocument(artifact.path, artifact.bytes.toString(), parse) };
+  assert(target, 'Unknown evidence reference: ' + ref);
+  resolveEvidence(ref, target, pointerMessages);
 }
 
 function checkReviewItem(key: typeof issueKinds[number], item: Fields, ids: Set<unknown>): void {

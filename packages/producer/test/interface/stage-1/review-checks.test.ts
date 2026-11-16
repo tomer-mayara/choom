@@ -41,6 +41,13 @@ const reviewCases: ReviewCase[] = [
   { name: "a JSON Pointer has an escape other than ~0 and ~1",
     change: (packet) => { listItem(packet, "roles").evidenceRefs = ["inventory-001#/files~2"]; },
     message: "Invalid JSON Pointer: inventory-001#/files~2" },
+  // Later stages refuse these references, and they keep each question and gap unchanged.
+  { name: "a JSON Pointer names the length of a list",
+    change: (packet) => { listItem(packet, "questions").evidenceRefs = ["inventory-001#/files/length"]; },
+    message: "Unresolved JSON Pointer: inventory-001#/files/length" },
+  { name: "a JSON Pointer points into a file that is not JSON or YAML",
+    change: (packet) => { listItem(packet, "gaps").evidenceRefs = ["scope-notes-001#/0"]; },
+    message: "Only a .json, .yaml or .yml file can take a JSON Pointer: scope-notes-001#/0" },
   { name: "a role has an unknown basis", change: (packet) => { listItem(packet, "roles").basis = "guessed"; },
     message: "Invalid role." },
   { name: "a question uses an artifact ID", change: (packet) => { listItem(packet, "questions").id = "inventory-001"; },
@@ -88,7 +95,10 @@ describe("Stage 1 review and excerpt checks", () => {
       });
       expect(readdirSync(join(run.work, "evidence")).sort()).toEqual(files);
       expect(existsSync(join(run.work, "run.yaml"))).toBe(false);
-      expect(stageOne(run, "finish", writeReview(run, reviewPacket(excerpt))).status).toBe(0);
+      // Any saved file can be cited whole, with no JSON Pointer or with an empty one.
+      const complete = reviewPacket(excerpt);
+      listItem(complete, "roles").evidenceRefs = ["inventory-001", "scope-notes-001#"];
+      expect(stageOne(run, "finish", writeReview(run, complete))).toMatchObject({ status: 0, stderr: "" });
     });
   }, 60_000);
 });

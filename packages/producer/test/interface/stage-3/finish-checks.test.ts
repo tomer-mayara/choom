@@ -46,6 +46,9 @@ const cases: FinishCase[] = [
   { name: "an inspection priority cites a missing key",
     change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@artifact-map.json#/missing"]; },
     message: "Unresolved JSON Pointer: s3-check-file@artifact-map.json#/missing" },
+  { name: "an inspection priority cites a JSON Pointer into a file that is not JSON or YAML",
+    change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@operator-start.stdout.txt#/0"]; },
+    message: "Only a .json, .yaml or .yml file can take a JSON Pointer: s3-check-file@operator-start.stdout.txt#/0" },
 ];
 
 let scratch = "";
@@ -133,6 +136,15 @@ describe("Stage 3 finish checks", () => {
       expect(run.artifacts[`${attempt.id}-file@${name}`]?.path).toBe(`evidence/${attempt.id}/${name}`);
     const verify = stageThree(attempt, ["stage-3-finish", "verify"]);
     expect({ status: verify.status, stderr: verify.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 60_000);
+
+  // Any saved file can be cited whole, with an empty JSON Pointer, as Stages 1 and 2 accept it.
+  test("publishes a packet that cites a whole saved text file", () => {
+    const attempt = newAttempt("whole-text-file");
+    const results = finishStageThree(attempt, (packet) => {
+      firstPriority(packet).evidenceRefs = [`${attempt.id}-file@operator-start.stdout.txt#`];
+    });
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   }, 60_000);
 
   test("publishes a packet that cites an exports record, and registers the record", () => {

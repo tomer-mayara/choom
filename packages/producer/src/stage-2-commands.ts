@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
+import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 
 // The Stage 2 driver. Every action runs from the tool checkout, after it checks
 // that the producer code is the code that started the run. The saved commands of
@@ -133,35 +134,29 @@ function state(checkpoints: boolean): RunState {
 }
 
 function document({ name, content }: Artifact) {
-  return name.endsWith('.json') ? JSON.parse(content.toString()) : parse(content.toString());
+  return savedDocument(name, content.toString(), parse);
 }
 
-function pointer(value: unknown, encoded: string, ref: string): void {
-  const decoded = decodeURIComponent(encoded);
-  assert(decoded === '' || decoded.startsWith('/'), 'Invalid JSON Pointer: ' + ref);
-  for (const part of decoded === '' ? [] : decoded.slice(1).split('/')) {
-    const key = part.replaceAll('~1', '/').replaceAll('~0', '~');
-    assert(!/~(?:[^01]|$)/.test(part) && value !== null && typeof value === 'object' &&
-      (!Array.isArray(value) || /^(0|[1-9][0-9]*)$/.test(key)) && Object.hasOwn(value, key),
-    'Unresolved JSON Pointer: ' + ref);
-    value = (value as Fields)[key];
-  }
-}
+// The words of the Stage 2 plan messages for a JSON Pointer that it refuses.
+const pointerMessages: PointerMessages = { invalid: 'Invalid JSON Pointer: ', escape: 'Unresolved JSON Pointer: ',
+  index: 'Unresolved JSON Pointer: ', unresolved: 'Unresolved JSON Pointer: ' };
+const artifactTarget = (artifact: Artifact): EvidenceTarget => ({ path: artifact.name, document: () => document(artifact) });
 
 // Source records that saved reviews and excerpts already contain, by ID.
 function reviewedSources(artifacts: Map<string, Artifact>, inventory: Inventory, paths: Map<string, InventoryFile>): Map<unknown, Fields> {
   const reviewed = new Map<unknown, Fields>();
   for (const record of artifacts.values()) {
     if (!/\.(?:json|ya?ml)$/.test(record.name)) continue;
-    let value;
-    try { value = document(record); } catch { continue; }
-    const records = Array.isArray(value?.reviewedFiles) ? value.reviewedFiles :
+    let value: Fields | null | undefined;
+    try { value = document(record) as Fields | null | undefined; } catch { continue; }
+    const records = (Array.isArray(value?.reviewedFiles) ? value.reviewedFiles :
       /(?:^|\/)(?:source-excerpts\.json|excerpt-[0-9]+\.json)$/.test(record.name) ?
-        (Array.isArray(value?.excerpts) ? value.excerpts : [value]) : [];
+        (Array.isArray(value?.excerpts) ? value.excerpts : [value]) : []) as Fields[];
     for (const source of records) {
       const file = Object.fromEntries(['id', 'snapshotRef', 'path', 'sha256', 'lines'].map(key => [key, source[key]]));
+      const indexed = paths.get(file.path as string);
       assert(text(file?.id) && file.snapshotRef === inventory.snapshotId &&
-        paths.get(file.path)?.kind === 'file' && file.sha256 === paths.get(file.path)?.sha256 &&
+        indexed?.kind === 'file' && file.sha256 === indexed.sha256 &&
         (!reviewed.has(file.id) || isDeepStrictEqual(reviewed.get(file.id), file)),
       'Invalid saved source record: ' + file?.id);
       reviewed.set(file.id, file);
@@ -178,12 +173,11 @@ function checkRecord(record: Fields, prior: Map<unknown, unknown>, { ids, artifa
   ids.add(record.id);
   assert(strings(record.evidenceRefs) && record.evidenceRefs.length, 'Missing evidence: ' + record.id);
   for (const ref of record.evidenceRefs) {
-    const at = ref.indexOf('#');
-    const artifactId = at < 0 ? ref : ref.slice(0, at);
+    const artifactId = evidenceBase(ref);
     const source = reviewed.get(artifactId);
     const artifact = artifacts.get(artifactId);
     assert(artifact || source, 'Unknown saved evidence: ' + artifactId);
-    if (at >= 0) pointer(artifact ? document(artifact) : source, ref.slice(at + 1), ref);
+    resolveEvidence(ref, artifact ? artifactTarget(artifact) : { record: source }, pointerMessages);
   }
 }
 
@@ -376,9 +370,9 @@ function packetPhase({ record, stdout }: PhaseContext, current: RunState): void 
   const supplied = new Map(current.artifacts);
   indexInputs(supplied);
   for (const ref of scope.suppliedArtifactRefs as string[]) {
-    const at = ref.indexOf('#'); const base = at < 0 ? ref : ref.slice(0, at);
-    assert(supplied.has(base), 'Unknown supplied artifact: ' + ref);
-    if (at >= 0) pointer(document(supplied.get(base) as Artifact), ref.slice(at + 1), ref);
+    const artifact = supplied.get(evidenceBase(ref));
+    assert(artifact, 'Unknown supplied artifact: ' + ref);
+    resolveEvidence(ref, artifactTarget(artifact), pointerMessages);
   }
   for (const name of names) assert(!lstatSync(join(attempt, name), { throwIfNoEntry: false }), 'Packet file already exists: ' + name);
   if (!lstatSync(join(attempt, 'llm'), { throwIfNoEntry: false })) mkdirSync(join(attempt, 'llm'));

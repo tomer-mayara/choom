@@ -45,6 +45,9 @@ const cases: FinishCase[] = [
     message: `Invalid JSON Pointer escape: ${id}-knip-runs#/runs~2` },
   { name: "a gap cites a list item with a leading zero", change: gapEvidence(`${id}-knip-runs#/runs/00`),
     message: `Invalid array JSON Pointer: ${id}-knip-runs#/runs/00` },
+  { name: "a gap cites a JSON Pointer into a file that is not JSON or YAML",
+    change: gapEvidence(`${id}-file@operator-start.stdout.txt#/0`),
+    message: `Only a .json, .yaml or .yml file can take a JSON Pointer: ${id}-file@operator-start.stdout.txt#/0` },
   { name: "a candidate names a path outside the inventory",
     change: (analysis) => ({ ...analysis, candidates: [{ ...candidate(id), path: "missing.ts" }] }),
     message: `Invalid or duplicate candidate: ${id}-candidate-001` },
@@ -88,6 +91,13 @@ describe("Stage 2 finish checks", () => {
     expect(results.finish?.status).toBe(0);
     const discovery = parse(readFileSync(join(prepared.work, "discovery.yaml"), "utf8")) as JsonRecord;
     expect(discovery.entryAnalysisRef).toBe(`${id}-entry-analysis`);
+  });
+
+  // Any saved file can be cited whole, with an empty JSON Pointer. Stage 3 reads the gap again.
+  test("publishes a gap that cites a whole saved text file", () => {
+    const prepared = restoredAttempt();
+    const results = finishAttempt(prepared, scratch, gapEvidence(`${id}-file@operator-start.stdout.txt#`)(entryAnalysis(id)));
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   });
 
   // run.yaml registers the files of a published attempt as evidence. Each later action
