@@ -90,8 +90,9 @@ function collectDestructurings(query: Query, source: SourceFile): void {
 }
 
 // The symbol that a name refers to. A shorthand property and an export list entry
-// without a module refer to their local value.
-function symbolAt({ ts, checker }: Query, name: Node): TsSymbol | undefined {
+// without a module refer to their local value. For a name that an import binds,
+// it is the local symbol of the import, not the declaration that the import names.
+export function symbolAt({ ts, checker }: Checking, name: Node): TsSymbol | undefined {
   const parent = name.parent;
   if (ts.isShorthandPropertyAssignment(parent) && parent.name === name) return checker.getShorthandAssignmentValueSymbol(parent);
   if (ts.isExportSpecifier(parent) && parent.parent.parent.moduleSpecifier === undefined)
