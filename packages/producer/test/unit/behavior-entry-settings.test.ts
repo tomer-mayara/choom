@@ -83,6 +83,16 @@ describe("settingsCandidates makes a gap with a reason for a value that is not a
       "default «{ build: { rollupOptions: { input: 'a.html' } }, ...overrides }»", reasons.dynamicProperty],
     ["a computed property name", "export default { build: { rollupOptions: { [name]: 'x' } } };\n",
       "rollupOptions: «{ [name]: 'x' }»", reasons.dynamicProperty],
+    // Vite accepts a function as the settings export: its code makes the settings object when it runs.
+    ["a settings object that an export default function makes",
+      "export default function ({ mode }) {\n  return { build: { rollupOptions: { input: 'index.html' } } };\n}\n",
+      "«export default function ({ mode }) {\n  return { build: { rollupOptions: { input: 'index.html' } } };\n}»",
+      reasons.computedObject],
+    ["a settings object that an export default async function makes",
+      "export default async function settings() {\n  return { build: {} };\n}\n",
+      "«export default async function settings() {\n  return { build: {} };\n}»", reasons.computedObject],
+    ["an export default class", "export default class Settings {\n  build = { rollupOptions: { input: 'a.html' } };\n}\n",
+      "«export default class Settings {\n  build = { rollupOptions: { input: 'a.html' } };\n}»", reasons.computedObject],
   ])("%s", (_name, text, at, reason) => {
     expect(findingsIn({ [configPath]: text })).toEqual({ candidates: [], gaps: [gap(text, at, reason)] });
   });

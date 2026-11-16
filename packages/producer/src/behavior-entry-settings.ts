@@ -10,10 +10,12 @@ import type { Picomatch } from './stage-4-graph-profile.ts';
 // reads the settings object of a source file that matches its glob: the value of
 // export default, export = or the last module.exports = assignment. That value is an
 // object literal, a call with one argument such as defineConfig({ ... }), or a name
-// of a const declaration of the file that holds one of them. The rule follows its
-// property path through object literals. Each string literal at the end of the path,
-// in an array there or as a property of an object there, is a candidate. The snapshot
-// project reads the file; nothing runs it. Any other value is a gap with a reason.
+// of a const declaration of the file that holds one of them. A function or a class
+// declaration with export default is a gap, because only its code makes the settings
+// object. The rule follows its property path through object literals. Each string
+// literal at the end of the path, in an array there or as a property of an object there,
+// is a candidate. The snapshot project reads the file; nothing runs it. Any other value
+// is a gap with a reason.
 type Ts = typeof TsMorph.ts;
 type Node = TsMorph.ts.Node;
 type ObjectLiteral = TsMorph.ts.ObjectLiteralExpression;
@@ -46,11 +48,21 @@ export function settingsRules(rules: readonly BehaviorEntrySettingsLiteralRule[]
   return { forFile: path => matchers.filter(({ matches }) => matches(path)).map(({ rule }) => rule) };
 }
 
-// The value that the file exports as its settings: export default, export =, or the last module.exports = assignment.
+// Whether a statement is a function or a class declaration with export default, such as
+// export default function ({ mode }) { ... }, which Vite accepts as its settings.
+function defaultDeclaration(ts: Ts, statement: TsMorph.ts.Statement): boolean {
+  return (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) &&
+    (ts.getCombinedModifierFlags(statement) & ts.ModifierFlags.ExportDefault) === ts.ModifierFlags.ExportDefault;
+}
+
+// The value that the file exports as its settings: export default, export =, or the last
+// module.exports = assignment. A function or a class declaration with export default is
+// the value itself, which only code makes into a settings object.
 function settingsValue(ts: Ts, source: TsMorph.ts.SourceFile): Node | undefined {
   let value: Node | undefined;
   for (const statement of source.statements) {
     if (ts.isExportAssignment(statement)) value = statement.expression;
+    if (defaultDeclaration(ts, statement)) value = statement;
     const assigned = ts.isExpressionStatement(statement) ? statement.expression : undefined;
     if (assigned !== undefined && ts.isBinaryExpression(assigned) && assigned.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
       ts.isPropertyAccessExpression(assigned.left) && ts.isIdentifier(assigned.left.expression) &&

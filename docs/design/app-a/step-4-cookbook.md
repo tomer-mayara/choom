@@ -622,6 +622,9 @@ last `module.exports =` of the file, through a call with one argument, such as
 string literal at the end of `propertyPath`, in an array there, or as a property
 value of an object there, is a candidate with no handler. Each other value is a gap
 of kind `unknown-settings-value`, with its site and a reason. Nothing runs the file.
+A function or a class that the file exports with `export default`, such as
+`export default function ({ mode }) { ... }`, which Vite accepts, is a gap at the
+declaration: only its code makes the settings object, as for an arrow function.
 
 The helper does not find these entries, and the record has no entry for them, so
 a missing candidate does not show that the code has no entry:
