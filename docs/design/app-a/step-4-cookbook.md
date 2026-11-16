@@ -931,8 +931,10 @@ and:
   snapshot, a qualified name such as `knex.Knex`, and a union with `null` or
   `undefined`. A type shim of the package in a snapshot file, such as
   `declare module 'knex' { ... }`, does not replace the import binding. A type
-  path ends with the last steps of the call path, and the type stands for the
-  value of the steps before them: `Knex` stands for `knex()`.
+  path ends with the last steps of the call path, at least its last method, and
+  the type stands for the value of the steps before them: `Knex` stands for
+  `knex()`. The check of the list refuses a type path without such a step, such
+  as `Knex` for `knex()().insert`: the type would stand for the method itself.
 - `nameCall` and `nameArgument`: the name of the resource is the argument at
   `nameArgument` of the call at `nameCall`, counted back from the call that the rule
   finds: `0` for that call and `1` for the last call of the call path. The Knex rules

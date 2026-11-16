@@ -15,7 +15,7 @@ import { type Change, changedList, refusedBy, rule } from "../support/rule-list-
 // schema and the runtime check of the producer accept and refuse the same shapes.
 // The runtime check also refuses a repeated rule ID, a name call that the call path
 // or the type path does not have, and a type path that does not end with the last
-// steps of the call path.
+// steps of the call path, at least its last method.
 
 const structure = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }))
   .compile({ $ref: "ResourceAccessRuleList.json" });
@@ -84,6 +84,11 @@ test.each<[string, Change, string]>([
     "Invalid resource access rule 2 (fs-write-file): the call path has no call at the name call 1."],
   ["a type path that does not end with the last steps of the call path", (input) => { rule(input, 0).typePath = "Knex().update"; },
     "Invalid resource access rule 1 (knex-insert): the type path does not end with the last steps of the call path."],
+  // A type alone would stand for the method itself, so db('invoices') of db('invoices').select('id') would be an insert.
+  ["a type path with no step of the call path", (input) => { Object.assign(rule(input, 0), { typePath: "Knex", nameCall: 0 }); },
+    "Invalid resource access rule 1 (knex-insert): the type path does not end with the last steps of the call path."],
+  ["a type path with no step of a call path that starts with a new call", (input) => { rule(input, 2).typePath = "Pool"; },
+    "Invalid resource access rule 3 (pg-pool-query): the type path does not end with the last steps of the call path."],
   ["a name call that the type path does not have", (input) => { rule(input, 2).nameCall = 1; },
     "Invalid resource access rule 3 (pg-pool-query): the type path has no call at the name call 1."],
 ])("the structural schema accepts and the runtime check refuses %s", (_name, change, message) => {

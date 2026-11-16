@@ -8,8 +8,8 @@ import { callCount, callPathParts, checkRuleFields, type FieldCheck, fieldChecks
 // producer package. Stage 4 start saves a copy of it and its SHA-256, and Stage 4
 // collect applies its rules. The check also refuses a repeated rule ID, a name call
 // that the call path or the type path does not have, and a type path that does not
-// end with the last steps of the call path: the type stands for the value of the
-// steps before them.
+// end with the last steps of the call path, at least its last method: the type stands
+// for the value of the steps before them. A type alone would stand for the method.
 export const resourceAccessRulesFile = 'resource-access-rules.yaml';
 const label = 'resource access';
 const typePathSyntax = /^[A-Za-z_$][A-Za-z0-9_$]*(?:(?:\(\))*\.[A-Za-z_$][A-Za-z0-9_$]*)*$/;
@@ -31,7 +31,7 @@ function checkRule(rule: unknown, number: number, ids: Set<unknown>): void {
   if (typePath === null) return;
   const typed = callPathParts(typePath).steps;
   const last = steps.slice(steps.length - typed.length);
-  assert(typed.length <= steps.length && typed.every((step, index) => step === last[index]),
+  assert(typed.length > 0 && typed.length <= steps.length && typed.every((step, index) => step === last[index]),
     message + 'the type path does not end with the last steps of the call path.');
   assert(nameCall <= callCount(typed), message + 'the type path has no call at the name call ' + nameCall + '.');
 }
