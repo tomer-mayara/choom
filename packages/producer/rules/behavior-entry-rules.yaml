@@ -303,3 +303,30 @@ rules:
     callPath: new Hono().all
     nameArgument: 0
     handlerArgument: last
+  # The worker threads that the Worker class of the Node.js module node:worker_threads
+  # starts, such as new Worker('./worker.js', { workerData }) after
+  # import { Worker } from 'node:worker_threads'. The worker file, the first argument,
+  # is the name. The call has no handler function: the worker runs its file. A worker
+  # file such as __filename or new URL('./worker.js', import.meta.url) is not a string
+  # literal, so the name is null.
+  - id: node-worker-threads-worker
+    version: 1
+    library: node:worker_threads
+    entryKind: worker-thread
+    kind: call
+    importName: node:worker_threads
+    callPath: new Worker
+    nameArgument: 0
+    handlerArgument: null
+  # The same worker threads when the code names the module worker_threads, without
+  # node:, such as const { Worker } = require('worker_threads'). A rule finds the calls
+  # of one module name, so each name has a rule.
+  - id: worker-threads-worker
+    version: 1
+    library: node:worker_threads
+    entryKind: worker-thread
+    kind: call
+    importName: worker_threads
+    callPath: new Worker
+    nameArgument: 0
+    handlerArgument: null

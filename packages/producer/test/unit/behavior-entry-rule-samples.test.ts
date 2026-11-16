@@ -17,10 +17,12 @@ import { rangeIn } from "../support/source-ranges.ts";
 // needs a sample here.
 //
 // A receiver is the documented code that makes the value whose method a group of
-// rules calls, and other code that gives a value of the same name that is not it.
+// rules calls, or that imports the class whose new call a rule finds, and other code
+// that gives a value of the same name that is not it.
 interface Receiver { extension: "js" | "ts"; entryKind: string; start: string; others: Record<string, string> }
-// A sample call on its receiver, with its name. « and » mark the handler in the call.
-interface Sample { receiver: Receiver; call: string; name: string }
+// A sample call on its receiver, with its name. « and » mark the handler in the call. A
+// sample without them has no handler, and handlerReason gives the reason of its candidate.
+interface Sample { receiver: Receiver; call: string; name: string; handlerReason?: string }
 
 // The Express hello world example.
 const expressApp: Receiver = { extension: "js", entryKind: "http-route",
@@ -75,6 +77,27 @@ const honoTypedApp: Receiver = { extension: "ts", entryKind: "http-route",
     "a local class with the name of the import": "class Hono<Env> extends Map<string, Env> {}\n\n" +
       "const app = new Hono<{ Bindings: unknown }>()\n",
   } };
+// The Worker class of the Node.js worker_threads documentation, as an ES module with
+// the module name node:worker_threads, and as CommonJS with the module name
+// worker_threads of earlier Node.js versions. Its examples give the worker file as
+// __filename or new URL(import.meta.url), which are not string literals. So the samples
+// give a relative path that starts with ./, as the filename argument of new Worker allows.
+const workerThreads: Receiver = { extension: "js", entryKind: "worker-thread",
+  start: "import {\n  Worker,\n  isMainThread,\n  parentPort,\n  workerData,\n} from 'node:worker_threads';\n", others: {
+    "a local class with the name of the import": "class Worker {\n  constructor(filename, options) {}\n}\n",
+    "the Worker of another package": "import { Worker } from 'other';\n",
+    "the Worker global of a browser, without an import": "",
+  } };
+const workerThreadsRequired: Receiver = { extension: "js", entryKind: "worker-thread",
+  start: "const {\n  Worker, isMainThread, parentPort, workerData,\n} = require('worker_threads');\n", others: {
+    "a local class with the name of the import": "class Worker {\n  constructor(filename, options) {}\n}\n",
+    "the Worker of another package": "const { Worker } = require('other');\n",
+    "the Worker global of a browser, without an import": "",
+    "a local function with the name require": "function require(name) {\n  return { Worker: class {} };\n}\n" +
+      "const { Worker } = require('worker_threads');\n",
+  } };
+// A worker thread runs its file, so the rules of worker threads name no handler.
+const noHandler = "The rule names no handler argument.";
 
 // The sample of each call rule of the list, by rule ID.
 const samples: Record<string, Sample> = {
@@ -143,6 +166,12 @@ const samples: Record<string, Sample> = {
   "hono-route-patch": { receiver: honoTypedApp, name: "/", call: "app.patch('/', «(c) => c.text('PATCH /')»)" },
   "hono-route-options": { receiver: honoTypedApp, name: "/", call: "app.options('/', «(c) => c.text('OPTIONS /')»)" },
   "hono-route-all": { receiver: honoTypedApp, name: "/hello", call: "app.all('/hello', «(c) => c.text('Any Method /hello')»)" },
+  // The worker of the parseJSAsync example of the worker_threads documentation, with a
+  // worker file in place of __filename.
+  "node-worker-threads-worker": { receiver: workerThreads, name: "./worker.js", handlerReason: noHandler,
+    call: "new Worker('./worker.js', {\n  workerData: script,\n})" },
+  "worker-threads-worker": { receiver: workerThreadsRequired, name: "./worker.js", handlerReason: noHandler,
+    call: "new Worker('./worker.js', {\n  workerData: script,\n})" },
 };
 
 const callRules = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules
@@ -193,7 +222,8 @@ test.each(callRules.map((rule) => [rule.id, rule] as const))("%s finds its sampl
     const call = plain(sample.call);
     expect(found.get(path)).toEqual([{ ruleId: rule.id, ruleVersion: rule.version, entryKind: sample.receiver.entryKind,
       range: rangeIn(text, call), expression: call, truncated: false, name: sample.name, nameReason: null,
-      handler: { path, range: rangeIn(text, sample.call) }, handlerReason: null }]);
+      handler: sample.handlerReason === undefined ? { path, range: rangeIn(text, sample.call) } : null,
+      handlerReason: sample.handlerReason ?? null }]);
   });
 
 test.each(callRules.flatMap((rule) => Object.keys(samples[rule.id]?.receiver.others ?? {})
