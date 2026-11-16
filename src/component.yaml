@@ -42,6 +42,8 @@ artifacts:
     - path: ../cookbook/behavior/baseline-viewer/duplication-workflow.feature
     - path: ../cookbook/behavior/baseline-viewer/system-entry-details-browser.feature
     - path: ../cookbook/behavior/baseline-viewer/system-entry-details-installed.feature
+    - path: ../cookbook/behavior/baseline-viewer/symbol-membership.feature
+    - path: ../cookbook/behavior/baseline-viewer/discovery-result.feature
   observability:
     - path: ../cookbook/observability/service.yaml
   architecture:
@@ -50,6 +52,7 @@ artifacts:
     - path: ../cookbook/interfaces/desktop.tsp
     - path: ../cookbook/interfaces/baseline-codec.tsp
     - path: ../cookbook/interfaces/interface-duplication-codec.tsp
+    - path: ../cookbook/interfaces/discovery-result-codec.tsp
     - path: ../cookbook/interfaces/baseline-codec.md
     - path: ../cookbook/interfaces/workflow.tsp
     - path: ../cookbook/interfaces/document-dialogs.tsp

@@ -64,3 +64,15 @@ test("report selection names the report and keeps the single read-only file pick
     filters: [{ name: "Duplication report", extensions: ["yaml", "yml"] }],
   } } }]);
 });
+
+test("discovery selection names the discovery result and keeps the single read-only file picker", async () => {
+  expectTypeOf<ReturnType<typeof dialogs.selectDiscoveryResultFile>>()
+    .toEqualTypeOf<Promise<ReturnType<BaselineDialogOperations["selectDiscoveryResultFile"]>>>();
+  await dialogs.selectDiscoveryResultFile();
+  expect(requests).toEqual([{ command: "plugin:dialog|open", payload: { options: {
+    directory: false, multiple: false, title: "Open discovery result",
+    filters: [{ name: "Discovery result", extensions: ["yaml", "yml"] }],
+  } } }]);
+  mockIPC(() => { throw new Error("/private/picker"); });
+  await expect(dialogs.selectDiscoveryResultFile()).rejects.toThrow("The native discovery result picker is unavailable.");
+});

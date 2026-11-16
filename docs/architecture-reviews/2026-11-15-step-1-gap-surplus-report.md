@@ -41,7 +41,7 @@ duplication helpers have tests. Stages 1–5 and `recover-capture.mjs` have none
 | G7 | **Behavior-entry syntax rules:** there are no route, worker or command rules. Resource access is matched by name only. | 877–878 | `stage-4-inspect.mjs:176-179` |
 | G8 | **Approved framework plugins for Knip:** all plugins are turned off, so entries found only by plugins are lost. | 782–783, 788 | `step-2-cookbook.md:364,432` |
 | G9 | **Named parsing profile when there are no project settings:** not present. | 768–769 | Stage 1 helpers |
-| G10 | **Node `type` field:** not read. Each file gets both an import pass and a require pass. | 866 | `stage-4-commands.mjs:245-254` |
+| G10 | **Node `type` field:** not read. Each file gets both an import pass and a require pass. The visible defect is TypeScript that compiles to CommonJS: it resolves with the `import` condition (plan change 16). | 866 | `stage-4-commands.mjs:245-254` |
 | G11 | **Gaps, deferred regions, uncovered code and questions in the Baseline view, and corrections submitted from it:** the viewer loads no discovery data and has no editing. | 190–191, 392–394 | Deferred by `cr-baseline-viewer-plan.md:48-49`; the design does not say so |
 | G12 | **"Do not save hidden reasoning":** not stated anywhere. The cookbooks ask for the "complete response". | 475 | `step-1-cookbook.md:245`, `step-2-cookbook.md:1105`, `step-3-cookbook.md:260` |
 
@@ -122,7 +122,228 @@ These rules depend on the cookbook prompts and are not checked by code:
 
 Revision 3, 2026-11-15. This plan closes gaps G1–G12. The owner made the
 decisions in the log below. Revision 3 corrects the errors that the review of
-revision 2 found (see "What changed in revision 3").
+revision 2 found (see "What changed in revision 3"). "Changes during
+implementation" records what changed after work started.
+
+### Changes during implementation
+
+Each ticket is a PR. Each PR was stacked on the branch of the PR before it. On
+2026-11-16 the owner asked to merge the whole stack. Every PR then targeted
+`main`, and the top PR (tomer-mayara/choom#95) merged the stack with one merge
+commit, so the commits of each PR are in `main` (see "How the stack merged").
+
+| Ticket | PR | State |
+|---|---|---|
+| Report | tomer-mayara/choom#57 | Merged into `main` (squash commit f99ca97). |
+| GA-03a | tomer-mayara/choom#58 | Merged |
+| GA-01c | tomer-mayara/choom#59 | Merged |
+| GA-11a | tomer-mayara/choom#60 | Merged. The owner approved GA-11b, and with it the CR-004 text, on 2026-11-16 (recorded in the GA-11b1 PR). |
+| GA-DOC | tomer-mayara/choom#61 | Merged |
+| GA-00a | tomer-mayara/choom#62 | Merged |
+| GA-00b | tomer-mayara/choom#63 | Merged |
+| GA-00d | tomer-mayara/choom#64 | Merged |
+| GA-03b | tomer-mayara/choom#65 | Merged |
+| Plan update | tomer-mayara/choom#66 | Merged. D21 needs owner approval. |
+| GA-00b2 | tomer-mayara/choom#67 | Merged |
+| GA-00e | tomer-mayara/choom#68 | Merged |
+| GA-00c | tomer-mayara/choom#69 | Merged. This PR also records plan changes 6 and 7. |
+| GA-12 | tomer-mayara/choom#70 | Merged |
+| GA-09 | tomer-mayara/choom#71 | Merged. This PR also records plan change 8. |
+| GA-04 | tomer-mayara/choom#72 | Merged. This PR also records plan change 9. |
+| GA-05 | tomer-mayara/choom#73 | Merged. This PR also records plan changes 10 and 11. |
+| GA-06a | tomer-mayara/choom#74 | Merged. This PR also records plan changes 12 and 13. |
+| GA-06a2 | tomer-mayara/choom#75 | Merged. This PR also records plan change 14. |
+| GA-10a | tomer-mayara/choom#76 | Merged. This PR also records plan changes 15 and 16. |
+| GA-10b | tomer-mayara/choom#77 | Merged. This PR also records the approval of plan changes 6 to 16. |
+| GA-01a | tomer-mayara/choom#78 | Merged. This PR also records D22. |
+| GA-06b | tomer-mayara/choom#79 | Merged. The query command is the Stage 4 inspect action `references PATH SYMBOL`, where the design places focused source queries. |
+| GA-01b | tomer-mayara/choom#80 | Merged |
+| GA-07a | tomer-mayara/choom#81 | Merged. Stage 4 collect saves the candidates as `behavior-entry-candidates.json`, and the entry analysis names it as `behaviorEntryCandidatesRef`. The ticket said `behaviorEntries`, but that field already holds reviewed entries that the LLM writes. The list starts with one rule, the Express `get` route, which the scenarios use. |
+| GA-07b | tomer-mayara/choom#82 | Merged. 30 route rules (Express app and router, Fastify, Hono). The method comes from the rule, so the record does not change. Every call rule needs a documented sample in a data-driven test. |
+| GA-07c | tomer-mayara/choom#83 | Merged. 3 rules: `new Worker` of `node:worker_threads` and of `worker_threads` (the worker file is the name, no handler), and BullMQ `new Worker` (the queue is the name, argument 1 is the handler). |
+| GA-02a | tomer-mayara/choom#84 | Merged. Not as the ticket says: a part of a file names its file by `path` and `sha256`, not by `fileRef`, and it has `ranges`, not one `range`, because the rest is often split. Only Stage 5 divides files, with the scope `unitKind: file-or-part`. The LLM writes the units, and the checks require exactly the units that `divideFile` gives. D21 is done as proposed. |
+| GA-07e | tomer-mayara/choom#85 | Merged. 4 Vite `settings-literal` rules: `build.rollupOptions.input`, `build.rolldownOptions.input`, the top-level `input` and `build.lib.entry`. There is no Next.js rule, because `next.config.*` names no entry files as literals; Next.js finds its entries from its folders. |
+| GA-07f | tomer-mayara/choom#86 | Merged. A second pinned rule list (knex starter rules) with `typePath` and `nameCall`. Stage 4 collect saves `resource-access-candidates.json` with the confidence `receiver-import`, `receiver-type` or `name-only`, `identity: inferred-from-name`, and no owner. `resource-access.json` names it as `resourceAccessCandidatesRef`. The rule-list and call-rule code is now shared with GA-07a. |
+| GA-02b | tomer-mayara/choom#87 | Merged. Not as the ticket says: a new Stage 5 request, `parts PATH SYMBOL...`, saves `parts-NNN.json`, because Stage 5 `collect` never sees a divided file. A part is named by its symbol or `rest`, not by a unit ID. An import goes to the part that holds all uses of its names. `shared`, `unreferenced` and `not-resolved` imports stay at file level. |
+| GA-07d | tomer-mayara/choom#88 | Merged. The engine changes, test first, as the ticket table allows: call rules get the optional fields `nameCall` and `sameValueMethods`. There are commander and yargs command rules (the yargs handler is argument 3), and a new rule kind, `package-bin`, which links a bin file to its source only with evidence (the snapshot file, or the saved `outDir` and `rootDir`). |
+| GA-08 | tomer-mayara/choom#89 | Merged. This PR also records plan change 17 and D23 (path A, which replaces D15). Every plugin stays `false`. The plugin patterns are copied into the Stage 2 profile, and Stage 4 lists their files with `found: knip-plugin-pattern`. The first real run of the `@docker` scenarios is in CI. |
+| GA-11b1 | tomer-mayara/choom#90 | Merged. This PR also records the owner's approval of GA-11b and the CR-004 text, and plan change 18. The Stage 6 helper is now TypeScript, with no change of behavior. Stage 6 saves discovery version 2 with `baselineDigest`, and `verify` checks it. |
+| GA-11b2 | tomer-mayara/choom#91 | Merged. The viewer part of CR-004: a discovery contract and decoder (refuses version 1 and another baseline digest), placement on baseline items with an Unplaced list and a deferred group, the duplication report's load rules, and Copy decision (a GA-01a `accept` entry). Stage 6 also checks the fixed discovery result with the viewer contract, so the producer cannot publish a result that the viewer refuses. |
+| Review fixes A1–A6 | tomer-mayara/choom#92 | Merged. Plan change 19. Stage 6 saves the fixed discovery result as the viewer reads it; `baseline decide` runs the checks of `baseline next` and saves a record all or nothing; no Copy decision on a next version; files are divided only with the pinned ts-morph. The CI `web` job now has 25 minutes. |
+| Review fixes C1–C6 | tomer-mayara/choom#93 | Merged. Plan change 19. `import()` in a `.cts` file gets the condition that TypeScript gives it; a type shim keeps the import of its package; CommonJS exports are followed; candidates keep the order of the scope files; one copy of the candidate limit and of the source-file rule; a resource type path needs a step. |
+| Review fixes D1–D6 | tomer-mayara/choom#94 | Merged. Plan change 19. The `package-bin` rule reads strict JSON, arrays and large files as npm does; `export default function` settings get the right reason; the GA-08 settings-file filter is documented as a test of names; plugins that Knip turns on without a dependency are recorded. |
+| Review fixes B1–B7 | tomer-mayara/choom#95 | Merged. This PR also records plan change 19. An action on a published Stage 2 or Stage 3 attempt changes nothing; Stage 2 finish checks every phase again; Stage 2 checks the snapshot inventory with checkout code; more saved forms of hidden reasoning are refused; one shared evidence resolver; the question and gap contract is checked where each record enters; Stage 1 reserves the baseline ID. |
+
+Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
+
+1. **GA-00b is split.** GA-00b moves the producer without changing behavior.
+   A new ticket, **GA-00b2**, moves the code blocks that Stages 1 and 2 run
+   from saved cookbook copies into source modules. It keeps the saved-copy
+   protection until GA-00e.
+2. **New order for the setup tickets:** GA-00b → GA-00d → GA-03b → GA-00b2 →
+   GA-00e → GA-00c. GA-00d and GA-03b needed nothing else, so they went first.
+   GA-00e now comes before GA-00c, for this reason: today each attempt runs
+   from copies of the producer code that are saved in the attempt folder. A
+   copy in that folder cannot import a workspace package such as
+   `@choom/baseline-model`, and a copy of the package would not stay frozen.
+   GA-00e replaces the saved copies with a code-digest check. Its digest covers
+   `packages/producer/src` and `packages/baseline-model/src`. After that,
+   GA-00c can import the package.
+3. **Symbol-only components (D9 changed).** A version 5 component can own only
+   symbols, with no path (GA-03b). So the producer profile rule "every
+   component has a path" becomes "every component has a path or a symbol".
+   GA-02a makes this change when it adds version 5 to the producer.
+4. **D21, proposed:** a symbol name is any JavaScript identifier name. Reserved
+   words such as `class` pass the syntax check, as `default` does. The viewer
+   checks syntax only, and the producer (GA-02a) refuses a symbol that the
+   file does not declare. No reserved-word list.
+5. **Local browser acceptance.** `bun run test:e2e` can run in the cloud
+   session with the preinstalled Chromium (revision 1243; the project pins
+   1254). One layout scenario, "the full two-line name, both entry counts, and
+   duplication marker fit in the component header", fails locally on the base
+   before any change. CI passes it.
+6. **D4 refinement (approved with plan changes 6 to 16):** a mechanical
+   edit does not trigger the TypeScript conversion. A mechanical edit changes
+   only an import path, an entry in a list, a mount path or a comment. A change
+   to the logic of a file still converts it first (rule 5).
+   - GA-00c made only mechanical edits to `.mjs` files: the import path in
+     `stage-4-5-publish.mjs`, the import path and one entry of the reserved-ID
+     list in `stage-6-commands.mjs`, and the expected messages in
+     `producer-publication.test.mjs`.
+   - GA-00e did more. In each of the seven Stage 3–6 helpers it added the
+     producer-code check, removed the old saved-copy comparisons and changed
+     paths (59 lines added, 57 removed in total). It did not convert them,
+     because the edits were small. The owner approved this exception with
+     plan changes 6 to 16. Each of these files is converted when a later
+     ticket changes its logic
+     (GA-12 converts `stage-3-finish.mjs` and `stage-4-5-publish.mjs`).
+7. **GA-12 scope.** The check covers every saved LLM call. Stage 6 also saves
+   one, in its readiness packet, which the ticket did not list. There is no
+   provider JSON file in any packet, so `checkVisibleResponse` checks only
+   the saved response text. GA-12 below shows the changed steps.
+8. **Gaps that a tool finds are added by `finish`.** GA-09 records the
+   "no project settings" gap in the Stage 1 settings record, which is now
+   `formatVersion: 2`. Stage 1 `finish` adds each gap of a tool record to the
+   discovery gaps itself (`toolGaps` in `stage-1-gaps.ts`). The reviewer does
+   not copy them. The IDs are `s1-<record>-gap-NNN`, and the review cannot
+   use them. `verify` refuses a saved discovery that lacks one. GA-04 uses
+   the same function for its Git gap (step 5 below).
+9. **GA-04 does not run `git status` (E11 was not enough).** `git status`
+   can run the clean and process filters that a target defines in its own
+   Git settings. In a partial clone, even `ls-tree` fetches missing objects
+   through a command from the target's settings. So GA-04 runs only
+   `version`, `rev-parse`, `symbolic-ref` and `ls-tree`. It compares the
+   saved snapshot with the commit inside the producer. Every call also
+   removes inherited `GIT_*` variables and sets `GIT_TERMINAL_PROMPT=0`,
+   `GIT_ALLOW_PROTOCOL=` (no transport), `GIT_NO_LAZY_FETCH=1`,
+   `GIT_NO_REPLACE_OBJECTS=1` and `--no-pager`. A test with a real partial
+   clone checks that no program runs.
+10. **GA-05 does not use `trustedDependencies` (E10 and D16 changed).**
+    `@vscode/ripgrep` 1.18.0 has no install script. It takes the program
+    from a package for each platform (optional dependencies), so a frozen
+    `bun install` installs it with no GitHub download and no token. A
+    `trustedDependencies` list would also replace Bun's default list, and
+    the install script of `geckodriver` would then not run. Stage 3 `start`
+    records the ripgrep version, program and digest, and every later action
+    refuses a changed program. The search is a Stage 3 action,
+    `stage-3 text-search`, and the Stage 3 finalizer checks each search
+    receipt.
+11. **GA-06a is split.** GA-06a adds the snapshot project, `listExports`
+    and the gaps for missing compiler inputs. It adds the operator action
+    `stage-3 exports PATH`, in the same form as `stage-3 text-search`, and
+    replaces the parser call of Stage 3 only. A new ticket, **GA-06a2**,
+    converts `stage-4-inspect.mjs` and `stage-5-query.mjs` to TypeScript
+    (rule 5) and replaces their parser calls. Each PR then stays small
+    enough to review. GA-02a and GA-07f, which work in Stages 4 and 5, now
+    also need GA-06a2.
+12. **GA-06a2 also converts `stage-5-commands.mjs`.** Stage 5 loads its
+    parser in `stage-5-commands.mjs` and gives it to `stage-5-query.mjs`.
+    To use the snapshot project, Stage 5 must load ts-morph there instead,
+    which changes the logic of that file. Rule 5 then requires that it
+    becomes TypeScript first.
+13. **The Stage 3 loading search record changed (GA-06a).** Its profile is
+    now `stage-3-loading-syntax-v3`, and its parser is the snapshot project.
+    The matches are the same. The line-1 columns of a file with a byte
+    order mark are one less, because ts-morph does not count that mark.
+    GA-06a2 must keep the lines of Stages 4 and 5 the same.
+14. **The Stage 4 source sites record changed (GA-06a2).** The site lines
+    stay the same. In a file with a byte order mark, the diagnostic `start`
+    values are one less, for the same reason as plan change 13, and a new
+    `limits` line says so. The records of Stages 4 and 5 keep
+    `formatVersion: 1`, because the producer code record (GA-00e) makes each
+    run use one producer version.
+15. **GA-10 is split.** A correct GA-10 must change the checks of the graph
+    helper `stage-4-graph.mjs`, so rule 5 applies. **GA-10a** converts that
+    helper to TypeScript with no behavior change. The helper runs in the
+    `node:24-bookworm-slim` graph image, and this session has no Docker
+    engine. The CI `producer` job is the proof that the image runs the
+    converted file and that the helper writes nothing to stderr there.
+    **GA-10b** then makes the module kind change.
+16. **The GA-10 scenarios are corrected (GA-10b).** The two scenarios of
+    GA-10 pass today: dependency-cruiser reads `import` syntax only in the
+    import pass and `require` syntax only in the require pass, so a
+    JavaScript file already gets the right target. The real G10 defect is
+    TypeScript that compiles to CommonJS: a `.cts` file, a `.ts` file with
+    `module: commonjs`, or a `.ts` file with `module: nodenext` in a package
+    whose `type` is not `module`. Its `import` statements become `require`
+    calls at run time, but the graph resolves them with the `import`
+    condition and marks them `pre-compilation-only`. GA-10b keeps the two
+    scenarios as guards and adds scenarios that fail today.
+17. **GA-08 follows D23, not D15 (the owner chose this on 2026-11-16).**
+    The first step of GA-08 tested D15 on Knip 6.44.1. With a plugin set to
+    `{ config: [] }`, Knip adds its default entries, but it still loads and
+    runs a settings file in three cases:
+    - a settings path in a package script (`vite build --config x.js`);
+    - a folder in a script (`next build web`);
+    - `babel.config.js` when the Expo or Docusaurus plugin is on.
+
+    37 of the 92 plugins that Knip turns on by dependency can do this. No
+    Knip option turns it off. So GA-08 keeps every plugin `false`, and
+    steps 2 and 5 change:
+    - Stage 2 copies the default `entry` and `production` patterns of the
+      plugins that the dependencies turn on. The patterns come from the
+      installed Knip, with the plugin, the dependency and the manifest of
+      each pattern.
+    - Stage 4 collect lists the files of these patterns next to the GA-07e
+      settings candidates, with `found: knip-plugin-pattern`.
+
+    The D15 test stays in the suite as the record of why.
+18. **GA-11b is split (GA-11b1 and GA-11b2).** The owner approved GA-11b,
+    and with it the CR-004 text, on 2026-11-16. CR-004 says that Stage 6
+    writes discovery `formatVersion: 2` with `baselineDigest`. Stage 6 was
+    `stage-6-commands.mjs`, so rule 5 (D4) applies, as for GA-10a.
+    - **GA-11b1 (producer):** converts the Stage 6 helper to TypeScript with
+      no change of behavior, with characterization tests first. Then Stage 6
+      saves the fixed discovery result as version 2 with `baselineDigest`, and
+      `verify` checks it against the saved baseline file. The working draft
+      stays version 1, because only Stage 6 knows the fixed baseline bytes.
+    - **GA-11b2 (viewer):** the steps of GA-11b in `@choom/baseline-model` and
+      the viewer, as CR-004 says.
+19. **Final review of the stack (2026-11-16; the owner has not reviewed it
+    yet).** A review of the whole stack (tomer-mayara/choom#58 to
+    tomer-mayara/choom#91) found 25 defects in four areas. A reviewer probe or a
+    clear code path showed each one. Four PRs fix them, each fix with a test
+    that failed first. They are stacked on GA-11b2 in this order:
+    tomer-mayara/choom#92 (A), tomer-mayara/choom#93 (C), tomer-mayara/choom#94
+    (D) and tomer-mayara/choom#95 (B).
+    - **CI:** the `web` job now has 25 minutes, not 15. Its main step grew from
+      7 min 15 s on GA-00c to 12 min 46 s on GA-11b2, and the first run of
+      tomer-mayara/choom#92 stopped at the 15-minute limit.
+    - **CI apt mirrors:** the `web` and `desktop` jobs used one apt mirror,
+      `mirrors.kernel.org`, which the runners could not reach on 2026-11-16.
+      The list now holds the Azure mirror of the runner, the Canonical
+      archive and `mirrors.kernel.org`, so apt uses the next one when a
+      mirror fails (tomer-mayara/choom#92, and tomer-mayara/choom#96 for
+      `main`).
+    - **A flaky browser step from GA-11b2:** the keyboard scenario "Reach tabs
+      and disclosures with visible keyboard focus" counted the Copy decision
+      actions before React showed the opened disclosure. The step now waits
+      for the content first (tomer-mayara/choom#92). Under CPU load, it failed
+      in 3 of 20 runs before the fix and in 0 of 30 runs after it.
+    - **D5 changes no behavior:** the documents now say that the GA-08
+      settings-file filter tests only names, and they list its known misses. A
+      list of settings files kept by hand needs an owner decision.
+    - "Open after the final review" below lists what stays open.
 
 ### How to work every ticket
 
@@ -172,7 +393,7 @@ record its current behavior.
 | E7 | GA-00b changed how a run records the producer code. That is a change in behavior, but the ticket called it a refactor with no failing acceptance test. | That change is now ticket GA-00e, with its own failing scenario. GA-00b keeps behavior unchanged. |
 | E8 | Removing the saved code copies also removed a protection: today each attempt runs from a frozen copy, so the code cannot change in the middle of an attempt. | GA-00e checks the code digest at every stage action and refuses a changed producer. |
 | E9 | Scenarios that need Docker would run in the normal Cucumber profile and fail on a computer without Docker. | GA-00d adds an `@docker` tag. The normal profile excludes it, and the CI `producer` job runs it. |
-| E10 | GA-05: Bun does not run the install scripts of dependencies unless they are listed in `trustedDependencies`. So `@vscode/ripgrep` would install without its program. | GA-05 adds it to `trustedDependencies` and checks that the program exists after `bun install`. |
+| E10 | GA-05: Bun does not run the install scripts of dependencies unless they are listed in `trustedDependencies`. So `@vscode/ripgrep` would install without its program. | GA-05 checks that the program exists after `bun install`. Version 1.18.0 has no install script, so it needs no `trustedDependencies` entry (plan change 10). |
 | E11 | GA-04 ran `git status` in the target repository. A target's Git settings can make `git status` run a program (`core.fsmonitor`). The design forbids running target code. | GA-04 turns off `core.fsmonitor`, hooks and system and user Git settings for every Git command. |
 | E12 | GA-07e (frontend settings) cannot use the GA-07a rule shape, which only matches calls. | The GA-07a engine has two rule kinds: `call` and `settings-literal`. |
 | E13 | GA-00a did not add the new workspace's tests to `bun run test`, and did not move the generated contract output. | GA-00a adds both. |
@@ -207,12 +428,14 @@ record its current behavior.
 | D12 | Membership change in a new version | No marker. Every new version has no discovery result until a new run. Re-mapping (design mode B) is later work. |
 | D13 | G2 and G3 | Symbol selectors divide a file. Each named symbol becomes a unit. The rest of the file is one unit, owned by the file's path owner, or `null` with a reason. Symbols need `formatVersion: 5`. |
 | D14 | G7 | One rule engine with a pinned rule list. The first rules cover HTTP servers, workers and queues, CLI tools and frontend settings. |
-| D15 | G8 | Plugins run with `config: []`, so they use only their default file-name patterns and never load settings files. There is no approval list. This is not yet tested on Knip 6.44.1: GA-08 tests it first. |
-| D16 | ripgrep | `@vscode/ripgrep` at an exact version, listed in `trustedDependencies`. |
-| D17 | G11 | CR-004 is approved in principle. The viewer shows discovery questions and gaps, and can copy a decision-file entry. There is no editor in the viewer. |
+| D15 | G8 | Replaced by D23 on 2026-11-16 (plan change 17). Before: plugins run with `config: []`, so they use only their default file-name patterns and never load settings files. There is no approval list. This is not yet tested on Knip 6.44.1: GA-08 tests it first. |
+| D16 | ripgrep | `@vscode/ripgrep` at an exact version. Version 1.18.0 needs no `trustedDependencies` entry (plan change 10). |
+| D17 | G11 | CR-004 is approved in principle. The viewer shows discovery questions and gaps, and can copy a decision-file entry. There is no editor in the viewer. The owner approved GA-11b, and with it the CR-004 text, on 2026-11-16. |
 | D18 | Docker tests | A CI `producer` job runs `@docker` scenarios. `bun run check` skips them. |
 | D19 | G4 | Git identity only. History is left to Step 2 planning. |
 | D20 | Old discovery files in the viewer | Approved by the owner on 2026-11-15. The viewer refuses a discovery result without `baselineDigest`, because an ID alone can match the wrong baseline. Old runs need a new run to show in the viewer. |
+| D22 | Format of the decision file | Approved by the owner on 2026-11-15. The decision file is YAML, as the CR-004 text says. The producer reads it with the bounded YAML profile of a baseline and saves its exact bytes as `decisions/<id>.yaml`. |
+| D23 | G8 | Approved by the owner on 2026-11-16 (path A). It replaces D15, because Knip 6.44.1 still runs settings files that package scripts name, even with `config: []`. Every Knip plugin stays `false`. For each plugin whose package is a dependency of a manifest, Stage 2 copies the plugin's default `entry` and `production` patterns from the installed Knip, with the plugin, the dependency and the manifest. Patterns of settings files are not copied. Lost: plugin `resolve` steps (such as Vite's `index.html` start files), the `.vue`, `.svelte` and `.astro` readers, and the plugins' syntax visitors. Review fixes D5 and D6 (tomer-mayara/choom#94): the settings-file filter tests only names, so it has known misses, which the Stage 2 cookbook lists. For example, it copies `vercel.*` and `dangerfile.*`, and it leaves out one Mastra pattern. A plugin that Knip turns on without a dependency, such as `node` or `yarn`, is recorded in `pluginsNotCopied`, and none of its patterns is copied. |
 
 ### Ticket map and order
 
@@ -227,22 +450,24 @@ Tickets with the same order number can run at the same time.
 | 3 | GA-00b Move the producer into `packages/producer` | setup | GA-00a |
 | 4 | GA-00c Producer uses the shared baseline rules | setup | GA-00b |
 | 4 | GA-00d CI `producer` job and `@docker` tag | setup | GA-00b |
-| 4 | GA-00e Record and check the producer code digest | setup | GA-00b |
+| 4 | GA-00e Record and check the producer code digest | setup | GA-00b2 |
 | 4 | GA-DOC Change the design text to match the decisions | docs | — |
 | 5 | GA-12 Do not save hidden reasoning | G12 | GA-00b |
 | 5 | GA-09 Named parsing profile | G9 | GA-00b |
 | 5 | GA-04 Git identity | G4 | GA-00b |
 | 5 | GA-05 ripgrep search | G5 | GA-00b |
 | 5 | GA-06a ts-morph project on the snapshot | G6 | GA-00b |
-| 5 | GA-10 Node `type` field | G10 | GA-00d |
+| 5 | GA-10a Convert the Stage 4 graph helper | G10 | GA-00d |
+| 6 | GA-10b Module kind of the emitted code | G10 | GA-10a, GA-09 |
 | 5 | GA-01a Decision file | G1 | GA-00c |
+| 6 | GA-06a2 Stages 4 and 5 use the snapshot project | G6 | GA-06a |
 | 6 | GA-06b Definition and reference queries | G6 | GA-06a |
 | 6 | GA-01b Make the next baseline version | G1 | GA-01a |
 | 6 | GA-03b Symbol selectors in `formatVersion: 5` | G3 | GA-00a, GA-03a |
 | 6 | GA-07a Entry rule engine | G7 | GA-06a |
-| 7 | GA-02a Symbol selectors divide files | G2, G3 | GA-03b, GA-06a |
+| 7 | GA-02a Symbol selectors divide files | G2, G3 | GA-03b, GA-06a2 |
 | 7 | GA-07b–e Rules for each kind of target | G7 | GA-07a |
-| 7 | GA-07f Resource access by receiver type | G7 | GA-06b |
+| 7 | GA-07f Resource access by receiver type | G7 | GA-06b, GA-06a2 |
 | 7 | GA-11b Viewer shows discovery questions and gaps | G11 | GA-11a, GA-00a, GA-01a |
 | 8 | GA-02b Dependencies of file parts | G2 | GA-02a, GA-06b |
 | 8 | GA-08 Knip plugins without settings files | G8 | GA-00d, GA-07e |
@@ -440,7 +665,8 @@ The second scenario fails today (defect 1).
 
 ### GA-00e Record and check the producer code digest
 
-**Gap:** setup (D7, E7, E8). **Needs:** GA-00b.
+**Gap:** setup (D7, E7, E8). **Needs:** GA-00b2 (see "Changes during
+implementation", item 2).
 
 Add to `recovery.feature`:
 
@@ -464,12 +690,14 @@ digest.
 **Steps:**
 
 1. **U** `producerCodeDigest(root)` is stable for the same files and changes
-   when any file in `packages/producer/src` changes.
+   when any file in `packages/producer/src` or `packages/baseline-model/src`
+   changes.
 2. **U** The receipt has the package version, the digest, and the Git commit or
    `not-available`.
 3. **U** Each stage action compares the current digest with the receipt and
    refuses a difference.
-4. Remove the code that saves source copies in each run.
+4. Remove the code that saves source copies in each run. Later actions run
+   from the checkout after the digest check.
 
 ### GA-DOC Change the design text to match the decisions
 
@@ -520,15 +748,17 @@ It fails today because no stage checks this, and the cookbooks ask for the
 
 **Steps:**
 
-1. **U** `checkVisibleResponse(text, providerJson?)` refuses provider content
-   blocks of type `thinking`, `redacted_thinking` or `reasoning`, and a
-   `<thinking>` block at the top level of the saved text.
+1. **U** `checkVisibleResponse(text)` refuses a `<thinking>`, `<reasoning>`
+   or `<redacted_thinking>` block at the top level of the saved text (outside
+   fenced code). When the saved text is a pasted provider JSON response, it
+   also refuses content blocks of type `thinking`, `redacted_thinking` or
+   `reasoning`.
 2. **U** The call record must have `hiddenReasoning: "not-saved"`. A missing
    value or another value is refused.
-3. **U** Every `finish` action (Stages 1–3 and the Stage 4/5 publisher) uses
-   this one check.
-4. In the three cookbooks, change "complete response" to "complete visible
-   response. Do not save hidden reasoning."
+3. **U** Every action that saves an LLM call uses this one check: the
+   `finish` actions of Stages 1–3, the Stage 4/5 publisher and Stage 6.
+4. In the cookbooks and `record-format.md`, change "complete response" to
+   "complete visible response. Do not save hidden reasoning."
 
 ### GA-09 Named parsing profile when there are no project settings
 
@@ -583,16 +813,20 @@ Feature: Save Git identity with a snapshot
 
 1. **U** `gitIdentity(runGit)` uses a test double for Git. It returns the
    commit, the branch and the changed paths, or `not-available` with a reason.
-2. **U** It runs only `rev-parse` and `status --porcelain=v2`. Every command
-   sets `-c core.fsmonitor=false -c core.hooksPath=/dev/null`,
-   `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null` and
-   `GIT_OPTIONAL_LOCKS=0`, so target settings cannot run a program. The test
-   double refuses any other command or a missing setting.
+2. **U** It runs only `version`, `rev-parse`, `symbolic-ref` and `ls-tree`,
+   never `status` (plan change 9). Every command sets
+   `-c core.fsmonitor=false -c core.hooksPath=/dev/null`,
+   `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null`,
+   `GIT_OPTIONAL_LOCKS=0` and the fetch and replace settings of plan change
+   9, so target settings cannot run a program. The changed paths come from
+   a comparison of the snapshot with the commit. The test double refuses
+   any other command or a missing setting.
 3. **U** A Git refusal (for example, "dubious ownership") gives `not-available`
    with Git's message. It does not stop the capture.
 4. **N** Run it on a temporary real repository. The record is saved by digest
    and appears in the tool-call record.
-5. **U** Stage 1 `finish` adds the `git-unavailable` gap when needed.
+5. **U** Stage 1 `finish` adds the `git-unavailable` gap when needed, with
+   `toolGaps` from GA-09 (plan change 8).
 
 ### GA-05 Search the snapshot with ripgrep
 
@@ -617,8 +851,8 @@ Feature: Search the saved snapshot
 
 **Steps:**
 
-1. Add `@vscode/ripgrep` at an exact version and list it in
-   `trustedDependencies` (E10). **N** After `bun install`, the program exists
+1. Add `@vscode/ripgrep` at an exact version (E10, plan change 10).
+   **N** After `bun install`, the program exists
    and reports its version.
 2. **U** `ripgrepArgs(query, snapshotRoot)` always has `--fixed-strings`
    (unless the operator asks for a pattern), `--no-config`, `--json`,
@@ -659,8 +893,29 @@ Feature: Read source structure from the snapshot
    never reads the disk.
 3. **U** `listExports(file)` returns names, kinds and ranges.
 4. **U** Missing compiler inputs become gaps.
-5. Replace the `ts.createSourceFile` calls in Stages 3–5 with this project.
-   The characterization tests still pass.
+5. Replace the `ts.createSourceFile` call of Stage 3 `collect` with this
+   project. The characterization tests still pass. Stages 4 and 5 move in
+   GA-06a2 (plan change 11).
+6. **N** The operator action `stage-3 exports PATH` saves `exports-NNN.json`
+   with a receipt, as `stage-3 text-search` does. The Stage 3 finalizer
+   checks the receipt.
+
+### GA-06a2 Stages 4 and 5 use the snapshot project
+
+**Gap:** G6. **Needs:** GA-06a. No new behavior, so there is no new scenario.
+The characterization tests are the acceptance check.
+
+**Steps:**
+
+1. **N** Add characterization tests for `stage-4-inspect.mjs`,
+   `stage-5-query.mjs` and `stage-5-commands.mjs` where they are missing.
+   They pass on the `.mjs` files.
+2. Convert the three files to TypeScript with no behavior change (rule 5,
+   plan change 12). The tests pass before and after.
+3. Replace the `ts.createSourceFile` calls of Stage 4 inspect and Stage 5
+   query with the snapshot project of GA-06a, and load ts-morph as a
+   trusted tool of both stages. The matches and their lines stay the same.
+   Only the fields that name the parser and the tools change.
 
 ### GA-06b Definition and reference queries
 
@@ -694,12 +949,30 @@ Feature: Find where a symbol is used
    outcome. Completeness is `partial` when there are unresolved entries.
 5. **N** Run it through the query command on a fixture snapshot.
 
-### GA-10 Use the Node `type` field when resolving imports
+### GA-10a Convert the Stage 4 graph helper to TypeScript
 
-**Gap:** G10 (design 866). **Needs:** GA-00d.
+**Gap:** G10 (plan change 15). **Needs:** GA-00d. No new behavior, so there is
+no new scenario. The characterization tests are the acceptance check.
+
+**Steps:**
+
+1. **N** Add characterization tests for `stage-4-graph.mjs` that run here
+   without Docker. They pass on the `.mjs` file.
+2. Convert the helper to TypeScript with no behavior change (rule 5). It
+   imports only Node built-ins at run time, so the graph image needs only this
+   one file. Stage 4 mounts it so that Node runs it as an ES module.
+3. **N** Pin today's edges for an ES module package, a TypeScript project with
+   `module: commonjs` and a TypeScript project with `module: nodenext`,
+   including the wrong edges that GA-10b changes.
+4. **D** The Docker test checks that the helper writes nothing to stderr in
+   the image fixture run and in the graph run. The CI `producer` job runs it.
+
+### GA-10b Resolve imports by the module kind of the emitted code
+
+**Gap:** G10 (design 866), plan change 16. **Needs:** GA-10a, GA-09.
 
 ```gherkin
-@producer @docker
+@producer
 Feature: Resolve imports by module kind
 
   Scenario: An ES module file uses the import condition only
@@ -711,22 +984,52 @@ Feature: Resolve imports by module kind
     Given a ".cjs" file in the same package that requires the same dependency
     When the dependency graph is built
     Then the edge points to the require target only
+
+  Scenario Outline: TypeScript that compiles to CommonJS uses the require condition
+    Given a package without a type field
+    And a TypeScript file <file> with compiler module <module> that imports the same dependency
+    When the dependency graph is built
+    Then the edge points to the require target only
+    And the edge is not marked as pre-compilation only
+
+    Examples:
+      | file     | module   |
+      | main.ts  | commonjs |
+      | plain.ts | nodenext |
+      | kind.cts | nodenext |
+
+  Scenario: TypeScript that compiles to an ES module keeps the import condition
+    Given a package without a type field
+    And a TypeScript file "esm.mts" with compiler module nodenext that imports the same dependency
+    When the dependency graph is built
+    Then the edge points to the import target only
 ```
 
-It fails today because every file gets both an import pass and a require pass.
+The first two scenarios pass today and guard the JavaScript rules. The others
+fail today because the graph resolves every TypeScript `import` with the
+`import` condition.
 
 **Steps:**
 
-1. **U** `moduleKind(path, nearestPackage)`: `.mjs` and `.mts` are ES modules;
-   `.cjs` and `.cts` are CommonJS; other files use the nearest `package.json`
-   `type` (default `commonjs`).
-2. **U** A TypeScript file uses the compiler `module` setting when that setting
-   decides the output kind. The record says which rule decided.
-3. **U** From each pass, keep only the edges for files of that kind. A file of
-   unknown kind keeps both, with a reason.
-4. **D** A dependency-cruiser fixture with dual-condition exports gives the
-   edges in the scenarios.
-
+1. **U** `emittedKind(path, compilerModule, nearestPackage)` gives the module
+   kind of the code that runs: `.mts` is an ES module and `.cts` is CommonJS.
+   For `.ts` and `.tsx`, `commonjs` gives CommonJS and `es2015` to `esnext`
+   give ES modules. `node16`, `node18`, `node20` and `nodenext` use the `type`
+   of the nearest `package.json` in the snapshot (default `commonjs`).
+   `preserve`, no setting, and JavaScript files keep the syntax as written.
+   The record says which rule decided, and names the setting or the
+   `package.json`. A `package.json` that cannot be read gives an unknown kind
+   with a reason.
+2. **U** In a file that compiles to CommonJS, `import` and `export ... from`
+   statements resolve with the `require` condition. A dynamic `import()` does
+   too with `module: commonjs`, and keeps the `import` condition with `node16`
+   to `nodenext`, as TypeScript emits it. Type-only imports stay
+   `pre-compilation-only`.
+3. **U** Change the graph helper checks so that a pass can read `import` syntax
+   with the `require` condition for these files only. Every other file keeps
+   today's passes.
+4. **N** The scenarios above, with the checkout's dependency-cruiser. The pinned
+   GA-10a edges change on purpose.
 ---
 
 ### GA-01a Decision file for accepting and correcting statements
@@ -853,7 +1156,7 @@ Feature: Read symbol membership
 
 ### GA-02a Symbol selectors divide files
 
-**Gap:** G2 and G3 (design 174–188), D13. **Needs:** GA-03b, GA-06a.
+**Gap:** G2 and G3 (design 174–188), D13. **Needs:** GA-03b, GA-06a2.
 
 ```gherkin
 @producer
@@ -994,7 +1297,7 @@ write a failing unit test for the engine.
 
 ### GA-07f Resource access by receiver type
 
-**Gap:** G7 (design 240–245, 877–878). **Needs:** GA-06b.
+**Gap:** G7 (design 240–245, 877–878). **Needs:** GA-06b, GA-06a2.
 
 ```gherkin
 @producer
@@ -1022,6 +1325,8 @@ Feature: Find resource access sites
 ### GA-08 Knip plugins without settings files
 
 **Gap:** G8 (design 782–792), D15. **Needs:** GA-00d, GA-07e.
+
+**Changed by plan change 17:** D23 replaces D15. Steps 2 and 5 copy the plugin patterns. No plugin is turned on.
 
 ```gherkin
 @producer @docker
@@ -1058,6 +1363,8 @@ It fails today because every plugin is set to `false`.
 ### GA-11b Viewer shows discovery questions and gaps
 
 **Gap:** G11 (design 190–191, 392–394), D17, D20. **Needs:** GA-11a, GA-00a, GA-01a.
+
+**Changed by plan change 18:** GA-11b1 does step 1, the producer part. GA-11b2 does steps 2 to 7, the viewer part.
 
 ```gherkin
 @baseline-viewer @browser
@@ -1111,8 +1418,86 @@ you want them fixed:
   `src/platform` files two owners (`src/domain/starter-baseline.ts:10-17`).
   This is a small fix: add `parent` links or `excludePaths`.
 - **Defect 4:** the Knip image base tag and its transitive dependencies are not
-  pinned (`step-2-cookbook.md:663-665`).
+  pinned (`packages/producer/src/stage-2-tool-image.ts:15`, and the same text
+  in `packages/producer/src/stage-4-commands.ts:330`; GA-00b2 moved it out of
+  `step-2-cookbook.md`).
 - **P1–P13:** the partial findings. GA-11b works around P1 (unknown subjects
   become "Unplaced"). GA-00c fixes defect 1. GA-12 and GA-00e touch P7 but do
   not close it (P7 also asks for a prompt-version field, a template check, and
   a check that cited evidence was supplied).
+
+### Open after the final review
+
+Every ticket of this plan has a merged PR (tomer-mayara/choom#58 to
+tomer-mayara/choom#91, and tomer-mayara/choom#66 for the plan update). The
+review-fix PRs are tomer-mayara/choom#92 to tomer-mayara/choom#95. These
+items stay open.
+
+**Owner decisions:**
+
+- D21 (plan change 4): a symbol name is any JavaScript identifier name, with no
+  reserved-word list. GA-02a does this as proposed.
+- Plan change 18 (the GA-11b split) and plan change 19 (the final review,
+  with the CI `web` job limit of 25 minutes).
+- D5: keep the GA-08 settings-file filter as a test of names, or keep a list of
+  settings files by hand. Some files are unclear, such as `dangerfile.*`,
+  `plopfile.*` and `sanity.config.*`.
+
+**How the stack merged:**
+
+- tomer-mayara/choom#57 was squash-merged, so the stack branches did not hold
+  its commit. Instead of a rebase of the stack, `main` (with tomer-mayara/choom#57
+  and tomer-mayara/choom#96) was merged into the top branch of the stack. The
+  report in `main` had the same bytes as the report that the stack started
+  from, so that merge kept the stack's report.
+- tomer-mayara/choom#96 fixes the flaky scenario "Reach a large header with the
+  keyboard". It merged into `main` first, so the stack has the fix.
+- Every PR of the stack then targeted `main`, and tomer-mayara/choom#95 merged
+  with a merge commit after its CI passed on the merged tree.
+- The heads of tomer-mayara/choom#63 to tomer-mayara/choom#66 keep a test whose
+  scratch folder holds a read-only copy, which a runner without root rights
+  cannot remove (`EACCES` in `local-checks.test.ts`). GA-00b2
+  (tomer-mayara/choom#67) fixes the cleanup. No state of `main` has the failing
+  test, because the stack merged with one merge commit.
+
+**Limits that the PRs record and do not fix:**
+
+- Producer:
+  - `recover-capture.ts` still saves `settings.mts` in the new run folder and
+    runs it, as B3 was for `inventory.mjs`.
+  - Suspected, not shown by a probe: the publisher can register stray files
+    of an attempt folder.
+  - Stage 2 finish refusals print a stack trace.
+  - A bad `%` escape in an evidence reference gives a bare "URI malformed".
+- Hidden reasoning (GA-12): a key such as `reasoning_content`, a string field
+  named `thinking`, and tags in fenced blocks or inline code are not refused.
+- Questions and gaps: Stages 1 to 3 count the 4 MiB text budget only over the
+  questions and gaps. A draft near that limit can still fail at Stage 6.
+- Entry and resource rules:
+  - The rules do not follow a function parameter (`routes(app)`) or a value in
+    an object literal.
+  - Next.js finds its entries from its folders, and no rule reads them.
+  - A global `declare var require` in a snapshot `.d.ts` turns off every
+    JavaScript `require` match, with no gap.
+  - The deprecated `module` settings None, AMD, UMD and System give the
+    `require` condition.
+  - `export { config as default }` gives the reason "has no export default".
+  - A `package.json` over 64 MiB with a `bin` field gives a candidate that the
+    publisher refuses.
+  - Stage 1 and Stage 2 refuse a `package.json` with a byte order mark, and
+    Stage 4 reads it.
+- Code units: the Stage 5 `parts` request is not required, and the site checks
+  in a divided file stay at file level.
+- Viewer:
+  - Lists are not virtualized: 5,000 unplaced records take about 3 s to show.
+  - Inter is not bundled, so the layout depends on the fonts of the system. With
+    DejaVu Sans and a root font size of 110%, the plot at 320×640 is smaller
+    than 100 px.
+- Copies that a later DRY ticket can share:
+  - the safe-path rule (about 12 copies) and the frame-wait helpers of the
+    browser tests (7);
+  - the trusted-checkout loaders, and `safe`, `directory` and the digest check
+    in several producer modules;
+  - the bounded YAML reader in the producer and in the viewer;
+  - the 4 MiB string budget in the app and in `@choom/baseline-model`;
+  - the source-file rule in `stage-3-collect.ts`.

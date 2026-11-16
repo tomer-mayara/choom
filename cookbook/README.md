@@ -1,20 +1,47 @@
 # Cookbook
 
 Start at the [root component manifest](../component.yaml). Paths are relative to
-each manifest. The four implementation components share the constraint artifacts
+each manifest. The six implementation components share the constraint artifacts
 here. TypeSpec owns their data and operation contracts; behavior and native
 configuration retain their own artifacts.
 
 | Component | Owner | Behavior | Interface |
 | --- | --- | --- | --- |
 | Workspace UI and layout | [`src/component.yaml`](../src/component.yaml) | [Baseline opening](behavior/baseline-viewer/open.feature) and [file input](behavior/baseline-viewer/input.feature) | [Workflow](interfaces/workflow.tsp), [baseline codec](interfaces/baseline-codec.tsp), and [UI outcomes](interfaces/workspace.md) |
-| Baseline model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [Baseline validation](behavior/baseline-viewer/validation.feature) | [Baseline contract](interfaces/baseline.tsp), [validation notes](interfaces/baseline.md), and [validator](../src/domain/baseline.ts) |
+| Baseline model | [`packages/baseline-model/component.yaml`](../packages/baseline-model/component.yaml) | [Baseline validation](behavior/baseline-viewer/validation.feature) | [Baseline contract](interfaces/baseline.tsp), [validation notes](interfaces/baseline.md), and [validator](../packages/baseline-model/src/baseline.ts) |
+| Producer | [`packages/producer/component.yaml`](../packages/producer/component.yaml) | [Baseline recovery](behavior/producer/recovery.feature), [visible LLM response](behavior/producer/visible-response.feature), [parsing profile](behavior/producer/parsing-profile.feature), [Git identity](behavior/producer/git-identity.feature), [snapshot search](behavior/producer/snapshot-search.feature), [source structure](behavior/producer/source-structure.feature), [module kinds](behavior/producer/module-kinds.feature) and [symbol references](behavior/producer/symbol-references.feature) | [Stage 4 and 5 record format](../docs/design/app-a/record-format.md) and the [command line](../packages/producer/src/cli.ts) |
+| Duplication model | [`src/domain/component.yaml`](../src/domain/component.yaml) | [Duplication report validation](behavior/baseline-viewer/duplication-report-codec.feature) | [Duplication contract](interfaces/interface-duplication.tsp) and [report notes](interfaces/interface-duplication.md) |
 | Desktop adapter | [`src/platform/component.yaml`](../src/platform/component.yaml) | Baseline file selection and reading through the workspace | [Native file operations](interfaces/desktop-documents.tsp); [desktop boundary](interfaces/desktop.md) |
 | Native shell | [`src-tauri/component.yaml`](../src-tauri/component.yaml) | [Installed baseline acceptance](../docs/change-requests/BV-native-acceptance.md) | Native file operations, Tauri [capability](../src-tauri/capabilities/main.json), and [configuration](../src-tauri/tauri.conf.json) |
 
+The producer also owns the [baseline decisions](behavior/producer/baseline-decisions.feature)
+behavior: it records human decisions about a published baseline.
+It owns the [baseline versions](behavior/producer/baseline-versions.feature)
+behavior too: it makes the next baseline version from recorded decisions.
+It also owns the [behavior entry candidates](behavior/producer/behavior-entries.feature)
+behavior: Stage 4 applies its pinned behavior entry rules to the source.
+It owns the [code units](behavior/producer/code-units.feature) behavior too:
+symbol selectors divide a file into code units, which the producer checks on the saved snapshot.
+It owns the [dependencies of divided files](behavior/producer/part-dependencies.feature)
+behavior too: Stage 5 places each import of a divided file in the part that uses it.
+It owns the [resource access sites](behavior/producer/resource-access.feature)
+behavior too: Stage 4 applies its pinned resource access rules to the source.
+It owns the [Knip plugin patterns](behavior/producer/knip-plugins.feature)
+behavior too: Stage 2 copies the default entry patterns of Knip plugins and never runs a settings file.
+It owns the [discovery digest](behavior/producer/discovery-digest.feature)
+behavior too: Stage 6 binds the discovery result to the saved baseline file by its SHA-256.
+
+The workspace also owns the [discovery result](behavior/baseline-viewer/discovery-result.feature)
+behavior: a reader attaches the discovery result of the open baseline file, reads
+its recorded questions and gaps beside the items that they name, and copies a
+decision-file entry. The baseline model owns its [contract](interfaces/discovery-result.tsp).
+
 The workspace owns `architecture/`, `components/`, and `lib/`. It connects
-baseline file input to validation, layout, and the view. The model and desktop
-adapter have separate import boundaries. Cargo dependencies and Tauri
+baseline file input to validation, layout, and the view. The baseline model,
+duplication model, and desktop adapter have separate import boundaries. The
+baseline model is the `@choom/baseline-model` workspace in `packages/`; it
+imports no app code. The producer is the `@choom/producer` workspace; it imports
+no app code except the duplication helpers' listed use of the viewer YAML readers. Cargo dependencies and Tauri
 capabilities define the native boundary.
 
 BV-03 supplies ordinary baseline opening and a basic component view. Nested
@@ -28,10 +55,13 @@ installed-app acceptance.
 The [CR-001 records](../docs/change-requests/CR-001-architecture-import.md)
 describe the former repository-analysis app. The separate
 [manual producer workflow](../docs/design/app-a/start-here.md) can create
-baselines and evidence; the viewer does not run it.
+baselines and evidence; the viewer does not run it. Its helpers are in
+[`packages/producer/src/`](../packages/producer/src/).
 
 The [TypeSpec entrypoint](interfaces/main.tsp) imports the owned contracts.
-Generated TypeScript declarations live with the [domain](../src/domain/generated/contracts.ts)
+Generated TypeScript declarations live with the
+[baseline model](../packages/baseline-model/src/generated/contracts.ts),
+[domain](../src/domain/generated/contracts.ts),
 and [platform](../src/platform/generated/contracts.ts) owners, and with the
 [workflow](../src/architecture/generated/workflow.ts) and
 [baseline codec](../src/lib/generated/contracts.ts). The generated
@@ -88,7 +118,7 @@ references; it does not infer missing facts or resolve external evidence.
 The app has no HTTP API or event transport. UI outcomes and native capabilities
 remain covered by their behavior and configuration checks.
 
-All five manifests share one unmeasured [OpenSLO Service](observability/service.yaml).
+All seven manifests share one unmeasured [OpenSLO Service](observability/service.yaml).
 There is no production SLI, SLO, or alert policy. The
 [evidence table and remaining work](TODO.md) separate local verification from
 native acceptance and production measurement prerequisites.
@@ -111,7 +141,7 @@ if needed, and preserves partial logs instead of reporting a passing summary.
 
 | Group | Commands | Scope of a pass |
 | --- | --- | --- |
-| Behavioral | `bun run test`, `bun run test:behavior`, `bun run test:e2e` | Current unit and Cucumber outcomes, including the built browser; installed-app checks run separately |
+| Behavioral | `bun run test`, `bun run test:behavior`, `bun run test:e2e` | Current unit, baseline-model integration, and Cucumber outcomes, including the built browser; installed-app checks run separately |
 | Observability | `bun run check:cookbook` | Existing component links, contract ownership, and Service shape; no production measurement |
 | Architectural | `bun run check:dependencies` | Enforced TypeScript import rules |
 | Interface | `bun run check:contracts` | TypeSpec format/compilation, current generated outputs, TypeScript implementation conformance, and runtime interface cases; broader model/adapter behavior is in Behavioral |

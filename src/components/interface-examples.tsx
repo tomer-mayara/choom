@@ -1,5 +1,5 @@
-import type { BaselineDocumentedEntry, BaselineDocumentationExample } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { BaselineDocumentedEntry, BaselineDocumentationExample } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { RecordedStatus } from "./interface-overview.tsx";
 import { Button } from "./ui/button.tsx";
 

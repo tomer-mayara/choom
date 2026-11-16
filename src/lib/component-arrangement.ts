@@ -1,4 +1,4 @@
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type { ArchitectureLayout } from "./architecture-layout.ts";
 import { componentControlHeight } from "./component-geometry.ts";
 import { componentPosition } from "./component-positions.ts";

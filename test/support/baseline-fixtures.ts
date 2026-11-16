@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 
 export function fixtureItem<Items extends readonly unknown[]>(items: Items, index = 0): Items[number] {
   const item = items[index];
@@ -79,6 +79,12 @@ export function invalidBaseline(problem: string): { input: unknown; path: string
       return { input, path: "components.0.groupingReason.acceptanceRef" };
     case "an unsupported membership selector":
       component.membership.value.paths = ["checkout/*.ts"];
+      return { input, path: "components.0.membership.value.paths.0" };
+    case "a parent version ID equal to its own ID":
+      input.parentId = input.id;
+      return { input, path: "parentId" };
+    case "a symbol written as a membership path":
+      component.membership.value.paths = ["checkout/order.ts#createOrder"];
       return { input, path: "components.0.membership.value.paths.0" };
     default:
       throw new Error(`Unknown invalid baseline example: ${problem}`);

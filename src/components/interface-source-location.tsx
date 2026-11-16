@@ -1,5 +1,5 @@
-import type { BaselineSourceLocation } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { BaselineSourceLocation } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 
 export function InterfaceSourceLocation({ location }: { location?: ReadonlyData<BaselineSourceLocation> }) {
   if (!location) return <p className="text-muted-foreground">Location not recorded.</p>;

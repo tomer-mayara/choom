@@ -2,7 +2,7 @@
 
 [interface-duplication.tsp](interface-duplication.tsp) owns the saved report.
 [interface-duplication-codec.tsp](interface-duplication-codec.tsp) owns decoding
-outcomes. Report version 1 supports baseline versions 1, 2, 3 and 4. The viewer
+outcomes. Report version 1 supports baseline versions 1, 2, 3, 4 and 5. The viewer
 reads saved judgments; it does not run a detector or fetch cited source files.
 
 `decodeDuplicationReportYaml(text, baseline, baselineSha256)` reads strict YAML,
@@ -55,10 +55,11 @@ Foreign interfaces, foreign entries and unresolved baseline field references
 are rejected. Version 1 has no entry IDs. Owners and display names come from the
 bound baseline; unknown owners remain valid.
 
-Versions 3 and 4 retain version 2 documentation, including signatures and entry
+Versions 3 to 5 retain version 2 documentation, including signatures and entry
 interaction statements. Comparisons use those same saved fields and names.
 Source-use assessments do not replace contract facts or change a duplication
-judgment. Version 4 system-entry records do not change a duplication judgment.
+judgment. Version 4 and 5 system-entry records and version 5 symbol selectors do
+not change a duplication judgment.
 A report still binds to the exact ID, version and original bytes of its baseline.
 
 Source references use safe snapshot-relative paths, file SHA-256, positive

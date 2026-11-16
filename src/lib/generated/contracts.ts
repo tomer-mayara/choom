@@ -1,5 +1,7 @@
 // Generated from TypeSpec by bun run contracts:generate. Do not edit.
 
+import type * as ChoomBaselineModel from "@choom/baseline-model/contracts";
+
 import type * as ChoomDomain from "../../domain/generated/contracts";
 
 export interface BaselineCodec {
@@ -18,11 +20,19 @@ export type BaselineDecodeFailureCode = "unsupported-version" | "invalid-encodin
 
 export type DecodeBaselineOutcome = DecodedBaseline | BaselineDecodeFailure;
 
+export type DecodeDiscoveryResultOutcome = DecodedDiscoveryResult | DiscoveryDecodeFailure;
+
 export type DecodeDuplicationReportOutcome = DecodedDuplicationReport | DuplicationDecodeFailure;
 
 export interface DecodedBaseline {
   status: "success";
-  baseline: ChoomDomain.Baseline;
+  baseline: ChoomBaselineModel.Baseline;
+  durationMs: number;
+}
+
+export interface DecodedDiscoveryResult {
+  status: "success";
+  result: ChoomBaselineModel.DiscoveryResult;
   durationMs: number;
 }
 
@@ -30,6 +40,20 @@ export interface DecodedDuplicationReport {
   status: "success";
   report: ChoomDomain.DuplicationReport;
   durationMs: number;
+}
+
+export interface DiscoveryDecodeFailure {
+  status: "failure";
+  stage: "decoding";
+  code: DiscoveryDecodeFailureCode;
+  message: string;
+  durationMs: number;
+}
+
+export type DiscoveryDecodeFailureCode = "unsupported-version" | "invalid-encoding" | "invalid-document" | "limit-exceeded" | "baseline-mismatch";
+
+export interface DiscoveryResultCodec {
+  decode(text: baselineYaml, baseline: ChoomBaselineModel.Baseline, baselineSha256: ChoomBaselineModel.baselineFileDigest): DecodeDiscoveryResultOutcome;
 }
 
 export interface DuplicationDecodeFailure {
@@ -43,7 +67,7 @@ export interface DuplicationDecodeFailure {
 export type DuplicationDecodeFailureCode = "unsupported-version" | "invalid-encoding" | "invalid-document" | "limit-exceeded" | "baseline-mismatch";
 
 export interface DuplicationReportCodec {
-  decode(text: baselineYaml, baseline: ChoomDomain.Baseline, baselineSha256: ChoomDomain.duplicationDigest): DecodeDuplicationReportOutcome;
+  decode(text: baselineYaml, baseline: ChoomBaselineModel.Baseline, baselineSha256: ChoomDomain.duplicationDigest): DecodeDuplicationReportOutcome;
 }
 
 export type baselineYaml = string;

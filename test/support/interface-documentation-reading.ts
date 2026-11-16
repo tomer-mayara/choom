@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { Baseline, BaselineDocumentedEntry, BaselineInterface } from "../../src/domain/generated/contracts.ts";
+import type { Baseline, BaselineDocumentedEntry, BaselineInterface } from "@choom/baseline-model/contracts";
 
 export interface PublishedEntry { item: BaselineInterface; entry: BaselineDocumentedEntry }
 export interface SignatureReading {

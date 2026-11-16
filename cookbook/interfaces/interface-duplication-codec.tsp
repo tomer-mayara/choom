@@ -44,7 +44,7 @@ union DecodeDuplicationReportOutcome {
 interface DuplicationReportCodec {
   decode(
     text: baselineYaml,
-    baseline: Choom.Domain.Baseline,
+    baseline: Choom.BaselineModel.Baseline,
     baselineSha256: Choom.Domain.duplicationDigest,
   ): DecodeDuplicationReportOutcome;
 }

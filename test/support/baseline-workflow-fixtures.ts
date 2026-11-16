@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { stringify } from "yaml";
 import { componentControlHeight } from "../../src/lib/component-geometry.ts";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import type { LoadWorkflowDependencies, SelectedBaseline } from "../../src/architecture/load-workflow.ts";
 import { baselineExample } from "./baseline-fixtures.ts";
 

@@ -1,6 +1,6 @@
-import type { Baseline } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 
 export interface InterfaceArc {
   id: string;

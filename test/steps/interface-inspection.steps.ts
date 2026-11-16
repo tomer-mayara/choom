@@ -9,7 +9,7 @@ import { stringify } from "yaml";
 import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 import { interfaceInspectionBaseline } from "../support/interface-inspection-fixtures.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { hoverArcLabel, unobscuredArcPoint } from "../support/interface-pointer.ts";
 
 interface ArcInspectionWorld extends World {

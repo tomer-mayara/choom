@@ -1,38 +1,38 @@
-import type { AcceptedTextStatement, BaselineInterface, BaselineSourceAssessment, BaselineSourceUse, ProposedTextStatement } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { BaselineDocumentation, BaselineInterface, BaselineSourceAssessment, BaselineSourceUse } from "@choom/baseline-model/contracts";
+import { documentationStatements, type DocumentationStatement, itemStatementFields, type StatementState }
+  from "@choom/baseline-model/item-statements";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 
-type Metadata = ReadonlyData<Pick<ProposedTextStatement, "status" | "evidenceRefs">
-  | Pick<AcceptedTextStatement, "status" | "evidenceRefs" | "acceptanceRef">>;
 interface SourceStatement { path: string; label: string; status: "accepted" | "proposed"; evidenceRefs: readonly string[]; acceptanceRef?: string }
 interface SourceReference { id: string; statements: SourceStatement[]; uses: ReadonlyData<BaselineSourceUse>[]; scope: boolean }
+interface Named { readonly id: string; readonly name: string }
+
+const legacyLabels: Readonly<Record<typeof itemStatementFields.interfaces[number], string>> = {
+  owner: "Provider", publicAccess: "Interface entries", allowedConsumers: "Access rule", promises: "Interface-wide contract",
+};
+
+// A name that repeats in its list gets its ID, so that each label is distinct.
+function distinctName(items: readonly Named[], item: Named): string {
+  return items.some((other) => other.id !== item.id && other.name === item.name) ? `${item.name} (${item.id})` : item.name;
+}
+
+function documentationLabel(docs: ReadonlyData<BaselineDocumentation>, { part, entry, example }: DocumentationStatement): string {
+  if (entry === undefined) return "Purpose";
+  const name = distinctName(docs.entries, entry);
+  return example === undefined ? `${name}: ${part}` : `${name}: ${distinctName(entry.examples, example)} example`;
+}
 
 /** The paths use saved local IDs so repeated example IDs stay in their entry. */
 export function interfaceSourceStatements(item: ReadonlyData<BaselineInterface>): SourceStatement[] {
   const result: SourceStatement[] = [];
-  function add(path: string, label: string, statement: Metadata) {
+  function add(path: string, label: string, statement: StatementState) {
     result.push({ path: `${item.id}.${path}`, label, status: statement.status, evidenceRefs: statement.evidenceRefs,
       ...(statement.status === "accepted" ? { acceptanceRef: statement.acceptanceRef } : {}) });
   }
-  add("owner", "Provider", item.owner);
-  add("publicAccess", "Interface entries", item.publicAccess);
-  add("allowedConsumers", "Access rule", item.allowedConsumers);
-  add("promises", "Interface-wide contract", item.promises);
+  for (const field of itemStatementFields.interfaces) add(field, legacyLabels[field], item[field]);
   const docs = item.documentation;
   if (docs) {
-    add("documentation.summary", "Purpose", docs.summary);
-    for (const entry of docs.entries) {
-      const path = `documentation.entries.${entry.id}`;
-      const name = docs.entries.some((other) => other.id !== entry.id && other.name === entry.name) ? `${entry.name} (${entry.id})` : entry.name;
-      add(`${path}.kind`, `${name}: kind`, entry.kind);
-      add(`${path}.description`, `${name}: description`, entry.description);
-      if (entry.signature) add(`${path}.signature`, `${name}: signature`, entry.signature);
-      if (entry.interaction) add(`${path}.interaction`, `${name}: interaction`, entry.interaction);
-      for (const example of entry.examples) {
-        const exampleName = entry.examples.some((other) => other.id !== example.id && other.name === example.name)
-          ? `${example.name} (${example.id})` : example.name;
-        add(`${path}.examples.${example.id}.content`, `${name}: ${exampleName} example`, example.content);
-      }
-    }
+    for (const statement of documentationStatements(docs)) add(statement.field, documentationLabel(docs, statement), statement.statement);
   }
   return result;
 }

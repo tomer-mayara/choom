@@ -49,10 +49,13 @@ export default function App({ workspace = defaultWorkspace }: { workspace?: Work
           if (event.relatedTarget instanceof Node) focusInView.current = event.currentTarget.contains(event.relatedTarget);
           else if (event.target instanceof Node && event.target.isConnected) focusInView.current = false;
         }}>
-        {current ? <ArchitectureDiagram baseline={current.baseline} layout={current.layout}
+        {current ? <ArchitectureDiagram baseline={current.baseline} layout={current.layout} baselineSha256={current.sha256}
           duplication={snapshot.duplication}
           onOpenDuplicationReport={() => { void workspace.workflow.openDuplicationReport(); }}
           onRemoveDuplicationReport={() => { void workspace.workflow.removeDuplicationReport(); }}
+          discovery={snapshot.discovery}
+          onOpenDiscoveryResult={() => { void workspace.workflow.openDiscoveryResult(); }}
+          onRemoveDiscoveryResult={() => { void workspace.workflow.removeDiscoveryResult(); }}
           reportBusy={snapshot.state.phase !== "idle"} /> : (
           <>
             {!showExample ? (

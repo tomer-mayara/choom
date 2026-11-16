@@ -17,6 +17,8 @@ artifacts:
       enforcer: dependency-cruiser
       inputs:
         - src
+        - packages/baseline-model/src
+        - packages/producer/src
     - path: src-tauri/Cargo.toml
     - path: src-tauri/capabilities/main.json
   contracts:
@@ -27,5 +29,9 @@ artifacts:
 children:
   - name: workspace
     path: ./src
+  - name: baseline-model
+    path: ./packages/baseline-model
+  - name: producer
+    path: ./packages/producer
   - name: native-shell
     path: ./src-tauri

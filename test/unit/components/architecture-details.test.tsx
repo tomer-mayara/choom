@@ -1,10 +1,11 @@
 import { afterEach, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ArchitectureDetails } from "../../../src/components/architecture-details.tsx";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { baselineDetailsExample, baselineWithUnknownDetails, longAccessRules, recordedAcceptanceRef, recordedEvidenceRef, recordedMarkup } from "../../support/baseline-detail-fixtures.ts";
 import { accepted, fixtureItem, proposed, reviewedBaseline } from "../../support/baseline-fixtures.ts";
 import { originalInterfaceRecord, selectInterfaceTab } from "../../support/interface-details-dom.ts";
+import { pricingMembership, symbolMembershipBaseline } from "../../support/symbol-membership-fixtures.ts";
 
 afterEach(cleanup);
 
@@ -52,6 +53,32 @@ test("component details distinguish an absent field, a null parent, and empty ex
   const recordedParent = within(screen.getByRole("group", { name: "Parent" }));
   expect(recordedParent.getByText(parent.id)).toBeTruthy();
   expect(recordedParent.getByText("Accepted (recorded)")).toBeTruthy();
+});
+
+test("version 5 membership lists each symbol with its file path as readable text", () => {
+  const baseline = symbolMembershipBaseline();
+  pricingMembership(baseline).symbols?.push({ path: "billing/tax.ts", symbol: "default" });
+  const original = structuredClone(baseline);
+  render(<ArchitectureDetails baseline={baseline} panel={{ kind: "component", componentId: "pricing" }} />);
+  const membership = screen.getByRole("group", { name: "Membership" });
+  const symbols = within(membership).getByRole("group", { name: "Symbols" });
+  expect(within(within(symbols).getByRole("list")).getAllByRole("listitem").map((item) => item.textContent))
+    .toEqual(["computePrice in billing/invoice.ts", "default in billing/tax.ts"]);
+  expect(within(membership).getByRole("group", { name: "Paths" }).querySelector("pre")?.textContent).toBe("[]");
+  expect(baseline).toEqual(original);
+});
+
+test("the symbol field keeps older formats, an absent list, and an empty list distinct", () => {
+  const older = baselineDetailsExample();
+  const { rerender } = render(<ArchitectureDetails baseline={older} panel={{ kind: "component", componentId: fixtureItem(older.components).id }} />);
+  expect(screen.queryByRole("group", { name: "Symbols" })).toBeNull();
+  const baseline = symbolMembershipBaseline();
+  const billing = fixtureItem(baseline.components);
+  rerender(<ArchitectureDetails baseline={baseline} panel={{ kind: "component", componentId: billing.id }} />);
+  expect(within(screen.getByRole("group", { name: "Symbols" })).getByText("Not recorded")).toBeTruthy();
+  billing.membership.value.symbols = [];
+  rerender(<ArchitectureDetails baseline={structuredClone(baseline)} panel={{ kind: "component", componentId: billing.id }} />);
+  expect(screen.getByRole("group", { name: "Symbols" }).querySelector("pre")?.textContent).toBe("[]");
 });
 
 test("interface details retain owner, public access, consumers, and each promise", () => {

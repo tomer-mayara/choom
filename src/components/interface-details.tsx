@@ -1,7 +1,7 @@
 import { Tabs } from "radix-ui";
 import { useLayoutEffect, useState, type FocusEvent, type ReactNode, type RefObject } from "react";
-import type { Baseline, BaselineInterface } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline, BaselineInterface } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { InterfaceOverview, InterfaceProvider, InterfaceRecordedStatus } from "./interface-overview.tsx";
 import { InterfaceExamples } from "./interface-examples.tsx";
 import { useExampleCopy } from "./use-example-copy.ts";
@@ -9,7 +9,7 @@ import { revealInterfaceFocus, useInterfaceTabs } from "./use-interface-tabs.ts"
 import { useInterfaceDisclosures } from "./use-interface-disclosures.ts";
 import { InterfaceSources } from "./interface-sources.tsx";
 import type { InterfaceReadingState } from "./interface-reading-state.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 
 // Radix mounts tab contents after its first commit; restore against that content's height.
 function TabBody({ restore, children }: { restore: () => void; children: ReactNode }) {

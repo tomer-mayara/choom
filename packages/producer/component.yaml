@@ -1,0 +1,30 @@
+name: producer
+description: Manual producer helpers and command line that recover a baseline and discovery result from one snapshot.
+
+artifacts:
+  behavior:
+    - path: ../../cookbook/behavior/producer/recovery.feature
+    - path: ../../cookbook/behavior/producer/baseline-decisions.feature
+    - path: ../../cookbook/behavior/producer/baseline-versions.feature
+    - path: ../../cookbook/behavior/producer/visible-response.feature
+    - path: ../../cookbook/behavior/producer/parsing-profile.feature
+    - path: ../../cookbook/behavior/producer/git-identity.feature
+    - path: ../../cookbook/behavior/producer/snapshot-search.feature
+    - path: ../../cookbook/behavior/producer/source-structure.feature
+    - path: ../../cookbook/behavior/producer/module-kinds.feature
+    - path: ../../cookbook/behavior/producer/symbol-references.feature
+    - path: ../../cookbook/behavior/producer/behavior-entries.feature
+    - path: ../../cookbook/behavior/producer/code-units.feature
+    - path: ../../cookbook/behavior/producer/part-dependencies.feature
+    - path: ../../cookbook/behavior/producer/resource-access.feature
+    - path: ../../cookbook/behavior/producer/knip-plugins.feature
+    - path: ../../cookbook/behavior/producer/discovery-digest.feature
+  observability:
+    - path: ../../cookbook/observability/service.yaml
+  architecture:
+    - path: ../../.dependency-cruiser.cjs
+  contracts:
+    - path: ../../cookbook/interfaces/behavior-entry-rules.tsp
+    - path: ../../cookbook/interfaces/resource-access-rules.tsp
+    # The Stage 4 and 5 review records, the Stage 1 settings and Git identity records, the version 4 publication rules, the decision record and the next baseline version.
+    - path: ../../docs/design/app-a/record-format.md

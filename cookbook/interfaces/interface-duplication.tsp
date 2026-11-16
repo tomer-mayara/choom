@@ -3,6 +3,7 @@ import "./baseline.tsp";
 
 using TypeSpec.JsonSchema;
 
+@jsonSchema
 namespace Choom.Domain;
 
 @pattern("\\S")
@@ -109,7 +110,7 @@ model DuplicationSource {
 
   @minItems(2)
   @maxItems(2)
-  lines: baselineSourceLine[];
+  lines: Choom.BaselineModel.baselineSourceLine[];
 
   evidenceRef: duplicationReference;
 }
@@ -177,7 +178,7 @@ model DuplicationFinding {
 @extension("additionalProperties", false)
 model DuplicationBaselineBinding {
   id: duplicationReference;
-  formatVersion: 1 | 2 | 3 | 4;
+  formatVersion: 1 | 2 | 3 | 4 | 5;
   sha256: duplicationDigest;
 }
 

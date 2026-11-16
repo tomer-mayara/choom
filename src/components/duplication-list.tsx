@@ -1,6 +1,7 @@
 import { useState } from "react";
-import type { Baseline, DuplicationFinding, DuplicationReport } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { DuplicationFinding, DuplicationReport } from "../domain/generated/contracts.ts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 import { duplicationEndpointName, duplicationStatusLabels, findingsForRecord } from "./duplication-view.ts";
 import { Button } from "./ui/button.tsx";

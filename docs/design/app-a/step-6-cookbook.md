@@ -12,8 +12,10 @@ artifact is an error, not a coverage gap that the helper can ignore.
 The helper supports this Mode A first-baseline profile: retained Knip inputs
 and completed dependency graphs with explicit partial coverage. Other result
 formats need a separate validator.
-Baseline versions 1, 2, and 3 use the same shared record checks as Stages 4 and 5.
-For versions 2/3, review each documented entry, example, source note and exact
+Baseline versions 1 to 5 use the same shared record checks as Stages 4 and 5,
+which also divide each file that a version 5 symbol selector names on the saved
+snapshot and compare it with the [code units](record-format.md#divided-files).
+For versions 2 to 5, review each documented entry, example, source note and exact
 unknown-field subject against the
 [record contract](record-format.md#version-2-interface-documentation). A
 source-reviewed example means that its cited saved lines were reviewed; it does
@@ -34,6 +36,7 @@ that can bypass validation.
 - [2. Prepare the saved result](#2-prepare-the-saved-result)
 - [3. Publish the fixed records](#3-publish-the-fixed-records)
 - [4. Verify the completed result](#4-verify-the-completed-result)
+- [5. Record human decisions](#5-record-human-decisions)
 - [Saved state](#saved-state)
 
 ## 1. Review the complete result
@@ -43,7 +46,7 @@ snapshot file digests, selected fact references, and the published draft bytes.
 Keep the Stage 5 environment from its cookbook and run:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" verify 5
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 ```
 
 Do not rerun `finish 5`: its required state before publication no longer applies.
@@ -121,10 +124,10 @@ every sentence is consistent. A missing required artifact or wrong selected
 model is not a minor explanatory defect.
 Otherwise prepare a readiness record bound to the current three draft digests
 and selected fact references. Record semantic checks with supporting evidence,
-remaining limits, the complete prompt and response, supplied evidence, and
-exposed model metadata. Produce all five files listed below; include the exact
-readiness.yaml text in the full analysis-response.md. Do not claim new source
-inspection when reusing earlier reviews. The operator does not need to classify
+remaining limits, the complete prompt and visible response, supplied evidence,
+and exposed model metadata. Produce all five files listed below; include the exact
+readiness.yaml text in the complete visible analysis-response.md. Do not save
+hidden reasoning. Do not claim new source inspection when reusing earlier reviews. The operator does not need to classify
 files or fill analysis records. Do not generate or execute a save script.
 ```
 
@@ -136,8 +139,8 @@ the helper does not execute its contents.
 | `readiness.yaml` | Run, snapshot and baseline IDs; `status: ready-with-gaps`; the three draft digests; selected fact references; semantic checks and limits. |
 | `review-scope.json` | Run, snapshot and baseline IDs; supplied artifact references; review limits. |
 | `llm/analysis-prompt.md` | The complete review prompt and any additional directions used for this review. |
-| `llm/analysis-response.md` | The complete review response, including the exact readiness record. |
-| `llm/analysis-call.yaml` | Exposed provider, model, date and settings; optional `mode` describes the review process. Use `unknown` for settings that were not exposed. |
+| `llm/analysis-response.md` | The complete visible review response, including the exact readiness record. Do not save hidden reasoning. |
+| `llm/analysis-call.yaml` | Exposed provider, model, date and settings, and `hiddenReasoning: not-saved`; optional `mode` describes the review process. Use `unknown` for settings that were not exposed. |
 
 `readiness.yaml` has these top-level fields:
 
@@ -185,17 +188,21 @@ the trusted helper:
 
 ```sh
 export CHOOM_STAGE6_REVIEW="/absolute/path/to/stage-6-review"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" start \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 start \
   "$CHOOM_STAGE6_REVIEW"
 ```
 
-Use the helper in the trusted checkout for every command. Saved copies are
-provenance records; do not execute them from the attempt.
-Later commands require the same helper bytes, Node version and trusted YAML
-package that `start` recorded.
+Use the helper in the trusted checkout for every command. Each command first
+checks the [producer code record](record-format.md#producer-code-record) of the
+run. Later commands also require the Node version, the trusted YAML package and
+the module files of ts-morph that `start` recorded (`parserVersions` in
+`handoff.json`). ts-morph divides each file that a symbol selector of a version 5
+baseline names. A changed module file is refused, such as with `Trusted parser
+module changed since start: ts-morph/dist/ts-morph.js`. The saved cookbook is a
+record of the instructions.
 Keep that trusted checkout version available. To verify a run created with older
 helpers, use its matching trusted checkout and tool installation. Do not update
-frozen evidence copies or rehash them to match a new tool version.
+saved evidence copies or rehash them to match a new tool version.
 
 `start` verifies the input identities and review bindings. It checks all
 registered artifact digests and indexed snapshot files, then validates the
@@ -206,7 +213,7 @@ Working drafts and the run manifest remain unchanged.
 To perform the same preflight before creating the attempt, use:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" preflight \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 preflight \
   "$CHOOM_STAGE6_REVIEW"
 ```
 
@@ -217,7 +224,7 @@ This is optional and read-only. `start` includes the preflight.
 After `start` succeeds, run:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" finish
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 finish
 ```
 
 The helper checks the prepared attempt and original inputs again. It creates:
@@ -225,7 +232,24 @@ The helper checks the prepared attempt and original inputs again. It creates:
 | Path under the working folder | Contents |
 | --- | --- |
 | `baselines/<baseline-id>/baseline.yaml` | Exact reviewed baseline bytes, with proposed statements unchanged. |
-| `runs/<run-id>/discovery.yaml` | The reviewed discovery plus `baselineRef`. All selected facts, questions and gaps remain. |
+| `runs/<run-id>/discovery.yaml` | The reviewed discovery with `formatVersion: 2`, plus `baselineRef` and `baselineDigest`, the SHA-256 of the saved baseline file. All selected facts, questions and gaps remain. |
+
+The working discovery stays `formatVersion: 1`. Only the fixed discovery result
+gets version 2, because only Stage 6 knows the bytes of the fixed baseline. Its
+`baselineDigest` binds it to that exact file; a baseline ID alone can repeat
+across runs. The [record format](record-format.md#fixed-discovery-result) gives
+the fields.
+Every Stage 6 action also checks that the viewer can open the fixed discovery
+result: each question and gap has exactly its fields, and the result keeps the
+limits of the viewer. Stage 6 writes the result as YAML without aliases and reads
+the exact bytes back as the viewer reads them, so the YAML limits of the viewer,
+such as 250,000 lines, apply to the file too. `verify` reads the saved file in
+the same way. A refusal starts with "The viewer could not open the fixed
+discovery result." and names the field or the limit. Stage 6 then saves nothing.
+Stages 1 to 5 check each question and gap with the same rules before they save
+it, so a record does not first fail here after earlier stages froze it. A file
+over the YAML limits can still fail here; then start a new run with a smaller
+discovery result.
 
 The existing root `run.yaml` remains the canonical manifest for this manual
 run. Its registry gives the fixed files' paths and digests. The baseline's own
@@ -251,7 +275,7 @@ No graph, Knip profile, entry selection, owner or acceptance decision changes.
 For a read-only check after preparation and before publication, use:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" check
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 check
 ```
 
 `finish` includes this check. Do not rerun `start` or `finish` after success.
@@ -270,12 +294,16 @@ Do not remove or rewrite historical registered evidence to force a pass.
 After publication, use the completed-state check:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-6-commands.mjs" verify
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-6 verify
 ```
 
 Check that the final references resolve to the fixed files, their digests
 match, every inventory unit remains accounted for, and prior evidence remains
-unchanged. The current manual run keeps explicit unknown owners and incomplete
+unchanged.
+`verify` also runs the shared record checks on the saved fixed baseline and
+discovery result. The discovery result must name the ID of the baseline and the
+SHA-256 of the saved baseline file. A changed baseline file or a discovery result
+with another digest is refused. Do not edit either file to force a pass. The current manual run keeps explicit unknown owners and incomplete
 source coverage. Completion does not turn those limits into complete coverage.
 Read the generated coverage summaries as well as the structured progress fields.
 They must refer to the completed result and its selected facts, without a stale
@@ -286,8 +314,53 @@ new version or assessment, as described in the
 [design's saved-record rules](../llm-led-architecture-analysis.md#runs-and-saved-evidence).
 For this prototype, follow [record a correction](start-here.md#record-a-correction):
 use separate run notes for a minor prose defect, or a new run for a material
-change after Stage 5. Updating this helper fixes future attempts; it does not
-rewrite a completed run or make its frozen helper compatible with new commands.
+change after Stage 5. Updating this helper fixes future runs; it does not
+rewrite a completed run, and the producer code check refuses a changed helper for
+an existing run.
+
+## 5. Record human decisions
+
+Saving the baseline does not accept its statements. After the verified result,
+a person can accept or correct proposed statements. That person is the decider;
+a model cannot decide. Write the decision file in YAML outside the run folder, as
+the [record format](record-format.md#decision-record) describes. It can start
+with a comment, such as the comment of an entry that the viewer copies. Its
+`baselineDigest` is the `sha256` of the published baseline in the `run.yaml`
+registry, which is also the `baselineDigest` of the fixed discovery result. Then run:
+
+```sh
+export CHOOM_DECISIONS="/absolute/path/to/decisions.yaml"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline decide --run "$CHOOM_WORK" "$CHOOM_DECISIONS"
+```
+
+The command reads the file with the bounded YAML profile of a baseline and
+checks the decisions against the published baseline. It also checks the next
+version that `baseline next` makes from the record, so it refuses a record that
+`baseline next` would refuse. It refuses a decider who
+has the name of a model in the run's LLM call records. This check is a process
+rule: it does not prove that a person decided. The command saves the exact file
+once as `decisions/<id>.yaml` and prints its SHA-256; keep it with the run notes.
+The save is all or nothing: a failed command, such as on a full disk, leaves no
+part of the record, so you can run it again with the same ID.
+It does not change the baseline or another file of the run. Use a new ID for new
+decisions.
+
+Then make the next baseline version from the saved decision record. Give its ID:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline next --run "$CHOOM_WORK" --decisions decisions-001
+```
+
+The command checks the decisions again against the published baseline, and
+makes the [next version](record-format.md#next-baseline-version): the decided
+statements are `accepted` with the decision record ID as their `acceptanceRef`,
+and a correction also replaces the value. It saves the version once as
+`baselines/<baseline-id>-<decisions-id>/baseline.yaml`, and beside it the
+version record `version.json`, which links the version to the published
+baseline and to the decision record by SHA-256. The save is all or nothing: a
+failed command leaves no part of the folder, so you can run it again. The
+published baseline, the discovery result, `run.yaml` and the decision record do
+not change. The new version has no discovery result until a new run maps it.
 
 ## Saved state
 
@@ -295,5 +368,7 @@ rewrite a completed run or make its frozen helper compatible with new commands.
 | --- | --- | --- |
 | Before stage 6 | Reviewed stage 5 proposal. | Working discovery has no `baselineRef`; baseline recovery is pending. |
 | After `start` | Same proposal; fixed output is prepared. | Checkpoints, review and validation are saved. Working drafts are unchanged. |
-| After `finish` | Fixed version saved by digest. Statements remain proposed. | Fixed discovery selects that baseline. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
+| After `finish` | Fixed version saved by digest. Statements remain proposed. | Fixed discovery (version 2) selects that baseline by its ID and the SHA-256 of its file. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
 | After `verify` | Unchanged. | Read-only verification reports the saved result and its limits. |
+| After `baseline decide` | Unchanged. Statements stay proposed. | `decisions/<id>.yaml` holds the decision file. The discovery and the manifest do not change. |
+| After `baseline next` | Unchanged. A new folder holds the next version, with the decided statements accepted, and its version record. | The discovery, the manifest and the decision record do not change. The new version has no discovery result. |

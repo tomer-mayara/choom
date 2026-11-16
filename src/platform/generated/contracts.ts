@@ -3,6 +3,7 @@
 export interface BaselineDialogOperations {
   selectBaselineFile(): BaselineFileSelection;
   selectDuplicationReportFile(): BaselineFileSelection;
+  selectDiscoveryResultFile(): BaselineFileSelection;
 }
 
 export type BaselineFileSelection = string | null;

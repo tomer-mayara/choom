@@ -3,29 +3,47 @@
 Read this with the [stage 4 cookbook](step-4-cookbook.md) or
 [stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
 to the shared publisher. The publisher is a trusted tool. Review folders contain
-data only; do not generate or execute a run-specific save script.
+data only; do not generate or execute a run-specific save script. The last five
+sections define the [settings record](#settings-record) that Stage 1 saves and
+Stage 4 reads, the [Git identity record](#git-identity-record) that the Stage 1
+capture saves, the [producer code record](#producer-code-record) that every
+stage checks, the [decision record](#decision-record) of human decisions
+after Stage 6, and the [next baseline version](#next-baseline-version) that a
+decision record makes.
 
 ## Review folder
 
 The LLM prepares these **nine files**, in a new folder outside `CHOOM_WORK`.
 The operator saves them if the LLM cannot write there. Do not ask the operator
 to classify source files or fill analysis records. Return complete records,
-not patches, ellipses, or example IDs. Keep the full prompt and response.
+not patches, ellipses, or example IDs. Keep the full prompt and the complete
+visible response. Do not save hidden reasoning.
 
 | File | Contents |
 | --- | --- |
 | `baseline.proposed.yaml` | Complete proposed baseline. |
 | `discovery.proposed.yaml` | Complete working discovery; no `baselineRef` yet. |
 | `entry-analysis.yaml` | Complete updated entry analysis. |
-| `code-mapping.json` | Every inventory file, with one owner or an explicit unknown owner. |
-| `resource-access.json` | Source-supported resource observations. |
+| `code-mapping.json` | Every inventory file, or in Stage 5 the parts of a file that symbol selectors divide, with one owner or an explicit unknown owner. |
+| `resource-access.json` | Source-supported resource observations, and the name of the resource access candidates of Stage 4 `collect`. |
 | `llm/analysis-prompt.md` | Full instructions supplied to the LLM. |
-| `llm/analysis-response.md` | Full response, including the exact text of all five candidate records above. |
-| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`. Use `unknown` for values not exposed; settings can be a mapping or `unknown`. |
+| `llm/analysis-response.md` | Complete visible response, including the exact text of all five candidate records above. No thinking or reasoning blocks and no raw provider output. |
+| `llm/analysis-call.yaml` | `provider`, `model`, `date`, `settings`, `hiddenReasoning: not-saved`. Use `unknown` for values not exposed; settings can be a mapping or `unknown`. |
 | `llm/review-scope.json` | `formatVersion: 1`, `runRef`, `snapshotRef`, `attemptId`, `suppliedArtifactRefs`, `limits`. The last two are nonempty string arrays. |
 
-The folder must contain exactly these files. The full response can use fenced
+The folder must contain exactly these files. The visible response can use fenced
 blocks for the five records. Their contents must match the individual files.
+The publisher refuses a response with hidden reasoning outside the fenced blocks:
+
+- A line that starts with a `<thinking`, `<reasoning` or `<redacted_thinking`
+  tag, or with a `<think>` tag.
+- A complete block of one of these tags after other text, such as
+  `The review follows. <thinking>...</thinking>`. A tag in inline code does not count.
+- A raw provider JSON response, a JSON line, or a `data:` line of an event
+  stream that holds a `thinking`, `redacted_thinking` or `reasoning` block, or
+  a part with `thought: true`.
+
+It also refuses a call record without `hiddenReasoning: not-saved`.
 Do not write into the attempt or change the working drafts before publication.
 
 ## IDs and evidence
@@ -39,15 +57,59 @@ Stage 5 uses the same rule with its own attempt ID.
 
 Keep IDs for continuing components, candidates, mapped units and observations.
 Prefix new analysis IDs with the current attempt ID. Model IDs must not collide
-with artifact IDs, source-range IDs, or other current model IDs. A baseline item
-ID uses lowercase letters, digits and hyphens.
+with artifact IDs, source-range IDs, reserved IDs, or other current model IDs. A
+baseline item ID uses lowercase letters, digits and hyphens.
+
+The baseline ID is reserved. Stage 6 saves the fixed baseline under that ID, so
+no model record can use it: no component, interface, resource, rule, question,
+gap or other record. Stages 4, 5 and 6 refuse it with the same check, so a Stage 4
+or Stage 5 draft that uses it fails before the stage closes. Stage 1 `finish`
+refuses it as the ID of a question or gap, because later stages keep each
+question and gap unchanged. Each publication
+also reserves the IDs of the records that it saves, such as the Stage 4 or 5
+`publication.json` receipt, and the Stage 6 discovery result and attempt files.
+The refusal names the reserved ID.
 
 An `evidenceRefs` field is a nonempty array of registered artifact IDs, proposed
 current-attempt artifact IDs, saved source-range IDs, or exact JSON Pointers into
 those records. Use `/` and `~` escaping from JSON Pointer. References must resolve
 against the saved records. A filename alone is not an evidence reference.
+Every stage resolves a reference in the same way, so a reference that one stage
+accepts stays valid in later stages. A JSON Pointer points into a source record,
+or into a JSON (`.json`) or YAML (`.yaml`, `.yml`) file. A list index is `0` or a
+number without a leading zero, so `length` is not an index. Cite another file,
+such as a `.txt` output, only whole: its ID with no pointer or with an empty one (`#`).
 `subjectRefs` identifies the files, components, statements or earlier issues
 being discussed; it is not a substitute for `evidenceRefs`.
+
+A Stage 4 references record (`references-NNN.json`, see the
+[stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
+evidence. Cite the record, or one entry with a JSON Pointer, such as
+`s4-001-file@references-001.json#/references/0`. An entry supports scope and shows
+where to read; it is not a reviewed source range and does not prove a call. A
+`completeness` of `complete-within-scope` means that the query found no
+unresolved entry, not that the references are complete.
+
+A Stage 5 parts record (`parts-NNN.json`, see
+[Dependencies of file parts](#dependencies-of-file-parts)) is query evidence too.
+Cite the record, or one part or dependency with a JSON Pointer, such as
+`s5-001-file@parts-001.json#/parts/0`, in the evidence of the units of a divided
+file. It shows the ranges of the units and where the dependencies are; it is not
+a reviewed source range.
+
+The behavior entry candidates of Stage 4 `collect`
+(`behavior-entry-candidates.json`, see
+[Behavior entry candidates](#behavior-entry-candidates)) are tool evidence too.
+Cite the record, or one candidate with a JSON Pointer, such as
+`s4-001-file@behavior-entry-candidates.json#/candidates/0`. A candidate shows
+where to read. It is not a reviewed source range and does not prove an entry.
+
+The resource access candidates of Stage 4 `collect`
+(`resource-access-candidates.json`, see
+[Resource access candidates](#resource-access-candidates)) are tool evidence in
+the same way. Cite the record, or one candidate, such as
+`s4-001-file@resource-access-candidates.json#/candidates/0`. A candidate shows
+where to read. It does not prove access, the identity of a resource or its owner.
 
 Use saved numbered excerpts for source claims. An excerpt being available does
 not mean it was read by the LLM. A source review record must use the exact saved
@@ -62,31 +124,69 @@ described as future work beside a newly appended correction.
 
 ## Baseline
 
-All versions have `formatVersion`, `id`, `parentId: null`,
-`components`, `interfaces`, `resources`, and `rules`. Versions 3 and 4
-permit `sourceUsage`. Version 4 also permits `systemEntryPoints`. The
-top-level fields are strict in every version. Keep the initial baseline
+All versions have `formatVersion`, `id`, `parentId`, `components`,
+`interfaces`, `resources`, and `rules`. The first version of a baseline has
+`parentId: null`; a [next version](#next-baseline-version) names its parent.
+Versions 3 to 5 permit `sourceUsage`. Versions 4 and 5 also permit `systemEntryPoints`, and
+version 5 permits [symbol selectors](#version-5-symbol-selectors). The
+top-level fields are strict in every version. Stage 4 writes versions 1 to 4;
+Stage 5 can also write version 5, which Stage 6 saves. Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
+
+The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
+
+1. The **producer profile**, which is stricter than the shared rules. The
+   producer writes `formatVersion` 1 to 5. Stages 4 to 6 write only the first
+   version (`parentId: null`); `baseline next` writes the
+   [next version](#next-baseline-version). The baseline has at least one
+   component. Each component,
+   also a parent that only groups other components, has a non-null `purpose`,
+   a non-null `groupingReason` and at least one path in `membership.value.paths`.
+   In version 5, a component can own only symbols: it needs at least one path
+   or symbol.
+   A question or gap does not make a null purpose or grouping reason valid.
+   Each of these cases has its own message.
+2. The **shared baseline rules**: `baselineSchema` in `@choom/baseline-model`,
+   which the viewer also uses. See the
+   [baseline contract](../../../cookbook/interfaces/baseline.md). A refusal names
+   the path, the item and the rule, for example `The baseline is invalid at
+   components.0.parent.value (component cli): Component parents must not form a
+   cycle.`
+3. No two components name the same symbol of a file: a symbol has one direct
+   owner. Every statement is `proposed`, and the baseline is within the
+   [viewer limits](#reader-limits).
+4. The run checks: model IDs, resolved evidence, a question or gap for each
+   unknown value, the run snapshot and selected mapping, mapped owners, and saved
+   source ranges. The run checks divide each file that a symbol selector names, on
+   the saved snapshot, and compare the parts with the [code mapping](#code-mapping).
+   They divide only with the ts-morph whose module files the stage start pinned:
+   the Stage 4/5 publisher checks the files against the `versions.modules` of the
+   Stage 5 start handoff, and Stage 6 against the `parserVersions` of its own
+   start. A changed file is refused, such as with `Trusted parser module changed
+   since Stage 5 start: @ts-morph/common/dist/typescript.js`.
 
 Stage 1 still creates the empty version 1 seed. Versions 1 and 2 remain strict:
 version 1 has no interface `documentation`, and neither permits `sourceUsage`.
 Use `formatVersion: 4` when recording a system-entry assessment. When it is
 absent, use version 3 for source use, version 2 for interface documentation,
 or version 1 for the original fields. Version 4 retains version 2 interface
-documentation and version 3 source use, with their checks and limits. Stage 6
+documentation and version 3 source use, with their checks and limits. In Stage 5,
+use version 5 when symbol selectors divide a file; it retains the version 4 fields. Stage 6
 validates the selected version and saves its exact bytes. Completed runs keep
 their saved version.
 
 An intent statement has exactly `value`, `status: proposed`, and `evidenceRefs`.
 Unknown intent uses `value: null` and a question or gap whose `subjectRefs`
 includes the item ID or a field such as `interface-id.allowedConsumers`.
-Publication does not accept intent.
+Publication does not accept intent. After Stage 6, a person can accept or
+correct statements in a [decision record](#decision-record), and `baseline next`
+makes the [next baseline version](#next-baseline-version) from it.
 
 | Collection | Exact item fields |
 | --- | --- |
 | `components` | `id`, `name`, `purpose`, `membership`, `groupingReason`; optional `parent`. |
-| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2/3 also permit `documentation`. |
+| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2–5 also permit `documentation`. |
 | `resources` | `id`, `name`, `identity`, `owner`, `accessRules`. |
 | `rules` | `id`, `name`, `subject`, `expected`, `check`. |
 
@@ -96,8 +196,12 @@ Publication does not accept intent.
   names another component or is null; parent cycles are invalid.
 - `membership.value` has `paths` and optional `excludePaths`. Each selector is
   an exact snapshot-relative path or a subtree ending in `/**`. Other glob forms
-  are unsupported. Selectors must assign at most one direct owner. Exclude a
-  child's files from its parent; containment does not duplicate ownership.
+  are unsupported. A selector cannot contain `#`, so that a symbol reference such
+  as `src/a.ts#decode` is not read as a path. Version 5 names symbols in a
+  separate field; see [Version 5 symbol selectors](#version-5-symbol-selectors). Select a file whose name contains
+  `#` through a subtree of its folder. Selectors must assign at most one direct
+  owner. Exclude a child's files from its parent; containment does not duplicate
+  ownership.
 - An `owner` value names a component, or is null with an explained gap.
 - `publicAccess.value` lists access points as nonempty strings.
   `allowedConsumers.value` is a nonempty list of component IDs, or null when the
@@ -363,7 +467,8 @@ sourceUsage:
 ### Reader limits
 
 The publisher and Stage 6 use the viewer's bounded YAML profile before parsing
-the baseline. It permits one UTF-8 YAML document with JSON-compatible values.
+the baseline. Stage 6 also reads the file of the fixed discovery result with it.
+It permits one UTF-8 YAML document with JSON-compatible values.
 Aliases, anchors, explicit tags, directives, duplicate keys, non-string keys,
 and invalid flow separators are rejected. Limits are 16 MiB per baseline,
 32 YAML levels, 250,000 YAML nodes and line breaks, and 1,500,000 lexer tokens.
@@ -399,10 +504,11 @@ uses to the permission-link total or ignore data hidden by a view filter.
 
 Before publishing, review the documentation's meaning with its exact saved
 source ranges. Keep the review in `llm/analysis-response.md`. The nine-file packet
-does not change. During tool development, check versions 1 through 4
-with the public reader and display boundary, and record those
-results outside the publication packet. Reader success does not replace source
-review or the publisher's provenance checks.
+does not change. The shared baseline rules in `@choom/baseline-model` enforce the
+documentation, source-use and system-entry limits, as the viewer does. The
+publisher and Stage 6 also apply the YAML profile and the display limits above,
+so a published baseline passes the viewer's decoder and display limits. Reader
+success does not replace source review or the publisher's provenance checks.
 
 ## Version 4 system entry points
 
@@ -441,6 +547,36 @@ limitations have an 8 KiB UTF-8 limit. Use nonblank text and safe relative
 paths. The architecture record and link budgets count their existing
 collections separately.
 
+## Version 5 symbol selectors
+
+The shared reader in `@choom/baseline-model` also accepts `formatVersion: 5`.
+Version 5 is version 4 plus an optional `symbols` list in a component's
+`membership.value`: `symbols: [{ path, symbol }]`. Each `path` is one exact
+snapshot-relative file path under the selector rules above; a `/**` subtree
+and `#` are refused. Each `symbol` is a JavaScript identifier name, such as
+`computePrice`, or `default` for a default export. A component cannot repeat a
+`{ path, symbol }` pair. In version 5, `paths` can be empty when `symbols` is
+not, but a membership needs at least one path or symbol. Version 5 keeps the
+version 2 to 4 fields, checks, and limits, and the version 3 and 4 arrow rules.
+The reader checks the syntax only. See the
+[baseline contract](../../../cookbook/interfaces/baseline.md) for the full rules.
+
+The producer writes version 5 from Stage 5 on, and `baseline next` keeps it.
+Stage 4 maps whole files, and Stage 5 starts from that mapping, so the Stage 4/5
+publisher refuses version 5 and a mapping of files and parts in Stage 4. The
+producer adds these rules to the reader's checks:
+
+- A version 5 component can own only symbols: `paths` can be empty when
+  `symbols` is not.
+- A symbol has one direct owner: two components cannot name the same
+  `{ path, symbol }`. As for paths, a parent does not repeat its child's symbols.
+- Each selector divides its file. The record checks find the parts in the syntax
+  tree of the saved file and compare them with the units of the
+  [code mapping](#code-mapping). A selector whose file does not declare the
+  symbol at the top level matches nothing and is refused, and the message names
+  the selector. A reserved word is not refused for its spelling: `default` names
+  an anonymous default export.
+
 ## Entry analysis
 
 Use these fields:
@@ -457,7 +593,8 @@ Use these fields:
 | `llmReview` | `recorded`. |
 | `knipAssessment` | `{action: reuse, reason, evidenceRefs}`; explain why the saved analysis remains applicable. |
 | `reachability` | The context-specific graph selection described below. |
-| `behaviorEntries` | Source-supported behavior entry records. May be empty when none were established. |
+| `behaviorEntries` | Source-supported behavior entry records. May be empty when none were established. A behavior entry candidate is not a behavior entry; a behavior entry can cite one. |
+| `behaviorEntryCandidatesRef` | Stage 4: the candidates that its `collect` saved, such as `s4-001-file@behavior-entry-candidates.json`. Stage 5: the value of the selected Stage 4 entry analysis. See [Behavior entry candidates](#behavior-entry-candidates). |
 
 A `reviewedFiles` item has `id`, `snapshotRef`, `path`, `sha256`, and
 `lines: [first, last]`. It must match a saved excerpt. An inspected range does not
@@ -494,6 +631,76 @@ with a new capture and corrected settings. That capture can use the saved
 snapshot as its source if the original exclusions and limits remain explicit.
 Do not publish facts that depend on analysis with different inputs.
 
+## Behavior entry candidates
+
+Stage 4 `collect` saves `behavior-entry-candidates.json`: the candidates that the
+pinned Choom behavior entry rules found in the source files of the graph scope
+and in the `package.json` files of the snapshot, and the files that the default
+patterns of the Knip plugins in the Stage 2 profile select.
+The [stage 4 cookbook](step-4-cookbook.md#find-the-behavior-entry-candidates)
+gives the rules, the fields and the limits. The Stage 4 entry analysis names the
+record as `behaviorEntryCandidatesRef`, and the Stage 5 entry analysis keeps that
+value. The Stage 4/5 publisher refuses any other value.
+
+`behaviorEntries` and the candidates are different records. A candidate is tool
+evidence that a syntax rule found (`found: syntax-rule`), or a file that a Knip
+plugin pattern selects (`found: knip-plugin-pattern`). A behavior entry is a
+reviewed record with a component owner and a reviewed source range. A behavior
+entry can cite a candidate in its `evidenceRefs`.
+
+The Knip plugin patterns come from the Stage 2 `preflight.json` that the Knip
+receipts of the entry analysis name (`knipRunsRef`, then `preflightRef`). Stage 2
+keeps every Knip plugin turned off and records the patterns that it copies in place
+of the plugins (see the
+[Stage 2 cookbook](step-2-cookbook.md#knip-plugin-patterns)):
+
+| Field of `preflight.json` | Meaning |
+| --- | --- |
+| `pluginEntryPatterns` | Each copied pattern, as `knip-profile.json` holds it in the entry patterns of its workspace: `workspace`, `manifest` (the `package.json` whose dependency turned the plugin on: the workspace manifest or the manifest of a workspace that holds it), `plugin` (the Knip plugin name), `dependency`, `field` (`entry`, or `production` with a final `!` on the pattern) and `pattern`. |
+| `pluginPatternsNotCopied` | Each static pattern of a found plugin that the profile does not copy, with the same fields and the pattern of Knip, and `reason`: it looks like a settings file by its name (a test of names with known misses, which the Stage 2 cookbook lists), or it is a negation. |
+| `pluginsNotCopied` | Each found plugin that adds no pattern: `workspace` (or `null` for a manifest that is not a workspace of the plan), `manifest`, `plugin`, `dependency` and `reason`. A plugin that Knip 6.44.1 turns on without a dependency of its enablers (always, by files or manifest fields, or only in its code) has one item, with `workspace`, `manifest` and `dependency` set to `null`. |
+
+When the selected entry analysis names the candidates, the shared record checks
+of Stages 4, 5 and 6 check them against the saved snapshot:
+
+- The name is a registered `behavior-entry-candidates.json` artifact of the
+  current snapshot with `formatVersion: 1`. `status` is `partial` when
+  `omittedCandidates` is more than 0, and `completed` otherwise.
+- `rulesRef` is a registered artifact whose SHA-256 is `rulesSha256`. Each
+  syntax-rule candidate and each settings gap names a rule of that list by
+  `ruleId`, `ruleVersion` and `entryKind`.
+- Each syntax-rule candidate has exactly the fields of the record,
+  `found: syntax-rule`, `role: test` with a `roleRef` or `role: unknown` with
+  `roleRef: null`, a `nameReason` only when `name` is null, and a
+  `handlerReason` only when `handler` is null. Collect gives `role: test` only
+  when a role record of the Stage 1 review (`review-001`) whose roles include
+  `tests` has a selector that is the exact path of the file or a folder that
+  holds it; a glob selector or another role name gives no test role.
+- `path` and `sha256` name an indexed file of the inventory. `range` lies in the
+  saved text of that file, and the text at the range is `expression`, or starts
+  with it when `truncated` is true. Lines end at CRLF, CR, LF, U+2028 and
+  U+2029, as TypeScript counts them, and a byte order mark is not counted.
+- A `handler` names an indexed file, and its `range` lies in the saved text of
+  that file. It has exactly `path` and `range`. The handler of a candidate of a
+  `package-bin` rule also has `evidence`, which names how the record links the
+  file: `kind: snapshot-file` and `binFile`, the path of the handler, or
+  `kind: compiler-output` with `binFile`, `compilerSettingsRef`, `outDir` and
+  `rootDir`.
+- A gap is an `unknown-settings-value` gap, which the checks locate as they
+  locate a candidate, or a `missing-compiler-input` gap.
+- A candidate with `found: knip-plugin-pattern` has exactly `found`, `role`,
+  `roleRef`, `path`, `sha256`, `workspace`, `manifest`, `plugin`, `dependency`,
+  `field`, `pattern` and `patternRef`, with the role rule of the other candidates.
+  `patternRef` is the preflight record that the Knip receipts of the entry
+  analysis name, followed by `#/pluginEntryPatterns/` and an index of that list. The
+  pattern there has the same `workspace`, `manifest`, `plugin`, `dependency`,
+  `field` and `pattern`. `path` and `sha256` name an indexed file of the inventory.
+
+These checks show that the candidates match the saved files. They do not show
+that a candidate is a real entry or that the list is complete. The checks do not
+match a Knip plugin pattern against its path again, as they do not run the rules
+again.
+
 ## Code mapping
 
 Use `formatVersion: 1`, `kind: code-mapping`, `snapshotRef`, `scope`, `units`,
@@ -502,15 +709,17 @@ and a nonempty `limits` string array. The scope has:
 ```text
 inventoryRef: current inventory artifact ID
 basis: all-inventoried-regular-files
-unitKind: file
+unitKind: file, or file-or-part in Stage 5 when symbol selectors divide a file
 inspectionMeaning: explanation of reviewed vs unreviewed
 selectedEntryAnalysisRef: current attempt entry-analysis ID
 historicalEntryAnalysisRefs: predecessor IDs, newest first, following the whole chain
 ```
 
-Every inventory file appears exactly once in `units`. Each unit has `id`,
+A code unit is a file or a recorded part of a file. Start with files. Divide a
+file only when a boundary inside it needs examination. With `unitKind: file`,
+every inventory file appears exactly once in `units`. Each unit has `id`,
 `path`, `sha256`, nonempty `roles`, `owner`, `membershipRef`, `inspection`,
-`reason`, and nonempty `evidenceRefs`.
+`reason`, and nonempty `evidenceRefs`. Stage 4 always uses `unitKind: file`.
 
 An owner is a component ID or null. With an owner, `membershipRef` points to that
 component's membership statement in the proposed baseline. With no owner, it is
@@ -526,10 +735,169 @@ A mixed test can follow its main workflow owner while exercising another
 component. Explain unknown ownership and deferred inspection using the checked
 scope and missing evidence, without a catch-all component or unused-code claim.
 
+### Divided files
+
+With `unitKind: file-or-part`, each unit also has `unitKind`: `file`, `symbol`
+or `rest`. The [symbol selectors](#version-5-symbol-selectors) of a version 5
+baseline divide each file that they name; every other inventory file is one
+`file` unit with the fields above. A divided file has no file unit. It has:
+
+- one `symbol` unit for each symbol that a selector names in the file, owned by
+  the component of the selector;
+- one `rest` unit for all other text of the file, when there is other text. Its
+  owner is the component whose path selectors select the file, by the rules of a
+  file unit. When no path selector selects the file, the rest has
+  `owner: null`, `membershipRef: null` and `reason: no-path-owner`.
+
+A symbol unit has exactly `id`, `unitKind`, `path`, `sha256`, `symbol`,
+`ranges`, `roles`, `owner`, `membershipRef`, `inspection`, `reason` and
+`evidenceRefs`. A rest unit has the same fields without `symbol`. `path` and
+`sha256` name the inventory file, as for a file unit. `ranges` is a nonempty
+list of `[start, end]` ranges of `{ line, column }` positions, 1-based, from the
+first character to the position after the last character. A rest often has
+several ranges, because a symbol can be in the middle of the file.
+
+The two units of `src/billing.ts`, a file of 10 lines, when the selector of
+`pricing` names `computePrice` on lines 7 to 10 and `billing` owns the file by its
+paths:
+
+```json
+[
+  { "id": "s5-001-unit-billing-price", "unitKind": "symbol", "path": "src/billing.ts",
+    "sha256": "<inventory digest>", "symbol": "computePrice",
+    "ranges": [[{ "line": 7, "column": 1 }, { "line": 10, "column": 2 }]],
+    "roles": ["source"], "owner": "pricing",
+    "membershipRef": "s5-001-file@baseline.proposed.yaml#/components/3/membership",
+    "inspection": "reviewed", "reason": "Pricing names computePrice.", "evidenceRefs": ["s5-001-source-excerpt-002"] },
+  { "id": "s5-001-unit-billing-rest", "unitKind": "rest", "path": "src/billing.ts",
+    "sha256": "<inventory digest>",
+    "ranges": [[{ "line": 1, "column": 1 }, { "line": 7, "column": 1 }], [{ "line": 10, "column": 2 }, { "line": 11, "column": 1 }]],
+    "roles": ["source"], "owner": "billing",
+    "membershipRef": "s5-001-file@baseline.proposed.yaml#/components/2/membership",
+    "inspection": "reviewed", "reason": "The paths of billing select the file.", "evidenceRefs": ["s5-001-source-excerpt-002"] }
+]
+```
+
+The producer finds the parts in the syntax tree of the saved file and runs no
+code:
+
+- A symbol is the name of a top-level declaration of the file: a function,
+  class, interface, type, enum or namespace, or a variable statement that
+  declares one name. An anonymous default export (`export default function ()
+  {}`, `export default class {}` or `export default` with a value) is the symbol
+  `default`; a named default export is the symbol of its name. Imports,
+  re-exports and other statements are not symbols. They stay in the rest, with
+  the module setup, comments and white space.
+- A symbol unit holds each declaration of the name, with the comments directly
+  above it, with no blank line between, and the comments after it on its last
+  line. Declarations of the name that follow each other, such as the overloads
+  of a function, share one range. Separate declarations of one name, such as two
+  parts of a merged interface, give several ranges.
+- The ranges of the units of a file cover its text with no gap and no overlap.
+  Lines end at CRLF, CR, LF, U+2028 and U+2029, as TypeScript counts them, and a
+  byte order mark is not counted.
+
+The record checks of Stages 5 and 6 divide each such file and refuse units that
+differ from these parts. The refusal gives the units that the file must
+have, with their owners and ranges; copy them into the mapping. The checks also
+refuse a selector of a name that the file does not declare at the top level, a
+declaration with several names, such as `export const a = 1, b = 2`, and a file
+with syntax errors, a file that is not JavaScript or TypeScript, is not UTF-8
+text or is larger than 2 MiB. They refuse a file unit of a divided file, and
+symbol or rest units of a file that no selector divides.
+
+The `inspection` of a part follows its file, as for a file unit. The checks of
+the source sites stay at file level: a behavior entry, a resource observation, a
+source use or a system entry in a divided file can name the owner of any unit of
+that file. The graph edges and the evidence of Stage 5 `collect` name whole
+files. The Stage 5 parts request records the
+[dependencies of file parts](#dependencies-of-file-parts).
+
+### Dependencies of file parts
+
+After Stage 5 `collect`, `stage-5 parts PATH SYMBOL [SYMBOL ...]` divides one
+indexed file by the named symbols, as the symbol selectors do, and saves the
+numbered record `parts-NNN.json` (see the
+[stage 5 cookbook](step-5-cookbook.md#find-the-parts-of-a-file-and-their-dependencies)).
+It lists the dependencies of the file at both levels: each dependency that
+belongs to a part, under that part, and each other dependency at file level, with
+its reason. The record starts with `formatVersion: 1`, `attemptId`, `runRef` and
+`snapshotRef`, and has these fields:
+
+| Field | Value |
+| --- | --- |
+| `path`, `sha256`, `symbols` | The file, its inventory digest, and the symbols of the request, each once, in request order. |
+| `sourceSitesRef` | The Stage 4 `source-sites.json` that the dependencies name. |
+| `tool` | `name`, and the `tsMorph` and `typescript` versions that Stage 5 start pinned. |
+| `parts` | One part for each symbol, in file order, and then a rest part when the file has other text. A part has `unitKind` (`symbol` or `rest`), `symbol` for a symbol part, `ranges` and `dependencies`. |
+| `fileDependencies` | The dependencies that stay at file level, in source order, each with its `reason`, and `usedIn` for a shared one. |
+| `notes` | What the record covers and what it does not. |
+
+A part names one code unit of the divided file: the symbol unit of its symbol,
+or the rest unit. Its `ranges` are the ranges that the code mapping must give
+that unit. A dependency is a loading site of the file, as Stage 4 `collect` lists
+them in `source-sites.json`: an import, a re-export, an import `=`, an import
+type, a dynamic import, and a `require` or `require.resolve` call. A resource call
+is not a dependency. A dependency has `siteRef` (the saved site, or `null` when
+no saved site matches), `kind`, `specifier`, `typeOnly`, `dynamic`, `range`,
+`expression` (clipped after 4096 code units), `truncated` and `localNames`.
+
+Each dependency is in one part or at file level. It is never left out, and never
+in two places:
+
+- A site that binds local names belongs to the part that holds all the uses of
+  those names. Such a site is an import, an import `=` with a module, or a
+  JavaScript `require` that the compiler reads as an import. A type-only import
+  follows the same rule.
+- A site with uses in several parts stays at file level with the reason `shared`,
+  and `usedIn` lists those parts. A site with no use has the reason `unreferenced`.
+- An import that binds no name, such as `import './setup'`, loads its module for
+  its effects, and a site with a computed module name, such as `import(name)` or
+  `require(name)`, can load any module. Both stay at file level with the reason
+  `not-resolved`, also when a symbol holds the site.
+- Any other site belongs to the part that holds it: a re-export, which is always
+  in the rest, and a dynamic import, `require`, `require.resolve` or import type
+  with a literal module name.
+
+The TypeScript type checker of a project that holds only the saved file finds the
+uses. A use is a name that refers to the local symbol that the site binds, so
+another declaration with the same name is not a use. The project reads no other
+file and resolves no import. A use without a name in the file, such as the JSX
+factory of JSX syntax or a type in a JSDoc comment, is not found. A use shows that
+a part names the dependency, not that the code runs. The record names no owner.
+
+The parts of `src/billing.ts` that `computePrice` divides, from a fixture run
+(the fields of the dependencies are shortened):
+
+```json
+{
+  "path": "src/billing.ts", "symbols": ["computePrice"], "sourceSitesRef": "s4-check-file@source-sites.json",
+  "parts": [
+    { "unitKind": "symbol", "symbol": "computePrice", "ranges": [[{ "line": 13, "column": 1 }, { "line": 16, "column": 2 }]],
+      "dependencies": [{ "siteRef": "s4-check-file@source-sites.json#/sites/0", "kind": "import",
+        "specifier": "./money", "expression": "import { round } from './money';", "localNames": ["round"] }] },
+    { "unitKind": "rest", "ranges": [[{ "line": 1, "column": 1 }, { "line": 13, "column": 1 }],
+      [{ "line": 16, "column": 2 }, { "line": 17, "column": 1 }]],
+      "dependencies": [{ "siteRef": "s4-check-file@source-sites.json#/sites/1", "kind": "import",
+        "specifier": "./rate", "expression": "import { rate } from './rate';", "localNames": ["rate"] }] }
+  ],
+  "fileDependencies": [
+    { "siteRef": "s4-check-file@source-sites.json#/sites/2", "kind": "import", "specifier": "./setup",
+      "expression": "import './setup';", "localNames": [], "reason": "not-resolved" },
+    { "siteRef": "s4-check-file@source-sites.json#/sites/3", "kind": "dynamic-import", "specifier": null,
+      "expression": "import('./plugins/' + pluginName)", "localNames": [], "reason": "not-resolved" }
+  ]
+}
+```
+
 ## Resource observations
 
 Use `formatVersion: 1`, `kind: resource-observations`, `snapshotRef`, `scope`,
-`observations`, and a nonempty `limits` string array. Scope has
+`observations`, a nonempty `limits` string array, and `resourceAccessCandidatesRef`.
+In Stage 4, `resourceAccessCandidatesRef` names the candidates that its `collect`
+saved, such as `s4-001-file@resource-access-candidates.json`; in Stage 5, it keeps
+the value of the selected Stage 4 resource observations. The Stage 4/5 publisher
+refuses any other value. Scope has
 `method: source-inspection`, `reviewedFilesRef` pointing to the current entry
 analysis's `#/reviewedFiles`, and `historicalEntryAnalysisRefs` as in the mapping.
 
@@ -544,12 +912,68 @@ and source context before adding an observation; a registration inside a
 deferred function body is not automatically a module-start effect. These
 records remain source observations, not runtime verification.
 
+The record keeps observed access separate from inferred identity and ownership:
+
+- The candidates that it names are observed access syntax only: sites,
+  operations and names. A candidate with a name has the identity
+  `inferred-from-name`, a candidate without a name has the identity `unknown`, and
+  no candidate names an owner. Two sites with the same table name need not use the
+  same table.
+- An observation records an inspected access: the code that accesses
+  (`componentRef`, the mapped owner of the source file, not the owner of the
+  resource), the `operation`, the `source`, the `context`, and the target. The
+  target keeps its observed `expression` apart from its inferred identity:
+  `identity` (`symbolic` or `unknown`) and `resourceRef`, a modeled resource or
+  `null`.
+- The owner of a resource is intent. It belongs to the `owner` statement of the
+  resource in the proposed baseline, with its own status and evidence, not to an
+  observation or a candidate.
+
+## Resource access candidates
+
+Stage 4 `collect` saves `resource-access-candidates.json`: the calls that the
+pinned Choom resource access rules found in the source files of the graph scope, and
+each resource call site of `source-sites.json` that no rule found, with confidence
+`name-only`. The [stage 4 cookbook](step-4-cookbook.md#find-the-resource-access-candidates)
+gives the rules, the fields and the limits. The Stage 4 resource observations name
+the record as `resourceAccessCandidatesRef`, and the Stage 5 resource observations
+keep that value.
+
+When the selected resource observations name the candidates, the shared record
+checks of Stages 4, 5 and 6 check them against the saved snapshot:
+
+- The name is a registered `resource-access-candidates.json` artifact of the
+  current snapshot with `formatVersion: 1`. `status` is `partial` when
+  `omittedCandidates` is more than 0, and `completed` otherwise.
+- `rulesRef` is a registered artifact whose SHA-256 is `rulesSha256`, and
+  `sourceSitesRef` is a registered `source-sites.json` of the current snapshot.
+- Each candidate has exactly the fields of the record, so it names no owner. A
+  candidate with confidence `receiver-import` or `receiver-type` names a rule of the
+  list by `ruleId` and `ruleVersion`, with the `library`, `resourceKind` and
+  `operation` of that rule, and a `siteRef` or `null`. A `name-only` candidate has
+  `null` in those five fields and a `siteRef`.
+- A candidate with a name has `identity: inferred-from-name` and no `nameReason`; a
+  candidate with a `null` name has a `nameReason` and `identity: unknown`.
+- `path`, `sha256`, `range`, `expression` and `truncated` follow the rules of the
+  behavior entry candidates. A `context` of kind `module` has a `null` name and
+  range; a `context` of kind `function` or `method` has a range in the saved text of
+  the same file.
+- A `siteRef` names a `resource-call-candidate` site of the source sites with the same
+  path, digest and expression. A `completed` record names each such site in a
+  candidate.
+- Each gap is a `missing-compiler-input` gap.
+
+These checks show that the candidates match the saved files and the saved source
+sites. They do not show that a candidate accesses a resource, which resource it
+uses, or that the list is complete.
+
 ## Discovery
 
 Top-level fields are exactly `formatVersion: 1`, `kind: architecture-discovery`,
 `runRef`, `entryAnalysisRef`, `codeMappingRef`, `dependenciesRef`,
 `resourceAccessRef`, `overview`, `inspectedPaths`, `questions`, and `gaps`.
-Leave `baselineRef` absent until stage 6.
+Leave `baselineRef` and `baselineDigest` absent: Stage 6 adds them to the
+[fixed discovery result](#fixed-discovery-result).
 
 `overview` has `text` and nonempty `evidenceRefs`. `inspectedPaths` contains source
 paths actually reviewed. Each has `id`, `description`, `entryPointRef` naming a
@@ -563,10 +987,81 @@ to the lists in the current entry analysis. Keep unsupported languages, missing
 inputs, deferred areas and unknown ownership visible.
 The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
+A question or gap has exactly these fields. A linked note that answers or narrows
+an earlier record is a new question or gap with the same fields; it names the ID
+of the earlier record, such as in its `subjectRefs`.
+
+The questions and gaps keep the limits of the viewer, from the discovery contract
+of `@choom/baseline-model` (`validateQuestionsAndGaps`). Each question or gap has
+1 to 100 `subjectRefs` and at least one evidence reference. A `text` or `reason`
+has at most 16 KiB of UTF-8, and an ID, a `kind` or a reference at most 4 KiB. The
+IDs are unique across questions and gaps, there are at most 5,000 questions and
+gaps together, and all text values of the discovery have at most 4 MiB together.
+For a deferral of many files, name a folder or a component in `subjectRefs`.
+Later stages keep each question and gap unchanged, so every stage checks these
+rules where a record enters the run: Stage 1 `finish`, Stage 2 `plan` and
+`finish`, the Stage 3 finalizer, and the Stage 4/5 publisher with the shared
+record checks. A refusal starts with "The questions and gaps do not match the
+discovery contract of the viewer." and names the field, such as
+`The discovery result exceeds a limit at gaps.0.subjectRefs`. Stage 6 checks the
+fixed result again (see [Fixed discovery result](#fixed-discovery-result)).
 
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership
 changes must be reflected in paths, behavior entries and resource actors.
+
+### Fixed discovery result
+
+Stage 6 saves the fixed discovery result as `runs/<run-id>/discovery.yaml`, with
+`formatVersion: 2`. It has every field of the reviewed working discovery, with
+the same values and in the same order, and two more fields at the end:
+
+| Field | Meaning |
+| --- | --- |
+| `baselineRef` | The ID of the fixed baseline. |
+| `baselineDigest` | The SHA-256 of the bytes of the fixed baseline file, `baselines/<baselineRef>/baseline.yaml`, as 64 lowercase hexadecimal characters. It is the `sha256` of the baseline in the `run.yaml` registry. |
+
+IDs such as `baseline-001` repeat across runs, so an ID alone can name the wrong
+file. The digest binds the discovery result to the exact baseline file. The
+working discovery stays at `formatVersion: 1` without these two fields: only
+Stage 6 knows the bytes of the fixed baseline, and the shared record checks
+refuse a working discovery with `baselineRef` or `baselineDigest`.
+
+Stage 6 `verify` runs the shared record checks on the saved fixed baseline and
+discovery result, with the bytes of the saved baseline file. It refuses a fixed
+discovery result that is not version 2, that names another baseline ID, or whose
+`baselineDigest` is not the SHA-256 of the saved baseline file. A run that an
+older producer completed has a fixed discovery result of `formatVersion: 1`, with
+`baselineRef` and no digest. The [producer code record](#producer-code-record)
+makes such a run use its own producer version, which reads version 1. The viewer
+uses `baselineRef` and `baselineDigest` as
+[CR-004](../../change-requests/CR-004-discovery-in-viewer.md#binding-to-the-open-baseline)
+describes.
+
+Each Stage 6 action also checks that the viewer can open the fixed discovery
+result, with the discovery contract of the viewer (`validateDiscoveryResult` in
+`@choom/baseline-model/discovery-result`). Each question and gap has exactly its
+fields, 1 to 100 subject references and at least one evidence reference. The
+IDs are unique across questions and gaps. There are at most 5,000 questions and
+gaps together. A text has at most 16 KiB of UTF-8, an ID, a kind or a reference
+at most 4 KiB, and all text values of the file together at most 4 MiB. Stage 6
+makes this check before it saves any file, and `verify` makes it again on the
+saved file. A refusal starts with "The viewer could not open the fixed discovery
+result." and names the field, such as
+`The discovery result is invalid at questions.0: Unrecognized key: "answer"`.
+Stages 1 to 5 check each question and gap with the same rules before they save
+it (see [Discovery](#discovery)), so a record does not first fail here after
+earlier stages froze it. Do not edit saved files to pass the check.
+
+Stage 6 writes the fixed discovery result as YAML without aliases, also when the
+working discovery repeats a value through a YAML alias. Before it saves any file,
+it reads the exact bytes back as the viewer reads them, with the bounded YAML
+profile of the [reader limits](#reader-limits), and `verify` reads the saved file
+with the same profile. A result within the limits above can still give a file
+that the profile refuses, such as a file with more than 250,000 lines. Stage 6
+refuses it too, for example with "The viewer could not open the fixed discovery
+result. Fixed discovery result exceeds the YAML structure limit." Start a new
+run with a smaller discovery result.
 
 ## Check, publish and verify
 
@@ -581,9 +1076,9 @@ Set `CHOOM_REVIEW` to the canonical absolute review-folder path. Keep the curren
 stage's environment from its cookbook. For stage 4:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" check 4 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" finish 4 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" verify 4
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish check 4 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish finish 4 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 4
 ```
 
 For stage 5, replace each `4` with `5`. Run commands one at a time and stop on
@@ -591,11 +1086,14 @@ failure. `check` is read-only. Correct the separate candidate packet and repeat
 `check` until it passes; do not change saved evidence to force a pass.
 
 `finish` checks collected receipts, source digests, the review packet, references,
-source ranges, ownership and graph traversals. It copies the packet into the
-attempt, registers attempt files by digest, replaces the working baseline and
-discovery, and writes the run manifest last. It marks `componentRecovery` or
-`remainingCode` complete. It does not accept intent or verify semantic quality.
-`verify` checks the completed publication without writing files.
+source ranges, ownership and graph traversals. Each numbered request (an excerpt,
+in Stage 4 also a references request, and in Stage 5 also a parts request) needs its receipt: a completed request
+keeps the digests of its outputs, and a failed request has no output. `finish`
+copies the packet into the attempt, registers attempt files by digest, replaces
+the working baseline and discovery, and writes the run manifest last. It marks
+`componentRecovery` or `remainingCode` complete. It does not accept intent or
+verify semantic quality. `verify` checks the completed publication without
+writing files.
 
 Only one publisher may operate on a run at a time. Keep failed attempts and
 receipts. If `finish` fails after saving files, inspect the reported state and use
@@ -609,3 +1107,483 @@ proposal through its normal publication. A material ownership, interface, root
 or policy correction needs a new run when the next unpublished stage cannot
 handle it. If that run uses a saved snapshot as its source, preserve the original
 capture exclusions and limits in the new scope record.
+
+## Settings record
+
+Stage 1 `settings` saves the settings record as `evidence/settings.json`, and
+Stage 1 `finish` registers the selected record as `settings-001`. Stage 3
+`exports` and Stage 4 start read its compiler configurations and its parsing
+profile. The record is `formatVersion: 2`.
+
+| Field | Meaning |
+| --- | --- |
+| `formatVersion`, `snapshotId` | `2` and the snapshot ID of the inventory. |
+| `virtualRoot`, `limits` | `/repo`, the snapshot root that the compiler sees, and the byte limit for each configuration file. |
+| `packages` | Each `package.json`, with its parsed `data` or its parse `error`. |
+| `configs` | Each `tsconfig*.json`, `jsconfig*.json` and extra compiler configuration, and each project that they reference: `path`, `status` (`parsed`, `partial` or `unavailable`) and `diagnostics`, and for a file that parses, `declared`, `compilerOptions`, `fileNames` and `references`. |
+| `parsingProfile` | `null` when `configs` has an entry. Otherwise the Choom parsing profile: `id`, `declared.compilerOptions`, `compilerOptions` and `assumptions`. |
+| `gaps` | The gaps that the collector found. Each gap has `kind`, `subjectRefs` and `reason`, the fields of a discovery gap without its ID and evidence. Stage 1 `finish` adds each gap to the discovery gaps, as the example below shows. |
+| `contentReads`, `contentReadScope` | The snapshot files that the collector read and checked against the inventory, and the limit of that check. |
+
+A snapshot without project settings has no `tsconfig*.json` or `jsconfig*.json`
+file, and no extra compiler settings are named. Its record names the profile
+`choom-default-v1` and has one `no-project-settings` gap:
+
+```json
+{
+  "parsingProfile": {
+    "id": "choom-default-v1",
+    "declared": { "compilerOptions": { "allowJs": true, "jsx": "preserve", "module": "preserve",
+      "moduleResolution": "bundler", "target": "es2025" } },
+    "compilerOptions": { "allowJs": true, "jsx": 1, "module": 200, "moduleResolution": 100, "target": 12 },
+    "assumptions": ["The snapshot has no project settings. Choom chose these options. They are not settings of the project.", "..."]
+  },
+  "gaps": [
+    { "kind": "no-project-settings", "subjectRefs": ["snapshot-001"], "reason": "No project settings were found. ..." }
+  ]
+}
+```
+
+`declared` holds the options as a `tsconfig.json` writes them. `compilerOptions`
+holds the same options as the TypeScript API parses them, with the enum values of
+the pinned TypeScript 6.0.2, as in a configuration entry. These options are Choom
+assumptions, not settings of the project. A configuration that does not parse is
+still project settings, so its record names no profile. A changed option or
+assumption needs a new profile ID.
+
+Stage 1 `finish` adds each gap of the settings record to the discovery gaps, after
+the review gaps. Gap `N` (from 0) gets the ID `s1-settings-gap-` with the number
+`N + 1` in three digits, and cites `settings-001#/gaps/N`:
+
+```yaml
+gaps:
+  - id: s1-settings-gap-001
+    kind: no-project-settings
+    subjectRefs: [snapshot-001]
+    reason: No project settings were found. ...
+    evidenceRefs: ["settings-001#/gaps/0"]
+```
+
+`finish` refuses a review question or gap with one of these IDs, and Stage 1
+`verify` checks that the saved Stage 1 discovery has these gaps.
+
+Stage 4 start puts the source that no parsed compiler selection covers in one
+group. When the record names the profile, the group is named after the profile,
+uses its target, module, moduleResolution and jsx options, and has
+`compilerSettingsRef: settings-001#/parsingProfile`. Otherwise the group is the
+configuration-free fallback with no options. Stage 4 start refuses a record that
+names an unknown profile. Stage 3 `exports` chooses the settings of one source
+file with the same rule: the first parsed compiler selection that selects the
+file, else the profile, else no settings. See the
+[Stage 3 cookbook](step-3-cookbook.md#list-the-exports-of-a-source-file).
+Stage 4 `stage-4-inspect references` uses the same rule for the group of its file.
+
+## Git identity record
+
+Stage 1 `capture` saves `evidence/git-identity.json` after the copy, and Stage 1
+`finish` registers it as `git-identity-001`. The record is `formatVersion: 1`.
+It names the Git commit, the branch and the local changes of the target folder,
+or it says that Git evidence is not available. It does not record the history.
+
+Git runs on the target folder, never on the snapshot. The design forbids
+running target code, so Git runs only these commands, which read refs and
+objects:
+
+```sh
+git version
+git rev-parse --is-inside-work-tree --show-prefix
+git rev-parse --verify 'HEAD^{commit}'
+git symbolic-ref -q HEAD
+git ls-tree -r -z --full-name <commit>
+```
+
+Each call is `git -C <target> --no-pager -c core.fsmonitor=false
+-c core.hooksPath=/dev/null <command>`, so the fsmonitor, hook and pager
+settings of the target cannot run a program. The call removes every inherited
+`GIT_*` variable and sets these variables:
+
+| Variable | Effect |
+| --- | --- |
+| `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null` | Git does not read the system and user Git settings. |
+| `GIT_OPTIONAL_LOCKS=0`, `GIT_TERMINAL_PROMPT=0` | Git takes no optional lock and asks no question. |
+| `GIT_ALLOW_PROTOCOL=` (empty) and `GIT_NO_LAZY_FETCH=1` | Git uses no transport and fetches no missing object. Without them, a partial clone that misses an object fetches it, and the fetch runs commands of the target settings, such as `remote.<name>.uploadpack`. |
+| `GIT_NO_REPLACE_OBJECTS=1` | Git ignores replacement objects, so the listed tree is the tree of the recorded commit. |
+
+The capture does not run `git status`, because it can run the clean and process
+filters of the target settings when it compares file contents. Choom compares
+the snapshot with the commit itself. The capture saves each Git call as it saves
+its rsync calls: `evidence/git/call-001.json` with the command, the arguments,
+the exit code, the signal and the error, and `call-001.stdout.txt` and
+`call-001.stderr.txt`. The record of a Git call also lists these variables in
+`environment`.
+
+A record with Git evidence:
+
+```json
+{
+  "formatVersion": 1,
+  "snapshotRef": "snapshot-001",
+  "status": "available",
+  "gitVersion": "git version 2.43.0",
+  "commit": "9994d1d5a5fdf4f9c444890f9333520c17b85a64",
+  "objectFormat": "sha1",
+  "branch": "main",
+  "targetPrefix": "",
+  "localChanges": {
+    "changed": ["src/app.ts"],
+    "notInCommit": ["notes.md"],
+    "notInSnapshot": ["old.ts"],
+    "outsideCaptureScope": [".github/workflows/ci.yml"],
+    "submodules": []
+  },
+  "limits": ["Git read the target folder after the copy. If the target folder changed during the capture, this record can differ from the snapshot.", "..."],
+  "gaps": []
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `formatVersion`, `snapshotRef` | `1` and the snapshot ID of the inventory. |
+| `status` | `available`, or `not-available` when Git evidence is not available. |
+| `gitVersion` | The output of `git version`, or `null` when Git did not run. |
+| `commit`, `objectFormat` | The commit of `HEAD`, and `sha1` or `sha256`, from the length of the commit ID. |
+| `branch` | The branch of `HEAD` without `refs/heads/`, or `null` when `HEAD` is detached. |
+| `targetPrefix` | The folder of the target in the Git work tree: `""` for its top folder, or a path that ends with `/`. The paths in `localChanges` are relative to the target folder, as in the inventory. |
+| `localChanges.changed` | Snapshot files whose content differs from the commit. Choom computes the Git object ID of the saved content, the hash of `blob <size>`, a NUL byte and the content with the object format, and compares it with the commit. |
+| `localChanges.notInCommit` | Snapshot files that are not in the commit. |
+| `localChanges.notInSnapshot` | Commit files in the target folder that are not in the snapshot and that the capture exclusions do not leave out. At capture, the target folder did not have them as regular files: they were deleted, or a folder took their place. |
+| `localChanges.outsideCaptureScope` | Commit files that the capture exclusions leave out. They are not compared, and they do not count as deleted. |
+| `localChanges.submodules` | The path of each submodule in the target folder. The files in a submodule are not compared. |
+| `limits` | The limits of the record in plain text. |
+| `reason` | Only when `not-available`: what failed, with Git's message when Git gave one. |
+| `gaps` | Empty when Git evidence is available. Otherwise one `git-unavailable` gap with `kind`, `subjectRefs` (the snapshot ID) and `reason`. |
+
+Each list in `localChanges` is sorted. To find the commit files that the capture
+exclusions leave out, Choom reads `exclusions.txt` as rsync reads it, for the
+rule forms that Stage 1 uses: a pattern with the wildcards `*` and `?`, a
+leading `/` that anchors it to the target folder, a trailing `/` that limits it
+to folders, and a `- ` prefix. Blank lines and lines that start with `#` or `;`
+are comments. For another rule form, such as an include rule (`+ `), `!`, a
+character class, `**` or a backslash, Choom does not guess:
+`outsideCaptureScope` is empty, `notInSnapshot` can also list files that the
+exclusions left out, and `limits` names the rule.
+
+The limits also say that a Git filter, such as line-ending conversion or Git
+LFS, can make a file look changed, that file modes are not compared, and that
+`notInCommit` can list files that Git ignores, because Git ignore rules do not
+set the capture scope.
+
+Git evidence is not available when Git is not installed, the target folder is
+not in a Git work tree, `HEAD` has no commit, or Git refuses a command or gives
+an unexpected answer. Git refuses a target folder that another user owns
+("dubious ownership"). A `safe.directory` setting in the user's Git settings does
+not change this, because the capture does not read those settings. In each case
+the capture continues, and the record has the reason and the gap:
+
+```json
+{
+  "formatVersion": 1,
+  "snapshotRef": "snapshot-001",
+  "status": "not-available",
+  "gitVersion": "git version 2.43.0",
+  "reason": "`git rev-parse --is-inside-work-tree --show-prefix` failed with exit code 128: fatal: not a git repository (or any of the parent directories): .git",
+  "gaps": [
+    { "kind": "git-unavailable", "subjectRefs": ["snapshot-001"], "reason": "Git evidence is not available, so the commit, the branch and the local changes of the snapshot are unknown. `git rev-parse --is-inside-work-tree --show-prefix` failed with exit code 128: ..." }
+  ]
+}
+```
+
+Stage 1 `finish` adds this gap to the discovery gaps after the review gaps and
+the settings gaps, with the ID `s1-git-identity-gap-001` and the evidence
+`git-identity-001#/gaps/0`. `finish` refuses a review question or gap with this
+ID, and a Git identity record that is not valid. Stage 1 `verify` checks that
+the saved Stage 1 discovery has the gap.
+
+## Producer code record
+
+Stage 1 `start` saves `evidence/producer.json` in the new run. Stage 1 `finish`
+registers it in `run.yaml` as `s1-file@evidence%2Fproducer.json`, so a later
+change to the record is a changed registered artifact.
+
+```json
+{
+  "formatVersion": 1,
+  "package": "@choom/producer",
+  "version": "0.1.0",
+  "codeDigest": "<64 lowercase hexadecimal characters>",
+  "commit": "<40 or 64 lowercase hexadecimal characters, or not-available>"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `formatVersion` | `1`. |
+| `package` | `@choom/producer`. |
+| `version` | The `version` in `packages/producer/package.json`. |
+| `codeDigest` | The code digest below. |
+| `commit` | The Git commit of the tool checkout when the checkout is the top folder of a Git repository; otherwise `not-available`. Local changes are not in the commit; the digest includes them. |
+
+The code digest is the SHA-256 of a text with one line for each regular file in
+`packages/producer/src` and `packages/baseline-model/src`. Each line is the
+file's SHA-256, two spaces and the file's path, and then a line feed. The path is
+relative to the tool checkout and uses `/`. The lines are sorted by the UTF-8 bytes
+of the paths. A symbolic link or another entry that is not a regular file or
+folder stops the digest, and so does a file name with a control character.
+Documents, `package.json` files and installed packages are not part of the digest.
+
+Every stage action after Stage 1 `start` reads the record and computes the digest
+of the tool checkout before it reads or writes the run. It refuses the action and
+writes nothing when:
+
+- The run has no record: it started before the record existed. Start a new run.
+- The record is not valid. Start a new run.
+- The digest is different. The message names the recorded commit and digest.
+  Continue with that producer version, or start a new run.
+
+The programs that a stage action starts after its check, such as the Stage 2
+modules, `inventory-view.py`, `check-knip-image.mjs` and `stage-4-graph.ts`, do
+not check again. The duplication assessment, the input consolidation command and
+the recovery capture do not use the record.
+
+A file in the run folder is not trusted code. Stage 1 saves `inventory.mjs` only
+as a record of the code that lists the snapshot. Stage 2 `start` and `finish` do
+not run it: they make the inventory of the saved snapshot with the checkout code
+and compare it byte for byte with the registered inventory.
+
+## Decision record
+
+Stage 6 publishes a baseline whose statements are all `proposed`. After Stage 6,
+a person can accept or correct statements. The person writes a decision file in
+YAML, and `baseline decide` checks it and saves it in the run folder as a
+decision record. The record does not change the baseline. `baseline next` makes
+the [next baseline version](#next-baseline-version) from a saved record. The
+[TypeSpec contract](../../../cookbook/interfaces/baseline-decisions.tsp) in
+`@choom/baseline-model` defines the value of the file, so the viewer can use it
+too. A copied decision-file entry from the viewer starts with a YAML comment
+that names the baseline.
+
+```yaml
+# Baseline baseline-001, SHA-256 <64 lowercase hexadecimal characters>
+formatVersion: 1
+id: decisions-001
+baselineRef: baseline-001
+baselineDigest: <64 lowercase hexadecimal characters>
+decider:
+  name: Ada Example
+  kind: human
+decidedAt: 2026-11-15T10:30:00Z
+entries:
+  - action: accept
+    itemId: cli
+    field: purpose
+  - action: correct
+    itemId: billing
+    field: purpose
+    oldValue: Bill the saved orders.
+    newValue: Bill each saved order once.
+```
+
+The producer reads a decision file with the [bounded YAML profile](#reader-limits)
+of a baseline: one UTF-8 document of at most 16 MiB within the same YAML limits,
+the core schema, unique string keys and values that JSON can hold. Comments are
+allowed. Anchors, aliases, explicit tags and directives are refused, and a merge
+key (`<<`) does not merge: without an alias it is an ordinary key, which the
+contract refuses. `decidedAt` stays text. JSON is also YAML, so a decision file
+in JSON form is read the same way. A refusal of the profile starts with
+"Decision file", such as `Decision file YAML mapping keys must be unique strings.`
+
+| Field | Value |
+| --- | --- |
+| `formatVersion` | `1`. |
+| `id` | The ID of the record: lowercase letters, digits and hyphens, at most 128 characters. The record is saved as `decisions/<id>.yaml`. |
+| `baselineRef` | The ID of the published baseline. |
+| `baselineDigest` | The SHA-256 of the published baseline file, as 64 lowercase hexadecimal characters. It is the `sha256` of the baseline in the `run.yaml` registry, which Stage 6 computes from the saved bytes. The viewer computes the same digest of the file that it opens. |
+| `decider` | `name` of the person who decided, and `kind: human`. |
+| `decidedAt` | When the person decided: an RFC 3339 time in UTC, such as `2026-11-15T10:30:00Z`. |
+| `entries` | At least one decision. `{action: accept, itemId, field}` accepts a statement with its current value. `{action: correct, itemId, field, oldValue, newValue}` replaces the value; `oldValue` is the current value. Values are data that JSON can hold. There is no reject action: a statement without a decision stays proposed. |
+
+An entry names one statement: an item field with `value`, `status` and
+`evidenceRefs`. `itemId` is the ID of a component, interface, resource or rule.
+`field` is the path of the statement in the item, as in a discovery subject:
+
+| Item | Fields |
+| --- | --- |
+| Component | `purpose`, `membership`, `groupingReason`, and `parent` when the component has one. |
+| Interface | `owner`, `publicAccess`, `allowedConsumers`, `promises`; in versions 2 to 5 also `documentation.summary`, and for each documentation entry `documentation.entries.<entry-id>.kind`, `.description`, `.signature` and `.interaction` when present, and `.examples.<example-id>.content`. |
+| Resource | `identity`, `owner`, `accessRules`. |
+| Rule | `subject`, `expected`, `check`. |
+
+The statement name is `<itemId>.<field>`, such as `billing.purpose`. A part of a
+value, such as `promises.behavior`, is not a statement.
+
+`validateDecisions` in `@choom/baseline-model` checks the file against the
+baseline and its digest. It reads no file, and it refuses:
+
+- a file that does not match the contract;
+- a `baselineRef` or `baselineDigest` of another baseline;
+- an entry that names no statement of the baseline, and a second entry for
+  one statement;
+- an entry for a statement that is not `proposed`. No document lets a decision
+  change an accepted statement;
+- a correction whose `oldValue` is not the current value. The values are
+  compared as JSON data: the keys of an object can be in another order, the
+  items of an array cannot. The refusal names the statement, the expected value
+  and the given value;
+- a correction whose `newValue` is the current value. Use `accept`;
+- new values that make the baseline invalid under the shared baseline rules,
+  together, as the next version will have them.
+
+Set `CHOOM_DECISIONS` to the decision file, outside the run folder. Record the
+decisions with:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline decide --run "$CHOOM_WORK" "$CHOOM_DECISIONS"
+```
+
+The command reads `run.yaml`, which must report `completed` with
+`baselineRecovery: complete` and name the published baseline. It checks the
+registered SHA-256, the bounded YAML profile and the shared rules of the
+published baseline, and reads the decision file with the bounded YAML profile
+above. After `validateDecisions` and the decider check below, it checks the next
+version that `baseline next` makes from the saved record, with the checks of its
+saved form in [Next baseline version](#next-baseline-version), and refuses with
+the same messages. So it never saves a record that `baseline next` refuses, such
+as a record whose ID gives the version the ID of an item. Then it saves the exact
+bytes of the file once, comments included, as `decisions/<id>.yaml`. A second
+save with the same ID is refused, also when the content is the same.
+The save is all or nothing (`saveDecisionRecord` in `decision-record.ts`). The
+command writes the bytes into a new temporary file in `decisions/`, whose name
+starts with `.next-` and so cannot be a record ID, and reads them back there.
+Then a hard link gives the file its final name, which never replaces a record,
+and the command removes the temporary name. After any failure, such as a full
+disk, it removes the temporary file and refuses with
+`Cannot save the decision record decisions/<id>.yaml: <cause>`, so no part of the
+record stays and you can record the decisions again. Only a hard stop of the
+process, such as a power loss, can leave a `.next-` file; remove it. The
+baseline, the discovery result, `run.yaml` and every other file of the run stay
+unchanged, so `run.yaml` does not register the record. The command prints JSON,
+as the stage helpers do: the record path and its SHA-256, the baseline, the
+decider, the time, each decided statement, and the call records and models that
+the decider check compared. Keep the SHA-256 with the run notes. The command is
+not a stage action: it does not check the producer code record, because a
+person can decide after the run with a later producer.
+
+A later command, such as `baseline next`, reads a saved record with
+`readDecisionRecord(run, id)` in
+`packages/producer/src/decision-record.ts`. It reads `decisions/<id>.yaml` of a
+completed run with the same rules as `baseline decide` and returns its bytes,
+its SHA-256 and its value, for `validateDecisions`.
+
+The decider check is a process rule, not proof (decision D10). The command
+compares `decider.name` with the `model` value of each LLM call record of the
+run: each file that `run.yaml` registers under `evidence/` whose name ends with
+`-call.yaml`. These are `evidence/llm-call.yaml` of Stage 1, and
+`llm/plan-call.yaml` and `llm/analysis-call.yaml` in the attempt folders of
+Stages 2 to 6. It compares the names after it removes white space at their
+start and end and changes all letters to lower case, and refuses a match. It
+also refuses a run that registers no call record, because the check cannot run;
+every completed run has the call records of its stages. A model value
+`unknown` is compared too, but it names no model. Files that `run.yaml` does not
+register, such as a failed attempt, are not compared. Code cannot prove that a
+person made the decisions: any writer can give a person's name. The check stops
+a decision file that names a model of the run, and the named person stays
+responsible for the decisions.
+
+## Next baseline version
+
+Decisions do not change a saved baseline. `baseline next` makes a new version
+from a saved [decision record](#decision-record): the published baseline of the
+run, with the decided statements accepted. The new version has no discovery
+result until a new run maps it (decision D12). The discovery result of the run
+and earlier reports keep the published baseline.
+
+Give the ID of a decision record that `baseline decide` saved:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline next --run "$CHOOM_WORK" --decisions decisions-001
+```
+
+The command reads the completed run and its published baseline as
+`baseline decide` does, and reads `decisions/<id>.yaml` with
+`readDecisionRecord`. `nextBaselineVersion` in `@choom/baseline-model` makes
+the version. It reads no file. It runs the checks of `validateDecisions`
+against the published baseline first, so a record that does not fit that
+baseline is refused with every problem. The version:
+
+- has the ID `<parent ID>-<decision record ID>`, such as
+  `baseline-001-decisions-001`. Both IDs are lowercase IDs with hyphens, so the
+  new ID is one too, and it is never the parent ID. One record always gives
+  the same ID, so it makes at most one version;
+- has `parentId` set to the ID of the published baseline, and the same
+  `formatVersion`;
+- has each decided statement `accepted`, with the decision record ID as its
+  `acceptanceRef`. A correction also replaces the value. The statement keeps
+  its `evidenceRefs`;
+- keeps every other field, item and statement of the published baseline, with
+  the items and list entries in the same order.
+
+The command also refuses a record whose `id` is not the ID in its file name, and
+a decider who is a model of the run, as `baseline decide` does. It writes the
+version as YAML, reads the text back with the bounded YAML profile, and checks
+it with the shared baseline rules and the producer profile of a next version:
+
+- the parent is the baseline that the decision record is for;
+- the saved decision record has the SHA-256 that the version record gives;
+- each `accepted` statement names that decision record in its
+  `acceptanceRef`, and the record has an entry for the statement: `accept`, or
+  `correct` with the value of the statement as its `newValue`. A statement
+  without an entry stays `proposed`;
+- a symbol has one direct owner: two components cannot name the same symbol of
+  a file;
+- no item has the ID of the version, because the baseline ID is reserved;
+- the version is within the [viewer limits](#reader-limits).
+
+A first version, which Stages 4 to 6 check, has no decision record: its
+`parentId` is null, and every statement is `proposed`.
+
+The command saves one new folder with two files, once, all or nothing:
+
+| Path in the run folder | Contents |
+| --- | --- |
+| `baselines/<version-id>/baseline.yaml` | The next version. |
+| `baselines/<version-id>/version.json` | The version record. |
+
+It writes the two files into a new temporary folder in `baselines/`, whose name
+starts with `.next-` and so cannot be a baseline ID, and reads each file back
+there. Then one rename gives the folder its final name. After any failure, the
+command removes the temporary folder and refuses with
+`Cannot make the folder baselines/<version-id>: <cause>`, so no part of the
+version stays, and a later run can make the version. Only a hard stop of the
+process, such as a power loss, can leave a `.next-` folder; remove it.
+
+```json
+{
+  "formatVersion": 1,
+  "baseline": { "id": "baseline-001-decisions-001", "path": "baselines/baseline-001-decisions-001/baseline.yaml", "sha256": "<64 lowercase hexadecimal characters>" },
+  "parent": { "id": "baseline-001", "path": "baselines/baseline-001/baseline.yaml", "sha256": "<64 lowercase hexadecimal characters>" },
+  "decisions": { "id": "decisions-001", "path": "decisions/decisions-001.yaml", "sha256": "<64 lowercase hexadecimal characters>" }
+}
+```
+
+The version record links the version to its parent and to its decision record.
+Each link gives the ID, the path in the run folder and the SHA-256 of the saved
+bytes. The parent SHA-256 is the `sha256` of the published baseline in the
+`run.yaml` registry. A later check can read the three files again and compare
+their SHA-256 with the version record; the producer profile of a next version
+already refuses a decision record with another SHA-256. No command makes this
+later check yet. The command does not change the published baseline, the
+discovery result, `run.yaml` or the decision record. `run.yaml` does not
+register the version, because the version record is enough to check the links.
+The viewer opens the new version as any baseline file; it does not read the
+version record.
+
+A second `baseline next` with the same record is refused, because the version
+folder exists: a saved version does not change. A new decision record about the
+published baseline makes another version beside the first; both name the
+published baseline as their parent.
+
+The command prints JSON: the version path and SHA-256, the links of the parent
+and of the decision record, the path and SHA-256 of the version record, each
+decided statement, and the call records and models that the decider check
+compared. As for `baseline decide`, the command is not a stage action: it does
+not check the producer code record.

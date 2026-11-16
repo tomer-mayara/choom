@@ -78,7 +78,9 @@ const scan = z.strictObject({
 export const duplicationReportSchema = z.strictObject({
   kind: z.literal("interface-duplication-review"), formatVersion: z.literal(1),
   id: reference, runRef: reference, createdAt: reference, producer: tool,
-  baseline: z.strictObject({ id: reference, formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), sha256: digest }),
+  baseline: z.strictObject({
+    id: reference, formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]), sha256: digest,
+  }),
   snapshot: z.strictObject({ id: reference, inventorySha256: digest }), scan,
   review: z.strictObject({
     status: z.enum(["pending", "partial", "completed"]), inspected: count, pending: count,

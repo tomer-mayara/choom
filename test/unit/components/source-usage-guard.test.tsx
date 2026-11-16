@@ -6,7 +6,7 @@ import { sourceUsageBaseline } from "../../support/source-usage-fixtures.ts";
 
 afterEach(cleanup);
 
-test.each([3, 4] as const)("version %i Baseline details preserves every saved source-use field", (formatVersion) => {
+test.each([3, 4, 5] as const)("version %i Baseline details preserves every saved source-use field", (formatVersion) => {
   const baseline = { ...sourceUsageBaseline(), formatVersion };
   render(<ArchitectureDetails baseline={baseline} panel={{ kind: "baseline" }} />);
   expect(screen.getByText("Original source-use data")).toBeTruthy();
@@ -14,7 +14,7 @@ test.each([3, 4] as const)("version %i Baseline details preserves every saved so
   expect(JSON.parse(record?.textContent ?? "null")).toEqual(baseline.sourceUsage);
 });
 
-test.each([3, 4] as const)("version %i shows the source legend and review notice", async (formatVersion) => {
+test.each([3, 4, 5] as const)("version %i shows the source legend and review notice", async (formatVersion) => {
   const baseline = { ...sourceUsageBaseline(), formatVersion };
   const layout = { nodes: baseline.components.map(({ id }, index) => ({ id, position: { x: index * 300, y: 24 }, width: 240, height: 88 })) };
   await renderDiagramWithViewport(baseline, layout);

@@ -1,4 +1,4 @@
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { accepted, fixtureItem, proposed } from "./baseline-fixtures.ts";
 
 export const recordedEvidenceRef = "https://baseline.invalid/evidence.yaml#/items/7";

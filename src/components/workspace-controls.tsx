@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Boxes, FileUp } from "lucide-react";
 import type { WorkspaceBinding } from "../architecture/workspace-view.ts";
-import type { WorkflowStage } from "../architecture/generated/workflow.ts";
+import type { WorkflowStage, WorkflowState } from "../architecture/generated/workflow.ts";
 import { Button } from "./ui/button.tsx";
 
 type WorkspaceSnapshot = ReturnType<WorkspaceBinding["workflow"]["getSnapshot"]>;
@@ -9,16 +9,21 @@ const stageProgress: Record<WorkflowStage, string> = {
   selection: "Waiting for your selection…", reading: "Reading the baseline…",
   validation: "Checking the baseline…", layout: "Arranging component cards…",
 };
+// The file that each operation loads, and its announcements.
+const operations: Record<WorkflowState["operation"], { file: string; cancelled: string; ready: string }> = {
+  baseline: { file: "baseline", cancelled: "Load cancelled.", ready: "Baseline ready." },
+  report: { file: "duplication report", cancelled: "Report load cancelled.", ready: "Duplication report ready." },
+  discovery: { file: "discovery result", cancelled: "Discovery result load cancelled.", ready: "Discovery result ready." },
+};
 
 function progressText({ state }: WorkspaceSnapshot): string | null {
   if (state.phase === "cancelling") return state.stage === "selection" ? "Cancelling the load. Waiting for the file picker to close…" : "Cancelling the load…";
   if (state.phase === "loading") {
     const text = state.stage ? stageProgress[state.stage] : "Loading the baseline…";
-    return state.operation === "report" ? text.replace("baseline", "duplication report") : text;
+    return text.replace("baseline", operations[state.operation].file);
   }
-  if (state.lastOutcome?.status === "cancelled") return state.operation === "report" ? "Report load cancelled." : "Load cancelled.";
-  if (state.lastOutcome?.status === "success") return state.operation === "report"
-    ? "Duplication report ready." : "Baseline ready.";
+  if (state.lastOutcome?.status === "cancelled") return operations[state.operation].cancelled;
+  if (state.lastOutcome?.status === "success") return operations[state.operation].ready;
   return null;
 }
 
@@ -29,8 +34,9 @@ export function WorkspaceControls({ workspace, snapshot, desktop, children }: {
   const loading = state.phase !== "idle";
   const failure = state.lastOutcome?.status === "failure" ? state.lastOutcome : null;
   const progress = progressText(snapshot);
+  // A narrow window uses less vertical space here, so the diagram and its details panel keep more height.
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border bg-card px-4 py-2">
+    <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-card px-4 py-1.5 sm:gap-y-1.5 sm:py-2">
       <div className="flex shrink-0 items-center gap-2">
         <Boxes aria-hidden="true" className="size-5 text-primary" />
         <span className="font-semibold tracking-tight">Choom</span>
@@ -46,7 +52,7 @@ export function WorkspaceControls({ workspace, snapshot, desktop, children }: {
       </nav>
       <div className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 wrap-anywhere text-xs text-muted-foreground empty:hidden">
         {progress ? <p role="status">{progress}</p> : null}
-        {failure ? <p role="alert" className="text-destructive">The {state.operation === "report" ? "duplication report" : "baseline"} {failure.stage} failed: {failure.message}</p> : null}
+        {failure ? <p role="alert" className="text-destructive">The {operations[state.operation].file} {failure.stage} failed: {failure.message}</p> : null}
       </div>
     </header>
   );

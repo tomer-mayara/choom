@@ -13,9 +13,14 @@ const workspace = "src/architecture/workspace.ts";
 const publication = "src/architecture/load-publication.ts";
 const codec = "src/lib/baseline-yaml.ts";
 const reportCodec = "src/lib/interface-duplication-yaml.ts";
+const discoveryCodec = "src/lib/discovery-result-yaml.ts";
 const parser = "src/lib/architecture-yaml/parse.ts";
 const layout = "src/lib/architecture-layout.ts";
-const domain = "src/domain/baseline.ts";
+const domain = "src/domain/interface-duplication.ts";
+const domainContracts = "src/domain/generated/contracts.ts";
+const model = "packages/baseline-model/src/baseline.ts";
+const modelContracts = "packages/baseline-model/src/generated/contracts.ts";
+const modelData = "packages/baseline-model/src/readonly-data.ts";
 const controls = "src/components/workspace-controls.tsx";
 const diagram = "src/components/architecture-diagram.tsx";
 const platformContracts = "src/platform/generated/contracts.ts";
@@ -24,6 +29,14 @@ const codecBoundary = "baseline-codec-uses-domain-and-yaml";
 const viewBoundary = "workspace-view-uses-data-bindings";
 const analyzerBoundary = "development-analyzers-stay-out-of-app";
 const layoutBoundary = "layout-engine-loads-through-composition";
+const modelBoundary = "baseline-model-imports-no-app-code";
+const modelIndependence = "baseline-model-is-platform-independent";
+const producerStage = "packages/producer/src/stage-6-commands.ts";
+const producerCli = "packages/producer/src/cli.ts";
+const producerFiles = "packages/producer/src/duplication-files.mjs";
+const producerCommands = "packages/producer/src/duplication-commands.mjs";
+const producerBoundary = "producer-imports-no-app-code";
+const producerDuplicationBoundary = "producer-duplication-helpers-use-fixed-app-modules";
 
 const allowed: readonly Probe[] = [
   ["src/App.tsx", workspace, "runtime"],
@@ -35,25 +48,40 @@ const allowed: readonly Probe[] = [
   [controls, "src/architecture/generated/workflow.ts", "type"],
   [view, layout, "type-query"],
   [view, "src/architecture/generated/workflow.ts", "type"],
-  [view, "src/domain/generated/contracts.ts", "type"],
-  [view, "src/domain/readonly-data.ts", "type"],
+  [view, domainContracts, "type"],
+  [view, modelContracts, "type"],
+  [view, modelData, "type"],
   [workflow, platformContracts, "type"],
   [workflow, codec, "runtime"],
   [workflow, reportCodec, "runtime"],
   [workflow, layout, "type"],
   [workflow, publication, "runtime"],
-  [publication, "src/domain/generated/contracts.ts", "type"],
-  [layout, "src/domain/generated/contracts.ts", "type"],
+  [publication, domainContracts, "type"],
+  [publication, modelContracts, "type"],
+  [layout, modelContracts, "type"],
   [layout, "node_modules/elkjs/index.js", "runtime"],
   [diagram, layout, "type"],
   [codec, parser, "runtime"],
   [reportCodec, parser, "runtime"],
-  [reportCodec, "src/domain/interface-duplication.ts", "runtime"],
-  [codec, domain, "runtime"],
+  [reportCodec, domain, "runtime"],
+  [discoveryCodec, parser, "runtime"],
+  [discoveryCodec, "packages/baseline-model/src/discovery-result.ts", "runtime"],
+  [codec, model, "runtime"],
   [codec, "src/lib/generated/contracts.ts", "type"],
   [parser, "node_modules/yaml/index.js", "runtime"],
   [domain, "node_modules/zod/index.js", "runtime"],
+  [domain, modelContracts, "type"],
+  [domainContracts, modelContracts, "type"],
+  [model, "node_modules/zod/index.js", "runtime"],
+  [model, modelContracts, "type"],
   ["src/platform/browser-documents.ts", platformContracts, "type"],
+  [producerStage, "node_modules/yaml/index.js", "runtime"],
+  [producerStage, model, "runtime"],
+  [producerCli, modelContracts, "type"],
+  [producerFiles, codec, "runtime"],
+  [producerFiles, parser, "runtime"],
+  [producerCommands, domain, "runtime"],
+  [producerCommands, reportCodec, "runtime"],
 ];
 
 const forbidden: readonly Probe[] = [
@@ -68,7 +96,7 @@ const forbidden: readonly Probe[] = [
   [view, workflow, "type", viewBoundary],
   [view, "src/platform/documents.ts", "type", viewBoundary],
   [view, "node_modules/react/index.js", "type", viewBoundary],
-  [view, "src/domain/readonly-data.ts", "inline-type", "workspace-view-imports-are-erased"],
+  [view, modelData, "inline-type", "workspace-view-imports-are-erased"],
   [view, layout, "runtime", "workspace-view-imports-are-erased"],
   [controls, workflow, "type", "components-use-workspace-view"],
   [controls, workspace, "type", "components-use-workspace-view"],
@@ -85,10 +113,18 @@ const forbidden: readonly Probe[] = [
   [codec, "node:fs", "runtime", codecBoundary],
   [reportCodec, "node:fs", "runtime", codecBoundary],
   [reportCodec, "src/platform/documents.ts", "runtime", codecBoundary],
+  [discoveryCodec, "node:fs", "runtime", codecBoundary],
+  [discoveryCodec, layout, "runtime", codecBoundary],
   [parser, layout, "type", codecBoundary],
   [parser, "node_modules/elkjs/index.js", "runtime", codecBoundary],
   ["src/lib/generated/contracts.ts", "src/platform/documents.ts", "type", codecBoundary],
   [domain, "node_modules/yaml/index.js", "runtime", "domain-is-platform-independent"],
+  [model, codec, "runtime", modelBoundary],
+  [model, domain, "type", modelBoundary],
+  [modelContracts, domainContracts, "type", modelBoundary],
+  [model, platformContracts, "type", modelBoundary],
+  [model, "node_modules/yaml/index.js", "runtime", modelIndependence],
+  [model, "node:fs", "runtime", modelIndependence],
   [workspace, "node_modules/dependency-cruiser/index.js", "runtime", analyzerBoundary],
   [workspace, "node_modules/jscpd/index.js", "runtime", analyzerBoundary],
   [workflow, "node_modules/ts-morph/index.js", "type", analyzerBoundary],
@@ -98,12 +134,20 @@ const forbidden: readonly Probe[] = [
   ["src/platform/documents.ts", workflow, "type", "platform-does-not-depend-on-workspace"],
   ["src/App.tsx", "node_modules/@tauri-apps/api/index.js", "runtime", "desktop-access-through-adapter"],
   [workspace, "test/support/baseline-fixtures.ts", "type", "no-test-code-in-app"],
+  [producerStage, codec, "runtime", producerBoundary],
+  [producerStage, "src/platform/documents.ts", "runtime", producerBoundary],
+  [producerCli, domainContracts, "type", producerBoundary],
+  [producerFiles, "src/platform/documents.ts", "runtime", producerDuplicationBoundary],
+  [producerCommands, layout, "runtime", producerDuplicationBoundary],
 ];
 
 function moduleSpecifier(source: string, target: string): string {
-  if (target.startsWith("src/")) return `@/${target.slice(4)}`;
+  if (target.startsWith("src/") && source.startsWith("src/")) return `@/${target.slice(4)}`;
   if (target.startsWith("node_modules/")) return target.slice("node_modules/".length, -"/index.js".length);
-  if (target.startsWith("test/")) return relative(dirname(source), target).replaceAll("\\", "/");
+  if (/^(src|test|packages)\//.test(target)) {
+    const path = relative(dirname(source), target).replaceAll("\\", "/");
+    return path.startsWith(".") ? path : `./${path}`;
+  }
   return target;
 }
 
@@ -168,9 +212,12 @@ async function checkProbes(repository: string, probes: readonly Probe[]): Promis
     await copyFile(join(repository, "tsconfig.json"), join(root, "tsconfig.json"));
     await copyFile(join(repository, "package.json"), join(root, "package.json"));
     await writeProbeModules(root, probes);
+    // Cruise the same source folders as check:dependencies.
+    const inputs = ["src", "packages/baseline-model/src", "packages/producer/src"];
+    for (const input of inputs) await mkdir(join(root, input), { recursive: true });
     const cruise = Bun.spawnSync([
       "node", join(repository, "node_modules/dependency-cruiser/bin/dependency-cruiser.mjs"),
-      "src", "--config", join(repository, ".dependency-cruiser.cjs"), "--output-type", "json",
+      ...inputs, "--config", join(repository, ".dependency-cruiser.cjs"), "--output-type", "json",
     ], { cwd: root, stdout: "pipe", stderr: "pipe" });
     if (cruise.exitCode !== 0) throw new Error(`Dependency probe cruise failed.\n${cruise.stderr.toString()}`);
     // The JSON reporter uses exit status zero even when a rule rejects an edge.

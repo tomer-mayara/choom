@@ -1,6 +1,6 @@
-import type { Baseline } from "../domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { duplicationReportSchema, matchesDuplicationBaseline, validateDuplicationBinding } from "../domain/interface-duplication.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { CodecProblem } from "./architecture-yaml/limits.ts";
 import { readYamlData } from "./architecture-yaml/parse.ts";
 import type { DecodeDuplicationReportOutcome, DuplicationReportCodec } from "./generated/contracts.ts";

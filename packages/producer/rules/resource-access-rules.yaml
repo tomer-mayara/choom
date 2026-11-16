@@ -1,0 +1,50 @@
+# The pinned list of Choom resource access rules. Stage 4 start saves a copy of this
+# file and its SHA-256, and Stage 4 collect applies the rules to the source files of
+# the graph scope. The contract is cookbook/interfaces/resource-access-rules.tsp.
+# A rule that changes keeps its ID and gets the next version.
+formatVersion: 1
+rules:
+  # Knex starts a query on a table with a call of the client, such as db('invoices')
+  # after const db = knex(config), or on a parameter db: Knex. The table name is the
+  # first argument of that call, the call before the method (nameCall: 1). Each rule
+  # finds one method that comes directly after that call.
+  - id: knex-insert
+    version: 1
+    library: knex
+    resourceKind: database-table
+    operation: write
+    importName: knex
+    callPath: knex()().insert
+    typePath: Knex().insert
+    nameCall: 1
+    nameArgument: 0
+  - id: knex-update
+    version: 1
+    library: knex
+    resourceKind: database-table
+    operation: write
+    importName: knex
+    callPath: knex()().update
+    typePath: Knex().update
+    nameCall: 1
+    nameArgument: 0
+  - id: knex-del
+    version: 1
+    library: knex
+    resourceKind: database-table
+    operation: write
+    importName: knex
+    callPath: knex()().del
+    typePath: Knex().del
+    nameCall: 1
+    nameArgument: 0
+  - id: knex-select
+    version: 1
+    library: knex
+    resourceKind: database-table
+    operation: read
+    importName: knex
+    callPath: knex()().select
+    typePath: Knex().select
+    nameCall: 1
+    nameArgument: 0

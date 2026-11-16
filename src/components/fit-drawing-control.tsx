@@ -1,6 +1,6 @@
 import { ControlButton, useReactFlow, useStoreApi } from "@xyflow/react";
 import { Maximize } from "lucide-react";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { InterfaceArcRoute } from "../lib/interface-arc-geometry.ts";
 import { drawingBounds } from "../lib/architecture-bounds.ts";

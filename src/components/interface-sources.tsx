@@ -1,11 +1,12 @@
-import type { Baseline, BaselineInterface, BaselineSourceAssessment } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline, BaselineInterface, BaselineSourceAssessment } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { projectInterfaceSources } from "../lib/interface-provenance.ts";
+import { CopyDecision } from "./copy-decision.tsx";
 import { RecordedStatus } from "./interface-overview.tsx";
 import { InterfaceSourceLocation } from "./interface-source-location.tsx";
 import { InterfaceSourceReview } from "./interface-source-review.tsx";
 import type { InterfaceDisclosure } from "./use-interface-disclosures.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 
 export function InterfaceSources({ baseline, item, assessment, disclosure }: {
   baseline: ReadonlyData<Baseline>; item: ReadonlyData<BaselineInterface>;
@@ -41,6 +42,7 @@ export function InterfaceSources({ baseline, item, assessment, disclosure }: {
         <p className="font-medium">{statement.label}</p><code className="block text-xs">{statement.path}</code>
         <RecordedStatus status={statement.status} />
         {statement.acceptanceRef ? <div><p>Acceptance reference</p><code className="text-xs">{statement.acceptanceRef}</code></div> : null}
+        <CopyDecision itemId={item.id} field={statement.path.slice(item.id.length + 1)} />
       </li>)}</ul> : null}
     </details>
     <details data-section="interface-evidence" {...evidence}>

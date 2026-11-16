@@ -1,5 +1,6 @@
-import type { Baseline, BaselineSystemEntryPoint } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import { supportsSystemEntryPoints } from "@choom/baseline-model/baseline-format";
+import type { Baseline, BaselineSystemEntryPoint } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 
 export type SystemEntryCounts = Record<BaselineSystemEntryPoint["kind"], number>;
 
@@ -14,7 +15,7 @@ export function systemEntryCounts(entries: readonly ReadonlyData<BaselineSystemE
 }
 
 export function systemEntryReview(baseline: ReadonlyData<Baseline>) {
-  const assessment = baseline.formatVersion === 4 ? baseline.systemEntryPoints : undefined;
+  const assessment = supportsSystemEntryPoints(baseline) ? baseline.systemEntryPoints : undefined;
   if (!assessment) return { assessment, notices: ["Entry points not recorded"] };
   const notices: string[] = [];
   if (assessment.entries.length === 0) notices.push("No entry points found in this scope");

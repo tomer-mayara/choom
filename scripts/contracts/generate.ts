@@ -15,8 +15,8 @@ const root = fileURLToPath(new URL("../..", import.meta.url));
 const sourceDirectory = resolve(root, "cookbook/interfaces");
 const schemaDirectory = "cookbook/interfaces/generated";
 const generatedDirectories = [
-  schemaDirectory, "src/domain/generated", "src/platform/generated", "src/architecture/generated",
-  "src/lib/generated",
+  schemaDirectory, "packages/baseline-model/src/generated", "src/domain/generated", "src/platform/generated",
+  "src/architecture/generated", "src/lib/generated", "packages/producer/src/generated",
 ];
 
 function requireNoDiagnostics(diagnostics: readonly Diagnostic[]): void {

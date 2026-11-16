@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { projectInterfaceSources } from "../../../src/lib/interface-provenance.ts";
+import type { BaselineInterface } from "@choom/baseline-model/contracts";
+import { interfaceSourceStatements, projectInterfaceSources } from "../../../src/lib/interface-provenance.ts";
 import { baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { interfaceSourceFixture } from "../../support/interface-source-fixtures.ts";
 import { baselineWithSignature } from "../../support/interface-documentation-fixtures.ts";
@@ -24,6 +25,44 @@ test("source metadata visits every legacy and nested statement in saved order", 
   ]);
   expect(view.statements.filter(({ status }) => status === "proposed").every((statement) => statement.acceptanceRef === undefined)).toBe(true);
   expect(item).toEqual(original);
+});
+
+const recorded = (path: string, label: string, evidenceRefs = ["missing-evidence#/items/0"]) =>
+  ({ path: prefix + path, label, status: "proposed", evidenceRefs });
+const acceptedRecord = (path: string, label: string, evidenceRefs: string[]) =>
+  ({ ...recorded(path, label, evidenceRefs), status: "accepted", acceptanceRef: "missing-review#/decisions/4" });
+
+test("Recorded statements give each path, label, status, evidence and acceptance reference in saved order", () => {
+  const item: BaselineInterface = fixtureItem(baselineWithSignature().input.interfaces);
+  const docs = item.documentation;
+  if (!docs) throw new Error("The signature fixture has documentation.");
+  // Repeated entry and example names get their IDs in the labels.
+  fixtureItem(docs.entries).examples.push({ id: "second-order", name: "A valid order", basis: "illustrative",
+    content: proposed({ text: "createInvoice(second)" }) });
+  docs.entries.push({ id: "invoice-type", name: "Create invoice", accessPoint: "createInvoice", kind: proposed("type"),
+    description: proposed(null), examples: [] });
+  const first = "documentation.entries.create-invoice";
+  expect<unknown>(interfaceSourceStatements(item)).toEqual([
+    recorded("owner", "Provider"), recorded("publicAccess", "Interface entries"),
+    acceptedRecord("allowedConsumers", "Access rule", ["missing-evidence#/items/1"]),
+    recorded("promises", "Interface-wide contract"), recorded("documentation.summary", "Purpose"),
+    recorded(`${first}.kind`, "Create invoice (create-invoice): kind"),
+    recorded(`${first}.description`, "Create invoice (create-invoice): description"),
+    acceptedRecord(`${first}.signature`, "Create invoice (create-invoice): signature", ["invoice-declaration"]),
+    recorded(`${first}.interaction`, "Create invoice (create-invoice): interaction"),
+    recorded(`${first}.examples.valid-order.content`, "Create invoice (create-invoice): A valid order (valid-order) example",
+      ["reviewed-invoice-source"]),
+    recorded(`${first}.examples.second-order.content`, "Create invoice (create-invoice): A valid order (second-order) example"),
+    recorded("documentation.entries.invoice-type.kind", "Create invoice (invoice-type): kind"),
+    recorded("documentation.entries.invoice-type.description", "Create invoice (invoice-type): description"),
+  ]);
+});
+
+test("Recorded statements of a version 1 interface are its four legacy statements", () => {
+  expect<unknown>(interfaceSourceStatements(fixtureItem(baselineExample().interfaces))).toEqual([
+    recorded("owner", "Provider"), recorded("publicAccess", "Interface entries"),
+    acceptedRecord("allowedConsumers", "Access rule", ["missing-evidence#/items/1"]), recorded("promises", "Interface-wide contract"),
+  ]);
 });
 
 test("evidence IDs appear once while retaining every citing statement and unresolved references", () => {

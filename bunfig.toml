@@ -1,5 +1,7 @@
 [install]
 exact = true
+# Keep one hoisted node_modules tree; workspaces otherwise default to isolated installs.
+linker = "hoisted"
 
 [test]
 root = "./test/unit/domain"

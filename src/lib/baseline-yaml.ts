@@ -1,4 +1,4 @@
-import { baselineSchema } from "../domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { CodecProblem } from "./architecture-yaml/limits.ts";
 import { readYamlData } from "./architecture-yaml/parse.ts";
 import type { BaselineCodec, DecodeBaselineOutcome } from "./generated/contracts.ts";
@@ -23,12 +23,12 @@ export function decodeBaselineYaml(text: string): DecodeBaselineOutcome {
     const value = readYamlData(text);
     const version: unknown = typeof value === "object" && value !== null
       ? Object.getOwnPropertyDescriptor(value, "formatVersion")?.value : undefined;
-    if (typeof version === "number" && version !== 1 && version !== 2 && version !== 3 && version !== 4) {
+    if (typeof version === "number" && version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5) {
       throw new CodecProblem("unsupported-version", "The baseline format version is unsupported.");
     }
     if (typeof value === "object" && value !== null && !Object.hasOwn(value, "formatVersion")
       && Object.getOwnPropertyDescriptor(value, "schemaVersion")?.value === 1) {
-      throw new CodecProblem("invalid-document", "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, 3, or 4.");
+      throw new CodecProblem("invalid-document", "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, 3, 4, or 5.");
     }
     const result = baselineSchema.safeParse(value);
     if (!result.success) {

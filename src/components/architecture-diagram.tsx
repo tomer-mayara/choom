@@ -3,8 +3,8 @@ import {
   Background, ControlButton, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore, useStoreApi, type Node, type NodeProps,
 } from "@xyflow/react";
 import { RotateCcw } from "lucide-react";
-import type { BaselineComponent, Baseline } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { BaselineComponent, Baseline } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import { maximumDiagramZoom, normalMinimumZoom, revealHeader, startingViewport } from "../lib/architecture-viewport.ts";
 import { componentControlHeight, componentControlWidth, componentGroupBorderWidth } from "../lib/component-geometry.ts";
@@ -21,7 +21,10 @@ import { useArchitectureInspection } from "./use-architecture-inspection.ts";
 import { useComponentGestures, type ComponentGestures } from "./use-component-gestures.ts";
 import { Button } from "./ui/button.tsx";
 import { duplicationCounts, type DuplicationControls } from "./duplication-view.ts";
-import { supportsSourceUsage } from "../domain/baseline-format.ts";
+import { ComponentHeaderText, compactHeader, type DiscoveryCount, headerDescription } from "./component-header.tsx";
+import { DecisionContext, useDecisionBaseline } from "./copy-decision.tsx";
+import { DiscoveryContext, type DiscoveryControls, useDiscoveryReading } from "./discovery-records.tsx";
+import { supportsSourceUsage } from "@choom/baseline-model/baseline-format";
 import "@xyflow/react/dist/style.css";
 
 type ArchitectureNode = Node<{
@@ -30,6 +33,7 @@ type ArchitectureNode = Node<{
   isGroup: boolean;
   interfaceCount: number;
   duplicateCount: number;
+  discovery?: DiscoveryCount;
   entryCounts?: SystemEntryCounts;
   selected: boolean;
   gestures: ComponentGestures;
@@ -41,13 +45,11 @@ const arrowSteps: Record<string, { x: number; y: number }> = {
   ArrowLeft: { x: -10, y: 0 }, ArrowRight: { x: 10, y: 0 }, ArrowUp: { x: 0, y: -10 }, ArrowDown: { x: 0, y: 10 },
 };
 
-function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount, entryCounts, inspect, selected, gestures, announce } }: NodeProps<ArchitectureNode>) {
+function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount, discovery, entryCounts, inspect, selected, gestures, announce } }: NodeProps<ArchitectureNode>) {
   const { getNodesBounds, getViewport, setViewport, screenToFlowPosition } = useReactFlow();
   const store = useStoreApi();
   const pointerSelection = useRef(false);
-  const entryDescription = entryCounts ? `system-entry-markers-${item.id}` : undefined;
-  // The marked header fits a two-line name, metadata, and badges at the shared height.
-  const metadataLine = entryCounts ? "text-xs leading-[14px]" : "text-xs";
+  const counts = { interfaceCount, duplicateCount, discovery, entryCounts };
 
   function reveal(position: { x: number; y: number }) {
     const { width, height } = store.getState();
@@ -76,8 +78,8 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount
       <button
         type="button" aria-label={`${item.name}, ${item.id}`} aria-haspopup="dialog"
         data-component-id={item.id}
-        aria-describedby={entryDescription ? `item-inspection-hint ${entryDescription}` : "item-inspection-hint"} aria-pressed={selected}
-        className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center border-border px-3 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${entryCounts ? "gap-px py-0.5" : "gap-0.5 py-1"} ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
+        aria-describedby={headerDescription(item.id, counts)} aria-pressed={selected}
+        className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center border-border px-3 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${compactHeader(counts) ? "gap-px py-0.5" : "gap-0.5 py-1"} ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
         style={{ width: componentControlWidth, height: componentControlHeight, touchAction: "none" }}
         onFocus={revealFocusedItem}
         onPointerDown={(event) => {
@@ -104,16 +106,19 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount
           inspect(panel, event.currentTarget, keyboard);
         }}
       >
-        <span className={`line-clamp-2 max-w-full font-semibold wrap-anywhere ${entryCounts ? "leading-[18px]" : "leading-5"}`} title={item.name}>{item.name}</span>
-        <span className={`${metadataLine} text-muted-foreground`}>{interfaceCount} {interfaceCount === 1 ? "interface" : "interfaces"}</span>
-        {duplicateCount > 0 ? <span className={metadataLine}>{duplicateCount} possible {duplicateCount === 1 ? "duplicate" : "duplicates"}</span> : null}
-        {entryCounts ? <span id={entryDescription} className={`flex gap-1 font-medium ${metadataLine}`}>
-          {entryCounts.startup > 0 ? <span className="rounded-sm bg-sky-100 px-1 text-sky-900 dark:bg-sky-950 dark:text-sky-200">Startup {entryCounts.startup}</span> : null}
-          {entryCounts.external > 0 ? <span className="rounded-sm bg-violet-100 px-1 text-violet-900 dark:bg-violet-950 dark:text-violet-200">External {entryCounts.external}</span> : null}
-        </span> : null}
+        <ComponentHeaderText id={item.id} name={item.name} counts={counts} />
       </button>
     </div>
   );
+}
+
+/** The number of interfaces that each component owns directly. Unknown owners count for no component. */
+function directInterfaceCounts(baseline: ReadonlyData<Baseline>): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const { owner } of baseline.interfaces) {
+    if (owner.value !== null) counts.set(owner.value, (counts.get(owner.value) ?? 0) + 1);
+  }
+  return counts;
 }
 
 const nodeTypes = { item: ItemCard };
@@ -163,12 +168,13 @@ function SystemEntryLegend() {
   </section>;
 }
 
-function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode, showSelfConnections, setShowSelfConnections, duplicateCounts, entryCounts }: {
+function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connectionMode, setConnectionMode, showSelfConnections, setShowSelfConnections, duplicateCounts, discoveryCounts, entryCounts }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; arrangement: ComponentArrangement;
   inspection: ReturnType<typeof useArchitectureInspection>;
   connectionMode: ConnectionMode; setConnectionMode: (mode: ConnectionMode) => void;
   showSelfConnections: boolean; setShowSelfConnections: (show: boolean) => void;
   duplicateCounts: ReadonlyMap<string, number>;
+  discoveryCounts: ReadonlyMap<string, DiscoveryCount>;
   entryCounts: ReadonlyMap<string, SystemEntryCounts>;
 }) {
   const geometry = useSyncExternalStore(arrangement.subscribe, arrangement.getSnapshot);
@@ -190,18 +196,15 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
   const items = useMemo(() => {
     const parents = new Set(baseline.components.flatMap((component) => component.parent?.value ? [component.parent.value] : []));
     const items = new Map<string, ArchitectureNode["data"]>();
-    const interfaceCounts = new Map<string, number>();
-    for (const { owner } of baseline.interfaces) {
-      if (owner.value !== null) interfaceCounts.set(owner.value, (interfaceCounts.get(owner.value) ?? 0) + 1);
-    }
+    const interfaceCounts = directInterfaceCounts(baseline);
     for (const item of baseline.components) items.set(item.id, {
       item, panel: { kind: "component", componentId: item.id }, isGroup: parents.has(item.id),
       interfaceCount: interfaceCounts.get(item.id) ?? 0, inspect: inspection.open, selected: inspection.componentId === item.id,
-      duplicateCount: duplicateCounts.get(item.id) ?? 0, entryCounts: entryCounts.get(item.id),
+      duplicateCount: duplicateCounts.get(item.id) ?? 0, discovery: discoveryCounts.get(item.id), entryCounts: entryCounts.get(item.id),
       gestures, announce,
     });
     return items;
-  }, [baseline, inspection.open, inspection.componentId, gestures, announce, duplicateCounts, entryCounts]);
+  }, [baseline, inspection.open, inspection.componentId, gestures, announce, duplicateCounts, discoveryCounts, entryCounts]);
   const nodes = useMemo<ArchitectureNode[]>(() => {
     return geometry.nodes.map(({ id, position, width, height, parentId }) => {
       const data = items.get(id);
@@ -293,9 +296,12 @@ function sourceReviewNotice(baseline: ReadonlyData<Baseline>): string | null {
 }
 
 /** The published pair defines one view; pointer frames only update its canvas. */
-export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false }: {
+export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false,
+  discovery, onOpenDiscoveryResult, onRemoveDiscoveryResult, baselineSha256 }: {
   baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
-} & DuplicationControls) {
+  /** The SHA-256 of the saved baseline file. The built-in example has none, so it cannot copy a decision. */
+  baselineSha256?: string;
+} & DuplicationControls & DiscoveryControls) {
   const [connectionChoice, setConnectionChoice] = useState<{
     baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; mode: ConnectionMode; showSelfConnections: boolean;
   } | null>(null);
@@ -316,20 +322,29 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
   const { assessment, notices: entryNotices } = systemEntryReview(baseline);
   const entryCounts = useMemo(() => systemEntryCounts(assessment?.entries ?? []), [assessment]);
   const counts = useMemo(() => duplicationCounts(baseline, duplication?.report), [baseline, duplication?.report]);
+  const { reading, componentCounts } = useDiscoveryReading(baseline, discovery);
+  const decisions = useDecisionBaseline(baseline, baselineSha256);
 
-  return (
+  return (<DiscoveryContext value={reading}><DecisionContext value={decisions}>
     <section aria-labelledby="current-diagram-heading" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border px-4 py-2 sm:flex-nowrap">
-        <h1 id="current-diagram-heading" tabIndex={-1} className="w-full min-w-0 truncate text-base font-semibold sm:w-auto sm:flex-1" title={baseline.id}>{baseline.id}</h1>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:flex-nowrap sm:gap-3">
+        <h1 id="current-diagram-heading" tabIndex={-1} className="min-w-0 flex-1 truncate text-base font-semibold" title={baseline.id}>{baseline.id}</h1>
         <p id="item-inspection-hint" className="sr-only lg:not-sr-only lg:text-xs lg:text-muted-foreground">Select to inspect. Drag a header or use arrow keys to move it.</p>
+        {/* In a narrow window, Discovery is a 24px control on the heading row, so it adds no height to the header. */}
+        <Button variant="outline" className="h-6 px-2 py-0 text-xs sm:h-auto sm:px-4 sm:py-2 sm:text-sm"
+          onClick={(event) => openPanel({ kind: "discovery" }, event.currentTarget, event.detail === 0)}>Discovery</Button>
         <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-4 sm:[&>button]:text-sm">
-          <Button id="baseline-details-control" variant="outline" onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>Baseline details</Button>
+          {/* A narrow window shows the short label, so that the three actions stay on one row. */}
+          <Button id="baseline-details-control" variant="outline" aria-label="Baseline details"
+            onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>
+            <span className="sm:hidden">Details</span><span className="hidden sm:inline">Baseline details</span>
+          </Button>
           <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget, event.detail === 0)}>Rules ({baseline.rules.length})</Button>
           <Button variant="outline" onClick={(event) => openPanel({ kind: "duplicates" }, event.currentTarget, event.detail === 0)}>Duplicates</Button>
         </div>
       </div>
       {incompleteInterfaces > 0 || sourceNotice || entryNotices.length > 0 ? (
-        <div className={`flex shrink-0 flex-wrap gap-x-4 border-b border-border px-4 text-xs text-muted-foreground ${incompleteInterfaces > 0 || sourceNotice ? "py-2" : "py-0.5"}`}>
+        <div className={`flex shrink-0 flex-wrap gap-x-4 border-b border-border px-4 text-xs text-muted-foreground ${incompleteInterfaces > 0 || sourceNotice ? "py-1 sm:py-2" : "py-0.5"}`}>
           {incompleteInterfaces > 0 ? <p>
             {incompleteInterfaces} {incompleteInterfaces === 1 ? "interface has" : "interfaces have"} unknown owners or allowed consumers. Open Baseline details to inspect them.
           </p> : null}
@@ -343,10 +358,12 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       {layout.nodes.length > 0 ? <ArchitectureCanvas baseline={baseline} layout={layout} arrangement={arrangement} inspection={inspection}
         connectionMode={connectionMode} setConnectionMode={setConnectionMode}
-        showSelfConnections={showSelfConnections} setShowSelfConnections={setShowSelfConnections} duplicateCounts={counts.components} entryCounts={entryCounts} /> : null}
+        showSelfConnections={showSelfConnections} setShowSelfConnections={setShowSelfConnections} duplicateCounts={counts.components}
+        discoveryCounts={componentCounts} entryCounts={entryCounts} /> : null}
       <ArchitectureDetailsPanel baseline={baseline} inspection={inspection} duplication={duplication} counts={counts}
-        onOpenDuplicationReport={onOpenDuplicationReport} onRemoveDuplicationReport={onRemoveDuplicationReport} reportBusy={reportBusy} />
+        onOpenDuplicationReport={onOpenDuplicationReport} onRemoveDuplicationReport={onRemoveDuplicationReport} reportBusy={reportBusy}
+        discoveryControls={{ discovery, onOpenDiscoveryResult, onRemoveDiscoveryResult }} />
       </div>
     </section>
-  );
+  </DecisionContext></DiscoveryContext>);
 }

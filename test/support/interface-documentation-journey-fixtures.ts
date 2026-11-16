@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { baselineSchema } from "../../src/domain/baseline.ts";
-import type { Baseline, BaselineV2 } from "../../src/domain/generated/contracts.ts";
+import { baselineSchema } from "@choom/baseline-model";
+import type { Baseline, BaselineV2 } from "@choom/baseline-model/contracts";
 import { checkBaselineDisplayLimits } from "../../src/lib/baseline-display-limits.ts";
 import { proposed } from "./baseline-fixtures.ts";
 import { baselineWithComponents, baselineWithLinks } from "./baseline-layout-fixtures.ts";

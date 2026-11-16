@@ -1,0 +1,478 @@
+# The pinned list of Choom behavior entry rules. Stage 4 start saves a copy of this
+# file and its SHA-256, and Stage 4 collect applies the rules to the source files of
+# the graph scope, and the package-bin rule to the package.json files of the snapshot.
+# The contract is cookbook/interfaces/behavior-entry-rules.tsp.
+# A rule that changes keeps its ID and gets the next version.
+# Each http-route rule finds the calls of one route method, so the rule of a candidate
+# names the method. Its ID says the library, the receiver and the method.
+# Each worker-thread or queue-worker rule finds the new calls of the Worker class of
+# one module name. Its ID is that module name, with -worker at the end.
+# Each frontend-entry rule is a settings-literal rule: it reads the entries that one
+# property of a Vite settings file names. Its ID is vite and then the words of the
+# property path.
+# Each cli-command rule finds the commands of one kind of command line program. Its ID
+# says the library, the receiver and the method command. The cli-bin rule reads the bin
+# field of package.json.
+formatVersion: 1
+rules:
+  # The get routes of an Express app, such as app.get('/orders', listOrders) after
+  # const app = express(). The path is the name and the last argument is the handler.
+  # A get call with only one argument reads a setting of the app, so it is not a match.
+  - id: express-route-get
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().get
+    nameArgument: 0
+    handlerArgument: last
+  # The other route methods of an Express app, such as app.post('/orders', createOrder)
+  # after const app = express(). The path is the name and the last argument is the
+  # handler.
+  - id: express-route-post
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-put
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-patch
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-delete
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-options
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-head
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().head
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-route-all
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: express().all
+    nameArgument: 0
+    handlerArgument: last
+  # The route methods of an Express router, such as router.post('/orders', createOrder)
+  # after const router = express.Router(), or after const router = Router() with
+  # import { Router } from 'express'. The path is the name in the router, without the
+  # path that app.use gives the router. The last argument is the handler.
+  - id: express-router-get
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().get
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-post
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-put
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-patch
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-delete
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-options
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-head
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().head
+    nameArgument: 0
+    handlerArgument: last
+  - id: express-router-all
+    version: 1
+    library: express
+    entryKind: http-route
+    kind: call
+    importName: express
+    callPath: Router().all
+    nameArgument: 0
+    handlerArgument: last
+  # The route methods of a Fastify server, such as fastify.post('/orders', opts, createOrder)
+  # after const fastify = Fastify() with import Fastify from 'fastify', or after
+  # const fastify = require('fastify')(). The path is the name. Route options can come
+  # before the handler, so the last argument is the handler.
+  - id: fastify-route-get
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().get
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-post
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-put
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-patch
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-delete
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-options
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-head
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().head
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-all
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().all
+    nameArgument: 0
+    handlerArgument: last
+  # The route methods of a Hono app, such as app.post('/orders', (c) => c.text('Created'))
+  # after const app = new Hono() with import { Hono } from 'hono'. The path is the name
+  # and the last argument is the handler. Hono has no head method: a get route also
+  # answers HEAD requests.
+  - id: hono-route-get
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().get
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-post
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-put
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-patch
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-delete
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-options
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: hono-route-all
+    version: 1
+    library: hono
+    entryKind: http-route
+    kind: call
+    importName: hono
+    callPath: new Hono().all
+    nameArgument: 0
+    handlerArgument: last
+  # The worker threads that the Worker class of the Node.js module node:worker_threads
+  # starts, such as new Worker('./worker.js', { workerData }) after
+  # import { Worker } from 'node:worker_threads'. The worker file, the first argument,
+  # is the name. The call has no handler function: the worker runs its file. A worker
+  # file such as __filename or new URL('./worker.js', import.meta.url) is not a string
+  # literal, so the name is null.
+  - id: node-worker-threads-worker
+    version: 1
+    library: node:worker_threads
+    entryKind: worker-thread
+    kind: call
+    importName: node:worker_threads
+    callPath: new Worker
+    nameArgument: 0
+    handlerArgument: null
+  # The same worker threads when the code names the module worker_threads, without
+  # node:, such as const { Worker } = require('worker_threads'). A rule finds the calls
+  # of one module name, so each name has a rule.
+  - id: worker-threads-worker
+    version: 1
+    library: node:worker_threads
+    entryKind: worker-thread
+    kind: call
+    importName: worker_threads
+    callPath: new Worker
+    nameArgument: 0
+    handlerArgument: null
+  # The queue workers that the Worker class of BullMQ starts, such as
+  # new Worker('foo', async job => { ... }, { connection }) after
+  # import { Worker } from 'bullmq'. The queue name, the first argument, is the name.
+  # The processor, the second argument, is the handler. Options can follow the
+  # processor, so the handler is not the last argument. A sandboxed processor is the
+  # path of a file, not a function: a path as a string literal gives no handler, and
+  # the name of a variable gives the declaration of that variable.
+  - id: bullmq-worker
+    version: 1
+    library: bullmq
+    entryKind: queue-worker
+    kind: call
+    importName: bullmq
+    callPath: new Worker
+    nameArgument: 0
+    handlerArgument: 1
+  # The entries of a Vite build that the Rollup options of the build name, such as
+  # build: { rollupOptions: { input: { main: 'index.html', nested: 'nested/index.html' } } }
+  # in vite.config.js. The input is a path, an array of paths or an object whose property
+  # values are paths. Vite 8 renames these options rolldownOptions and keeps
+  # rollupOptions as an alias.
+  - id: vite-build-rollup-options-input
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: build.rollupOptions.input
+  # The same entries with the Vite 8 name of these options, such as
+  # build: { rolldownOptions: { input: ['index.html', 'nested/index.html'] } }.
+  - id: vite-build-rolldown-options-input
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: build.rolldownOptions.input
+  # The entries that the top-level input of Vite 8 names, such as
+  # input: { main: 'index.html', nested: 'nested/index.html' }. Vite also uses this
+  # input in development. An input of the build options replaces it for the build.
+  - id: vite-input
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: input
+  # The entries of a library that Vite builds in library mode, such as
+  # build: { lib: { entry: 'lib/main.js', name: 'MyLib' } }. The entry is a path, an
+  # array of paths or an object whose property values are paths.
+  - id: vite-build-lib-entry
+    version: 1
+    library: vite
+    entryKind: frontend-entry
+    kind: settings-literal
+    fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
+    propertyPath: build.lib.entry
+  # The commands of a commander program on the program export, such as
+  # program.command('clone <source> [destination]').description('...').action(clone)
+  # after import { program } from 'commander'. The rule finds the action call. The name is
+  # the first argument of the command call, the call before action (nameCall: 1), with the
+  # arguments of the command as the call writes them. The action, the first argument of
+  # the action call, is the handler. The builder calls of the command can come between
+  # the command call and the action call, and the builder calls of the program before the
+  # command call: sameValueMethods lists each method of Command that has a form that
+  # returns the command itself, as the typings of commander 15 declare them, except
+  # action, command and parse. A command call makes a new command, so it is not a builder
+  # call.
+  - id: commander-program-command
+    version: 1
+    library: commander
+    entryKind: cli-command
+    kind: call
+    importName: commander
+    callPath: program.command().action
+    nameArgument: 0
+    handlerArgument: 0
+    nameCall: 1
+    sameValueMethods: [addArgument, addCommand, addHelpCommand, addHelpOption, addHelpText, addOption, alias, aliases,
+      allowExcessArguments, allowUnknownOption, argument, arguments, combineFlagAndOptionalValue, commandsGroup,
+      configureHelp, configureOutput, copyInheritedSettings, description, enablePositionalOptions, executableDir,
+      exitOverride, helpCommand, helpGroup, helpOption, hook, name, nameFromFilename, on, option, optionsGroup,
+      passThroughOptions, requiredOption, setOptionValue, setOptionValueWithSource, showHelpAfterError,
+      showSuggestionAfterError, storeOptionsAsProperties, summary, usage, version]
+  # The same commands of a program that new Command() makes, such as
+  # const program = new Command() after import { Command } from 'commander'.
+  - id: commander-class-command
+    version: 1
+    library: commander
+    entryKind: cli-command
+    kind: call
+    importName: commander
+    callPath: new Command().command().action
+    nameArgument: 0
+    handlerArgument: 0
+    nameCall: 1
+    sameValueMethods: [addArgument, addCommand, addHelpCommand, addHelpOption, addHelpText, addOption, alias, aliases,
+      allowExcessArguments, allowUnknownOption, argument, arguments, combineFlagAndOptionalValue, commandsGroup,
+      configureHelp, configureOutput, copyInheritedSettings, description, enablePositionalOptions, executableDir,
+      exitOverride, helpCommand, helpGroup, helpOption, hook, name, nameFromFilename, on, option, optionsGroup,
+      passThroughOptions, requiredOption, setOptionValue, setOptionValueWithSource, showHelpAfterError,
+      showSuggestionAfterError, storeOptionsAsProperties, summary, usage, version]
+  # The commands of a yargs program, such as
+  # yargs(hideBin(process.argv)).command('serve [port]', 'start the server', builder, handler)
+  # after import yargs from 'yargs'. The name is the first argument, with the arguments of
+  # the command. The handler is argument 3, as the yargs documentation writes
+  # .command(cmd, desc, builder, handler); middlewares can follow it. A yargs command
+  # without a handler argument, such as .command(cmd, desc) or .command(cmd, desc, builder),
+  # is not a candidate. A command call gives the yargs instance that it is called on, so
+  # one chain can have several command calls: sameValueMethods lists each method of a yargs
+  # instance that returns the instance, as yargs 18 writes them, command among them.
+  - id: yargs-command
+    version: 1
+    library: yargs
+    entryKind: cli-command
+    kind: call
+    importName: yargs
+    callPath: yargs().command
+    nameArgument: 0
+    handlerArgument: 3
+    sameValueMethods: [addHelpOpt, addShowHiddenOpt, alias, array, boolean, check, choices, coerce, command, commandDir,
+      commands, completion, config, conflicts, count, default, defaults, demand, demandCommand, demandOption,
+      deprecateOption, describe, detectLocale, env, epilog, epilogue, example, exitProcess, fail, global, group, help,
+      hide, implies, locale, middleware, nargs, normalize, number, option, options, parserConfiguration, pkgConf,
+      positional, recommendCommands, require, required, requiresArg, scriptName, showCompletionScript, showHelp,
+      showHelpOnFail, showHidden, showVersion, skipValidation, strict, strictCommands, strictOptions, string,
+      updateLocale, updateStrings, usage, usageConfiguration, version, wrap]
+  # The commands that the bin field of a package.json names, as npm installs them, such as
+  # "bin": { "myapp": "bin/cli.js" }, or "bin": "bin/cli.js" for the command of the package
+  # name. Each path is a candidate at its value. Its handler is the file that the command
+  # runs, only with evidence: the snapshot holds the bin file, or a saved compiler setting
+  # compiles a source file of the snapshot to it. Otherwise the handler is null.
+  - id: package-bin
+    version: 1
+    library: npm
+    entryKind: cli-bin
+    kind: package-bin

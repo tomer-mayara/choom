@@ -46,7 +46,10 @@ the data, not the filename: a valid baseline named `example.choom.yaml` still
 opens. File pickers accept `.yaml` and `.yml`.
 
 Copy/export, model editing, statement acceptance, evidence loading, observed
-dependency overlays, and analysis runs are outside this release. Opening a file
+dependency overlays, and analysis runs are outside this release.
+[CR-004](../change-requests/CR-004-discovery-in-viewer.md) adds discovery
+questions and gaps, and a **Copy decision** action that copies a decision-file
+entry as text; it keeps these exclusions. Opening a file
 does not change it. No source checkout, Node installation, or analyzer is needed
 by the installed viewer.
 
@@ -115,6 +118,12 @@ status separate from verification. Do not infer that a file is published merely
 from its name or location.
 
 ## Diagram and details
+
+> **Superseded display rules.** The
+> [readability plan](cr-baseline-viewer-readability-plan.md#view-behavior)
+> replaced the node and line rules in this section. The current view shows
+> components only, draws connection arcs between components, and draws no arc
+> when an owner is unknown. This section keeps the BV-05 rules as history.
 
 Use ordinary named nodes for components, interfaces, and resources. This avoids
 custom interface ports and gives an interface a stable endpoint even when its

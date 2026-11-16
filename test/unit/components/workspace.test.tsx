@@ -14,13 +14,15 @@ import { parse } from "yaml";
 afterEach(() => { cleanup(); Reflect.deleteProperty(globalThis, "isTauri"); });
 
 test("controls use the view role without lifecycle or write commands", async () => {
-  const snapshot: LoadWorkflowSnapshot = { state: { operation: "baseline", phase: "idle", stage: null, lastOutcome: null }, current: null, duplication: null };
+  const snapshot: LoadWorkflowSnapshot = {
+    state: { operation: "baseline", phase: "idle", stage: null, lastOutcome: null }, current: null, duplication: null, discovery: null,
+  };
   const opened: string[] = [];
   const cancelled = async () => ({ status: "cancelled" as const, durationMs: 0 });
   const workflow: WorkflowView = {
     getSnapshot: () => snapshot, subscribe: () => () => {},
     openBaseline: async () => { opened.push("baseline"); return cancelled(); }, cancel: cancelled, retry: cancelled,
-    openDuplicationReport: cancelled, removeDuplicationReport: cancelled,
+    openDuplicationReport: cancelled, removeDuplicationReport: cancelled, openDiscoveryResult: cancelled, removeDiscoveryResult: cancelled,
   };
   render(<App workspace={{ workflow }} />);
   fireEvent.click(screen.getByRole("button", { name: "Open Baseline" }));

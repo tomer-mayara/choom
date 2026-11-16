@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { InterfaceSources } from "../../../src/components/interface-sources.tsx";
 import { useInterfaceDisclosures } from "../../../src/components/use-interface-disclosures.ts";
-import type { Baseline } from "../../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { baselineCodec } from "../../../src/lib/baseline-yaml.ts";
 import { fixtureItem } from "../../support/baseline-fixtures.ts";
 import { sourceUsageBaseline } from "../../support/source-usage-fixtures.ts";

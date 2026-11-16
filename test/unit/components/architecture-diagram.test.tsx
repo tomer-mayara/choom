@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { componentControlHeight } from "../../../src/lib/component-geometry.ts";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ArchitectureDiagram } from "../../../src/components/architecture-diagram.tsx";
-import type { Baseline } from "../../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { baselineExample, fixtureItem, proposed } from "../../support/baseline-fixtures.ts";
 import { baselineWithParentLevels } from "../../support/baseline-layout-fixtures.ts";
 import { baselineWithDistinctInterfaceLinks, baselineWithoutComponents } from "../../support/baseline-relationship-fixtures.ts";

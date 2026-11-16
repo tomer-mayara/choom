@@ -41,6 +41,16 @@ a failed baseline open preserves it. **Remove report** clears the attachment,
 invalidates pending report results and clears report-specific retry state. It
 does not write either file or cancel a baseline load.
 
+**Open discovery result** uses the same load slot and the same rules. The
+[discovery codec](discovery-result-codec.tsp) refuses version 1, which has no
+baseline digest, and binds a version 2 result to the baseline ID and the SHA-256
+of the original file bytes. It checks the complete file before the workflow
+attaches it in one step. A refused, failed or cancelled load and a late result
+keep the baseline and both attachments. A successful baseline open removes the
+discovery result too. **Remove discovery result** removes only the discovery
+result, its pending load and its retry state. The duplication report and the
+discovery result are independent; both can be attached.
+
 **Retry** rereads the resolved selection when available. If selection itself
 failed, Retry opens the picker again. A browser File that is no longer readable
 produces safe guidance to select the corresponding baseline or report again.
@@ -51,8 +61,8 @@ exceptions produce a bounded stage-specific error without raw paths or text.
 ## Publication and rendering
 
 [workspace-view.ts](../../src/architecture/workspace-view.ts) exposes Open
-Baseline, Open duplication report, Remove report, Cancel, Retry, subscriptions,
-and snapshot queries. Disposal stays
+Baseline, Open duplication report, Remove report, Open discovery result, Remove
+discovery result, Cancel, Retry, subscriptions, and snapshot queries. Disposal stays
 with the owner. The workflow copies and deeply freezes each baseline and layout
 before publication, including recursive rule JSON, statement lists, and positions.
 It does not freeze references held by collaborators. Repeated snapshot reads
@@ -60,6 +70,8 @@ are stable; later progress reuses the current baseline and layout.
 Subscription changes during notification do not repeat the same notification.
 Reports are also copied and deeply frozen before publication. The
 [report contract](interface-duplication.md) defines bounds and binding rules.
+Discovery results are copied and frozen in the same way; the
+[baseline notes](baseline.md) give their bounds and placement rules.
 
 Duplicates uses the existing inspector. Finding counts include directly owned
 interfaces and exclude justified distinctions. Unknown-owner findings remain
@@ -82,6 +94,8 @@ below the parent inspection header. Missing or invalid output fails the load.
 that prepared data without file access or layout work. It gives React Flow its
 own mutable position records. Components show their names and the number of
 interfaces they directly own. Counts exclude descendant and unknown owners.
+With an attached discovery result, a component also shows the number of
+recorded questions and gaps that name it or one of its fields.
 A parent has a border around its children and one small inspection header.
 Names can wrap to two lines in a bounded header. Accessible names and panel
 details keep the full text. ELK rectangle packing prepares the component overview.
@@ -89,7 +103,7 @@ Interfaces and resources have no separate nodes. In versions 1 and 2, interface
 arcs run from each recorded allowed consumer to the recorded owner. They show
 permission to use the interface, not observed calls.
 
-Versions 3 and 4 use only saved source-use records. Application and tooling value
+Versions 3 to 5 use only saved source-use records. Application and tooling value
 references connect the directly mapped consumer to the interface owner when
 both are known. Type, test, unknown-context, and unmapped references create no
 canvas arrow. Several sites combine into one arc per interface and endpoints;
@@ -153,12 +167,20 @@ header in baseline order. This happens once per successful open. Resizing and
 inspection preserve its pan and zoom. Fit view can zoom out to show the entire
 diagram. A single click, Enter, or Space opens
 inspection in a nonmodal side panel. On narrow windows, the panel sits below
-the canvas. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
+the canvas. There, **Discovery** is a small control on the heading row, and
+**Baseline details** shows the short label **Details**, so the other actions
+stay on one row. The top bar and the notices use less space too. Thus the
+drawing and the panel keep enough height with wide fonts. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
 (recorded)** status, **Evidence not loaded**, and its evidence references. An
 accepted statement also shows its acceptance reference. Missing optional fields
 say **Not recorded**. Null statement values say **Unknown (null)**. Empty lists and objects
 remain `[]` and `{}`. Membership paths and exclusions are separate fields, and
 the four promise fields stay distinct from a wholly unknown promise value.
+In version 5, Membership also has **Symbols**. It lists each saved symbol
+selector as its symbol name and file path, for example `computePrice in
+billing/invoice.ts`, as list text that a screen reader can read. An absent
+symbol list says **Not recorded**; an empty list shows `[]`. Versions 1 to 4
+show no Symbols field. The viewer does not match symbols against source files.
 
 **Baseline details** shows the format version, baseline ID, and parent baseline
 ID. A null parent baseline ID means this is the first baseline and shows **No
@@ -179,7 +201,7 @@ component inspection emphasizes incoming and outgoing arcs. Interface inspection
 emphasizes its arcs and reveals their labels; unrelated shown labels still respond
 to hover and keyboard focus. Other panel kinds and a closed panel show normal arcs.
 
-When version 4 has a system-entry assessment, component details list its directly
+When version 4 or 5 has a system-entry assessment, component details list its directly
 owned entries under **System entry points**. Startup and External groups keep the
 saved order within each kind. Each entry shows its label, path, evidence
 references, and saved source lines when present. A linked operation opens that
@@ -279,7 +301,7 @@ general behavior, so the legacy contract stays visible when the description and
 interaction are absent. Original record keeps the complete signature statement.
 
 Overview, Example, and Sources use standard keyboard tabs in the existing inspector width.
-For versions 3 and 4, Overview's **Used by** list groups application and tooling value
+For versions 3 to 5, Overview's **Used by** list groups application and tooling value
 references by direct consumer ID. Duplicate component names retain their IDs.
 Each saved site keeps its kind, context, description, and optional entry binding.
 The list covers the interface and does not change when an entry is selected.
@@ -292,7 +314,7 @@ inline disclosure for the saved note and location; it does not navigate or fetch
 Missing source data, missing assessment, and assessed empty uses have distinct
 messages. The source notice describes absent data, no assessments, or partial
 review. It does not count permission gaps as unknown callers. Omit the notice
-when no interfaces exist. Versions 3 and 4 label the header status **Interface statement
+when no interfaces exist. Versions 3 to 5 label the header status **Interface statement
 status**, separately from source use. Access rule remains permission only.
 
 Sources also shows the assessment's scope and limits, shared snapshot and
@@ -377,6 +399,7 @@ bun scripts/run-browser-behavior.ts --tags @br-07
 bun scripts/run-browser-behavior.ts --tags @br-08
 bun test --preload ./test/preload.ts ./test/unit/components/architecture-details.test.tsx
 bun scripts/run-browser-behavior.ts --tags @bv-06
+bun scripts/run-browser-behavior.ts --tags @ga-03b
 bun test --preload ./test/preload.ts ./test/unit/components/interface-overview.test.tsx
 bun scripts/run-browser-behavior.ts --tags @br-10b
 bun test --preload ./test/preload.ts ./test/unit/components/interface-examples.test.tsx

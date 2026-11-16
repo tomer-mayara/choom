@@ -1,4 +1,4 @@
-import type { Baseline } from "../domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 
 const maxRecords = 500;
 const maxLinks = 2_000;

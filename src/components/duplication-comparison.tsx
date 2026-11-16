@@ -1,5 +1,6 @@
-import type { Baseline, DuplicationEndpoint, DuplicationFact, DuplicationFinding } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { DuplicationEndpoint, DuplicationFact, DuplicationFinding } from "../domain/generated/contracts.ts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { resolveDuplicationRecordedFact } from "../domain/interface-duplication.ts";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 import { duplicationEndpointName, duplicationStatusLabels } from "./duplication-view.ts";

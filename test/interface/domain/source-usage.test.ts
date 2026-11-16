@@ -3,7 +3,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { stringify } from "yaml";
 import contracts from "../../../cookbook/interfaces/generated/contracts.schema.json";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { baselineCodec } from "../../../src/lib/baseline-yaml.ts";
 import { sourceUsageBaseline } from "../../support/source-usage-fixtures.ts";
 
@@ -27,7 +27,7 @@ test("version 3 allows absent source usage and rejects unsupported versions", ()
   const { sourceUsage: _sourceUsage, ...input } = sourceUsageBaseline();
   expect(structure(input)).toBe(true);
   expect(baselineSchema.parse(input)).toEqual(input);
-  expect(baselineCodec.decode(stringify({ ...input, formatVersion: 5 }))).toMatchObject({
+  expect(baselineCodec.decode(stringify({ ...input, formatVersion: 6 }))).toMatchObject({
     status: "failure", code: "unsupported-version",
   });
 });

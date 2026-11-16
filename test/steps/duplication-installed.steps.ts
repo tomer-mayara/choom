@@ -5,8 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
-import { baselineSchema } from "../../src/domain/baseline.ts";
-import type { Baseline, DuplicationReport } from "../../src/domain/generated/contracts.ts";
+import { baselineSchema } from "@choom/baseline-model";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { DuplicationReport } from "../../src/domain/generated/contracts.ts";
 import { InstalledBaselineDriver, waitFor } from "../support/baseline-viewer/installed-driver.ts";
 
 const files = [

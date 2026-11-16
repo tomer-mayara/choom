@@ -4,8 +4,8 @@ import contracts from "../../../cookbook/interfaces/generated/contracts.schema.j
 import type { WorkflowOperations } from "../../../src/architecture/generated/workflow.ts";
 import { LoadWorkflow, type SelectedBaseline } from "../../../src/architecture/load-workflow.ts";
 import type { LoadWorkflowSnapshot, WorkflowView } from "../../../src/architecture/workspace-view.ts";
-import type { Baseline } from "../../../src/domain/generated/contracts.ts";
-import type { ReadonlyData } from "../../../src/domain/readonly-data.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 import { baselineWorkflowDependencies, pending, selectedBaseline, selectedBaselineText } from "../../support/baseline-workflow-fixtures.ts";
 
 const schema = new Ajv2020({ schemas: [contracts] });
@@ -16,7 +16,8 @@ type AsyncOperations = { [Name in keyof WorkflowOperations]: () => Promise<Retur
 test("the view binds read-only baseline and report commands with immutable observations", () => {
   expectTypeOf<LoadWorkflow>().toExtend<AsyncOperations>();
   expectTypeOf<LoadWorkflow>().toExtend<WorkflowView>();
-  expectTypeOf<keyof WorkflowView>().toEqualTypeOf<"openBaseline" | "openDuplicationReport" | "removeDuplicationReport" | "cancel" | "retry" | "getSnapshot" | "subscribe">();
+  expectTypeOf<keyof WorkflowView>().toEqualTypeOf<"openBaseline" | "openDuplicationReport" | "removeDuplicationReport"
+    | "openDiscoveryResult" | "removeDiscoveryResult" | "cancel" | "retry" | "getSnapshot" | "subscribe">();
   type Current = NonNullable<LoadWorkflowSnapshot["current"]>;
   expectTypeOf<Current["baseline"]>().toEqualTypeOf<ReadonlyData<Baseline>>();
   expectTypeOf<Current["layout"]["nodes"][number]["position"]>().toEqualTypeOf<{ readonly x: number; readonly y: number }>();

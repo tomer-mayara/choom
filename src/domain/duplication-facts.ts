@@ -1,7 +1,6 @@
-import type {
-  Baseline, BaselineDocumentedEntry, BaselineInterface, DuplicationFactField, DuplicationRecordedFact, DuplicationResolvedFact,
-} from "./generated/contracts.ts";
-import type { ReadonlyData } from "./readonly-data.ts";
+import type { Baseline, BaselineDocumentedEntry, BaselineInterface } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
+import type { DuplicationFactField, DuplicationRecordedFact, DuplicationResolvedFact } from "./generated/contracts.ts";
 
 function savedFact(statement: {
   status: "proposed" | "accepted"; evidenceRefs: readonly string[]; acceptanceRef?: string;

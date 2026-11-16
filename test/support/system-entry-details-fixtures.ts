@@ -1,4 +1,4 @@
-import type { BaselineSystemEntryPoint } from "../../src/domain/generated/contracts.ts";
+import type { BaselineSystemEntryPoint } from "@choom/baseline-model/contracts";
 import { fixtureItem } from "./baseline-fixtures.ts";
 import { systemEntryPointsBaseline } from "./system-entry-points-fixtures.ts";
 

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
-import { baselineSchema } from "../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { reviewedBaseline } from "../support/baseline-fixtures.ts";
 import { InstalledBaselineDriver } from "../support/baseline-viewer/installed-driver.ts";
 import { expectInstalledArcJourney, expectInstalledArcLayout } from "../support/baseline-viewer/installed-arcs.ts";

@@ -1,6 +1,10 @@
 import type { ReadDocumentTextOutcome } from "./generated/contracts.ts";
 
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
+// The action that selects each kind of file again.
+const openActions = {
+  baseline: "Open Baseline", "duplication report": "Open duplication report", "discovery result": "Open discovery result",
+} as const;
 
 /** The browser owns this selection; no repository or native capability is used. */
 export function selectBrowserBaseline(signal: AbortSignal): Promise<File | null> {
@@ -33,7 +37,7 @@ export function selectBrowserBaseline(signal: AbortSignal): Promise<File | null>
 export async function readBrowserBaseline(
   file: Pick<File, "size" | "arrayBuffer">,
   signal: AbortSignal,
-  purpose: "baseline" | "duplication report" = "baseline",
+  purpose: keyof typeof openActions = "baseline",
 ): Promise<ReadDocumentTextOutcome> {
   const started = performance.now();
   const failure = (code: "limit-exceeded" | "invalid-utf8" | "io-error", message: string): ReadDocumentTextOutcome => ({
@@ -46,8 +50,7 @@ export async function readBrowserBaseline(
   try { bytes = await file.arrayBuffer(); }
   catch {
     signal.throwIfAborted();
-    const action = purpose === "baseline" ? "Open Baseline" : "Open duplication report";
-    return failure("io-error", `The selected ${purpose} is no longer readable. ${action} and select the file again.`);
+    return failure("io-error", `The selected ${purpose} is no longer readable. ${openActions[purpose]} and select the file again.`);
   }
   signal.throwIfAborted();
   if (bytes.byteLength > MAX_DOCUMENT_BYTES) return failure("limit-exceeded", tooLarge);

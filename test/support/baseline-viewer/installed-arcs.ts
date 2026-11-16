@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
+import { baselineSchema } from "@choom/baseline-model";
 import { parseInterfaceRecord } from "../interface-record.ts";
 import { readInstalledInterfaceRecord } from "./installed-interface-record.ts";
 import assert from "node:assert/strict";

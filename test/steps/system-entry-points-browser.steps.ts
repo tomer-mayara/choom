@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { expect, type Page } from "@playwright/test";
 import { stringify } from "yaml";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { fixtureItem } from "../support/baseline-fixtures.ts";
 import { selectDuplicationReport } from "../support/duplication-browser.ts";
 import { duplicationV4Fixture } from "../support/duplication-v4-fixtures.ts";

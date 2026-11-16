@@ -56,8 +56,8 @@ Both pairs scored 1.0. The subscriptions have different state owners and
 notification behavior; the UI pair duplicates a private rendering helper.
 Neither established a redundant public capability.
 
-The tooling scan found useful differences: [Stage 2 `safeName`](../design/app-a/stage-2-commands.mjs)
-and [Stage 4 `safePath`](../design/app-a/stage-4-commands.mjs) scored 1.0 while
+The tooling scan found useful differences: [Stage 2 `safeName`](../../packages/producer/src/stage-2-commands.ts)
+and [Stage 4 `safePath`](../../packages/producer/src/stage-4-graph-profile.ts) scored 1.0 while
 rejecting different character sets. Normalizing literals hides the difference
 between their regular expressions. Whether the policies should agree remains
 a review question. This trial supports using the detector to direct inspection;

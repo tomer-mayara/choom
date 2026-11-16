@@ -1,0 +1,98 @@
+import { describe, expect, test } from "bun:test";
+import { pathsAliasKey, type UnresolvedSite, unresolvedSites } from "../../src/stage-4-references.ts";
+
+// The loading sites of the saved source sites that the Stage 4 references action
+// lists as possible uses that it does not resolve, each with its reason.
+type Site = Record<string, unknown>;
+type Row = [path: string, kind: string, specifier: string | null, expression: string];
+const sitesRef = "s4-check-file@source-sites.json";
+const computedName = "The module name is computed. The query cannot tell which module the site names, so it can name " +
+  "the module of the symbol.";
+const typeScriptRequire = "TypeScript does not follow a require call in a TypeScript file. The call can load the module " +
+  "of the symbol.";
+const relativeName = "The compiler settings do not resolve this relative module name, so the query cannot tell whether " +
+  "it names the module of the symbol.";
+const aliasName = "The compiler settings do not resolve this paths alias, so the query cannot tell whether it names the " +
+  "module of the symbol.";
+
+function site(index: number, [path, kind, specifier, expression]: Row): Site {
+  return { id: `s4-check-site-${index + 1}`, path, sha256: "0".repeat(64), lines: [index + 1, index + 1], kind, specifier,
+    typeOnly: false, dynamic: kind === "dynamic-import", expression, truncated: false };
+}
+
+// The unresolved entries of the sites of the rows in the scope, when the compiler settings do not resolve the module
+// names of the sites with the indexes of `imports`, each for its reason.
+function listedFrom(rows: Row[], scope: string[], imports: [number, string][] = []): { sites: Site[];
+  listed: (index: number, reason: string) => UnresolvedSite; found: UnresolvedSite[] } {
+  const sites = rows.map((row, index) => site(index, row));
+  const listed = (index: number, reason: string): UnresolvedSite => {
+    const { path, lines, kind, expression } = sites[index] ?? {};
+    return { siteRef: `${sitesRef}#/sites/${index}`, path, lines, kind, expression, reason };
+  };
+  return { sites, listed, found: unresolvedSites({ sites }, new Set(scope), sitesRef, new Map(imports)) };
+}
+
+describe("unresolvedSites", () => {
+  // Changed on purpose: a require call with a literal name in a TypeScript file is listed too, and each entry has a reason.
+  test("lists each loading site of the scope whose module name is computed, and each require call of a TypeScript file", () => {
+    const { listed, found } = listedFrom([
+      ["src/load.ts", "dynamic-import", null, "import(name)"],
+      ["src/load.ts", "dynamic-import", "./invoice", "import('./invoice')"],
+      ["src/load.ts", "require-candidate", null, "require(name)"],
+      ["src/load.ts", "require-candidate", "./invoice", "require('./invoice')"],
+      ["src/load.ts", "require-resolve-candidate", null, "require.resolve(name)"],
+      ["src/load.ts", "import-equals", null, "import legacy = require(name);"],
+      ["src/load.ts", "resource-call-candidate", null, "fetch(url)"],
+      ["src/load.ts", "import", "./invoice", "import './invoice';"],
+      ["other/load.ts", "dynamic-import", null, "import(other)"],
+      ["other/load.ts", "require-candidate", "./invoice", "require('./invoice')"],
+    ], ["src/load.ts"]);
+    expect(found).toEqual([listed(0, computedName), listed(2, computedName), listed(3, typeScriptRequire),
+      listed(4, computedName), listed(5, computedName)]);
+  });
+
+  test("lists a require call with a literal name in each kind of TypeScript file, and not in a JavaScript file", () => {
+    const paths = ["a.ts", "b.tsx", "c.mts", "d.cts", "e.d.ts", "f.js", "g.jsx", "h.mjs", "i.cjs"];
+    const { listed, found } = listedFrom(paths.map((path) => [path, "require-candidate", "./invoice", "require('./invoice')"]), paths);
+    expect(found).toEqual([0, 1, 2, 3, 4].map((index) => listed(index, typeScriptRequire)));
+  });
+
+  // Changed on purpose: each unresolved import has its reason, for a relative module name or a paths alias.
+  test("lists the sites whose relative module name or paths alias the compiler settings do not resolve, unless a " +
+    "require call of a TypeScript file has its own reason", () => {
+    const { listed, found } = listedFrom([
+      ["src/load.ts", "import", "./invoice", "import { createInvoice } from './invoice';"],
+      ["src/load.ts", "import", "./invoice.js", "import { createInvoice } from './invoice.js';"],
+      ["src/load.ts", "require-candidate", "./invoice", "require('./invoice')"],
+      ["src/load.js", "require-candidate", "./invoice", "require('./invoice')"],
+      ["src/load.ts", "import", "@billing/invoice", "import { createInvoice } from '@billing/invoice';"],
+    ], ["src/load.ts", "src/load.js"], [[0, relativeName], [2, relativeName], [3, relativeName], [4, aliasName]]);
+    expect(found).toEqual([listed(0, relativeName), listed(2, typeScriptRequire), listed(3, relativeName), listed(4, aliasName)]);
+  });
+
+  test("lists nothing for a literal dynamic import or a literal require.resolve call, which the query follows or which loads nothing", () => {
+    expect(listedFrom([["src/load.ts", "dynamic-import", "./invoice", "import('./invoice')"],
+      ["src/load.ts", "require-resolve-candidate", "./worker.js", "require.resolve('./worker.js')"]], ["src/load.ts"]).found)
+      .toEqual([]);
+  });
+});
+
+describe("pathsAliasKey", () => {
+  const paths = { "@billing/invoice": ["./src/invoice.ts"], "@billing/*": ["./src/billing/*"], "@billing/old/*": ["./old/*"],
+    "*.css": ["./styles/*.css"], "@two/*/*": ["./two/*/*"], "*": ["./types/*"] };
+
+  // As TypeScript matches a non-relative module name: an exact key first, else the key with one * whose prefix is the longest.
+  test.each([
+    ["@billing/invoice", "@billing/invoice"],
+    ["@billing/payment", "@billing/*"],
+    ["@billing/old/payment", "@billing/old/*"],
+    ["theme.css", "*.css"],
+  ])("matches %s with the key %s", (name, key) => {
+    expect(pathsAliasKey(paths, name)).toBe(key);
+  });
+
+  // A key * alone matches every package name, and a key with two * is not a pattern for TypeScript.
+  test.each(["zod", "@two/a/b", "@billing"])("matches no alias for %s", (name) => {
+    expect(pathsAliasKey(paths, name)).toBeUndefined();
+  });
+});

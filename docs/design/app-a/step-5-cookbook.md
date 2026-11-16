@@ -17,6 +17,7 @@ contract references do not establish exclusive ownership of the contract file.
 - [2. Collect the remaining-code evidence](#2-collect-the-remaining-code-evidence)
 - [3. Ask the LLM to account for the remaining code](#3-ask-the-llm-to-account-for-the-remaining-code)
 - [4. Request more source when needed](#4-request-more-source-when-needed)
+  - [Find the parts of a file and their dependencies](#find-the-parts-of-a-file-and-their-dependencies)
 - [5. Check and publish the review](#5-check-and-publish-the-review)
 - [Saved state](#saved-state)
 
@@ -31,23 +32,29 @@ Use a fresh attempt ID. Keep earlier attempts unchanged:
 export CHOOM_STAGE5_ID="s5-001"
 export CHOOM_STAGE5="$CHOOM_WORK/evidence/$CHOOM_STAGE5_ID"
 
-node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" start
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 start
 ```
 
 The helper requires completed component recovery and its published working
 drafts. The baseline must still be proposed, before Stage 6 saves a fixed version.
-Versions 1, 2, and 3 keep their own strict fields. Use version 3 for
+Versions 1 to 4 keep their own strict fields. Use version 3 for
 [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when `systemEntryPoints`
-is present. Both formats retain the
+is present. Use version 5 when [symbol selectors](record-format.md#version-5-symbol-selectors)
+divide a file; it keeps the version 4 fields. These formats retain the
 [interface documentation](record-format.md#version-2-interface-documentation)
 and signatures from version 2.
-It verifies the registered artifacts, the selected Stage 4 facts,
+It first checks the [producer code record](record-format.md#producer-code-record)
+of the run. It then verifies the registered artifacts, the selected Stage 4 facts,
 the published draft pair, and every indexed snapshot file. It saves the three
-draft checkpoints, its tools, the cookbook, the query scope, and a handoff record.
-It records tool versions and hashes. The working drafts stay unchanged. Use the
-trusted checkout command for every action. Later actions verify the saved tool
-copies and parser files before loading them. A tool change requires a new attempt.
+draft checkpoints, copies of this cookbook and the record format, the query scope,
+and a handoff record. The handoff records the trusted tool versions: Node, YAML,
+ts-morph and the TypeScript that it brings, and the digest of each tool file that
+start loaded. The working drafts stay unchanged. Use the trusted checkout command
+for every action. Each later action makes the same producer code check and
+verifies the saved documents and the pinned tool files before it loads them. The
+Stage 4/5 publisher also divides a file only with the module files of ts-morph
+that start pinned. A tool change requires a new attempt.
 
 The reported counts depend on the target. Unassigned units include tests,
 contracts, documentation, configuration and assets. The count is not a count of
@@ -69,13 +76,18 @@ receipt. If an excerpt failed after saving partial output, use a fresh attempt.
 ## 2. Collect the remaining-code evidence
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" collect
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 collect
 ```
 
 The collector uses the saved inventory, mapping, entry analyses, dependency
 contexts and source-site records. It parses eligible JavaScript and TypeScript
-files from the union of saved graph scan scopes as text. It does not load target
-configuration, execute target code, or run
+files from the union of saved graph scan scopes with the snapshot project (see the
+[Stage 3 cookbook](step-3-cookbook.md#list-the-exports-of-a-source-file)), with no
+compiler settings, so TypeScript parses at the latest language level. A file that
+is not JavaScript or TypeScript, is over 2 MiB or is not UTF-8 text is skipped with
+a reason before the project reads it. Candidate lines count CRLF, CR and LF in the
+text that the parser read; a byte order mark does not change them. It does not
+load target configuration, execute target code, or run
 tests, builds, Knip or dependency-cruiser.
 
 | Artifact | Deterministic contents |
@@ -83,7 +95,7 @@ tests, builds, Knip or dependency-cruiser.
 | `scope.json` | The input references, source query scope, initial excerpt requests and limits fixed at the start. |
 | `remaining-units.json` | Every mapped file with `owner: null`, its original mapping reference, entry-candidate references, and incoming or outgoing graph references in each saved context. Source-site pointers locate matching import syntax. |
 | `inspection-coverage.json` | All mapped files, their owners, exact current reviewed ranges and references to historical reviewed ranges. Uninspected files remain visible, including files with owners. |
-| `source-candidates.json` | Syntax candidates for module or class initialization, side-effect imports, and setup or registration calls. Includes parser diagnostics, bounded output and omissions. |
+| `source-candidates.json` | Syntax candidates for module or class initialization, side-effect imports, and setup or registration calls. Includes the parser with the ts-morph and TypeScript versions, parser diagnostics, skipped files, bounded output and omissions. |
 | `source-excerpts.json` | Numbered initial excerpts, each with snapshot identity, file hash, exact lines and truncation state. Missing or skipped requests remain explicit. |
 | `review-prompt.md` | The LLM task and evidence rules for this attempt. |
 | `artifact-map.json` | Proposed IDs and digests for the available attempt artifacts. It excludes itself, the command log, the final collection receipt and logs, and later files. Command receipts bind those outputs and later excerpts. |
@@ -169,6 +181,29 @@ Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
 proposed. Retain an unknown owner with a specific reason where evidence is
 insufficient. Do not create a utilities group to eliminate unknowns.
+The entry-analysis update keeps behaviorEntryCandidatesRef of the selected
+entry analysis. Its candidates are places to read, not proven entries.
+The resource observations keep resourceAccessCandidatesRef of the selected
+resource observations. Keep observed access separate from inferred ownership.
+
+Start with files. Divide a file only when a boundary inside it needs
+examination: reviewed source shows that a top-level declaration of the file
+has another direct owner than the rest of the file. To divide it, use
+formatVersion: 5 and name the declaration in the membership of its owner as
+symbols: [{path, symbol}]. The symbol is the name of the top-level
+declaration; default names an anonymous default export. A declaration with
+several names, such as const a = 1, b = 2, cannot be a symbol. In the code
+mapping, use unitKind: file-or-part and give each unit its unitKind. Map the
+divided file as one symbol unit for each symbol and one rest unit for all other
+text. The rest belongs to the component whose paths select the file, or has
+owner null with reason no-path-owner. The producer finds the ranges of the
+units in the saved syntax tree, and the publisher check refuses other ranges.
+Before you divide a file, request its parts with stage-5 parts PATH SYMBOL
+[SYMBOL ...]. The record gives the ranges of the units and the dependencies of
+the file at both levels: an import that only one part uses is in that part,
+and a dependency that the request cannot place stays at file level with its
+reason. Copy the ranges and cite the record in the evidence of the units. Do
+not assign a file-level dependency to a part, and do not copy it to each part.
 
 Review the saved system scope for launch paths and externally callable
 operations. Use saved launch settings and behavior entries. Read each
@@ -181,7 +216,8 @@ unresolved candidates in the assessment limits or discovery gaps. Verify any
 interface link against the current baseline. Treat a graph root or publicAccess
 value as a lead for review.
 
-Use formatVersion: 4 with systemEntryPoints. Set its snapshotRef to this run's
+Use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
+file. Set its snapshotRef to this run's
 snapshot and mappingRef to the candidate discovery.codeMappingRef, including
 when carrying entries from Stage 4. With no entry assessment, use the version
 required by the other fields (version 3 for sourceUsage). Retain structured interface
@@ -234,6 +270,10 @@ Preserve prior questions, gaps and evidence in this manual prototype. Append
 linked resolution notes when the new evidence answers part of an earlier
 record. Explain any new deferral using the checked scope and evidence.
 Do not infer unused code from missing edges or a tool issue alone.
+Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least
+one evidenceRef. A text or reason has at most 16 KiB of UTF-8, and an ID, a kind
+or a reference at most 4 KiB. Use at most 5,000 questions and gaps together.
+For a deferral of many files, name a folder or a component in subjectRefs.
 
 Rewrite current overview text, mapping/resource limits and counts to describe
 this packet. Do not append a current count while leaving an obsolete count or
@@ -246,8 +286,9 @@ this run and start a new run with a new capture and corrected settings. These
 helpers cannot rewind a published stage or rerun an earlier stage in this run.
 
 Prepare the exact nine-file data packet from record-format.md in a new review
-folder outside the saved run. Include the complete review response, actual
-supplied evidence, exact inspected source ranges and exposed model metadata.
+folder outside the saved run. Include the complete visible review response,
+actual supplied evidence, exact inspected source ranges and exposed model
+metadata with hiddenReasoning: not-saved. Do not save hidden reasoning.
 Keep the working drafts and earlier attempts unchanged. Do not generate a save
 script. Do not publish until the complete review is validated.
 ```
@@ -260,6 +301,12 @@ The LLM must distinguish these decisions:
   must not duplicate its child's direct ownership.
 - **Unknown ownership:** explain why the evidence does not select one owner.
   A shared test or contract may stay unknown without creating a new component.
+- **Divided file:** a top-level declaration of a file has another supported
+  direct owner than the rest of the file. Name the symbol in the owner's
+  membership and map the file as its parts; see
+  [divided files](record-format.md#divided-files). Request the
+  [parts of the file](#find-the-parts-of-a-file-and-their-dependencies) first.
+  Keep the file whole when the evidence does not show such a boundary.
 - **Deferred inspection:** name the affected paths and the checked evidence,
   then explain why deeper inspection stops. A bulk parser scan is not that
   explanation, nor is an arbitrary analysis budget. State the missing evidence
@@ -281,7 +328,7 @@ Follow [Choose source ranges](start-here.md#choose-source-ranges) before calling
 the helper. Replace this path and range with the requested values:
 
 ```sh
-node "$CHOOM_TOOLS/docs/design/app-a/stage-5-commands.mjs" excerpt \
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 excerpt \
   path/from-the-saved-inventory.ts 1 80
 ```
 
@@ -296,6 +343,33 @@ Do not use the live repository to fill a snapshot gap. Previously uncaptured
 inputs need a new snapshot. If the evidence is unavailable, record the gap and
 continue with supported claims.
 
+### Find the parts of a file and their dependencies
+
+Before the review divides a file, ask for its parts. Replace the path and the
+symbols with the requested values:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 parts \
+  src/billing.ts computePrice
+```
+
+The request divides the indexed file by the named symbols, as the symbol
+selectors of a version 5 baseline do, and saves a numbered `parts-NNN.json` and
+its receipt. The record lists each part with the ranges of its code unit and the
+dependencies that belong to it, and the dependencies that stay at file level,
+each with its reason: `shared`, `unreferenced` or `not-resolved`. The
+[record format](record-format.md#dependencies-of-file-parts) gives the fields and
+the rules. The type checker of the saved file alone finds the uses of each import.
+The request reads no other file and runs no code. It does not change the
+collected evidence, which keeps whole files.
+
+Copy the ranges of the parts into the symbol units and the rest unit, and cite
+the record in their evidence. Keep each file-level dependency at file level: do
+not assign it to a part or copy it to each part. A request fails with a receipt
+and saves no record when it names a file outside the inventory, a symbol that is
+not a top-level declaration of one name, or a file that the symbol selectors
+cannot divide. The next request takes the next number.
+
 ## 5. Check and publish the review
 
 The LLM supplies the nine files in [record formats](record-format.md). Set
@@ -304,9 +378,9 @@ separately and stop on failure:
 
 ```sh
 export CHOOM_REVIEW="/absolute/path/to/stage-5-review"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" check 5 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" finish 5 "$CHOOM_REVIEW"
-node "$CHOOM_TOOLS/docs/design/app-a/stage-4-5-publish.mjs" verify 5
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish check 5 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish finish 5 "$CHOOM_REVIEW"
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 ```
 
 `check` is read-only. It is safe to correct the separate packet and repeat that
@@ -320,6 +394,13 @@ guidance to the complete packet before `finish`. Check that:
 
 - Every inventory unit remains in the mapping with one direct owner or an
   explicit unknown owner and a reason. Selectors and exact ownership agree.
+- A divided file has exactly the symbol units and the rest unit that its symbol
+  selectors give, with the ranges that the check gives. If the check refuses the
+  units, it lists the units that the file must have; copy them into the packet.
+  The units cite the parts record of the file, which lists its dependencies at
+  both levels. The graph edges, and the checks of the behavior entries, resource
+  observations, source uses and system entries in a divided file, stay at file
+  level.
 - Evidence references, source hashes and numbered ranges resolve. Only ranges
   actually read by the LLM appear as new inspections.
 - Continuing component IDs remain stable. Changed intent stays proposed and
@@ -353,7 +434,7 @@ need a new run; do not reopen the completed stage or repair its saved files.
 | Point | `baseline.yaml` | `discovery.yaml` |
 | --- | --- | --- |
 | After `start` | Unchanged Stage 4 proposal. | Unchanged Stage 4 discovery. |
-| After `collect` and extra excerpts | Unchanged. | Unchanged; new evidence exists in the attempt. |
+| After `collect`, extra excerpts and parts requests | Unchanged. | Unchanged; new evidence exists in the attempt. |
 | After LLM review | Complete revised proposal exists separately, or the earlier model is retained with an explanation. | Separate proposed records account for remaining units, inspection limits and resolutions. |
 | After `finish` and `verify` | Contains supported revisions, still proposed. | Selects current mapping and analysis records; keeps unresolved areas visible. `baselineRef` remains unset. |
 

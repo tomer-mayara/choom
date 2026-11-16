@@ -2,7 +2,7 @@ import { render, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { ReactFlowProvider, useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { ArchitectureDiagram } from "../../src/components/architecture-diagram.tsx";
-import type { Baseline } from "../../src/domain/generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import type { ArchitectureLayout } from "../../src/lib/architecture-layout.ts";
 
 function CaptureViewport({ capture }: { capture: (viewport: ReactFlowInstance) => void }) {

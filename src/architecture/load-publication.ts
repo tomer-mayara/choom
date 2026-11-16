@@ -1,22 +1,25 @@
-import type { Baseline, DuplicationReport } from "../domain/generated/contracts.ts";
+import type { Baseline, DiscoveryResult } from "@choom/baseline-model/contracts";
+import type { DuplicationReport } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { WorkflowOutcome, WorkflowState } from "./generated/workflow.ts";
 import type { LoadWorkflowSnapshot } from "./workspace-view.ts";
 
+/** Copy validated data once and deeply freeze the copy, so that no observer can change what a snapshot publishes. */
+function ownedCopy<Value>(value: Value): Value {
+  const copy = structuredClone(value);
+  const pending: unknown[] = [copy];
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (typeof item !== "object" || item === null || Object.isFrozen(item)) continue;
+    Object.freeze(item);
+    for (const child of Object.values(item)) pending.push(child);
+  }
+  return copy;
+}
+
 /** Copy the validated baseline and prepared positions once, before the view commit. */
 export function ownCurrentView(baseline: Baseline, layout: ArchitectureLayout, sha256: string): NonNullable<LoadWorkflowSnapshot["current"]> {
-  const current = structuredClone({ baseline, layout, sha256 });
-  const pending: object[] = [current];
-  while (pending.length > 0) {
-    const value = pending.pop();
-    if (!value || Object.isFrozen(value)) continue;
-    Object.freeze(value);
-    const children: unknown[] = Object.values(value);
-    for (const child of children) {
-      if (typeof child === "object" && child !== null) pending.push(child);
-    }
-  }
-  return current;
+  return ownedCopy({ baseline, layout, sha256 });
 }
 
 /** Copy mutable scalar outcomes; preserve frozen outcomes across state updates. */
@@ -27,19 +30,18 @@ export function ownOutcome<Outcome extends WorkflowOutcome>(outcome: Outcome): R
 }
 
 export function ownDuplication(report: DuplicationReport, session: number): NonNullable<LoadWorkflowSnapshot["duplication"]> {
-  const attachment = structuredClone({ report, session });
-  function freeze(value: unknown): void {
-    if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
-      for (const child of Object.values(value)) freeze(child);
-      Object.freeze(value);
-    }
-  }
-  freeze(attachment);
-  return attachment;
+  return ownedCopy({ report, session });
 }
 
-export function publishedSnapshot(state: WorkflowState, current: LoadWorkflowSnapshot["current"] = null,
-  duplication: LoadWorkflowSnapshot["duplication"] = null): LoadWorkflowSnapshot {
+export function ownDiscovery(result: DiscoveryResult): NonNullable<LoadWorkflowSnapshot["discovery"]> {
+  return ownedCopy({ result });
+}
+
+/** The published baseline view and its attachments. */
+export type PublishedViews = Pick<LoadWorkflowSnapshot, "current" | "duplication" | "discovery">;
+
+export function publishedSnapshot(state: WorkflowState,
+  { current, duplication, discovery }: PublishedViews = { current: null, duplication: null, discovery: null }): LoadWorkflowSnapshot {
   return Object.freeze({
     state: Object.freeze({
       ...state,
@@ -47,5 +49,6 @@ export function publishedSnapshot(state: WorkflowState, current: LoadWorkflowSna
     }),
     current,
     duplication,
+    discovery,
   });
 }

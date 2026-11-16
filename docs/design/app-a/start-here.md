@@ -45,7 +45,11 @@ analysis-run-001/
   baseline.yaml                       Working model; later matches fixed version
   discovery.yaml                      Working discovery; later matches fixed result
   baselines/baseline-001/baseline.yaml  Fixed proposed architecture
-  runs/run-001/discovery.yaml          Fixed discovery with evidence references
+  runs/run-001/discovery.yaml          Fixed discovery with the SHA-256 of the fixed baseline
+  decisions/decisions-001.yaml         Optional human decisions, saved after Stage 6
+  baselines/baseline-001-decisions-001/  Optional next version made from those decisions,
+    baseline.yaml                        with the decided statements accepted
+    version.json                         Its links to the parent and the decisions
   run-takeaways.md                     Optional operator/reviewer log
   run-notes.md                         Optional handoff notes and dated corrections
 ```
@@ -72,14 +76,23 @@ supported literal signature with parameters and return type. Keep an unsupported
 complete declaration unknown with its exact field gap; do not invent types or
 infer them from prose. Preserve supported descriptions, examples, and evidence.
 Stage 6 saves the validated proposal without changing its bytes. Choom reads
-all three versions without running source analysis.
+versions 1 to 5 without running source analysis. Stage 5 can write
+[version 5](record-format.md#version-5-symbol-selectors), whose symbol selectors
+divide a file into [code units](record-format.md#divided-files); Stage 4 keeps
+each file whole. The Stage 5 parts request lists the
+[dependencies of file parts](record-format.md#dependencies-of-file-parts).
 
-Use one trusted tool revision and the pinned environment for an attempt. A tool
-change needs a fresh attempt. Historical runs keep their saved baselines,
-receipts and tool pins. Verify an old attempt with its matching trusted tools;
-do not edit its pins or run saved scripts without first checking them against
-that trusted revision. New reader compatibility does not permit a new helper
-revision to rewrite an old run.
+Use one trusted tool revision and the pinned environment for a run. Stage 1
+`start` saves the [producer code record](record-format.md#producer-code-record)
+`evidence/producer.json`: the producer version, the Git commit when there is one,
+and one digest of `packages/producer/src` and `packages/baseline-model/src`. Every
+later stage action compares the code in the tool checkout with that digest before
+it reads or writes the run, and stops if the code changed. A producer change
+therefore needs a new run; other tool changes need a fresh attempt. Historical
+runs keep their saved baselines, receipts and tool pins. Verify an old attempt
+with its matching trusted tools; do not edit its pins or run saved scripts without
+first checking them against that trusted revision. New reader compatibility does
+not permit a new helper revision to rewrite an old run.
 Discovery explains the system, inspected behavior paths, file ownership and
 remaining questions. Large inventories and tool results stay in referenced files.
 Keep the complete output folder; the two final YAML files alone are not a
@@ -111,7 +124,7 @@ manager review, report the blocker and stop the handoff.
 Use macOS or Linux with Bash or Zsh. Keep the same run environment values across
 worker terminals. Use canonical absolute paths. On macOS, a folder under `/tmp`
 usually resolves under `/private/tmp`. Keep the trusted tool checkout and its
-dependencies unchanged during an attempt.
+dependencies unchanged during a run.
 
 You need:
 
@@ -121,7 +134,13 @@ You need:
   repository or the saved snapshot. For this workflow, stop setup after dependency
   installation; application startup, Rust, browser installation and desktop
   packaging are not prerequisites.
-- `rsync`, Python 3, and the usual shell tools used by the cookbooks.
+- `rsync`, Python 3, and the usual shell tools used by the cookbooks. Stage 1
+  also uses Git when the target is in a Git repository. Without Git, Stage 1
+  records that Git evidence is not available, with a gap.
+- ripgrep for the Stage 3 text search. The dependency installation of the
+  trusted checkout installs it: `@vscode/ripgrep` takes the program from a
+  package for each platform and runs no install script. Stage 3 `start` records
+  its version, program and digest.
 - A working local Docker daemon for the controlled Knip and dependency graph
   runs. Image preparation needs registry access; analysis runs use the isolated
   profiles in the cookbooks. A skipped Knip run can remain an explicit gap, but
@@ -140,6 +159,17 @@ export CHOOM_RUN_ID="run-001"
 export CHOOM_SNAPSHOT_ID="snapshot-001"
 export CHOOM_BASELINE_ID="baseline-001"
 ```
+
+The cookbooks run every stage action through the producer command line,
+`node "$CHOOM_TOOLS/packages/producer/src/cli.ts" <command> <action>`. It works
+from any directory. In the tool checkout, `bun run producer <command> <action>`
+runs the same command. It runs the helper in `packages/producer/src/` with the
+same arguments and environment. No action runs code from a run or attempt folder:
+the stage starts save only documents, such as the cookbook, as records. If an
+action reports that the producer code changed, continue with the producer version
+that the message names, or start a new run. The cookbooks contain only the
+commands to type, the LLM prompts and the review steps; there is no code to copy
+from them.
 
 Choose a new working folder whose parent exists. For a checkout-local run, create
 the parent with `mkdir -p "$CHOOM_TOOLS/work-choom"` and set
@@ -160,6 +190,7 @@ node --version
 bun --version
 python3 --version
 rsync --version
+git --version
 docker version --format '{{.Server.Version}}'
 ```
 
@@ -181,14 +212,16 @@ graph evidence. Do not promise an unattended six-stage run in that environment.
 The analysis profile is for JavaScript and TypeScript. Other file types remain
 in the inventory and ownership account, but parser and dependency results do
 not cover their runtime behavior. The cookbooks state the supported settings,
-file limits and fallback profiles. Do not present a fallback as the target's
-actual compiler or runtime configuration.
+file limits, the named Choom parsing profile and the fallback. Do not present
+the profile or a fallback as the target's actual compiler or runtime
+configuration.
 
 This profile requires regular files, at least one supported JS/TS source file,
 and enough evidence to propose at least one component. It stops on captured
 symbolic links; exclude them explicitly in a fresh capture and record the gap.
 The graph profile rejects source filenames with glob metacharacters. It keeps
-compiler contexts separate, uses a recorded fallback for uncovered files, and
+compiler contexts separate, uses the named Choom parsing profile for a snapshot
+without project settings and a recorded fallback for other uncovered files, and
 limits alias and package-condition support. Read the exact limits in
 [Stage 4](step-4-cookbook.md). A repository outside this profile needs additional
 tool support; a gap record cannot replace a required failed stage.
@@ -203,7 +236,7 @@ verified handoff from the previous stage.
 | --- | --- | --- | --- |
 | 1 | [Inventory and settings](step-1-cookbook.md) | Capture the selected files, collect settings, let the LLM review roles and missing inputs, then validate and save | A registered inventory and review; empty baseline; initial discovery |
 | 2 | [Entry candidates and Knip](step-2-cookbook.md) | Obtain the LLM entry plan, prepare and run controlled Knip, review its actual outcomes, then save entry analysis | Selected entry analysis with candidates, receipts and explicit limits |
-| 3 | [Loading gaps and priorities](step-3-cookbook.md) | Collect loading evidence and excerpts, review unresolved entries, decide whether Knip can be reused, then save | Updated entry analysis and an ordered inspection list |
+| 3 | [Loading gaps and priorities](step-3-cookbook.md) | Collect loading evidence and excerpts, search the snapshot text when needed, review unresolved entries, decide whether Knip can be reused, then save | Updated entry analysis and an ordered inspection list |
 | 4 | [Candidate components](step-4-cookbook.md) | Build dependency contexts, collect source evidence, review representative paths, then check and publish the proposed model | Components, interfaces, resources, rules, ownership mapping and inspected paths |
 | 5 | [Remaining code](step-5-cookbook.md) | Inspect unexplained regions, assign supported owners, retain justified unknowns and deferrals, then check and publish | Every inventoried unit accounted for and affected explanations updated |
 | 6 | [Validate and save](step-6-cookbook.md) | Review the complete result, validate the review packet, save the fixed records, then verify publication | Fixed baseline and discovery, selected by a completed run manifest |
@@ -259,7 +292,8 @@ decision within the run's existing authorization.
 
 For a large packet, you can review candidate data files as they become ready. Keep
 these drafts outside the run. This can catch factual errors before the worker
-assembles the full response, but the complete final packet still needs review.
+assembles the complete visible response, but the complete final packet still
+needs review.
 
 - Check representative source claims, exact saved ranges and omitted evidence.
   Inventory, syntax queries and available excerpts do not establish LLM review.
@@ -282,6 +316,8 @@ assembles the full response, but the complete final packet still needs review.
 - Read execution statuses and coverage limits. A successful command can save a
   skipped result. Gaps can include historical resolutions; their count is not a
   count of defects. Observed callers do not define an allowed-consumer policy.
+- Check that each saved LLM response holds only the visible answer and that each
+  call record has `hiddenReasoning: not-saved`. Do not save hidden reasoning.
 
 Resolve discrepancies before publication and keep corrected responses separately.
 When comparing stages, apply that stage's preservation rules to tool inputs,
@@ -291,9 +327,10 @@ references only where the record contract permits them.
 After publication, require the saved packet copies to match the approved bytes.
 Check the selected records, receipts, digests and manifest summaries. Use the
 stage's verification action where available. Stage 3 provides
-`stage-3-finish.mjs verify` for its latest completed state. Leave older frozen
-finalizers unchanged. Semantic review is separate from the verification command.
-Use read-only checks to verify saved state. `finish` writes records.
+`stage-3-finish verify` for its latest completed state. Leave the finalizer
+copies that older attempts saved unchanged. Semantic review is separate from the
+verification command. Use read-only checks to verify saved state. `finish` writes
+records.
 
 ## Worker assignment
 
@@ -327,7 +364,8 @@ current summaries. Keep architectural intent proposed.
 Leave findings, redesign and acceptance decisions to later design steps.
 
 Produce the complete packet as data in a folder outside CHOOM_WORK. Save the
-exact prompt, full response and exposed call metadata. Use unknown for
+exact prompt, the complete visible response and the exposed call metadata with
+hiddenReasoning: not-saved. Do not save hidden reasoning. Use unknown for
 unavailable metadata. Keep earlier and corrected responses separately. Stop
 before the final packet save identified under Review before publication.
 Return the packet path, evidence and receipt paths, commands and check results,
@@ -433,9 +471,10 @@ workflow. Fixed records and registered evidence stay unchanged.
 
 ## Record a correction
 
-Before publication, correct the external packet and its full response, then
-repeat the required review and checks. Fix helper-generated output in the trusted
-tools for a fresh attempt; do not edit a saved helper to make its digest pass.
+Before publication, correct the external packet and its complete visible
+response, then repeat the required review and checks. Fix helper-generated
+output in the trusted tools for a new run; do not edit a saved file or the
+producer code record to make a digest pass.
 
 After publication, a minor explanatory error can be recorded in `run-notes.md`
 at the run root. Keep it outside immutable attempt directories and the artifact
@@ -475,6 +514,10 @@ The final Stage 6 verification must succeed. Confirm that:
 5. Inferred architectural statements remain proposed. Saving does not accept them.
 6. Current coverage summaries agree with completion and selected facts. Any
    retained explanatory defect is identified precisely in readiness or run notes.
+7. The fixed discovery result has `formatVersion: 2` and names the fixed baseline
+   by its ID and the SHA-256 of its file (`baselineDigest`).
+   Stage 6 also checks that the viewer can open it: the result and the exact
+   bytes of its file.
 
 Set the final `progress.md` status after verification. Link the fixed baseline
 and discovery, summarize the checks and remaining limits, and share the report
@@ -482,6 +525,11 @@ with the user. Give the next team the complete working folder and the fixed
 discovery path.
 The discovery record is the entry point into the result. A diagram or prose
 summary is a view of those records, not a substitute for them.
+A reader can attach the fixed discovery result to its baseline in the viewer
+(**Discovery**, then **Open discovery result**) to read its questions and gaps
+beside the items that they name, and copy a decision-file entry for a statement.
+The viewer needs discovery `formatVersion: 2`; see
+[CR-004](../../change-requests/CR-004-discovery-in-viewer.md).
 Include any `run-notes.md` corrections and the tool revision used for the run.
 State that duplicated interfaces are **not checked**, with the reason, unless a
 separate assessment already exists. Hand off the fixed baseline, snapshot and
@@ -490,10 +538,11 @@ That workflow saves a new manifest and report outside this completed run. Link
 its outcome in the new assessment handoff; do not reopen Step 1 or change its
 artifact registry. A detector's empty result does not replace capability review.
 Keep that trusted revision and its dependencies available for later verification;
-new helper bytes do not update an old attempt's checks. If the checkout has local
-or uncommitted tool files, Git HEAD alone does not identify the version used.
-Point to the saved receipts and artifact entries that identify the cookbook,
-helper and dependency versions. A rehearsal on a repository
+new helper bytes do not update an old run's checks. If the checkout has local
+or uncommitted tool files, Git HEAD alone does not identify the version used; the
+code digest in `evidence/producer.json` does. Point to that record and to the
+saved receipts and artifact entries that identify the cookbook and dependency
+versions. A rehearsal on a repository
 with component declarations does not establish recovery accuracy without them.
 
 Human acceptance and zero unknown owners are not required to complete this first
@@ -506,23 +555,67 @@ followed by
 ## File guide
 
 The six cookbooks are the operating instructions. Read their helpers when auditing
-or changing the workflow; the cookbooks identify which helper to invoke.
+or changing the workflow; the cookbooks identify which helper to invoke. The
+helpers and the command line are in [`packages/producer/src/`](../../../packages/producer/src/).
 
 | Files | Purpose |
 | --- | --- |
 | `step-1-cookbook.md` through `step-6-cookbook.md` | Stage instructions, LLM prompts, checks and next handoff |
 | `$CHOOM_WORK/progress.md` | Manager's readable stage status, reviewed results and next action |
-| `stage-*-commands.mjs` | Stage preparation, evidence collection or publication commands |
-| `stage-3-finish.mjs` | Validate, save and verify the latest completed Stage 3 state |
-| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5 |
-| `stage-4-5-publish.mjs` | Check, publish and verify the Stage 4 or Stage 5 review |
-| `stage-4-graph.mjs`, `stage-4-inspect.mjs` | Dependency extraction and bounded source evidence |
-| `stage-5-query.mjs` | Remaining-code and inspection-coverage queries |
-| `stage-6-records.mjs` | Shared validation of the architecture records |
+| `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
+| `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
+| `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-5-commands.ts`, `stage-6-commands.ts` | Stage preparation, evidence collection or publication commands |
+| `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it. Its in-memory file system of the snapshot is also the file system of the snapshot project |
+| `stage-1-git.ts`, `stage-1-exclusions.ts` | The Git identity record that Stage 1 capture saves, and the reader of the capture exclusion rules that it uses |
+| `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record |
+| `parsing-profile.ts` | The named Choom parsing profile for a snapshot without project settings |
+| `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
+| `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
+| `stage-2-plugin-patterns.ts` | The default entry patterns of the Knip plugins that the dependencies of the workspace manifests turn on, from the installed Knip 6.44.1. The Stage 2 profile keeps every plugin off and copies these patterns with their source, and records each plugin and pattern that it does not copy |
+| `attempt-files.ts` | The review prompt of the cookbook that Stage 3 or Stage 5 start saved, and the command log that each action of those stages extends |
+| `stage-3-inputs.ts`, `stage-3-collect.ts` | The checked inputs of each Stage 3 action: the run after Stage 2 and its indexed snapshot files; and the evidence that Stage 3 `collect` saves |
+| `stage-3-text-search.ts`, `ripgrep.ts` | The Stage 3 text search of the saved snapshot (`stage-3 text-search`): the ripgrep arguments, the output check, the scope and the tool-call record; and the ripgrep program, its version and a bounded call |
+| `stage-3-exports.ts` | The Stage 3 exports action (`stage-3 exports`): the exports record and its notes |
+| `compiler-settings.ts` | The compiler settings of one source file, chosen by the rule of the Stage 4 graph groups, and their description. The Stage 3 exports action and the Stage 4 references action use them |
+| `snapshot-project.ts`, `snapshot-exports.ts` | The ts-morph project of the saved snapshot: an in-memory file system that holds only the indexed snapshot files with checked digests, the record of each request for a path outside the snapshot, the compiler inputs that the snapshot does not hold as gaps, and the syntax reader without compiler settings that the source queries of Stages 3, 4 and 5 use, and the type checker of one saved file alone, which the Stage 5 parts action uses; and the exports of one file of the project |
+| `snapshot-references.ts` | The references to a symbol of a file of the snapshot project, from the TypeScript type checker: its declarations, and each import, re-export, type use, call and other use with its range and local name; and whether the compiler settings resolve a module name of a searched file |
+| `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
+| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record, the producer code record, the decision record and the next baseline version |
+| `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
+| `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, their passes, traversal roots and limits. `compiler-settings.ts` applies the same compiler context rule to one file |
+| `stage-4-module-kinds.ts` | The module kind of the code that runs for each file of a compiler context, from its extension, the compiler `module` setting and the nearest indexed `package.json`. Files that compile to CommonJS get a CommonJS pass |
+| `stage-4-graph.ts` | Dependency extraction in the graph container. The container gets only this file, as `/producer/stage-4-graph.mts` |
+| `stage-4-inspect.ts`, `stage-4-source-sites.ts`, `stage-4-review-prompt.ts` | Bounded source evidence (`stage-4-inspect` command): the checked attempt, the first excerpts, the excerpt action and the references action; the source sites; and the Stage 4 review prompt |
+| `stage-4-references.ts` | The record of the Stage 4 references action: the import pass of the graph group of the file, its compiler settings, the references, the loading sites that it does not follow as unresolved entries, and the completeness |
+| `behavior-entry-rules.ts`, `generated/contracts.ts` | The pinned list of Choom behavior entry rules (`packages/producer/rules/behavior-entry-rules.yaml`), its reader, its check against the [contract](../../../cookbook/interfaces/behavior-entry-rules.tsp) and its generated types, and the check that refuses a tool checkout whose list differs from the copy that Stage 4 start saved |
+| `behavior-entry-calls.ts`, `behavior-entry-settings.ts` | The rules on the snapshot project: the calls whose receiver comes from the import of a call rule, with their names and handlers; and the literal values at the property path of a settings file, with a gap for each other value |
+| `behavior-entry-bins.ts` | The package-bin rules on the saved snapshot: the commands of the `bin` field of each `package.json`, with the file that each command runs only with evidence, and a gap for each value that is not a path |
+| `stage-4-behavior-entries.ts` | The behavior entry candidates that Stage 4 `collect` saves (`behavior-entry-candidates.json`), and the test role from the role records of the Stage 1 review |
+| `record-behavior-candidates.ts` | Part of the shared validation: the behavior entry candidates that the entry analysis names, checked against the saved snapshot |
+| `stage-4-plugin-entries.ts` | The behavior entry candidates of the Knip plugin patterns: the files that the copied patterns of the registered Stage 2 profile select (`found: knip-plugin-pattern`) |
+| `rule-lists.ts`, `stage-4-rule-lists.ts` | The parts that the pinned rule lists share: the reader of a list, the checks of the list and of the fields of its rules, and the check that refuses a tool checkout whose list differs from the copy that Stage 4 start saved; and the rule lists that Stage 4 start saves and each later Stage 4 action pins |
+| `resource-access-rules.ts` | The pinned list of Choom resource access rules (`packages/producer/rules/resource-access-rules.yaml`) and its check against the [contract](../../../cookbook/interfaces/resource-access-rules.tsp) |
+| `call-rules.ts` | The parts that the call rules of both rule lists share: the value paths of the imports and of the declared types of the snapshot project, the walk over the calls of a file whose callee is the path of a rule, with the calls of its same value methods passed, the call that holds the name, and the names in call arguments |
+| `resource-access-calls.ts` | The resource access rules on the snapshot project: the calls whose receiver comes from the import of a rule or has a declared type of that import, with their names and the function or method that holds them |
+| `stage-4-rule-scope.ts`, `stage-4-resource-access.ts` | The reading of the source files of the graph scope by graph group, which both candidate records use; and the resource access candidates that Stage 4 `collect` saves (`resource-access-candidates.json`), with the resource call sites of the source sites that no rule found |
+| `record-candidates.ts`, `record-resource-candidates.ts` | Parts of the shared validation: the checks that the candidate records share, and the resource access candidates that the resource observations name, checked against the saved snapshot and its source sites |
+| `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |
+| `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
+| `stage-5-parts.ts`, `part-dependencies.ts` | The record of the Stage 5 parts action (`stage-5 parts`): the parts of one file that named symbols divide, with the dependencies of the file at both levels; and the placement of each loading site of a divided file in the part that uses it, or at file level with a reason, with the type checker of the saved file |
+| `stage-6-inputs.ts`, `stage-6-files.ts` | The checked inputs of each Stage 6 action: the trusted YAML package and ts-morph, the registered artifacts and the indexed snapshot files; and the file operations of Stage 6: checked reads, the files and folders that an action owns and can remove again, and the publication lock |
+| `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, the fixed discovery result with its check against the saved baseline file, and the bounded baseline YAML reader |
+| `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks, with the evidence reference resolver that every stage uses |
+| `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest and the checked read of a file that symbols divide |
+| `ts-morph-modules.ts` | The ts-morph that divides a file, with the SHA-256 of each of its module files, and the check of these files against the pins of a stage start, which the Stage 4/5 publisher and Stage 6 make before they divide a file |
+| `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |
+| `baseline-commands.ts`, `baseline-decide.ts`, `decision-record.ts` | The baseline command (`baseline decide`): check a YAML decision file against the published baseline of a completed run, and save it once as `decisions/<id>.yaml`, all or nothing; and the reader of a decision file and of a saved record, with the bounded YAML profile. See the [decision record](record-format.md#decision-record) |
+| `baseline-next.ts`, `version-folder.ts` | The next action of the baseline command (`baseline next`): make the next baseline version from a saved decision record, check it, and save it once with its version record; and the save of the version folder, all or nothing, through a temporary folder and one rename. See the [next baseline version](record-format.md#next-baseline-version) |
+| `next-version-checks.ts` | The checks of the saved form of a next version, which `baseline next` runs before it saves the version and `baseline decide` runs before it saves a decision record |
+| `completed-run.ts`, `decider-check.ts` | A run that Stage 6 completed, read with the digests of its registry; and the check that the decider is not a model in the run's LLM call records |
 | [duplication-assessment.md](duplication-assessment.md), `duplication-commands.mjs` | Separate Step 2 capability review, pinned similarity collection and saved report publication |
 | `check-knip-image.mjs` | Validate the controlled Knip tool image |
 | `inventory-view.py` | Prepare and verify inventory-only tool input copies |
-| `recover-capture.mjs` | Recovery helper for a damaged earlier capture; not the normal starting command |
+| `recover-capture.ts` | Recovery helper for a damaged earlier capture; not the normal starting command |
 
 Do not use an old analysis attempt as a template to edit in place. Start with
 [Stage 1](step-1-cookbook.md) and a fresh working folder.

@@ -1,4 +1,4 @@
-import type { Baseline } from "./generated/contracts.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
 
 function proposed<Value>(value: Value) {
   return { value, status: "proposed" as const, evidenceRefs: ["starter-example"] };

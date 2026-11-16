@@ -62,7 +62,7 @@ union WorkflowOutcome {
 
 @extension("additionalProperties", false)
 model WorkflowState {
-  operation: "baseline" | "report";
+  operation: "baseline" | "report" | "discovery";
   phase: "idle" | "loading" | "cancelling";
   stage: WorkflowStage | null;
   lastOutcome: WorkflowOutcome | null;
@@ -74,6 +74,8 @@ interface WorkflowOperations {
   openBaseline(): WorkflowOutcome;
   openDuplicationReport(): WorkflowOutcome;
   removeDuplicationReport(): WorkflowOutcome;
+  openDiscoveryResult(): WorkflowOutcome;
+  removeDiscoveryResult(): WorkflowOutcome;
   cancel(): WorkflowOutcome | null;
   retry(): WorkflowOutcome;
 }

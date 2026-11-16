@@ -1,5 +1,5 @@
-import type { Baseline } from "../domain/generated/contracts.ts";
-import type { ReadonlyData } from "../domain/readonly-data.ts";
+import type { Baseline } from "@choom/baseline-model/contracts";
+import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
 
 export function componentName(baseline: ReadonlyData<Baseline>, id: string): string {
   const component = baseline.components.find((item) => item.id === id);

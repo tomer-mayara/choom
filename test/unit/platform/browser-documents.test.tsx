@@ -55,3 +55,12 @@ test("an unreadable selected File gives safe re-selection guidance", async () =>
   expect(result).toMatchObject({ status: "failure", code: "io-error", message: expect.stringContaining("Open Baseline and select the file again") });
   expect(JSON.stringify(result)).not.toContain("/private");
 });
+
+test("a discovery result read names the discovery result and its own open action", async () => {
+  const file = new File(["kind: architecture-discovery"], "discovery.yaml");
+  file.arrayBuffer = () => Promise.reject(new DOMException("Cannot read /private/secret", "NotReadableError"));
+  expect(await readBrowserBaseline(file, new AbortController().signal, "discovery result")).toMatchObject({ status: "failure", code: "io-error",
+    message: "The selected discovery result is no longer readable. Open discovery result and select the file again." });
+  expect(await readBrowserBaseline({ size: 16 * 1024 * 1024 + 1, arrayBuffer: async () => new ArrayBuffer(0) },
+    new AbortController().signal, "discovery result")).toMatchObject({ code: "limit-exceeded", message: "The discovery result exceeds 16 MiB." });
+});

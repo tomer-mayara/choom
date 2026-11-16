@@ -3,8 +3,8 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import type { z } from "zod";
 import contracts from "../../../cookbook/interfaces/generated/contracts.schema.json";
-import { baselineSchema } from "../../../src/domain/baseline.ts";
-import type { Baseline } from "../../../src/domain/generated/contracts.ts";
+import { baselineSchema } from "@choom/baseline-model";
+import type { Baseline } from "@choom/baseline-model/contracts";
 import { accepted, baselineExample, fixtureItem, invalidBaseline, proposed, reviewedBaseline } from "../../support/baseline-fixtures.ts";
 
 const validateStructure = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true }))
