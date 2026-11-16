@@ -767,6 +767,8 @@ code has no access:
   `db('invoices').where({ id }).update(row)`;
 - a named import whose name is the import name, such as `import { knex } from 'knex'`:
   a call path that starts with `knex` names the value of the module;
+- a member of a namespace import of a snapshot file, such as `database.db('invoices')`
+  after `import * as database from './db'`, as for the behavior entry rules;
 - a value without a declared type, a value that a later assignment gives, the return
   type of a function or a method, and a union of two types;
 - a table name in SQL text: the rules do not read SQL strings;

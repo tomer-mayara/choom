@@ -62,9 +62,9 @@ export const resourceAccessNotes = [
     'and range (kind function or method), or the module when no function holds it, such as a call at the top level or in a ' +
     'class field outside any function; and graphContext, the import pass of the graph group of the file.',
   'A rule does not find a call whose chain has another call between the value and the method, such as ' +
-    'db(\'invoices\').where({ id }).update(row), a call on a value that a later assignment gives, a value without a declared ' +
-    'type, or a call outside the scope. Such a call is a candidate only when its name is on the list of resource call names ' +
-    'of the source sites, with confidence name-only.',
+    'db(\'invoices\').where({ id }).update(row), a call on a member of a namespace import of a snapshot file, a call on a value ' +
+    'that a later assignment gives, a value without a declared type, or a call outside the scope. Such a call is a candidate ' +
+    'only when its name is on the list of resource call names of the source sites, with confidence name-only.',
   'siteRef names the site of sourceSitesRef of a call that is a resource call site there, else null. The name-only ' +
     'candidates come from the saved sites: when source-sites.json omitted sites after its limit, their calls are not here.',
   'A range starts at the first character and ends after the last character. Lines and columns start at 1 and count UTF-16 ' +

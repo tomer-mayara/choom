@@ -782,9 +782,10 @@ records remain source observations, not runtime verification.
 The record keeps observed access separate from inferred identity and ownership:
 
 - The candidates that it names are observed access syntax only: sites,
-  operations and names. Each name gives an identity that is inferred from the
-  name (`inferred-from-name`) or `unknown`, and no candidate names an owner. Two
-  sites with the same table name need not use the same table.
+  operations and names. A candidate with a name has the identity
+  `inferred-from-name`, a candidate without a name has the identity `unknown`, and
+  no candidate names an owner. Two sites with the same table name need not use the
+  same table.
 - An observation records an inspected access: the code that accesses
   (`componentRef`, the mapped owner of the source file, not the owner of the
   resource), the `operation`, the `source`, the `context`, and the target. The
