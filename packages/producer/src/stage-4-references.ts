@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 import type * as TsMorph from 'ts-morph';
 import { type FileSettings, fileSettings, settingsRef } from './compiler-settings.ts';
-import { assert, type Fields } from './record-checks.ts';
+import { assert, type Fields, sourceExtension } from './record-checks.ts';
 import { openSnapshotProject, outsideReadsNote, type ProjectTools, type SnapshotProject, snapshotPath, virtualRoot }
   from './snapshot-project.ts';
 import { findReferences, programFile, resolvesModuleName } from './snapshot-references.ts';
@@ -37,7 +37,6 @@ const loadingKinds = new Set(['dynamic-import', 'require-candidate', 'require-re
 const importKinds = new Set(['import', 're-export', 'import-equals', 'import-type', 'dynamic-import']);
 // The type checker does not read a require call in a TypeScript file as an import.
 const typeScriptFile = /\.(?:[cm]?ts|tsx)$/;
-const sourceCode = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 // ./, ../ or /, and . or .. alone.
 const relativeName = /^(?:\.\.?(?:\/|$)|\/)/;
 const expressionLimit = 4096;
@@ -171,7 +170,7 @@ function localNameReason(path: string, [kind, specifier]: FileSite['site'], inve
   options: Readonly<Fields>): string | undefined {
   if (specifier === null || !(importKinds.has(kind) || (kind === 'require-candidate' && !typeScriptFile.test(path))))
     return undefined;
-  const dataFile = (named: string): boolean => inventory.has(named) && !sourceCode.test(named);
+  const dataFile = (named: string): boolean => inventory.has(named) && !sourceExtension.test(named);
   if (relativeName.test(specifier))
     return dataFile(snapshotPath(posix.resolve(posix.dirname(virtualRoot + '/' + path), specifier))) ? undefined : unresolvedRelative;
   const key = pathsAliasKey((options.paths ?? {}) as Fields, specifier);

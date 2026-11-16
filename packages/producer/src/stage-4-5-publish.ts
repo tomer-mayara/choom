@@ -8,7 +8,7 @@ import { isDeepStrictEqual as same } from 'node:util';
 import type * as Yaml from 'yaml';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
-import type { Artifact, Fields } from './record-checks.ts';
+import { type Artifact, type Fields, sourceExtension } from './record-checks.ts';
 import { runLayout } from './run-layout.mjs';
 import type { ProjectTools } from './snapshot-project.ts';
 import { readBaselineYaml, type RecordCounts, type RunRecord, validateDiscoveryRecords } from './stage-6-records.ts';
@@ -315,7 +315,7 @@ function candidate(state: State, packet: Packet): Candidate {
   const graph = json((artifacts.get(discovery.dependenciesRef as string) as Artifact).bytes);
   const roots = new Set((graph.contexts as Fields[]).flatMap(context => (context.roots as Fields[]).map(root => root.path)));
   for (const added of entry.candidates.slice(previousCandidates.length) as Fields[])
-    assert(added.path === null || !/\.(?:[cm]?[jt]s|[jt]sx)$/.test(added.path as string) || roots.has(added.path),
+    assert(added.path === null || !sourceExtension.test(added.path as string) || roots.has(added.path),
       'New JavaScript/TypeScript entry is outside the saved root set: ' + added.id + '. Revisit entry and graph analysis.');
   if (stage === '5') for (const item of priorBaseline.components as Fields[])
     assert((baseline.components as Fields[]).some(next => next.id === item.id), 'Keep continuing component IDs during remaining-code review.');

@@ -1,5 +1,5 @@
 import type * as TsMorph from 'ts-morph';
-import { assert, hash } from './record-checks.ts';
+import { assert, hash, sourceExtension } from './record-checks.ts';
 import { type SourcePosition, sourcePosition, topLevelNames } from './snapshot-exports.ts';
 import { parseDiagnostics, snapshotPath } from './snapshot-project.ts';
 
@@ -35,7 +35,6 @@ type Span = [number, number];
 
 // The input limit of the Stage 5 syntax query.
 const sourceLimit = 2 * 1024 * 1024;
-const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const anonymousDefaultName = 'default';
 
 // The saved bytes of a file that symbols divide. The file must be JavaScript or

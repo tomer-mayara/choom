@@ -1,5 +1,5 @@
 import type { ts as TypeScript } from 'ts-morph';
-import type { Fields } from './record-checks.ts';
+import { type Fields, sourceExtension } from './record-checks.ts';
 import { openSyntaxReader, parseDiagnostics, type ProjectTools, syntaxParser } from './snapshot-project.ts';
 import type { InventoryFile } from './stage-1-settings.ts';
 
@@ -27,7 +27,6 @@ type RecordCandidate = (node: TypeScript.Node, kind: string, scope: string, deta
 interface FileScan { ts: Ts; record: RecordCandidate }
 
 export const syntaxLimits = { inputBytes: 2 * 1024 * 1024, perFile: 120, total: 2400, expressionChars: 400, diagnosticsPerFile: 50 };
-const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const registrationNames = new Set([
   'addEventListener', 'afterAll', 'afterEach', 'After', 'AfterAll', 'AfterStep',
   'beforeAll', 'beforeEach', 'Before', 'BeforeAll', 'BeforeStep', 'defineParameterType',

@@ -1,6 +1,6 @@
 import { isAbsolute, posix } from 'node:path';
 import { namedParsingProfile, type ParsingProfile } from './parsing-profile.ts';
-import { assert, type Fields, text } from './record-checks.ts';
+import { assert, type Fields, sourceExtension, text } from './record-checks.ts';
 import { type ContextKinds, contextKinds, packageLookup } from './stage-4-module-kinds.ts';
 
 // The graph profile that Stage 4 start saves before the graph runs. It puts the
@@ -44,7 +44,6 @@ export interface ProfileInputs {
 }
 export interface GraphProfile { graph: Fields; notes: Fields }
 
-const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const compilerKeys = ['target', 'module', 'moduleResolution', 'jsx', 'verbatimModuleSyntax'];
 const contextLimit = 'Each parsed compiler file selection is a separate context. Overlapping selections stay separate; remaining source uses a named configuration-free fallback.';
 const limits = ['Scan files come from all indexed regular JavaScript and TypeScript files in the Stage 3 source query.',

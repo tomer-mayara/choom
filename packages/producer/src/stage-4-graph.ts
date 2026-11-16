@@ -59,6 +59,7 @@ interface GraphResult {
 interface FixtureApproval { status: string; toolVersions: ToolVersions; contextCount: number }
 
 const repo = '/repo';
+// A copy of sourceExtension of record-checks.ts: the graph container runs this file alone.
 const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const compilerKeys = ['target', 'module', 'moduleResolution', 'jsx', 'verbatimModuleSyntax'];
 const extensions = ['.ts', '.tsx', '.mts', '.cts', '.d.ts', '.d.mts', '.d.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'];
