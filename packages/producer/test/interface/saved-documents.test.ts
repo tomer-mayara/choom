@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { behaviorEntryRulesPath } from "../../src/behavior-entry-rules.ts";
+import { resourceAccessRuleList } from "../../src/resource-access-rules.ts";
 import { producerReceipt } from "../../src/producer-code.ts";
 import { producerDocuments, producerSource, runHelper, toolsRoot, withScratch } from "../support/commands.ts";
 import { stagedRun, stagedSnapshotRef as snapshotRef } from "../support/staged-run.ts";
@@ -86,7 +87,7 @@ describe("stage starts save their documents and no producer code", () => {
     });
   });
 
-  test("Stage 4 saves its cookbook, the record format and the behavior entry rule list, and the Stage 4/5 publisher accepts them", () => {
+  test("Stage 4 saves its cookbook, the record format and the rule lists, and the Stage 4/5 publisher accepts them", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stagedRun(work, 3);
@@ -96,7 +97,8 @@ describe("stage starts save their documents and no producer code", () => {
       expect(result.stdout).toStartWith("Prepared s4-new: ");
       const attempt = join(work, "evidence/s4-new");
       const sources = { "step-4-cookbook.md": documents("step-4-cookbook.md"), "record-format.md": documents("record-format.md"),
-        "behavior-entry-rules.yaml": join(toolsRoot, behaviorEntryRulesPath) };
+        "behavior-entry-rules.yaml": join(toolsRoot, behaviorEntryRulesPath),
+        "resource-access-rules.yaml": join(toolsRoot, resourceAccessRuleList.path) };
       expectCopies(attempt, sources);
       expect(readdirSync(attempt).filter(producerCode)).toEqual([]);
       expect(Object.keys((json(join(attempt, "handoff.json")) as { toolInputDigests: object }).toolInputDigests))

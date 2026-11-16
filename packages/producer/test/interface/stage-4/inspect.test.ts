@@ -184,11 +184,12 @@ function initialExcerpt(path: string, totalLines: number, excerpt: string): Json
 }
 
 describe("Stage 4 collect", () => {
-  test("saves the source sites, the behavior entry candidates, the first excerpts, the review prompt and the artifact map", () => {
-    expect(collected).toEqual({ status: 0, stderr: "",
-      stdout: "Saved source sites, behavior entry candidates, bounded excerpts, and the Stage 4 review prompt.\n" });
-    const outputs = ["source-sites.json", "behavior-entry-candidates.json", "source-excerpts.json", "review-prompt.md",
-      "artifact-map.json"];
+  test("saves the source sites, the behavior entry and resource access candidates, the first excerpts, the review prompt and the " +
+    "artifact map", () => {
+    expect(collected).toEqual({ status: 0, stderr: "", stdout: "Saved source sites, behavior entry candidates, resource access " +
+      "candidates, bounded excerpts, and the Stage 4 review prompt.\n" });
+    const outputs = ["source-sites.json", "behavior-entry-candidates.json", "resource-access-candidates.json", "source-excerpts.json",
+      "review-prompt.md", "artifact-map.json"];
     expect(saved("operator-collect.json")).toMatchObject({ formatVersion: 1, attemptId: id, action: "collect",
       phase: "collect", status: "completed", exitCode: 0,
       digests: Object.fromEntries(outputs.map((name) => [name, sha256(readFileSync(join(fixture.attempt, name)))])) });

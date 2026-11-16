@@ -9,16 +9,20 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
-import { behaviorEntryRulesFile, behaviorEntryRulesPath, checkPinnedRuleList, readRuleList } from './behavior-entry-rules.ts';
+import { behaviorEntryRulesFile, readRuleList } from './behavior-entry-rules.ts';
 import { savedSettings, settingsRef } from './compiler-settings.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash } from './record-checks.ts';
+import { resourceAccessRuleList, resourceAccessRulesFile } from './resource-access-rules.ts';
+import { checkPinnedRules, readRules } from './rule-lists.ts';
 import { syntaxParser } from './snapshot-project.ts';
 import { directory, safePath } from './stage-3-inputs.ts';
 import { behaviorEntryRecord, stageOneReviewRef } from './stage-4-behavior-entries.ts';
 import type { Picomatch } from './stage-4-graph-profile.ts';
 import { referencesRecord } from './stage-4-references.ts';
+import { resourceAccessRecord } from './stage-4-resource-access.ts';
 import { reviewPrompt } from './stage-4-review-prompt.ts';
+import { stageFourRuleLists } from './stage-4-rule-lists.ts';
 import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 
 // The Stage 4 source collection helper. collect saves the source sites of the
@@ -127,8 +131,8 @@ function receipt(phase: string, required: string[]): void {
 
 // The handoff of the completed start, with the unchanged drafts, saved documents and graph profile.
 function startedHandoff(): Fields {
-  // The documents and the rule list that Stage 4 start saved; the attempt holds no producer code.
-  const frozen = ['step-4-cookbook.md', 'record-format.md', behaviorEntryRulesFile];
+  // The documents and the rule lists that Stage 4 start saved; the attempt holds no producer code.
+  const frozen = ['step-4-cookbook.md', 'record-format.md', ...stageFourRuleLists.map(list => list.file)];
   receipt('start', ['handoff.json', 'graph-profile.json', 'graph-profile-notes.json', ...frozen,
     'run.before.yaml', 'discovery.before.yaml', 'baseline.before.yaml']);
   const handoff = json('handoff.json');
@@ -141,7 +145,7 @@ function startedHandoff(): Fields {
   for (const [name, digest] of Object.entries(handoff.toolInputDigests as Fields))
     assert(hash(saved(name)) === digest, 'Saved tool changed: ' + name);
   assert(hash(saved('graph-profile.json')) === handoff.graphProfileSha256, 'Graph profile changed.');
-  checkPinnedRuleList(saved(behaviorEntryRulesFile), read(join(tools, behaviorEntryRulesPath)));
+  for (const list of stageFourRuleLists) checkPinnedRules(list, saved(list.file), read(join(tools, list.path)));
   return handoff;
 }
 
@@ -342,13 +346,15 @@ function collect(current: InspectState): string[] {
     snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
     check: path => { utf8(current.source(path), path); } }));
   saveJson('behavior-entry-candidates.json', behaviorEntries(current));
+  saveJson('resource-access-candidates.json', resourceAccess(current));
   saveJson('source-excerpts.json', initialExcerpts(current));
   save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,
     entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt }));
   saveJson('artifact-map.json', { formatVersion: 1, attemptId: id, snapshotRef: current.handoff.snapshotRef,
     status: 'proposed', artifacts: artifactMap(),
     limits: ['This map is not registered yet. It omits itself, the mutable command log, and later files.'] });
-  return ['source-sites.json', 'behavior-entry-candidates.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'];
+  return ['source-sites.json', 'behavior-entry-candidates.json', 'resource-access-candidates.json', 'source-excerpts.json',
+    'review-prompt.md', 'artifact-map.json'];
 }
 
 // The source sites that a completed collect saved, unchanged since then.
@@ -361,6 +367,17 @@ function collectedSites(): Fields {
   assert(hash(saved('source-sites.json')) === (value.digests as Fields | undefined)?.['source-sites.json'],
     'Changed collect output: source-sites.json');
   return json('source-sites.json');
+}
+
+// The resource access candidates of the rule list that Stage 4 start saved, with the source sites that collect saved.
+function resourceAccess(current: InspectState): Fields {
+  const rules = saved(resourceAccessRulesFile);
+  return resourceAccessRecord({ attemptId: id, snapshotRef: current.handoff.snapshotRef,
+    snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
+    profile: current.profile, profileRef: artifactId('graph-profile.json'),
+    settings: savedSettings(current.artifacts.get(settingsRef), current.handoff.snapshotRef),
+    rules: readRules(resourceAccessRuleList, rules, yaml), rulesRef: artifactId(resourceAccessRulesFile), rulesSha256: hash(rules),
+    sites: json('source-sites.json'), sitesRef: artifactId('source-sites.json'), tsMorph, parser });
 }
 
 // Saves the references to a symbol of a source file of the graph scope.
@@ -420,7 +437,8 @@ try {
   state();
   record.status = 'completed'; record.exitCode = 0;
   record.digests = Object.fromEntries(outputs.map(name => [name, hash(saved(name))]));
-  console.log(action === 'collect' ? 'Saved source sites, behavior entry candidates, bounded excerpts, and the Stage 4 review prompt.'
+  console.log(action === 'collect' ? 'Saved source sites, behavior entry candidates, resource access candidates, bounded excerpts, ' +
+    'and the Stage 4 review prompt.'
     : 'Saved ' + outputs[0] + '.');
 } catch (error) {
   record.status = 'failed'; record.exitCode = 1; record.reason = (error as Error).message;
