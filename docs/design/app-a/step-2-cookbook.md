@@ -125,8 +125,8 @@ the current settings or review may have newer IDs than `settings-001` or
 Start runs [`stage-2-handoff.ts`](../../../packages/producer/src/stage-2-handoff.ts). It checks the
 saved inputs and saves draft checkpoints. It makes the inventory of the saved
 snapshot with the checkout code and compares it byte for byte with the
-registered inventory. It does not run the saved `inventory.mjs`: the run folder
-holds no trusted code, so that file stays only a registered record.
+registered inventory. It does not run the saved `inventory.mjs`: a file in the
+run folder is not trusted code, so that file stays only a registered record.
 If an existing artifact points to the
 working `discovery.yaml` or `baseline.yaml`, the module points it to the matching
 checkpoint in this new attempt. The artifact ID, bytes, and digest stay the same.
