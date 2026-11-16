@@ -163,6 +163,7 @@ Each ticket is a draft PR. Each PR targets the branch of the PR before it.
 | GA-07f | tomer-mayara/choom#86 | Draft. A second pinned rule list (knex starter rules) with `typePath` and `nameCall`. Stage 4 collect saves `resource-access-candidates.json` with the confidence `receiver-import`, `receiver-type` or `name-only`, `identity: inferred-from-name`, and no owner. `resource-access.json` names it as `resourceAccessCandidatesRef`. The rule-list and call-rule code is now shared with GA-07a. |
 | GA-02b | tomer-mayara/choom#87 | Draft. Not as the ticket says: a new Stage 5 request, `parts PATH SYMBOL...`, saves `parts-NNN.json`, because Stage 5 `collect` never sees a divided file. A part is named by its symbol or `rest`, not by a unit ID. An import goes to the part that holds all uses of its names. `shared`, `unreferenced` and `not-resolved` imports stay at file level. |
 | GA-07d | tomer-mayara/choom#88 | Draft. The engine changes, test first, as the ticket table allows: call rules get the optional fields `nameCall` and `sameValueMethods`. There are commander and yargs command rules (the yargs handler is argument 3), and a new rule kind, `package-bin`, which links a bin file to its source only with evidence (the snapshot file, or the saved `outDir` and `rootDir`). |
+| GA-08 | tomer-mayara/choom#89 | Draft. This PR also records plan change 17 and D23 (path A, which replaces D15). Every plugin stays `false`. The plugin patterns are copied into the Stage 2 profile, and Stage 4 lists their files with `found: knip-plugin-pattern`. The first real run of the `@docker` scenarios is in CI. |
 
 Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
 
@@ -278,6 +279,25 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
     calls at run time, but the graph resolves them with the `import`
     condition and marks them `pre-compilation-only`. GA-10b keeps the two
     scenarios as guards and adds scenarios that fail today.
+17. **GA-08 follows D23, not D15 (the owner chose this on 2026-11-16).**
+    The first step of GA-08 tested D15 on Knip 6.44.1. With a plugin set to
+    `{ config: [] }`, Knip adds its default entries, but it still loads and
+    runs a settings file in three cases:
+    - a settings path in a package script (`vite build --config x.js`);
+    - a folder in a script (`next build web`);
+    - `babel.config.js` when the Expo or Docusaurus plugin is on.
+
+    37 of the 92 plugins that Knip turns on by dependency can do this. No
+    Knip option turns it off. So GA-08 keeps every plugin `false`, and
+    steps 2 and 5 change:
+    - Stage 2 copies the default `entry` and `production` patterns of the
+      plugins that the dependencies turn on. The patterns come from the
+      installed Knip, with the plugin, the dependency and the manifest of
+      each pattern.
+    - Stage 4 collect lists the files of these patterns next to the GA-07e
+      settings candidates, with `found: knip-plugin-pattern`.
+
+    The D15 test stays in the suite as the record of why.
 
 ### How to work every ticket
 
@@ -362,13 +382,14 @@ record its current behavior.
 | D12 | Membership change in a new version | No marker. Every new version has no discovery result until a new run. Re-mapping (design mode B) is later work. |
 | D13 | G2 and G3 | Symbol selectors divide a file. Each named symbol becomes a unit. The rest of the file is one unit, owned by the file's path owner, or `null` with a reason. Symbols need `formatVersion: 5`. |
 | D14 | G7 | One rule engine with a pinned rule list. The first rules cover HTTP servers, workers and queues, CLI tools and frontend settings. |
-| D15 | G8 | Plugins run with `config: []`, so they use only their default file-name patterns and never load settings files. There is no approval list. This is not yet tested on Knip 6.44.1: GA-08 tests it first. |
+| D15 | G8 | Replaced by D23 on 2026-11-16 (plan change 17). Before: plugins run with `config: []`, so they use only their default file-name patterns and never load settings files. There is no approval list. This is not yet tested on Knip 6.44.1: GA-08 tests it first. |
 | D16 | ripgrep | `@vscode/ripgrep` at an exact version. Version 1.18.0 needs no `trustedDependencies` entry (plan change 10). |
 | D17 | G11 | CR-004 is approved in principle. The viewer shows discovery questions and gaps, and can copy a decision-file entry. There is no editor in the viewer. |
 | D18 | Docker tests | A CI `producer` job runs `@docker` scenarios. `bun run check` skips them. |
 | D19 | G4 | Git identity only. History is left to Step 2 planning. |
 | D20 | Old discovery files in the viewer | Approved by the owner on 2026-11-15. The viewer refuses a discovery result without `baselineDigest`, because an ID alone can match the wrong baseline. Old runs need a new run to show in the viewer. |
 | D22 | Format of the decision file | Approved by the owner on 2026-11-15. The decision file is YAML, as the CR-004 text says. The producer reads it with the bounded YAML profile of a baseline and saves its exact bytes as `decisions/<id>.yaml`. |
+| D23 | G8 | Approved by the owner on 2026-11-16 (path A). It replaces D15, because Knip 6.44.1 still runs settings files that package scripts name, even with `config: []`. Every Knip plugin stays `false`. For each plugin whose package is a dependency of a manifest, Stage 2 copies the plugin's default `entry` and `production` patterns from the installed Knip, with the plugin, the dependency and the manifest. Patterns of settings files are not copied. Lost: plugin `resolve` steps (such as Vite's `index.html` start files), the `.vue`, `.svelte` and `.astro` readers, and the plugins' syntax visitors. |
 
 ### Ticket map and order
 
@@ -1258,6 +1279,8 @@ Feature: Find resource access sites
 ### GA-08 Knip plugins without settings files
 
 **Gap:** G8 (design 782–792), D15. **Needs:** GA-00d, GA-07e.
+
+**Changed by plan change 17:** D23 replaces D15. Steps 2 and 5 copy the plugin patterns. No plugin is turned on.
 
 ```gherkin
 @producer @docker
