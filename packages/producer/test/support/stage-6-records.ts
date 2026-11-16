@@ -35,7 +35,7 @@ export interface MappingUnit {
   membershipRef: string | null;
   evidenceRefs: string[];
 }
-export interface SourceNote { evidenceRef: string; description: string; location?: object }
+interface SourceNote { evidenceRef: string; description: string; location?: object }
 interface Example { id: string; name: string; basis: string; content: Statement<{ text: string }> }
 interface DocumentationEntry {
   id: string;
@@ -85,7 +85,7 @@ export const selected = { entryAnalysisRef: `${stage}-entry-analysis`, codeMappi
 export const evidenceRefs = ["launch"];
 export const statement = <T>(value: T): Statement<T> => ({ value, status: "proposed", evidenceRefs });
 export const files: Record<string, string> = { "cli.ts": "export function start() {}\n", "http.ts": "export function orders() {}\n" };
-export const inventory = { formatVersion: 1, snapshotId: snapshotRef, files: Object.entries(files)
+const inventory = { formatVersion: 1, snapshotId: snapshotRef, files: Object.entries(files)
   .map(([path, source]) => ({ path, kind: "file", bytes: Buffer.byteLength(source), sha256: digest(source) })) };
 export const location = { snapshotRef, path: "http.ts", sha256: digest(files["http.ts"] ?? ""), lines: [1, 1] };
 const graphInput = { id: "default", roots: [{ path: "cli.ts", evidenceRefs }], compilerSettingsRef: null,
