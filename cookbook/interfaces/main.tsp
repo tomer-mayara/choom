@@ -10,3 +10,4 @@ import "./document-dialogs.tsp";
 import "./desktop-documents.tsp";
 import "./interface-duplication.tsp";
 import "./interface-duplication-codec.tsp";
+import "./discovery-result-codec.tsp";

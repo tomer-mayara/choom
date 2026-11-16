@@ -20,6 +20,8 @@ export type BaselineDecodeFailureCode = "unsupported-version" | "invalid-encodin
 
 export type DecodeBaselineOutcome = DecodedBaseline | BaselineDecodeFailure;
 
+export type DecodeDiscoveryResultOutcome = DecodedDiscoveryResult | DiscoveryDecodeFailure;
+
 export type DecodeDuplicationReportOutcome = DecodedDuplicationReport | DuplicationDecodeFailure;
 
 export interface DecodedBaseline {
@@ -28,10 +30,30 @@ export interface DecodedBaseline {
   durationMs: number;
 }
 
+export interface DecodedDiscoveryResult {
+  status: "success";
+  result: ChoomBaselineModel.DiscoveryResult;
+  durationMs: number;
+}
+
 export interface DecodedDuplicationReport {
   status: "success";
   report: ChoomDomain.DuplicationReport;
   durationMs: number;
+}
+
+export interface DiscoveryDecodeFailure {
+  status: "failure";
+  stage: "decoding";
+  code: DiscoveryDecodeFailureCode;
+  message: string;
+  durationMs: number;
+}
+
+export type DiscoveryDecodeFailureCode = "unsupported-version" | "invalid-encoding" | "invalid-document" | "limit-exceeded" | "baseline-mismatch";
+
+export interface DiscoveryResultCodec {
+  decode(text: baselineYaml, baseline: ChoomBaselineModel.Baseline, baselineSha256: ChoomBaselineModel.baselineFileDigest): DecodeDiscoveryResultOutcome;
 }
 
 export interface DuplicationDecodeFailure {

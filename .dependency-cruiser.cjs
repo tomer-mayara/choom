@@ -12,7 +12,7 @@ const producerDuplicationAppImports = [
   "^src/lib/interface-duplication-yaml\\.ts$",
   "^src/domain/interface-duplication\\.ts$",
 ];
-const codec = "^src/lib/((baseline|interface-duplication)-yaml\\.ts$|architecture-yaml/)";
+const codec = "^src/lib/((baseline|interface-duplication|discovery-result)-yaml\\.ts$|architecture-yaml/)";
 const codecContracts = "^src/lib/generated/contracts\\.ts$";
 const platform = "^src/platform/";
 const platformContracts = "^src/platform/generated/contracts\\.ts$";

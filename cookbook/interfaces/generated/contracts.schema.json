@@ -3625,6 +3625,91 @@
                 }
             ]
         },
+        "DecodedDiscoveryResult": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodedDiscoveryResult.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "success"
+                },
+                "result": {
+                    "$ref": "DiscoveryResult.json"
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "result",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoveryDecodeFailure": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryDecodeFailure.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "const": "failure"
+                },
+                "stage": {
+                    "type": "string",
+                    "const": "decoding"
+                },
+                "code": {
+                    "$ref": "DiscoveryDecodeFailureCode.json"
+                },
+                "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                },
+                "durationMs": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "required": [
+                "status",
+                "stage",
+                "code",
+                "message",
+                "durationMs"
+            ],
+            "additionalProperties": false
+        },
+        "DiscoveryDecodeFailureCode": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DiscoveryDecodeFailureCode.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "unsupported-version"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-encoding"
+                },
+                {
+                    "type": "string",
+                    "const": "invalid-document"
+                },
+                {
+                    "type": "string",
+                    "const": "limit-exceeded"
+                },
+                {
+                    "type": "string",
+                    "const": "baseline-mismatch"
+                }
+            ]
+        },
         "DecodeBaselineOutcome": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DecodeBaselineOutcome.json",
@@ -3646,6 +3731,18 @@
                 },
                 {
                     "$ref": "DuplicationDecodeFailure.json"
+                }
+            ]
+        },
+        "DecodeDiscoveryResultOutcome": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "DecodeDiscoveryResultOutcome.json",
+            "anyOf": [
+                {
+                    "$ref": "DecodedDiscoveryResult.json"
+                },
+                {
+                    "$ref": "DiscoveryDecodeFailure.json"
                 }
             ]
         },

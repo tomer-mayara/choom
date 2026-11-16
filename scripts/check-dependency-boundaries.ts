@@ -13,6 +13,7 @@ const workspace = "src/architecture/workspace.ts";
 const publication = "src/architecture/load-publication.ts";
 const codec = "src/lib/baseline-yaml.ts";
 const reportCodec = "src/lib/interface-duplication-yaml.ts";
+const discoveryCodec = "src/lib/discovery-result-yaml.ts";
 const parser = "src/lib/architecture-yaml/parse.ts";
 const layout = "src/lib/architecture-layout.ts";
 const domain = "src/domain/interface-duplication.ts";
@@ -63,6 +64,8 @@ const allowed: readonly Probe[] = [
   [codec, parser, "runtime"],
   [reportCodec, parser, "runtime"],
   [reportCodec, domain, "runtime"],
+  [discoveryCodec, parser, "runtime"],
+  [discoveryCodec, "packages/baseline-model/src/discovery-result.ts", "runtime"],
   [codec, model, "runtime"],
   [codec, "src/lib/generated/contracts.ts", "type"],
   [parser, "node_modules/yaml/index.js", "runtime"],
@@ -110,6 +113,8 @@ const forbidden: readonly Probe[] = [
   [codec, "node:fs", "runtime", codecBoundary],
   [reportCodec, "node:fs", "runtime", codecBoundary],
   [reportCodec, "src/platform/documents.ts", "runtime", codecBoundary],
+  [discoveryCodec, "node:fs", "runtime", codecBoundary],
+  [discoveryCodec, layout, "runtime", codecBoundary],
   [parser, layout, "type", codecBoundary],
   [parser, "node_modules/elkjs/index.js", "runtime", codecBoundary],
   ["src/lib/generated/contracts.ts", "src/platform/documents.ts", "type", codecBoundary],
