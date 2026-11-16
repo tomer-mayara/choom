@@ -17,6 +17,7 @@ contract references do not establish exclusive ownership of the contract file.
 - [2. Collect the remaining-code evidence](#2-collect-the-remaining-code-evidence)
 - [3. Ask the LLM to account for the remaining code](#3-ask-the-llm-to-account-for-the-remaining-code)
 - [4. Request more source when needed](#4-request-more-source-when-needed)
+  - [Find the parts of a file and their dependencies](#find-the-parts-of-a-file-and-their-dependencies)
 - [5. Check and publish the review](#5-check-and-publish-the-review)
 - [Saved state](#saved-state)
 
@@ -195,8 +196,13 @@ mapping, use unitKind: file-or-part and give each unit its unitKind. Map the
 divided file as one symbol unit for each symbol and one rest unit for all other
 text. The rest belongs to the component whose paths select the file, or has
 owner null with reason no-path-owner. The producer finds the ranges of the
-units in the saved syntax tree: copy the ranges that the publisher check
-gives, because it refuses other ranges.
+units in the saved syntax tree, and the publisher check refuses other ranges.
+Before you divide a file, request its parts with stage-5 parts PATH SYMBOL
+[SYMBOL ...]. The record gives the ranges of the units and the dependencies of
+the file at both levels: an import that only one part uses is in that part,
+and a dependency that the request cannot place stays at file level with its
+reason. Copy the ranges and cite the record in the evidence of the units. Do
+not assign a file-level dependency to a part, and do not copy it to each part.
 
 Review the saved system scope for launch paths and externally callable
 operations. Use saved launch settings and behavior entries. Read each
@@ -293,8 +299,9 @@ The LLM must distinguish these decisions:
 - **Divided file:** a top-level declaration of a file has another supported
   direct owner than the rest of the file. Name the symbol in the owner's
   membership and map the file as its parts; see
-  [divided files](record-format.md#divided-files). Keep the file whole when the
-  evidence does not show such a boundary.
+  [divided files](record-format.md#divided-files). Request the
+  [parts of the file](#find-the-parts-of-a-file-and-their-dependencies) first.
+  Keep the file whole when the evidence does not show such a boundary.
 - **Deferred inspection:** name the affected paths and the checked evidence,
   then explain why deeper inspection stops. A bulk parser scan is not that
   explanation, nor is an arbitrary analysis budget. State the missing evidence
@@ -331,6 +338,33 @@ Do not use the live repository to fill a snapshot gap. Previously uncaptured
 inputs need a new snapshot. If the evidence is unavailable, record the gap and
 continue with supported claims.
 
+### Find the parts of a file and their dependencies
+
+Before the review divides a file, ask for its parts. Replace the path and the
+symbols with the requested values:
+
+```sh
+node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 parts \
+  src/billing.ts computePrice
+```
+
+The request divides the indexed file by the named symbols, as the symbol
+selectors of a version 5 baseline do, and saves a numbered `parts-NNN.json` and
+its receipt. The record lists each part with the ranges of its code unit and the
+dependencies that belong to it, and the dependencies that stay at file level,
+each with its reason: `shared`, `unreferenced` or `not-resolved`. The
+[record format](record-format.md#dependencies-of-file-parts) gives the fields and
+the rules. The type checker of the saved file alone finds the uses of each import.
+The request reads no other file and runs no code. It does not change the
+collected evidence, which keeps whole files.
+
+Copy the ranges of the parts into the symbol units and the rest unit, and cite
+the record in their evidence. Keep each file-level dependency at file level: do
+not assign it to a part or copy it to each part. A request fails with a receipt
+and saves no record when it names a file outside the inventory, a symbol that is
+not a top-level declaration of one name, or a file that the symbol selectors
+cannot divide. The next request takes the next number.
+
 ## 5. Check and publish the review
 
 The LLM supplies the nine files in [record formats](record-format.md). Set
@@ -358,8 +392,10 @@ guidance to the complete packet before `finish`. Check that:
 - A divided file has exactly the symbol units and the rest unit that its symbol
   selectors give, with the ranges that the check gives. If the check refuses the
   units, it lists the units that the file must have; copy them into the packet.
-  The dependencies of file parts are not recorded yet: graph edges and source
-  sites in a divided file stay at file level.
+  The units cite the parts record of the file, which lists its dependencies at
+  both levels. The graph edges, and the checks of the behavior entries, resource
+  observations, source uses and system entries in a divided file, stay at file
+  level.
 - Evidence references, source hashes and numbered ranges resolve. Only ranges
   actually read by the LLM appear as new inspections.
 - Continuing component IDs remain stable. Changed intent stays proposed and
@@ -393,7 +429,7 @@ need a new run; do not reopen the completed stage or repair its saved files.
 | Point | `baseline.yaml` | `discovery.yaml` |
 | --- | --- | --- |
 | After `start` | Unchanged Stage 4 proposal. | Unchanged Stage 4 discovery. |
-| After `collect` and extra excerpts | Unchanged. | Unchanged; new evidence exists in the attempt. |
+| After `collect`, extra excerpts and parts requests | Unchanged. | Unchanged; new evidence exists in the attempt. |
 | After LLM review | Complete revised proposal exists separately, or the earlier model is retained with an explanation. | Separate proposed records account for remaining units, inspection limits and resolutions. |
 | After `finish` and `verify` | Contains supported revisions, still proposed. | Selects current mapping and analysis records; keeps unresolved areas visible. `baselineRef` remains unset. |
 

@@ -76,6 +76,13 @@ where to read; it is not a reviewed source range and does not prove a call. A
 `completeness` of `complete-within-scope` means that the query found no
 unresolved entry, not that the references are complete.
 
+A Stage 5 parts record (`parts-NNN.json`, see
+[Dependencies of file parts](#dependencies-of-file-parts)) is query evidence too.
+Cite the record, or one part or dependency with a JSON Pointer, such as
+`s5-001-file@parts-001.json#/parts/0`, in the evidence of the units of a divided
+file. It shows the ranges of the units and where the dependencies are; it is not
+a reviewed source range.
+
 The behavior entry candidates of Stage 4 `collect`
 (`behavior-entry-candidates.json`, see
 [Behavior entry candidates](#behavior-entry-candidates)) are tool evidence too.
@@ -754,8 +761,86 @@ symbol or rest units of a file that no selector divides.
 The `inspection` of a part follows its file, as for a file unit. The checks of
 the source sites stay at file level: a behavior entry, a resource observation, a
 source use or a system entry in a divided file can name the owner of any unit of
-that file. The dependencies of file parts are not recorded yet: the graph edges,
-the Stage 5 evidence and these checks name whole files.
+that file. The graph edges and the evidence of Stage 5 `collect` name whole
+files. The Stage 5 parts request records the
+[dependencies of file parts](#dependencies-of-file-parts).
+
+### Dependencies of file parts
+
+After Stage 5 `collect`, `stage-5 parts PATH SYMBOL [SYMBOL ...]` divides one
+indexed file by the named symbols, as the symbol selectors do, and saves the
+numbered record `parts-NNN.json` (see the
+[stage 5 cookbook](step-5-cookbook.md#find-the-parts-of-a-file-and-their-dependencies)).
+It lists the dependencies of the file at both levels: each dependency that
+belongs to a part, under that part, and each other dependency at file level, with
+its reason. The record starts with `formatVersion: 1`, `attemptId`, `runRef` and
+`snapshotRef`, and has these fields:
+
+| Field | Value |
+| --- | --- |
+| `path`, `sha256`, `symbols` | The file, its inventory digest, and the symbols of the request, each once, in request order. |
+| `sourceSitesRef` | The Stage 4 `source-sites.json` that the dependencies name. |
+| `tool` | `name`, and the `tsMorph` and `typescript` versions that Stage 5 start pinned. |
+| `parts` | One part for each symbol, in file order, and then a rest part when the file has other text. A part has `unitKind` (`symbol` or `rest`), `symbol` for a symbol part, `ranges` and `dependencies`. |
+| `fileDependencies` | The dependencies that stay at file level, in source order, each with its `reason`, and `usedIn` for a shared one. |
+| `notes` | What the record covers and what it does not. |
+
+A part names one code unit of the divided file: the symbol unit of its symbol,
+or the rest unit. Its `ranges` are the ranges that the code mapping must give
+that unit. A dependency is a loading site of the file, as Stage 4 `collect` lists
+them in `source-sites.json`: an import, a re-export, an import `=`, an import
+type, a dynamic import, and a `require` or `require.resolve` call. A resource call
+is not a dependency. A dependency has `siteRef` (the saved site, or `null` when
+no saved site matches), `kind`, `specifier`, `typeOnly`, `dynamic`, `range`,
+`expression` (clipped after 4096 code units), `truncated` and `localNames`.
+
+Each dependency is in one part or at file level. It is never left out, and never
+in two places:
+
+- A site that binds local names belongs to the part that holds all the uses of
+  those names. Such a site is an import, an import `=` with a module, or a
+  JavaScript `require` that the compiler reads as an import. A type-only import
+  follows the same rule.
+- A site with uses in several parts stays at file level with the reason `shared`,
+  and `usedIn` lists those parts. A site with no use has the reason `unreferenced`.
+- An import that binds no name, such as `import './setup'`, loads its module for
+  its effects, and a site with a computed module name, such as `import(name)` or
+  `require(name)`, can load any module. Both stay at file level with the reason
+  `not-resolved`, also when a symbol holds the site.
+- Any other site belongs to the part that holds it: a re-export, which is always
+  in the rest, and a dynamic import, `require`, `require.resolve` or import type
+  with a literal module name.
+
+The TypeScript type checker of a project that holds only the saved file finds the
+uses. A use is a name that refers to the local symbol that the site binds, so
+another declaration with the same name is not a use. The project reads no other
+file and resolves no import. A use without a name in the file, such as the JSX
+factory of JSX syntax or a type in a JSDoc comment, is not found. A use shows that
+a part names the dependency, not that the code runs. The record names no owner.
+
+The parts of `src/billing.ts` that `computePrice` divides, from a fixture run
+(the fields of the dependencies are shortened):
+
+```json
+{
+  "path": "src/billing.ts", "symbols": ["computePrice"], "sourceSitesRef": "s4-check-file@source-sites.json",
+  "parts": [
+    { "unitKind": "symbol", "symbol": "computePrice", "ranges": [[{ "line": 13, "column": 1 }, { "line": 16, "column": 2 }]],
+      "dependencies": [{ "siteRef": "s4-check-file@source-sites.json#/sites/0", "kind": "import",
+        "specifier": "./money", "expression": "import { round } from './money';", "localNames": ["round"] }] },
+    { "unitKind": "rest", "ranges": [[{ "line": 1, "column": 1 }, { "line": 13, "column": 1 }],
+      [{ "line": 16, "column": 2 }, { "line": 17, "column": 1 }]],
+      "dependencies": [{ "siteRef": "s4-check-file@source-sites.json#/sites/1", "kind": "import",
+        "specifier": "./rate", "expression": "import { rate } from './rate';", "localNames": ["rate"] }] }
+  ],
+  "fileDependencies": [
+    { "siteRef": "s4-check-file@source-sites.json#/sites/2", "kind": "import", "specifier": "./setup",
+      "expression": "import './setup';", "localNames": [], "reason": "not-resolved" },
+    { "siteRef": "s4-check-file@source-sites.json#/sites/3", "kind": "dynamic-import", "specifier": null,
+      "expression": "import('./plugins/' + pluginName)", "localNames": [], "reason": "not-resolved" }
+  ]
+}
+```
 
 ## Resource observations
 
@@ -882,7 +967,7 @@ failure. `check` is read-only. Correct the separate candidate packet and repeat
 
 `finish` checks collected receipts, source digests, the review packet, references,
 source ranges, ownership and graph traversals. Each numbered request (an excerpt,
-and in Stage 4 also a references request) needs its receipt: a completed request
+in Stage 4 also a references request, and in Stage 5 also a parts request) needs its receipt: a completed request
 keeps the digests of its outputs, and a failed request has no output. `finish`
 copies the packet into the attempt, registers attempt files by digest, replaces
 the working baseline and discovery, and writes the run manifest last. It marks

@@ -563,7 +563,8 @@ bun run test:producer:docker
 ```
 
 The Stage 5 suite publishes the Stage 4 fixture with more snapshot files, then
-runs Stage 5 start, collect and excerpt. It records the handoff with the pinned
+runs Stage 5 start, collect and excerpt, and a parts request before collect.
+It records the handoff with the pinned
 tool versions, the query scope, each kind of syntax candidate with its scope and
 lines, the parser diagnostics, the skipped files and the limits, the owner-null
 units, the coverage, the excerpts and the refusals. It shows that a later action
@@ -591,6 +592,27 @@ bun run test:behavior --tags @producer
 bun test ./packages/producer/test/unit/code-units.test.ts ./packages/producer/test/unit/record-code-mapping.test.ts ./packages/producer/test/unit/snapshot-project.test.ts
 bun test ./packages/producer/test/integration/records/code-units.test.ts ./packages/producer/test/integration/records/stage-6-records.test.ts
 bun test ./packages/producer/test/interface/stage-5/code-units.test.ts ./packages/producer/test/interface/stage-4/code-units.test.ts
+```
+
+After Stage 5 collect, `stage-5 parts PATH SYMBOL [SYMBOL ...]` divides one file
+by the named symbols, as the symbol selectors do, and saves `parts-NNN.json`: each
+part with the ranges of its code unit and its dependencies, and the dependencies
+at file level with their reasons. `part-dependencies.ts` places each loading site
+of the file. An import belongs to the part that holds all the uses of its names,
+which the type checker of the saved file finds (`checkSnapshotText` in
+`snapshot-project.ts`). An import with uses in several parts or none stays at file
+level as `shared` or `unreferenced`, and a side-effect import or a site with a
+computed module name as `not-resolved`. Any other site belongs to the part that
+holds it. The Stage 4/5 publisher checks the receipt of each parts request. The
+[record format](docs/design/app-a/record-format.md#dependencies-of-file-parts)
+gives the fields. The `@producer` scenarios ask for the parts of a divided file
+through the command line. Run the focused checks of the dependencies of file
+parts with:
+
+```sh
+bun run test:behavior --tags @producer
+bun test ./packages/producer/test/unit/part-dependencies.test.ts ./packages/producer/test/unit/stage-5-parts.test.ts ./packages/producer/test/unit/snapshot-project.test.ts ./packages/producer/test/unit/record-code-mapping.test.ts
+bun test ./packages/producer/test/interface/stage-5/parts.test.ts ./packages/producer/test/interface/stage-5/commands.test.ts ./packages/producer/test/interface/commands.test.ts
 ```
 
 Each stage that saves an LLM call record refuses a saved response with a hidden
@@ -991,8 +1013,9 @@ inspection helper (`stage-4-inspect.ts`) uses `stage-4-source-sites.ts` for the
 source sites, `stage-4-review-prompt.ts` for the review prompt and
 `stage-4-references.ts` for the references action. The Stage 5
 helper (`stage-5-commands.ts`) uses `stage-5-inputs.ts` for the checked run and
-snapshot files, and `stage-5-query.ts` with `stage-5-syntax.ts` for the evidence
-of `collect`. `attempt-files.ts` holds the review prompt of a saved cookbook and
+snapshot files, `stage-5-query.ts` with `stage-5-syntax.ts` for the evidence
+of `collect`, and `stage-5-parts.ts` with `part-dependencies.ts` for the parts
+action. `attempt-files.ts` holds the review prompt of a saved cookbook and
 the command log of Stages 3 and 5. The snapshot project (`snapshot-project.ts`)
 opens a ts-morph project on the in-memory file system of the Stage 1 settings
 collector, and `snapshot-exports.ts` lists the exports of one of its files. The
@@ -1001,7 +1024,7 @@ source queries of Stages 3, 4 and 5 read their files with its syntax reader.
 `compiler-settings.ts` chooses the compiler settings of a file for the Stage 3
 exports and Stage 4 references actions.
 `code-units.ts` divides one parsed file by named top-level symbols into code units
-for the checks of the code mapping.
+for the checks of the code mapping and the Stage 5 parts action.
 Every stage action runs the code in the tool checkout. Stage 1 start saves the
 producer code record (`producer-code.ts`): the package version, the Git commit
 when there is one, and one digest of

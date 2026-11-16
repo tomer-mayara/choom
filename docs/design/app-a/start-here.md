@@ -79,7 +79,8 @@ Stage 6 saves the validated proposal without changing its bytes. Choom reads
 versions 1 to 5 without running source analysis. Stage 5 can write
 [version 5](record-format.md#version-5-symbol-selectors), whose symbol selectors
 divide a file into [code units](record-format.md#divided-files); Stage 4 keeps
-each file whole.
+each file whole. The Stage 5 parts request lists the
+[dependencies of file parts](record-format.md#dependencies-of-file-parts).
 
 Use one trusted tool revision and the pinned environment for a run. Stage 1
 `start` saves the [producer code record](record-format.md#producer-code-record)
@@ -566,7 +567,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-3-text-search.ts`, `ripgrep.ts` | The Stage 3 text search of the saved snapshot (`stage-3 text-search`): the ripgrep arguments, the output check, the scope and the tool-call record; and the ripgrep program, its version and a bounded call |
 | `stage-3-exports.ts` | The Stage 3 exports action (`stage-3 exports`): the exports record and its notes |
 | `compiler-settings.ts` | The compiler settings of one source file, chosen by the rule of the Stage 4 graph groups, and their description. The Stage 3 exports action and the Stage 4 references action use them |
-| `snapshot-project.ts`, `snapshot-exports.ts` | The ts-morph project of the saved snapshot: an in-memory file system that holds only the indexed snapshot files with checked digests, the record of each request for a path outside the snapshot, the compiler inputs that the snapshot does not hold as gaps, and the syntax reader without compiler settings that the source queries of Stages 3, 4 and 5 use; and the exports of one file of the project |
+| `snapshot-project.ts`, `snapshot-exports.ts` | The ts-morph project of the saved snapshot: an in-memory file system that holds only the indexed snapshot files with checked digests, the record of each request for a path outside the snapshot, the compiler inputs that the snapshot does not hold as gaps, and the syntax reader without compiler settings that the source queries of Stages 3, 4 and 5 use, and the type checker of one saved file alone, which the Stage 5 parts action uses; and the exports of one file of the project |
 | `snapshot-references.ts` | The references to a symbol of a file of the snapshot project, from the TypeScript type checker: its declarations, and each import, re-export, type use, call and other use with its range and local name; and whether the compiler settings resolve a module name of a searched file |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record, the producer code record, the decision record and the next baseline version |
@@ -588,9 +589,10 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `record-candidates.ts`, `record-resource-candidates.ts` | Parts of the shared validation: the checks that the candidate records share, and the resource access candidates that the resource observations name, checked against the saved snapshot and its source sites |
 | `stage-5-inputs.ts` | The checked inputs of each Stage 5 action: the run after the published Stage 4 review, its registered artifacts, its indexed snapshot files and the selected Stage 4 facts |
 | `stage-5-query.ts`, `stage-5-syntax.ts` | The Stage 5 evidence that collect saves: the remaining-code and inspection-coverage queries, the first excerpts, and the syntax candidates |
+| `stage-5-parts.ts`, `part-dependencies.ts` | The record of the Stage 5 parts action (`stage-5 parts`): the parts of one file that named symbols divide, with the dependencies of the file at both levels; and the placement of each loading site of a divided file in the part that uses it, or at file level with a reason, with the type checker of the saved file |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks |
-| `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest |
+| `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest and the checked read of a file that symbols divide |
 | `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |
 | `baseline-commands.ts`, `baseline-decide.ts`, `decision-record.ts` | The baseline command (`baseline decide`): check a YAML decision file against the published baseline of a completed run, and save it once as `decisions/<id>.yaml`; and the reader of a decision file and of a saved record, with the bounded YAML profile. See the [decision record](record-format.md#decision-record) |
 | `baseline-next.ts`, `version-folder.ts` | The next action of the baseline command (`baseline next`): make the next baseline version from a saved decision record, check it, and save it once with its version record; and the save of the version folder, all or nothing, through a temporary folder and one rename. See the [next baseline version](record-format.md#next-baseline-version) |
