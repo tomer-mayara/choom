@@ -77,10 +77,18 @@ const json = (name: string): Fields => JSON.parse(utf8(saved(name), name)) as Fi
 const save = (name: string, bytes: string | Buffer): void => writeFileSync(join(attempt, name), bytes, { flag: 'wx' });
 const saveJson = (name: string, value: unknown): void => save(name, JSON.stringify(value, null, 2) + '\n');
 const require = createRequire(join(tools, 'package.json'));
-const yamlPath = require.resolve('yaml');
-assert(yamlPath.startsWith(join(tools, 'node_modules/yaml') + '/'), 'Use YAML from the trusted checkout.');
-read(yamlPath);
-const yaml = require(yamlPath) as typeof Yaml;
+// A module of a package in the trusted checkout: the file that the module name
+// resolves to must be in the folder of the package in its node_modules. label names
+// the package in the refusal.
+function trustedModule(name: string, label: string): unknown {
+  const [first = '', second = ''] = name.split('/');
+  const path = require.resolve(name);
+  assert(path.startsWith(join(tools, 'node_modules', first.startsWith('@') ? first + '/' + second : first) + '/'),
+    'Use ' + label + ' from the trusted checkout.');
+  read(path);
+  return require(path);
+}
+const yaml = trustedModule('yaml', 'YAML') as typeof Yaml;
 const { parse } = yaml;
 const parsed = (name: string): Fields => parse(utf8(saved(name), name)) as Fields;
 
@@ -91,14 +99,8 @@ const parsed = (name: string): Fields => parse(utf8(saved(name), name)) as Field
 function loadParser(): { tsMorph: typeof TsMorph; parser: Fields } {
   const modules = join(tools, 'node_modules') + '/';
   const before = new Set(Object.keys(require.cache));
-  function load(name: string): unknown {
-    const path = require.resolve(name);
-    assert(path.startsWith(modules + 'ts-morph/'), 'Use ts-morph from the trusted checkout.');
-    read(path);
-    return require(path);
-  }
-  const tsMorph = load('ts-morph') as typeof TsMorph;
-  const { version } = load('ts-morph/package.json') as { version: string };
+  const tsMorph = trustedModule('ts-morph', 'ts-morph') as typeof TsMorph;
+  const { version } = trustedModule('ts-morph/package.json', 'ts-morph') as { version: string };
   const loaded = Object.keys(require.cache).filter(path => path.startsWith(modules) && !before.has(path)).sort();
   return { tsMorph, parser: { name: syntaxParser, node: process.version, tsMorph: version,
     typescript: tsMorph.ts.version, modules: Object.fromEntries(loaded.map(path => [path.slice(modules.length), hash(read(path))])) } };
@@ -315,28 +317,21 @@ function artifactMap(): Record<string, { path: string; sha256: string }> {
   return artifacts;
 }
 
-// A package from the trusted checkout and its version, by a name in a variable, as Stage 4 start loads picomatch.
-function trustedPackage(name: string): { module: unknown; version: string } {
-  const path = require.resolve(name);
-  assert(path.startsWith(join(tools, 'node_modules', name) + '/'), 'Use ' + name + ' from the trusted checkout.');
-  read(path);
-  return { module: require(path), version: (require(name + '/package.json') as { version: string }).version };
-}
-
 // The behavior entry candidates of the rule list that Stage 4 start saved.
 function behaviorEntries(current: InspectState): Fields {
   const review = current.artifacts.get(stageOneReviewRef);
   assert(review, 'The run has no registered Stage 1 review ' + stageOneReviewRef + '.');
   const rules = saved(behaviorEntryRulesFile);
   // picomatch matches the globs of the rules and of the Stage 1 role records.
-  const { module: picomatch, version } = trustedPackage('picomatch');
+  const picomatch = trustedModule('picomatch', 'picomatch') as Picomatch;
+  const { version } = trustedModule('picomatch/package.json', 'picomatch') as { version: string };
   return behaviorEntryRecord({ attemptId: id, snapshotRef: current.handoff.snapshotRef,
     snapshot: { files: [...current.files.values()], snapshotRoot: current.snapshotRoot },
     profile: current.profile, profileRef: artifactId('graph-profile.json'),
     settings: savedSettings(current.artifacts.get(settingsRef), current.handoff.snapshotRef),
     rules: readRuleList(rules, yaml), rulesRef: artifactId(behaviorEntryRulesFile), rulesSha256: hash(rules),
     review: parse(utf8(review, stageOneReviewRef)) as Fields, reviewRef: stageOneReviewRef, tsMorph, parser,
-    picomatch: picomatch as Picomatch, picomatchVersion: version });
+    picomatch, picomatchVersion: version });
 }
 
 function collect(current: InspectState): string[] {
