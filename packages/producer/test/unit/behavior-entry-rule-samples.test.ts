@@ -115,6 +115,30 @@ const bullmqWorker: Receiver = { extension: "ts", entryKind: "queue-worker",
     "the Worker global of a browser, without an import": "",
   } };
 
+// The program export of the commander README, and a program that new Command() makes,
+// as the Quick Start of the README writes it, with the builder calls of the program.
+const commanderProgram: Receiver = { extension: "js", entryKind: "cli-command",
+  start: "import { program } from 'commander';\n", others: {
+    "a Map": "const program = new Map();\n",
+    "the program of another package": "import { program } from 'other';\n",
+    "a local object with the name of the export": "const program = { command: () => new Map() };\n",
+  } };
+const commanderCommand: Receiver = { extension: "ts", entryKind: "cli-command",
+  start: "import { Command } from 'commander';\nconst program = new Command();\n\nprogram\n  .name('string-util')\n" +
+    "  .description('CLI to some JavaScript string utilities')\n  .version('0.8.0');\n", others: {
+    "a Map": "const program = new Map<string, unknown>();\n",
+    "the Command of another package": "import { Command } from 'other';\nconst program = new Command();\n",
+    "a local class with the name of the import": "class Command extends Map<string, unknown> {}\nconst program = new Command();\n",
+  } };
+// The program of the yargs README, which hideBin gives the arguments of the process.
+const yargsProgram: Receiver = { extension: "js", entryKind: "cli-command",
+  start: "import yargs from 'yargs';\nimport { hideBin } from 'yargs/helpers';\n", others: {
+    "the default export of another package": "import yargs from 'other';\nimport { hideBin } from 'yargs/helpers';\n",
+    "the helpers module of yargs": "import yargs from 'yargs/helpers';\nimport { hideBin } from 'yargs/helpers';\n",
+    "a local function with the name of the import": "import { hideBin } from 'yargs/helpers';\n\nfunction yargs(args) {\n" +
+      "  return new Map(args)\n}\n",
+  } };
+
 // The sample of each call rule of the list, by rule ID.
 const samples: Record<string, Sample> = {
   // The routes of the Express routing guide and the basic routing example. A method that
@@ -191,6 +215,23 @@ const samples: Record<string, Sample> = {
   "bullmq-worker": { receiver: bullmqWorker, name: "foo", call: "new Worker(\n  'foo',\n  «async job => {\n" +
     "    // Will print { foo: 'bar'} for the first job\n    // and { qux: 'baz' } for the second.\n" +
     "    console.log(job.data);\n  }»,\n  { connection },\n)" },
+  // The commands of the Commands section and of the Quick Start of the commander README.
+  // The rules find the action call, after the builder calls of the command, and the name
+  // is the first argument of the command call, with the arguments of the command.
+  "commander-program-command": { receiver: commanderProgram, name: "clone <source> [destination]", call: "program\n" +
+    "  .command('clone <source> [destination]')\n  .description('clone a repository into a newly created directory')\n" +
+    "  .action(«(source, destination) => {\n    console.log('clone command called');\n  }»)" },
+  "commander-class-command": { receiver: commanderCommand, name: "split", call: "program.command('split')\n" +
+    "  .description('Split a string into substrings and display as an array')\n  .argument('<string>', 'string to split')\n" +
+    "  .option('--first', 'display just the first substring')\n  .option('-s, --separator <char>', 'separator character', ',')\n" +
+    "  .action(«(str, options) => {\n    const limit = options.first ? 1 : undefined;\n" +
+    "    console.log(str.split(options.separator, limit));\n  }»)" },
+  // The serve command of the Complex Example of the yargs README: the name, the description,
+  // the builder and the handler.
+  "yargs-command": { receiver: yargsProgram, name: "serve [port]", call: "yargs(hideBin(process.argv))\n" +
+    "  .command('serve [port]', 'start the server', (yargs) => {\n    return yargs\n      .positional('port', {\n" +
+    "        describe: 'port to bind on',\n        default: 5000\n      })\n  }, «(argv) => {\n" +
+    "    if (argv.verbose) console.info(`start server on :${argv.port}`)\n    serve(argv.port)\n  }»)" },
 };
 
 // A sandboxed processor of BullMQ is the path of a file that BullMQ runs in another

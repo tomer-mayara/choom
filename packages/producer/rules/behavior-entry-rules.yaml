@@ -9,6 +9,9 @@
 # Each frontend-entry rule is a settings-literal rule: it reads the entries that one
 # property of a Vite settings file names. Its ID is vite and then the words of the
 # property path.
+# Each cli-command rule finds the commands of one kind of command line program. Its ID
+# says the library, the receiver and the method command. The cli-bin rule reads the bin
+# field of package.json.
 formatVersion: 1
 rules:
   # The get routes of an Express app, such as app.get('/orders', listOrders) after
@@ -392,3 +395,71 @@ rules:
     kind: settings-literal
     fileGlob: '**/vite.config.{js,mjs,cjs,ts,mts,cts}'
     propertyPath: build.lib.entry
+  # The commands of a commander program on the program export, such as
+  # program.command('clone <source> [destination]').description('...').action(clone)
+  # after import { program } from 'commander'. The rule finds the action call. The name is
+  # the first argument of the command call, the call before action (nameCall: 1), with the
+  # arguments of the command as the call writes them. The action, the first argument of
+  # the action call, is the handler. The builder calls of the command can come between
+  # the command call and the action call, and the builder calls of the program before the
+  # command call: sameValueMethods lists each method of Command that has a form that
+  # returns the command itself, as the typings of commander 15 declare them, except
+  # action, command and parse. A command call makes a new command, so it is not a builder
+  # call.
+  - id: commander-program-command
+    version: 1
+    library: commander
+    entryKind: cli-command
+    kind: call
+    importName: commander
+    callPath: program.command().action
+    nameArgument: 0
+    handlerArgument: 0
+    nameCall: 1
+    sameValueMethods: [addArgument, addCommand, addHelpCommand, addHelpOption, addHelpText, addOption, alias, aliases,
+      allowExcessArguments, allowUnknownOption, argument, arguments, combineFlagAndOptionalValue, commandsGroup,
+      configureHelp, configureOutput, copyInheritedSettings, description, enablePositionalOptions, executableDir,
+      exitOverride, helpCommand, helpGroup, helpOption, hook, name, nameFromFilename, on, option, optionsGroup,
+      passThroughOptions, requiredOption, setOptionValue, setOptionValueWithSource, showHelpAfterError,
+      showSuggestionAfterError, storeOptionsAsProperties, summary, usage, version]
+  # The same commands of a program that new Command() makes, such as
+  # const program = new Command() after import { Command } from 'commander'.
+  - id: commander-class-command
+    version: 1
+    library: commander
+    entryKind: cli-command
+    kind: call
+    importName: commander
+    callPath: new Command().command().action
+    nameArgument: 0
+    handlerArgument: 0
+    nameCall: 1
+    sameValueMethods: [addArgument, addCommand, addHelpCommand, addHelpOption, addHelpText, addOption, alias, aliases,
+      allowExcessArguments, allowUnknownOption, argument, arguments, combineFlagAndOptionalValue, commandsGroup,
+      configureHelp, configureOutput, copyInheritedSettings, description, enablePositionalOptions, executableDir,
+      exitOverride, helpCommand, helpGroup, helpOption, hook, name, nameFromFilename, on, option, optionsGroup,
+      passThroughOptions, requiredOption, setOptionValue, setOptionValueWithSource, showHelpAfterError,
+      showSuggestionAfterError, storeOptionsAsProperties, summary, usage, version]
+  # The commands of a yargs program, such as
+  # yargs(hideBin(process.argv)).command('serve [port]', 'start the server', builder, handler)
+  # after import yargs from 'yargs'. The name is the first argument, with the arguments of
+  # the command, and the last argument is the handler. A command call gives the yargs
+  # instance that it is called on, so one chain can have several command calls:
+  # sameValueMethods lists each method of a yargs instance that returns the instance, as
+  # yargs 18 writes them, command among them.
+  - id: yargs-command
+    version: 1
+    library: yargs
+    entryKind: cli-command
+    kind: call
+    importName: yargs
+    callPath: yargs().command
+    nameArgument: 0
+    handlerArgument: last
+    sameValueMethods: [addHelpOpt, addShowHiddenOpt, alias, array, boolean, check, choices, coerce, command, commandDir,
+      commands, completion, config, conflicts, count, default, defaults, demand, demandCommand, demandOption,
+      deprecateOption, describe, detectLocale, env, epilog, epilogue, example, exitProcess, fail, global, group, help,
+      hide, implies, locale, middleware, nargs, normalize, number, option, options, parserConfiguration, pkgConf,
+      positional, recommendCommands, require, required, requiresArg, scriptName, showCompletionScript, showHelp,
+      showHelpOnFail, showHidden, showVersion, skipValidation, strict, strictCommands, strictOptions, string,
+      updateLocale, updateStrings, usage, usageConfiguration, version, wrap]
