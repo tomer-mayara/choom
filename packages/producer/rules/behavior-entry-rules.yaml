@@ -6,6 +6,9 @@
 # names the method. Its ID says the library, the receiver and the method.
 # Each worker-thread or queue-worker rule finds the new calls of the Worker class of
 # one module name. Its ID is that module name, with -worker at the end.
+# Each frontend-entry rule is a settings-literal rule: it reads the entries that one
+# property of a Vite settings file names. Its ID is vite and then the words of the
+# property path.
 formatVersion: 1
 rules:
   # The get routes of an Express app, such as app.get('/orders', listOrders) after
