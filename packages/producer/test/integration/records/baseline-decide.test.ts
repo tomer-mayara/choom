@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { type CommandResult, runCli, withScratch } from "../../support/commands.ts";
 import { completedRun, type CompletedRunFixture, copyRunFolder, type DecisionEntry as Entry, type DecisionFile, decisionFileYaml,
-  stageSixAttempt } from "../../support/completed-run.ts";
+  llmCallRecord, smallRunBaselinePath, stageSixAttempt, writeSmallCompletedRun } from "../../support/completed-run.ts";
 import { folderState } from "../../support/producer-record.ts";
 
 // The baseline decide command on copies of one run that the Stage 6 command line
@@ -212,4 +212,54 @@ describe("baseline decide", () => {
       const result = runCli(["baseline", ...args]);
       expect({ status: result.status, stdout: result.stdout, stderr: result.stderr }).toEqual({ status: 1, stdout: "", stderr: usage });
     });
+});
+
+// baseline decide runs the checks of the next version that baseline next makes from
+// the saved record: the shared rules and the producer profile of a next version.
+// Each case is a small completed run whose published baseline the shared rules
+// accept, and decisions that the shared decision rules accept, but whose next
+// version the producer profile refuses. baseline next would refuse the saved
+// record, and its ID could not be used again.
+type Fields = Record<string, unknown>;
+const proposed = (value: unknown): Fields => ({ value, status: "proposed", evidenceRefs: ["launch"] });
+const component = (id: string, membership: Fields, parent?: string | null): Fields => ({ id, name: id,
+  purpose: proposed(`Own the ${id} code.`), membership: proposed(membership), groupingReason: proposed("Reviewed source."),
+  ...(parent === undefined ? {} : { parent: proposed(parent) }) });
+const smallBaseline = (formatVersion: number, components: Fields[], rules: Fields[] = []): Fields =>
+  ({ formatVersion, id: "baseline-check", parentId: null, components, interfaces: [], resources: [], rules });
+const sharedSymbol = { path: "src/shared.ts", symbol: "computePrice" };
+// 17 components: c1 to c15 form a chain of 16 levels below c0, and c16 has no parent.
+const chain = Array.from({ length: 17 }, (_, index) => component(`c${index}`, { paths: [`src/c${index}/**`] },
+  index === 0 ? undefined : index === 16 ? null : `c${index - 1}`));
+
+const nextVersionCases: [string, Fields, Entry[], string][] = [
+  ["a correction that gives one symbol two owners",
+    smallBaseline(5, [component("billing", { paths: ["src/billing/**"], symbols: [sharedSymbol] }),
+      component("pricing", { paths: ["src/pricing/**"] })]),
+    [{ action: "correct", itemId: "pricing", field: "membership", oldValue: { paths: ["src/pricing/**"] },
+      newValue: { paths: ["src/pricing/**"], symbols: [sharedSymbol] } }],
+    "The symbol computePrice of src/shared.ts has two owners: billing and pricing. A symbol has one direct owner."],
+  ["a correction that makes 17 component levels", smallBaseline(1, chain),
+    [{ action: "correct", itemId: "c16", field: "parent", oldValue: null, newValue: "c15" }],
+    "Baseline exceeds the 16-parent-level display limit."],
+  ["a record ID that gives the version the ID of an item",
+    smallBaseline(1, [component("cli", { paths: ["cli.ts"] })], [{ id: "baseline-check-decisions-001", name: "Rule",
+      subject: proposed({ path: "cli.ts" }), expected: proposed({ owner: "cli" }), check: proposed({ review: "source" }) }]),
+    [{ action: "accept", itemId: "cli", field: "purpose" }],
+    "The ID baseline-check-decisions-001 of the version is also the ID of the rule baseline-check-decisions-001. " +
+      "The baseline ID is reserved. Use another decision record ID."],
+];
+
+describe("baseline decide with the checks of the next version", () => {
+  test.each(nextVersionCases)("refuses %s with the message of baseline next, and writes nothing", (_name, baseline, entries, problem) => {
+    withScratch((scratch) => {
+      const work = join(scratch, "run");
+      const text = stringify(baseline);
+      writeSmallCompletedRun(work, [{ path: smallRunBaselinePath, text }, { path: "evidence/llm-call.yaml", text: llmCallRecord(model) }]);
+      const file = join(scratch, "decisions.yaml");
+      writeFileSync(file, stringify({ formatVersion: 1, id: "decisions-001", baselineRef: "baseline-check", baselineDigest: sha256(text),
+        decider: { name: "Ada Example", kind: "human" }, decidedAt: "2026-11-15T10:30:00Z", entries }));
+      expectRefused(work, file, `The decisions are refused:\n- ${problem}\n`);
+    });
+  });
 });

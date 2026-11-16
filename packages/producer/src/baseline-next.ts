@@ -1,14 +1,11 @@
-import { isDeepStrictEqual } from 'node:util';
-import * as yaml from 'yaml';
 import { nextBaselineVersion, type SavedBaseline } from '@choom/baseline-model/baseline-decisions';
 import type { Baseline, BaselineDecisions } from '@choom/baseline-model/contracts';
 import { publishedBaseline } from './baseline-decide.ts';
 import { type CompletedRun, readCompletedRun } from './completed-run.ts';
 import { checkDecider, type ModelCall, runModelCalls } from './decider-check.ts';
 import { type DecisionRecord, readDecisionRecord } from './decision-record.ts';
-import { checkBaselineDocument, type VersionDecisions } from './record-baseline.ts';
-import { assert, hash } from './record-checks.ts';
-import { readBaselineYaml } from './stage-6-records.ts';
+import { nextVersionText } from './next-version-checks.ts';
+import { hash } from './record-checks.ts';
 import { saveVersionFolder } from './version-folder.ts';
 
 // The next action of the baseline command. It makes the next version of the
@@ -75,28 +72,13 @@ function decidedVersion(run: CompletedRun, parent: SavedBaseline, record: Decisi
   return { version, decisions, calls };
 }
 
-// The YAML text of the version, after the checks of its saved form: the bounded
-// YAML profile, the shared baseline rules and the producer profile of a next
-// version accept it, and it gives the data of the version.
-function versionText(record: DecisionRecord, version: Baseline, made: VersionDecisions): Buffer {
-  const bytes = Buffer.from(yaml.stringify(version, { aliasDuplicateObjects: false, lineWidth: 0 }));
-  let saved: Baseline;
-  try {
-    saved = checkBaselineDocument(readBaselineYaml(bytes, yaml), made);
-  } catch (error) {
-    refuse(record, [(error as Error).message]);
-  }
-  assert(isDeepStrictEqual(saved, version), 'The YAML text of the next version does not give the data of the version.');
-  return bytes;
-}
-
 export function makeNextVersion(runFolder: string, decisionsId: string): MadeVersion {
   const run = readCompletedRun(runFolder);
   const record = readDecisionRecord(run, decisionsId);
   const parent = publishedBaseline(run);
   const { version, decisions, calls } = decidedVersion(run, parent, record, decisionsId);
   const link: FileLink = { id: decisions.id, path: record.path, sha256: record.sha256 };
-  const bytes = versionText(record, version, { link, saved: { sha256: record.sha256, decisions } });
+  const bytes = nextVersionText(version, { link, saved: { sha256: record.sha256, decisions } }, problems => refuse(record, problems));
   const folder = `baselines/${version.id}`;
   const versionRecord: VersionRecord = { formatVersion: 1, baseline: { id: version.id, path: `${folder}/baseline.yaml`, sha256: hash(bytes) },
     parent: { id: parent.baseline.id, path: run.baseline.path, sha256: parent.sha256 }, decisions: link };

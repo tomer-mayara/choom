@@ -2,11 +2,12 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 
 import { join } from 'node:path';
 import * as yaml from 'yaml';
 import { baselineSchema } from '@choom/baseline-model';
-import { type SavedBaseline, validateDecisions } from '@choom/baseline-model/baseline-decisions';
+import { nextBaselineVersion, type SavedBaseline } from '@choom/baseline-model/baseline-decisions';
 import type { BaselineDecider, BaselineDecisions } from '@choom/baseline-model/contracts';
 import { type CompletedRun, readCompletedRun, readRegisteredFile } from './completed-run.ts';
 import { checkDecider, runModelCalls } from './decider-check.ts';
 import { checkDecisionFileSize, decisionRecordPath, parseDecisionYaml, readDecisionRecord } from './decision-record.ts';
+import { nextVersionText } from './next-version-checks.ts';
 import { assert, hash } from './record-checks.ts';
 import { pathsOverlap } from './run-layout.mjs';
 import { readBaselineYaml } from './stage-6-records.ts';
@@ -15,9 +16,10 @@ import { readBaselineYaml } from './stage-6-records.ts';
 // YAML decision file for the published baseline of a run that Stage 6 completed.
 // It reads the file with the producer's bounded YAML profile, checks it with the
 // shared rules of @choom/baseline-model and checks the decider against the run's
-// LLM call records. Then it saves the exact bytes of the file once, as
-// decisions/<ID>.yaml in the run folder. It changes no other file: the baseline,
-// the discovery result and run.yaml stay as they are.
+// LLM call records. It also checks the next version that baseline next makes from
+// the saved record, with the checks of baseline next. Then it saves the exact
+// bytes of the file once, as decisions/<ID>.yaml in the run folder. It changes no
+// other file: the baseline, the discovery result and run.yaml stay as they are.
 
 export interface RecordedDecisions {
   status: 'decisions-recorded';
@@ -102,13 +104,18 @@ function recordedOutput(decisions: BaselineDecisions, path: string, bytes: Buffe
 export function recordDecisions(runFolder: string, decisionFile: string): RecordedDecisions {
   const run = readCompletedRun(runFolder);
   const { bytes, value } = readDecisionFile(run, decisionFile);
-  const check = validateDecisions(value, publishedBaseline(run));
-  if (check.status === 'invalid') refuse(check.problems);
+  const made = nextBaselineVersion(publishedBaseline(run), value);
+  if (made.status === 'invalid') refuse(made.problems);
+  const { baseline: version, decisions } = made;
   const calls = runModelCalls(run);
   try {
-    checkDecider(check.decisions.decider.name, calls);
+    checkDecider(decisions.decider.name, calls);
   } catch (error) {
     refuse([(error as Error).message]);
   }
-  return recordedOutput(check.decisions, saveRecord(run, check.decisions.id, bytes), bytes, calls);
+  // The record that baseline next reads has these bytes, at this path.
+  const sha256 = hash(bytes);
+  nextVersionText(version, { link: { id: decisions.id, path: decisionRecordPath(decisions.id), sha256 }, saved: { sha256, decisions } },
+    refuse);
+  return recordedOutput(decisions, saveRecord(run, decisions.id, bytes), bytes, calls);
 }

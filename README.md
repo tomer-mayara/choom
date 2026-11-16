@@ -931,7 +931,10 @@ file with the bounded YAML profile of a baseline, and `validateDecisions` in
 `@choom/baseline-model` checks it against the baseline and the SHA-256 of its
 file. The producer refuses a decider who has the name of a model in the run's
 LLM call records. That check is a process rule; it does not prove that a person
-decided. The command saves the exact file once as `decisions/<id>.yaml` and
+decided. The command also runs the checks of the next version that `baseline
+next` makes from the record (`next-version-checks.ts`), so it refuses a record
+that `baseline next` would refuse, with the same message. The command saves the
+exact file once as `decisions/<id>.yaml` and
 changes no other file of the run. `readDecisionRecord` in `decision-record.ts`
 reads a saved record with the same rules. The
 [record format](docs/design/app-a/record-format.md#decision-record) gives the
@@ -1202,7 +1205,8 @@ Stage 6: `baseline-decide.ts` reads the completed run with `completed-run.ts`,
 reads the YAML decision file with `decision-record.ts`, which uses the bounded
 YAML profile of `stage-6-records.ts`, and checks the decider with `decider-check.ts`.
 `baseline-next.ts` makes the next baseline version from a saved decision record,
-and `version-folder.ts` saves its folder all or nothing.
+and `version-folder.ts` saves its folder all or nothing. Both actions check the
+saved form of the next version with `next-version-checks.ts`.
 
 The [dependency rules](.dependency-cruiser.cjs) keep model validation and YAML
 decoding separate from platform operations, UI, and layout. The baseline model

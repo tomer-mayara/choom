@@ -1405,7 +1405,11 @@ The command reads `run.yaml`, which must report `completed` with
 `baselineRecovery: complete` and name the published baseline. It checks the
 registered SHA-256, the bounded YAML profile and the shared rules of the
 published baseline, and reads the decision file with the bounded YAML profile
-above. After `validateDecisions` and the decider check below, it saves the exact
+above. After `validateDecisions` and the decider check below, it checks the next
+version that `baseline next` makes from the saved record, with the checks of its
+saved form in [Next baseline version](#next-baseline-version), and refuses with
+the same messages. So it never saves a record that `baseline next` refuses, such
+as a record whose ID gives the version the ID of an item. Then it saves the exact
 bytes of the file once, comments included, as `decisions/<id>.yaml`. A second
 save with the same ID is refused, also when the content is the same. The
 baseline, the discovery result, `run.yaml` and every other file of the run stay
@@ -1481,6 +1485,8 @@ it with the shared baseline rules and the producer profile of a next version:
   `acceptanceRef`, and the record has an entry for the statement: `accept`, or
   `correct` with the value of the statement as its `newValue`. A statement
   without an entry stays `proposed`;
+- a symbol has one direct owner: two components cannot name the same symbol of
+  a file;
 - no item has the ID of the version, because the baseline ID is reserved;
 - the version is within the [viewer limits](#reader-limits).
 

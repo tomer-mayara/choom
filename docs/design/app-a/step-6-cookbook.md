@@ -327,7 +327,9 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" baseline decide --run "$CHOOM_W
 ```
 
 The command reads the file with the bounded YAML profile of a baseline and
-checks the decisions against the published baseline. It refuses a decider who
+checks the decisions against the published baseline. It also checks the next
+version that `baseline next` makes from the record, so it refuses a record that
+`baseline next` would refuse. It refuses a decider who
 has the name of a model in the run's LLM call records. This check is a process
 rule: it does not prove that a person decided. The command saves the exact file
 once as `decisions/<id>.yaml` and prints its SHA-256; keep it with the run notes.
