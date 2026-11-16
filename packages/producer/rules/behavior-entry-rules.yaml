@@ -158,3 +158,79 @@ rules:
     callPath: Router().all
     nameArgument: 0
     handlerArgument: last
+  # The route methods of a Fastify server, such as fastify.post('/orders', opts, createOrder)
+  # after const fastify = Fastify() with import Fastify from 'fastify', or after
+  # const fastify = require('fastify')(). The path is the name. Route options can come
+  # before the handler, so the last argument is the handler.
+  - id: fastify-route-get
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().get
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-post
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().post
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-put
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().put
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-patch
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().patch
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-delete
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().delete
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-options
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().options
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-head
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().head
+    nameArgument: 0
+    handlerArgument: last
+  - id: fastify-route-all
+    version: 1
+    library: fastify
+    entryKind: http-route
+    kind: call
+    importName: fastify
+    callPath: fastify().all
+    nameArgument: 0
+    handlerArgument: last

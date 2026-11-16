@@ -36,11 +36,27 @@ const expressRouter: Receiver = { extension: "js", entryKind: "http-route",
     "the router of another package": "const express = require('other')\nconst router = express.Router()\n",
     "a local object with the name of the import": "const express = { Router: () => new Map() }\nconst router = express.Router()\n",
   } };
+// The server of the Fastify getting started guide, as an ES module and as CommonJS.
+const fastifyServer: Receiver = { extension: "js", entryKind: "http-route",
+  start: "import Fastify from 'fastify'\n\nconst fastify = Fastify({\n  logger: true\n})\n", others: {
+    "a Map": "const fastify = new Map()\n",
+    "the server of another package": "import Fastify from 'other'\n\nconst fastify = Fastify({\n  logger: true\n})\n",
+    "a local function with the name of the import": "function Fastify(options) {\n  return new Map()\n}\n\n" +
+      "const fastify = Fastify({\n  logger: true\n})\n",
+  } };
+const fastifyRequired: Receiver = { extension: "js", entryKind: "http-route",
+  start: "const fastify = require('fastify')({\n  logger: true\n})\n", others: {
+    "a Map": "const fastify = new Map()\n",
+    "the server of another package": "const fastify = require('other')({\n  logger: true\n})\n",
+    "a local function with the name require": "function require(name) {\n  return () => new Map()\n}\n" +
+      "const fastify = require('fastify')({\n  logger: true\n})\n",
+  } };
 
-// The routes of the Express routing guide and the basic routing example. A method that
-// they do not show has the form of the methods that they show, as app.METHOD and
-// router.METHOD allow.
+// The sample of each call rule of the list, by rule ID.
 const samples: Record<string, Sample> = {
+  // The routes of the Express routing guide and the basic routing example. A method that
+  // they do not show has the form of the methods that they show, as app.METHOD and
+  // router.METHOD allow.
   "express-route-get": { receiver: expressApp, name: "/example/b", call: "app.get('/example/b', (req, res, next) => {\n" +
     "  console.log('the response will be sent by the next function ...')\n  next()\n}, «(req, res) => {\n" +
     "  res.send('Hello from B!')\n}»)" },
@@ -74,6 +90,25 @@ const samples: Record<string, Sample> = {
     call: "router.head('/about', «(req, res) => {\n  res.send('About birds')\n}»)" },
   "express-router-all": { receiver: expressRouter, name: "/about", call: "router.all('/about', «(req, res, next) => {\n" +
     "  console.log('Time: ', Date.now())\n  next()\n}»)" },
+  // The routes of the Fastify getting started guide and of the shorthand methods of the
+  // Fastify routes reference, fastify.METHOD(path, [options], handler). Route options
+  // before the handler, as in the validation guide, keep the handler as the last argument.
+  "fastify-route-get": { receiver: fastifyServer, name: "/",
+    call: "fastify.get('/', «function (request, reply) {\n  reply.send({ hello: 'world' })\n}»)" },
+  "fastify-route-post": { receiver: fastifyServer, name: "/the/url", call: "fastify.post('/the/url', " +
+    "{ schema: { body: { type: 'object' } } }, «async (request, reply) => {\n  return { hello: 'world' }\n}»)" },
+  "fastify-route-put": { receiver: fastifyServer, name: "/the/url", call: "fastify.put('/the/url', " +
+    "{ schema: { body: { type: 'object' } } }, «async (request, reply) => {\n  return { hello: 'world' }\n}»)" },
+  "fastify-route-patch": { receiver: fastifyServer, name: "/the/url", call: "fastify.patch('/the/url', " +
+    "{ schema: { body: { type: 'object' } } }, «(request, reply) => {\n  reply.send({ hello: 'world' })\n}»)" },
+  "fastify-route-delete": { receiver: fastifyRequired, name: "/",
+    call: "fastify.delete('/', «async (request, reply) => {\n  return { hello: 'world' }\n}»)" },
+  "fastify-route-options": { receiver: fastifyRequired, name: "/",
+    call: "fastify.options('/', «async (request, reply) => {\n  return { hello: 'world' }\n}»)" },
+  "fastify-route-head": { receiver: fastifyRequired, name: "/",
+    call: "fastify.head('/', «(request, reply) => {\n  reply.send()\n}»)" },
+  "fastify-route-all": { receiver: fastifyRequired, name: "/",
+    call: "fastify.all('/', «async (request, reply) => {\n  return { hello: 'world' }\n}»)" },
 };
 
 const callRules = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules
