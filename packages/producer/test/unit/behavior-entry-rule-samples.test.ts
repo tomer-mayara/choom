@@ -98,6 +98,16 @@ const workerThreadsRequired: Receiver = { extension: "js", entryKind: "worker-th
   } };
 // A worker thread runs its file, so the rules of worker threads name no handler.
 const noHandler = "The rule names no handler argument.";
+// The worker of the BullMQ quick start guide. Options can follow the processor, so the
+// processor is the second argument, not the last.
+const bullmqWorker: Receiver = { extension: "ts", entryKind: "queue-worker",
+  start: "import { Worker } from 'bullmq';\nimport IORedis from 'ioredis';\n\n" +
+    "const connection = new IORedis({ maxRetriesPerRequest: null });\n", others: {
+    "a local class with the name of the import": "class Worker {\n  constructor(name: string, processor: unknown, " +
+      "options: unknown) {}\n}\n",
+    "the Worker of another package": "import { Worker } from 'other';\n",
+    "the Worker global of a browser, without an import": "",
+  } };
 
 // The sample of each call rule of the list, by rule ID.
 const samples: Record<string, Sample> = {
@@ -172,7 +182,20 @@ const samples: Record<string, Sample> = {
     call: "new Worker('./worker.js', {\n  workerData: script,\n})" },
   "worker-threads-worker": { receiver: workerThreadsRequired, name: "./worker.js", handlerReason: noHandler,
     call: "new Worker('./worker.js', {\n  workerData: script,\n})" },
+  "bullmq-worker": { receiver: bullmqWorker, name: "foo", call: "new Worker(\n  'foo',\n  «async job => {\n" +
+    "    // Will print { foo: 'bar'} for the first job\n    // and { qux: 'baz' } for the second.\n" +
+    "    console.log(job.data);\n  }»,\n  { connection },\n)" },
 };
+
+// A sandboxed processor of BullMQ is the path of a file that BullMQ runs in another
+// process, not a function. The BullMQ guide of sandboxed processors gives the path in a
+// variable, so the handler is the declaration of that variable. A path as a string
+// literal gives no handler.
+const sandboxedInVariable = "import { Worker } from 'bullmq';\nimport path from 'path';\n\n" +
+  "const processorFile = path.join(__dirname, 'my_processor.js');\nconst worker = new Worker('foo', processorFile);\n";
+const sandboxedAsLiteral = "import { Worker } from 'bullmq';\n\nconst worker = new Worker('foo', './my_processor.js');\n";
+const sandboxedFiles: Files = { "bullmq-sandboxed/variable.ts": sandboxedInVariable,
+  "bullmq-sandboxed/literal.ts": sandboxedAsLiteral };
 
 const callRules = readRuleList(readFileSync(join(toolsRoot, behaviorEntryRulesPath)), yaml).rules
   .filter((rule): rule is BehaviorEntryCallRule => rule.kind === "call");
@@ -197,7 +220,7 @@ function sampleFiles(): Files {
 // files. Each file is a module, so the files do not share their top-level names.
 let found = new Map<string, EntryCandidate[]>();
 beforeAll(() => {
-  const files = sampleFiles();
+  const files = { ...sampleFiles(), ...sandboxedFiles };
   found = withScratch((scratch) => {
     const query = entryQuery(projectOf(scratch, files, { allowJs: true, moduleDetection: tsMorph.ts.ModuleDetectionKind.Force }));
     return new Map(Object.keys(files).map((path) => [path, callCandidates(query, path, callRules)]));
@@ -231,3 +254,14 @@ test.each(callRules.flatMap((rule) => Object.keys(samples[rule.id]?.receiver.oth
   (_id, _other, rule, index) => {
     expect(found.get(otherPath(rule, sampleOf(rule), index))).toEqual([]);
   });
+
+test("bullmq-worker gives the variable of a sandboxed processor path as the handler, and no handler for a path literal", () => {
+  const handlers = Object.keys(sandboxedFiles).map((path) =>
+    found.get(path)?.map(({ ruleId, name, handler, handlerReason }) => ({ ruleId, name, handler, handlerReason })));
+  expect(handlers).toEqual([
+    [{ ruleId: "bullmq-worker", name: "foo", handlerReason: null, handler: { path: "bullmq-sandboxed/variable.ts",
+      range: rangeIn(sandboxedInVariable, "const «processorFile = path.join(__dirname, 'my_processor.js')»;") } }],
+    [{ ruleId: "bullmq-worker", name: "foo", handler: null,
+      handlerReason: "The handler argument is not a function or a name, so the rule does not follow the value that it gives." }],
+  ]);
+});

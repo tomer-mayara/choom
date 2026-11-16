@@ -330,3 +330,19 @@ rules:
     callPath: new Worker
     nameArgument: 0
     handlerArgument: null
+  # The queue workers that the Worker class of BullMQ starts, such as
+  # new Worker('foo', async job => { ... }, { connection }) after
+  # import { Worker } from 'bullmq'. The queue name, the first argument, is the name.
+  # The processor, the second argument, is the handler. Options can follow the
+  # processor, so the handler is not the last argument. A sandboxed processor is the
+  # path of a file, not a function: a path as a string literal gives no handler, and
+  # the name of a variable gives the declaration of that variable.
+  - id: bullmq-worker
+    version: 1
+    library: bullmq
+    entryKind: queue-worker
+    kind: call
+    importName: bullmq
+    callPath: new Worker
+    nameArgument: 0
+    handlerArgument: 1
