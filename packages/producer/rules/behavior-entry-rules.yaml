@@ -2,6 +2,8 @@
 # file and its SHA-256, and Stage 4 collect applies the rules to the source files of
 # the graph scope. The contract is cookbook/interfaces/behavior-entry-rules.tsp.
 # A rule that changes keeps its ID and gets the next version.
+# Each http-route rule finds the calls of one route method, so the rule of a candidate
+# names the method. Its ID says the library, the receiver and the method.
 formatVersion: 1
 rules:
   # The get routes of an Express app, such as app.get('/orders', listOrders) after
@@ -17,8 +19,8 @@ rules:
     nameArgument: 0
     handlerArgument: last
   # The other route methods of an Express app, such as app.post('/orders', createOrder)
-  # after const app = express(). Each rule finds one method, so the rule names the method
-  # of its candidate. The path is the name and the last argument is the handler.
+  # after const app = express(). The path is the name and the last argument is the
+  # handler.
   - id: express-route-post
     version: 1
     library: express
