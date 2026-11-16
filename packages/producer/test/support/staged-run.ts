@@ -16,7 +16,10 @@ const sha256 = (text: string | Buffer): string => createHash("sha256").update(te
 export interface SnapshotFile { path: string; text: string | Buffer; kind?: "file" | "symlink" }
 // `tools` is the tool checkout whose producer code record the run gets. `settings`
 // replaces fields of the settings record that the Stage 1 collector makes for the snapshot.
-export interface StagedRunOptions { snapshot?: SnapshotFile[]; questions?: unknown[]; tools?: string; settings?: Record<string, unknown> }
+// `review` is a Stage 1 review that the run registers as review-001, as Stage 1 finish does.
+export interface StagedRunOptions {
+  snapshot?: SnapshotFile[]; questions?: unknown[]; tools?: string; settings?: Record<string, unknown>; review?: unknown;
+}
 
 const defaultSnapshot: SnapshotFile[] = [{ path: "app.ts", text: "export const value = 1;\n" }];
 const sourceFile = /\.(?:[cm]?[jt]s|[jt]sx)$/;
@@ -53,6 +56,7 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: Stage
     "s1-file@evidence%2Fproducer.json");
   save("exclusions.txt", defaultCaptureExclusions, "exclusions-001");
   save("evidence/settings.json", settingsRecord(work, files, options.settings), "settings-001");
+  if (options.review !== undefined) save("evidence/review.yaml", stringify(options.review), "review-001");
   const progress: Record<string, string> = { inventory: "complete", baselineRecovery: "pending" };
   const discovery: Record<string, unknown> = { formatVersion: 1, kind: "architecture-discovery", runRef: "run-check",
     questions: options.questions ?? [], gaps: [] };

@@ -36,8 +36,9 @@ export function runHelper(path: string, args: readonly string[] = [], settings: 
 }
 
 // Run the command line of a tool checkout: this checkout, or a copy made by a test.
-export function runCli(args: readonly string[], settings: Record<string, string> = {}, tools = toolsRoot): CommandResult {
-  return runProgram("node", [join(tools, "packages/producer/src/cli.ts"), ...args], settings);
+export function runCli(args: readonly string[], settings: Record<string, string> = {}, tools = toolsRoot,
+  timeout = defaultTimeout): CommandResult {
+  return runProgram("node", [join(tools, "packages/producer/src/cli.ts"), ...args], settings, timeout);
 }
 
 // The inventory view makes its input copies read-only. Make every folder

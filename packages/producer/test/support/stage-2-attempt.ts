@@ -36,12 +36,13 @@ export function stageTwoAttempt(work: string, id: string, env: Record<string, st
   return { work, id, folder: join(work, "evidence", id), tools, env };
 }
 
-// Every action runs through the command line of the tool checkout.
+// Every action runs through the command line of the tool checkout. An action that
+// builds or runs the Docker tool image can need more time than the default.
 export function stageTwo(attempt: StageTwoAttempt, action: string, args: string[] = [],
-  env: Record<string, string> = {}): CommandResult {
+  env: Record<string, string> = {}, timeout?: number): CommandResult {
   const settings = { CHOOM_TOOLS: attempt.tools, CHOOM_WORK: attempt.work, CHOOM_STAGE2_ID: attempt.id,
     CHOOM_STAGE2: attempt.folder, DOCKER_HOST: "", DOCKER_CONTEXT: "", ...attempt.env, ...env };
-  return runCli(["stage-2", action, ...args], settings, attempt.tools);
+  return runCli(["stage-2", action, ...args], settings, attempt.tools, timeout);
 }
 
 export function writePacket(folder: string, files: Record<string, string>): string {

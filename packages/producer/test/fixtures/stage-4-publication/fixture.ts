@@ -256,19 +256,26 @@ function writePacket(review: string, records: Record<string, unknown>): void {
     suppliedArtifactRefs: [artifactId("artifact-map.json"), "launch-settings"], limits }));
 }
 
+// Runs Stage 4 start on a run after Stage 3 of the snapshot `snapshot-check`, and
+// writes the toolchain and graph phases. The source collection is next. `root` is
+// the folder that holds the run.
+export function startStageFour(root: string, work: string, tools = toolsRoot): StageFourAttempt {
+  const attempt = join(work, "evidence", stageFourAttemptId);
+  checked(runCli(["stage-4", "start"], stageEnvironment(work, tools), tools), "Stage 4 start");
+  writePhase(attempt, "toolchain", { "toolchain-selection.json": jsonText({ formatVersion: 1, status: "approved",
+    imageId: "sha256:" + "0".repeat(64), limits: ["The fixture records no Docker image."] }) });
+  writePhase(attempt, "run", graphOutputs(attempt));
+  return { root, work, attempt, tools };
+}
+
 // Prepares the run after Stage 3 with the extra snapshot files, runs Stage 4
 // start, and writes the toolchain and graph phases. The source collection is next.
 export function stageFourAttempt(extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
   settings: FixtureSettings = "profile"): StageFourAttempt {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "choom-stage-4-publication-"));
   const work = join(root, "run");
-  const attempt = join(work, "evidence", stageFourAttemptId);
   writeStageThreeRun(work, extraFiles, settings);
-  checked(runCli(["stage-4", "start"], stageEnvironment(work, tools), tools), "Stage 4 start");
-  writePhase(attempt, "toolchain", { "toolchain-selection.json": jsonText({ formatVersion: 1, status: "approved",
-    imageId: "sha256:" + "0".repeat(64), limits: ["The fixture records no Docker image."] }) });
-  writePhase(attempt, "run", graphOutputs(attempt));
-  return { root, work, attempt, tools };
+  return startStageFour(root, work, tools);
 }
 
 // Runs one action of the Stage 4 source collection helper on the attempt, as an operator does.
