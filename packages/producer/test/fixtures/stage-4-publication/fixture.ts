@@ -230,7 +230,8 @@ function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: strin
       inspectedPaths: [], questions: [], gaps },
     "entry-analysis.yaml": { formatVersion: 1, kind: "entry-analysis", snapshotRef, previousEntryAnalysisRef: stageThreeAnalysis,
       planRef, knipRunsRef, llmReview: "recorded", reviewedFiles, questions: [], gaps, knipAssessment, candidates,
-      inspectionPriorities, behaviorEntries: [], reachability: { status: "assessed-with-limits",
+      inspectionPriorities, behaviorEntries: [], behaviorEntryCandidatesRef: artifactId("behavior-entry-candidates.json"),
+      reachability: { status: "assessed-with-limits",
         method: "context-specific-source-graph-traversal", dependenciesRef: graphRef, reason: "Each context has one saved root.",
         contexts: graph.contexts.map(({ id }, index) => ({ id, resultRef: `${graphRef}#/contexts/${index}/reachability` })) } },
     "code-mapping.json": { formatVersion: 1, kind: "code-mapping", snapshotRef, limits, units,
@@ -275,16 +276,20 @@ export function inspectStageFour(fixture: StageFourAttempt, args: readonly strin
 }
 
 // Prepares the run, the Stage 4 attempt and the review folder. `change` edits the
-// proposed baseline before the fixture writes the packet.
+// proposed baseline and `changeRecords` the five records, by file name, before the
+// fixture writes the packet.
 export function stageFourPublication(change: (baseline: FixtureBaseline) => void = () => {},
-  extraFiles: readonly ExtraFile[] = [], tools = toolsRoot): StageFourPublication {
+  extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
+  changeRecords: (records: Record<string, Record<string, unknown>>) => void = () => {}): StageFourPublication {
   const prepared = stageFourAttempt(extraFiles, tools);
   const review = join(prepared.root, "review");
   checked(inspectStageFour(prepared, ["collect"]), "Stage 4 collection");
   const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
   const baseline = proposedBaseline();
   change(baseline);
-  writePacket(review, packetRecords(baseline, graph, inventoryOf(extraFiles)));
+  const records = packetRecords(baseline, graph, inventoryOf(extraFiles));
+  changeRecords(records as Record<string, Record<string, unknown>>);
+  writePacket(review, records);
   return { ...prepared, review };
 }
 

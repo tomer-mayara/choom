@@ -205,9 +205,11 @@ const requestPhase = new RegExp('^(?:' + (stage === '4' ? 'excerpt|references' :
 function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => Buffer): void {
   const required = stage === '4' ? ['start', 'toolchain', 'run', 'collect'] : ['start', 'collect'];
   const requiredOutputs: Record<string, string[]> = {
-    start: [...draftFiles.map(checkpoint), ...toolFiles, 'handoff.json', ...(stage === '4' ? ['graph-profile.json'] : ['scope.json'])],
+    start: [...draftFiles.map(checkpoint), ...toolFiles, 'handoff.json',
+      ...(stage === '4' ? ['graph-profile.json', 'behavior-entry-rules.yaml'] : ['scope.json'])],
     toolchain: ['toolchain-selection.json'], run: ['graph-results.json', 'graph-run.json'],
-    collect: stage === '4' ? ['source-sites.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'] :
+    collect: stage === '4' ? ['source-sites.json', 'behavior-entry-candidates.json', 'source-excerpts.json', 'review-prompt.md',
+      'artifact-map.json'] :
       ['remaining-units.json', 'inspection-coverage.json', 'source-candidates.json', 'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'],
   };
   const requests = [...attemptFiles.keys()].flatMap(name => /^operator-(.+)\.started\.json$/.exec(name)?.slice(1) ?? [])
@@ -289,6 +291,10 @@ function candidate(state: State, packet: Packet): Candidate {
     Array.isArray(entry.candidates) && same(entry.candidates.slice(0, previousCandidates.length), previousCandidates) &&
     same(entry.inspectionPriorities, previous.inspectionPriorities),
   'Preserve previous file candidates, Knip inputs and inspection priorities. Revisit the affected stage for changes.');
+  // Stage 4 names the candidates that its collect saved, and Stage 5 keeps them; the shared validator checks them.
+  const candidatesRef = stage === '4' ? refFor('behavior-entry-candidates.json') : previous.behaviorEntryCandidatesRef;
+  assert(entry.behaviorEntryCandidatesRef === candidatesRef,
+    'The entry analysis must name the behavior entry candidates of Stage 4 collect: ' + candidatesRef + '.');
   const graph = json((artifacts.get(discovery.dependenciesRef as string) as Artifact).bytes);
   const roots = new Set((graph.contexts as Fields[]).flatMap(context => (context.roots as Fields[]).map(root => root.path)));
   for (const added of entry.candidates.slice(previousCandidates.length) as Fields[])

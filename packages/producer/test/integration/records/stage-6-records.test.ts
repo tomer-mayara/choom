@@ -71,6 +71,7 @@ interface Records {
   discovery: { gaps: Issue[]; inspectedPaths: InspectedPath[]; baselineRef?: string } & Record<string, unknown>;
   entry: { gaps: Issue[]; behaviorEntries: unknown[] } & Record<string, unknown>;
   mapping: { scope: { unitKind: string } & Record<string, unknown>; units: MappingUnit[] } & Record<string, unknown>;
+  candidates: { candidates: Record<string, unknown>[] } & Record<string, unknown>;
 }
 interface Artifact { path: string; bytes: Buffer; sha256: string }
 
@@ -89,6 +90,9 @@ const inventory = { formatVersion: 1, snapshotId: snapshotRef, files: Object.ent
 const location = { snapshotRef, path: "http.ts", sha256: digest(files["http.ts"] ?? ""), lines: [1, 1] };
 const graphInput = { id: "default", roots: [{ path: "cli.ts", evidenceRefs }], compilerSettingsRef: null,
   conditionNames: [], moduleSystems: [] };
+// The behavior entry candidates that Stage 4 collect saved, and the rule list that they name.
+const candidatesRef = "s4-x-file@behavior-entry-candidates.json";
+const rules = { formatVersion: 1, rules: [{ id: "express-route-get", version: 1, entryKind: "http-route" }] };
 
 function initialRecords(): Records {
   const gaps = [{ id: "gap-1", kind: "entry", reason: "Unknown.", subjectRefs: ["plugin-candidate"], evidenceRefs: ["launch#/unresolved"] }];
@@ -114,6 +118,12 @@ function initialRecords(): Records {
       units: inventory.files.map((file, index) => ({ id: `unit-${index}`, path: file.path, sha256: file.sha256,
         roles: ["source"], reason: "r", inspection: file.path === "http.ts" ? "reviewed" : "unreviewed",
         owner: components[index]?.id ?? null, membershipRef: `${proposal}#/components/${index}/membership`, evidenceRefs })) },
+    candidates: { formatVersion: 1, snapshotRef, status: "completed", rulesRef: "s4-x-file@behavior-entry-rules.yaml",
+      rulesSha256: digest(JSON.stringify(rules)), omittedCandidates: 0, notes: ["A candidate is not a proven entry."], gaps: [],
+      candidates: [{ ruleId: "express-route-get", ruleVersion: 1, entryKind: "http-route", found: "syntax-rule", role: "unknown",
+        roleRef: null, path: "http.ts", sha256: digest(files["http.ts"] ?? ""), range: [{ line: 1, column: 1 }, { line: 1, column: 28 }],
+        expression: "export function orders() {}", truncated: false, name: null, nameReason: "No literal name.",
+        handler: null, handlerReason: "No handler." }] },
   };
 }
 
@@ -145,6 +155,8 @@ function recordInputs(change: (records: Records) => void = () => {}): RecordInpu
       snapshotRef, scope: { historicalEntryAnalysisRefs: [], method: "source-inspection",
         reviewedFilesRef: `${selected.entryAnalysisRef}#/reviewedFiles` }, observations: [], limits: ["l"] }],
     [proposal]: ["evidence/s5-x/baseline.proposed.yaml", records.baseline],
+    [candidatesRef]: ["evidence/s4-x/behavior-entry-candidates.json", records.candidates],
+    "s4-x-file@behavior-entry-rules.yaml": ["evidence/s4-x/behavior-entry-rules.yaml", rules],
   };
   const artifacts = new Map<string, Artifact>();
   const register = (ref: string, path: string, value: unknown): void => {
@@ -278,6 +290,32 @@ describe("validateDiscoveryRecords", () => {
     };
     expect(() => validateDiscoveryRecords({ ...recordInputs(change), reservedIds: [receipt] }))
       .toThrow(`The ID ${receipt} is reserved for a record that this publication saves. Use a different model ID.`);
+  });
+});
+
+// The entry analysis of Stages 4 and 5 names the candidates of Stage 4 collect. The validator
+// checks each candidate against the saved snapshot.
+describe("validateDiscoveryRecords with the behavior entry candidates of Stage 4", () => {
+  const named = (change: (records: Records) => void = () => {}) => (records: Records): void => {
+    records.entry.behaviorEntryCandidatesRef = candidatesRef;
+    change(records);
+  };
+
+  test("accepts candidates that lie in the saved snapshot", () => {
+    expect(validateDiscoveryRecords(recordInputs(named()))).toMatchObject({ mappedFiles: 2 });
+  });
+
+  test.each<[string, (records: Records) => void, string]>([
+    ["a candidate range outside the saved file", (records) => {
+      Object.assign(records.candidates.candidates[0] ?? {}, { range: [{ line: 1, column: 1 }, { line: 1, column: 40 }] });
+    }, "Behavior entry candidate 0 has a range outside the saved file http.ts."],
+    ["a candidate that differs from the saved text", (records) => {
+      Object.assign(records.candidates.candidates[0] ?? {}, { expression: "export function orders(id) {}" });
+    }, "Behavior entry candidate 0 differs from the saved text at its range."],
+    ["a reference to a record that is not the candidates", (records) => { records.entry.behaviorEntryCandidatesRef = "launch"; },
+      "The entry analysis names launch as its behavior entry candidates, which is not a saved candidates record."],
+  ])("refuses %s", (_name, change, message) => {
+    expect(() => validateDiscoveryRecords(recordInputs(named(change)))).toThrow(message);
   });
 });
 

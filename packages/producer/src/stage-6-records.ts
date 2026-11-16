@@ -2,6 +2,7 @@ import { isDeepStrictEqual as same } from 'node:util';
 import type { Baseline } from '@choom/baseline-model/contracts';
 import type * as Yaml from 'yaml';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
+import { validateBehaviorCandidates } from './record-behavior-candidates.ts';
 import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
   from './record-baseline.ts';
 import { type Artifact, assert, exact, type Fields, json, list, object, oneOf, strings, text } from './record-checks.ts';
@@ -484,6 +485,9 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   const behavior = { componentIds, mapped, fileEntries, sourceSite: sourceSiteCheck(selection, history.reviewedRanges) };
   checkBehavior(selection, behavior);
   const { graph, entry, indexed, resolve, claim } = selection;
+  // Stages 4 and 5 name the behavior entry candidates of Stage 4 collect; the Stage 4/5 publisher requires the name.
+  if (entry.behaviorEntryCandidatesRef !== undefined) validateBehaviorCandidates({ ref: entry.behaviorEntryCandidatesRef,
+    snapshotRef, artifacts: inputs.artifacts, indexed, document: selection.document, readSource: inputs.readSource });
   const profile = selection.document(graph.profileRef) as Fields;
   validateGraph({ graph, graphRef: discovery.dependenciesRef, profile, entry, indexed, resolve, claim, evidence });
   checkResourceAccess(selection, behavior, history.historyRefs);

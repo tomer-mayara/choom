@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { type ExtraFile, type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
   type StageFourPublication } from "../../fixtures/stage-4-publication/fixture.ts";
+import { toolsRoot } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 
 // The Stage 4/5 publisher runs as an operator runs it, on a run after Stage 3
@@ -142,6 +143,39 @@ describe("the Stage 4/5 publisher with Stage 4 references requests", () => {
       requested(fixture, ["references", "cli.ts", "start"], 0);
       refusedInCheck(fixture, "Unresolved evidence: s4-check-file@references-001.json#/references/9");
     }, citeReference("/references/9"), [main]);
+  }, 60_000);
+});
+
+// The Stage 4 entry analysis names the behavior entry candidates that collect saved.
+describe("the Stage 4/5 publisher with the behavior entry candidates of collect", () => {
+  const route: ExtraFile = { path: "routes.ts", text: "import express from 'express';\nimport { start } from './cli';\n\n" +
+    "express().get('/start', start);\n" };
+
+  test("checks a candidate and its handler against the saved snapshot files, and publishes", () => {
+    withPublication((fixture) => {
+      const record = JSON.parse(readFileSync(join(fixture.attempt, "behavior-entry-candidates.json"), "utf8")) as
+        { candidates: { handler: unknown }[] };
+      expect(record.candidates.map(({ handler }) => handler)).toEqual([{ path: "cli.ts",
+        range: [{ line: 1, column: 1 }, { line: 1, column: 27 }] }]);
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified" });
+      expect(result(publishStageFour(fixture, "finish"))).toMatchObject({ status: "stage4-published" });
+    }, undefined, [route]);
+  }, 60_000);
+
+  test("refuses an entry analysis that does not name the candidates, and a candidates record that changed after collect", () => {
+    const unnamed = stageFourPublication(undefined, [], toolsRoot, (records) => {
+      delete records["entry-analysis.yaml"]?.behaviorEntryCandidatesRef;
+    });
+    try {
+      refusedInCheck(unnamed, "The entry analysis must name the behavior entry candidates of Stage 4 collect: " +
+        "s4-check-file@behavior-entry-candidates.json.");
+    } finally {
+      rmSync(unnamed.root, { recursive: true, force: true });
+    }
+    withPublication((fixture) => {
+      appendFileSync(join(fixture.attempt, "behavior-entry-candidates.json"), "\n");
+      refusedInCheck(fixture, "Collection output changed: behavior-entry-candidates.json");
+    });
   }, 60_000);
 });
 
