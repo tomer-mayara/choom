@@ -160,3 +160,4 @@ reports/
 
 # Local Appendix A runs: snapshots, tool output, and review packets
 /work-choom/
+.codex/
