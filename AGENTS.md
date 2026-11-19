@@ -1,78 +1,28 @@
-# Work in Choom
+# Working on TraceRelic
 
-## Approach
+## Manager and workers
 
-The top-level agent is the manager: plan, delegate, review, and sign off the
-complete change. Usually delegate implementation. Take the lead on work that
-needs a view of the whole system. Use 0 to 4 subagents at one time.
+- **Manager.** The top-level agent owns the plan, cross-component decisions, and
+  final review. Delegate implementation in bounded tasks. Give each worker its
+  constraints and checks, with at most four workers active at once.
+- **Workers.** Stay within the assignment. Report what changed, which checks
+  passed or failed, and any blockers. Delegate further only when the manager asks.
 
-- Subagents do only the assigned work. Do not start another subagent unless the
-  manager asks.
-- Use a smaller model for small work, such as GPT-6.1 Sol. Claude agents also
-  follow `CLAUDE.md` when that file exists.
-- Give each worker the applicable repository rules. Review each worker's result.
-- Use simple language in documents, tickets, and code comments. Follow
-  ASD-STE100 where practical; strict conformance is not required.
-- Preserve unrelated local changes. Keep the change within the requested scope.
+Use lower reasoning effort for small tasks (for example, GPT-6.2 Astra Medium
+in Codex). Claude agents also follow [CLAUDE.md](CLAUDE.md).
 
-## Repository guidance
+## Feature workflow
 
-Choom uses Bun, Vite, React, TypeScript, and Tauri. The frontend is in `src/`
-and the Rust shell is in `src-tauri/src/`. Add workspaces under `packages/`
-when the application needs them. Read [README.md](README.md) for setup and commands,
-[coding principles](docs/coding-principles.md) for design and testing, and
-[coding standards](docs/coding-standards.md) for TypeScript and React practices.
-Apply these guides during implementation and review.
+1. **Plan before coding.** The manager records all four constraint decisions,
+   writes the changed constraints, and names their checks. Follow [New feature planning](docs/engineering-guidelines/new-feature-planning.md).
+2. **Implement one scenario at a time.** Workers follow the written constraints
+   and use red–green–refactor at each relevant test level. Follow [Coding principles](docs/engineering-guidelines/coding-principles.md).
+3. **Review the combined change.** The manager compares the result with the plan,
+   runs the affected checks, and reports the results and any remaining gaps.
 
-## Behavior and tests
+Preserve unrelated local changes. Use plain language in docs, tickets, and
+comments, following ASD-STE100 where practical.
 
-For new or changed production behavior in `src/`, `src-tauri/src/`, or
-`packages/*/src/`, follow the mandatory BDD/TDD sequence and characterization guidance in
-[coding principles](docs/coding-principles.md#start-with-behavior-and-invariants).
-Apply its DRY3 rule and test definitions during implementation and review.
-
-Run `bun run test` for the complete Bun unit suite. It runs `test:native`
-for TypeScript suites under `test/unit/` and workspace `test/unit/` folders,
-then `test:dom` for React suites with `test/preload.ts` in a separate process,
-then `test:integration` for workspace integration suites. Keep DOM
-globals out of native tests.
-Run `bun run test:behavior` for Cucumber constraints and `bun run test:e2e`
-for browser Cucumber acceptance through `test/steps/`. Install Chromium with
-`bunx --no-install playwright install chromium` before the first browser run.
-Use `bun run test:rust` for Rust behavior. Verify the assembled desktop route
-through packaged acceptance separately. Put root or workspace TypeScript suites in `test/unit/`,
-`test/integration/`, `test/interface/`, or `test/acceptance/`, using the test definitions in coding
-principles. Within each category, group suites by the corresponding `src/`
-component path. Keep mixed suites at their shared component group or main
-workflow owner. Shared fixtures and helpers stay outside those category folders.
-When adding production behavior, add suitable tests and document focused commands.
-Do not claim that lint, type checks, or a build verifies behavior. Do not add
-behavior tests for scripts, documents, configuration, or tooling; use relevant
-build, type, lint, and manual checks.
-
-## Verification
-
-Select checks from the complete change, including shared callers and consumers.
-Run each new or changed test locally before committing. For production changes,
-run the affected behavior tests, `bun run check`, `bun run check-types`, and the
-relevant build. Use `bun run build` for the frontend. For
-Rust changes, also run Cargo tests, formatting, and Clippy; use
-`bun run desktop:build` when native packaging or the assembled desktop route
-changes. See [README.md](README.md) for commands and platform prerequisites.
-For documents, inspect the text and links. For configuration and tooling, run
-the relevant checks and verify the changed operation.
-
-Run `bun run habit-hooks --all` on the complete candidate. See
-[README.md](README.md#habit-hooks-scans) for prerequisites and focused scans.
-Correct enforced findings or record why a finding remains. Keep the snooze file
-empty. Report checks run, results, and any environment limits or deferred checks.
-Update affected documents in the same change.
-
-## Pull requests
-
-When a pull request is requested, open it as a draft. Describe the problem,
-result, relevant design or contract changes, validation, and unresolved limits.
-The manager reviews the complete candidate before it becomes ready for review.
-Keep evidence current after fixes. Do not mark Ready or merge beyond the user's
-requested scope. Merge only after the applicable checks and required repository
-reviews pass.
+When the user requests a PR, open a draft with the problem, result, contract
+changes, and check results. If asked to mark it ready, review the full diff
+first. If asked to merge, verify the required checks and reviews have passed.
