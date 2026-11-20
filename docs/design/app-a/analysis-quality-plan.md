@@ -19,9 +19,10 @@ how a claim was checked. Establish the facts again on the new snapshot.
 | Interface | Keep the existing CLI, baseline v6, discovery v2 and [review packet format](record-format.md). Distinguish test coverage, source inspection and proof of execution. | `bun run check:contracts`, `bun run test` and the review scenarios. |
 
 The [small-window browser scenario](../../../cookbook/behavior/diagram-workspace.feature)
-also applies to the viewer handoff. The Linux check found only 421 pixels of
-diagram height at a 640-pixel viewport height. Reproduce the layout and retain
-the existing requirement of at least 440 pixels with the file actions accessible.
+also covers the viewer handoff. On Linux the scope switch wrapped at 390 × 640
+pixels, leaving only 421 pixels for the diagram. Narrowing the horizontal
+padding on the small-screen buttons kept the actions on one row and gave the
+diagram 443 pixels. The existing minimum is 440 pixels.
 
 ## What the TraceRelic review established
 
