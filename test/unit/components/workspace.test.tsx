@@ -15,14 +15,14 @@ afterEach(() => { cleanup(); Reflect.deleteProperty(globalThis, "isTauri"); });
 
 test("controls use the view role without lifecycle or write commands", async () => {
   const snapshot: LoadWorkflowSnapshot = {
-    state: { operation: "baseline", phase: "idle", stage: null, lastOutcome: null }, current: null, duplication: null, discovery: null,
+    state: { operation: "baseline", phase: "idle", stage: null, lastOutcome: null }, current: null, duplication: null, discovery: null, comparison: null,
   };
   const opened: string[] = [];
   const cancelled = async () => ({ status: "cancelled" as const, durationMs: 0 });
   const workflow: WorkflowView = {
     getSnapshot: () => snapshot, subscribe: () => () => {},
     openBaseline: async () => { opened.push("baseline"); return cancelled(); }, cancel: cancelled, retry: cancelled,
-    openDuplicationReport: cancelled, removeDuplicationReport: cancelled, openDiscoveryResult: cancelled, removeDiscoveryResult: cancelled,
+    openComparison: cancelled, closeComparison: cancelled, openDuplicationReport: cancelled, removeDuplicationReport: cancelled, openDiscoveryResult: cancelled, removeDiscoveryResult: cancelled,
   };
   render(<App workspace={{ workflow }} />);
   fireEvent.click(screen.getByRole("button", { name: "Open Baseline" }));
@@ -56,6 +56,7 @@ test("opening publishes the prepared baseline only after layout finishes", async
   expect(screen.getByRole("heading", { name: "baseline-example" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Explore example" })).toBeNull();
   expect(screen.getByRole("status").textContent).toBe("Baseline ready.");
+  fireEvent.click(screen.getByRole("switch", { name: "Show non-production" }));
   expect([...container.querySelectorAll(".react-flow__node[data-id]")].map((node) => node.getAttribute("data-id")))
     .toEqual(["checkout", "billing"]);
 });
@@ -98,6 +99,7 @@ test.each(["canvas", "panel", "toolbar", "outside"])("successful replacement han
   const workflow = new LoadWorkflow(baselineWorkflowDependencies());
   await workflow.openBaseline();
   render(<App workspace={{ workflow }} />);
+  fireEvent.click(screen.getByRole("switch", { name: "Show non-production" }));
   const header = screen.getByRole("button", { name: "Checkout, checkout" });
   const opener = screen.getByRole("button", { name: "Open Baseline" });
   if (target === "panel") fireEvent.click(header, { detail: 0 });
@@ -126,6 +128,7 @@ test.each(["failure", "picker cancellation", "cancelled then late result"])("a %
   const workflow = new LoadWorkflow(dependencies);
   await workflow.openBaseline();
   render(<App workspace={{ workflow }} />);
+  fireEvent.click(screen.getByRole("switch", { name: "Show non-production" }));
   showAllConnections(); showSelfConnections();
   fireEvent.keyDown(screen.getByRole("button", { name: "Billing, billing" }), { key: "ArrowRight" });
   fireEvent.click(screen.getByRole("button", { name: "Billing, billing" }));
@@ -158,6 +161,7 @@ test.each(["failure", "picker cancellation", "cancelled then late result"])("a %
   dependencies.selectBaseline = async () => selectedBaseline(interfaceSourceFixture("reading"));
   const workflow = new LoadWorkflow(dependencies); await workflow.openBaseline();
   render(<App workspace={{ workflow }} />);
+  fireEvent.click(screen.getByRole("switch", { name: "Show non-production" }));
   fireEvent.click(screen.getByRole("button", { name: "Billing, billing" }));
   fireEvent.click(within(screen.getByRole("region", { name: "Owned interfaces" })).getByRole("button", { name: "Invoice API, invoice-api" }));
   selectInterfaceTab("Sources");

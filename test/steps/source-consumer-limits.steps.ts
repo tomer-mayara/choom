@@ -50,7 +50,7 @@ async function open(world: LimitWorld, baseline: BaselineV3, width: number, heig
   const driver = new BaselineBrowserDriver(page(world));
   await driver.open();
   const start = performance.now();
-  await driver.openBaseline(file);
+  await driver.openHistoricalInventory(file);
   await expect(page(world).getByRole("heading", { name: baseline.id, exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(page(world).locator(".react-flow__node")).toHaveCount(baseline.components.length);
   const processors = cpus();

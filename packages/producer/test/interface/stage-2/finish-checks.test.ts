@@ -24,6 +24,10 @@ const gapEvidence = (ref: string) => (analysis: JsonRecord): JsonRecord => ({ ..
   kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.", evidenceRefs: [ref] }] });
 
 const cases: FinishCase[] = [
+  { name: "a candidate claims support from the skipped production scan",
+    change: analysis => ({ ...analysis, candidates: [{ ...candidate(id), knipClaims: [
+      { mode: "production", receiptRef: id + "-knip-runs#/runs/1", outcome: "reported" }] }] }),
+    message: "A reported candidate requires a completed Knip scan." },
   { name: "an earlier discovery question is removed", change: (analysis) => ({ ...analysis, questions: [] }),
     message: "Removed or changed prior record: s1-question-001" },
   { name: "an earlier discovery question is changed",

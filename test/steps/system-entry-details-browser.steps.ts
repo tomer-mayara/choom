@@ -20,7 +20,7 @@ Given("the system-entry details baseline is open at {int} pixels", async functio
   await browser.setViewportSize({ width, height: 640 });
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(path);
+  await driver.openHistoricalInventory(path);
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
 });
 

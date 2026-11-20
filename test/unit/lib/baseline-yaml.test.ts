@@ -44,7 +44,7 @@ test.each([
 });
 
 test("identifies an unsupported baseline format version", () => {
-  const text = stringify({ ...baselineExample(), formatVersion: 6 });
+  const text = stringify({ ...baselineExample(), formatVersion: 7 });
   expect(decodeBaselineYaml(text)).toMatchObject({
     status: "failure", stage: "decoding", code: "unsupported-version",
   });
@@ -63,7 +63,7 @@ test("rejects legacy diagram content", () => {
   expect(outcome.status).toBe("failure");
   expect(outcome).toMatchObject({
     status: "failure", stage: "decoding", code: "invalid-document",
-    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, 3, 4, or 5.",
+    message: "Legacy diagrams are unsupported. Open a baseline with formatVersion: 1, 2, 3, 4, 5, or 6.",
   });
 });
 

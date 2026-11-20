@@ -37,6 +37,15 @@ export class BaselineBrowserDriver {
     await (await chooser).setFiles(path);
   }
 
+  /** Open an older fixture and opt in before inspecting its original inventory. */
+  async openHistoricalInventory(path: string): Promise<void> {
+    await this.openBaseline(path);
+    await expect(this.page.getByRole("button", { name: "Open Baseline", exact: true })).toBeEnabled();
+    if (await this.page.getByText("Production scope unavailable", { exact: true }).isVisible()) {
+      await this.page.getByRole("switch", { name: "Show non-production", exact: true }).check();
+    }
+  }
+
   async view(): Promise<BaselineOpeningView> {
     return this.page.evaluate(() => ({
       headings: Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3"), (node) => node.innerText.trim()),
@@ -61,10 +70,14 @@ export class BaselineBrowserDriver {
     assert.fail(`The browser view must stay the same across animation frames within ${settleTimeoutMs} ms.`);
   }
 
-  private async readAfterPaint<T>(read: () => Promise<T>): Promise<T> {
+  async waitForPaint(): Promise<void> {
     await this.page.evaluate(() => new Promise<void>((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
     }));
+  }
+
+  private async readAfterPaint<T>(read: () => Promise<T>): Promise<T> {
+    await this.waitForPaint();
     return read();
   }
 }

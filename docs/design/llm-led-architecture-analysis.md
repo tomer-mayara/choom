@@ -395,6 +395,11 @@ Changing an accepted rule does not mean the old implementation was repaired.
 
 ### Report views
 
+The v6 component view opens in Production. Each operation shows its provider,
+permitted callers and observed use sites. The scope switch reveals other roles
+and unknowns. The isolation report compares two original files, groups sites
+by the actual crossing, and links each finding to evidence on both sides.
+
 - **Baseline:** components, contracts, code membership, proposed/accepted status,
   and gaps. With an attached discovery result, show its recorded questions and
   gaps beside the items they name. Keep deferred regions visible with their
@@ -501,6 +506,11 @@ reopened by the current helpers.
 
 ## Three analysis modes
 
+Mode C can use two v6 files from the same project. Match units and actual targets
+before applying the display scope. A forbidden path proves reachability. Dating
+its introduction or removal requires a comparable complete check of the opposite
+side. Report changes to policy and ownership separately from changes in code.
+
 The modes choose the starting scope. They use the same three steps.
 
 | Mode | Baseline | Scope and result |
@@ -524,6 +534,11 @@ not checked again, not resolved. Keep source changes separate from proposed
 architecture changes on the same snapshot.
 
 ## Compatibility
+
+The viewer reads v1–v5 inventories with explicit opt-in when production roles are
+unavailable. Isolation comparison requires two v6 baselines with the same project
+key. A decision-derived review marked Needs refresh retains its evidence and
+limits comparison until the producer rechecks it. Attachments stay bound to After.
 
 The [baseline viewer plan](cr-baseline-viewer-plan.md) supersedes the earlier
 requirement to keep Load Repo and version-1 diagram import/export. The manual
@@ -624,8 +639,9 @@ Version 4 retains version 3 and can add `systemEntryPoints`, as defined in
 Version 5 retains version 4 and can add symbol selectors (`symbols: [{ path, symbol }]`)
 to a component's membership, as defined in the
 [record contract](app-a/record-format.md#version-5-symbol-selectors). The viewer
-checks their syntax only. The producer writes version 5 from Stage 5, and it divides
-each named file into code units on the saved snapshot.
+checks their syntax only. Stage 5 divides each named file into code units on
+the saved snapshot. Older runs can publish version 5 there. New project-keyed
+runs publish version 6.
 The viewer keeps legacy permission arrows for versions 1/2. Versions 3 to 5 use
 only saved application/tooling value uses for arrows, with known consumer and
 provider components. Other references stay readable in details. It never infers a source

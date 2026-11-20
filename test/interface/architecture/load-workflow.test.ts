@@ -17,7 +17,7 @@ test("the view binds read-only baseline and report commands with immutable obser
   expectTypeOf<LoadWorkflow>().toExtend<AsyncOperations>();
   expectTypeOf<LoadWorkflow>().toExtend<WorkflowView>();
   expectTypeOf<keyof WorkflowView>().toEqualTypeOf<"openBaseline" | "openDuplicationReport" | "removeDuplicationReport"
-    | "openDiscoveryResult" | "removeDiscoveryResult" | "cancel" | "retry" | "getSnapshot" | "subscribe">();
+    | "openComparison" | "closeComparison" | "openDiscoveryResult" | "removeDiscoveryResult" | "cancel" | "retry" | "getSnapshot" | "subscribe">();
   type Current = NonNullable<LoadWorkflowSnapshot["current"]>;
   expectTypeOf<Current["baseline"]>().toEqualTypeOf<ReadonlyData<Baseline>>();
   expectTypeOf<Current["layout"]["nodes"][number]["position"]>().toEqualTypeOf<{ readonly x: number; readonly y: number }>();

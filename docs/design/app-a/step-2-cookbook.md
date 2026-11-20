@@ -222,6 +222,9 @@ and published APIs with consumers outside the repository. Keep the declared
 expression. Keep one file candidate even if that file registers several HTTP
 routes or MCP tools. Review those operations in Stages 4 and 5. A generated
 or declaration entry does not prove a source entry.
+Keep direct launch evidence in the candidate evidenceRefs. Give a compiler root
+an unknown role unless more evidence supports a use. The plan precedes the scans.
+In the analysis, tie each tool conclusion to the applicable mode and exact receipt.
 Do not infer production use from compiler inclusion or a directory name.
 This profile keeps every plugin of Knip 6.44.1 turned off, so no settings file
 runs. It adds the default entry file-name patterns of the plugins that the
@@ -612,7 +615,13 @@ a verified root.
 If evidence contradicts a planned candidate, record the conflict in a question
 or gap. Changing the tool inputs requires a new attempt and new tool records.
 
-Use knipRunsRef for the exact recorded tool outcomes. Do not invent, change,
+For each candidate add knipClaims for conclusions that depend on a tool run.
+Use an empty array for a purely declared launch. Each claim gives mode (normal or
+production), receiptRef (the exact knipRunsRef#/runs/N for that mode), and outcome
+(reported or unknown). Reported requires a completed scan whose saved report names
+the candidate file. A skipped or failed production scan leaves a compiler root's
+production use unknown. Keep launch evidence in evidenceRefs and retain reachability
+as not-assessed. Use knipRunsRef for the exact recorded tool outcomes. Do not invent, change,
 or replace them. Record failed or skipped analysis and coverage limits as gaps.
 A successful receipt-writing command does not mean Knip ran. Read each mode's
 status and report references before interpreting the result.

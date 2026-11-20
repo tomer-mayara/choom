@@ -1,0 +1,639 @@
+formatVersion: 6
+id: baseline-check
+parentId: null
+interfaces:
+  - id: loader-interface
+    name: Configuration loader
+    owner:
+      value: configuration
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    publicAccess:
+      value:
+        - GlobalConfigLoader.load
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+resources: []
+rules: []
+components:
+  - id: cli
+    name: cli
+    purpose:
+      value: Serve the saved cli entry.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    membership:
+      value:
+        paths:
+          - cli.ts
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    groupingReason:
+      value: One reviewed entry file.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+  - id: http
+    name: http
+    purpose:
+      value: Serve the saved http entry.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    membership:
+      value:
+        paths:
+          - http.ts
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    groupingReason:
+      value: One reviewed entry file.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+  - id: collector
+    name: Local collector
+    purpose:
+      value: Run the history command.
+      status: proposed
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+    membership:
+      value:
+        paths:
+          - src/collector.ts
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    groupingReason:
+      value: The reviewed collector source.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+  - id: history
+    name: Local Codex history
+    purpose:
+      value: Read local history.
+      status: proposed
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fread.ts
+    membership:
+      value:
+        paths:
+          - src/history/read.ts
+          - src/history/helper.ts
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    groupingReason:
+      value: The reviewed history source.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+  - id: configuration
+    name: Configuration
+    purpose:
+      value: Load configuration.
+      status: proposed
+      evidenceRefs:
+        - s4-check-source-src%2Fconfig%2Floader.ts
+    membership:
+      value:
+        paths:
+          - src/config/loader.ts
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    groupingReason:
+      value: The reviewed configuration source.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+  - id: test
+    name: In-memory test adapter
+    purpose:
+      value: Supply an in-memory test fixture.
+      status: proposed
+      evidenceRefs:
+        - s4-check-source-test%2Fadapter.ts
+    membership:
+      value:
+        paths:
+          - test/adapter.ts
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    groupingReason:
+      value: The reviewed test source.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+  - id: storage
+    name: Storage
+    purpose:
+      value: Declare the storage port.
+      status: proposed
+      evidenceRefs:
+        - s4-check-source-src%2Fstorage%2Fport.ts
+    membership:
+      value:
+        paths:
+          - src/storage/port.ts
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+    groupingReason:
+      value: The reviewed storage source.
+      status: proposed
+      evidenceRefs:
+        - launch-settings
+boundaryReview:
+  status: current
+  identity:
+    projectKey: TraceRelic
+    snapshotRef: snapshot-check
+    inventoryDigest: 7260d46246ebfce53469353d7daed4893b8a30e86673f672d0c3c19577d3daa3
+    sourceKind: snapshot
+    baseCommit: null
+    analysisRoots:
+      - src
+      - test
+      - dist
+    mappingRef: s5-check-file@code-mapping.json
+  componentScopes:
+    - componentId: collector
+      name: Local collector
+      purpose: Run the history command.
+      roles:
+        - production
+      basis: declaration
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+    - componentId: history
+      name: Local Codex history
+      purpose: Read local history.
+      roles:
+        - production
+      basis: declaration
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fread.ts
+    - componentId: configuration
+      name: Configuration
+      purpose: Load configuration.
+      roles:
+        - production
+      basis: declaration
+      evidenceRefs:
+        - s4-check-source-src%2Fconfig%2Floader.ts
+    - componentId: test
+      name: In-memory test adapter
+      purpose: Supply an in-memory test fixture.
+      roles:
+        - test
+      basis: declaration
+      evidenceRefs:
+        - s4-check-source-test%2Fadapter.ts
+    - componentId: storage
+      name: Storage
+      purpose: Declare the storage port.
+      roles:
+        - production
+      basis: declaration
+      evidenceRefs:
+        - s4-check-source-src%2Fstorage%2Fport.ts
+  units:
+    - id: collector
+      path: src/collector.ts
+      unitKind: file
+      ownerId: collector
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+    - id: history
+      path: src/history/read.ts
+      unitKind: file
+      ownerId: history
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fread.ts
+    - id: helper
+      path: src/history/helper.ts
+      unitKind: file
+      ownerId: history
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fhelper.ts
+    - id: loader
+      path: src/config/loader.ts
+      unitKind: file
+      ownerId: configuration
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fconfig%2Floader.ts
+    - id: test
+      path: test/adapter.ts
+      unitKind: file
+      ownerId: test
+      roles:
+        - test
+      evidenceRefs:
+        - s4-check-source-test%2Fadapter.ts
+    - id: port
+      path: src/storage/port.ts
+      unitKind: file
+      ownerId: storage
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fstorage%2Fport.ts
+  operations:
+    - id: collector
+      unitId: collector
+      name: collect()
+      member: collect
+      visibility: public
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+    - id: history
+      unitId: history
+      name: read()
+      member: read
+      visibility: public
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fread.ts
+    - id: helper
+      unitId: helper
+      name: prepare()
+      member: prepare
+      visibility: unknown
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fhelper.ts
+    - id: loader
+      unitId: loader
+      name: GlobalConfigLoader.load()
+      member: GlobalConfigLoader.load
+      visibility: public
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fconfig%2Floader.ts
+      interfaceId: loader-interface
+    - id: test
+      unitId: test
+      name: fixture()
+      member: fixture
+      visibility: public
+      roles:
+        - test
+      evidenceRefs:
+        - s4-check-source-test%2Fadapter.ts
+    - id: port
+      unitId: port
+      name: commit()
+      member: commit
+      visibility: public
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fstorage%2Fport.ts
+    - id: checkpoint
+      unitId: port
+      name: readCheckpoint()
+      member: readCheckpoint
+      visibility: public
+      roles:
+        - production
+      evidenceRefs:
+        - s4-check-source-src%2Fstorage%2Fport.ts
+  accesses:
+    - id: collector-loader-import
+      callerUnitId: collector
+      writtenPath: ./config/loader
+      member: GlobalConfigLoader.load
+      targetUnitId: loader
+      operationId: loader
+      kind: import
+      context: choom-default-v1-import
+      callerRole: production
+      targetRole: production
+      callerRef: s4-check-source-src%2Fcollector.ts
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+        - s4-check-source-src%2Fconfig%2Floader.ts
+    - id: collector-loader-call
+      callerUnitId: collector
+      writtenPath: ./config/loader
+      member: GlobalConfigLoader.load
+      targetUnitId: loader
+      operationId: loader
+      kind: call
+      context: choom-default-v1-import
+      callerRole: production
+      targetRole: production
+      callerRef: s4-check-source-src%2Fcollector.ts
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+        - s4-check-source-src%2Fconfig%2Floader.ts
+    - id: collector-helper-import
+      callerUnitId: collector
+      writtenPath: ./history/helper
+      member: prepare
+      targetUnitId: helper
+      operationId: helper
+      kind: import
+      context: choom-default-v1-import
+      callerRole: production
+      targetRole: production
+      callerRef: s4-check-source-src%2Fcollector.ts
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+        - s4-check-source-src%2Fhistory%2Fhelper.ts
+    - id: collector-helper-call
+      callerUnitId: collector
+      writtenPath: ./history/helper
+      member: prepare
+      targetUnitId: helper
+      operationId: helper
+      kind: call
+      context: choom-default-v1-import
+      callerRole: production
+      targetRole: production
+      callerRef: s4-check-source-src%2Fcollector.ts
+      evidenceRefs:
+        - s4-check-source-src%2Fcollector.ts
+        - s4-check-source-src%2Fhistory%2Fhelper.ts
+    - id: helper-loader-import
+      callerUnitId: helper
+      writtenPath: ../config/loader
+      member: GlobalConfigLoader.load
+      targetUnitId: loader
+      operationId: loader
+      kind: import
+      context: choom-default-v1-import
+      callerRole: production
+      targetRole: production
+      callerRef: s4-check-source-src%2Fhistory%2Fhelper.ts
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fhelper.ts
+        - s4-check-source-src%2Fconfig%2Floader.ts
+    - id: helper-loader-call
+      callerUnitId: helper
+      writtenPath: ../config/loader
+      member: GlobalConfigLoader.load
+      targetUnitId: loader
+      operationId: loader
+      kind: call
+      context: choom-default-v1-import
+      callerRole: production
+      targetRole: production
+      callerRef: s4-check-source-src%2Fhistory%2Fhelper.ts
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fhelper.ts
+        - s4-check-source-src%2Fconfig%2Floader.ts
+    - id: test-port-import
+      callerUnitId: test
+      writtenPath: ../src/storage/port
+      member: commit
+      targetUnitId: port
+      operationId: port
+      kind: import
+      context: choom-default-v1-import
+      callerRole: test
+      targetRole: production
+      callerRef: s4-check-source-test%2Fadapter.ts
+      evidenceRefs:
+        - s4-check-source-test%2Fadapter.ts
+        - s4-check-source-src%2Fstorage%2Fport.ts
+    - id: test-port-call
+      callerUnitId: test
+      writtenPath: ../src/storage/port
+      member: commit
+      targetUnitId: port
+      operationId: port
+      kind: call
+      context: choom-default-v1-import
+      callerRole: test
+      targetRole: production
+      callerRef: s4-check-source-test%2Fadapter.ts
+      evidenceRefs:
+        - s4-check-source-test%2Fadapter.ts
+        - s4-check-source-src%2Fstorage%2Fport.ts
+      emittedCopies:
+        - sourceRef: s4-check-source-test%2Fadapter.ts
+          emittedRef: s4-check-source-dist%2Ftest%2Fadapter.js
+          proofRef: s4-check-source-dist%2Ftest%2Fadapter.js.map
+    - id: history-unresolved
+      callerUnitId: history
+      writtenPath: path
+      targetUnitId: null
+      member: null
+      kind: dynamic-import
+      context: choom-default-v1-import
+      callerRole: production
+      targetRole: unknown
+      callerRef: s4-check-source-src%2Fhistory%2Fread.ts
+      evidenceRefs:
+        - s4-check-source-src%2Fhistory%2Fread.ts
+      reason: Computed path.
+  rules:
+    - id: history-receives-global-config
+      name: History receives configuration from its caller
+      kind: reachability
+      authority: repository
+      revision: 5208f023a47964e6cef2fba7ab9061a71e8e79c0e3f08f44529f8c265387f6f8
+      scope: History source in the import context.
+      settings:
+        name: history-receives-global-config
+        severity: error
+        from:
+          path: ^src/history/read\.ts$
+        to:
+          path: ^src/config/loader\.ts$
+          reachable: true
+      accessKinds:
+        - import
+        - re-export
+        - require
+        - dynamic-import
+        - type
+      evidenceRefs:
+        - s4-check-source-.dependency-cruiser.json
+  checks:
+    - id: history-loader-check
+      ruleId: history-receives-global-config
+      sourceUnitId: history
+      targetUnitId: loader
+      context: choom-default-v1-import
+      checker: choom-source-graph
+      checkerVersion: "1"
+      result: unknown
+      accessIds: []
+      coverage:
+        status: partial
+        roots:
+          - src/history/read.ts
+        examinedUnitIds:
+          - history
+          - loader
+        accessKinds:
+          - import
+          - re-export
+          - require
+          - dynamic-import
+          - type
+        missingRoots: []
+        unresolvedAccessIds:
+          - history-unresolved
+        limitations:
+          - Computed target.
+      evidenceRefs:
+        - s4-check-source-.dependency-cruiser.json
+  callerSearches:
+    - operationId: port
+      role: production
+      coverage:
+        status: partial
+        roots:
+          - src
+        examinedUnitIds:
+          - port
+        accessKinds:
+          - call
+        missingRoots: []
+        unresolvedAccessIds: []
+        limitations:
+          - Only the saved storage declaration was inspected for additional
+            callers.
+      evidenceRefs:
+        - s4-check-source-src%2Fstorage%2Fport.ts
+    - operationId: checkpoint
+      role: production
+      coverage:
+        status: partial
+        roots:
+          - src
+        examinedUnitIds:
+          - collector
+          - history
+          - helper
+          - loader
+          - port
+        accessKinds:
+          - call
+        missingRoots: []
+        unresolvedAccessIds:
+          - history-unresolved
+        limitations:
+          - A computed loader has no binding.
+      evidenceRefs:
+        - s4-check-source-src%2Fstorage%2Fport.ts
+  sourceNotes:
+    - evidenceRef: s4-check-source-src%2Fcollector.ts
+      description: Reviewed collector source.
+      location:
+        path: src/collector.ts
+        sha256: 613e87b18a2fa1c48fc09cae51b33f84af719bac03119a7205a43a3843d9e152
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-src%2Fhistory%2Fread.ts
+      description: Reviewed history source.
+      location:
+        path: src/history/read.ts
+        sha256: 1dd85e7a67b71feac22f9ba15ecd9801040e07ad121d3dd457256e0051584b40
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-src%2Fhistory%2Fhelper.ts
+      description: Reviewed helper source.
+      location:
+        path: src/history/helper.ts
+        sha256: 501295f4a12253fbe30afa0d5937c80a940d42f7fabb1ab2a2061b37ed912771
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-src%2Fconfig%2Floader.ts
+      description: Reviewed loader source.
+      location:
+        path: src/config/loader.ts
+        sha256: 44854606d9912bce22d9103f1f025366210577d895e7aeed0d9b2042f7e974c6
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-test%2Fadapter.ts
+      description: Reviewed test source.
+      location:
+        path: test/adapter.ts
+        sha256: 47ed647941ce195cae317c37150c63fa2bbd2566b3ba8f442ce8a244fcb4f714
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-src%2Fstorage%2Fport.ts
+      description: Reviewed port source.
+      location:
+        path: src/storage/port.ts
+        sha256: 5cbceb7aa1b6d7846c2d4442ccb7c33aa8f2a9f75980712a8e8dff16ba42fc35
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-dist%2Ftest%2Fadapter.js
+      description: Reviewed emitted source.
+      location:
+        path: dist/test/adapter.js
+        sha256: cbcca5c237c7972c23fadf50be19bff86a8e5262b951b0c3a49456fd33ecb2e1
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-dist%2Ftest%2Fadapter.js.map
+      description: Reviewed map source.
+      location:
+        path: dist/test/adapter.js.map
+        sha256: 956850e48b3c93b360f9f3b21a7c30b13f6cc2ea4be62d1695954c66f759ebaf
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+    - evidenceRef: s4-check-source-.dependency-cruiser.json
+      description: Reviewed policy source.
+      location:
+        path: .dependency-cruiser.json
+        sha256: 5208f023a47964e6cef2fba7ab9061a71e8e79c0e3f08f44529f8c265387f6f8
+        snapshotRef: snapshot-check
+        lines:
+          - 1
+          - 1
+  matches: []
+  limitations:
+    - Only the saved storage declaration was inspected for additional callers.

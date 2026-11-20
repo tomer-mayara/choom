@@ -60,7 +60,7 @@ Given("a standalone baseline and its saved duplication report are available to i
 When("the reader opens the baseline and report with the native file pickers", { timeout: 60_000 },
   async function (this: InstalledDuplicationWorld) {
     const driver = this.installedDuplicationDriver;
-    await driver.openBaseline(join(this.directory, "baseline.yaml"));
+    await driver.openHistoricalInventory(join(this.directory, "baseline.yaml"));
     await driver.expectBaseline(this.baseline.id, this.baseline.components.map(({ id, name }) => [id, name]));
     await driver.clickControl("//button[normalize-space(.)='Duplicates']", "Duplicates");
     await driver.selectFile("Open duplication report", join(this.directory, "review.yaml"));

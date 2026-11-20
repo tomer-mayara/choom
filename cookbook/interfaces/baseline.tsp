@@ -1,5 +1,6 @@
 import "@typespec/json-schema";
 import "./baseline-documentation.tsp";
+import "./baseline-boundaries.tsp";
 import "./baseline-source-usage.tsp";
 import "./baseline-system-entry-points.tsp";
 
@@ -425,10 +426,25 @@ model BaselineV5 {
   systemEntryPoints?: BaselineSystemEntryPoints;
 }
 
+@extension("additionalProperties", false)
+model BaselineV6 {
+  formatVersion: 6;
+  id: baselineId;
+  parentId: baselineText | null;
+  components: BaselineComponentV5[];
+  interfaces: BaselineInterface[];
+  resources: BaselineResource[];
+  rules: BaselineRule[];
+  sourceUsage?: BaselineSourceUsage;
+  systemEntryPoints?: BaselineSystemEntryPoints;
+  boundaryReview: BaselineBoundaryReview;
+}
+
 union Baseline {
   BaselineV1,
   BaselineV2,
   BaselineV3,
   BaselineV4,
   BaselineV5,
+  BaselineV6,
 }

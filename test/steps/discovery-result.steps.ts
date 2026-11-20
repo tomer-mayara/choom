@@ -46,7 +46,7 @@ async function openBaseline(world: DiscoveryWorld, prepared: DiscoveryFixture): 
   await writeFile(world.discoveryFiles.result, world.discoveryOriginals[1] ?? "");
   const driver = new BaselineBrowserDriver(page(world));
   await driver.open();
-  await driver.openBaseline(world.discoveryFiles.baseline);
+  await driver.openHistoricalInventory(world.discoveryFiles.baseline);
   await expect(page(world).getByText("Baseline ready.", { exact: true })).toBeVisible();
   await expect(page(world).getByRole("heading", { name: prepared.baseline.id, exact: true })).toBeVisible();
 }

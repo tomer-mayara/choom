@@ -5,7 +5,7 @@ Feature: Display recorded component groups within safe limits
 
   Scenario: Show recorded component groups
     Given the reviewed five-component baseline is ready to open
-    When the user opens the prepared hierarchy baseline
+    When the user opens the prepared hierarchy baseline and requests its historical inventory
     Then Workspace and Native shell appear inside Choom
     And Architecture model and Platform adapter appear inside Workspace
     And each component name and inspection control is reachable
@@ -13,7 +13,7 @@ Feature: Display recorded component groups within safe limits
   Scenario Outline: Refuse excessive diagram work
     Given the Previous baseline is displayed
     And the next baseline exceeds the <limit> display limit
-    When the user opens the prepared hierarchy baseline
+    When the user opens the prepared hierarchy baseline and requests its historical inventory
     Then Previous remains displayed with a size-limit message
 
     Examples:
@@ -26,7 +26,7 @@ Feature: Display recorded component groups within safe limits
   @baseline-readability @br-02
   Scenario Outline: Start a large hierarchy at readable size
     Given a baseline with 500 components and 16 levels is ready in a <width> by <height> window
-    When the user opens the prepared hierarchy baseline
+    When the user opens the prepared hierarchy baseline and requests its historical inventory
     Then the hierarchy starts at 100 percent with its first root header visible
 
     Examples:

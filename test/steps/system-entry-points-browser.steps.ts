@@ -29,7 +29,7 @@ async function open(world: EntryMarkerWorld, baseline: Baseline, width = 1280) {
   await browser.setViewportSize({ width, height: width === 320 ? 640 : 800 });
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(path);
+  await driver.openHistoricalInventory(path);
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
   return { directory: world.entryDirectory, bytes };
 }

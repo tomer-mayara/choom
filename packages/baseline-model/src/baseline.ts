@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { validateBoundaryReview } from "./boundary-references.ts";
+import { boundaryReviewSchema } from "./baseline-boundaries.ts";
 import { baselineDocumentationSchema, validateBaselineDocumentation } from "./baseline-documentation.ts";
 import { baselineId as itemId, baselineStatement as statement, baselineText as text } from "./baseline-statements.ts";
 import { baselineSourceUsageSchema, validateBaselineSourceUsage } from "./baseline-source-usage.ts";
@@ -148,6 +150,8 @@ const baselineV3 = baselineV2.extend({ formatVersion: z.literal(3), sourceUsage:
 const baselineV4 = baselineV3.extend({ formatVersion: z.literal(4), systemEntryPoints: baselineSystemEntryPointsSchema.optional() });
 const baselineV5 = baselineV4.extend({ formatVersion: z.literal(5), components: z.array(componentV5) });
 
-export const baselineSchema = z.discriminatedUnion("formatVersion", [baselineV1, baselineV2, baselineV3, baselineV4, baselineV5])
+const baselineV6 = baselineV5.extend({ formatVersion: z.literal(6), boundaryReview: boundaryReviewSchema });
+
+export const baselineSchema = z.discriminatedUnion("formatVersion", [baselineV1, baselineV2, baselineV3, baselineV4, baselineV5, baselineV6])
   .superRefine(validateReferences).superRefine(validateBaselineDocumentation).superRefine(validateBaselineSourceUsage)
-  .superRefine(validateBaselineSystemEntryPoints) satisfies z.ZodType<Baseline>;
+  .superRefine(validateBaselineSystemEntryPoints).superRefine(validateBoundaryReview) satisfies z.ZodType<Baseline>;

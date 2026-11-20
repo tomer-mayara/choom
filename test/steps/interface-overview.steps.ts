@@ -25,7 +25,7 @@ const overview = (world: OverviewWorld) => panel(world).getByRole("tabpanel", { 
 Given("the unchanged baseline-003 file is open", async function (this: OverviewWorld) {
   const driver = new BaselineBrowserDriver(page(this));
   await driver.open();
-  await driver.openBaseline(legacyPath);
+  await driver.openHistoricalInventory(legacyPath);
   await expect(page(this).getByText("Baseline ready.", { exact: true })).toBeVisible();
 });
 When("the user inspects Baseline data and validation from the baseline catalog", async function (this: OverviewWorld) {
@@ -65,7 +65,7 @@ Given(/^the (complete|partial|unknown interaction|unknown provider|unknown permi
   await writeFile(file, stringify(this.overviewBaseline));
   const driver = new BaselineBrowserDriver(page(this));
   await driver.open();
-  await driver.openBaseline(file);
+  await driver.openHistoricalInventory(file);
   await expect(page(this).getByText("Baseline ready.", { exact: true })).toBeVisible();
   await page(this).getByRole("button", { name: "Baseline details", exact: true }).click();
   await page(this).getByRole("region", { name: "Interfaces", exact: true }).getByRole("button", { name: "Invoice API, invoice-api", exact: true }).click();

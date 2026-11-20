@@ -4,6 +4,7 @@ import { validateDiscoveryResult } from '@choom/baseline-model/discovery-result'
 import type * as Yaml from 'yaml';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
+import { validateBoundaryReview } from './record-boundaries.ts';
 import { validateBehaviorCandidates } from './record-behavior-candidates.ts';
 import type { CandidateInputs } from './record-candidates.ts';
 import { checkBaselineDocument, validateBaseline, validateDocumentation, validateSourceUsage, validateSystemEntryPoints }
@@ -443,6 +444,15 @@ function checkReadiness(selection: Selection, packet: Map<string, Buffer>): void
     identity(readiness) && readiness.status === 'ready-with-gaps' && same(readiness.draftDigests, inputs.draftDigests) &&
     same(readiness.selectedRefs, selected) && strings(readiness.limits) && Array.isArray(readiness.checks) && readiness.checks.length > 0,
   'Readiness review does not match the current drafts and selected facts.');
+  if (baseline.formatVersion === 6) {
+    const stage = String(discovery.entryAnalysisRef).replace(/-entry-analysis$/, '');
+    const proposal = stage + '-file@baseline.proposed.yaml#/boundaryReview';
+    const check = (readiness.checks as Fields[]).find((item) => item.id === 'boundary-review');
+    const refs = check?.evidenceRefs;
+    assert(Array.isArray(refs) && refs.includes(proposal) && refs.includes(discovery.codeMappingRef) &&
+      (!baseline.boundaryReview.limitations.length || refs.includes(proposal + '/limitations')),
+    'The v6 readiness packet needs a boundary-review check citing the selected review, mapping and applicable limitations.');
+  }
   for (const check of readiness.checks as Fields[]) {
     assert(exact(check, ['id', 'text', 'evidenceRefs']) && text(check.text), 'Invalid readiness check.');
     claim(check.id);
@@ -493,6 +503,11 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
     (selection.document(entry.knipRunsRef) as Fields).preflightRef);
   const profile = selection.document(graph.profileRef) as Fields;
   validateGraph({ graph, graphRef: discovery.dependenciesRef, profile, entry, indexed, resolve, claim, evidence });
+  if (inputs.run.projectKey !== undefined) assert(baseline.formatVersion === 6,
+    'A project-keyed run needs a version 6 boundary review.');
+  if (baseline.formatVersion === 6) validateBoundaryReview({ baseline, discovery, graph, entry, mapping: selection.mapping, source,
+    reviewedRanges: history.reviewedRanges, run: inputs.run, artifacts: inputs.artifacts,
+    document: selection.document, readSource: inputs.readSource });
   checkResourceAccess(selection, behavior, history.historyRefs);
   if (access.resourceAccessCandidatesRef !== undefined) validateResourceCandidates(candidates(access.resourceAccessCandidatesRef));
   if (inputs.packet !== undefined) checkReadiness(selection, inputs.packet);

@@ -42,7 +42,7 @@ async function openPreparedFile(world: PublishedWorld): Promise<void> {
   await page(world).setViewportSize({ width: 1280, height: 800 });
   const driver = new BaselineBrowserDriver(page(world));
   await driver.open();
-  await driver.openBaseline(world.publishedFile);
+  await driver.openHistoricalInventory(world.publishedFile);
   await expect(page(world).getByRole("heading", { name: world.publishedBaseline.id, exact: true })).toBeVisible({ timeout: 60_000 });
 }
 

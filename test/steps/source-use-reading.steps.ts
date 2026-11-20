@@ -31,10 +31,10 @@ async function open(world: SourceReadingWorld, variant = "complete", narrow = fa
   await writeFile(path, stringify(world.sourceReadingInput, { aliasDuplicateObjects: false }));
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(path);
+  await driver.openHistoricalInventory(path);
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
 }
-Given("the complete source-use reading fixture is open", async function (this: SourceReadingWorld) { await open(this); });
+Given("the complete historical source-use inventory is open", async function (this: SourceReadingWorld) { await open(this); });
 Given(/^the source-use reading fixture has (.+)$/, async function (this: SourceReadingWorld, state: string) { await open(this, state); });
 Given("the long source-use reading fixture is open in a narrow touch window", async function (this: SourceReadingWorld) { await open(this, "long text", true); });
 When("the reader opens the interface Overview", async function (this: SourceReadingWorld) {
@@ -198,7 +198,9 @@ When(/^the source-use replacement (fails|is cancelled|succeeds with the same IDs
   }
   const path = join(this.sourceReadingDirectory, "replacement.yaml");
   await writeFile(path, outcome === "fails" ? "formatVersion: [" : stringify(this.sourceReadingInput, { aliasDuplicateObjects: false }));
-  await new BaselineBrowserDriver(page(this)).openBaseline(path);
+  const viewer = new BaselineBrowserDriver(page(this));
+  if (outcome === "fails") await viewer.openBaseline(path);
+  else await viewer.openHistoricalInventory(path);
   if (outcome === "fails") await expect(page(this).getByRole("alert")).toBeVisible();
   else await expect(panel(this)).toHaveCount(0);
 });

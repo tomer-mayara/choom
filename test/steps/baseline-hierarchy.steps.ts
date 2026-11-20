@@ -56,7 +56,7 @@ Given("the Previous baseline is displayed", { timeout: 30_000 }, async function 
   previous.id = "previous";
   await prepareBaseline(this, previous);
   assert.ok(this.hierarchyViewer && this.hierarchyPath && this.page);
-  await this.hierarchyViewer.openBaseline(this.hierarchyPath);
+  await this.hierarchyViewer.openHistoricalInventory(this.hierarchyPath);
   await expect(this.page.getByRole("heading", { name: "previous", exact: true })).toBeVisible();
 });
 
@@ -75,7 +75,7 @@ Given("a baseline at the component limits is open", { timeout: 30_000 }, async f
   await openViewer(this);
   await prepareBaseline(this, baselineAtComponentLimits());
   assert.ok(this.hierarchyViewer && this.hierarchyPath && this.page);
-  await this.hierarchyViewer.openBaseline(this.hierarchyPath);
+  await this.hierarchyViewer.openHistoricalInventory(this.hierarchyPath);
   await expect(this.page.locator(".react-flow__node[data-id]")).toHaveCount(500);
 });
 
@@ -109,9 +109,9 @@ Given("its large parent header is outside the diagram after panning", { timeout:
   await page.getByRole("button", { name: "Open Baseline", exact: true }).focus();
 });
 
-When("the user opens the prepared hierarchy baseline", async function (this: BaselineHierarchyWorld) {
+When("the user opens the prepared hierarchy baseline and requests its historical inventory", async function (this: BaselineHierarchyWorld) {
   assert.ok(this.hierarchyViewer && this.hierarchyPath);
-  await this.hierarchyViewer.openBaseline(this.hierarchyPath);
+  await this.hierarchyViewer.openHistoricalInventory(this.hierarchyPath);
 });
 
 When("the user fits the hierarchy after zooming in", async function (this: BaselineHierarchyWorld) {

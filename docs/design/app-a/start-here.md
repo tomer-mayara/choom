@@ -55,7 +55,11 @@ analysis-run-001/
 ```
 
 The baseline describes components, membership, interfaces, resources and rules.
-Stage 1 creates an empty version 1 baseline. Use version 3 in Stages 4 and 5
+Stage 1 creates an empty version 1 baseline. For a current boundary review,
+Stages 4 and 5 write version 6 with the captured project, snapshot, map, use roles,
+operations, actual accesses, applicable rules and the limits of each search.
+Stage 4 maps whole files. Stage 5 can divide them by symbol. Earlier formats remain
+readable. Use version 3 in Stages 4 and 5
 for [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when the review records
 [system entry points](record-format.md#version-4-system-entry-points). Both formats
@@ -76,7 +80,7 @@ supported literal signature with parameters and return type. Keep an unsupported
 complete declaration unknown with its exact field gap; do not invent types or
 infer them from prose. Preserve supported descriptions, examples, and evidence.
 Stage 6 saves the validated proposal without changing its bytes. Choom reads
-versions 1 to 5 without running source analysis. Stage 5 can write
+versions 1 to 6 without running source analysis. Stage 5 can write
 [version 5](record-format.md#version-5-symbol-selectors), whose symbol selectors
 divide a file into [code units](record-format.md#divided-files); Stage 4 keeps
 each file whole. The Stage 5 parts request lists the
@@ -158,6 +162,10 @@ export CHOOM_WORK="/absolute/path/to/analysis-run-001"
 export CHOOM_RUN_ID="run-001"
 export CHOOM_SNAPSHOT_ID="snapshot-001"
 export CHOOM_BASELINE_ID="baseline-001"
+# Optional: reuse a project key or the exact earlier v6 file. When both are
+# supplied, their project keys must agree.
+# export CHOOM_PROJECT_KEY="TraceRelic"
+# export CHOOM_REFERENCE_BASELINE="/absolute/path/to/earlier/baseline.yaml"
 ```
 
 The cookbooks run every stage action through the producer command line,
@@ -363,6 +371,10 @@ Preserve earlier questions and gaps and link any later resolutions. Refresh
 current summaries. Keep architectural intent proposed.
 Leave findings, redesign and acceptance decisions to later design steps.
 
+Identify one production operation, a non-production use and any limit that
+affects the conclusion. Cite a captured declaration, use site or scope record
+for each. If an example is unavailable, name the inputs examined and the gap.
+
 Produce the complete packet as data in a folder outside CHOOM_WORK. Save the
 exact prompt, the complete visible response and the exposed call metadata with
 hiddenReasoning: not-saved. Do not save hidden reasoning. Use unknown for
@@ -518,6 +530,11 @@ The final Stage 6 verification must succeed. Confirm that:
    by its ID and the SHA-256 of its file (`baselineDigest`).
    Stage 6 also checks that the viewer can open it: the result and the exact
    bytes of its file.
+
+Lead the handoff with the captured source identity, the component, one operation
+and its observed caller. Name the use role and caller coverage. Include a
+non-production example when available, followed by the audit evidence, selected
+map and limitations.
 
 Set the final `progress.md` status after verification. Link the fixed baseline
 and discovery, summarize the checks and remaining limits, and share the report

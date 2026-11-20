@@ -36,6 +36,13 @@ export interface FixtureBaseline {
 }
 // A saved snapshot file that no component owns, as text or bytes.
 export interface ExtraFile { path: string; text: string | Buffer }
+export interface ReviewedProject {
+  key: string;
+  reference?: string;
+  fileEntries?: typeof candidates;
+  reviewPaths: string[];
+  edges: { from: string; to: string | null; specifier: string; type?: boolean }[];
+}
 // A Stage 4 attempt whose start, toolchain and graph phases completed, before the source
 // collection, and the tool checkout whose helpers run it.
 export interface StageFourAttempt { root: string; work: string; attempt: string; tools: string }
@@ -121,7 +128,7 @@ function settingsRecord(work: string, inventoryFiles: InventoryFile[], settings:
 // The drafts and registered records that a run has after Stage 3 finish. The Stage 2
 // preflight record holds the copied Knip plugin patterns of the root workspace.
 function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], settings: FixtureSettings,
-  pluginEntryPatterns: readonly unknown[]): void {
+  pluginEntryPatterns: readonly unknown[], project?: ReviewedProject): void {
   const artifacts: Record<string, { path: string; sha256: string }> = {};
   const register = (ref: string, path: string, text: string): string => {
     write(join(work, path), text);
@@ -132,6 +139,14 @@ function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], sett
   const inventoryFiles = inventoryOf(extraFiles);
   const inventorySha256 = register(inventoryRef, "evidence/inventory.json",
     jsonText({ formatVersion: 1, snapshotId: snapshotRef, files: inventoryFiles }));
+  const referenceBaseline = project?.reference ? { artifactRef: "reference-baseline-001",
+    sha256: register("reference-baseline-001", "evidence/reference-baseline.yaml", project.reference) } : null;
+  if (project) {
+    register("s1-file@evidence%2Fstage1-inputs.json", "evidence/stage1-inputs.json",
+      jsonText({ projectKey: project.key, referenceBaseline }));
+    register("git-identity-001", "evidence/git-identity.json", jsonText({ formatVersion: 1, snapshotRef,
+      gitVersion: null, status: "not-available", reason: "The reviewed fixture has no Git checkout.", gaps: [] }));
+  }
   register("s1-file@evidence%2Fproducer.json", "evidence/producer.json", jsonText(producerReceipt(toolsRoot)));
   register("settings-001", "evidence/settings.json", jsonText(settingsRecord(work, inventoryFiles, settings)));
   // The Stage 1 review. Its role record makes the test folder a test folder.
@@ -154,9 +169,10 @@ function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], sett
       .map(({ path, sha256: digest }) => ({ path, sha256: digest })) }));
   register(stageThreeAnalysis, "evidence/s3-check/entry-analysis.yaml", yamlText({ formatVersion: 1, kind: "entry-analysis",
     snapshotRef, planRef, knipRunsRef, llmReview: "recorded", reviewedFiles: [], questions: [], gaps, knipAssessment,
-    candidates, inspectionPriorities }));
+    candidates: [...candidates, ...project?.fileEntries ?? []], inspectionPriorities: prioritiesOf(project) }));
   write(join(work, "run.yaml"), yamlText({ formatVersion: 1, id: runRef, mode: "A", status: "in-progress",
     progress: { inventory: "complete", entryAnalysis: "complete", inspectionPriorities: "complete", baselineRecovery: "pending" },
+    ...(project ? { projectKey: project.key, referenceBaseline } : {}),
     snapshot: { id: snapshotRef, root: "snapshot", inventoryRef }, artifacts }));
   write(join(work, "discovery.yaml"), yamlText({ formatVersion: 1, kind: "architecture-discovery", runRef,
     entryAnalysisRef: stageThreeAnalysis, questions: [], gaps }));
@@ -180,18 +196,33 @@ function writePhase(attempt: string, phase: string, outputs: Record<string, stri
 }
 
 // The graph of the saved profile with no edges: each context reaches only its roots.
-function graphOutputs(attempt: string): Record<string, string> {
+function prioritiesOf(project?: ReviewedProject) {
+  return project ? [{ ...inspectionPriorities[0], subjectRefs: ["http.ts", ...project.reviewPaths] }] : inspectionPriorities;
+}
+
+function graphOutputs(attempt: string, project?: ReviewedProject): Record<string, string> {
   const profileText = readFileSync(join(attempt, "graph-profile.json"), "utf8");
   const profile = JSON.parse(profileText) as { contexts: GraphContext[] };
   const contexts = profile.contexts.map((context) => {
     const roots = context.roots.map(({ path }) => path);
+    const edges = (project?.edges ?? []).filter((edge) => context.sourceFiles.includes(edge.from)).map((edge, index) => ({
+      id: `${context.id}-edge-${index}`, from: edge.from, to: edge.to, specifier: edge.specifier,
+      targetKind: edge.to === null ? "unresolved" : "internal", dynamic: false, preCompilationOnly: Boolean(edge.type),
+      dependencyTypes: edge.type ? ["type-only"] : ["local"], evidenceRefs,
+    }));
+    const reached = new Set(roots);
+    const stopped: string[] = [];
+    for (const from of reached) for (const edge of edges.filter((edge) => edge.from === from)) {
+      if (edge.to === null) stopped.push(edge.id);
+      else reached.add(edge.to);
+    }
     return { id: context.id, status: "completed", coverage: "partial", limits, scanFiles: context.sourceFiles,
       roots: context.roots, compilerSettingsRef: context.compilerSettingsRef, conditionNames: context.conditionNames,
-      moduleSystems: context.moduleSystems, edges: [], reachability: { status: "completed-with-limits",
+      moduleSystems: context.moduleSystems, edges, reachability: { status: "completed-with-limits",
         method: "breadth-first traversal of retained internal source edges",
         edgePolicy: "includes type-only, re-export, and literal-dynamic source dependencies; not runtime execution",
-        roots, reached: [...roots].sort(), notReached: context.sourceFiles.filter((path) => !roots.includes(path)).sort(),
-        stoppedEdges: [] } };
+        roots, reached: [...reached].sort(), notReached: context.sourceFiles.filter((path) => !reached.has(path)).sort(),
+        stoppedEdges: stopped.sort() } };
   });
   const graph = jsonText({ formatVersion: 1, snapshotRef, attemptId: stageFourAttemptId, profileRef: artifactId("graph-profile.json"),
     status: "completed", coverage: "partial", limits, contexts });
@@ -211,16 +242,17 @@ function proposedBaseline(): FixtureBaseline {
 // The five review records. The code mapping follows the exact paths of the final
 // baseline; a file that no membership selects has no owner.
 function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: string }[] },
-  inventoryFiles: readonly InventoryFile[]): Record<string, unknown> {
+  inventoryFiles: readonly InventoryFile[], project?: ReviewedProject): Record<string, unknown> {
   const proposal = artifactId("baseline.proposed.yaml");
   const graphRef = artifactId("graph-results.json");
-  const http = inventoryFiles[1];
-  const reviewedFiles = [{ id: `${stageFourAttemptId}-source-http.ts`, snapshotRef, path: "http.ts", sha256: http?.sha256, lines: [1, 1] }];
+  const reviewed = new Set(["http.ts", ...project?.reviewPaths ?? []]);
+  const reviewedFiles = inventoryFiles.filter((file) => reviewed.has(file.path)).map(({ path, sha256 }) =>
+    ({ id: `${stageFourAttemptId}-source-${encodeURIComponent(path)}`, snapshotRef, path, sha256, lines: [1, 1] }));
   const units = inventoryFiles.map(({ path, sha256: digest }) => {
     const index = baseline.components.findIndex((item) => item.membership.value.paths.includes(path));
     return { id: `${stageFourAttemptId}-unit-${path.replace(".ts", "")}`, path, sha256: digest, roles: ["source"],
       reason: index < 0 ? "No component membership selects this file." : "The component membership selects this file.",
-      inspection: path === "http.ts" ? "reviewed" : "unreviewed",
+      inspection: reviewed.has(path) ? "reviewed" : "unreviewed",
       owner: baseline.components[index]?.id ?? null, membershipRef: index < 0 ? null : `${proposal}#/components/${index}/membership`,
       evidenceRefs: [...evidenceRefs] };
   });
@@ -232,8 +264,8 @@ function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: strin
       overview: { text: "The CLI starts the service, and the HTTP file serves orders.", evidenceRefs: [...evidenceRefs] },
       inspectedPaths: [], questions: [], gaps },
     "entry-analysis.yaml": { formatVersion: 1, kind: "entry-analysis", snapshotRef, previousEntryAnalysisRef: stageThreeAnalysis,
-      planRef, knipRunsRef, llmReview: "recorded", reviewedFiles, questions: [], gaps, knipAssessment, candidates,
-      inspectionPriorities, behaviorEntries: [], behaviorEntryCandidatesRef: artifactId("behavior-entry-candidates.json"),
+      planRef, knipRunsRef, llmReview: "recorded", reviewedFiles, questions: [], gaps, knipAssessment, candidates: [...candidates, ...project?.fileEntries ?? []],
+      inspectionPriorities: prioritiesOf(project), behaviorEntries: [], behaviorEntryCandidatesRef: artifactId("behavior-entry-candidates.json"),
       reachability: { status: "assessed-with-limits",
         method: "context-specific-source-graph-traversal", dependenciesRef: graphRef, reason: "Each context has one saved root.",
         contexts: graph.contexts.map(({ id }, index) => ({ id, resultRef: `${graphRef}#/contexts/${index}/reachability` })) } },
@@ -262,12 +294,12 @@ function writePacket(review: string, records: Record<string, unknown>): void {
 // Runs Stage 4 start on a run after Stage 3 of the snapshot `snapshot-check`, and
 // writes the toolchain and graph phases. The source collection is next. `root` is
 // the folder that holds the run.
-export function startStageFour(root: string, work: string, tools = toolsRoot): StageFourAttempt {
+export function startStageFour(root: string, work: string, tools = toolsRoot, project?: ReviewedProject): StageFourAttempt {
   const attempt = join(work, "evidence", stageFourAttemptId);
   checked(runCli(["stage-4", "start"], stageEnvironment(work, tools), tools), "Stage 4 start");
   writePhase(attempt, "toolchain", { "toolchain-selection.json": jsonText({ formatVersion: 1, status: "approved",
     imageId: "sha256:" + "0".repeat(64), limits: ["The fixture records no Docker image."] }) });
-  writePhase(attempt, "run", graphOutputs(attempt));
+  writePhase(attempt, "run", graphOutputs(attempt, project));
   return { root, work, attempt, tools };
 }
 
@@ -275,11 +307,11 @@ export function startStageFour(root: string, work: string, tools = toolsRoot): S
 // plugin patterns of Stage 2, runs Stage 4 start, and writes the toolchain and graph
 // phases. The source collection is next.
 export function stageFourAttempt(extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
-  settings: FixtureSettings = "profile", pluginEntryPatterns: readonly unknown[] = []): StageFourAttempt {
+  settings: FixtureSettings = "profile", pluginEntryPatterns: readonly unknown[] = [], project?: ReviewedProject): StageFourAttempt {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "choom-stage-4-publication-"));
   const work = join(root, "run");
-  writeStageThreeRun(work, extraFiles, settings, pluginEntryPatterns);
-  return startStageFour(root, work, tools);
+  writeStageThreeRun(work, extraFiles, settings, pluginEntryPatterns, project);
+  return startStageFour(root, work, tools, project);
 }
 
 // Runs one action of the Stage 4 source collection helper on the attempt, as an operator does.
@@ -292,15 +324,16 @@ export function inspectStageFour(fixture: StageFourAttempt, args: readonly strin
 // fixture writes the packet.
 export function stageFourPublication(change: (baseline: FixtureBaseline) => void = () => {},
   extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
-  changeRecords: (records: Record<string, Record<string, unknown>>) => void = () => {}): StageFourPublication {
-  const prepared = stageFourAttempt(extraFiles, tools);
+  changeRecords: (records: Record<string, Record<string, unknown>>, prepared: StageFourAttempt) => void = () => {},
+  project?: ReviewedProject): StageFourPublication {
+  const prepared = stageFourAttempt(extraFiles, tools, "profile", [], project);
   const review = join(prepared.root, "review");
   checked(inspectStageFour(prepared, ["collect"]), "Stage 4 collection");
   const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
   const baseline = proposedBaseline();
   change(baseline);
-  const records = packetRecords(baseline, graph, inventoryOf(extraFiles));
-  changeRecords(records as Record<string, Record<string, unknown>>);
+  const records = packetRecords(baseline, graph, inventoryOf(extraFiles), project);
+  changeRecords(records as Record<string, Record<string, unknown>>, prepared);
   writePacket(review, records);
   return { ...prepared, review };
 }

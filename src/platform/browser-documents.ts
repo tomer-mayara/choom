@@ -3,7 +3,7 @@ import type { ReadDocumentTextOutcome } from "./generated/contracts.ts";
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 // The action that selects each kind of file again.
 const openActions = {
-  baseline: "Open Baseline", "duplication report": "Open duplication report", "discovery result": "Open discovery result",
+  baseline: "Open Baseline", "earlier baseline": "Compare with earlier baseline", "duplication report": "Open duplication report", "discovery result": "Open discovery result",
 } as const;
 
 /** The browser owns this selection; no repository or native capability is used. */

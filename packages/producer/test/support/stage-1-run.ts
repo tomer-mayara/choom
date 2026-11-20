@@ -102,7 +102,9 @@ export function reviewPacket(excerpt: Excerpt): ReviewPacket {
     lines: excerpt.lines };
   return {
     review: { formatVersion: 1, snapshotRef: stageOneSnapshotRef, reviewedFiles: [source],
-      roles: [{ selector: "app.ts", roles: ["source"], basis: "observed", evidenceRefs: ["inventory-001"] }],
+      roles: [{ selector: "app.ts", roles: ["source"], basis: "observed", evidenceRefs: ["inventory-001"],
+        useReview: { unitScope: "unknown", basis: "partial-review", uses: [], evidenceRefs: ["inventory-001"],
+          limits: ["Only file purpose was inspected."] } }],
       workspaceDeclarations: [{ path: "package.json", patterns: ["packages/*"], membershipStatus: "unverified",
         evidenceRefs: [excerpt.id] }],
       questions: [{ id: "s1-question-001", subjectRefs: ["app.ts"], text: "Which command starts the application?",

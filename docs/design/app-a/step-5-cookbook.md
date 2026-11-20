@@ -37,7 +37,8 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 start
 
 The helper requires completed component recovery and its published working
 drafts. The baseline must still be proposed, before Stage 6 saves a fixed version.
-Versions 1 to 4 keep their own strict fields. Use version 3 for
+Use [version 6](record-format.md#version-6-boundary-review) in runs with a project key.
+Older runs use the following formats. Versions 1 to 4 keep their own strict fields. Use version 3 for
 [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when `systemEntryPoints`
 is present. Use version 5 when [symbol selectors](record-format.md#version-5-symbol-selectors)
@@ -188,8 +189,9 @@ resource observations. Keep observed access separate from inferred ownership.
 
 Start with files. Divide a file only when a boundary inside it needs
 examination: reviewed source shows that a top-level declaration of the file
-has another direct owner than the rest of the file. To divide it, use
-formatVersion: 5 and name the declaration in the membership of its owner as
+has another direct owner than the rest of the file. Use formatVersion: 6 for
+a project-keyed run. An older run can use formatVersion: 5 to divide a file.
+Name the declaration in the membership of its owner as
 symbols: [{path, symbol}]. The symbol is the name of the top-level
 declaration; default names an anonymous default export. A declaration with
 several names, such as const a = 1, b = 2, cannot be a symbol. In the code
@@ -216,7 +218,18 @@ unresolved candidates in the assessment limits or discovery gaps. Verify any
 interface link against the current baseline. Treat a graph root or publicAccess
 value as a lead for review.
 
-Use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
+For a project-keyed run, publish formatVersion: 6. Reconcile each boundary
+review unit and access with this attempt's exact final mapping. For a divided
+file, verify the selected top-level symbol or remainder on both ends. Inspect
+the written route, bound member, roles, rule and reviewed source ranges.
+Combine a source and emitted site only with an exact site-to-site link.
+Explain each complete, partial or unassessed caller search. A complete negative
+reachability check accounts for all starts and every reachable edge in the
+rule's scope. Record omitted roots, unresolved edges and unsupported kinds.
+Keep the production summary free of names, paths or prose about hidden targets.
+Give an evidenced production operation, a non-production use and a limit.
+
+Legacy packets use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
 file. Set its snapshotRef to this run's
 snapshot and mappingRef to the candidate discovery.codeMappingRef, including
 when carrying entries from Stage 4. With no entry assessment, use the version
@@ -354,7 +367,7 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 parts \
 ```
 
 The request divides the indexed file by the named symbols, as the symbol
-selectors of a version 5 baseline do, and saves a numbered `parts-NNN.json` and
+selectors of a version 5 or 6 baseline do, and saves a numbered `parts-NNN.json` and
 its receipt. The record lists each part with the ranges of its code unit and the
 dependencies that belong to it, and the dependencies that stay at file level,
 each with its reason: `shared`, `unreferenced` or `not-resolved`. The
