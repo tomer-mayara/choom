@@ -1,8 +1,35 @@
-// The review prompt that Stage 4 collect saves: the task and the evidence rules of
-// the LLM component recovery review, with the run, the snapshot and the folders of
-// the attempt.
-export interface PromptFacts { runRef: unknown; snapshotRef: unknown; entryAnalysisRef: unknown; attemptId: string; work: string;
-  attempt: string }
+// Counts from one completed graph context. Keep the root paths for comparing passes.
+export interface ReviewPass {
+  id: string; scanned: number; roots: readonly string[]; reached: number; stoppedEdges: number; edges: number; coverage: string;
+}
+export interface PromptFacts {
+  runRef: unknown; snapshotRef: unknown; entryAnalysisRef: unknown; attemptId: string; work: string; attempt: string;
+  graph: { ref: string; contexts: ReviewPass[] };
+}
+
+function graphEvidence({ ref, contexts }: PromptFacts['graph']): string {
+  const lines = ['| Context | Scanned files | Traversal roots | Reached files | Stopped edges | Retained edges | Coverage | Evidence |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |'];
+  const rootGroups = new Map<string, string[]>();
+  for (const [index, pass] of contexts.entries()) {
+    const name = '`' + pass.id + '`';
+    lines.push(`| ${name} | ${pass.scanned} | ${pass.roots.length} | ${pass.reached} | ${pass.stoppedEdges} | ${pass.edges} | ` +
+      `${pass.coverage} | \`${ref}#/contexts/${index}\` |`);
+    const key = JSON.stringify(pass.roots.toSorted());
+    const group = rootGroups.get(key) ?? [];
+    group.push(name);
+    rootGroups.set(key, group);
+  }
+  const shared = [...rootGroups.values()].filter(group => group.length > 1);
+  if (shared.length) lines.push('', 'Passes with identical traversal root paths', '', ...shared.map(group => '- ' + group.join(', ')));
+  return lines.join('\n') + '\n\n';
+}
+
+const graphLimits = `Count shared paths once when reporting distinct starts. A pass with zero roots has no starting files. ` +
+  `Read reached files, stopped edges and coverage limits in each cited context. Keep each graph context separate. ` +
+  `Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
+  `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
+  `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n`;
 
 // How the reviewer asks for more evidence: a numbered excerpt, or the references to a symbol.
 const evidenceRequests = `Request a snapshot-relative path and line range when more evidence is needed; do not ask the ` +
@@ -22,7 +49,15 @@ const resourceCandidates = `resource-access-candidates.json lists the calls that
   `found, with their operation, name and source context, and the resource call sites of source-sites.json that no rule ` +
   `found (confidence name-only). A candidate is a place to read, not proven access. Keep observed access separate from ` +
   `inferred ownership: a matching name does not prove the same resource, and a candidate names no owner. Name the file in ` +
-  `resource-access.json as resourceAccessCandidatesRef.\n\n`;
+  `resource-access.json as resourceAccessCandidatesRef. Record the mapped owner of the access site as the actor. ` +
+  `Compare the exact resource named in the ownership declaration with the accessed target. If a configuration selects ` +
+  `a target whose owner is unknown, keep the observed expression and set the modeled resource's owner.value to null. ` +
+  `Name \`<resource-id>.owner\` in a discovery question or gap. See [Resource observations](record-format.md#resource-observations).\n\n`;
+
+const exampleReview = `For a source-reviewed example, read its cited source range. Compare each displayed field, value and row ` +
+  `with the cited assertion, return value or contract for that input. Set result.scope to complete only when the evidence establishes the whole ` +
+  `result and the example shows it all. Use excerpt for a supported subset. Omit the result when only the call or input is supported. ` +
+  `See [Version 2 interface documentation](record-format.md#version-2-interface-documentation).\n\n`;
 
 // The limits of the viewer for each question and gap. Every stage checks them where a record enters the run.
 const questionAndGapLimits = `Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef; ` +
@@ -35,9 +70,11 @@ const boundaryReview = `When the run has a projectKey, write formatVersion: 6 wi
     `source ranges, direct caller and target owners, and the role at each end. Preserve an unresolved binding with its ` +
     `reason. Link an existing source use by interface and use ID. Report ordered edges within one resolution context ` +
     `for reachability. For a package bin or a Node test, use its registered name as the operation member. Cite the registration, ` +
-    `the handler and the reviewed behavior in its launch or test context. Record coverage and limits. Show one evidenced production operation and a non-production use.\n\n`;
+    `the handler and the reviewed behavior in its launch or test context. Record coverage and limits. Show one production ` +
+    `operation and one non-production use when the evidence supports them. If a role has no evidenced example, record the ` +
+    `scope checked and the gap.\n\n`;
 
-export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt }: PromptFacts): string {
+export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt, graph }: PromptFacts): string {
   return `# Stage 4 component recovery review\n\n` +
     `Run: ${runRef}\nSnapshot: ${snapshotRef}\nAttempt: ${attemptId}\n` +
     `Working folder: ${work}\nSaved attempt: ${attempt}\n\n` +
@@ -52,10 +89,7 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `Recover the apparent intended components. Use documents, callers, tests, and completed source paths as evidence. ` +
     `Existing folders, component.yaml declarations, graph clusters, and dependency edges are clues; they do not alone establish intent. ` +
     `Do not propose boundary improvements, smells, health scores, or deletions in this stage. Keep all inferred statements proposed.\n\n` +
-    `Keep each graph context separate. Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
-    `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
-    `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n` +
-    behaviorCandidates + resourceCandidates + boundaryReview +
+    graphEvidence(graph) + graphLimits + behaviorCandidates + resourceCandidates + exampleReview + boundaryReview +
     `Review saved launch settings and behavior entries for system entry points. Inspect each external operation's ` +
     `registration or host binding. Trace built files to source only with saved evidence. Use the candidate file mapping ` +
     `for direct start and handler owners. Preserve separate operations that share a handler. Keep unresolved candidates ` +

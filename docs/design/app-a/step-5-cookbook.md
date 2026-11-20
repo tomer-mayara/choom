@@ -98,7 +98,7 @@ tests, builds, Knip or dependency-cruiser.
 | `inspection-coverage.json` | All mapped files, their owners, exact current reviewed ranges and references to historical reviewed ranges. Uninspected files remain visible, including files with owners. |
 | `source-candidates.json` | Syntax candidates for module or class initialization, side-effect imports, and setup or registration calls. Includes the parser with the ts-morph and TypeScript versions, parser diagnostics, skipped files, bounded output and omissions. |
 | `source-excerpts.json` | Numbered initial excerpts, each with snapshot identity, file hash, exact lines and truncation state. Missing or skipped requests remain explicit. |
-| `review-prompt.md` | The LLM task and evidence rules for this attempt. |
+| `review-prompt.md` | The LLM task, evidence rules and incoming file counts by ownership and reviewed ranges from `inspection-coverage.json`. |
 | `artifact-map.json` | Proposed IDs and digests for the available attempt artifacts. It excludes itself, the command log, the final collection receipt and logs, and later files. Command receipts bind those outputs and later excerpts. |
 
 The collector does not infer owners from directory names or incoming imports.
@@ -172,11 +172,15 @@ the LLM inspected it. Do not modify saved inputs or the working drafts.
 Use remaining-units.json, inspection-coverage.json, source-candidates.json,
 the separate dependency contexts, and saved numbered source excerpts.
 
-Account for files without owners and inspect important unexplained areas,
-including initialization and setup candidates. Use source, callers, contracts,
-tests and saved ownership guidance. A reference or shared artifact alone does
-not establish an exclusive owner. Request precise additional source ranges
-when needed; do not ask the operator to classify files or write analysis.
+{{INSPECTION_SUMMARY}}
+
+Use these incoming file counts to choose a source range. Look for files
+without owners and for unread ranges that could change a claim, including in
+owned files. Inspect important unexplained areas such as initialization and
+setup candidates. Use source, callers, contracts, tests and saved ownership
+guidance. A reference or shared artifact alone does not establish an exclusive
+owner. Request the source ranges you need. The worker classifies the files
+and writes the analysis.
 
 Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
@@ -185,7 +189,10 @@ insufficient. Do not create a utilities group to eliminate unknowns.
 The entry-analysis update keeps behaviorEntryCandidatesRef of the selected
 entry analysis. Its candidates are places to read, not proven entries.
 The resource observations keep resourceAccessCandidatesRef of the selected
-resource observations. Keep observed access separate from inferred ownership.
+resource observations. Recheck the mapped actor, the argument or setting that
+selects its runtime target, and the evidence of ownership for that same target.
+If only the owner of a planned system is named, keep the modeled resource's
+owner.value null and name <resource-id>.owner in a discovery question or gap.
 
 Start with files. Divide a file only when a boundary inside it needs
 examination: reviewed source shows that a top-level declaration of the file
@@ -227,7 +234,11 @@ Explain each complete, partial or unassessed caller search. A complete negative
 reachability check accounts for all starts and every reachable edge in the
 rule's scope. Record omitted roots, unresolved edges and unsupported kinds.
 Keep the production summary free of names, paths or prose about hidden targets.
-Give an evidenced production operation, a non-production use and a limit.
+For a production operation and a non-production use, trace the callers the
+review found. Check each use role against its source and its direct owner
+against the final mapping. A test calling a production operation is a test
+use. For a category with no supported example or caller, give the searched
+scope and the limit.
 
 Legacy packets use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
 file. Set its snapshotRef to this run's
@@ -278,6 +289,11 @@ discovery subjects interface-id.sourceUsage.uses.use-id.consumerId or
 interface-id.sourceUsage.uses.use-id.context. Follow the separate source-use
 and reader limits in record-format.md. Preserve supported descriptions, examples,
 source notes, signatures, and explicit unknown facts.
+
+Before Stage 5 closes, compare each displayed example result with the cited
+assertion, returned value or contract for the same input. Check every field and row.
+Use scope: excerpt if only part of the output is shown or supported. Omit an
+unsupported result. Correct the external packet before finish.
 
 Preserve prior questions, gaps and evidence in this manual prototype. Append
 linked resolution notes when the new evidence answers part of an earlier

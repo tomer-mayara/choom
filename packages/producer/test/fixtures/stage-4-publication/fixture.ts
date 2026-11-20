@@ -40,6 +40,7 @@ export interface ReviewedProject {
   key: string;
   reference?: string;
   fileEntries?: typeof candidates;
+  entryPatterns?: string[];
   reviewPaths: string[];
   edges: { from: string; to: string | null; specifier: string; type?: boolean }[];
 }
@@ -155,10 +156,11 @@ function writeStageThreeRun(work: string, extraFiles: readonly ExtraFile[], sett
     workspaceDeclarations: [], questions: [], gaps: [], llmReview: "recorded" }));
   register("launch-settings", "evidence/launch-settings.json",
     jsonText({ cli: "choom serve", http: ["GET /orders"], unresolved: "plugin command" }));
+  const entry = project?.entryPatterns ?? ["cli.ts"];
   const planSha256 = register(planRef, "evidence/s2-check/entry-plan.json",
-    jsonText({ formatVersion: 1, snapshotRef, workspaces: [{ dir: ".", entry: ["cli.ts"] }] }));
+    jsonText({ formatVersion: 1, snapshotRef, workspaces: [{ dir: ".", entry }] }));
   const profileSha256 = register("s2-check-knip-profile", "evidence/s2-check/knip-profile.json", jsonText({ formatVersion: 1,
-    snapshotRef, workspaces: { ".": { entry: ["cli.ts"], project: ["**/*.ts"] } } }));
+    snapshotRef, workspaces: { ".": { entry, project: ["**/*.ts"] } } }));
   const preflightSha256 = register("s2-check-knip-preflight", "evidence/s2-check/knip-preflight.json",
     jsonText({ formatVersion: 1, snapshotRef, pluginEntryPatterns, pluginPatternsNotCopied: [], pluginsNotCopied: [] }));
   register(knipRunsRef, "evidence/s2-check/knip-runs.json", jsonText({ formatVersion: 1, snapshotRef,

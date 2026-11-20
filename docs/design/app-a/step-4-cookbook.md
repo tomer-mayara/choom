@@ -62,9 +62,10 @@ and signatures. Stage 4 maps whole files and does not write version 5: the
 publisher refuses it. Stage 5 can divide a file by
 [symbol selectors](record-format.md#version-5-symbol-selectors). When both
 assessments are present, they must name the same snapshot and candidate mapping.
-Keep unknown facts explicit. Review a source range before claiming that it
-supports an example; a collected excerpt alone is insufficient. Check the full
-baseline against the reader limits before publication.
+Keep unknown facts explicit. For an example result, read its cited assertion,
+returned value or contract and compare the displayed fields and rows. Mark a
+supported portion as `scope: excerpt`. Omit an unsupported result. Check the full baseline
+against the reader limits before publication.
 
 Before creating the attempt, it also checks every indexed snapshot path, file
 type, and byte count. This catches missing or truncated input before the toolchain
@@ -235,13 +236,21 @@ A completed `require` context can contain no dependency edges; an empty edge
 list does not by itself mean the tool failed to execute. The same applies to an
 import pass whose files all compile to CommonJS.
 
-Choom traverses retained internal source edges from the recorded roots. This
-includes type-only, re-export, and literal dynamic dependencies. It saves reached
-files, files not reached in that graph, and edges where traversal stopped.
+The saved review prompt summarizes each completed context and cites it in
+`graph-results.json`. Use the cited context to check each count.
 
-These results are source relationships. They do not prove runtime execution or
-unused code. A target outside the current context is a traversal boundary. Do
-not merge incompatible context results or treat missing edges as absence.
+- `scanFiles` lists the files supplied to the analyzer in this pass.
+- `reachability.roots` lists the paths from which traversal started.
+- `reachability.reached` includes those roots and files reached through
+  retained internal edges, including type-only, re-export and literal dynamic dependencies.
+- `reachability.stoppedEdges` lists edges from reached files that traversal
+  could not follow, such as edges to unresolved targets.
+
+Compare the actual root paths across contexts. Equal counts can cover different
+paths. Identify passes with identical root sets and count each path once when
+reporting distinct starting files. Keep edge policies, results and limits per
+pass. A reached file need not execute, and a file outside the reached set can
+still be used.
 
 The pinned analyzer can lose type-only labels on unresolved imports and combine
 static and dynamic imports of the same specifier. The next source query retains
@@ -318,7 +327,7 @@ level. It saves:
 | `behavior-entry-candidates.json` | The candidates of the pinned behavior entry rules in the source files of the graph scope and in the `package.json` files of the snapshot: their rule, site, name, handler and role, the gaps, the scope and the limits. See [Find the behavior entry candidates](#find-the-behavior-entry-candidates). |
 | `resource-access-candidates.json` | The candidates of the pinned resource access rules in the source files of the graph scope, and the resource call sites of `source-sites.json` that no rule found: their operation, name, confidence and source context, the scope and the limits. See [Find the resource access candidates](#find-the-resource-access-candidates). |
 | `source-excerpts.json` | A bounded initial selection from priority files, entry candidates and component declarations, with file hashes, truncation and skipped paths. |
-| `review-prompt.md` | The LLM review instructions with the current paths and evidence references. |
+| `review-prompt.md` | The LLM review instructions with the current paths, evidence references and [counts for each graph context](#3-collect-dependency-evidence). |
 | `artifact-map.json` | Proposed artifact IDs and digests available at collection time. It omits itself, the mutable command log, and later files. |
 
 Site lines count CRLF, CR and LF in the text that the parser read. A byte order
@@ -1306,7 +1315,8 @@ Give the LLM the saved `review-prompt.md`. In an interactive session, use:
 Review Choom Appendix A stage 4 for the prepared attempt.
 Read its saved review-prompt.md and follow its evidence rules.
 Verify the registered inputs and proposed artifact digests before analysis.
-Use the stage 3 inspection priorities and the separate graph contexts.
+Follow the stage 3 inspection priorities and the prompt's references to each
+graph context. Compare the traversal root paths before describing shared roots.
 Request additional numbered source excerpts when needed.
 Request the references to a top-level symbol (a path and a symbol name) when
 you need to know where it is used; then read the reference ranges.
@@ -1320,8 +1330,9 @@ who reached which member, through which written path, under which effective rule
 Inspect outside uses of private or unlisted members as well as public entries.
 Cite the caller and binding ranges and each direct file owner. Link an existing
 source use by interface ID and use ID. Keep unresolved bindings and limits.
-Review an evidenced production operation and a non-production use. For each
-reachable target, give ordered edges in a single saved resolution context.
+Review a production operation and a non-production use where the evidence
+supports them. For a missing example, describe the searched scope and limit.
+For each reachable target, give ordered edges in a single saved resolution context.
 Keep source-use assessments separate from allowedConsumers.
 Use the registered package-bin name or literal Node test name for an operation
 whose handler has no JavaScript declaration of that name. Cite the registration
@@ -1371,10 +1382,11 @@ The following table explains their purpose:
 | Discovery update | Overview, completed inspected paths, proposed fact references, questions, and gaps. `baselineRef` stays unset until the fixed baseline is saved in stage 6. |
 | Review record | The prompt, the complete visible response, supplied evidence, exposed model metadata with `hiddenReasoning: not-saved`, and exact source ranges actually inspected. Do not save hidden reasoning. Do not invent unavailable API metadata. |
 
-Keep the dependency facts from the graph separate from the proposed model.
-Do not turn every observed import into an allowed-access rule. Keep intended
-resource ownership separate from observed reads and writes. Do not invent
-interface promises from names or type signatures alone.
+For each resource access, trace the mapped actor's call to the expression or
+setting that selects its target. Check that any proposed owner has evidence for
+that same resource. Keep unknown owners and their exact discovery subjects as
+described in [Resource observations](record-format.md#resource-observations).
+Observed imports and signatures alone cannot establish access rules or promises.
 
 Preserve the prior questions and gaps unchanged in this prototype. Append notes
 that cite the earlier IDs when evidence resolves part of a gap. Keep conflicting
@@ -1408,8 +1420,8 @@ guidance before `finish`. Check the complete model and fact records:
 - A behavior entry rests on reviewed source ranges. A behavior entry candidate is a
   place to read; it does not make a behavior entry, and a missing candidate does
   not show that there is no entry.
-- Reachability retains its context, roots, edge policy, stopped edges, and limits.
-  No report difference or unreachable file is treated as proof of unused code.
+- Each reachability claim cites its [graph context](#3-collect-dependency-evidence),
+  including its actual roots, edge policy, stopped edges and limits.
 - Resource observations and intended ownership remain separate. Unknown targets,
   missing dependencies, native-code coverage, and uninspected code remain visible.
   A resource access candidate is a site to read; a matching name does not show that

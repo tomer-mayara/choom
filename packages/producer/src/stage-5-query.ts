@@ -181,7 +181,7 @@ function reviewedRanges(state: QueryState): { current: Map<string, Fields[]>; hi
   return { current, history, sourceCounts };
 }
 
-function inspectionCoverage(state: QueryState): Fields {
+function inspectionCoverage(state: QueryState) {
   const { current, history, sourceCounts } = reviewedRanges(state);
   return {
     ...state.header,
@@ -207,6 +207,28 @@ function inspectionCoverage(state: QueryState): Fields {
       'File hashing and graph or syntax parsing are tool reads. They do not count as saved LLM source inspection.',
     ],
   };
+}
+
+interface InspectionUnit { owner: unknown; current: { ranges: unknown[] }; historicalRanges: unknown[] }
+
+export function inspectionSummary(units: InspectionUnit[], coverageRef: string, remainingRef: string): string {
+  const proposed = { selected: 0, historical: 0, unreviewed: 0 };
+  const unknown = { selected: 0, historical: 0, unreviewed: 0 };
+  for (const unit of units) {
+    const group = unit.owner === null ? unknown : proposed;
+    if (unit.current.ranges.length) group.selected++;
+    else if (unit.historicalRanges.length) group.historical++;
+    else group.unreviewed++;
+  }
+  return [
+    '| Ownership | Selected Stage 4 range | Historical ranges only | No recorded range |',
+    '| --- | ---: | ---: | ---: |',
+    `| Proposed owner | ${proposed.selected} | ${proposed.historical} | ${proposed.unreviewed} |`,
+    `| Unknown owner | ${unknown.selected} | ${unknown.historical} | ${unknown.unreviewed} |`,
+    '',
+    'File paths and recorded ranges: `' + coverageRef + '#/units`.',
+    'Files with unknown owners: `' + remainingRef + '#/units`.',
+  ].join('\n');
 }
 
 export function excerpt(state: QueryState, path: string, first: number, last: number, { focusRange = false } = {}): Fields {
@@ -260,7 +282,7 @@ function initialExcerpts(state: QueryState, scope: SavedScope): Fields {
   return { ...state.header, excerpts, skipped, limits: excerptLimits };
 }
 
-export function collectEvidence(state: QueryState, savedScope: SavedScope, tools: SyntaxTools): Record<string, Fields> {
+export function collectEvidence(state: QueryState, savedScope: SavedScope, tools: SyntaxTools) {
   assert(isDeepStrictEqual(scopeFor(state), savedScope), 'Stage 5 scope changed after start.');
   return {
     'remaining-units.json': remainingUnits(state),

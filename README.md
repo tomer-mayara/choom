@@ -62,7 +62,9 @@ search shows **Caller coverage incomplete**.
 
 Turn on **Show non-production** to include test components, developer tools,
 examples and records whose scope is unknown. The switch also reveals original
-evidence. For an older nonempty inventory, **Production scope unavailable**
+evidence. To read a published run’s questions and gaps, choose **Discovery**,
+then **Open discovery result**, and select `runs/<run-id>/discovery.yaml` from
+the same run. For an older nonempty inventory, **Production scope unavailable**
 means the file predates role classification. Turn on the switch to inspect
 the saved inventory and its known test uses.
 
@@ -547,8 +549,9 @@ working discovery, `baselineRef`, and `baselineDigest`, the SHA-256 of the bytes
 of the fixed baseline file that it saves. `fixedDiscovery` in `stage-6-records.ts`
 makes the record. Stage 6 `verify` runs the shared record checks on the saved
 fixed records with the bytes of the saved baseline file, and refuses a discovery
-result whose baseline ID or digest does not match. The working discovery stays
-version 1. The [record format](docs/design/app-a/record-format.md#fixed-discovery-result)
+result whose baseline ID or digest does not match. The reviewed Stage 5 proposal
+uses version 1. Stage 6 `finish` writes the same version 2 bytes to the run-root
+and fixed discovery files. The [record format](docs/design/app-a/record-format.md#fixed-discovery-result)
 gives the fields. The `@producer` scenarios save a Stage 6 result through the
 command line and check its digest, and refuse a run whose discovery result names
 another digest or whose saved baseline file changed. Run the focused checks of

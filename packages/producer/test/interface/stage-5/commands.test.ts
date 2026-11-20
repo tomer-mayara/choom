@@ -322,7 +322,11 @@ describe("Stage 5 collect", () => {
     const cookbook = readFileSync(join(attempt, "step-5-cookbook.md"), "utf8");
     const block = /<!-- stage5-review-prompt:start -->\n```text\n([\s\S]*?)^```\n<!-- stage5-review-prompt:end -->/m.exec(cookbook);
     const tokens: Record<string, string> = { WORK: fixture.work, ATTEMPT: attempt, ID: id, ENTRY_ANALYSIS_REF: "s4-check-entry-analysis",
-      MAPPING_REF: mappingRef, DEPENDENCIES_REF: graphRef, RESOURCE_ACCESS_REF: "s4-check-file@resource-access.json" };
+      MAPPING_REF: mappingRef, DEPENDENCIES_REF: graphRef, RESOURCE_ACCESS_REF: "s4-check-file@resource-access.json",
+      INSPECTION_SUMMARY: ["| Ownership | Selected Stage 4 range | Historical ranges only | No recorded range |",
+        "| --- | ---: | ---: | ---: |", "| Proposed owner | 1 | 0 | 1 |", "| Unknown owner | 0 | 0 | 35 |", "",
+        "File paths and recorded ranges: `s5-check-file@inspection-coverage.json#/units`.",
+        "Files with unknown owners: `s5-check-file@remaining-units.json#/units`."].join("\n") };
     expect(readFileSync(join(attempt, "review-prompt.md"), "utf8"))
       .toBe((block?.[1] ?? "").replace(/\{\{([^{}\n]+)\}\}/g, (_, token: string) => tokens[token] ?? ""));
   });

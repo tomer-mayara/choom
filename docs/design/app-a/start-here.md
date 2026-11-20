@@ -303,11 +303,19 @@ these drafts outside the run. This can catch factual errors before the worker
 assembles the complete visible response, but the complete final packet still
 needs review.
 
-- Check representative source claims, exact saved ranges and omitted evidence.
-  Inventory, syntax queries and available excerpts do not establish LLM review.
-- Compare memberships, exact owners, paths, resource actors and interface
-  promises. Keep file ownership, runtime resource ownership, inspection and
-  behavior verification separate.
+- Compare representative claims with the exact ranges read. Check the mapping
+  against the inventory. In Stage 5, verify the [incoming file counts](step-5-cookbook.md#2-collect-the-remaining-code-evidence)
+  against the selected Stage 4 mapping and its entry-analysis review history.
+  Report unknown ownership separately from unread source, including owned files.
+  Name the omitted ranges or areas that limit a conclusion.
+- Open each [Stage 4 graph context](step-4-cookbook.md#3-collect-dependency-evidence)
+  cited in the saved prompt. Recount scanned files, traversal roots, reached
+  files and stopped edges. Compare the root paths before describing two passes
+  as covering the same starts.
+- When an observed access is linked to a proposed [resource owner](record-format.md#resource-observations),
+  trace the actor and target expression at the cited call. Check that the
+  ownership evidence applies to that target. A declaration can also describe
+  a planned resource whose access has yet to be observed.
 - Check source use independently from permission. Resolve calls, callbacks,
   JSX, and IPC bindings against saved caller and declaration/configuration
   ranges. Every use evidence reference needs reviewed source and a matching
@@ -317,6 +325,10 @@ needs review.
   In Stage 5, update the one mapping reference and recheck carried assignments
   and entry bindings. Preserve known uses under partial coverage. Explain null
   consumers and unknown contexts with their exact discovery subjects.
+- Before Stage 5 closes, compare each displayed example with its cited assertion,
+  returned value or contract, including fields and rows. Have the worker correct
+  the [result scope](record-format.md#version-2-interface-documentation) or
+  omit an unsupported result before `finish 5`.
 - Recalculate current counts from the records. Refresh the overview, mapping
   limits and other current explanations. Preserve earlier questions and gaps
   unchanged, with linked resolution notes; do not preserve obsolete current
@@ -510,9 +522,10 @@ the run and start a new one. Carry original exclusions and capture limits forwar
 if the new capture uses the earlier snapshot. Do not roll back completed progress,
 rewrite historical questions, or change old digests to force a retry.
 
-If Stage 6 discovers a minor prose error, record the exact defect and the correct
-supporting facts in its readiness review before saving. Do not describe the whole
-packet as consistent. A material model or entry error stops final publication.
+If Stage 6 discovers a minor prose error, identify the exact artifact and field,
+original wording, correction, evidence and effect in readiness before `start`.
+Carry the correction into the handoff. A material model or entry error stops
+final publication.
 
 ## Check completion and hand off
 
@@ -528,13 +541,13 @@ The final Stage 6 verification must succeed. Confirm that:
    retained explanatory defect is identified precisely in readiness or run notes.
 7. The fixed discovery result has `formatVersion: 2` and names the fixed baseline
    by its ID and the SHA-256 of its file (`baselineDigest`).
-   Stage 6 also checks that the viewer can open it: the result and the exact
-   bytes of its file.
+   Stage 6 verifies the saved bytes using the viewer's reader.
 
-Lead the handoff with the captured source identity, the component, one operation
-and its observed caller. Name the use role and caller coverage. Include a
-non-production example when available, followed by the audit evidence, selected
-map and limitations.
+Lead the handoff with the captured source identity, the component and a
+production operation where supported. For an observed caller, check the binding,
+the use role and the direct owner in the selected map. Include an available test
+or tooling use with its own evidence. If a category has no supported example
+or caller, give the searched scope and the limit.
 
 Set the final `progress.md` status after verification. Link the fixed baseline
 and discovery, summarize the checks and remaining limits, and share the report
@@ -542,11 +555,10 @@ with the user. Give the next team the complete working folder and the fixed
 discovery path.
 The discovery record is the entry point into the result. A diagram or prose
 summary is a view of those records, not a substitute for them.
-A reader can attach the fixed discovery result to its baseline in the viewer
-(**Discovery**, then **Open discovery result**) to read its questions and gaps
-beside the items that they name, and copy a decision-file entry for a statement.
-The viewer needs discovery `formatVersion: 2`; see
-[CR-004](../../change-requests/CR-004-discovery-in-viewer.md).
+Include the [Stage 6 viewer steps](step-6-cookbook.md#4-verify-the-completed-result)
+with both fixed paths. A version 6 baseline opens in Production. The reader
+turns on **Show non-production** to attach the discovery result and read its
+questions and gaps. Report an actual viewer load only if it was performed.
 Include any `run-notes.md` corrections and the tool revision used for the run.
 State that duplicated interfaces are **not checked**, with the reason, unless a
 separate assessment already exists. Hand off the fixed baseline, snapshot and

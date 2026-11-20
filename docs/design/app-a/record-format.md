@@ -256,9 +256,13 @@ its sources need not be the same as the description's sources.
 Each example has exactly `id`, `name`, `basis`, and `content`. Its ID is unique
 within its entry. `basis` is `illustrative` or `source-reviewed`. `content` is
 one non-null statement. Its value has required nonempty `text`, optional nonempty
-`input` text, and an optional `result` object. A result has exactly nonempty `text`, nonempty
-`summary`, and `scope: complete` or `scope: excerpt`. Use `excerpt` for shortened
-output. Do not invent absent sample output or describe a source review as a run.
+`input` text, and an optional `result` object. A result has exactly nonempty `text`,
+nonempty `summary`, and `scope: complete` or `scope: excerpt`. Compare the displayed
+result with the cited assertion, returned value or contract for that input.
+Use `complete` only when the evidence establishes the whole output and the display includes
+every field and row. Use `excerpt` for a supported portion. Omit `result` if
+the evidence supports only the call or input. Source review describes what
+the saved lines show and makes no claim that the example ran.
 
 A source note has `evidenceRef` and a nonempty `description`. It can also have
 `location`. Each note must name a reference cited by a statement in the same
@@ -996,9 +1000,14 @@ The record keeps observed access separate from inferred identity and ownership:
   target keeps its observed `expression` apart from its inferred identity:
   `identity` (`symbolic` or `unknown`) and `resourceRef`, a modeled resource or
   `null`.
-- The owner of a resource is intent. It belongs to the `owner` statement of the
-  resource in the proposed baseline, with its own status and evidence, not to an
-  observation or a candidate.
+- Resource ownership is an intent statement (`owner`) in the proposed baseline,
+  with its own status and evidence. When a site accesses the resource, follow
+  its expression through any arguments or settings that select the target.
+  Compare that target with the resource named by the ownership evidence. A plan
+  naming the owner of a future store supports only that plan. Retain the expression when
+  it identifies the target only symbolically. If the modeled resource's owner
+  is unknown, keep `owner.value: null` and name `<resource-id>.owner` in a
+  discovery question or gap.
 
 ## Resource access candidates
 
@@ -1083,9 +1092,9 @@ changes must be reflected in paths, behavior entries and resource actors.
 
 ### Fixed discovery result
 
-Stage 6 saves the fixed discovery result as `runs/<run-id>/discovery.yaml`, with
-`formatVersion: 2`. It has every field of the reviewed working discovery, with
-the same values and in the same order, and two more fields at the end:
+Stage 6 saves the fixed discovery result as `runs/<run-id>/discovery.yaml`.
+It changes `formatVersion` from 1 to 2, keeps the other reviewed fields in
+order with their values, and adds two fields at the end.
 
 | Field | Meaning |
 | --- | --- |
@@ -1094,9 +1103,9 @@ the same values and in the same order, and two more fields at the end:
 
 IDs such as `baseline-001` repeat across runs, so an ID alone can name the wrong
 file. The digest binds the discovery result to the exact baseline file. The
-working discovery stays at `formatVersion: 1` without these two fields: only
-Stage 6 knows the bytes of the fixed baseline, and the shared record checks
-refuse a working discovery with `baselineRef` or `baselineDigest`.
+Stage 5 discovery proposal has `formatVersion: 1` and omits both fields. At
+publication, Stage 6 replaces the run-root `discovery.yaml` with the exact
+bytes of the fixed version 2 result.
 
 Stage 6 `verify` runs the shared record checks on the saved fixed baseline and
 discovery result, with the bytes of the saved baseline file. It refuses a fixed

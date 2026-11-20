@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as tsMorph from "ts-morph";
-import { collectEvidence, type IndexedFile, type QueryState, scopeFor } from "../../src/stage-5-query.ts";
+import { collectEvidence, inspectionSummary, type IndexedFile, type QueryState, scopeFor } from "../../src/stage-5-query.ts";
 import { makeScratch, removeScratch } from "../support/commands.ts";
 
 // The Stage 5 syntax query on a checked run state. A published Stage 4 run has only
@@ -59,5 +59,23 @@ describe("the Stage 5 syntax query", () => {
       candidates: ["module-expression", "setup-or-registration-call"].map((kind) => expect.objectContaining({ path: "app.ts", kind })),
       diagnostics: [], omissions: [],
     });
+  });
+});
+
+describe("the Stage 5 inspection summary", () => {
+  test("counts each file once, using the selected range before historical ranges", () => {
+    const ranges = [{ lines: [1, 2] }, { lines: [4, 5] }];
+    const summary = inspectionSummary([
+      { owner: "cli", current: { ranges }, historicalRanges: ranges },
+      { owner: null, current: { ranges: [] }, historicalRanges: ranges },
+    ], "coverage", "remaining");
+    expect(summary).toContain("| Proposed owner | 1 | 0 | 0 |");
+    expect(summary).toContain("| Unknown owner | 0 | 1 | 0 |");
+  });
+
+  test("includes both ownership groups for an empty mapping", () => {
+    const summary = inspectionSummary([], "coverage", "remaining");
+    expect(summary).toContain("| Proposed owner | 0 | 0 | 0 |");
+    expect(summary).toContain("| Unknown owner | 0 | 0 | 0 |");
   });
 });
