@@ -261,8 +261,10 @@ declaration or search. Record generated origin as a file-purpose role. Use
 basis declaration, complete-review or partial-review. List the limits of a partial
 review. Keep observed facts separate from inferred name-based interpretations. Compiler
 inclusion does not prove production use or an entry point. Record excluded inputs,
-unknown roles and deferred inspection. Tool contentReads do not count as source
-excerpts you inspected. Do not create components, owners, interfaces, rules,
+unknown roles and deferred inspection. Identify captured languages outside the
+JS/TS graph profile. If the inventory has no eligible JS/TS source, record the
+graph limit. Tool contentReads do not count as source excerpts you inspected.
+Do not create components, owners, interfaces, rules,
 smells, an overview, or used/dead-code claims.
 
 When ready, return only complete YAML with exactly these top-level fields:

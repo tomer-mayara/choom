@@ -225,6 +225,10 @@ fields are required when documentation is present. Missing documentation means
 that no structured documentation was supplied. Empty `entries` and `examples`
 arrays are valid; do not add placeholder entries or examples.
 
+Compare the proposed entries with the package or module's reviewed public
+declarations. Follow re-exports to the definitions. Include supported members
+and exposed error, input or result types, or explain limits on that scope.
+
 `summary` is an intent statement whose value is nonempty text or null. Each
 entry has these fields:
 
@@ -256,9 +260,13 @@ its sources need not be the same as the description's sources.
 Each example has exactly `id`, `name`, `basis`, and `content`. Its ID is unique
 within its entry. `basis` is `illustrative` or `source-reviewed`. `content` is
 one non-null statement. Its value has required nonempty `text`, optional nonempty
-`input` text, and an optional `result` object. A result has exactly nonempty `text`, nonempty
-`summary`, and `scope: complete` or `scope: excerpt`. Use `excerpt` for shortened
-output. Do not invent absent sample output or describe a source review as a run.
+`input` text, and an optional `result` object. A result has exactly nonempty `text`,
+nonempty `summary`, and `scope: complete` or `scope: excerpt`. Compare the displayed
+result with the cited assertion, returned value or contract for that input.
+Use `complete` only when the evidence establishes the whole output and the display includes
+every field and row. Use `excerpt` for a supported portion. Omit `result` if
+the evidence supports only the call or input. Source review describes what
+the saved lines show and makes no claim that the example ran.
 
 A source note has `evidenceRef` and a nonempty `description`. It can also have
 `location`. Each note must name a reference cited by a statement in the same
@@ -404,6 +412,11 @@ which interface is used. Keep an unresolved interface finding in discovery
 instead of attaching it to a guessed interface. Entry binding is optional when
 the interface is supported but a precise entry is not; absence does not mean
 that every method is used. Preserve repeated caller sites and self-use.
+Check the inspected caller ranges against the assessment for omitted calls,
+other value references and type uses. In executable TypeScript,
+`level === Level.Debug` and `class FileSink extends Sink {}` use values.
+An annotation that names an exported type is a type use. Check for these
+sites in the provider's own source as well as other components.
 
 If the caller's owner or context is unresolved, explain it in `description` and
 add a discovery question or gap with the exact corresponding subject:
@@ -635,10 +648,15 @@ digest. Keep an inferred restriction proposed.
 
 Stage 6 requires a readiness check whose ID is `boundary-review`. Cite the selected Stage 5
 proposal's `#/boundaryReview`, the selected code mapping, and the proposal's
-`#/boundaryReview/limitations` when it records limits. Describe the production operation and
-caller, and a test, tooling or unknown observation when one is present. An incorrect
-citation can be corrected in the external readiness packet. A change to an observation or
-owner requires a new proposal. The fixed baseline contains the exact selected proposal bytes.
+`#/boundaryReview/limitations` when it records limits. When an operation is
+supported, describe it. For an observed caller, cite the binding to that
+operation, access kind, direct owner and use role. A declared port may have no
+observed production caller. Give the status and scope of its caller search.
+A complete search can support zero outside callers in that role and scope.
+Include a test or tooling use when available. Preserve an unknown role with
+its reason. Correct an incorrect citation in the external readiness packet.
+A change to an observation or owner requires a new proposal. The fixed
+baseline contains the exact selected proposal bytes.
 
 ## Entry analysis
 
@@ -996,9 +1014,15 @@ The record keeps observed access separate from inferred identity and ownership:
   target keeps its observed `expression` apart from its inferred identity:
   `identity` (`symbolic` or `unknown`) and `resourceRef`, a modeled resource or
   `null`.
-- The owner of a resource is intent. It belongs to the `owner` statement of the
-  resource in the proposed baseline, with its own status and evidence, not to an
-  observation or a candidate.
+- Resource ownership is an intent statement (`owner`) in the proposed baseline,
+  with its own status and evidence. When a site accesses the resource, follow
+  its expression through any arguments or settings that select the target.
+  Compare that target with the resource named by the ownership evidence. A plan
+  naming the owner of a future store supports only that plan. For a caller-selected
+  path with no established link to a modeled resource, retain the expression and
+  set `target.resourceRef` to null. If the modeled resource's owner
+  is unknown, keep `owner.value: null` and name `<resource-id>.owner` in a
+  discovery question or gap.
 
 ## Resource access candidates
 
@@ -1083,9 +1107,9 @@ changes must be reflected in paths, behavior entries and resource actors.
 
 ### Fixed discovery result
 
-Stage 6 saves the fixed discovery result as `runs/<run-id>/discovery.yaml`, with
-`formatVersion: 2`. It has every field of the reviewed working discovery, with
-the same values and in the same order, and two more fields at the end:
+Stage 6 saves the fixed discovery result as `runs/<run-id>/discovery.yaml`.
+It changes `formatVersion` from 1 to 2, keeps the other reviewed fields in
+order with their values, and adds two fields at the end.
 
 | Field | Meaning |
 | --- | --- |
@@ -1094,9 +1118,9 @@ the same values and in the same order, and two more fields at the end:
 
 IDs such as `baseline-001` repeat across runs, so an ID alone can name the wrong
 file. The digest binds the discovery result to the exact baseline file. The
-working discovery stays at `formatVersion: 1` without these two fields: only
-Stage 6 knows the bytes of the fixed baseline, and the shared record checks
-refuse a working discovery with `baselineRef` or `baselineDigest`.
+Stage 5 discovery proposal has `formatVersion: 1` and omits both fields. At
+publication, Stage 6 replaces the run-root `discovery.yaml` with the exact
+bytes of the fixed version 2 result.
 
 Stage 6 `verify` runs the shared record checks on the saved fixed baseline and
 discovery result, with the bytes of the saved baseline file. It refuses a fixed

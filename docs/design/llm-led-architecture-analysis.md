@@ -559,6 +559,9 @@ workflow or general execution sandbox is assumed to exist.
 
 ## Evaluation
 
+The [Appendix A quality plan](app-a/analysis-quality-plan.md) records the
+findings from a completed run and the checks for the next independent review.
+
 Check data validity separately from analysis quality. Data checks cover source
 links, ownership, graph paths, rule inputs, and model comparisons. Review analysis
 quality on repositories kept separate from prompt development. Include:

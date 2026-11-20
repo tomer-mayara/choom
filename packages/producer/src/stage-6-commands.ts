@@ -195,16 +195,16 @@ function boundarySummary(review: BaselineBoundaryReview): Fields {
     const scope = owner ? components.get(owner) : undefined;
     return scope?.roles.includes('production') ? scope.name : null;
   };
-  const uses = review.accesses.filter((site) => site.callerRole === 'production' && site.targetRole === 'production' &&
-    site.operationId && site.targetUnitId && name(site.callerUnitId) && name(site.targetUnitId) &&
-    units.get(site.callerUnitId)?.ownerId !== units.get(site.targetUnitId)?.ownerId);
-  const use = uses.find((site) => site.kind === 'call') ?? uses[0];
-  const op = review.operations.find((op) => op.id === use?.operationId && op.roles.includes('production')) ??
-    review.operations.find((op) => op.roles.includes('production') && name(op.unitId));
+  const operations = review.operations.filter((op) => op.roles.includes('production') && name(op.unitId));
+  const byId = new Map(operations.map((op) => [op.id, op]));
+  const call = review.accesses.find((site) => site.kind === 'call' && site.callerRole === 'production' &&
+    site.targetRole === 'production' && site.operationId && byId.has(site.operationId) && site.targetUnitId &&
+    name(site.callerUnitId) && units.get(site.callerUnitId)?.ownerId !== units.get(site.targetUnitId)?.ownerId);
+  const op = call?.operationId ? byId.get(call.operationId) : operations[0];
   const { projectKey, sourceKind, snapshotRef, baseCommit } = review.identity;
   return { source: { projectKey, sourceKind, snapshotRef, baseCommit }, component: op ? name(op.unitId) : null,
-    operation: op?.name ?? null, caller: use ? name(use.callerUnitId) : null,
-    evidenceRefs: use?.evidenceRefs ?? op?.evidenceRefs ?? [], reviewRef: review.identity.mappingRef.replace(/code-mapping\.json$/, 'baseline.proposed.yaml#/boundaryReview') };
+    operation: op?.name ?? null, caller: call ? name(call.callerUnitId) : null,
+    evidenceRefs: call?.evidenceRefs ?? op?.evidenceRefs ?? [], reviewRef: review.identity.mappingRef.replace(/code-mapping\.json$/, 'baseline.proposed.yaml#/boundaryReview') };
 }
 
 function handoffRecord(state: State, frozenTools: Files, packet: Files, yaml: TrustedParsers): Fields {

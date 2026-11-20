@@ -1,7 +1,7 @@
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { createHash } from "node:crypto";
-import { constants, createReadStream } from "node:fs";
-import { access, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { constants, createReadStream, existsSync } from "node:fs";
+import { access, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { arch, platform, release, tmpdir } from "node:os";
 import { delimiter, isAbsolute, join, relative, sep } from "node:path";
@@ -229,6 +229,11 @@ try {
     const [driverPort, nativePort] = await ports();
     const runtimePath = join(workDirectory, "no-analyzer-runtime");
     await mkdir(runtimePath, { mode: 0o700 });
+    const sandboxHelper = "/usr/bin/bwrap";
+    if (existsSync(sandboxHelper)) {
+      await access(sandboxHelper, constants.X_OK);
+      await symlink(sandboxHelper, join(runtimePath, "bwrap"));
+    }
     metadata.productEnvironment = {
       path: runtimePath, display: process.env.DISPLAY, workingDirectory: workDirectory, gtkUsePortal: "0",
     };

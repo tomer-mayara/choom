@@ -43,7 +43,7 @@ export function WorkspaceControls({ workspace, snapshot, desktop, children, scop
         <span className="font-semibold tracking-tight">Choom</span>
         <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">{desktop ? "Desktop" : "Browser"}</span>
       </div>
-      <nav aria-label="Workspace actions" className="flex min-w-0 flex-wrap items-center gap-1.5 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:px-2.5 [&>button]:py-0 [&>button]:text-xs [&>button]:whitespace-nowrap">
+      <nav aria-label="Workspace actions" className="flex min-w-0 flex-wrap items-center gap-1.5 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:px-2 sm:[&>button]:px-2.5 [&>button]:py-0 [&>button]:text-xs [&>button]:whitespace-nowrap">
         <Button disabled={loading} onClick={() => { void workspace.workflow.openBaseline(); }}>
           <FileUp aria-hidden="true" className="size-4" />Open Baseline
         </Button>

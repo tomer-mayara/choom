@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { publishStageFive, type StageFivePublication } from "../../packages/producer/test/fixtures/stage-5-publication/fixture.ts";
-import { fixtureValue, readProposal, stageFourBoundary, success, limit, proposalPath, readiness, saveSix, sourcePaths, stageFiveBoundary, writeReadiness }
+import { fixtureValue, readProposal, rewriteProposal, stageFourBoundary, success, limit, proposalPath, readiness, saveSix, sourcePaths, stageFiveBoundary, writeReadiness }
   from "../../packages/producer/test/fixtures/boundary-publication/fixture.ts";
 import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 import type { CommandResult } from "../../packages/producer/test/support/commands.ts";
@@ -73,6 +73,13 @@ Then("one forbidden result cites both edges in order and the effective rule", fu
 });
 
 interface FinalWorld extends PublicationWorld { proposal: StageFivePublication; readiness: string; result: CommandResult }
+
+function readHandoffSummary(proposal: StageFivePublication) {
+  const record = JSON.parse(readFileSync(join(proposal.work, "evidence/s6-boundaries/handoff.json"), "utf8")) as {
+    boundarySummary: { source: { projectKey: string }; component: string | null; operation: string | null; caller: string | null; evidenceRefs: string[] };
+  };
+  return record.boundarySummary;
+}
 
 Given("the final symbol map assigns the target to Storage", time, function (this: FinalWorld) {
   this.proposal = stageFiveBoundary("direct", true);
@@ -147,13 +154,12 @@ Then("its bytes equal the proposal and the reader returns the recorded roles, ac
   assert.deepEqual(bytes, readFileSync(join(this.proposal.reviewFive, "baseline.proposed.yaml")));
   const release = new URL("../fixtures/baseline-viewer/published-boundary-after.yaml", import.meta.url);
   assert.deepEqual(bytes, readFileSync(release));
-  const handoff = JSON.parse(readFileSync(join(this.proposal.work, "evidence/s6-boundaries/handoff.json"), "utf8")) as
-    { boundarySummary?: { source?: { projectKey: string }; component: string; operation: string; caller: string; evidenceRefs: string[] } };
-  assert.equal(handoff.boundarySummary?.source?.projectKey, "TraceRelic");
-  assert.equal(handoff.boundarySummary?.component, "Configuration");
-  assert.equal(handoff.boundarySummary?.operation, "GlobalConfigLoader.load()");
-  assert.equal(handoff.boundarySummary?.caller, "Local collector");
-  assert.ok(handoff.boundarySummary?.evidenceRefs.length);
+  const summary = readHandoffSummary(this.proposal);
+  assert.equal(summary.source.projectKey, "TraceRelic");
+  assert.equal(summary.component, "Configuration");
+  assert.equal(summary.operation, "GlobalConfigLoader.load()");
+  assert.equal(summary.caller, "Local collector");
+  assert.ok(summary.evidenceRefs.length);
   const opened = decodeBaselineYaml(bytes.toString("utf8"));
   assert.equal(opened.status, "success");
   if (opened.status !== "success" || opened.baseline.formatVersion !== 6) throw new Error("Open the verified v6 proposal.");
@@ -161,4 +167,40 @@ Then("its bytes equal the proposal and the reader returns the recorded roles, ac
   assert.ok(review.componentScopes.some((s) => s.roles.includes("test")));
   assert.ok(review.accesses.some((site) => site.member === "GlobalConfigLoader.load"));
   assert.ok(review.limitations.includes(limit));
+});
+
+Given("a reviewed loader with an unknown operation role and a production call to a second component", time, function (this: FinalWorld) {
+  this.proposal = stageFiveBoundary("direct");
+  rewriteProposal(this.proposal.reviewFive, ({ boundaryReview }) => {
+    const loader = fixtureValue(boundaryReview.operations.find((op) => op.id === "loader"));
+    loader.roles = ["unknown"];
+    loader.reason = "The declaration was reviewed but its production role is unresolved.";
+  });
+  this.readiness = readiness(this.proposal);
+});
+Given("a reviewed production import with no recorded production call", time, function (this: FinalWorld) {
+  this.proposal = stageFiveBoundary("direct");
+  rewriteProposal(this.proposal.reviewFive, ({ boundaryReview }) => {
+    boundaryReview.accesses = boundaryReview.accesses.filter((site) => site.kind !== "call" || site.callerRole !== "production");
+  });
+  this.readiness = readiness(this.proposal);
+});
+When("the manager prepares the Stage 6 handoff", time, function (this: FinalWorld) {
+  success(saveSix(this.proposal, ["start", this.readiness]));
+});
+Then("the handoff names the second operation and cites its caller and target", function (this: FinalWorld) {
+  const summary = readHandoffSummary(this.proposal);
+  const expected = fixtureValue(readProposal(this.proposal).boundaryReview.accesses.find((site) => site.id === "collector-helper-call"));
+  assert.equal(summary.operation, "prepare()");
+  assert.equal(summary.component, "Local Codex history");
+  assert.equal(summary.caller, "Local collector");
+  assert.deepEqual(summary.evidenceRefs, expected.evidenceRefs);
+});
+Then("the handoff names a declared production operation with its own evidence and an empty caller", function (this: FinalWorld) {
+  const summary = readHandoffSummary(this.proposal);
+  const expected = fixtureValue(readProposal(this.proposal).boundaryReview.operations.find((op) => op.id === "collector"));
+  assert.equal(summary.operation, expected.name);
+  assert.equal(summary.component, "Local collector");
+  assert.equal(summary.caller, null);
+  assert.deepEqual(summary.evidenceRefs, expected.evidenceRefs);
 });

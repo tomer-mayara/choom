@@ -503,7 +503,10 @@ and a truncated outcome is a partial list.
 To find the names that a source file exports, request an exports list with the
 path and a reason. An exports record lists the exports of that file from its
 syntax, with the compiler settings, the missing compiler inputs and the limits.
-An export is not a use, and the names of export * are in the other module.
+For a reviewed public entry that re-exports members, follow the written path
+to the declaring file. Name the export or unresolved binding and its reviewed
+source range in the inspection priority when it could change an interface.
+Stages 4 and 5 check the member and its callers.
 Do not ask the operator to classify files or write analysis records. If evidence
 is unavailable, record the gap and continue with supported conclusions.
 

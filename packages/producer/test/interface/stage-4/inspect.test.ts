@@ -240,11 +240,19 @@ describe("Stage 4 collect", () => {
     // The LLM keeps observed resource access separate from inferred ownership, and names the candidates.
     expect(prompt).toContain("Keep observed access separate from inferred ownership");
     expect(prompt).toContain("Name the file in resource-access.json as resourceAccessCandidatesRef.");
+    expect(prompt).toContain("Compare the exact resource named in the ownership declaration with the accessed target.");
+    expect(prompt).toContain("target.resourceRef null");
+    expect(prompt).toContain("set the modeled resource's owner.value to null");
+    expect(prompt).toContain("Compare each displayed field, value and row with the cited assertion, return value or contract for that input.");
+    expect(prompt).toContain("Set result.scope to complete only when the evidence establishes the whole result and the example shows it all.");
+    expect(prompt).toContain("Use excerpt for a supported subset.");
     // The LLM keeps each question and gap within the contract of the viewer, which every stage checks.
     expect(prompt).toContain("Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef");
     expect(prompt).toContain("use its registered name as the operation member");
-    // The digest of the prompt text without the working folder: the text itself does not change.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("dbe555a2cfb7c1507cc92acba27dc94e0c96114e0d6103facebcdf83f062512c");
+    expect(prompt).toContain("Follow the default, named and re-exported members on the reviewed public paths.");
+    expect(prompt).toContain("If a role has no evidenced example, record the scope checked and the gap.");
+    // The prompt for this graph fixture is deterministic once the temporary folder is removed.
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("1352d3a41e5beb5e61b6e623429c984603090daef546fdc6710242c8fcb2411b");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);
