@@ -20,7 +20,7 @@ the [README](../../README.md#set-up), then the acceptance tools:
 ```sh
 bun install --frozen-lockfile
 cargo install tauri-driver --version 2.1.0 --locked
-sudo apt-get install dbus webkit2gtk-driver xvfb xauth xdotool xclip
+sudo apt-get satisfy 'webkitgtk-webdriver | webkit2gtk-driver' dbus xvfb xauth xdotool xclip
 ```
 
 The harness uses Node to run Cucumber and WebdriverIO. The installed app starts
