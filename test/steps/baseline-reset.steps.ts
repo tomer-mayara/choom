@@ -88,7 +88,7 @@ async function open(world: ResetWorld, empty?: string): Promise<void> {
   world.resetBytes = await readFile(world.resetFile);
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(world.resetFile);
+  await driver.openHistoricalInventory(world.resetFile);
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
   await expect(browser.locator(".react-flow__node")).toHaveCount(empty ? 0 : 5);
   await paint(world);

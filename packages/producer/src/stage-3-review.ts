@@ -3,6 +3,8 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { assert, evidenceBase, exact, type Fields, object, type PointerMessages, resolveEvidence, strings, text }
   from './record-checks.ts';
+import { CandidateClaims } from './stage-2-candidate-claims.ts';
+import { InspectionClues } from './stage-3-inspection-clues.ts';
 
 // The checks of the Stage 3 entry analysis and its LLM review packet against the
 // saved attempt, the earlier entry analyses and the snapshot. The Stage 3
@@ -240,9 +242,19 @@ function checkCandidates(inputs: ReviewInputs, analysis: Fields, sources: Source
   const priorCandidates = new Map(previousCandidates.map((item, index) => [item?.id, { item, index }]));
   assert(priorCandidates.size === previousCandidates.length, 'Duplicate previous candidate IDs.');
   assert(Array.isArray(analysis.candidates), 'Missing candidate list.');
+  const runsRef = previous.knipRunsRef as string;
+  const receipts = inputs.document(runsRef) as Fields;
+  const claims = new CandidateClaims(runsRef, receipts.runs as Fields[], name => {
+    const ref = runsRef.slice(0, -'-knip-runs'.length) + '-file@' + encodeURIComponent(name);
+    const bytes = inputs.buffers.get(ref);
+    assert(bytes, 'Missing selected Knip report: ' + ref);
+    return JSON.parse(bytes.toString('utf8'));
+  });
   const candidateIds = new Set<unknown>();
   for (const item of analysis.candidates as unknown[]) {
-    fields(item, ['id', 'expression', 'path', 'workspace', 'roles', 'origin', 'evidenceRefs'], 'candidate');
+    const hasClaims = object(item) && Object.hasOwn(item, 'knipClaims');
+    fields(item, ['id', 'expression', 'path', 'workspace', 'roles', 'origin', 'evidenceRefs',
+      ...(hasClaims ? ['knipClaims'] : [])], 'candidate');
     const prior = priorCandidates.get(item.id);
     sources.claim(item.id, !prior);
     assert(!prior || isDeepStrictEqual(item, prior.item), 'Changed prior candidate: ' + item.id);
@@ -250,6 +262,7 @@ function checkCandidates(inputs: ReviewInputs, analysis: Fields, sources: Source
       strings(item.roles) && origins.includes(item.origin as string), 'Invalid candidate: ' + item.id);
     assert(workspaces.has(item.workspace), 'Unknown candidate workspace: ' + item.workspace);
     evidence(item);
+    if (!prior) claims.validate(item, typeof inputs.run.projectKey === 'string');
     candidateIds.add(item.id);
   }
   for (const [candidateId, { index }] of priorCandidates) {
@@ -259,17 +272,23 @@ function checkCandidates(inputs: ReviewInputs, analysis: Fields, sources: Source
   }
 }
 
-function checkPriorities(analysis: Fields, sources: Sources, evidence: Evidence): void {
+function checkPriorities(inputs: ReviewInputs, analysis: Fields, sources: Sources, evidence: Evidence): void {
   assert(Array.isArray(analysis.inspectionPriorities) && analysis.inspectionPriorities.length, 'Missing inspection priorities.');
+  const loading = inputs.saved('loading-search.json') as Fields;
+  assert(Array.isArray(loading.matches), 'Missing loading match list.');
+  const clues = new InspectionClues(sources.records, analysis.candidates as Fields[],
+    { ref: inputs.id + '-file@loading-search.json', matches: loading.matches });
   let lastPriority = 1;
   for (const item of analysis.inspectionPriorities as unknown[]) {
-    fields(item, ['id', 'subjectRefs', 'priority', 'action', 'reason', 'evidenceRefs'], 'inspection priority');
+    fields(item, ['id', 'subjectRefs', 'priority', 'action', 'reason', 'evidenceRefs',
+      ...(object(item) && Object.hasOwn(item, 'clue') ? ['clue'] : [])], 'inspection priority');
     sources.claim(item.id, true);
     const priority = item.priority as number;
     assert(Number.isInteger(priority) && priority >= lastPriority && priority <= 3 &&
       strings(item.subjectRefs) && text(item.action) && text(item.reason),
     'Invalid or out-of-order inspection priority: ' + item.id);
     evidence(item);
+    clues.validate(item);
     lastPriority = priority;
   }
 }
@@ -285,6 +304,6 @@ export function checkReview(inputs: ReviewInputs): Review {
   checkPacket(inputs, evidence);
   const addedIssues = checkIssues(inputs, analysis, sources, evidence);
   checkCandidates(inputs, analysis, sources, evidence, addedIssues);
-  checkPriorities(analysis, sources, evidence);
+  checkPriorities(inputs, analysis, sources, evidence);
   return { analysis, currentExcerpts };
 }

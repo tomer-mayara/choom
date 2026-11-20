@@ -61,7 +61,7 @@ export async function selectDuplicationReport(page: Page, path: string) {
 
 export async function openPublishedAssessment(world: DuplicationWorld) {
   assert.ok(world.page && world.duplicationViewer && world.duplicationBaseline && world.duplicationReport && world.duplicationData);
-  await world.duplicationViewer.openBaseline(world.duplicationBaseline);
+  await world.duplicationViewer.openHistoricalInventory(world.duplicationBaseline);
   await expect(world.page.getByRole("heading", { name: world.duplicationData.baseline.id, exact: true })).toBeVisible();
   const duplicates = world.page.getByRole("button", { name: "Duplicates", exact: true });
   await expect(duplicates).toBeVisible({ timeout: 2_000 });

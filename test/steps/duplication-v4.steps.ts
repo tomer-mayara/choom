@@ -18,7 +18,7 @@ Given("a version 4 baseline is open for the duplication reader", async function 
   this.duplicationOriginals = [Buffer.from(fixture.baselineText), Buffer.from(JSON.stringify(fixture.report))];
   await writeFile(this.duplicationBaseline, this.duplicationOriginals[0]);
   await writeFile(this.duplicationReport, this.duplicationOriginals[1]);
-  await this.duplicationViewer.openBaseline(this.duplicationBaseline);
+  await this.duplicationViewer.openHistoricalInventory(this.duplicationBaseline);
   await expect(this.page.getByRole("heading", { name: fixture.baseline.id, exact: true })).toBeVisible();
 });
 

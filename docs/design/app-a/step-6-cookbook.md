@@ -12,10 +12,10 @@ artifact is an error, not a coverage gap that the helper can ignore.
 The helper supports this Mode A first-baseline profile: retained Knip inputs
 and completed dependency graphs with explicit partial coverage. Other result
 formats need a separate validator.
-Baseline versions 1 to 5 use the same shared record checks as Stages 4 and 5,
-which also divide each file that a version 5 symbol selector names on the saved
+Baseline versions 1 through 6 use the same shared record checks as Stages 4 and 5,
+which also divide each file that a version 5 or 6 symbol selector names on the saved
 snapshot and compare it with the [code units](record-format.md#divided-files).
-For versions 2 to 5, review each documented entry, example, source note and exact
+For versions 2 through 6, review each documented entry, example, source note and exact
 unknown-field subject against the
 [record contract](record-format.md#version-2-interface-documentation). A
 source-reviewed example means that its cited saved lines were reviewed; it does
@@ -80,12 +80,21 @@ with their cited evidence. Distinguish source ownership, runtime resource
 ownership, test placement and source inspection. Keep observations separate
 from intended access policy. Preserve unknown owners and partial coverage.
 
+For a version 6 baseline add a check with id boundary-review. Cite the selected
+Stage 5 baseline proposal with #/boundaryReview and the selected code mapping.
+When the review lists limits, also cite #/boundaryReview/limitations in that proposal.
+Trace one production operation to its caller and source. Trace a non-production
+or unknown case when present. If a role, owner or access needs correction,
+return the model to the stage that produced it. Correct a readiness citation in
+the readiness packet. Lead the handoff with source identity, operation, component
+and caller. Then link the fixed files, reviewed evidence and stated limits.
+
 Check systemEntryPoints against this run's snapshot and the selected Stage 5
 mapping. Confirm each start path and callable operation in the stated scope
 against its saved launch or registration evidence. Check its directly mapped
 owner, any cited source range, and any interface or operation link. Check that
 shared handlers retain distinct operations. Review the scope limitations and
-keep unresolved candidates in discovery. Save version 4 when the assessment
+keep unresolved candidates in discovery. For legacy runs, save version 4 when the assessment
 is present. The publication helper verifies the selected proposal and saves
 its exact bytes.
 

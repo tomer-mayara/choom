@@ -78,7 +78,7 @@ Given("the user has increased text size by 25 percent", async function (this: Ba
 
 When("the user opens the prepared relationship baseline", async function (this: BaselineRelationshipWorld) {
   assert.ok(this.relationshipViewer && this.relationshipPath && this.relationshipBaseline && this.page);
-  await this.relationshipViewer.openBaseline(this.relationshipPath);
+  await this.relationshipViewer.openHistoricalInventory(this.relationshipPath);
   await expect(this.page.getByRole("heading", { name: this.relationshipBaseline.id, exact: true })).toBeVisible();
 });
 

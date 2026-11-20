@@ -127,23 +127,23 @@ described as future work beside a newly appended correction.
 All versions have `formatVersion`, `id`, `parentId`, `components`,
 `interfaces`, `resources`, and `rules`. The first version of a baseline has
 `parentId: null`; a [next version](#next-baseline-version) names its parent.
-Versions 3 to 5 permit `sourceUsage`. Versions 4 and 5 also permit `systemEntryPoints`, and
-version 5 permits [symbol selectors](#version-5-symbol-selectors). The
-top-level fields are strict in every version. Stage 4 writes versions 1 to 4;
-Stage 5 can also write version 5, which Stage 6 saves. Keep the initial baseline
+Versions 3 through 6 permit `sourceUsage`. Versions 4 through 6 also permit `systemEntryPoints`, and
+versions 5 and 6 permit [symbol selectors](#version-5-symbol-selectors). The
+top-level fields are strict in every version. Stage 4 and Stage 5 of a new project-keyed run write version 6. Stage 4 maps whole files.
+For older runs Stage 4 supports versions 1 through 4 and Stage 5 also supports version 5. Keep the initial baseline
 ID. All four collections are arrays; at least one component must have supported
 evidence for this publication profile. Other collections can be empty.
 
 The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
 
 1. The **producer profile**, which is stricter than the shared rules. The
-   producer writes `formatVersion` 1 to 5. Stages 4 to 6 write only the first
+   producer writes `formatVersion` 1 through 6. Stages 4 to 6 write only the first
    version (`parentId: null`); `baseline next` writes the
    [next version](#next-baseline-version). The baseline has at least one
    component. Each component,
    also a parent that only groups other components, has a non-null `purpose`,
    a non-null `groupingReason` and at least one path in `membership.value.paths`.
-   In version 5, a component can own only symbols: it needs at least one path
+   In versions 5 and 6, a component can own only symbols: it needs at least one path
    or symbol.
    A question or gap does not make a null purpose or grouping reason valid.
    Each of these cases has its own message.
@@ -168,7 +168,7 @@ The Stage 4/5 publisher and Stage 6 check a proposed baseline in this order:
 
 Stage 1 still creates the empty version 1 seed. Versions 1 and 2 remain strict:
 version 1 has no interface `documentation`, and neither permits `sourceUsage`.
-Use `formatVersion: 4` when recording a system-entry assessment. When it is
+For a legacy proposal, use `formatVersion: 4` when recording a system-entry assessment. When it is
 absent, use version 3 for source use, version 2 for interface documentation,
 or version 1 for the original fields. Version 4 retains version 2 interface
 documentation and version 3 source use, with their checks and limits. In Stage 5,
@@ -186,7 +186,7 @@ makes the [next baseline version](#next-baseline-version) from it.
 | Collection | Exact item fields |
 | --- | --- |
 | `components` | `id`, `name`, `purpose`, `membership`, `groupingReason`; optional `parent`. |
-| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2–5 also permit `documentation`. |
+| `interfaces` | `id`, `name`, `owner`, `publicAccess`, `allowedConsumers`, `promises`; versions 2–6 also permit `documentation`. |
 | `resources` | `id`, `name`, `identity`, `owner`, `accessRules`. |
 | `rules` | `id`, `name`, `subject`, `expected`, `check`. |
 
@@ -561,10 +561,10 @@ version 2 to 4 fields, checks, and limits, and the version 3 and 4 arrow rules.
 The reader checks the syntax only. See the
 [baseline contract](../../../cookbook/interfaces/baseline.md) for the full rules.
 
-The producer writes version 5 from Stage 5 on, and `baseline next` keeps it.
-Stage 4 maps whole files, and Stage 5 starts from that mapping, so the Stage 4/5
-publisher refuses version 5 and a mapping of files and parts in Stage 4. The
-producer adds these rules to the reader's checks:
+Older runs can publish version 5 from Stage 5 on, and `baseline next` preserves
+the version. New project-keyed runs publish version 6. Stage 4 maps whole files.
+Stage 5 can divide those files into parts in either format. The producer checks
+the selectors against the saved snapshot.
 
 - A version 5 component can own only symbols: `paths` can be empty when
   `symbols` is not.
@@ -577,7 +577,78 @@ producer adds these rules to the reader's checks:
   the selector. A reserved word is not refused for its spelling: `default` names
   an anonymous default export.
 
+## Stage 1 role evidence and project key
+
+Each file-purpose record in `review-001#/roles` keeps its selector and purpose
+roles. Its `useReview` contains the supported site roles, each with evidence, and
+an assessment of the unit. An exclusive non-production classification requires a
+declaration or complete review. A partial review lists its limits. A known test
+site can coexist with unknown unit scope. The [intake contract](../../../cookbook/interfaces/producer-boundary-intake.tsp)
+defines these fields and the candidate and priority fields below.
+
+Stage 1 saves `projectKey` and `referenceBaseline` in `evidence/stage1-inputs.json`
+and the published run manifest. An optional reference is the exact bytes of a validated
+v6 file at `evidence/reference-baseline.yaml`, registered as `reference-baseline-001`.
+Its SHA-256 is computed before decoding. The key comes from that file, an explicit
+`CHOOM_PROJECT_KEY`, or a newly generated UUID. An explicit key must be nonblank and fit
+in 4096 UTF-8 bytes. Stage 1 keeps its exact text and rejects conflicting keys before
+creating the run folder.
+
+## Version 6 boundary review
+
+Stage 1 still seeds an empty version 1 baseline. New Stage 4 and 5 proposals carry
+`formatVersion: 6` and the [boundary review](../../../cookbook/interfaces/baseline-boundaries.tsp).
+Use the frozen project key, selected inventory's original SHA-256, captured source identity,
+analysis roots and selected code mapping. Stage 4 uses whole files. Stage 5 binds both ends
+of each site against the final file, symbol or remainder. Retain unknown ownership explicitly.
+
+Cite a reviewed source range with its snapshot-relative path, line range and file digest.
+Use the actual written import and the resolved member. Retain an observed nonpublic helper
+even when permission is unknown. Link a source-use record by its interface and use ID. Record
+each observation once. Combine source and emitted observations only when evidence identifies
+those exact original and generated sites. For a bound call, cite the two caller locations
+and the reviewed v3 source map linked by the emitted file. Its exact generated position
+must map to the original call position and both calls must resolve to the same member.
+
+An operation member can also be the registered name of a package binary or the
+literal name of a Node test. Keep the readable operation name separately.
+The selected behavior entry identifies its source, owner, file entry and role.
+Cite the package declaration and handler for a bin, and the bound registration
+and callback for a test. Link any startup and external entries for the same command.
+
+For a reachability check, retain one ordered chain of edges from the saved graph in one
+resolution context. Include intermediate files that share an owner. Record the actual target
+for each result. Identify the effective rule, authority, supported access kinds, examined
+roots and units, and limits. Follow every relevant start and edge before recording absence.
+A stopped unresolved edge, omitted applicable root or unsupported kind leaves a gap.
+For a private member or a forbidden import path, check the mapped caller against its
+saved source and resolution context before claiming absence. For a complete caller
+search, account for every bound access in every examined context and declared kind,
+including type references. Unresolved calls or loading sites keep the result partial.
+An unsupported compiler setting, resolution condition or traversal filter requires an
+unknown result.
+Add `coverage.inventoryRoots` only when the complete checked inventory accounts for
+every captured JavaScript or TypeScript file and its mapped units under those roots.
+Each unit needs an owner and must appear among the units examined by that search. Use a
+repository declaration in effect or an accepted policy bound to the frozen reference and its
+digest. Keep an inferred restriction proposed.
+
+Stage 6 requires a readiness check whose ID is `boundary-review`. Cite the selected Stage 5
+proposal's `#/boundaryReview`, the selected code mapping, and the proposal's
+`#/boundaryReview/limitations` when it records limits. Describe the production operation and
+caller, and a test, tooling or unknown observation when one is present. An incorrect
+citation can be corrected in the external readiness packet. A change to an observation or
+owner requires a new proposal. The fixed baseline contains the exact selected proposal bytes.
+
 ## Entry analysis
+
+A candidate's `knipClaims` links each conclusion to its exact mode receipt.
+`reported` requires a completed mode and a report naming that candidate.
+A skipped or failed mode can support `unknown`. Keep launch evidence in the
+candidate's original evidence references. A Stage 3 inspection priority can cite
+a registration's operation and role or an unresolved loader's missing binding.
+Its `sourceRef` selects an inspected range and a loader also selects the exact
+`loading-search.json#/matches/N`. Stage 4 receives this clue in the selected analysis.
 
 Use these fields:
 
@@ -1587,3 +1658,12 @@ and of the decision record, the path and SHA-256 of the version record, each
 decided statement, and the call records and models that the decider check
 compared. As for `baseline decide`, the command is not a stage action: it does
 not check the producer code record.
+
+
+## Scoped unit inventories
+
+A complete rule check can name `coverage.inventoryRoots`. Each path identifies a
+root for which the producer reconciled the captured source inventory with the
+selected mapping and examined units. The comparison uses this record when an
+endpoint exists in only one file. A missing declaration or a different line
+number alone cannot establish the date of an access change.

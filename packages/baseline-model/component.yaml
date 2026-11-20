@@ -3,6 +3,8 @@ description: Owns the baseline format rules, validation and generated contract t
 
 artifacts:
   behavior:
+    - path: ../../cookbook/behavior/baseline-viewer/component-boundaries.feature
+    - path: ../../cookbook/behavior/baseline-viewer/isolation-comparison.feature
     - path: ../../cookbook/behavior/baseline-viewer/validation.feature
     - path: ../../cookbook/behavior/baseline-viewer/interface-documentation.feature
     - path: ../../cookbook/behavior/baseline-viewer/source-usage.feature
@@ -13,7 +15,9 @@ artifacts:
   architecture:
     - path: ../../.dependency-cruiser.cjs
   contracts:
+    - path: ../../cookbook/interfaces/isolation-comparison.tsp
     # TypeSpec owns the structure; the runtime schema also checks IDs and references.
+    - path: ../../cookbook/interfaces/baseline-boundaries.tsp
     - path: ../../cookbook/interfaces/baseline.tsp
     - path: ../../cookbook/interfaces/baseline-documentation.tsp
     - path: ../../cookbook/interfaces/baseline-source-usage.tsp

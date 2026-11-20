@@ -1,3 +1,4 @@
+import type { BaselineBoundaryReview } from '@choom/baseline-model/contracts';
 import { mkdirSync, realpathSync, renameSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -157,9 +158,10 @@ function readStageFive({ drafts, packet, yaml }: { drafts: Files; packet: Files;
     ['baseline.candidate.yaml', drafts.get('baseline.yaml') as Buffer],
     ['discovery.candidate.yaml', fixedDiscoveryYaml(fixed, yaml)],
   ]);
+  const summary = baseline.formatVersion === 6 ? { boundarySummary: boundarySummary(baseline.boundaryReview as BaselineBoundaryReview) } : {};
   return { run, drafts, artifacts, candidates, recordInputs,
     facts: stageFacts({ run, refs, verified, artifacts, draftDigests, discovery: working }),
-    validation: { formatVersion: 1, attemptId: id, runRef: refs.runRef, snapshotRef: refs.snapshotRef,
+    validation: { ...summary, formatVersion: 1, attemptId: id, runRef: refs.runRef, snapshotRef: refs.snapshotRef,
       baselineRef: refs.baselineRef, status: 'verified', registeredArtifactsVerified: artifacts.size,
       indexedFilesVerified: (verified.inventory.files as unknown[]).length, ...counts,
       limits: ['Deterministic records, digests, source ranges and references only. No target execution or new tool analysis.',
@@ -185,8 +187,29 @@ function stageFacts({ run, refs, verified, artifacts, draftDigests, discovery }:
   };
 }
 
+function boundarySummary(review: BaselineBoundaryReview): Fields {
+  const units = new Map(review.units.map((unit) => [unit.id, unit]));
+  const components = new Map(review.componentScopes.map((scope) => [scope.componentId, scope]));
+  const name = (unit: string | null) => {
+    const owner = unit && units.get(unit)?.ownerId;
+    const scope = owner ? components.get(owner) : undefined;
+    return scope?.roles.includes('production') ? scope.name : null;
+  };
+  const uses = review.accesses.filter((site) => site.callerRole === 'production' && site.targetRole === 'production' &&
+    site.operationId && site.targetUnitId && name(site.callerUnitId) && name(site.targetUnitId) &&
+    units.get(site.callerUnitId)?.ownerId !== units.get(site.targetUnitId)?.ownerId);
+  const use = uses.find((site) => site.kind === 'call') ?? uses[0];
+  const op = review.operations.find((op) => op.id === use?.operationId && op.roles.includes('production')) ??
+    review.operations.find((op) => op.roles.includes('production') && name(op.unitId));
+  const { projectKey, sourceKind, snapshotRef, baseCommit } = review.identity;
+  return { source: { projectKey, sourceKind, snapshotRef, baseCommit }, component: op ? name(op.unitId) : null,
+    operation: op?.name ?? null, caller: use ? name(use.callerUnitId) : null,
+    evidenceRefs: use?.evidenceRefs ?? op?.evidenceRefs ?? [], reviewRef: review.identity.mappingRef.replace(/code-mapping\.json$/, 'baseline.proposed.yaml#/boundaryReview') };
+}
+
 function handoffRecord(state: State, frozenTools: Files, packet: Files, yaml: TrustedParsers): Fields {
-  return { ...state.facts, toolInputDigests: hashMap(frozenTools), packetDigests: hashMap(packet),
+  const summary = state.validation.boundarySummary ? { boundarySummary: state.validation.boundarySummary } : {};
+  return { ...summary, ...state.facts, toolInputDigests: hashMap(frozenTools), packetDigests: hashMap(packet),
     parserVersions: yaml.versions, validationSha256: hash(encode(state.validation)), candidateDigests: hashMap(state.candidates) };
 }
 

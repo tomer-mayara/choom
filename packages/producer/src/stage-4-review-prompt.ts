@@ -29,6 +29,14 @@ const questionAndGapLimits = `Each question or gap has exactly its fields, 1 to 
   `a text or reason has at most 16 KiB of UTF-8, an ID, a kind or a reference at most 4 KiB, and there are at most 5,000 ` +
   `questions and gaps. `;
 
+const boundaryReview = `When the run has a projectKey, write formatVersion: 6 with boundaryReview. Cite the selected inventory digest, ` +
+    `source identity and whole-file mapping. Identify the caller's written path and the resolved member independently. ` +
+    `Inspect calls and imports beyond the public entry list. Record the applicable effective rule, its authority, ` +
+    `source ranges, direct caller and target owners, and the role at each end. Preserve an unresolved binding with its ` +
+    `reason. Link an existing source use by interface and use ID. Report ordered edges within one resolution context ` +
+    `for reachability. For a package bin or a Node test, use its registered name as the operation member. Cite the registration, ` +
+    `the handler and the reviewed behavior in its launch or test context. Record coverage and limits. Show one evidenced production operation and a non-production use.\n\n`;
+
 export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt }: PromptFacts): string {
   return `# Stage 4 component recovery review\n\n` +
     `Run: ${runRef}\nSnapshot: ${snapshotRef}\nAttempt: ${attemptId}\n` +
@@ -47,12 +55,12 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `Keep each graph context separate. Its scan files are not its entry roots. Source reachability includes type-only and literal-dynamic dependencies ` +
     `and does not prove execution. A stopped or missing edge is not absence. The graph does not reproduce Knip's internal roots. ` +
     `The syntax sidecar preserves import expressions that the raw graph can collapse; it does not resolve them.\n\n` +
-    behaviorCandidates + resourceCandidates +
+    behaviorCandidates + resourceCandidates + boundaryReview +
     `Review saved launch settings and behavior entries for system entry points. Inspect each external operation's ` +
     `registration or host binding. Trace built files to source only with saved evidence. Use the candidate file mapping ` +
     `for direct start and handler owners. Preserve separate operations that share a handler. Keep unresolved candidates ` +
     `in discovery. Graph roots and publicAccess strings are leads for review. Follow record-format.md for scope, ` +
-    `evidence, limits, and optional interface links. Use formatVersion: 4 when systemEntryPoints is present. ` +
+    `evidence, limits, and optional interface links. For legacy runs use formatVersion: 4 when systemEntryPoints is present. ` +
     `Otherwise choose the version required by the saved fields. Retain version 2 interface documentation and its meanings. ` +
     `For each function or method entry (kind: function), ` +
     `record a signature statement with its own status and evidence references. Copy the supported declaration with parameters ` +

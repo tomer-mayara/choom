@@ -45,7 +45,7 @@ async function open(world: DocumentationBrowserWorld, enriched: boolean): Promis
   world.documentationDirectory = await mkdtemp(join(tmpdir(), "choom-documentation-"));
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(await save(world, enriched ? baselineWithSignature().input : baselineExample()));
+  await driver.openHistoricalInventory(await save(world, enriched ? baselineWithSignature().input : baselineExample()));
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
   await inspectInvoice(world);
   world.documentationNodes = await browser.locator(".react-flow__node").allTextContents();
@@ -96,7 +96,7 @@ When("the user opens a new documented baseline with the same IDs", async functio
   const replacement = enrichedBaseline();
   fixtureItem(replacement.components, 1).name = "Updated billing";
   fixtureItem(replacement.interfaces).documentation.summary.value = "Updated invoice contract.";
-  await new BaselineBrowserDriver(page(this)).openBaseline(await save(this, replacement));
+  await new BaselineBrowserDriver(page(this)).openHistoricalInventory(await save(this, replacement));
 });
 Then("the new values replace the view and close the old inspection", async function (this: DocumentationBrowserWorld) {
   await expect(page(this).getByRole("button", { name: "Updated billing, billing", exact: true })).toBeVisible();

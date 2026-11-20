@@ -7,7 +7,7 @@ import { folderState } from "../../support/producer-record.ts";
 // by symbol selectors, so the Stage 4/5 publisher refuses a version 5 baseline and a
 // mapping of files and parts in Stage 4, before it writes anything.
 type Records = Record<string, Record<string, unknown>>;
-const message = "Stage 4 maps whole files: use baseline formatVersion 1 to 4 and a code mapping with unitKind: file. " +
+const message = "Stage 4 maps whole files: use formatVersion 6 (1 to 4 for legacy runs) and a mapping with unitKind: file. " +
   "Stage 5 can divide a file by symbol selectors.\n";
 
 // The Stage 4 units as units of a mapping of files and parts.

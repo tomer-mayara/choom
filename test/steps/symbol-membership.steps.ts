@@ -56,7 +56,7 @@ When("the user opens the Pricing details", { timeout: 30_000 }, async function (
   const browser = page(this);
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(symbolMembershipPath);
+  await driver.openHistoricalInventory(symbolMembershipPath);
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
   await browser.getByRole("button", { name: "Pricing, pricing", exact: true }).click();
   await expect(componentDetails(this)).toBeVisible();

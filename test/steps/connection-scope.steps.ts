@@ -56,7 +56,7 @@ async function prepare(world: ScopeWorld, unknown = false) {
 
 async function open(world: ScopeWorld) {
   assert.ok(world.scopeViewer && world.scopeFile);
-  await world.scopeViewer.openBaseline(world.scopeFile);
+  await world.scopeViewer.openHistoricalInventory(world.scopeFile);
   await expect(page(world).getByRole("heading", { name: "connection-scope", exact: true })).toBeVisible();
   await expect(page(world).locator(".react-flow__node")).toHaveCount(4);
   await remember(world);

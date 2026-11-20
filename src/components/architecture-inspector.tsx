@@ -11,13 +11,22 @@ import { DuplicationComparison } from "./duplication-comparison.tsx";
 import type { duplicationCounts, DuplicationControls } from "./duplication-view.ts";
 import { DiscoveryPanel } from "./discovery-panel.tsx";
 import { type DiscoveryControls, ItemDiscovery } from "./discovery-records.tsx";
+import { BoundaryDetails, useBoundaryInventory } from "./boundary-details.tsx";
 import { SystemEntryDetails } from "./system-entry-details.tsx";
+
+function isReviewedPanel(kind: string, showAll: boolean) {
+  return ["baseline", "component", "operation", "rules"].includes(kind) || (!showAll && kind === "interface");
+}
 
 function InspectionContent({ baseline, inspection, duplication, counts }: {
   baseline: ReadonlyData<Baseline>; inspection: ArchitectureInspection;
   counts: ReturnType<typeof duplicationCounts>;
 } & DuplicationControls) {
   const { panel, navigate, sections } = inspection;
+  const boundaries = useBoundaryInventory();
+  if (boundaries && panel && isReviewedPanel(panel.kind, boundaries.showAll)) {
+    return <BoundaryDetails view={boundaries} panel={panel} navigate={navigate} />;
+  }
   if (!panel) return null;
   if (panel.kind === "discovery") return <DiscoveryPanel />;
   if (panel.kind === "duplicates") return <DuplicationList baseline={baseline} report={duplication?.report} filter={panel} navigate={navigate} listState={inspection.listState} />;
@@ -86,9 +95,10 @@ export function ArchitectureDetailsPanel({ baseline, inspection, duplication, co
   counts: ReturnType<typeof duplicationCounts>; discoveryControls?: DiscoveryControls;
 } & DuplicationControls) {
   const { panel, container, heading, content, close, back, canGoBack } = inspection;
+  const boundaries = useBoundaryInventory();
   if (!panel) return null;
-  const titles = { component: "Component details", interface: "Interface details", resource: "Resource details", baseline: "Baseline details",
-    rules: "Rules", duplicates: "Duplicates", duplicate: "Duplicate comparison", discovery: "Discovery" };
+  const titles = { operation: "Operation details", component: "Component details", interface: "Interface details", resource: "Resource details", baseline: "Baseline details",
+    rules: boundaries ? "Boundary findings" : "Rules", duplicates: "Duplicates", duplicate: "Duplicate comparison", discovery: "Discovery" };
   return <aside ref={container} role="dialog" aria-modal="false" aria-labelledby="inspection-title"
     className="flex min-h-0 w-full basis-1/2 shrink-0 flex-col border-t border-border bg-card md:w-96 md:basis-auto md:border-t-0 md:border-l">
     <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2 sm:px-5 sm:py-3">

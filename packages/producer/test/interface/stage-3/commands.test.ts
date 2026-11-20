@@ -223,6 +223,9 @@ describe("Stage 3 collect", () => {
 
   test("fills the review prompt and proposes artifact IDs for the saved evidence", () => {
     const prompt = savedText("review-prompt.md");
+    expect(prompt).toContain("GET /health registered in");
+    expect(prompt).toContain("context and sourceRef");
+    expect(prompt).toContain(id + "-file@loading-search.json#/matches/N");
     expect(prompt).toStartWith("Review Choom Appendix A, stage 3: check loading gaps and set inspection priorities.\n");
     for (const line of [`Work folder: ${work}`, `Attempt folder: ${folder()}`, `Attempt ID: ${id}`,
       "Previous entry-analysis artifact: s2-check-entry-analysis", `Give a materially\nrevised or new candidate a new ID beginning with ${id}-.`])

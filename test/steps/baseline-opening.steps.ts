@@ -33,9 +33,9 @@ Given("only the reviewed baseline file is available to the viewer", async functi
   await this.baselineViewer.open();
 });
 
-When("the user opens the saved baseline in Choom", async function (this: BaselineOpeningWorld) {
+When("the user opens the saved baseline in Choom and requests its historical inventory", async function (this: BaselineOpeningWorld) {
   assert.ok(this.selectedBaseline);
-  await viewer(this).openBaseline(this.selectedBaseline);
+  await viewer(this).openHistoricalInventory(this.selectedBaseline);
 });
 
 Then("its baseline ID and five component names are shown", async function (this: BaselineOpeningWorld) {
@@ -118,6 +118,7 @@ Then("the baseline read failure permits retry", async function (this: BaselineOp
 When("the user retries the selected baseline", async function (this: BaselineOpeningWorld) {
   assert.ok(this.page);
   await this.page.getByRole("button", { name: "Retry", exact: true }).click();
+  await this.page.getByRole("switch", { name: "Show non-production" }).check();
 });
 
 Given("the baseline viewer has a controllable layout", async function (this: BaselineOpeningWorld) {

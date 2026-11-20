@@ -40,7 +40,7 @@ describe("the producer profile of a version 5 baseline", () => {
       "Component pricing has no membership paths or symbols. The producer needs at least one path or symbol for each component."],
     ["two components that name one symbol", baseline(undefined, [computePrice]),
       "The symbol computePrice of src/billing.ts has two owners: billing and pricing. A symbol has one direct owner."],
-    ["a version 6 baseline", { ...baseline(), formatVersion: 6 }, "The producer writes baseline formatVersion 1, 2, 3, 4 or 5, not 6."],
+    ["a version 7 baseline", { ...baseline(), formatVersion: 7 }, "The producer writes baseline formatVersion 1, 2, 3, 4, 5 or 6, not 7."],
   ])("refuses %s", (_name, value, message) => {
     expect(() => checkBaselineDocument(value)).toThrow(new Error(message));
   });

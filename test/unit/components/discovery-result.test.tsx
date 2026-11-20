@@ -118,6 +118,7 @@ test("the workspace announces a discovery load, keeps the attachment after a ref
   const { workflow, dependencies } = discoveryWorkflow();
   await workflow.openBaseline();
   render(<App workspace={{ workflow }} />);
+  fireEvent.click(screen.getByRole("switch", { name: "Show non-production" }));
   const reading = pending<Awaited<ReturnType<SelectedBaseline["read"]>>>();
   dependencies.selectDiscoveryResult = async () => ({ read: () => reading.promise });
   const discovery = openDiscoveryPanel();

@@ -1,8 +1,19 @@
+import assert from "node:assert/strict";
+import { setTimeout as delay } from "node:timers/promises";
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { World } from "@cucumber/cucumber";
 import type { Browser } from "webdriverio";
+
+export async function waitFor(check: () => Promise<boolean>, message: string, timeout = 10_000): Promise<void> {
+  const deadline = Date.now() + timeout;
+  do {
+    if (await check()) return;
+    await delay(100);
+  } while (Date.now() < deadline);
+  assert.fail(message);
+}
 
 export async function captureInstalledView(browser: Browser, world: World, evidenceDirectory: string, label: string): Promise<void> {
   const prefix = join(evidenceDirectory, `${label}-${randomUUID()}`);
@@ -17,6 +28,7 @@ export async function readInstalledView(browser: Browser) {
     const visibleText = (node: HTMLElement) => node.getClientRects().length > 0 && getComputedStyle(node).visibility === "visible"
       ? node.innerText.trim() : "";
     return {
+      comparison: document.querySelector<HTMLElement>('[aria-label="Isolation comparison"]')?.innerText.trim() ?? "",
       headings: Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3"), visibleText),
       nodes: Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node[data-id]"),
         (node) => ({ id: node.getAttribute("data-id") ?? "", text: visibleText(node) })),

@@ -26,7 +26,7 @@ async function openFixture(world: SourcesWorld, variant: "compact" | "reading" |
   world.sourceDirectory = await mkdtemp(join(tmpdir(), "choom-sources-"));
   world.sourceFile = join(world.sourceDirectory, "baseline.yaml");
   await writeFile(world.sourceFile, stringify(interfaceSourceFixture(variant)));
-  const driver = new BaselineBrowserDriver(page(world)); await driver.open(); await driver.openBaseline(world.sourceFile);
+  const driver = new BaselineBrowserDriver(page(world)); await driver.open(); await driver.openHistoricalInventory(world.sourceFile);
   await expect(page(world).getByText("Baseline ready.", { exact: true })).toBeVisible();
   if (world.sourceTextPercent) await page(world).evaluate((size) => { document.documentElement.style.fontSize = `${size}%`; }, world.sourceTextPercent);
   await page(world).getByRole("button", { name: "Billing, billing", exact: true }).click();
@@ -169,7 +169,7 @@ When(/^opening a replacement source baseline (fails|is cancelled)$/, async funct
 });
 When("the user opens Sources and successfully replaces the baseline with the same saved IDs", async function (this: SourcesWorld) {
   await showSources(this); assert.ok(this.sourceFile);
-  await new BaselineBrowserDriver(page(this)).openBaseline(this.sourceFile);
+  await new BaselineBrowserDriver(page(this)).openHistoricalInventory(this.sourceFile);
   await expect(panel(this)).toHaveCount(0);
 });
 Then("the old frame is removed and a new selection starts with the first entry on Overview", async function (this: SourcesWorld) {

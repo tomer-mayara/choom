@@ -17,7 +17,7 @@ import { type SourceRecords, validateSourceLocation } from './record-sources.ts'
 const collectionKeys = ['components', 'interfaces', 'resources', 'rules'] as const;
 const itemKinds = new Map<unknown, string>([['components', 'component'], ['interfaces', 'interface'],
   ['resources', 'resource'], ['rules', 'rule']]);
-const producerVersions = [1, 2, 3, 4, 5];
+const producerVersions = [1, 2, 3, 4, 5, 6];
 
 export interface BaselineInputs {
   baseline: Baseline;
@@ -78,13 +78,13 @@ function checkMembershipSelectors(component: unknown, id: string, version: unkno
   const membership = field(field(component, 'membership'), 'value');
   const paths = field(membership, 'paths');
   const symbols = field(membership, 'symbols');
-  if (version === 5) assert(!empty(paths) || (symbols !== undefined && !empty(symbols)), 'Component ' + id +
+  if (version === 5 || version === 6) assert(!empty(paths) || (symbols !== undefined && !empty(symbols)), 'Component ' + id +
     ' has no membership paths or symbols. The producer needs at least one path or symbol for each component.');
   else assert(!empty(paths), 'Component ' + id + ' has no membership paths. The producer needs at least one path for each component.');
 }
 
 // The producer profile: what the producer writes, on top of the shared baseline
-// rules. It writes formatVersion 1 to 5: a first version of a baseline, or a
+// rules. It writes formatVersion 1 to 6: a first version of a baseline, or a
 // next version that a decision record makes. The baseline has at least one
 // component. Each component, also a parent that only groups other components,
 // has a purpose, a grouping reason and at least one path, or in version 5 at least
@@ -92,7 +92,7 @@ function checkMembershipSelectors(component: unknown, id: string, version: unkno
 // runs first, so that each case has its own message.
 function checkProducerProfile(baseline: unknown, made: VersionDecisions | undefined): void {
   const version = field(baseline, 'formatVersion');
-  assert(oneOf(producerVersions, version), 'The producer writes baseline formatVersion 1, 2, 3, 4 or 5, not ' +
+  assert(oneOf(producerVersions, version), 'The producer writes baseline formatVersion 1, 2, 3, 4, 5 or 6, not ' +
     JSON.stringify(version) + '.');
   checkParent(baseline, made);
   const components = field(baseline, 'components');
@@ -150,10 +150,10 @@ function documentationChecks(itemId: string, documentation: BaselineDocumentatio
   });
 }
 
-// Publication does not accept intent: every statement of a first version stays proposed.
+// Fresh intent stays proposed. The v6 publication gate verifies every inherited statement against its frozen reference.
 function checkProposedIntent(baseline: Baseline): void {
   for (const { itemId, field, statement } of baselineStatements(baseline))
-    assert(statement.status === 'proposed', 'Only proposed intent is supported: ' + itemId + '.' + field);
+    assert(statement.status === 'proposed' || (baseline.formatVersion === 6 && baseline.boundaryReview.identity.referenceDigest), 'Only proposed intent is supported: ' + itemId + '.' + field);
 }
 
 // The ID of a next version is reserved as the ID of a first version is: no item can use it.

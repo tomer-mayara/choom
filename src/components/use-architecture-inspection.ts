@@ -19,6 +19,8 @@ interface InspectionFrame {
 }
 
 interface InspectionState {
+  source: ReadonlyData<Baseline>;
+  raw: boolean;
   baseline: ReadonlyData<Baseline>;
   layout: ReadonlyData<ArchitectureLayout>;
   frames: InspectionFrame[];
@@ -36,6 +38,10 @@ function frame(panel: ArchitecturePanel, key: number, previous?: InspectionFrame
     next.componentId = previous?.panel.kind === "duplicate" ? undefined : previous?.componentId;
     next.connectionPanel = panel;
     next.reading = interfaceReadingState(panel.entryId);
+  }
+  if (panel.kind === "operation") {
+    next.componentId = previous?.componentId;
+    next.connectionPanel = { kind: "interface", interfaceId: panel.operationId };
   }
   if (panel.kind === "duplicates" || panel.kind === "duplicate") {
     next.componentId = previous?.componentId;
@@ -83,32 +89,68 @@ function hidesFocusedArc(panel: ArchitecturePanel, mode: ConnectionMode): boolea
   const active = document.activeElement;
   if (mode === "all" || !(active instanceof HTMLElement) || !active.hasAttribute("data-interface-label")) return false;
   if (panel.kind === "component") return active.dataset.consumerId !== panel.componentId && active.dataset.ownerId !== panel.componentId;
-  return panel.kind !== "interface" || active.dataset.interfaceId !== panel.interfaceId;
+  return panel.kind === "operation" ? active.dataset.interfaceId !== panel.operationId
+    : panel.kind !== "interface" || active.dataset.interfaceId !== panel.interfaceId;
+}
+
+interface InspectionScope {
+  source: ReadonlyData<Baseline>;
+  raw: boolean;
+  operations?: ReadonlyMap<string, unknown>;
+}
+
+function remainsVisible(panel: ArchitecturePanel, baseline: ReadonlyData<Baseline>, scope: InspectionScope): boolean {
+  switch (panel.kind) {
+    case "component": return baseline.components.some(({ id }) => id === panel.componentId);
+    case "interface": return baseline.interfaces.some(({ id }) => id === panel.interfaceId);
+    case "resource": return baseline.resources.some(({ id }) => id === panel.resourceId);
+    case "operation": return scope.operations?.has(panel.operationId) ?? false;
+    case "duplicate": case "duplicates": case "discovery": return scope.raw;
+    default: return true;
+  }
+}
+
+function reconcileInspection(state: InspectionState | null, options: {
+  baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; source: ReadonlyData<Baseline>;
+  raw: boolean; scope?: InspectionScope; reportSession: number | null;
+}, nextFrameKey: { current: number }): InspectionState | null {
+  const { baseline, layout, source, raw, scope, reportSession } = options;
+  if (state && scope && state.source === source && state.raw !== raw) {
+    const visible = new Set(baseline.components.map(({ id }) => id));
+    const frames = state.frames.filter(({ panel }) => remainsVisible(panel, baseline, scope)).map((entry) =>
+      entry.componentId && !visible.has(entry.componentId) ? { ...entry, componentId: undefined, returnId: undefined } : entry);
+    return frames.length ? { ...state, source, raw, baseline, layout, frames, reportSession,
+      returning: false, focusHeading: false, focusReportAction: false } : null;
+  } else if (state && (state.baseline !== baseline || state.layout !== layout || state.source !== source)) return null;
+  else if (state && state.reportSession !== reportSession) {
+    const reportPath = state.frames.some(({ panel }) => panel.kind === "duplicates" || panel.kind === "duplicate");
+    return { ...state, reportSession,
+      ...(reportPath ? { frames: [frame({ kind: "duplicates" }, ++nextFrameKey.current)],
+        focusHeading: true, focusReportAction: reportSession === null, returning: false } : {}),
+    };
+  }
+  return state;
 }
 
 /** One inspection path belongs to one published baseline/layout pair. */
-export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>, connectionMode: ConnectionMode = "selected", reportSession: number | null = null) {
+export function useArchitectureInspection(baseline: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>, connectionMode: ConnectionMode = "selected", reportSession: number | null = null, scope?: InspectionScope) {
   const [state, setState] = useState<InspectionState | null>(null);
   const nextFrameKey = useRef(0);
   const container = useRef<HTMLElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
-  if (state && (state.baseline !== baseline || state.layout !== layout)) setState(null);
-  else if (state && state.reportSession !== reportSession) {
-    const reportPath = state.frames.some(({ panel }) => panel.kind === "duplicates" || panel.kind === "duplicate");
-    setState({ ...state, reportSession,
-      ...(reportPath ? { frames: [frame({ kind: "duplicates" }, ++nextFrameKey.current)],
-        focusHeading: true, focusReportAction: reportSession === null, returning: false } : {}),
-    });
-  }
+  const source = scope?.source ?? baseline;
+  const raw = scope?.raw ?? true;
+  const reconciled = reconcileInspection(state, { baseline, layout, source, raw, scope, reportSession }, nextFrameKey);
+  if (state !== reconciled) setState(reconciled);
   const current = state?.baseline === baseline && state.layout === layout ? state : null;
   const entry = current?.frames.at(-1);
   const panel = entry?.panel ?? null;
 
   const open = useCallback((panel: ArchitecturePanel, opener: HTMLElement, keyboard: boolean) => {
     const focusHeading = keyboard || Boolean(container.current?.contains(document.activeElement)) || hidesFocusedArc(panel, connectionMode);
-    setState({ baseline, layout, frames: [frame(panel, ++nextFrameKey.current)], opener, focusHeading, returning: false, reportSession });
-  }, [baseline, layout, connectionMode, reportSession]);
+    setState({ baseline, layout, source, raw, frames: [frame(panel, ++nextFrameKey.current)], opener, focusHeading, returning: false, reportSession });
+  }, [baseline, layout, connectionMode, reportSession, source, raw]);
 
   function navigate(panel: ArchitecturePanel, trigger: HTMLElement) {
     if (!current || !entry) return;

@@ -1,14 +1,14 @@
 import type { layoutBaseline } from "../lib/architecture-layout.ts";
 import { readBrowserBaseline, selectBrowserBaseline } from "../platform/browser-documents.ts";
 import { isDesktop } from "../platform/desktop.ts";
-import { selectBaselineFile, selectDiscoveryResultFile, selectDuplicationReportFile } from "../platform/document-dialogs.ts";
+import { selectBaselineFile, selectEarlierBaselineFile, selectDiscoveryResultFile, selectDuplicationReportFile } from "../platform/document-dialogs.ts";
 import { DesktopDocumentAccess } from "../platform/documents.ts";
 import { LoadWorkflow, type SelectedBaseline } from "./load-workflow.ts";
 import type { WorkspaceBinding } from "./workspace-view.ts";
 
 // Each kind of file has its own desktop picker title; all use the same read-only document command.
 const desktopPickers = {
-  baseline: selectBaselineFile, "duplication report": selectDuplicationReportFile, "discovery result": selectDiscoveryResultFile,
+  baseline: selectBaselineFile, "earlier baseline": selectEarlierBaselineFile, "duplication report": selectDuplicationReportFile, "discovery result": selectDiscoveryResultFile,
 };
 
 /** Composition has no startup effects. Both hosts use the same decoder and viewer. */
@@ -23,6 +23,7 @@ export function createWorkspace(options: { layout?: typeof layoutBaseline } = {}
     return file === null ? null : { read: (readSignal) => readBrowserBaseline(file, readSignal, purpose) };
   }
   return { workflow: new LoadWorkflow({
+    selectEarlierBaseline: (signal) => selectDocument(signal, "earlier baseline"),
     selectBaseline: (signal) => selectDocument(signal, "baseline"),
     selectDuplicationReport: (signal) => selectDocument(signal, "duplication report"),
     selectDiscoveryResult: (signal) => selectDocument(signal, "discovery result"),

@@ -23,7 +23,7 @@ Feature: Open a published component view
 
 [Component view](#component-view) · [Saved data](#saved-data) ·
 [Isolation diff](#isolation-diff) · [Stage prompts and tickets](#producer-prompts-and-tickets) ·
-[Delivery and checks](#delivery-and-checks)
+[Delivery and checks](#delivery-and-checks) · [Implementation and verification record](CR-005-implementation.md)
 
 ## Component view
 

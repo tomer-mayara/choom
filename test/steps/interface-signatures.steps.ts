@@ -26,7 +26,7 @@ Given(/^an interface with a (saved|missing|unknown|long) function signature is o
   this.signatureBaseline = interfaceSignatureFixture(variant);
   await writeFile(file, stringify(this.signatureBaseline));
   const driver = new BaselineBrowserDriver(page(this));
-  await driver.open(); await driver.openBaseline(file);
+  await driver.open(); await driver.openHistoricalInventory(file);
   await expect(page(this).getByText("Baseline ready.", { exact: true })).toBeVisible();
   if (this.signatureTextPercent) await page(this).evaluate((size) => { document.documentElement.style.fontSize = `${size}%`; }, this.signatureTextPercent);
   this.signatureRequests = []; this.signatureUrl = page(this).url();

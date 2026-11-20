@@ -51,7 +51,8 @@ the same for the resource access rule list (see
 [Find the resource access candidates](#find-the-resource-access-candidates)). Every later
 command, the inspection helper and the publication commands in section 6 run from
 the tool checkout and make the same producer code check first.
-The input remains the empty version 1 seed. Versions 1 and 2 remain readable.
+The input remains the empty version 1 seed. Use [version 6](record-format.md#version-6-boundary-review)
+for a project-keyed run and keep each file whole. The following version choices apply to legacy runs. Versions 1 and 2 remain readable.
 Use version 3 for [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when a
 [system-entry assessment](record-format.md#version-4-system-entry-points)
@@ -1314,11 +1315,21 @@ and name them in the entry analysis as behaviorEntryCandidatesRef.
 Read the resource access candidates as sites to read, not as proven access,
 and name them in resource-access.json as resourceAccessCandidatesRef.
 Recover the apparent intended architecture; do not recommend redesigns.
+When run.before.yaml has a projectKey, write a version 6 boundary review. Record
+who reached which member, through which written path, under which effective rule.
+Inspect outside uses of private or unlisted members as well as public entries.
+Cite the caller and binding ranges and each direct file owner. Link an existing
+source use by interface ID and use ID. Keep unresolved bindings and limits.
+Review an evidenced production operation and a non-production use. For each
+reachable target, give ordered edges in a single saved resolution context.
 Keep source-use assessments separate from allowedConsumers.
+Use the registered package-bin name or literal Node test name for an operation
+whose handler has no JavaScript declaration of that name. Cite the registration
+and the handler. Link the reviewed behavior to the matching file entry and role.
 Review launch settings, behavior entries and each external operation's
 registration or host binding. Use the candidate file mapping for the direct
 owner of the start or handler. Keep unresolved paths and owners in discovery.
-Use version 4 for systemEntryPoints, or the version required by the other
+For legacy files use version 4 for systemEntryPoints, or the version required by the other
 saved fields when there is no entry assessment.
 Use one selected mapping and reviewed caller/binding evidence with partial scope.
 Retain structured interface documentation. For each function or method entry
