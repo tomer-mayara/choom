@@ -81,6 +81,20 @@ manager recorded four expected findings. The reviewer reproduced all four.
 This exercise checked interpretation of source. The next evaluation covers
 collection, publication and handoff on a fresh repository.
 
+## Follow-up for the TraceRelic model
+
+Run 002 has a verified publication and documented corrections. A corrected
+full model is still open work. For a like-for-like follow-up, use the saved
+snapshot and its capture limits with a fresh run ID. The base commit alone
+cannot recreate the working tree. Record the source identity of the follow-up.
+
+In Stages 4 and 5, reconcile the configuration barrel with the history test,
+review the logging enum and subclass sites, and update the two purpose fields,
+the history example and the dated caller-search explanation. In Stage 6, check
+each finding above against the new proposal and source range. Open the fixed
+pair and confirm the history test consumer appears with its test role. This
+produces a corrected input for a later duplicated-interface assessment.
+
 ## Next full-run evaluation
 
 1. **Before assigning workers**, select a repository and revision kept apart
