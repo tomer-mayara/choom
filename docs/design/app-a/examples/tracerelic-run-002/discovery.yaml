@@ -1,0 +1,71 @@
+# Teaching extract from TraceRelic run-002. See README.md for its scope and the original publication.
+formatVersion: 2
+kind: architecture-discovery
+runRef: run-002
+baselineRef: baseline-002-example
+baselineDigest: d80039f99b81092df18adfb5067427f57b4202cf6c1ec5ba6bf0c8a2cb42665d
+entryAnalysisRef: s5-001-entry-analysis
+codeMappingRef: s5-001-file@code-mapping.json
+dependenciesRef: s4-001-file@graph-results.json
+resourceAccessRef: s5-001-file@resource-access.json
+overview:
+  text: Two selected paths from run-002 show the production collector calling its loader and a Fastify route registered by an integration test.
+  evidenceRefs:
+  - s4-001-source-excerpt-017
+  - s4-001-source-excerpt-042
+inspectedPaths:
+- id: s4-001-path-history
+  description: From the collector history command to its configuration loader.
+  entryPointRef: s4-001-behavior-history-command
+  componentIds:
+  - s4-001-collector
+  - s4-001-configuration
+  evidenceRefs:
+  - s4-001-source-excerpt-015
+  - s4-001-source-excerpt-017
+  - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  limits:
+  - The extract ends at configuration loading. The original discovery also follows the history reader.
+  steps:
+  - action: The CLI imports GlobalConfigLoader from the configuration component.
+    evidenceRefs:
+    - s4-001-source-excerpt-015
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  - action: The history command passes the selected configuration path to GlobalConfigLoader.load at line 24.
+    evidenceRefs:
+    - s4-001-source-excerpt-017
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+- id: s4-001-path-api-health
+  description: From the Node environment test to an injected GET /health response.
+  entryPointRef: s4-001-behavior-fastify-test
+  componentIds:
+  - s4-001-api-environment
+  evidenceRefs:
+  - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+  - s4-001-source-excerpt-042
+  limits:
+  - The test registers the route on its local Fastify instance. Deployed HTTP startup remains unknown.
+  steps:
+  - action: The Node test creates Fastify and schedules close.
+    evidenceRefs:
+    - s4-001-source-excerpt-042
+  - action: "Within the same callback, Fastify registers GET /health, the test injects GET /health and asserts HTTP 200 and {ok: true}."
+    evidenceRefs:
+    - s4-001-source-excerpt-042
+questions:
+- id: s1-question-001
+  subjectRefs:
+  - s4-001-api-environment
+  text: Which startup path, if any, supplies a deployed API server? The captured API integration test registers /health on a Fastify instance local to the test.
+  evidenceRefs:
+  - s4-001-source-excerpt-042
+gaps:
+- id: s4-001-gap-health-scope
+  kind: scope-clarification
+  subjectRefs:
+  - s4-001-api-environment
+  - s1-question-001
+  reason: The registration and the injected request use the same Fastify instance in the integration test. The run left the deployed listener and handler unknown.
+  evidenceRefs:
+  - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+  - s4-001-source-excerpt-042

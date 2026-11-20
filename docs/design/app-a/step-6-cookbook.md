@@ -83,18 +83,21 @@ paths before reporting shared roots.
 
 For an observed access, trace the mapped actor's expression to its target.
 Check that any proposed owner for that target has evidence about the same
-resource. A caller-supplied path can remain symbolic. If only a planned
-system has a named owner, check for a null owner on the observed resource
-and a discovery subject naming <resource-id>.owner.
+resource. For a caller-supplied path with no established resource binding,
+check for target.resourceRef null and the observed expression. A separate
+planned store can have a supported owner. A modeled resource with unknown
+ownership needs owner.value null and a discovery subject naming <resource-id>.owner.
 
 For a version 6 baseline add a check with id boundary-review. Cite the selected
 Stage 5 baseline proposal with #/boundaryReview and the selected code mapping.
 When the review lists limits, also cite #/boundaryReview/limitations in that proposal.
-Trace an evidenced production operation and a test, tooling or unknown use
-when available. Check the caller and binding ranges, the direct caller owner
-in the selected mapping and the role at the use site. If a category has no
-supported example or caller, give the searched scope and limit. Lead the
-handoff with source identity, operation, component and any observed caller.
+When an operation is supported, trace it to its declaration. For an observed
+caller, use the binding to that exact member, its access kind, caller range, site role
+and direct owner. For a declared operation with no observed caller, give the
+search status and scope. Report zero outside callers only for a complete
+search in that role and scope. Include a test or tooling use when available.
+For a missing operation or role, state what was examined and the limit. Lead
+the handoff with source identity and the supported component, operation and use.
 Then link the fixed files, evidence and limits.
 
 Check systemEntryPoints against this run's snapshot and the selected Stage 5
@@ -105,6 +108,11 @@ shared handlers retain distinct operations. Review the scope limitations and
 keep unresolved candidates in discovery. The publication helper verifies the
 selected proposal and saves its exact bytes.
 
+Compare the model with public declarations and exports in the reviewed ranges.
+Follow re-exports and check whether exposed errors, input or result types,
+value references, type uses or self-use were missed. Keep unknown roles explicit.
+Match behavior claims to the guarantee in those lines. TypeScript readonly restricts
+assignment during type checking. Runtime immutability needs separate evidence.
 Check sourceUsage against this run's snapshot and the selected Stage 5 mapping.
 For every use, verify the direct caller owner, actual interface/entry binding,
 kind and context, and the reviewed caller and supporting source ranges. Every
@@ -141,8 +149,9 @@ The helpers cannot reopen a completed Stage 5. Correct a readiness citation in
 the external packet. For a minor prose error, identify the artifact and exact
 field. For an example, give the interface, entry and example IDs and the field
 within that example. Quote the wording, give its correction and cite the
-evidence. Explain the effect in readiness and in the handoff. A wrong owner,
-access or role needs a new proposal. Missing required evidence stops publication.
+evidence. Explain the effect in readiness and in the handoff. A missing public
+member or observed use that changes the model, or a wrong owner, access or role,
+needs a new proposal. Missing required evidence stops publication.
 Otherwise prepare a readiness record bound to the current three draft digests
 and selected fact references. Record semantic checks with supporting evidence,
 remaining limits, the complete prompt and visible response, supplied evidence,
@@ -326,11 +335,15 @@ unchanged.
 `verify` also runs the shared record checks on the saved fixed baseline and
 discovery result. The discovery result must name the ID of the baseline and the
 SHA-256 of the saved baseline file. A changed baseline file or a discovery result
-with another digest is refused. Do not edit either file to force a pass. The current manual run keeps explicit unknown owners and incomplete
-source coverage. Completion does not turn those limits into complete coverage.
+with another digest is refused. Do not edit either file to force a pass. Report
+the actual unknown-owner count and source inspection limits from this run.
 Read the generated coverage summaries as well as the structured progress fields.
 They must refer to the completed result and its selected facts, without a stale
 claim that baseline recovery is pending.
+
+In a v6 `handoff.json`, `boundarySummary.caller` names another component with
+a reviewed production call to the selected operation. Report self-use and caller
+search coverage from their own records, including when this field is null.
 
 Give the reader both fixed paths from `run.yaml`. For a version 6 baseline,
 use this sequence in the browser or desktop viewer.

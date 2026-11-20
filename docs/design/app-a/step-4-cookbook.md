@@ -1324,14 +1324,19 @@ Read the behavior entry candidates as places to read, not as proven entries,
 and name them in the entry analysis as behaviorEntryCandidatesRef.
 Read the resource access candidates as sites to read, not as proven access,
 and name them in resource-access.json as resourceAccessCandidatesRef.
+Keep target.resourceRef null when the access expression cannot be linked to
+a modeled resource. Assess ownership separately for each modeled resource.
 Recover the apparent intended architecture; do not recommend redesigns.
 When run.before.yaml has a projectKey, write a version 6 boundary review. Record
 who reached which member, through which written path, under which effective rule.
 Inspect outside uses of private or unlisted members as well as public entries.
 Cite the caller and binding ranges and each direct file owner. Link an existing
 source use by interface ID and use ID. Keep unresolved bindings and limits.
-Review a production operation and a non-production use where the evidence
-supports them. For a missing example, describe the searched scope and limit.
+Compare the proposed public paths with the package entries and declarations.
+Follow re-exports and inspect uses of supported members, including error and
+type contracts and uses within the providing component. For an observed
+production or non-production use, cite the exact member, caller, access kind
+and role. For a missing example, describe the searched scope and limit.
 For each reachable target, give ordered edges in a single saved resolution context.
 Keep source-use assessments separate from allowedConsumers.
 Use the registered package-bin name or literal Node test name for an operation

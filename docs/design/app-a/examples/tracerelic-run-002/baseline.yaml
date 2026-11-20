@@ -1,0 +1,500 @@
+# Teaching extract from TraceRelic run-002. See README.md for its scope and the original publication.
+formatVersion: 6
+id: baseline-002-example
+parentId: null
+components:
+- id: s4-001-collector
+  name: Local collector
+  purpose:
+    value: Dispatch the history command, validate its dates and report the result to the caller.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+  membership:
+    value:
+      paths:
+      - apps/collector/src/cli.ts
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+  groupingReason:
+    value: The collector declares the CLI. This extract follows the configuration call in its history command.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+- id: s4-001-configuration
+  name: Collector configuration
+  purpose:
+    value: Load the selected JSON file and return a configuration with an absolute codexPath.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  membership:
+    value:
+      paths:
+      - apps/collector/src/config/global-config-loader.ts
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  groupingReason:
+    value: The collector declaration names its schema and loader. The CLI imports this loader directly.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  parent:
+    value: s4-001-collector
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+- id: s4-001-api-environment
+  name: API environment checks
+  purpose:
+    value: Check PostgreSQL connectivity and exercise an injected Fastify request in a test.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-apps%2Fapi%2Fscripts%2Fcheck-db.mjs
+    - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+  membership:
+    value:
+      paths:
+      - apps/api/scripts/check-db.mjs
+      - apps/api/test/integration/environment.test.ts
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-apps%2Fapi%2Fscripts%2Fcheck-db.mjs
+    - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+  groupingReason:
+    value: The database probe checks the environment. The integration test creates the Fastify instance for its own request.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-apps%2Fapi%2Fscripts%2Fcheck-db.mjs
+    - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+interfaces:
+- id: s4-001-interface-configuration
+  name: Global configuration loader
+  owner:
+    value: s4-001-configuration
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+    - s4-001-source-excerpt-004
+    - s4-001-source-excerpt-005
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Findex.ts
+    - s4-001-source-excerpt-007
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fhistory%2Flocal-llm-history-codex.ts
+  publicAccess:
+    value:
+    - GlobalConfigLoader.load
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+    - s4-001-source-excerpt-004
+    - s4-001-source-excerpt-005
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Findex.ts
+    - s4-001-source-excerpt-007
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fhistory%2Flocal-llm-history-codex.ts
+  allowedConsumers:
+    value: null
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+    - s4-001-source-excerpt-004
+    - s4-001-source-excerpt-005
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Findex.ts
+    - s4-001-source-excerpt-007
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fhistory%2Flocal-llm-history-codex.ts
+  promises:
+    value:
+      behavior: Validate the required nonblank, NUL-free codexPath. Extra fields are admitted by the schema.
+      data: Return a GlobalConfig with an absolute codexPath resolved from the file directory or home.
+      errors: Report unreadable files, malformed JSON and schema failures with the resolved file name.
+      lifecycle: The CLI passes the configuration returned by the loader to the history reader.
+    status: proposed
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+    - s4-001-source-excerpt-004
+    - s4-001-source-excerpt-005
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Findex.ts
+    - s4-001-source-excerpt-007
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fhistory%2Flocal-llm-history-codex.ts
+  documentation:
+    summary:
+      value: The CLI loads its configuration before it constructs the history reader.
+      status: proposed
+      evidenceRefs:
+      - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+      - s4-001-source-excerpt-004
+      - s4-001-source-excerpt-005
+      - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Findex.ts
+      - s4-001-source-excerpt-007
+      - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+      - s4-001-source-apps%2Fcollector%2Fsrc%2Fhistory%2Flocal-llm-history-codex.ts
+    entries:
+    - id: load
+      name: GlobalConfigLoader.load
+      accessPoint: GlobalConfigLoader.load
+      kind:
+        value: function
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+        - s4-001-source-excerpt-007
+      description:
+        value: Resolve the file name, parse its UTF-8 JSON and return a configuration with an absolute provider path.
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+        - s4-001-source-excerpt-007
+      examples: []
+      signature:
+        value: "static async load(filePath: string): Promise<GlobalConfig>"
+        status: proposed
+        evidenceRefs:
+        - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+        - s4-001-source-excerpt-007
+    sourceNotes:
+    - evidenceRef: s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+      description: Saved lines 1–41 of apps/collector/src/config/global-config-loader.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/config/global-config-loader.ts
+        sha256: 71b8c0670ec600ef129f7d4049ac3048ee8cc12f8e5bb1c9ef4fe306d4e6a14d
+        lines:
+        - 1
+        - 41
+    - evidenceRef: s4-001-source-excerpt-004
+      description: Saved lines 1–18 of apps/collector/src/config/global-config-schema.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/config/global-config-schema.ts
+        sha256: 401b3d0c157ae88b7d216b77076c5263e3831ffbc879da536440f7dc83e1ad01
+        lines:
+        - 1
+        - 18
+    - evidenceRef: s4-001-source-excerpt-005
+      description: Saved lines 1–13 of apps/collector/src/config/global-config.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/config/global-config.ts
+        sha256: 420abd3d3497ce90e2dbdc2885f4541880bd332e3c3bfc5da6ade98ad00aa921
+        lines:
+        - 1
+        - 13
+    - evidenceRef: s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Findex.ts
+      description: Saved lines 1–3 of apps/collector/src/config/index.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/config/index.ts
+        sha256: 103531a301db77dc1d8ef361cab8ce7c99887f687fdeb208813ab2d8a0a36b99
+        lines:
+        - 1
+        - 3
+    - evidenceRef: s4-001-source-excerpt-007
+      description: Saved lines 1–18 of docs/specs/local-collector/config.tsp.
+      location:
+        snapshotRef: snapshot-002
+        path: docs/specs/local-collector/config.tsp
+        sha256: 145eebf728259ed06e742c43c91a0b3110ddf41cf0f56ec959f7a10acbf45530
+        lines:
+        - 1
+        - 18
+    - evidenceRef: s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+      description: Saved lines 1–34 of apps/collector/src/cli.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/cli.ts
+        sha256: 099abe1d2f90d43b2e7479db9b3cc984e8683198b16029dd0976636e784f4a1d
+        lines:
+        - 1
+        - 34
+    - evidenceRef: s4-001-source-apps%2Fcollector%2Fsrc%2Fhistory%2Flocal-llm-history-codex.ts
+      description: Saved lines 1–79 of apps/collector/src/history/local-llm-history-codex.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/history/local-llm-history-codex.ts
+        sha256: 941719cdd979743bd597a6f8e643dfeaa764b0a48208baa4995b3bcc7229c860
+        lines:
+        - 1
+        - 79
+resources: []
+rules: []
+sourceUsage:
+  snapshotRef: snapshot-002
+  mappingRef: s5-001-file@code-mapping.json
+  assessments:
+  - interfaceId: s4-001-interface-configuration
+    scope: The selected site is the production CLI calling the configuration loader in the compiler import context.
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+    - s4-001-source-excerpt-015
+    - s4-001-source-excerpt-017
+    limitations:
+    - The original caller search was partial. This extract shows one direct caller.
+    uses:
+    - id: s4-001-use-cli-load
+      consumerId: s4-001-collector
+      kind: value
+      context: application
+      description: The CLI awaits GlobalConfigLoader.load with its --config value before it constructs the history reader.
+      callerRef: s4-001-source-excerpt-017
+      evidenceRefs:
+      - s4-001-source-excerpt-017
+      - s4-001-source-excerpt-015
+      - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+      entryId: load
+    sourceNotes:
+    - evidenceRef: s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+      description: Saved lines 1–41 of apps/collector/src/config/global-config-loader.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/config/global-config-loader.ts
+        sha256: 71b8c0670ec600ef129f7d4049ac3048ee8cc12f8e5bb1c9ef4fe306d4e6a14d
+        lines:
+        - 1
+        - 41
+    - evidenceRef: s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+      description: Saved lines 1–34 of apps/collector/src/cli.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/cli.ts
+        sha256: 099abe1d2f90d43b2e7479db9b3cc984e8683198b16029dd0976636e784f4a1d
+        lines:
+        - 1
+        - 34
+    - evidenceRef: s4-001-source-excerpt-017
+      description: Saved lines 24–24 of apps/collector/src/cli.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/cli.ts
+        sha256: 099abe1d2f90d43b2e7479db9b3cc984e8683198b16029dd0976636e784f4a1d
+        lines:
+        - 24
+        - 24
+    - evidenceRef: s4-001-source-excerpt-015
+      description: Saved lines 2–4 of apps/collector/src/cli.ts.
+      location:
+        snapshotRef: snapshot-002
+        path: apps/collector/src/cli.ts
+        sha256: 099abe1d2f90d43b2e7479db9b3cc984e8683198b16029dd0976636e784f4a1d
+        lines:
+        - 2
+        - 4
+boundaryReview:
+  status: current
+  identity:
+    projectKey: TraceRelic
+    snapshotRef: snapshot-002
+    inventoryDigest: 8d78555f9de06015b7901cf33f2b4bb58f0137938ef771ee505f3517520b4c76
+    sourceKind: working-tree
+    baseCommit: 3a35b6ebfd003f6ee30d916e874617dafeb0d28d
+    analysisRoots:
+    - apps/collector
+    - apps/api
+    - packages/shared
+    - .habit-hooks
+    mappingRef: s5-001-file@code-mapping.json
+  componentScopes:
+  - componentId: s4-001-collector
+    name: Local collector
+    purpose: Dispatch the history command, validate its dates and report the result to the caller.
+    basis: declaration
+    roles:
+    - production
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+  - componentId: s4-001-configuration
+    name: Collector configuration
+    purpose: Load the selected JSON file and return a configuration with an absolute codexPath.
+    basis: declaration
+    roles:
+    - production
+    evidenceRefs:
+    - s4-001-source-excerpt-002
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  - componentId: s4-001-api-environment
+    name: API environment checks
+    purpose: Check PostgreSQL connectivity and exercise an injected Fastify request in a test.
+    basis: observed
+    roles:
+    - environment
+    - test
+    evidenceRefs:
+    - s4-001-source-apps%2Fapi%2Fscripts%2Fcheck-db.mjs
+    - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+  units:
+  - id: s4-001-boundary-unit-019
+    path: apps/collector/src/cli.ts
+    unitKind: file
+    ownerId: s4-001-collector
+    roles:
+    - production
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+  - id: s4-001-boundary-unit-020
+    path: apps/collector/src/config/global-config-loader.ts
+    unitKind: file
+    ownerId: s4-001-configuration
+    roles:
+    - production
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  - id: s4-001-boundary-unit-015
+    path: apps/api/scripts/check-db.mjs
+    unitKind: file
+    ownerId: s4-001-api-environment
+    roles:
+    - environment
+    evidenceRefs:
+    - s4-001-source-apps%2Fapi%2Fscripts%2Fcheck-db.mjs
+  - id: s4-001-boundary-unit-016
+    path: apps/api/test/integration/environment.test.ts
+    unitKind: file
+    ownerId: s4-001-api-environment
+    roles:
+    - test
+    evidenceRefs:
+    - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+  operations:
+  - id: s4-001-operation-loader
+    unitId: s4-001-boundary-unit-020
+    member: GlobalConfigLoader.load
+    name: Load a global configuration
+    roles:
+    - production
+    visibility: public
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Findex.ts
+    - s4-001-source-excerpt-003
+    interfaceId: s4-001-interface-configuration
+    entryId: load
+  - id: s4-001-operation-test-health
+    unitId: s4-001-boundary-unit-016
+    member: GET /health
+    name: Respond to the injected Fastify request
+    roles:
+    - test
+    visibility: unknown
+    evidenceRefs:
+    - s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+    - s4-001-source-excerpt-042
+    reason: Only a test host registration is present.
+  accesses:
+  - id: s4-001-access-cli-loader-import
+    callerUnitId: s4-001-boundary-unit-019
+    writtenPath: ./config/global-config-loader.ts
+    targetUnitId: s4-001-boundary-unit-020
+    member: GlobalConfigLoader.load
+    kind: import
+    context: compiler-1-import
+    callerRole: production
+    targetRole: production
+    callerRef: s4-001-source-excerpt-015
+    operationId: s4-001-operation-loader
+    evidenceRefs:
+    - s4-001-source-excerpt-015
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  - id: s4-001-access-cli-load
+    callerUnitId: s4-001-boundary-unit-019
+    writtenPath: ./config/global-config-loader.ts
+    targetUnitId: s4-001-boundary-unit-020
+    member: GlobalConfigLoader.load
+    kind: call
+    context: compiler-1-import
+    callerRole: production
+    targetRole: production
+    callerRef: s4-001-source-excerpt-017
+    operationId: s4-001-operation-loader
+    sourceUse:
+      interfaceId: s4-001-interface-configuration
+      useId: s4-001-use-cli-load
+    evidenceRefs:
+    - s4-001-source-excerpt-017
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+    - s4-001-source-excerpt-015
+  rules: []
+  checks: []
+  callerSearches:
+  - operationId: s4-001-operation-loader
+    role: production
+    coverage:
+      status: partial
+      roots:
+      - apps/collector/src
+      examinedUnitIds:
+      - s4-001-boundary-unit-019
+      - s4-001-boundary-unit-020
+      accessKinds:
+      - import
+      - call
+      missingRoots: []
+      unresolvedAccessIds: []
+      limitations:
+      - The original caller search covered one compiler import context and reported partial coverage.
+      - This example includes the CLI and loader from that search. Other callers and runtime execution remain unknown.
+    evidenceRefs:
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fcli.ts
+    - s4-001-source-apps%2Fcollector%2Fsrc%2Fconfig%2Fglobal-config-loader.ts
+  sourceNotes:
+  - evidenceRef: s4-001-source-excerpt-002
+    description: Saved lines 1–18 of apps/collector/component.yaml.
+    location:
+      snapshotRef: snapshot-002
+      path: apps/collector/component.yaml
+      sha256: 6a6b106029588bd215dbb6dbfe0e1a7fed04e9108cc954e99cf6b8376adbad6c
+      lines:
+      - 1
+      - 18
+  - evidenceRef: s4-001-source-apps%2Fapi%2Fscripts%2Fcheck-db.mjs
+    description: Source range saved by run-002.
+    location:
+      snapshotRef: snapshot-002
+      path: apps/api/scripts/check-db.mjs
+      sha256: 07252026edcc64804ef7271fc7bb2d12cf71a4eeeda2f70c6532f022815d1e39
+      lines:
+      - 1
+      - 12
+  - evidenceRef: s4-001-source-apps%2Fapi%2Ftest%2Fintegration%2Fenvironment.test.ts
+    description: Saved lines 1–12 of apps/api/test/integration/environment.test.ts.
+    location:
+      snapshotRef: snapshot-002
+      path: apps/api/test/integration/environment.test.ts
+      sha256: 18f9543b1996bcb3e61415fba3a50db3c93e783745fd11af784ec680865b2375
+      lines:
+      - 1
+      - 12
+  - evidenceRef: s4-001-source-excerpt-003
+    description: Saved lines 1–29 of apps/collector/package.json.
+    location:
+      snapshotRef: snapshot-002
+      path: apps/collector/package.json
+      sha256: 45ff58b059516d01aa40c9005dc0b5f46336367d585348ba25a67abb73e45c98
+      lines:
+      - 1
+      - 29
+  - evidenceRef: s4-001-source-excerpt-042
+    description: Saved lines 5–12 of apps/api/test/integration/environment.test.ts.
+    location:
+      snapshotRef: snapshot-002
+      path: apps/api/test/integration/environment.test.ts
+      sha256: 18f9543b1996bcb3e61415fba3a50db3c93e783745fd11af784ec680865b2375
+      lines:
+      - 5
+      - 12
+  matches: []
+  limitations:
+  - Teaching extract from TraceRelic run-002. The inventory digest and mapping identify its original working-tree capture.
+  - Membership, component roles and caller-search scope are limited to the files shown here. The API route is a test registration. Its deployment status is unknown.
+  - The original run also reviewed other components, behavior paths, resources and rules.

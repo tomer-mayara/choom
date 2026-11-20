@@ -323,7 +323,8 @@ describe("Stage 5 collect", () => {
     const block = /<!-- stage5-review-prompt:start -->\n```text\n([\s\S]*?)^```\n<!-- stage5-review-prompt:end -->/m.exec(cookbook);
     const tokens: Record<string, string> = { WORK: fixture.work, ATTEMPT: attempt, ID: id, ENTRY_ANALYSIS_REF: "s4-check-entry-analysis",
       MAPPING_REF: mappingRef, DEPENDENCIES_REF: graphRef, RESOURCE_ACCESS_REF: "s4-check-file@resource-access.json",
-      INSPECTION_SUMMARY: ["| Ownership | Selected Stage 4 range | Historical ranges only | No recorded range |",
+      INSPECTION_SUMMARY: ["Counts cover the selected Stage 4 entry analysis and its predecessors. Stage 1 role reviews are recorded separately.", "",
+        "| Ownership | Selected Stage 4 range | Earlier entry analyses only | No range in entry-analysis history |",
         "| --- | ---: | ---: | ---: |", "| Proposed owner | 1 | 0 | 1 |", "| Unknown owner | 0 | 0 | 35 |", "",
         "File paths and recorded ranges: `s5-check-file@inspection-coverage.json#/units`.",
         "Files with unknown owners: `s5-check-file@remaining-units.json#/units`."].join("\n") };

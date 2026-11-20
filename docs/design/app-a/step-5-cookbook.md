@@ -95,7 +95,7 @@ tests, builds, Knip or dependency-cruiser.
 | --- | --- |
 | `scope.json` | The input references, source query scope, initial excerpt requests and limits fixed at the start. |
 | `remaining-units.json` | Every mapped file with `owner: null`, its original mapping reference, entry-candidate references, and incoming or outgoing graph references in each saved context. Source-site pointers locate matching import syntax. |
-| `inspection-coverage.json` | All mapped files, their owners, exact current reviewed ranges and references to historical reviewed ranges. Uninspected files remain visible, including files with owners. |
+| `inspection-coverage.json` | All mapped files, their owners, ranges in the selected Stage 4 entry analysis and references to ranges in its predecessors. This includes owned files with no range in that history. |
 | `source-candidates.json` | Syntax candidates for module or class initialization, side-effect imports, and setup or registration calls. Includes the parser with the ts-morph and TypeScript versions, parser diagnostics, skipped files, bounded output and omissions. |
 | `source-excerpts.json` | Numbered initial excerpts, each with snapshot identity, file hash, exact lines and truncation state. Missing or skipped requests remain explicit. |
 | `review-prompt.md` | The LLM task, evidence rules and incoming file counts by ownership and reviewed ranges from `inspection-coverage.json`. |
@@ -175,8 +175,9 @@ the separate dependency contexts, and saved numbered source excerpts.
 {{INSPECTION_SUMMARY}}
 
 Use these incoming file counts to choose a source range. Look for files
-without owners and for unread ranges that could change a claim, including in
-owned files. Inspect important unexplained areas such as initialization and
+without owners and for gaps in the entry-analysis history that could change a
+claim, including in owned files. Check the separate Stage 1 role review when
+reporting what the whole run inspected. Inspect unexplained areas such as initialization and
 setup candidates. Use source, callers, contracts, tests and saved ownership
 guidance. A reference or shared artifact alone does not establish an exclusive
 owner. Request the source ranges you need. The worker classifies the files
@@ -191,8 +192,10 @@ entry analysis. Its candidates are places to read, not proven entries.
 The resource observations keep resourceAccessCandidatesRef of the selected
 resource observations. Recheck the mapped actor, the argument or setting that
 selects its runtime target, and the evidence of ownership for that same target.
-If only the owner of a planned system is named, keep the modeled resource's
-owner.value null and name <resource-id>.owner in a discovery question or gap.
+If the target cannot be linked to a modeled resource, keep its expression and
+set target.resourceRef to null. Preserve any independently supported owner of a
+planned store. For a modeled resource with unknown ownership, keep owner.value
+null and name <resource-id>.owner in a discovery question or gap.
 
 Start with files. Divide a file only when a boundary inside it needs
 examination: reviewed source shows that a top-level declaration of the file
@@ -234,11 +237,13 @@ Explain each complete, partial or unassessed caller search. A complete negative
 reachability check accounts for all starts and every reachable edge in the
 rule's scope. Record omitted roots, unresolved edges and unsupported kinds.
 Keep the production summary free of names, paths or prose about hidden targets.
-For a production operation and a non-production use, trace the callers the
-review found. Check each use role against its source and its direct owner
-against the final mapping. A test calling a production operation is a test
-use. For a category with no supported example or caller, give the searched
-scope and the limit.
+Pair each reported caller with the exact operation it uses, its access kind,
+its role at that site and its direct owner in the final map. A test calling a
+production operation is a test use. For a declared operation with no observed
+caller, report the status and scope of the search. A complete search can
+establish zero outside callers in its stated role and scope. Compare earlier
+caller searches with the uses this review adds. If a search covers an earlier
+stage, identify that scope and cite the later sites separately.
 
 Legacy packets use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
 file. Set its snapshotRef to this run's
@@ -264,6 +269,10 @@ when all assignments are unchanged. Recheck every carried consumer assignment
 and interface/entry binding against the candidate mapping and baseline. Reuse
 unchanged caller evidence; do not copy mappingRef into each use.
 
+Compare modeled entries with the reviewed public declarations. Follow named,
+default and re-exported members to their definitions, including exposed
+classes, schema values and types. Account for missing entries or uses shown
+in the reviewed ranges, including uses within the providing component.
 Map each caller file to its direct owner, not its parent. Read calls and value
 references; resolve aliases, injected callbacks, JSX, and IPC registration where
 needed. For an injected reader, inspect construction, callback assignment, and

@@ -81,3 +81,15 @@ Feature: Publish reviewed component boundaries
     Given approved Stage 5 v6 bytes with a loader, a test fixture and a coverage limit
     When the manager runs stage-6 finish and verify and opens the fixed file
     Then its bytes equal the proposal and the reader returns the recorded roles, access and limit
+
+  @review-evidence
+  Scenario: The handoff finds a production call after an operation with an unknown role
+    Given a reviewed loader with an unknown operation role and a production call to a second component
+    When the manager prepares the Stage 6 handoff
+    Then the handoff names the second operation and cites its caller and target
+
+  @review-evidence
+  Scenario: A production declaration has no reviewed production call
+    Given a reviewed production import with no recorded production call
+    When the manager prepares the Stage 6 handoff
+    Then the handoff names a declared production operation with its own evidence and an empty caller

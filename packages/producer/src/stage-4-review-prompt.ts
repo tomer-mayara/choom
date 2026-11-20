@@ -50,14 +50,19 @@ const resourceCandidates = `resource-access-candidates.json lists the calls that
   `found (confidence name-only). A candidate is a place to read, not proven access. Keep observed access separate from ` +
   `inferred ownership: a matching name does not prove the same resource, and a candidate names no owner. Name the file in ` +
   `resource-access.json as resourceAccessCandidatesRef. Record the mapped owner of the access site as the actor. ` +
-  `Compare the exact resource named in the ownership declaration with the accessed target. If a configuration selects ` +
-  `a target whose owner is unknown, keep the observed expression and set the modeled resource's owner.value to null. ` +
-  `Name \`<resource-id>.owner\` in a discovery question or gap. See [Resource observations](record-format.md#resource-observations).\n\n`;
+  `Compare the exact resource named in the ownership declaration with the accessed target. For a caller-selected path ` +
+  `with no established resource binding, keep the expression and target.resourceRef null. A planned resource can have ` +
+  `its own documented owner. For a modeled resource with unknown ownership, set the modeled resource's owner.value to null ` +
+  `and name \`<resource-id>.owner\` in discovery. See [Resource observations](record-format.md#resource-observations).\n\n`;
 
 const exampleReview = `For a source-reviewed example, read its cited source range. Compare each displayed field, value and row ` +
   `with the cited assertion, return value or contract for that input. Set result.scope to complete only when the evidence establishes the whole ` +
   `result and the example shows it all. Use excerpt for a supported subset. Omit the result when only the call or input is supported. ` +
   `See [Version 2 interface documentation](record-format.md#version-2-interface-documentation).\n\n`;
+
+const publicDeclarations = `Compare the proposed interfaces with the captured package entry fields, contracts and source declarations. ` +
+  `Follow the default, named and re-exported members on the reviewed public paths. Check supported omissions, including ` +
+  `error classes and input or result types. Model them where the contract or a reviewed use supports them, or explain the scope limit. `;
 
 // The limits of the viewer for each question and gap. Every stage checks them where a record enters the run.
 const questionAndGapLimits = `Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef; ` +
@@ -71,7 +76,9 @@ const boundaryReview = `When the run has a projectKey, write formatVersion: 6 wi
     `reason. Link an existing source use by interface and use ID. Report ordered edges within one resolution context ` +
     `for reachability. For a package bin or a Node test, use its registered name as the operation member. Cite the registration, ` +
     `the handler and the reviewed behavior in its launch or test context. Record coverage and limits. Show one production ` +
-    `operation and one non-production use when the evidence supports them. If a role has no evidenced example, record the ` +
+    `operation and one non-production use when the evidence supports them. For each observed caller, cite its actual ` +
+    `access kind, role, direct owner and binding to that exact operation. A declared operation can have no observed caller. ` +
+    `Report the caller search status and scope. Keep a use with unknown role explicitly unknown. If a role has no evidenced example, record the ` +
     `scope checked and the gap.\n\n`;
 
 export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt, graph }: PromptFacts): string {
@@ -102,11 +109,13 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `If the complete declaration is unsupported, use a null signature and the exact discovery subject ` +
     `interface-id.documentation.entries.entry-id.signature. Keep known interaction facts separately. ` +
     `Omit signatures for other kinds. An absent signature means not recorded; a null signature means unknown.\n\n` +
+    publicDeclarations +
     `For each interface, record a sourceUsage assessment or leave that interface unassessed. ` +
     `Keep source use separate from allowedConsumers: a source caller does not establish permission or runtime execution. ` +
     `Use one sourceUsage.snapshotRef for this run and one sourceUsage.mappingRef equal to the candidate discovery.codeMappingRef. ` +
     `Map each caller file to its direct owner in that candidate mapping; do not roll a child up to its parent.\n\n` +
-    `Read actual calls and value references, and follow aliases, injected callbacks, JSX, and native command registration ` +
+    `Read the sites for calls, other value references and type uses, including uses in the providing component. ` +
+    `Follow aliases, injected callbacks, JSX, and native command registration ` +
     `until the interface binding is supported. For an injected reader, inspect construction, callback assignment, and invocation; ` +
     `for IPC, inspect the caller and registered native handler. An import or graph match alone is not a resolved use. ` +
     `Keep an unresolved interface finding in discovery rather than attaching it to a guessed interface.\n\n` +

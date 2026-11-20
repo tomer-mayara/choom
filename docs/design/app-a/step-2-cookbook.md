@@ -220,7 +220,9 @@ Find evidence for file entry candidates in package fields, scripts, conventions,
 and source. Consider application starts, workers, commands, migrations, tests,
 and published APIs with consumers outside the repository. Keep the declared
 expression. Keep one file candidate even if that file registers several HTTP
-routes or MCP tools. Review those operations in Stages 4 and 5. A generated
+routes or MCP tools. For a library with a declared package entry, cite the
+field and its target. Its external consumers may be outside this
+snapshot. Leave member and caller review for Stages 4 and 5. A generated
 or declaration entry does not prove a source entry.
 Keep direct launch evidence in the candidate evidenceRefs. Give a compiler root
 an unknown role unless more evidence supports a use. The plan precedes the scans.

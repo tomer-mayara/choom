@@ -71,6 +71,8 @@ describe("the Stage 5 inspection summary", () => {
     ], "coverage", "remaining");
     expect(summary).toContain("| Proposed owner | 1 | 0 | 0 |");
     expect(summary).toContain("| Unknown owner | 0 | 1 | 0 |");
+    expect(summary).toContain("Earlier entry analyses only | No range in entry-analysis history");
+    expect(summary).toContain("Stage 1 role reviews are recorded separately.");
   });
 
   test("includes both ownership groups for an empty mapping", () => {

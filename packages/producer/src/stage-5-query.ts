@@ -221,7 +221,9 @@ export function inspectionSummary(units: InspectionUnit[], coverageRef: string, 
     else group.unreviewed++;
   }
   return [
-    '| Ownership | Selected Stage 4 range | Historical ranges only | No recorded range |',
+    'Counts cover the selected Stage 4 entry analysis and its predecessors. Stage 1 role reviews are recorded separately.',
+    '',
+    '| Ownership | Selected Stage 4 range | Earlier entry analyses only | No range in entry-analysis history |',
     '| --- | ---: | ---: | ---: |',
     `| Proposed owner | ${proposed.selected} | ${proposed.historical} | ${proposed.unreviewed} |`,
     `| Unknown owner | ${unknown.selected} | ${unknown.historical} | ${unknown.unreviewed} |`,
