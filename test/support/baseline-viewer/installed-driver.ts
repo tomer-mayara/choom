@@ -1,5 +1,6 @@
 import { expectInstalledInterfaceRecord, readInstalledInterfaceRecord } from "./installed-interface-record.ts";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 import type { World } from "@cucumber/cucumber";
@@ -93,10 +94,14 @@ export class InstalledBaselineDriver {
   private async verifyProductEnvironment(pid: string): Promise<void> {
     const path = environment("CHOOM_PACKAGED_NO_RUNTIME_PATH");
     assert.ok(isAbsolute(path), "The product PATH must name an absolute owned directory");
-    assert.deepEqual(await readdir(path), [], "The product PATH directory must be empty");
+    const pathEntries = await readdir(path);
+    const sandboxHelper = "/usr/bin/bwrap";
+    assert.deepEqual(pathEntries, existsSync(sandboxHelper) ? ["bwrap"] : [], "Only the GTK sandbox helper may be on PATH");
+    if (pathEntries.length) assert.equal(await readlink(join(path, "bwrap")), sandboxHelper);
     const entries = (await readFile(`/proc/${pid}/environ`, "utf8")).split("\0");
     assert.equal(entries.find((entry) => entry.startsWith("PATH=")), `PATH=${path}`,
-      "The installed process must inherit only the empty PATH, without Node or an analyzer");
+      "The installed process must inherit only the private PATH directory");
+    assert.equal(entries.find((entry) => entry.startsWith("NODE_PATH=")), "NODE_PATH=");
     const workingDirectory = await realpath(await readlink(`/proc/${pid}/cwd`));
     const checkout = await realpath(process.cwd());
     const fromCheckout = relative(checkout, workingDirectory);
@@ -104,7 +109,7 @@ export class InstalledBaselineDriver {
       "The installed process must start outside the development checkout");
     await this.world.attach(JSON.stringify({
       installedPid: pid, sessionArgument: this.application.sessionArgument, executable: this.application.executable,
-      path, workingDirectory, runtimeAvailable: false,
+      path, pathEntries, nodePath: "", workingDirectory, runtimeAvailable: false,
     }), "application/json");
   }
 

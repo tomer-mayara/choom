@@ -26,7 +26,7 @@ Install dependencies before the run; the harness never installs tools:
 bun install --frozen-lockfile
 bunx --no-install playwright install chromium
 cargo install tauri-driver --version 2.1.0 --locked
-sudo apt-get satisfy 'webkitgtk-webdriver | webkit2gtk-driver' dbus xvfb xdotool
+sudo apt-get satisfy 'webkitgtk-webdriver | webkit2gtk-driver' bubblewrap dbus xvfb xdotool
 ```
 
 The ordinary Tauri Linux build dependencies are also required; see the
