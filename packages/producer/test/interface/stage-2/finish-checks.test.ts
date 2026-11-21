@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
-import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, priorQuestion, runAttempt, savedJson,
+import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, planPacket, priorQuestion, runAttempt, savedJson,
   stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
 
 // Finish checks the complete attempt before it changes either draft. The
@@ -231,6 +231,40 @@ describe("Stage 2 finish checks", () => {
     expect({ status: results.finish?.status, refused: results.finish?.stderr.includes(
       "Error: Record hiddenReasoning: not-saved in llm/plan-call.yaml.\n") }).toEqual({ status: 1, refused: true });
     expect(drafts(attempt)).toEqual(before);
+  });
+
+  // Finish registers every attempt file. So each one must be a file that a phase saved:
+  // a phase receipt, a file that the receipt names, the command log or the saved finish
+  // command. Finish refuses any other file and names it.
+  test("refuses an attempt file that no phase saved, names it, and leaves the drafts unchanged", () => {
+    const prepared = restoredAttempt();
+    const before = drafts(prepared);
+    // The plan packet of the attempt is in the llm folder.
+    writeFileSync(join(prepared.folder, "llm/notes.md"), "# Notes\n");
+    const results = finishAttempt(prepared, scratch);
+    expect(results["save-review"]?.status).toBe(0);
+    expect({ status: results.finish?.status, refused: results.finish?.stderr.includes("Error: Unexpected attempt file that no " +
+      "producer action saved: llm/notes.md. Do not write into the attempt; use a fresh attempt.\n") }).toEqual({ status: 1, refused: true });
+    expect(drafts(prepared)).toEqual(before);
+  });
+
+  // After a plan from start, the plan action fails, because the plan is saved. Its
+  // receipt and logs are files that a phase saved, so finish registers them.
+  test("publishes an attempt whose plan action failed after a plan from start, and registers the failed receipt", () => {
+    const folder = join(scratch, "failed-plan");
+    const work = join(folder, "run");
+    stageOneRun(work, [app]);
+    const attempt = stageTwoAttempt(work, id);
+    const plan = join(folder, "entry-plan.json");
+    writeFileSync(plan, JSON.stringify(entryPlan(id), null, 2) + "\n");
+    expect(stageTwo(attempt, "start", [plan]).status).toBe(0);
+    expect(stageTwo(attempt, "plan", [planPacket(join(folder, "plan"), id, entryPlan(id))]).status).toBe(1);
+    for (const action of ["prepare", "toolchain", "run"])
+      expect({ action, status: stageTwo(attempt, action).status }).toEqual({ action, status: 0 });
+    const results = finishAttempt(attempt, folder);
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+    const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as { artifacts: Record<string, unknown> };
+    expect(Object.keys(run.artifacts)).toContain(`${id}-file@operator-plan.json`);
   });
 
   test("refuses to finish before the analysis packet is saved", () => {

@@ -12,6 +12,7 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
+import { SavedAttemptFiles } from './saved-attempt-files.ts';
 
 // The Stage 2 driver. Every action runs from the tool checkout, after it checks
 // that the producer code is the code that started the run. The saved commands of
@@ -237,6 +238,10 @@ function digests(names: string[]): Record<string, string> {
   return Object.fromEntries(names.map(name => [name, hash(saved(name))]));
 }
 
+// The files that the checked phase receipts name. Finish registers every attempt file,
+// so it refuses each other file, except the command log and the saved finish command.
+const savedFiles = new SavedAttemptFiles().add(['commands.md', 'operator-finish.sh']);
+
 // The receipt of a phase, after a check that each file that it names still has its
 // recorded digest. A numbered excerpt phase, such as excerpt-001, has the action excerpt.
 function receiptFor(phase: string, phaseAction = phase) {
@@ -245,6 +250,7 @@ function receiptFor(phase: string, phaseAction = phase) {
     'Unexpected phase receipt: ' + phase);
   for (const [name, digest] of Object.entries(receipt.digests))
     assert(hash(saved(name)) === digest, 'Saved phase input or output changed: ' + name);
+  savedFiles.addReceipt('operator-' + phase + '.json', [...Object.keys(receipt.digests), receipt.stdout, receipt.stderr].filter(text));
   return receipt;
 }
 
@@ -266,6 +272,9 @@ function selection(): Selection {
   }
 }
 
+// Runs a saved command of the phase. The receipt names each file that the command
+// wrote into the attempt, also when the command failed, because finish registers each
+// attempt file.
 function execute({ record, stdout, stderr }: PhaseContext, recipe: string, name: string): void {
   const script = 'operator-' + action + '-' + name + '.sh';
   save(script, 'set -eCu\n' + recipe);
@@ -275,11 +284,13 @@ function execute({ record, stdout, stderr }: PhaseContext, recipe: string, name:
     environment: { CHOOM_KNIP_IMAGE: env.CHOOM_KNIP_IMAGE },
   };
   record.commands.push(command);
+  const before = new Set(SavedAttemptFiles.namesIn(attempt));
   const result = spawnSync('/bin/bash', command.args.slice(1), {
     cwd: command.cwd, env, stdio: ['ignore', stdout, stderr],
   });
   Object.assign(command, { finishedAt: utc(), exitCode: result.status, signal: result.signal,
     error: result.error?.message ?? null });
+  Object.assign(record.digests, digests(SavedAttemptFiles.namesIn(attempt).filter(file => !before.has(file))));
   assert(!result.error && result.status === 0 && !result.signal, 'Saved command failed: ' + script);
 }
 
@@ -436,7 +447,8 @@ function phase(context: PhaseContext): void {
 
 // Finish registers every attempt file. So each phase receipt must still name the
 // bytes that its phase saved: the files of start, plan, prepare, toolchain, run,
-// each excerpt request and save-review. A toolchain or excerpt receipt can record a failure.
+// each excerpt request and save-review. A toolchain or excerpt receipt can record a failure,
+// and so can a plan receipt after a plan from start.
 function checkPhaseReceipts(): void {
   const start = receiptFor('start');
   const planned = !Object.hasOwn(start.digests, planFile);
@@ -444,6 +456,7 @@ function checkPhaseReceipts(): void {
     receiptFor('run').exitCode === 0 && receiptFor('save-review').exitCode === 0,
   'Start, plan, prepare, run and save-review must succeed before finish.');
   receiptFor('toolchain');
+  if (!planned && lstatSync(join(attempt, 'operator-plan.json'), { throwIfNoEntry: false })) receiptFor('plan');
   for (const name of readdirSync(attempt).filter(name => /^operator-excerpt-[0-9]+\.json$/.test(name)))
     receiptFor(name.slice('operator-'.length, -'.json'.length), 'excerpt');
 }
@@ -464,6 +477,9 @@ function finish(): never {
   state(true);
   checkPhaseReceipts();
   checkSavedLlmRecords();
+  // Each attempt file must be a phase receipt or a file that it names (an output, a
+  // saved command or a log), the command log, or the saved finish command.
+  savedFiles.refuseOthers(SavedAttemptFiles.namesIn(attempt));
   const script = 'operator-finish.sh';
   save(script, 'set -eCu\n' + runModule(modules.finish));
   appendFileSync(join(attempt, 'commands.md'), '\n' + utc() + ' Publish with ' + JSON.stringify([process.execPath, self, 'finish']) +

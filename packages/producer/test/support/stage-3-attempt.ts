@@ -81,10 +81,10 @@ function writeStageThreePacket(attempt: StageThreeAttempt, packet: StageThreePac
 }
 
 // Runs start, collect, each text search (its arguments) and each exports request
-// (its path), saves the packet that `change` gives, and runs the finalizer with the
-// added `finishSettings`.
-export function finishStageThree(attempt: StageThreeAttempt, change: (packet: StageThreePacket) => void = () => {},
-  searches: string[][] = [], exports: string[] = [], finishSettings: Record<string, string> = {}): Record<string, CommandResult> {
+// (its path), and saves the packet that `change` gives. The attempt is then ready
+// for the finalizer.
+export function reviewStageThree(attempt: StageThreeAttempt, change: (packet: StageThreePacket) => void = () => {},
+  searches: string[][] = [], exports: string[] = []): Record<string, CommandResult> {
   const results: Record<string, CommandResult> = {};
   for (const action of ["start", "collect"]) results[action] = stageThree(attempt, ["stage-3", action]);
   for (const [index, search] of searches.entries())
@@ -94,6 +94,13 @@ export function finishStageThree(attempt: StageThreeAttempt, change: (packet: St
   const packet = stageThreePacket(attempt);
   change(packet);
   results["save-review"] = stageThree(attempt, ["stage-3", "save-review", writeStageThreePacket(attempt, packet)]);
+  return results;
+}
+
+// Saves the review as reviewStageThree does, and runs the finalizer with the added `finishSettings`.
+export function finishStageThree(attempt: StageThreeAttempt, change: (packet: StageThreePacket) => void = () => {},
+  searches: string[][] = [], exports: string[] = [], finishSettings: Record<string, string> = {}): Record<string, CommandResult> {
+  const results = reviewStageThree(attempt, change, searches, exports);
   results.finish = stageThree(attempt, ["stage-3-finish"], finishSettings);
   return results;
 }

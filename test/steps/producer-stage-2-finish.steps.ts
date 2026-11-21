@@ -2,20 +2,18 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { type CommandResult, makeScratch, removeScratch } from "../../packages/producer/test/support/commands.ts";
-import { draftFaultSettings } from "../../packages/producer/test/support/doubles/draft-faults.ts";
 import { folderState } from "../../packages/producer/test/support/producer-record.ts";
 import { analysisPacket, entryAnalysis, type JsonRecord, runAttempt, savedJson, stageOneRun, stageTwo, stageTwoAttempt,
   type StageTwoAttempt } from "../../packages/producer/test/support/stage-2-attempt.ts";
 
 // Stage 2 finish on a small run, through the command line. The snapshot holds no
 // package manifest, so preflight marks the Knip profile unsupported, and no Knip
-// mode runs. A fault double can make a rename of the finish process fail.
+// mode runs.
 interface StageTwoWorld extends World {
   stageTwoScratch?: string;
   stageTwoAttempt?: StageTwoAttempt;
   stageTwoFinish?: CommandResult;
-  // The settings of the finish command, such as a fault double, and the run folder outside the attempt before it.
-  finishSettings?: Record<string, string>;
+  // The run folder outside the attempt before finish.
   runFilesBefore?: [string, string][];
 }
 
@@ -70,29 +68,16 @@ Given("the saved entry analysis of the attempt records no gap", function (this: 
   saveReview(this, entryAnalysis(currentAttempt(this).id, { gaps: [] }));
 });
 
-// The default entry analysis records the gap that cites the Knip records.
-Given("a Stage 2 attempt that is ready to publish", function (this: StageTwoWorld) {
-  saveReview(this, entryAnalysis(preparedAttempt(this).id));
-});
-
-Given("the replacement of the run manifest fails", function (this: StageTwoWorld) {
-  this.finishSettings = draftFaultSettings(["run-rename"]);
-});
-
 When("the operator publishes the Stage 2 attempt", function (this: StageTwoWorld) {
   const attempt = currentAttempt(this);
   this.runFilesBefore = runFiles(attempt);
-  this.stageTwoFinish = stageTwo(attempt, "finish", [], this.finishSettings ?? {});
+  this.stageTwoFinish = stageTwo(attempt, "finish");
 });
 
 Then("the publication is refused and the run folder outside the attempt is as it was", function (this: StageTwoWorld) {
   const finish = lastFinish(this);
   assert.equal(finish.status, 1, finish.stdout);
   assert.deepEqual(runFiles(currentAttempt(this)), this.runFilesBefore);
-});
-
-Then("the operator is told to keep the attempt and use a new attempt ID", function (this: StageTwoWorld) {
-  assert.match(lastFinish(this).stderr, /Keep this attempt unchanged; use a new attempt ID after you resolve the cause\./);
 });
 
 Then("the operator is told to record a gap that cites s2-check-preflight", function (this: StageTwoWorld) {

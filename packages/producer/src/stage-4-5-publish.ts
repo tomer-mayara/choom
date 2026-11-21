@@ -11,6 +11,7 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { type Artifact, type Fields, sourceExtension } from './record-checks.ts';
 import { runLayout } from './run-layout.mjs';
+import { SavedAttemptFiles } from './saved-attempt-files.ts';
 import type { ProjectTools } from './snapshot-project.ts';
 import { readBaselineYaml, type RecordCounts, type RunRecord, validateDiscoveryRecords } from './stage-6-records.ts';
 import { checkPinnedModules, loadTsMorph } from './ts-morph-modules.ts';
@@ -204,9 +205,9 @@ function attemptInput(run: RunRecord, drafts: Map<string, Buffer>): { attemptFil
 const requestPhase = new RegExp('^(?:' + (stage === '4' ? 'excerpt|references' : 'excerpt|parts') + ')-[0-9]+$');
 
 // Each required phase and each numbered request completed, and its recorded outputs did not change.
-// A failed request has no output. Returns the names of the files that the phases saved:
-// each receipt, its start record and the outputs and logs that it records.
-function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => Buffer): Set<string> {
+// A failed request has no output. Returns the files that the phases saved: each receipt,
+// its start record and the outputs and logs that it records.
+function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => Buffer): SavedAttemptFiles {
   const required = stage === '4' ? ['start', 'toolchain', 'run', 'collect'] : ['start', 'collect'];
   const requiredOutputs: Record<string, string[]> = {
     start: [...draftFiles.map(checkpoint), ...toolFiles, 'handoff.json',
@@ -219,11 +220,10 @@ function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => B
   const requests = [...attemptFiles.keys()].flatMap(name => /^operator-(.+)\.started\.json$/.exec(name)?.slice(1) ?? [])
     .filter(phase => requestPhase.test(phase));
   const phases = [...new Set([...required, ...requests])];
-  const saved = new Set<string>();
+  const saved = new SavedAttemptFiles();
   for (const phase of phases) {
     const receipt = json(get('operator-' + phase + '.json'));
     const started = json(get('operator-' + phase + '.started.json'));
-    saved.add('operator-' + phase + '.json').add('operator-' + phase + '.started.json');
     assert(receipt.attemptId === id && receipt.phase === phase &&
       receipt.startedAt === started.startedAt && same(receipt.command, started.command),
     'Collection or request identity changed: ' + phase);
@@ -237,23 +237,11 @@ function checkPhases(attemptFiles: Map<string, Buffer>, get: (name: string) => B
       assert((requiredOutputs[phase] ?? [phase + '.json']).every(name => Object.hasOwn(digests, name)),
         'Required output was not recorded: ' + phase);
     }
-    for (const [name, sha256] of Object.entries({ ...(receipt.digests as Fields), ...(receipt.logDigests as Fields) })) {
-      assert(digest(sha256) && hash(get(name)) === sha256, 'Collection output changed: ' + name);
-      saved.add(name);
-    }
+    const recorded = Object.entries({ ...(receipt.digests as Fields), ...(receipt.logDigests as Fields) });
+    for (const [name, sha256] of recorded) assert(digest(sha256) && hash(get(name)) === sha256, 'Collection output changed: ' + name);
+    saved.addReceipt('operator-' + phase + '.json', ['operator-' + phase + '.started.json', ...recorded.map(([name]) => name)]);
   }
   return saved;
-}
-
-// finish registers every attempt file, so each one is a file that a producer action
-// saved: a file of a phase, the command log, or a file of the publication. The record
-// format says not to write into the attempt before publication, so the publisher
-// refuses any other file, as Stage 6 does.
-function checkSavedFiles(attemptFiles: Map<string, Buffer>, saved: Set<string>): void {
-  const known = new Set([...saved, 'commands.md', ...packetFiles, receiptName]);
-  const stray = [...attemptFiles.keys()].filter(name => !known.has(name));
-  assert(stray.length === 0, 'Unexpected attempt file that no producer action saved: ' + stray.join(', ') +
-    '. Do not write into the attempt; use a fresh attempt.');
 }
 
 function verifiedInput(): State {
@@ -261,7 +249,9 @@ function verifiedInput(): State {
   const { artifacts, put } = registry(run);
   const { inventory, indexed, snapshot } = indexedSnapshot(run, artifacts);
   const { attemptFiles, get } = attemptInput(run, drafts);
-  checkSavedFiles(attemptFiles, checkPhases(attemptFiles, get));
+  // finish registers every attempt file, so each one must be a file that a producer
+  // action saved: a file of a phase, the command log, or a file of the publication.
+  checkPhases(attemptFiles, get).add(['commands.md', ...packetFiles, receiptName]).refuseOthers(attemptFiles.keys());
   return { drafts, run, priorDiscovery, priorBaseline, artifacts, put, inventory, indexed, attemptFiles,
     verifySnapshot() {
       assert(same(names(snapshot), [...indexed.keys()].sort()), 'Snapshot file set changed.');

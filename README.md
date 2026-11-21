@@ -575,6 +575,16 @@ bun test ./packages/producer/test/unit/draft-update.test.ts
 bun test ./packages/producer/test/interface/stage-2/rollback.test.ts ./packages/producer/test/interface/stage-3/rollback.test.ts ./packages/producer/test/interface/stage-4/publication-rollback.test.ts
 ```
 
+The same publishers register every file of the attempt folder. So each attempt
+file must be a phase receipt, a file that a receipt names, or a file that the
+stage names itself, such as the review packet and the command log. The
+publishers refuse any other file and name it. The rule is in
+`saved-attempt-files.ts`. Run its unit test with:
+
+```sh
+bun test ./packages/producer/test/unit/saved-attempt-files.test.ts
+```
+
 Stage 6 saves the fixed discovery result with `formatVersion: 2`: the reviewed
 working discovery, `baselineRef`, and `baselineDigest`, the SHA-256 of the bytes
 of the fixed baseline file that it saves. `fixedDiscovery` in `stage-6-records.ts`
@@ -1332,7 +1342,8 @@ reserved IDs and the checks against the saved run records. Every stage resolves
 an evidence reference with the one resolver in `record-checks.ts`.
 `result-gaps.ts` requires a gap that cites an analysis that did not run, and
 `draft-update.ts` publishes the working drafts of Stages 2 to 5 as one update,
-`run.yaml` last. `llm-response.ts`
+`run.yaml` last. Their publishers refuse an attempt file that no producer action
+saved with `saved-attempt-files.ts`. `llm-response.ts`
 holds the design rule "Do not save hidden reasoning": every stage that saves an
 LLM call record checks that the response holds only the visible answer and that
 the call record has `hiddenReasoning: not-saved`.
