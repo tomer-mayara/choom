@@ -1250,13 +1250,14 @@ of the validated records. The question and gap lists keep their history, so
 these counts are record counts. `coverage.inventoried` stays as Stage 1 wrote it.
 It does not accept intent or verify semantic quality.
 
-`finish` registers every attempt file, so each one must be a file that a producer
-action saved: a phase receipt, its start record, an output or log that a receipt
-records, the command log `commands.md`, or a file of the publication. `check`,
-`finish` and `verify` refuse any other file and name it, such as `Unexpected
-attempt file that no producer action saved: notes.md. Do not write into the
-attempt; use a fresh attempt.` Keep notes and other files outside the attempt. `verify` checks the completed publication without
-writing files.
+`finish` registers every attempt file. So each attempt file must be a file that a
+producer action saved: a phase receipt, its start record, an output or a log that
+a receipt records, the command log `commands.md`, a file of the review packet, or
+the publication receipt `publication.json`. `check`, `finish` and `verify` refuse
+any other file and name it, for example `Unexpected attempt file that no producer
+action saved: notes.md. Do not write into the attempt; use a fresh attempt.` Keep
+notes and other files outside the attempt. `verify` checks the completed
+publication without writing files.
 
 Only one publisher may operate on a run at a time. Keep failed attempts and
 receipts. If `finish` fails after saving files, inspect the reported state and use

@@ -642,6 +642,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `snapshot-references.ts` | The references to a symbol of a file of the snapshot project, from the TypeScript type checker: its declarations, and each import, re-export, type use, call and other use with its range and local name; and whether the compiler settings resolve a module name of a searched file |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | `draft-update.ts` | The update of the working drafts that Stage 2 finish, the Stage 3 finalizer and the Stage 4/5 publisher share: temporary files first, `run.yaml` last, and a rollback when a step fails before `run.yaml` is replaced |
+| `saved-attempt-files.ts` | The rule of the attempt files of the Stage 4/5 publisher: each attempt file is a phase receipt, a file that a receipt names, or a file that the stage names itself. The publisher refuses any other file and names it |
 | `result-gaps.ts` | The gap that an analysis that did not run needs: Stage 2 finish and the shared validation check the Knip preflight and runs, and the Stage 3 finalizer checks the symbol mentions |
 | [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record, the producer code record, the decision record and the next baseline version |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |

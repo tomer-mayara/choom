@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
+import { stageFourPublication, type StageFourPublication }
+  from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import { type CommandResult, makeScratch, removeScratch } from "../../packages/producer/test/support/commands.ts";
 import { draftFaultSettings } from "../../packages/producer/test/support/doubles/draft-faults.ts";
 import { analysisPacket, entryAnalysis, runAttempt, stageOneRun, stageTwo, stageTwoAttempt }
@@ -12,7 +14,9 @@ import { reviewStageThree, stageThree, stageThreeAttempt, stageTwoRun }
 // The publication of the working drafts of a stage, through the command line. The
 // attempt of the run saved its review packet, so the finish action of the stage
 // publishes it. The fault double (support/doubles/draft-faults.ts) can stop the
-// publication after a chosen number of renames.
+// publication after a chosen number of renames. A Stage 4 draft uses the Stage 4
+// publication fixture; producer-recovery.steps.ts publishes it, checks that nothing
+// changed, and removes the run folder after the scenario.
 interface ReadyRun {
   stage: number;
   work: string;
@@ -25,11 +29,15 @@ interface DraftPublicationWorld extends World {
   draftFaults?: Record<string, string>;
   draftsBefore?: string[];
   draftFinish?: CommandResult;
+  stageFourRun?: StageFourPublication;
+  publishCommand?: CommandResult;
 }
 
 // The run manifest and the discovery draft, which a publication replaces.
 const publishedDrafts = ["run.yaml", "discovery.yaml"];
 const advice = "Keep this attempt unchanged; use a new attempt ID after you resolve the cause.";
+// A file that the operator saved in the attempt folder. No phase wrote it.
+const strayFile = "notes.md";
 
 // A run after Stage 1, with a Stage 2 attempt that saved its review packet. The
 // snapshot holds no package manifest, so Knip is skipped, and the entry analysis
@@ -99,4 +107,15 @@ Then("the run manifest and the discovery draft are the same as before", function
   const run = this.draftRun;
   assert.ok(run && this.draftsBefore, "Finish the stage first.");
   assert.deepEqual(drafts(run), this.draftsBefore);
+});
+
+Given("a Stage 4 attempt folder with a file that no phase wrote", function (this: DraftPublicationWorld) {
+  const run = stageFourPublication();
+  this.stageFourRun = run;
+  writeFileSync(join(run.attempt, strayFile), "# Notes\n");
+});
+
+Then("the operator is told which attempt file no phase wrote", function (this: DraftPublicationWorld) {
+  const message = this.publishCommand?.stderr ?? "";
+  assert.ok(message.includes(`Unexpected attempt file that no producer action saved: ${strayFile}.`), message);
 });

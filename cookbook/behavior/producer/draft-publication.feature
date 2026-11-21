@@ -17,3 +17,9 @@ Feature: Publish the drafts of a run as one update
     When the operator finishes Stage 2
     Then the Stage 2 result is not published
     And the run manifest and the discovery draft are the same as before
+
+  Scenario: An attempt file that no phase wrote is refused
+    Given a Stage 4 attempt folder with a file that no phase wrote
+    When the operator publishes the Stage 4 draft
+    Then the draft is refused
+    And the operator is told which attempt file no phase wrote
