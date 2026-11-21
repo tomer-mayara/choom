@@ -29,7 +29,7 @@ export interface BaselineItems {
 const issueKinds = [['questions', 'Question'], ['gaps', 'Gap']] as const;
 
 // The folders that hold at least one of the files, without a final /.
-function foldersOf(files: Set<unknown>): Set<string> {
+function foldersOf(files: Iterable<unknown>): Set<string> {
   const folders = new Set<string>();
   for (const path of files) {
     if (typeof path !== 'string') continue;
@@ -90,13 +90,16 @@ const subjectForms = 'A subject names a file of the snapshot, a folder of the sn
   'a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.';
 
 // The subject check of the questions and gaps of a run. A subject names one of these:
-// a file of the snapshot inventory; the snapshot ID; the ID of a question or gap; the
-// ID of an entry candidate; or a baseline item, as the viewer places a record
-// (SubjectItems), such as billing.purpose. Later stages keep each question and gap
-// unchanged, so a draft that renames or removes what a subject names is refused
-// while the reviewer can still keep the old ID.
+// a file of the snapshot inventory; a folder that holds at least one such file,
+// written as the membership selector <folder>/**, such as src/billing/**; the
+// snapshot ID; the ID of a question or gap; the ID of an entry candidate; or a
+// baseline item, as the viewer places a record (SubjectItems), such as
+// billing.purpose. Later stages keep each question and gap unchanged, so a draft
+// that renames or removes what a subject names is refused while the reviewer can
+// still keep the old ID.
 export class SubjectChecker {
   private readonly files: ReadonlySet<unknown>;
+  private readonly folders: ReadonlySet<string>;
   private readonly snapshotRef: string;
   private readonly issues: Fields;
   private readonly issueIds: ReadonlySet<unknown>;
@@ -105,6 +108,7 @@ export class SubjectChecker {
 
   constructor({ paths, snapshotRef, issues, candidateIds, items }: SubjectRun) {
     this.files = new Set(paths);
+    this.folders = foldersOf(this.files);
     this.snapshotRef = snapshotRef;
     this.issues = issues;
     this.issueIds = new Set(issueLists.flatMap(([kind]) => (issues[kind] as SubjectRecord[]).map(issue => issue.id)));
@@ -118,19 +122,29 @@ export class SubjectChecker {
   }
 
   // Refuses the first question or gap with a subject that names nothing. The message
-  // names the subject and the question or gap.
+  // names the subject and the question or gap. For a folder written without /**, it
+  // gives the folder selector to write.
   check(): void {
     for (const [kind, label] of issueLists) {
       for (const record of this.issues[kind] as SubjectRecord[]) {
         const [subject] = this.refused(record);
-        if (subject !== undefined)
-          throw new Error(`The subject ${subject} of the ${label} ${String(record.id)} names nothing. ${subjectForms}`);
+        if (subject === undefined) continue;
+        const selector = this.folderSelector(subject);
+        throw new Error(`The subject ${subject} of the ${label} ${String(record.id)} ` + (selector === undefined
+          ? `names nothing. ${subjectForms}` : `names a folder without /**. Write the folder as ${selector}.`));
       }
     }
   }
 
   private names(subject: string): boolean {
-    return this.files.has(subject) || subject === this.snapshotRef || this.issueIds.has(subject) ||
-      this.candidateIds.has(subject) || this.items.namedItem(subject) !== undefined;
+    return this.files.has(subject) || (subject.endsWith('/**') && this.folders.has(subject.slice(0, -3))) ||
+      subject === this.snapshotRef || this.issueIds.has(subject) || this.candidateIds.has(subject) ||
+      this.items.namedItem(subject) !== undefined;
+  }
+
+  // The folder selector for a subject that names a folder of the snapshot without /**, with or without a final /.
+  private folderSelector(subject: string): string | undefined {
+    const folder = subject.endsWith('/') ? subject.slice(0, -1) : subject;
+    return this.folders.has(folder) ? folder + '/**' : undefined;
   }
 }
