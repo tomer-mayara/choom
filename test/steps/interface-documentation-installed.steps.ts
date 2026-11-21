@@ -37,7 +37,7 @@ Given("the published documentation file is open through the native file picker",
     provenance: "Actual Stage 4–6 publication; see BR-interface-details-evidence.md" }), "application/json");
   this.installedPublishedDriver = new InstalledBaselineDriver(this);
   await this.installedPublishedDriver.open();
-  await driver(this).openBaseline(this.installedPublishedFile);
+  await driver(this).openHistoricalInventory(this.installedPublishedFile);
   await driver(this).expectBaseline(baseline(this).id, baseline(this).components.map(({ id, name }) => [id, name]));
 });
 When("the installed reader follows its function, failure example, sources, access rule, type, and data sample", { timeout: 60_000 }, async function (this: InstalledPublishedWorld) {

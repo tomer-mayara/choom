@@ -20,6 +20,8 @@ export interface WorkflowFailure {
 
 export interface WorkflowOperations {
   openBaseline(): WorkflowOutcome;
+  openComparison(): WorkflowOutcome;
+  closeComparison(): WorkflowOutcome;
   openDuplicationReport(): WorkflowOutcome;
   removeDuplicationReport(): WorkflowOutcome;
   openDiscoveryResult(): WorkflowOutcome;
@@ -33,7 +35,7 @@ export type WorkflowOutcome = WorkflowSuccess | WorkflowCancelled | WorkflowBusy
 export type WorkflowStage = "selection" | "reading" | "validation" | "layout";
 
 export interface WorkflowState {
-  operation: "baseline" | "report" | "discovery";
+  operation: "baseline" | "report" | "discovery" | "comparison";
   phase: "idle" | "loading" | "cancelling";
   stage: WorkflowStage | null;
   lastOutcome: WorkflowOutcome | null;

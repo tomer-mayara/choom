@@ -35,7 +35,7 @@ async function open(world: FitWorld, width = 1280, height = 800, selected = true
   world.fitBytes = stringify(connectionFitBaseline(), { aliasDuplicateObjects: false });
   await writeFile(world.fitFile, world.fitBytes);
   const viewer = new BaselineBrowserDriver(browser);
-  await viewer.open(); await viewer.openBaseline(world.fitFile);
+  await viewer.open(); await viewer.openHistoricalInventory(world.fitFile);
   await expect(browser.getByRole("heading", { name: "connection-fit", exact: true })).toBeVisible();
   if (selected) await browser.getByRole("button", { name: "Billing, billing", exact: true }).click();
   await browser.mouse.move(8, 8); await paint(world);

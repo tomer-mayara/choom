@@ -90,9 +90,9 @@ const profileCases: [string, (records: Records) => void, string][] = [
   ["a membership with no paths", (records) => {
     findComponent(records, "http").membership.value.paths = [];
   }, "Component http has no membership paths. The producer needs at least one path for each component."],
-  ["a version 6 baseline", (records) => {
-    records.baseline.formatVersion = 6;
-  }, "The producer writes baseline formatVersion 1, 2, 3, 4 or 5, not 6."],
+  ["a version 7 baseline", (records) => {
+    records.baseline.formatVersion = 7;
+  }, "The producer writes baseline formatVersion 1, 2, 3, 4, 5 or 6, not 7."],
 ];
 
 describe("validateDiscoveryRecords", () => {

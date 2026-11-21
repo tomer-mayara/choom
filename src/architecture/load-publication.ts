@@ -1,4 +1,4 @@
-import type { Baseline, DiscoveryResult } from "@choom/baseline-model/contracts";
+import type { Baseline, DiscoveryResult, IsolationComparison, IsolationInput } from "@choom/baseline-model/contracts";
 import type { DuplicationReport } from "../domain/generated/contracts.ts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
 import type { WorkflowOutcome, WorkflowState } from "./generated/workflow.ts";
@@ -18,8 +18,9 @@ function ownedCopy<Value>(value: Value): Value {
 }
 
 /** Copy the validated baseline and prepared positions once, before the view commit. */
-export function ownCurrentView(baseline: Baseline, layout: ArchitectureLayout, sha256: string): NonNullable<LoadWorkflowSnapshot["current"]> {
-  return ownedCopy({ baseline, layout, sha256 });
+export function ownCurrentView(baseline: Baseline, layout: ArchitectureLayout, sha256: string,
+  production: { baseline: Baseline; layout: ArchitectureLayout }): NonNullable<LoadWorkflowSnapshot["current"]> {
+  return ownedCopy({ baseline, layout, sha256, production });
 }
 
 /** Copy mutable scalar outcomes; preserve frozen outcomes across state updates. */
@@ -37,11 +38,15 @@ export function ownDiscovery(result: DiscoveryResult): NonNullable<LoadWorkflowS
   return ownedCopy({ result });
 }
 
+export function ownComparison(before: IsolationInput, result: IsolationComparison): NonNullable<LoadWorkflowSnapshot["comparison"]> {
+  return ownedCopy({ before, result });
+}
+
 /** The published baseline view and its attachments. */
-export type PublishedViews = Pick<LoadWorkflowSnapshot, "current" | "duplication" | "discovery">;
+export type PublishedViews = Pick<LoadWorkflowSnapshot, "current" | "duplication" | "discovery" | "comparison">;
 
 export function publishedSnapshot(state: WorkflowState,
-  { current, duplication, discovery }: PublishedViews = { current: null, duplication: null, discovery: null }): LoadWorkflowSnapshot {
+  { current, duplication, discovery, comparison }: PublishedViews = { current: null, duplication: null, discovery: null, comparison: null }): LoadWorkflowSnapshot {
   return Object.freeze({
     state: Object.freeze({
       ...state,
@@ -50,5 +55,6 @@ export function publishedSnapshot(state: WorkflowState,
     current,
     duplication,
     discovery,
+    comparison,
   });
 }

@@ -11,6 +11,55 @@ bounded file reader, [LoadWorkflow](../../src/architecture/load-workflow.ts),
 I/O. Neither host needs a repository, analyzer, runtime executable, or evidence
 files to open a baseline. The workspace does not write files.
 
+## Component roles and production scope
+
+A successful file open starts in **Production**. **Show non-production** reveals
+other reviewed roles and **Scope unknown**. The switch applies to the open file and
+its comparison. The starter example has no file identity. An older nonempty file
+opens with **Production scope unavailable**. Its original records, including saved
+test uses, appear after opt-in. A file without architecture records remains empty.
+
+The workflow validates the full input against codec and display limits, then prepares
+geometry for both scopes. The drawing, fit bounds, connection choices, record lists
+and accessible names use the same visible direct owners and operations. A visible
+child is drawn under its nearest visible ancestor. Its recorded owner and parent
+remain available in Evidence. Changing scope keeps valid selections and removes
+hidden records from navigation history. The switch receives focus if it hides the
+open record. A failed file replacement preserves the scope, review and selection.
+
+The component card shows its reviewed name, purpose and first operation. **Show more**
+opens the remaining visible operations. **Provides** groups evidence for one operation
+and lists its permitted and observed outside callers separately. **Uses** describes
+the member, access route and kind. Caller counts use distinct direct components per
+role. An empty production search has a verified zero only with complete coverage.
+**Evidence** holds source notes, linked locations, walkthroughs, questions, answers
+and digests. With an attached discovery file, opt-in shows a walkthrough for each
+inspected path naming the component. The reader shows its description and recorded
+step actions. It ignores path entries without this shape. It also shows answers
+whose subject references name one of the component's recorded questions or gaps.
+In Production, the reader displays structured production labels.
+Unclassified prose, raw imports that reveal excluded targets and original attachments
+require opt-in. A confirmed production finding against an excluded target displays
+the caller and a safe rule description. A stale review suppresses verdicts and counts.
+
+## Compare two fixed baselines
+
+**Open Baseline** establishes After. **Compare with earlier baseline** selects
+Before through the same bounded host reader. Both files must contain a v6
+project key, and the keys must match. The view identifies each selection by its
+snapshot and the SHA-256 of its original bytes. Selection determines the
+direction. Working-tree snapshots can have unknown chronology.
+
+Selecting a finding shows its caller, route, effective rule and available
+evidence on each side. Production applies to both files. **Show non-production**
+reveals additional roles and the raw evidence. A stale or incomplete review
+displays its affected limits. A cancelled, busy or failed replacement preserves
+the current pair, finding and scope. Retry repeats the failed operation.
+
+**Close comparison** returns to the current file and restores visible focus.
+Opening a new After successfully clears the pair and starts in Production.
+Discovery and duplication attachments belong to the After file.
+
 ## Loading and cancellation
 
 **Open Baseline** selects a file, reads bounded UTF-8 text, validates its contents,

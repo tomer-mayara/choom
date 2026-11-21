@@ -37,16 +37,17 @@ async function expectArcs(browser: Browser, expected: ReadingDrawing["arcs"]) {
 }
 async function inspectConnections(browser: Browser, baseline: BaselineV3) {
   const before = await browser.execute(readRenderedDrawing);
+  const selfConnections = browser.$('//label[normalize-space(.)="Show self-connections"]//input[@type="checkbox"]');
   await browser.$('input[name="connection-mode"][value="all"]').click();
-  assert.equal(await browser.$('input[type="checkbox"]').isSelected(), false);
+  assert.equal(await selfConnections.isSelected(), false);
   await expectArcs(browser, reviewedCrossConnections);
   await browser.$('input[name="connection-mode"][value="selected"]').click();
   const workspace = baseline.components.find(({ id }) => id === "s4-001-workspace");
   assert.ok(workspace);
-  await browser.$(`button[aria-label="${workspace.name}, ${workspace.id}"]`).click();
+  await browser.$(`button[data-component-id="${workspace.id}"]`).click();
   await expectArcs(browser, reviewedCrossConnections.filter(({ consumer }) => consumer === workspace.id));
   await browser.$('input[name="connection-mode"][value="all"]').click();
-  await browser.$('input[type="checkbox"]').click();
+  await selfConnections.click();
   await expectArcs(browser, [...reviewedCrossConnections, ...reviewedSelfConnections]);
   const after = await browser.execute(readRenderedDrawing);
   assert.deepEqual(after.nodes, before.nodes, "Connection choices must not move installed components");

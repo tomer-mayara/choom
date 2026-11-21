@@ -38,7 +38,7 @@ Given("the source-consumer review file is open through the native file picker", 
     sha256: createHash("sha256").update(this.installedSourceBytes).digest("hex") }), "application/json");
   this.installedSourceDriver = new InstalledBaselineDriver(this);
   await driver(this).open();
-  await driver(this).openBaseline(this.installedSourceFile);
+  await driver(this).openHistoricalInventory(this.installedSourceFile);
   await driver(this).expectBaseline(value.id, value.components.map(({ id, name }) => [id, name]));
 });
 When("the installed reader follows its reviewed connections and every documented interface", { timeout: 240_000 }, async function (this: InstalledSourceWorld) {

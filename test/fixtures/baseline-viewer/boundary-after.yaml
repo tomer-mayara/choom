@@ -1,0 +1,550 @@
+formatVersion: 6
+id: baseline-001
+parentId: null
+components:
+  - id: collector
+    name: Collector
+    purpose:
+      value: Run the collection command.
+      status: proposed
+      evidenceRefs:
+        - declare-collector
+    membership:
+      value:
+        paths:
+          - src/cli.ts
+      status: proposed
+      evidenceRefs:
+        - declare-collector
+    groupingReason:
+      value: Own this implementation.
+      status: proposed
+      evidenceRefs:
+        - declare-collector
+  - id: configuration
+    name: Configuration
+    purpose:
+      value: Load the collector configuration.
+      status: proposed
+      evidenceRefs:
+        - declare-configuration
+    membership:
+      value:
+        paths:
+          - src/config/**
+      status: proposed
+      evidenceRefs:
+        - declare-configuration
+    groupingReason:
+      value: Own this implementation.
+      status: proposed
+      evidenceRefs:
+        - declare-configuration
+  - id: history
+    name: Local Codex history
+    purpose:
+      value: Read local collector history.
+      status: proposed
+      evidenceRefs:
+        - declare-history
+    membership:
+      value:
+        paths:
+          - src/history.ts
+      status: proposed
+      evidenceRefs:
+        - declare-history
+    groupingReason:
+      value: Own this implementation.
+      status: proposed
+      evidenceRefs:
+        - declare-history
+  - id: test-adapter
+    name: In-memory adapter
+    purpose:
+      value: Exercise the storage port in tests.
+      status: proposed
+      evidenceRefs:
+        - declare-test-adapter
+    membership:
+      value:
+        paths:
+          - test/adapter.ts
+      status: proposed
+      evidenceRefs:
+        - declare-test-adapter
+    groupingReason:
+      value: Own this implementation.
+      status: proposed
+      evidenceRefs:
+        - declare-test-adapter
+interfaces:
+  - id: config-api
+    name: Configuration interface
+    owner:
+      value: configuration
+      status: proposed
+      evidenceRefs:
+        - declare-configuration
+    publicAccess:
+      value:
+        - ./config
+      status: proposed
+      evidenceRefs:
+        - declare-configuration
+    allowedConsumers:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - declare-configuration
+    promises:
+      value: null
+      status: proposed
+      evidenceRefs:
+        - declare-configuration
+    documentation:
+      summary:
+        value: Load the collector configuration.
+        status: proposed
+        evidenceRefs:
+          - declare-configuration
+      entries:
+        - id: load-entry
+          name: GlobalConfigLoader.load()
+          accessPoint: ./config
+          kind:
+            value: function
+            status: proposed
+            evidenceRefs:
+              - declare-configuration
+          description:
+            value: Read the configuration.
+            status: proposed
+            evidenceRefs:
+              - declare-configuration
+          examples: []
+      sourceNotes: []
+resources: []
+rules: []
+sourceUsage:
+  snapshotRef: snapshot-after
+  mappingRef: final-map
+  assessments:
+    - interfaceId: config-api
+      scope: Read the collector caller.
+      evidenceRefs:
+        - cli-call
+      limitations:
+        - The caller search did not inspect every production entry.
+      uses:
+        - id: collector-load
+          consumerId: collector
+          kind: value
+          context: application
+          description: Collector calls the configuration loader.
+          callerRef: cli-call
+          evidenceRefs:
+            - cli-call
+          accessPoint: ./config
+          entryId: load-entry
+      sourceNotes:
+        - evidenceRef: cli-call
+          description: Collector calls the load method.
+          location:
+            snapshotRef: snapshot-after
+            path: src/cli.ts
+            sha256: 883511316484b234dca61741b4907b46590f917bc68fdb43bcf6c85c53527c3c
+            lines:
+              - 2
+              - 2
+boundaryReview:
+  status: current
+  identity:
+    projectKey: TraceRelic
+    snapshotRef: snapshot-after
+    inventoryDigest: 74a8ab9ec4d6e287b277d8b34084b6d5d17970ab022b5f3b6afc737e16ab3376
+    sourceKind: working-tree
+    baseCommit: 3a35b6ebfd003f6ee30d916e874617dafeb0d28d
+    analysisRoots:
+      - .
+    mappingRef: final-map
+  componentScopes:
+    - componentId: collector
+      name: Collector
+      purpose: Run the collection command.
+      roles:
+        - production
+      basis: declaration
+      evidenceRefs:
+        - declare-collector
+    - componentId: configuration
+      name: Configuration
+      purpose: Load the collector configuration.
+      roles:
+        - production
+      basis: declaration
+      evidenceRefs:
+        - declare-configuration
+    - componentId: history
+      name: Local Codex history
+      purpose: Read local collector history.
+      roles:
+        - production
+      basis: declaration
+      evidenceRefs:
+        - declare-history
+    - componentId: test-adapter
+      name: In-memory adapter
+      purpose: Exercise the storage port in tests.
+      roles:
+        - test
+      basis: declaration
+      evidenceRefs:
+        - declare-test-adapter
+  units:
+    - id: cli
+      path: src/cli.ts
+      unitKind: file
+      ownerId: collector
+      stableId: example/cli
+      roles:
+        - production
+      purposeRoles:
+        - source
+      evidenceRefs:
+        - declare-collector
+    - id: loader
+      path: src/config/loader.ts
+      unitKind: file
+      ownerId: configuration
+      stableId: example/loader
+      roles:
+        - production
+      purposeRoles:
+        - source
+      evidenceRefs:
+        - declare-configuration
+    - id: shape
+      path: src/config/types.ts
+      unitKind: file
+      ownerId: configuration
+      stableId: example/shape
+      roles:
+        - production
+      purposeRoles:
+        - source
+      evidenceRefs:
+        - declare-type
+    - id: history
+      path: src/history.ts
+      unitKind: file
+      ownerId: history
+      stableId: example/history
+      roles:
+        - production
+      purposeRoles:
+        - source
+      evidenceRefs:
+        - declare-history
+    - id: adapter
+      path: test/adapter.ts
+      unitKind: file
+      ownerId: test-adapter
+      stableId: example/adapter
+      roles:
+        - test
+      purposeRoles:
+        - tests
+      evidenceRefs:
+        - declare-test-adapter
+  operations:
+    - id: main
+      unitId: cli
+      member: main
+      name: collector history
+      roles:
+        - production
+      visibility: public
+      evidenceRefs:
+        - declare-collector
+    - id: load
+      unitId: loader
+      member: GlobalConfigLoader.load
+      name: GlobalConfigLoader.load()
+      roles:
+        - production
+      visibility: public
+      evidenceRefs:
+        - declare-configuration
+      interfaceId: config-api
+      entryId: load-entry
+    - id: config-type
+      unitId: shape
+      member: GlobalConfig
+      name: GlobalConfig
+      roles:
+        - production
+      visibility: public
+      evidenceRefs:
+        - declare-type
+    - id: read-history
+      unitId: history
+      member: history
+      name: history(config)
+      roles:
+        - production
+      visibility: public
+      evidenceRefs:
+        - declare-history
+    - id: fixture
+      unitId: adapter
+      member: inMemoryAdapter
+      name: inMemoryAdapter()
+      roles:
+        - test
+      visibility: public
+      evidenceRefs:
+        - declare-test-adapter
+  accesses:
+    - id: collector-call
+      callerUnitId: cli
+      writtenPath: ./config/loader
+      targetUnitId: loader
+      member: GlobalConfigLoader.load
+      operationId: load
+      kind: call
+      context: node-esm
+      callerRole: production
+      targetRole: production
+      callerRef: cli-call
+      evidenceRefs:
+        - cli-call
+      sourceUse:
+        interfaceId: config-api
+        useId: collector-load
+    - id: history-config-type
+      callerUnitId: history
+      writtenPath: ./config/types
+      targetUnitId: shape
+      member: GlobalConfig
+      operationId: config-type
+      kind: type
+      context: node-esm
+      callerRole: production
+      targetRole: production
+      callerRef: history-type
+      evidenceRefs:
+        - history-type
+    - id: adapter-call
+      callerUnitId: adapter
+      writtenPath: ../src/config/loader
+      targetUnitId: loader
+      member: GlobalConfigLoader.load
+      operationId: load
+      kind: call
+      context: node-esm
+      callerRole: test
+      targetRole: production
+      callerRef: test-call
+      evidenceRefs:
+        - test-call
+    - id: history-loader-import
+      callerUnitId: history
+      writtenPath: ./config/loader
+      targetUnitId: loader
+      member: GlobalConfigLoader.load
+      operationId: load
+      kind: import
+      context: node-esm
+      callerRole: production
+      targetRole: production
+      callerRef: history-import
+      evidenceRefs:
+        - history-import
+    - id: history-loader-call
+      callerUnitId: history
+      writtenPath: ./config/loader
+      targetUnitId: loader
+      member: GlobalConfigLoader.load
+      operationId: load
+      kind: call
+      context: node-esm
+      callerRole: production
+      targetRole: production
+      callerRef: history-call
+      evidenceRefs:
+        - history-call
+  rules:
+    - id: history-receives-global-config
+      name: History receives configuration from its caller
+      kind: reachability
+      authority: repository
+      revision: af56cbc1bd944eda0384438765ee7365d21a9700bd5d76d1a7371642b7d91b19
+      scope: Collector source in the Node ESM context
+      settings:
+        name: history-receives-global-config
+        from:
+          path: ^src/history.ts$
+        to:
+          reachable: true
+          path: ^src/config/loader.ts$
+      accessKinds:
+        - import
+        - re-export
+        - dynamic-import
+        - require
+      evidenceRefs:
+        - policy-history
+  checks:
+    - id: history-loader-rule
+      ruleId: history-receives-global-config
+      sourceUnitId: history
+      targetUnitId: loader
+      context: node-esm
+      checker: choom-source-graph
+      checkerVersion: "1"
+      result: forbidden
+      accessIds:
+        - history-loader-import
+      coverage:
+        status: complete
+        roots:
+          - src/history.ts
+        examinedUnitIds:
+          - history
+          - loader
+          - shape
+        accessKinds:
+          - import
+          - re-export
+          - dynamic-import
+          - require
+        missingRoots: []
+        unresolvedAccessIds: []
+        limitations: []
+      evidenceRefs:
+        - policy-history
+  callerSearches:
+    - role: production
+      operationId: load
+      coverage:
+        status: partial
+        roots:
+          - src
+        examinedUnitIds:
+          - cli
+          - history
+          - loader
+        accessKinds:
+          - call
+          - import
+          - type
+        missingRoots: []
+        unresolvedAccessIds: []
+        limitations:
+          - The caller search did not inspect every production entry.
+      evidenceRefs:
+        - declare-configuration
+  sourceNotes:
+    - evidenceRef: declare-collector
+      description: Collector command implementation.
+      location:
+        snapshotRef: snapshot-after
+        path: src/cli.ts
+        sha256: 883511316484b234dca61741b4907b46590f917bc68fdb43bcf6c85c53527c3c
+        lines:
+          - 2
+          - 2
+    - evidenceRef: declare-configuration
+      description: The configuration loader owns this method.
+      location:
+        snapshotRef: snapshot-after
+        path: src/config/loader.ts
+        sha256: 44854606d9912bce22d9103f1f025366210577d895e7aeed0d9b2042f7e974c6
+        lines:
+          - 1
+          - 1
+    - evidenceRef: declare-history
+      description: History accepts the configuration.
+      location:
+        snapshotRef: snapshot-after
+        path: src/history.ts
+        sha256: a676ce2ad2fc73c9fb597e7d6c5388803c33c34d9db7653537986ee0575e54bc
+        lines:
+          - 2
+          - 2
+    - evidenceRef: declare-test-adapter
+      description: Test adapter declaration.
+      location:
+        snapshotRef: snapshot-after
+        path: test/adapter.ts
+        sha256: d8170d0950acd0771aee5d364f9dcaa577c36404b5cc19e7d5188794ee0af0d0
+        lines:
+          - 2
+          - 2
+    - evidenceRef: declare-type
+      description: The configuration type.
+      location:
+        snapshotRef: snapshot-after
+        path: src/config/types.ts
+        sha256: 4c607b935c8db4623d11c31168c788d01e77cb2911b32defa9d38a5793fef90f
+        lines:
+          - 1
+          - 1
+    - evidenceRef: policy-history
+      description: History must receive its configuration.
+      location:
+        snapshotRef: snapshot-after
+        path: .dependency-cruiser.json
+        sha256: af56cbc1bd944eda0384438765ee7365d21a9700bd5d76d1a7371642b7d91b19
+        lines:
+          - 1
+          - 1
+    - evidenceRef: cli-import
+      description: Collector imports the loader.
+      location:
+        snapshotRef: snapshot-after
+        path: src/cli.ts
+        sha256: 883511316484b234dca61741b4907b46590f917bc68fdb43bcf6c85c53527c3c
+        lines:
+          - 1
+          - 1
+    - evidenceRef: history-type
+      description: History imports the configuration type.
+      location:
+        snapshotRef: snapshot-after
+        path: src/history.ts
+        sha256: a676ce2ad2fc73c9fb597e7d6c5388803c33c34d9db7653537986ee0575e54bc
+        lines:
+          - 1
+          - 1
+    - evidenceRef: test-call
+      description: Test helper calls the loader.
+      location:
+        snapshotRef: snapshot-after
+        path: test/adapter.ts
+        sha256: d8170d0950acd0771aee5d364f9dcaa577c36404b5cc19e7d5188794ee0af0d0
+        lines:
+          - 2
+          - 2
+    - evidenceRef: history-import
+      description: History imports the loader.
+      location:
+        snapshotRef: snapshot-after
+        path: src/history.ts
+        sha256: a676ce2ad2fc73c9fb597e7d6c5388803c33c34d9db7653537986ee0575e54bc
+        lines:
+          - 3
+          - 3
+    - evidenceRef: history-call
+      description: History calls load.
+      location:
+        snapshotRef: snapshot-after
+        path: src/history.ts
+        sha256: a676ce2ad2fc73c9fb597e7d6c5388803c33c34d9db7653537986ee0575e54bc
+        lines:
+          - 4
+          - 4
+  matches: []
+  limitations:
+    - The caller search did not inspect every production entry.

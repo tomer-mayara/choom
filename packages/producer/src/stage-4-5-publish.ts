@@ -321,7 +321,7 @@ function candidate(state: State, packet: Packet): Candidate {
     assert((baseline.components as Fields[]).some(next => next.id === item.id), 'Keep continuing component IDs during remaining-code review.');
   reviewMetadata(packet, state);
   // Stage 5 starts from the Stage 4 mapping of whole files; only Stage 5 divides a file by symbol selectors.
-  const wholeFiles = 'Stage 4 maps whole files: use baseline formatVersion 1 to 4 and a code mapping with unitKind: file. ' +
+  const wholeFiles = 'Stage 4 maps whole files: use formatVersion 6 (1 to 4 for legacy runs) and a mapping with unitKind: file. ' +
     'Stage 5 can divide a file by symbol selectors.';
   assert(stage === '5' || baseline.formatVersion !== 5, wholeFiles);
   const counts = validateDiscoveryRecords({ run, baseline, discovery, artifacts, inventory, parse, readSource,

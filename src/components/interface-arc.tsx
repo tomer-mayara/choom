@@ -13,6 +13,7 @@ export type InterfaceEdge = Edge<{
   emphasis: "normal" | "highlighted" | "dimmed";
   labelOrder: number;
   inspected: boolean;
+  operationId?: string;
 }, "interface">;
 
 export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) {
@@ -93,7 +94,8 @@ export function InterfaceArc({ id, data, markerEnd }: EdgeProps<InterfaceEdge>) 
     if (!label.current || (!keyboard && (pressed.current?.view !== view || pressed.current.generation !== pressGeneration.current))) return;
     pressed.current = null;
     if (!keyboard) focusPointerLabel();
-    inspect({ kind: "interface", interfaceId: route.interfaceId }, label.current, keyboard);
+    inspect(data?.operationId ? { kind: "operation", operationId: data.operationId }
+      : { kind: "interface", interfaceId: route.interfaceId }, label.current, keyboard);
   }
 
   function enter(event: PointerEvent) {

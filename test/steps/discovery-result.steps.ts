@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -46,7 +47,7 @@ async function openBaseline(world: DiscoveryWorld, prepared: DiscoveryFixture): 
   await writeFile(world.discoveryFiles.result, world.discoveryOriginals[1] ?? "");
   const driver = new BaselineBrowserDriver(page(world));
   await driver.open();
-  await driver.openBaseline(world.discoveryFiles.baseline);
+  await driver.openHistoricalInventory(world.discoveryFiles.baseline);
   await expect(page(world).getByText("Baseline ready.", { exact: true })).toBeVisible();
   await expect(page(world).getByRole("heading", { name: prepared.baseline.id, exact: true })).toBeVisible();
 }
@@ -80,6 +81,16 @@ Given("an open baseline", async function (this: DiscoveryWorld) {
   await openBaseline(this, discoveryFixture());
 });
 
+Given("the user opens the TraceRelic example baseline and shows non-production components", async function (this: DiscoveryWorld) {
+  const directory = join(import.meta.dirname, "../../docs/design/app-a/examples/tracerelic-run-002");
+  this.discoveryFiles = { baseline: join(directory, "baseline.yaml"), result: join(directory, "discovery.yaml") };
+  const driver = new BaselineBrowserDriver(page(this));
+  await driver.open();
+  await driver.openBaseline(this.discoveryFiles.baseline);
+  await expect(page(this).getByText("Baseline ready.", { exact: true })).toBeVisible();
+  await page(this).getByRole("switch", { name: "Show non-production", exact: true }).check();
+});
+
 When("the user opens the discovery result", async function (this: DiscoveryWorld) {
   assert.ok(this.discoveryFiles);
   await showDiscoveryPanel(this);
@@ -97,6 +108,13 @@ Then("Billing shows two recorded questions", async function (this: DiscoveryWorl
   const recorded = componentDetails(this).getByRole("region", { name: "Recorded questions and gaps", exact: true });
   await expect(recorded.getByRole("heading", { name: "Recorded questions (2)", exact: true })).toBeVisible();
   for (const question of fixture(this).result.questions) await expect(recorded.getByText(question.text, { exact: true })).toBeVisible();
+});
+
+Then("the viewer shows the digest of the example baseline in the discovery summary", async function (this: DiscoveryWorld) {
+  assert.ok(this.discoveryFiles);
+  const digest = createHash("sha256").update(await readFile(this.discoveryFiles.baseline)).digest("hex");
+  await expect(page(this).getByText("Discovery result ready.", { exact: true })).toBeVisible();
+  await expect(discoveryPanel(this).getByRole("region", { name: "Discovery summary" })).toContainText(digest);
 });
 
 Then("the deferred file is listed with its reason", async function (this: DiscoveryWorld) {

@@ -27,7 +27,7 @@ async function replace(world: ConnectionWorld, example: string) {
   const baseline = sourceConnectionBaseline(example);
   const file = join(world.sourceConnectionDirectory, `${example.replaceAll(" ", "-")}.yaml`);
   await writeFile(file, stringify(baseline, { aliasDuplicateObjects: false }));
-  await world.sourceConnectionDriver.openBaseline(file);
+  await world.sourceConnectionDriver.openHistoricalInventory(file);
   await expect(page(world).getByText("Baseline ready.", { exact: true })).toBeVisible();
   await expect(page(world).locator(".react-flow__node")).toHaveCount(baseline.components.length);
 }
@@ -64,7 +64,7 @@ When("an invalid source baseline replacement is opened", async function (this: C
   assert.ok(this.sourceConnectionDirectory && this.sourceConnectionDriver);
   const file = join(this.sourceConnectionDirectory, "invalid.yaml");
   await writeFile(file, "formatVersion: 3\ninvalid: true\n");
-  await this.sourceConnectionDriver.openBaseline(file);
+  await this.sourceConnectionDriver.openHistoricalInventory(file);
   await expect(page(this).getByRole("button", { name: "Retry", exact: true })).toBeVisible();
 });
 When("the user moves Billing and fits the source drawing", async function (this: ConnectionWorld) {

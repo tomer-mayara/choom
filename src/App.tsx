@@ -2,7 +2,9 @@ import { lazy, Suspense, useLayoutEffect, useRef, useState, useSyncExternalStore
 import { Workflow } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
+import { ScopeSwitch, SourceIdentity } from "@/components/production-scope";
 import { ArchitectureDiagram } from "@/components/architecture-diagram";
+import { IsolationComparisonPanel } from "@/components/isolation-comparison";
 import { WorkspaceControls } from "@/components/workspace-controls";
 import { workspace as defaultWorkspace } from "@/architecture/workspace";
 import type { WorkspaceBinding } from "@/architecture/workspace-view";
@@ -17,10 +19,23 @@ const introduction =
 export default function App({ workspace = defaultWorkspace }: { workspace?: WorkspaceBinding } = {}) {
   const snapshot = useSyncExternalStore(workspace.workflow.subscribe, workspace.workflow.getSnapshot, workspace.workflow.getSnapshot);
   const { current } = snapshot;
+  const [expandedScope, setExpandedScope] = useState<typeof current>(null);
+  const showNonProduction = current !== null && expandedScope === current;
+  const visible = showNonProduction ? current : current?.production;
   const desktop = isDesktop();
   const [showExample, setShowExample] = useState(false);
   const focusInView = useRef(false);
   const previous = useRef(current);
+  const comparisonOpen = useRef(false);
+  const lastDiagramFocus = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (comparisonOpen.current && !snapshot.comparison && previous.current === current) {
+      const last = lastDiagramFocus.current;
+      const target = last?.isConnected && !last.closest("[hidden]") ? last : document.getElementById("compare-earlier-baseline");
+      target?.focus({ preventScroll: true });
+    }
+    comparisonOpen.current = Boolean(snapshot.comparison);
+  }, [current, snapshot.comparison]);
   useLayoutEffect(() => {
     const replaced = previous.current !== current;
     previous.current = current;
@@ -30,7 +45,9 @@ export default function App({ workspace = defaultWorkspace }: { workspace?: Work
   }, [current]);
   return (
     <div className="flex h-dvh min-w-0 flex-col overflow-hidden">
-      <WorkspaceControls workspace={workspace} snapshot={snapshot} desktop={desktop}>
+      <WorkspaceControls workspace={workspace} snapshot={snapshot} desktop={desktop}
+        scopeStatus={current && current.baseline.formatVersion < 6 && <SourceIdentity file={current.baseline} showAll={showNonProduction} />}>
+        {current && <ScopeSwitch showAll={showNonProduction} onChange={(on) => setExpandedScope(on ? current : null)} />}
         {!current ? (
           <Button
             variant="outline"
@@ -44,16 +61,23 @@ export default function App({ workspace = defaultWorkspace }: { workspace?: Work
         ) : null}
       </WorkspaceControls>
       <main className="flex min-h-0 min-w-0 flex-1 flex-col"
-        onFocusCapture={() => { focusInView.current = true; }}
+        onFocusCapture={(event) => {
+          focusInView.current = true;
+          if (event.target instanceof HTMLElement && !event.target.closest('[aria-label="Isolation comparison"]')) lastDiagramFocus.current = event.target;
+        }}
         onBlurCapture={(event) => {
           if (event.relatedTarget instanceof Node) focusInView.current = event.currentTarget.contains(event.relatedTarget);
           else if (event.target instanceof Node && event.target.isConnected) focusInView.current = false;
         }}>
-        {current ? <ArchitectureDiagram baseline={current.baseline} layout={current.layout} baselineSha256={current.sha256}
-          duplication={snapshot.duplication}
+        {current?.baseline.formatVersion === 6 && <SourceIdentity file={current.baseline} showAll={showNonProduction} />}
+        {current && snapshot.comparison && <IsolationComparisonPanel key={snapshot.comparison.before.sha256 + current.sha256}
+          pair={snapshot.comparison} after={current} showAll={showNonProduction} />}
+        {current && visible ? <ArchitectureDiagram baseline={visible.baseline} layout={visible.layout} baselineSha256={current.sha256}
+          sourceBaseline={current.baseline} showNonProduction={showNonProduction}
+          duplication={showNonProduction ? snapshot.duplication : null}
           onOpenDuplicationReport={() => { void workspace.workflow.openDuplicationReport(); }}
           onRemoveDuplicationReport={() => { void workspace.workflow.removeDuplicationReport(); }}
-          discovery={snapshot.discovery}
+          discovery={showNonProduction ? snapshot.discovery : null}
           onOpenDiscoveryResult={() => { void workspace.workflow.openDiscoveryResult(); }}
           onRemoveDiscoveryResult={() => { void workspace.workflow.removeDiscoveryResult(); }}
           reportBusy={snapshot.state.phase !== "idle"} /> : (

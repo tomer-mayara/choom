@@ -14,6 +14,7 @@ import { systemEntryReview } from "../lib/system-entry-points.ts";
 import { supportsSourceUsage, supportsSymbolSelectors } from "@choom/baseline-model/baseline-format";
 
 export type ArchitecturePanel = { kind: "component"; componentId: string }
+  | { kind: "operation"; operationId: string }
   | { kind: "interface"; interfaceId: string; entryId?: string }
   | { kind: "resource"; resourceId: string } | { kind: "baseline" } | { kind: "rules" }
   | { kind: "duplicates"; componentId?: string; interfaceId?: string }
@@ -120,7 +121,7 @@ export function ArchitectureDetails({ baseline, panel, showHeading = true, conte
   baseline: ReadonlyData<Baseline>; panel: ArchitecturePanel; showHeading?: boolean; contentRef?: RefObject<HTMLDivElement | null>;
   reading?: InterfaceReadingState;
 }) {
-  if (panel.kind === "duplicates" || panel.kind === "duplicate" || panel.kind === "discovery") return null;
+  if (panel.kind === "operation" || panel.kind === "duplicates" || panel.kind === "duplicate" || panel.kind === "discovery") return null;
   if (panel.kind === "baseline") return <section className="space-y-4 wrap-anywhere">
     <Field name="Format version"><RecordedValue value={baseline.formatVersion} /></Field>
     <Field name="Baseline ID"><RecordedValue value={baseline.id} /></Field>

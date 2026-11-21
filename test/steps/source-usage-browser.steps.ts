@@ -27,7 +27,7 @@ async function open(world: SourceBrowserWorld, data: unknown) {
   await page(world).setViewportSize({ width: 1280, height: 800 });
   const driver = new BaselineBrowserDriver(page(world));
   await driver.open();
-  await driver.openBaseline(await save(world, data));
+  await driver.openHistoricalInventory(await save(world, data));
   await expect(page(world).getByText("Baseline ready.", { exact: true })).toBeVisible();
 }
 

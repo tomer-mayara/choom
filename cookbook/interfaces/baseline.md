@@ -9,8 +9,7 @@ and its run checks; see the
 validates an unknown value and returns the generated `Baseline` data type.
 Import it from `@choom/baseline-model`, and the generated types from
 `@choom/baseline-model/contracts`. Use `safeParse` to get field paths
-for invalid input. The reader accepts `formatVersion: 1`, `formatVersion: 2`,
-`formatVersion: 3`, `formatVersion: 4`, and `formatVersion: 5`.
+for invalid input. The reader accepts format versions 1 through 6.
 Version 1 keeps its original strict fields. Version 2 adds optional interface
 documentation, defined in [baseline-documentation.tsp](baseline-documentation.tsp).
 The viewer does not upgrade a file or accept the legacy diagram format.
@@ -122,7 +121,8 @@ In version 5, `paths` can be empty when `symbols` is not empty, but each
 membership needs at least one path or symbol. Versions 1 to 4 keep a non-empty
 `paths` list and reject `symbols`. As for paths, the reader checks only the
 selector syntax. It does not open files, check that a file declares the symbol,
-or check ownership across components. The producer writes version 5 from Stage 5.
+or check ownership across components. Older runs can publish version 5 from
+Stage 5. New project-keyed runs publish version 6.
 Its record checks refuse two owners of one symbol and a symbol that the file does not
 declare, and they divide each named file into code units on the saved snapshot; see
 the [record format](../../docs/design/app-a/record-format.md#version-5-symbol-selectors).
@@ -239,3 +239,30 @@ browser scenario covers the component details.
 The existing runners discover the new feature, steps, and suites. This change
 adds no cross-component dependency or production service, so the architecture
 and OpenSLO artifacts remain unchanged.
+
+## Version 6 boundary review
+
+Version 6 requires one boundary review. Its identity binds the project key, captured
+source, snapshot inventory, analysis roots and selected mapping. A review of an empty
+model can have empty lists. Missing component scope is unknown. Component and
+operation names and component purposes in this review are reader-facing labels that
+are safe to show for their stated roles. Original interface statements and cited
+source notes retain the full text.
+
+Units identify a file, a selected symbol or the rest of a divided file. They carry
+the direct owner. An access records the written route, a resolved unit and member
+when known, roles at each end, resolution context and source evidence. A linked
+source use retains its existing interface/use IDs and located caller note. Source
+notes can refer to evidence already present in the baseline. A verified emitted
+copy links the exact source and emitted sites through a distinct proof note.
+
+Rule checks name the actual endpoints, rule revision and settings, checker version
+and ordered access IDs. Coverage records roots and examined units, supported kinds,
+unresolved edges, missing roots and limits. A partial or unassessed search cannot
+prove absence. A proposed rule, a conflicting rule or an unsupported rule gives
+an unknown permission. An exception names the rule it overrides. An accepted rule
+carried from an earlier file cites its exact digest, statement and acceptance record.
+
+The review has a combined budget of 2 MiB in compact UTF-8 JSON, 2,000 access sites
+and 4,000 source notes. A boundary-affecting decision makes the derived review
+need refresh. The former evidence stays available for inspection.

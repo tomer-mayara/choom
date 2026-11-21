@@ -39,7 +39,7 @@ Given("the source-consumer review file is open through the browser file control"
   await page(this).setViewportSize({ width: 1280, height: 800 });
   const driver = new BaselineBrowserDriver(page(this));
   await driver.open();
-  await driver.openBaseline(this.sourceConsumerFile);
+  await driver.openHistoricalInventory(this.sourceConsumerFile);
   await expect(page(this).getByRole("heading", { name: value.id, exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page(this).locator(".react-flow__node")).toHaveCount(value.components.length);
   this.sourceConsumerDrawing = await page(this).evaluate(readRenderedDrawing);

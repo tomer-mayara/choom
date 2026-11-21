@@ -42,6 +42,12 @@ export CHOOM_BASELINE_ID="baseline-001"
 node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-1 start
 ```
 
+Before start, optionally set `CHOOM_PROJECT_KEY` to reuse a project key, or set
+`CHOOM_REFERENCE_BASELINE` to a previous v6 file. You may supply both when the keys match.
+Use a nonblank key of at most 4096 UTF-8 bytes. Stage 1 preserves its exact text.
+The helper validates and freezes the reference bytes in the run. Without either
+input it creates a new key. Capture test inputs alongside production files.
+
 Run one command at a time and stop on an error. The helper creates the folder;
 do not create it first. Keep the tool checkout unchanged for this run. It saves
 the producer code record `evidence/producer.json`, this cookbook as a record, tool
@@ -245,17 +251,27 @@ paths, retaining prior extra paths.
 
 Assign supported roles with exact file/directory selectors: source, tests,
 generated, configuration, documentation, or unknown. Several roles may apply.
-Keep observed facts separate from inferred name-based interpretations. Compiler
+For each selector add useReview with unitScope, basis, uses, evidenceRefs and limits.
+Record each observed use as {role, evidenceRefs}. Use production, test, development,
+build, ci, benchmark, example, environment or unknown. unitScope can also be mixed.
+A single test registration establishes a test use. Set unitScope to unknown if
+production use has not been checked. Set an exclusive non-production scope only
+with a declaration or a complete review of the selector's uses. Cite the actual
+declaration or search. Record generated origin as a file-purpose role. Use
+basis declaration, complete-review or partial-review. List the limits of a partial
+review. Keep observed facts separate from inferred name-based interpretations. Compiler
 inclusion does not prove production use or an entry point. Record excluded inputs,
-unknown roles and deferred inspection. Tool contentReads do not count as source
-excerpts you inspected. Do not create components, owners, interfaces, rules,
+unknown roles and deferred inspection. Identify captured languages outside the
+JS/TS graph profile. If the inventory has no eligible JS/TS source, record the
+graph limit. Tool contentReads do not count as source excerpts you inspected.
+Do not create components, owners, interfaces, rules,
 smells, an overview, or used/dead-code claims.
 
 When ready, return only complete YAML with exactly these top-level fields:
 formatVersion: 1
 snapshotRef: the inventory snapshotId
 reviewedFiles: records with id, snapshotRef, path, sha256, lines: [first, last]
-roles: records with selector, roles, basis (observed or inferred), evidenceRefs
+roles: records with selector, roles, basis (observed or inferred), evidenceRefs, useReview
 workspaceDeclarations: records with path, patterns, membershipStatus
   (verified or unverified), evidenceRefs
 questions: records with exactly id, subjectRefs, text, evidenceRefs
@@ -291,6 +307,8 @@ suppliedArtifactRefs is the complete list of saved artifact IDs supplied in the
 final review, including the five required artifacts and every reviewed excerpt.
 Include supplied but uncited inputs. Use each excerpt artifactRef, not its source
 ID. Record filtering, truncated inputs, unavailable evidence and other limits.
+Include evidence used for each observed use and declaration. Describe any missing
+production, test or tool inputs and the resulting limits on classifying a whole unit.
 Do not claim a file was read just because its inventory entry was supplied.
 ```
 

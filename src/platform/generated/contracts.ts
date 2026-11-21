@@ -2,6 +2,7 @@
 
 export interface BaselineDialogOperations {
   selectBaselineFile(): BaselineFileSelection;
+  selectEarlierBaselineFile(): BaselineFileSelection;
   selectDuplicationReportFile(): BaselineFileSelection;
   selectDiscoveryResultFile(): BaselineFileSelection;
 }

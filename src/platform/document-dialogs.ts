@@ -9,6 +9,10 @@ export async function selectDuplicationReportFile(): Promise<ReturnType<Baseline
   return selectDocumentFile("duplication report");
 }
 
+export async function selectEarlierBaselineFile(): Promise<ReturnType<BaselineDialogOperations["selectEarlierBaselineFile"]>> {
+  return selectDocumentFile("earlier baseline");
+}
+
 export async function selectBaselineFile(): Promise<ReturnType<BaselineDialogOperations["selectBaselineFile"]>> {
   return selectDocumentFile("baseline");
 }
@@ -19,6 +23,7 @@ export async function selectDiscoveryResultFile(): Promise<ReturnType<BaselineDi
 
 // Every kind of file uses the same single-file picker; the app then reads it with the read-only document command.
 const pickers = {
+  "earlier baseline": { title: "Compare with earlier baseline", filter: "Architecture baseline" },
   baseline: { title: "Open Baseline", filter: "Architecture baseline" },
   "duplication report": { title: "Open duplication report", filter: "Duplication report" },
   "discovery result": { title: "Open discovery result", filter: "Discovery result" },

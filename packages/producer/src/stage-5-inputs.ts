@@ -109,7 +109,7 @@ function checkedDrafts(parse: Parse, work: string): Drafts {
     discovery.runRef === run.id && !Object.hasOwn(discovery, 'baselineRef') &&
     text((discovery.overview as Fields | undefined)?.text) && Array.isArray(discovery.inspectedPaths),
   'Expected published Stage 4 discovery without a fixed baseline.');
-  assert([1, 2, 3, 4].includes(baseline?.formatVersion as number) && text(baseline.id) && baseline.parentId === null &&
+  assert([1, 2, 3, 4, 6].includes(baseline?.formatVersion as number) && text(baseline.id) && baseline.parentId === null &&
     ['components', 'interfaces', 'resources', 'rules'].every(key => Array.isArray(baseline[key])) &&
     (baseline.components as unknown[]).length > 0,
   'Expected the proposed working baseline.');

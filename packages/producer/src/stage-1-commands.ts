@@ -12,6 +12,9 @@ import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
+import { prepareRunProject, referencePath, referenceRef } from './stage-1-project.ts';
+import type { RunProject } from './generated/contracts.ts';
+import { validateUnitUseReview } from './stage-1-role-use.ts';
 import { type DiscoveryGap, toolGaps } from './stage-1-gaps.ts';
 import { type GitIdentityRecord, gitIdentity, gitIdentityGaps, gitIdentityPath, gitIdentityRef, type RunGit }
   from './stage-1-git.ts';
@@ -24,7 +27,7 @@ type Fields = Record<string, unknown>;
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 interface Inventory { formatVersion: number; snapshotId: string; files: InventoryFile[] }
 interface CaptureLayout { workLayout: string; requiredExclusion: string | null }
-interface StageOneInputs extends CaptureLayout {
+interface StageOneInputs extends CaptureLayout, RunProject {
   runRef: string; snapshotRef: string; baselineId: string; target: string; tools: string;
 }
 // `settings` are variables of `env` that the call record lists.
@@ -122,7 +125,7 @@ function artifactId(path: string): string {
     'evidence/review.yaml': 'review-001', 'evidence/tools.json': 'tools-001', 'exclusions.txt': 'exclusions-001',
     'evidence/scope-notes.md': 'scope-notes-001', 'evidence/extra-configs.json': 'extra-configs-001',
     'evidence/stage1-discovery.yaml': 'discovery-001', 'evidence/review-scope.json': 'review-scope-001',
-    [gitIdentityPath]: gitIdentityRef };
+    [gitIdentityPath]: gitIdentityRef, [referencePath]: referenceRef };
   return fixed[path] ?? 's1-file@' + encodeURIComponent(path);
 }
 function captureLayout(target: string): CaptureLayout {
@@ -161,9 +164,11 @@ function startRun(): void {
     baselineId: process.env.CHOOM_BASELINE_ID };
   for (const [key, prefix] of [['runRef', 'run'], ['snapshotRef', 'snapshot'], ['baselineId', 'baseline']] as const)
     assert(new RegExp('^' + prefix + '-[a-z0-9]+(?:-[a-z0-9]+)*$').test(ids[key] ?? ''), 'Set ' + key + ' to a simple new ID.');
+  const project = prepareRunProject(process.env.CHOOM_PROJECT_KEY, process.env.CHOOM_REFERENCE_BASELINE);
   const producer = producerReceipt(tools);
   mkdirSync(work); mkdirSync(join(work, 'snapshot')); mkdirSync(join(work, 'evidence'));
-  saveJson('evidence/stage1-inputs.json', { formatVersion: 1, ...ids, target, tools, ...layout, startedAt: utc() });
+  saveJson('evidence/stage1-inputs.json', { formatVersion: 1, ...ids, ...project.identity, target, tools, ...layout, startedAt: utc() });
+  if (project.bytes) save(referencePath, project.bytes);
   saveJson(producerRecordPath, producer);
   // A record of the instructions and prompts for this run. No code reads it.
   save('evidence/cookbook.md', readFileSync(join(tools, 'docs/design/app-a/step-1-cookbook.md')));
@@ -418,6 +423,13 @@ function checkSuppliedScope(scopeBytes: Buffer, inputs: StageOneInputs, review: 
       const id = ref.split('#')[0] ?? '';
       assert(evidence.sources.has(id) || scope.suppliedArtifactRefs.includes(id), 'Cited artifact was not declared supplied: ' + ref);
     }
+  for (const item of review.roles) {
+    for (const ref of validateUnitUseReview(item.useReview)) {
+      checkReference(ref, evidence);
+      const id = evidenceBase(ref);
+      assert(evidence.sources.has(id) || scope.suppliedArtifactRefs.includes(id), 'Cited artifact was not declared supplied: ' + ref);
+    }
+  }
   for (const source of review.reviewedFiles) {
     const supplied = evidence.excerpts.filter(excerpt => excerpt.path === source.path && excerpt.sha256 === source.sha256 &&
       isDeepStrictEqual(excerpt.lines, source.lines));
@@ -442,6 +454,7 @@ function publish(inputs: StageOneInputs, bytes: Map<string, Buffer>, review: Rev
   const registry = Object.fromEntries(all.map(path => [artifactId(path), { path, sha256: hash(read(path)) }]));
   assert(Object.keys(registry).length === all.length, 'Duplicate artifact IDs.');
   save('run.yaml', stringify({ formatVersion: 1, id: inputs.runRef, mode: 'A', status: 'in-progress',
+    projectKey: inputs.projectKey, referenceBaseline: inputs.referenceBaseline,
     progress: { inventory: 'complete', baselineRecovery: 'pending' }, snapshot: { id: inputs.snapshotRef,
       root: 'snapshot', inventoryRef: 'inventory-001', exclusions: 'exclusions.txt',
       captureMethod: 'rsync copy followed by a checksum dry-run comparison',
@@ -493,6 +506,8 @@ function continueRun(): void {
   assert(realpathSync(work) === work, 'Use the canonical working-folder path.');
   refuseChangedProducerCode(work, tools);
   const inputs: StageOneInputs = json('evidence/stage1-inputs.json');
+  if (inputs.referenceBaseline) assert(inputs.referenceBaseline.artifactRef === referenceRef &&
+    hash(read(referencePath)) === inputs.referenceBaseline.sha256, 'The frozen reference baseline changed. Start a new run.');
   assert(inputs.tools === tools,
     'The tool checkout path changed since start. Set CHOOM_TOOLS to the checkout that started this run.');
   if (action !== 'verify') assert(!present('run.yaml'), 'Stage 1 is already published. Use verify, not a repeated stage.');

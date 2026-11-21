@@ -76,3 +76,13 @@ test("discovery selection names the discovery result and keeps the single read-o
   mockIPC(() => { throw new Error("/private/picker"); });
   await expect(dialogs.selectDiscoveryResultFile()).rejects.toThrow("The native discovery result picker is unavailable.");
 });
+
+test("the Before picker uses the ordinary single baseline file filter", async () => {
+  expectTypeOf<ReturnType<typeof dialogs.selectEarlierBaselineFile>>()
+    .toEqualTypeOf<Promise<ReturnType<BaselineDialogOperations["selectEarlierBaselineFile"]>>>();
+  expect(await dialogs.selectEarlierBaselineFile()).toBeNull();
+  expect(requests).toEqual([{ command: "plugin:dialog|open", payload: { options: {
+    directory: false, multiple: false, title: "Compare with earlier baseline",
+    filters: [{ name: "Architecture baseline", extensions: ["yaml", "yml"] }],
+  } } }]);
+});

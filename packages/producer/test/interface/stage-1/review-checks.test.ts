@@ -16,6 +16,16 @@ const listItem = (packet: ReviewPacket, key: string): Record<string, unknown> =>
 };
 
 const reviewCases: ReviewCase[] = [
+  { name: "one test use is classified as an exclusively test unit", change: packet => {
+    listItem(packet, "roles").useReview = { unitScope: "test", basis: "partial-review",
+      uses: [{ role: "test", evidenceRefs: ["s1-source-001"] }], evidenceRefs: ["s1-source-001"],
+      limits: ["Production was not checked."] };
+  }, message: "An exclusive non-production unit needs a declaration or complete review." },
+  { name: "a use cites a missing source", change: packet => {
+    listItem(packet, "roles").useReview = { unitScope: "unknown", basis: "partial-review",
+      uses: [{ role: "test", evidenceRefs: ["missing-use-site"] }], evidenceRefs: ["inventory-001"],
+      limits: ["Production was not checked."] };
+  }, message: "Unknown evidence reference: missing-use-site" },
   { name: "the review has an extra field", change: (packet) => { packet.review.extra = 1; },
     message: "Expected a complete Stage 1 review." },
   { name: "the call record has no model", change: (packet) => { delete packet.call.model; },

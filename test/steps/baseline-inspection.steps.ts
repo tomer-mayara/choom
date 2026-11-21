@@ -40,7 +40,7 @@ async function openFixture(world: InspectionWorld, full: boolean): Promise<void>
   await writeFile(file, stringify(full ? reviewedBaseline("full") : baselineWithoutComponents()));
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(file);
+  await driver.openHistoricalInventory(file);
   await expect(browser.getByText("Baseline ready.", { exact: true })).toBeVisible();
   if (full) await expect(browser.locator(".react-flow__node").first()).toBeVisible();
   else await expect(browser.getByText("No components modeled", { exact: true })).toBeVisible();
