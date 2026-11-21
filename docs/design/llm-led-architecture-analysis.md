@@ -481,6 +481,11 @@ Each tool-call record includes its inputs, operation/version, query scope, limit
 result, and output digests. State what was examined, excluded, unsupported,
 unresolved, or cut short. A query with no matches still needs its searched scope.
 Partial results cannot establish that something is absent.
+In Appendix A, Stage 1 runs only commands that the producer fixes: the copy, its
+comparison, Git and the settings collector. Each of their call records has the
+command, arguments, any environment that the call sets, time, exit code, signal
+and error. The run manifest registers their output with SHA-256 digests. A query
+scope or limit for each call adds nothing to a fixed command.
 
 Source links include the snapshot, file digest, and range. Reopen saved source.
 Validate the report format and check the digests of saved evidence. Show missing
