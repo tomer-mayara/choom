@@ -97,10 +97,12 @@ interfaces they directly own. Counts exclude descendant and unknown owners.
 With an attached discovery result, a component also shows the number of
 recorded questions and gaps that name it or one of its fields.
 A parent has a border around its children and one small inspection header.
-Names can wrap to two lines in a bounded header. When a header also shows entry
-markers or three count lines, it has no gaps between its lines. Each name line
-stays 20 pixels high, so the second line of a two-line name is not cut.
-Accessible names and panel details keep the full text. ELK rectangle packing prepares the component overview.
+The viewer ships the Inter font for Latin text, so names wrap the same way on
+each machine. Names can wrap to two lines in a bounded header. When a header
+also shows entry markers or three count lines, it has no gaps between its
+lines. Each name line stays 20 pixels high, so the second line of a two-line
+name is not cut. Accessible names and panel details keep the full text. ELK
+rectangle packing prepares the component overview.
 Interfaces and resources have no separate nodes. In versions 1 and 2, interface
 arcs run from each recorded allowed consumer to the recorded owner. They show
 permission to use the interface, not observed calls.
@@ -171,8 +173,9 @@ diagram. A single click, Enter, or Space opens
 inspection in a nonmodal side panel. On narrow windows, the panel sits below
 the canvas. There, **Discovery** is a small control on the heading row, and
 **Baseline details** shows the short label **Details**, so the other actions
-stay on one row. The top bar and the notices use less space too. Thus the
-drawing and the panel keep enough height with wide fonts. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
+stay on one row. The top bar and the notices use less space too. Thus, at the
+normal text size, a 320 by 640 window with the panel open keeps more than 100
+pixels of height for the drawing and for the panel. Each record keeps all saved fields available. Each statement shows its value, **Proposed** or **Accepted
 (recorded)** status, **Evidence not loaded**, and its evidence references. An
 accepted statement also shows its acceptance reference. Missing optional fields
 say **Not recorded**. Null statement values say **Unknown (null)**. Empty lists and objects

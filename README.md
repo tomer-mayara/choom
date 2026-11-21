@@ -1270,6 +1270,18 @@ Use `bun run typecheck` to check with the native compiler. Do not replace the co
 
 `cn` supplies the `cn` utility; no separate `clsx` or `tailwind-merge` dependency is needed. The shadcn generator may add dependencies or rewrite the utility when generating components; review those changes before accepting them. Knip checks application, test, tooling, and CSS dependencies.
 
+`@fontsource-variable/inter` at `5.3.0` supplies the Inter font. The `@font-face`
+rule in `src/styles.css` uses only its Latin file, `inter-latin-wght-normal.woff2`
+(48 KB, weights 100 to 900), and the build copies it into `dist/assets/`. The
+browser app and the desktop app load it from the app itself, with no network;
+the Tauri rule `font-src 'self'` allows it. The rule hides an Inter that the
+machine has installed, so each machine draws the same text and layout. A
+character outside the Latin file, such as `↔`, uses a system font. The font is
+under the SIL Open Font License 1.1. `public/licenses/inter-ofl.txt` is a copy of
+the package licence, and the build ships it with the font; copy it again when
+the package changes. The package has no install script, so it is not in
+`trustedDependencies`.
+
 `packages/producer/package.json` declares the packages that the producer helpers load
 from the tool checkout, at the versions already in `bun.lock`: `yaml`, `picomatch`,
 `typescript`, `ts-morph`, `knip`, `dependency-cruiser`, and `jscpd`. It also
