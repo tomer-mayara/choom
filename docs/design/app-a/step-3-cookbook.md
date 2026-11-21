@@ -674,9 +674,10 @@ When the symbol mentions of collect have the status `unavailable` or `skipped`,
 it requires a gap that cites `<attempt>-file@symbol-mentions.json`.
 The finalizer registers every attempt file. So each attempt file must be a
 receipt, an output or a log that a receipt names, or `commands.md`. The failed
-receipt of a request and its logs stay registered. The finalizer refuses any other file and names it, for example
-`Unexpected attempt file that no producer action saved: notes.md. Do not write
-into the attempt; use a fresh attempt.` Keep notes outside the attempt.
+receipt of a request and its logs stay registered. The finalizer refuses any
+other file and names it, for example `Unexpected attempt file that no producer
+action saved: notes.md. Do not write into the attempt; use a fresh attempt.`
+Keep notes outside the attempt.
 It does not execute the target or certify the LLM's interpretation.
 
 On success:
