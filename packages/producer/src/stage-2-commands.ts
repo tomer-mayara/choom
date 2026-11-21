@@ -13,6 +13,7 @@ import { refuseChangedProducerCode } from './producer-code.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { SavedAttemptFiles } from './saved-attempt-files.ts';
+import { ToolGaps } from './tool-gaps.ts';
 
 // The Stage 2 driver. Every action runs from the tool checkout, after it checks
 // that the producer code is the code that started the run. The saved commands of
@@ -54,7 +55,7 @@ const modules = { handoff: 'stage-2-handoff.ts', profile: 'stage-2-knip-profile.
 const runModule = (name: string): string => 'node "$CHOOM_TOOLS/packages/producer/src/' + name + '"\n';
 const drafts = ['run', 'discovery', 'baseline'];
 const planFile = 'entry-plan.json';
-const coreFiles = [planFile, 'entry-analysis.yaml', 'knip-runs.json', 'knip-profile.json', 'preflight.json'];
+const coreFiles = [planFile, 'entry-analysis.yaml', 'knip-runs.json', 'knip-profile.json', 'preflight.json', 'required-gaps.json'];
 const imageFiles = ['image-id.txt', 'build-exit.txt', 'image-inspect-exit.txt', 'check-exit.txt', 'metadata.json']
   .map(name => 'toolchain/' + name);
 
@@ -167,10 +168,14 @@ function reviewedSources(artifacts: Map<string, Artifact>, inventory: Inventory,
   return reviewed;
 }
 
+// The IDs <attempt>-knip-gap-NNN belong to the required gaps that run saves.
+const attemptGaps = new ToolGaps(id + '-');
+
 function checkRecord(record: Fields, prior: Map<unknown, unknown>, { ids, artifacts, reviewed }: PlanChecks): void {
   assert(text(record.id) && !ids.has(record.id) && !artifacts.has(record.id) && !reviewed.has(record.id) &&
     (prior.has(record.id) || record.id.startsWith(id + '-')) && !record.id.startsWith(id + '-file@') &&
-    !coreFiles.some(name => record.id === id + '-' + name.replace(/\.[^.]+$/, '')),
+    !coreFiles.some(name => record.id === id + '-' + name.replace(/\.[^.]+$/, '')) &&
+    !attemptGaps.reserves(ToolGaps.knip, record.id),
   'Invalid or duplicate record ID: ' + record.id);
   ids.add(record.id);
   assert(strings(record.evidenceRefs) && record.evidenceRefs.length, 'Missing evidence: ' + record.id);
@@ -430,7 +435,7 @@ function runPhase(context: PhaseContext): void {
     env.CHOOM_KNIP_IMAGE = selected.imageId as string;
   }
   execute(context, runModule(modules.knip), 'knip');
-  Object.assign(context.record.digests, digests(['knip-runs.json']));
+  Object.assign(context.record.digests, digests(['knip-runs.json', 'required-gaps.json']));
 }
 
 function phase(context: PhaseContext): void {

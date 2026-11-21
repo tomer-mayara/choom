@@ -1139,11 +1139,13 @@ that the Stage 2 preflight marked `unsupported` needs a gap that cites the
 preflight record (`<attempt>-preflight`), a Knip mode that `failed` or was
 `skipped` needs a gap that cites the Knip runs record (`<attempt>-knip-runs`),
 and Stage 3 symbol mentions that are `unavailable` or `skipped` need a gap that
-cites their record (`<attempt>-file@symbol-mentions.json`). Stage 2 `finish` and
-the Stage 3 finalizer refuse an analysis without such a gap, such as with `The
-normal Knip run in s2-001-knip-runs has the status skipped. Record a gap that
-cites s2-001-knip-runs.` The shared record checks of Stages 4 to 6 check the Knip
-preflight and runs of the selected entry analysis again.
+cites their record (`<attempt>-file@symbol-mentions.json`). For the Knip records,
+Stage 2 `finish` refuses an analysis that does not copy each
+[required gap](#required-gaps) exactly. The Stage 3 finalizer refuses an analysis
+without the gap of the symbol mentions. The shared record checks of Stages 4 to 6
+check the Knip preflight and runs of the selected entry analysis again, such as
+with `The normal Knip run in s2-001-knip-runs has the status skipped. Record a gap
+that cites s2-001-knip-runs.`
 The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
 A question or gap has exactly these fields. A linked note that answers or narrows
@@ -1482,6 +1484,66 @@ the settings gaps, with the ID `s1-git-identity-gap-001` and the evidence
 `git-identity-001#/gaps/0`. `finish` refuses a review question or gap with this
 ID, and a Git identity record that is not valid. Stage 1 `verify` checks that
 the saved Stage 1 discovery has the gap.
+
+## Knip receipts and required gaps
+
+Stage 2 `prepare` saves `preflight.json`, and Stage 2 `run` saves `knip-runs.json`
+(the Knip receipts) and then `required-gaps.json` in the attempt folder. Stage 2
+`finish` registers them as `<attempt>-preflight`, `<attempt>-knip-runs` and
+`<attempt>-required-gaps`. The
+[Stage 2 cookbook](step-2-cookbook.md#4-run-knip-against-the-saved-snapshot)
+describes the runs. These fields give the outcomes:
+
+| Record and field | Meaning |
+| --- | --- |
+| `preflight.json` `status`, `reasons` | `eligible`, or `unsupported` when the fixed Knip profile cannot run on the snapshot, with the reasons. |
+| `knip-runs.json` `preflightRef` | The preflight record, `<attempt>-preflight`. |
+| `knip-runs.json` `runs` | One run for each mode: index 0 is `normal` and index 1 is `production`. |
+| Run `status` | `completed` when Knip ran and gave a valid JSON report; `failed` when Knip ran but the run reached its time limit (`timedOut`), stopped on a signal (`signal`), exited with a code other than 0 or 1 (`exitCode`), had a command error (`errors`) or gave a report that is not valid (`report.error`); `skipped` when Knip did not run. |
+| Run `reasons` | Only for `skipped`: why Knip did not run, such as an unsupported preflight, no approved tool image, or a production analysis that the plan did not select. |
+
+### Required gaps
+
+An `unsupported` preflight and each run that is `skipped` or `failed` need a gap
+that cites them. `required-gaps.json` holds these gaps, in the form of the
+[contract](../../../cookbook/interfaces/producer-run-records.tsp):
+
+```json
+{
+  "formatVersion": 1,
+  "gaps": [
+    { "id": "s2-001-knip-gap-001", "kind": "tool-outcome", "subjectRefs": ["snapshot-001"],
+      "reason": "Knip preflight marked the profile unsupported. Workspace lacks a captured manifest: package.json.",
+      "evidenceRefs": ["s2-001-preflight"] },
+    { "id": "s2-001-knip-gap-002", "kind": "tool-outcome", "subjectRefs": ["snapshot-001"],
+      "reason": "The normal Knip run was skipped. Workspace lacks a captured manifest: package.json. No approved available tool image: ...",
+      "evidenceRefs": ["s2-001-knip-runs#/runs/0"] }
+  ]
+}
+```
+
+| Field of a gap | Value |
+| --- | --- |
+| `id` | `<attempt>-knip-gap-` and the position of the gap from 1 in three digits. The gap of the preflight comes first, then the gaps of the runs in the order of `runs`. |
+| `kind` | `tool-outcome`. |
+| `subjectRefs` | The snapshot ID. |
+| `reason` | The outcome and each reason of its record. For a `failed` run, the reasons are its time limit, signal, exit code, errors and report error. A reason stays within the 16 KiB limit of the discovery contract. When the reasons do not fit, the reason gives the number of reasons that it leaves out; the cited record keeps them. |
+| `evidenceRefs` | The preflight record, `<attempt>-preflight`, or the run in the receipts, `<attempt>-knip-runs#/runs/N`. |
+
+The record has no gap when the preflight is `eligible` and both runs are
+`completed`. The entry analysis copies each required gap into its `gaps` exactly,
+in any place of the list. Stage 2 `finish` gives the gaps again from the saved
+preflight and receipts, and refuses:
+
+- a `required-gaps.json` that differs from them;
+- an entry analysis that leaves out or changes a required gap;
+- a question or another gap whose ID starts with `<attempt>-knip-gap-`. Stage 2
+  `plan` refuses such an ID in the entry plan too.
+
+Later stages keep these gaps unchanged, as they keep every question and gap. The
+shared record checks of Stages 4 to 6 check again that a gap cites the preflight
+record when it is `unsupported`, and the Knip receipts when a run is `skipped` or
+`failed`.
 
 ## Producer code record
 

@@ -43,7 +43,7 @@ When("Stage 2 selects the reviewed entry analysis", function (this: ClaimsWorld)
   const { id, work } = this.attempt;
   const candidates = [{ ...this.candidates[0], knipClaims: [] }, { ...this.candidates[1],
     knipClaims: [{ mode: "production", receiptRef: id + "-knip-runs#/runs/1", outcome: "unknown" }] }];
-  for (const result of Object.values(finishAttempt(this.attempt, this.scratch, entryAnalysis(id, { candidates }))))
+  for (const result of Object.values(finishAttempt(this.attempt, this.scratch, entryAnalysis(this.attempt, { candidates }))))
     assert.equal(result.status, 0, result.stderr);
   const selected = parse(readFileSync(join(work, "discovery.yaml"), "utf8")).entryAnalysisRef;
   const run = parse(readFileSync(join(work, "run.yaml"), "utf8"));

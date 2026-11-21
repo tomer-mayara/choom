@@ -46,7 +46,7 @@ function runStageTwo(root: string, project: KnipProject): StageTwoAttempt {
   results.plan = stageTwo(attempt, "plan", [planPacket(join(root, "plan"), attempt.id, project.plan(attempt.id))]);
   results.prepare = stageTwo(attempt, "prepare");
   for (const action of ["toolchain", "run"]) results[action] = stageTwo(attempt, action, [], {}, imageTimeout);
-  completed("Stage 2", { ...results, ...finishAttempt(attempt, root, entryAnalysis(attempt.id, { gaps: [] })) });
+  completed("Stage 2", { ...results, ...finishAttempt(attempt, root, entryAnalysis(attempt, { gaps: [] })) });
   return attempt;
 }
 

@@ -5196,6 +5196,28 @@
             ],
             "additionalProperties": false
         },
+        "RequiredGaps": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RequiredGaps.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 1
+                },
+                "gaps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DiscoveryGap.json"
+                    }
+                }
+            },
+            "required": [
+                "formatVersion",
+                "gaps"
+            ],
+            "additionalProperties": false
+        },
         "BehaviorEntryCallRule": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "BehaviorEntryCallRule.json",

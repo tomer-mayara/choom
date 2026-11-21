@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as yaml from "yaml";
 import { readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
+import { ToolGaps } from "../../../src/tool-gaps.ts";
 import { candidatesRef, type Component, digest, type Documentation, evidenceRefs, files, location, type MappingUnit, proposal,
   recordInputs, type Records, runRef, selected, snapshotRef, type SourceAssessment, type SourceUse, stage, type Statement, statement }
   from "../../support/stage-6-records.ts";
@@ -280,6 +281,18 @@ describe("validateDiscoveryRecords with a Knip result that did not run", () => {
   test("accepts results that did not run when a gap cites each record, also with a JSON Pointer", () => {
     const change = all(unsupported, runs("failed", "skipped"), withGap("knip-preflight#/status", "knip-runs#/runs/0"));
     expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 2 });
+  });
+
+  // Stage 2 finish requires a copy of each required gap that ToolGaps gives from the Knip
+  // records. These gaps cite the records that the shared record checks read.
+  test("accepts the required gaps that ToolGaps gives from the Knip preflight and runs", () => {
+    const requiredGaps = (records: Records): void => {
+      const gaps = new ToolGaps("s2-x-").fromKnipRuns({ snapshotRef, preflightRef: "knip-preflight", runs: records.knip.runs },
+        "knip-runs", records.knip.preflight);
+      for (const list of [records.discovery.gaps, records.entry.gaps]) list.push(...gaps);
+    };
+    const change = all(unsupported, runs("failed", "skipped"), requiredGaps);
+    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 4 });
   });
 });
 

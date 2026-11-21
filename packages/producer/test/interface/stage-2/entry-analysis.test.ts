@@ -157,11 +157,12 @@ describe("a Stage 2 attempt with an approved tool image", () => {
       expect(receipt.dockerEndpoint).toMatchObject({ selector: "current-context", context: "default",
         endpoint: "unix:///var/run/docker.sock" });
 
-      // Finish adds the analysis to the drafts and registers every attempt file.
+      // Both Knip modes completed, so run saved no required gap. Finish adds the analysis to
+      // the drafts and registers every attempt file.
+      expect(savedJson(attempt, "required-gaps.json")).toEqual({ formatVersion: 1, gaps: [] });
       expect(parse(readFileSync(join(work, "discovery.yaml"), "utf8"))).toEqual({ formatVersion: 1,
-        kind: "architecture-discovery", runRef: "run-check", questions: [priorQuestion],
-        gaps: [{ id: "s2-check-gap-001", kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
-          evidenceRefs: ["s2-check-knip-runs", "s2-check-preflight"] }], entryAnalysisRef: "s2-check-entry-analysis" });
+        kind: "architecture-discovery", runRef: "run-check", questions: [priorQuestion], gaps: [],
+        entryAnalysisRef: "s2-check-entry-analysis" });
       const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as SavedRun;
       expect(run.progress).toEqual({ inventory: "complete", baselineRecovery: "pending", entryAnalysis: "complete",
         inspectionPriorities: "pending" });
@@ -169,7 +170,8 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         "This attempt uses s2-check-entry-analysis#/reviewedFiles. Tool query scopes and limits are in s2-check-knip-runs; " +
         "tool reads do not establish LLM inspection.");
       const core: Record<string, string> = { "entry-plan.json": "entry-plan", "entry-analysis.yaml": "entry-analysis",
-        "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight" };
+        "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight",
+        "required-gaps.json": "required-gaps" };
       const expected = Object.fromEntries(files(attempt.folder).map((name) => [`${id}-${core[name] ?? "file@" + encodeURIComponent(name)}`,
         { path: `evidence/${id}/${name}`, sha256: sha256(saved(name)) }]));
       expect(Object.fromEntries(Object.entries(run.artifacts).filter(([key]) => key.startsWith(id)))).toEqual(expected);

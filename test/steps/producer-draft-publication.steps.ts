@@ -41,14 +41,17 @@ const strayFile = "notes.md";
 
 // A run after Stage 1, with a Stage 2 attempt that saved its review packet. The
 // snapshot holds no package manifest, so Knip is skipped, and the entry analysis
-// records the gap that cites the Knip records.
+// copies the required gaps that the run action saved for the Knip records.
 function readyForStageTwo(scratch: string): ReadyRun {
   const work = join(scratch, "run");
   stageOneRun(work, [{ path: "app.ts", text: "export const value = 1;\n" }]);
   const attempt = stageTwoAttempt(work, "s2-check");
-  const review = analysisPacket(join(scratch, "review"), attempt.id, entryAnalysis(attempt.id));
-  const results = { ...runAttempt(attempt, scratch), "save-review": stageTwo(attempt, "save-review", [review]) };
-  for (const [action, result] of Object.entries(results)) assert.equal(result.status, 0, `Stage 2 ${action}: ${result.stderr}`);
+  const completed = (results: Record<string, CommandResult>): void => {
+    for (const [action, result] of Object.entries(results)) assert.equal(result.status, 0, `Stage 2 ${action}: ${result.stderr}`);
+  };
+  completed(runAttempt(attempt, scratch));
+  const review = analysisPacket(join(scratch, "review"), attempt.id, entryAnalysis(attempt));
+  completed({ "save-review": stageTwo(attempt, "save-review", [review]) });
   return { stage: 2, work, finish: (settings) => stageTwo(attempt, "finish", [], settings) };
 }
 

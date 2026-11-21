@@ -80,14 +80,15 @@ export function entryPlan(id: string, change: JsonRecord = {}): JsonRecord {
     ...change };
 }
 
-// The entry analysis of the attempt. Without a package manifest or a Docker engine,
-// preflight marks the Knip profile unsupported and both Knip modes are skipped, so
-// its gap cites the preflight and the Knip runs records, as finish requires.
-export function entryAnalysis(id: string, change: JsonRecord = {}): JsonRecord {
+// The entry analysis of the attempt after its run action. Its gaps are an exact copy
+// of the required gaps that the run saved, as finish requires. Without a package
+// manifest or a Docker engine, preflight marks the Knip profile unsupported and both
+// Knip modes are skipped, so these are the gaps of the preflight and of both runs.
+export function entryAnalysis(attempt: StageTwoAttempt, change: JsonRecord = {}): JsonRecord {
+  const { id } = attempt;
   return { formatVersion: 1, kind: "entry-analysis", snapshotRef: stagedSnapshotRef, planRef: `${id}-entry-plan`,
     knipRunsRef: `${id}-knip-runs`, candidates: [candidate(id)], reviewedFiles: [], questions: [priorQuestion],
-    gaps: [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
-      evidenceRefs: [`${id}-knip-runs`, `${id}-preflight`] }],
+    gaps: requiredGaps(attempt),
     reachability: { status: "not-assessed", reason: "This stage records entry candidates and Knip outcomes only." },
     llmReview: "recorded", ...change };
 }
@@ -110,6 +111,11 @@ export function savedJson(attempt: StageTwoAttempt, name: string): JsonRecord {
   return JSON.parse(readFileSync(join(attempt.folder, name), "utf8")) as JsonRecord;
 }
 
+// The gaps that the run action saved in required-gaps.json, which the review must copy exactly.
+export function requiredGaps(attempt: StageTwoAttempt): JsonRecord[] {
+  return savedJson(attempt, "required-gaps.json").gaps as JsonRecord[];
+}
+
 // Runs start, plan, prepare, toolchain and run, and returns each result by action.
 export function runAttempt(attempt: StageTwoAttempt, scratch: string, plan = entryPlan(attempt.id),
   env: Record<string, string> = {}): Record<string, CommandResult> {
@@ -121,7 +127,7 @@ export function runAttempt(attempt: StageTwoAttempt, scratch: string, plan = ent
 
 // Saves the analysis packet and publishes the attempt.
 export function finishAttempt(attempt: StageTwoAttempt, scratch: string,
-  analysis = entryAnalysis(attempt.id)): Record<string, CommandResult> {
+  analysis = entryAnalysis(attempt)): Record<string, CommandResult> {
   const review = analysisPacket(join(scratch, `${attempt.id}-review`), attempt.id, analysis);
   return { "save-review": stageTwo(attempt, "save-review", [review]), finish: stageTwo(attempt, "finish") };
 }

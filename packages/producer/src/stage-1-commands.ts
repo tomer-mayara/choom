@@ -15,9 +15,10 @@ import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclu
 import { prepareRunProject, referencePath, referenceRef } from './stage-1-project.ts';
 import type { RunProject } from './generated/contracts.ts';
 import { validateUnitUseReview } from './stage-1-role-use.ts';
-import { type DiscoveryGap, settingsTool, toolGaps } from './stage-1-gaps.ts';
+import { settingsTool, stageOneGaps } from './stage-1-gaps.ts';
 import { type GitIdentityRecord, gitIdentity, gitIdentityGaps, gitIdentityPath, gitIdentityRef, type RunGit }
   from './stage-1-git.ts';
+import type { DiscoveryGap } from './tool-gaps.ts';
 
 // The Stage 1 helper. Every action runs from the trusted tool checkout. Start
 // records the producer code, and each later action refuses the run when the
@@ -308,7 +309,7 @@ function checkCapturedInputs(inputs: StageOneInputs): { gaps: unknown[] } {
 // project settings or missing Git evidence, with the name of the record.
 interface AddedGaps { record: string; gaps: DiscoveryGap[] }
 function addedGaps(settings: { gaps: unknown[] }, inputs: StageOneInputs): AddedGaps[] {
-  return [{ record: 'settings', gaps: toolGaps({ ...settingsTool, gaps: settings.gaps }) },
+  return [{ record: 'settings', gaps: stageOneGaps.fromRecord({ ...settingsTool, gaps: settings.gaps }) },
     { record: 'Git identity', gaps: gitIdentityGaps(json(gitIdentityPath), inputs.snapshotRef) }];
 }
 

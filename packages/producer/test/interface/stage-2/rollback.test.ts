@@ -25,7 +25,7 @@ beforeAll(() => {
   attempt = stageTwoAttempt(work, id);
   for (const [action, result] of Object.entries(runAttempt(attempt, scratch)))
     expect({ action, status: result.status }).toEqual({ action, status: 0 });
-  expect(stageTwo(attempt, "save-review", [analysisPacket(join(scratch, "review"), id, entryAnalysis(id))]).status).toBe(0);
+  expect(stageTwo(attempt, "save-review", [analysisPacket(join(scratch, "review"), id, entryAnalysis(attempt))]).status).toBe(0);
   cpSync(work, join(scratch, "prepared"), { recursive: true });
 });
 

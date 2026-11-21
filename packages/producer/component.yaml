@@ -31,7 +31,9 @@ artifacts:
     - path: ../../.dependency-cruiser.cjs
   contracts:
     - path: ../../cookbook/interfaces/producer-boundary-intake.tsp
+    # The producer run records that only the producer reads, such as the required gaps of the Knip run.
+    - path: ../../cookbook/interfaces/producer-run-records.tsp
     - path: ../../cookbook/interfaces/behavior-entry-rules.tsp
     - path: ../../cookbook/interfaces/resource-access-rules.tsp
-    # The Stage 4 and 5 review records, the Stage 1 settings and Git identity records, the version 4 publication rules, the decision record and the next baseline version.
+    # The Stage 4 and 5 review records, the Stage 1 settings and Git identity records, the Stage 2 Knip receipts and required gaps, the version 4 publication rules, the decision record and the next baseline version.
     - path: ../../docs/design/app-a/record-format.md
