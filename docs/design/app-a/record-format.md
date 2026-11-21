@@ -1256,8 +1256,8 @@ a receipt records, the command log `commands.md`, a file of the review packet, o
 the publication receipt `publication.json`. `check`, `finish` and `verify` refuse
 any other file and name it, for example `Unexpected attempt file that no producer
 action saved: notes.md. Do not write into the attempt; use a fresh attempt.` Keep
-notes and other files outside the attempt. `verify` checks the completed
-publication without writing files.
+notes and other files outside the attempt. The Stage 3 finalizer uses the same
+rule. `verify` checks the completed publication without writing files.
 
 Only one publisher may operate on a run at a time. Keep failed attempts and
 receipts. If `finish` fails after saving files, inspect the reported state and use

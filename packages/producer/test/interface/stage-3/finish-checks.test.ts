@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
@@ -192,5 +192,46 @@ describe("Stage 3 finish checks", () => {
     expect({ search: results["text-search-1"]?.status, status: results.finish?.status, stderr: results.finish?.stderr })
       .toEqual({ search: 0, status: 1, stderr: "The text-search-001 receipt is incomplete, failed, or changed. Use a new attempt.\n" });
     expect(draftState(attempt)).toEqual(before);
+  }, 60_000);
+});
+
+// The finalizer registers every attempt file. So each one must be a file that a
+// producer action saved: a phase receipt, a file that the receipt names, or the
+// command log. The finalizer refuses any other file and names it.
+const strayFileMessage = "Unexpected attempt file that no producer action saved: notes.md. " +
+  "Do not write into the attempt; use a fresh attempt.";
+
+describe("Stage 3 finish with an attempt file that no action saved", () => {
+  test("refuses the attempt, names the file, and leaves the drafts unchanged", () => {
+    const attempt = newAttempt("stray-file");
+    const before = draftState(attempt);
+    const results = finishStageThree(attempt, () => writeFileSync(join(attempt.folder, "notes.md"), "# Notes\n"));
+    expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
+      .toEqual({ status: 1, stdout: "", stderr: strayFileMessage + "\n" });
+    expect(draftState(attempt)).toEqual(before);
+  }, 60_000);
+
+  test("verify refuses a file that someone added to the published attempt, and names it", () => {
+    const attempt = newAttempt("stray-file-after-publication");
+    expect(finishStageThree(attempt).finish?.status).toBe(0);
+    writeFileSync(join(attempt.folder, "notes.md"), "# Notes\n");
+    const verify = stageThree(attempt, ["stage-3-finish", "verify"]);
+    expect({ status: verify.status, stdout: verify.stdout, stderr: verify.stderr })
+      .toEqual({ status: 1, stdout: "", stderr: strayFileMessage + "\n" });
+  }, 60_000);
+
+  // The cookbook says to keep the failed receipt of a request and to request again in
+  // the same attempt. A failed request saved its receipt and logs, and no record.
+  test("publishes an attempt with failed requests, and registers their receipts", () => {
+    const attempt = newAttempt("failed-requests");
+    const results = finishStageThree(attempt, () => {
+      expect(stageThree(attempt, ["stage-3", "excerpt", "missing.ts", "1", "1"]).status).toBe(1);
+    }, [["two\nlines"]], ["missing.ts"]);
+    expect({ search: results["text-search-1"]?.status, exports: results["exports-1"]?.status, finish: results.finish?.status,
+      stderr: results.finish?.stderr }).toEqual({ search: 1, exports: 1, finish: 0, stderr: "" });
+    const run = parse(folderText(attempt, "run.yaml")) as { artifacts: Record<string, { path: string }> };
+    for (const name of ["operator-excerpt-001.json", "operator-text-search-001.stderr.txt", "operator-exports-001.started.json"])
+      expect(run.artifacts[`${attempt.id}-file@${name}`]?.path).toBe(`evidence/${attempt.id}/${name}`);
+    expect(stageThree(attempt, ["stage-3-finish", "verify"]).status).toBe(0);
   }, 60_000);
 });
