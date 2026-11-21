@@ -61,3 +61,76 @@ export function checkSubjects({ discovery, snapshotRef, paths, candidateIds, bas
     }
   }
 }
+
+// The baseline items that a subject can name: SubjectItems of @choom/baseline-model.
+export type ItemNames = Pick<SubjectItems, 'namedItem'>;
+// A question or gap of a discovery. A gap has a kind, and a question has none.
+export interface SubjectRecord {
+  readonly id: unknown;
+  readonly kind?: unknown;
+  readonly subjectRefs: readonly string[];
+  readonly evidenceRefs?: unknown;
+  readonly [field: string]: unknown;
+}
+// What the subjects of the questions and gaps of a run can name.
+export interface SubjectRun {
+  // The paths of the files of the snapshot inventory.
+  readonly paths: Iterable<unknown>;
+  readonly snapshotRef: string;
+  // The discovery, or other records, with the questions and gaps. The lists keep their history.
+  readonly issues: Fields;
+  // The IDs of the entry candidates of the selected entry analysis and of the earlier
+  // entry analyses that it names. Stage 3 can retire a candidate with a note that names it.
+  readonly candidateIds: Iterable<unknown>;
+  readonly items: ItemNames;
+}
+
+const issueLists = [['questions', 'question'], ['gaps', 'gap']] as const;
+const subjectForms = 'A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, ' +
+  'a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.';
+
+// The subject check of the questions and gaps of a run. A subject names one of these:
+// a file of the snapshot inventory; the snapshot ID; the ID of a question or gap; the
+// ID of an entry candidate; or a baseline item, as the viewer places a record
+// (SubjectItems), such as billing.purpose. Later stages keep each question and gap
+// unchanged, so a draft that renames or removes what a subject names is refused
+// while the reviewer can still keep the old ID.
+export class SubjectChecker {
+  private readonly files: ReadonlySet<unknown>;
+  private readonly snapshotRef: string;
+  private readonly issues: Fields;
+  private readonly issueIds: ReadonlySet<unknown>;
+  private readonly candidateIds: ReadonlySet<unknown>;
+  private readonly items: ItemNames;
+
+  constructor({ paths, snapshotRef, issues, candidateIds, items }: SubjectRun) {
+    this.files = new Set(paths);
+    this.snapshotRef = snapshotRef;
+    this.issues = issues;
+    this.issueIds = new Set(issueLists.flatMap(([kind]) => (issues[kind] as SubjectRecord[]).map(issue => issue.id)));
+    this.candidateIds = new Set(candidateIds);
+    this.items = items;
+  }
+
+  // Each subject of the question or gap that names nothing of the run, in the order of the record.
+  refused(record: SubjectRecord): string[] {
+    return record.subjectRefs.filter(subject => !this.names(subject));
+  }
+
+  // Refuses the first question or gap with a subject that names nothing. The message
+  // names the subject and the question or gap.
+  check(): void {
+    for (const [kind, label] of issueLists) {
+      for (const record of this.issues[kind] as SubjectRecord[]) {
+        const [subject] = this.refused(record);
+        if (subject !== undefined)
+          throw new Error(`The subject ${subject} of the ${label} ${String(record.id)} names nothing. ${subjectForms}`);
+      }
+    }
+  }
+
+  private names(subject: string): boolean {
+    return this.files.has(subject) || subject === this.snapshotRef || this.issueIds.has(subject) ||
+      this.candidateIds.has(subject) || this.items.namedItem(subject) !== undefined;
+  }
+}

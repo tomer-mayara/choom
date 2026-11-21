@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkSubjects, type SubjectInputs } from "../../src/record-subjects.ts";
+import { checkSubjects, type ItemNames, SubjectChecker, type SubjectInputs, type SubjectRecord } from "../../src/record-subjects.ts";
 
 // The shared record checks of Stages 4 to 6 check that each subject of a question or
 // gap names something of the run. A gap that Stage 1 finish copied from a tool
@@ -75,5 +75,67 @@ describe("checkSubjects", () => {
     expect(() => checkSubjects(inputs({ gaps: [review] }))).toThrow(new Error(
       "Gap s1-settings-gap-002 names the subject tsconfig.missing.json, which is not a file or folder of the snapshot, " +
       "the snapshot ID, a question or gap, an entry candidate or a baseline item."));
+  });
+});
+
+// SubjectChecker knows what a subject of a question or gap can name in a run. The
+// baseline items are a mock of SubjectItems of @choom/baseline-model: it names an
+// item only for the references in this map.
+const namedItems = new Map([["billing", "billing"], ["billing.purpose", "billing"],
+  ["orders-api.documentation.entries.list-orders.signature", "orders-api"]]);
+const items: ItemNames = { namedItem: (reference) => namedItems.get(reference) };
+const asked = (subjectRefs: string[], id = "q-1"): SubjectRecord =>
+  ({ id, subjectRefs, text: "Which file starts the service?", evidenceRefs: ["e"] });
+const found = (subjectRefs: string[], id = "gap-1", evidenceRefs = ["e"]): SubjectRecord =>
+  ({ id, kind: "deferred", subjectRefs, reason: "Not reviewed.", evidenceRefs });
+const nameNothing = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
+  "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
+
+function checker(issues: { questions: SubjectRecord[]; gaps: SubjectRecord[] } =
+{ questions: [asked(["billing"])], gaps: [found(["billing"])] }): SubjectChecker {
+  return new SubjectChecker({ paths: ["cli.ts", "src/billing/invoice.ts", "src/http/routes.ts", "test/app.test.ts"],
+    snapshotRef: "snapshot-001", issues, candidateIds: ["cli-candidate"], items });
+}
+
+describe("SubjectChecker", () => {
+  test.each([
+    ["a file of the snapshot", "src/billing/invoice.ts"],
+    ["the snapshot ID", "snapshot-001"],
+    ["a question ID", "q-1"],
+    ["a gap ID", "gap-1"],
+    ["an entry candidate ID", "cli-candidate"],
+    ["a baseline item ID", "billing"],
+    ["a field of a baseline item", "billing.purpose"],
+    ["a field below a field of a baseline item", "orders-api.documentation.entries.list-orders.signature"],
+  ])("refuses no subject that names %s", (_name, subject) => {
+    expect(checker().refused(asked([subject]))).toEqual([]);
+    expect(checker().refused(found([subject]))).toEqual([]);
+  });
+
+  test.each([
+    ["names nothing", "old-billing"],
+    ["is the start of a file name", "src/billing/invoice"],
+    ["names a symbol of a file", "src/billing/invoice.ts#computePrice"],
+    ["names a file with a leading /", "/src/billing/invoice.ts"],
+    ["is a field of no baseline item", "payments.purpose"],
+  ])("refuses a subject that %s", (_name, subject) => {
+    expect(checker().refused(asked(["billing", subject]))).toEqual([subject]);
+  });
+
+  test("returns each subject that names nothing, in the order of the record", () => {
+    expect(checker().refused(found(["old-billing", "cli.ts", "payments.purpose", "billing.purpose"])))
+      .toEqual(["old-billing", "payments.purpose"]);
+  });
+
+  test("check accepts questions and gaps whose subjects all name something", () => {
+    const issues = { questions: [asked(["gap-1", "cli.ts"])], gaps: [found(["q-1", "billing.purpose"])] };
+    expect(() => checker(issues).check()).not.toThrow();
+  });
+
+  test("check refuses the first question or gap with a subject that names nothing, with the subject and the record", () => {
+    expect(() => checker({ questions: [asked(["billing"])], gaps: [found(["cli.ts", "plugin-runner", "old-billing"])] }).check())
+      .toThrow(new Error(`The subject plugin-runner of the gap gap-1 names nothing. ${nameNothing}`));
+    expect(() => checker({ questions: [asked(["old-billing"])], gaps: [found(["plugin-runner"])] }).check())
+      .toThrow(new Error(`The subject old-billing of the question q-1 names nothing. ${nameNothing}`));
   });
 });
