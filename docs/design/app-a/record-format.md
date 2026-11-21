@@ -98,8 +98,8 @@ one of these:
 
 Name a symbol, a missing input or another detail in the `text` or `reason`, not
 as a subject. The shared record checks of Stages 4 to 6 (`SubjectChecker`) refuse
-any other subject and name the subject and the question or gap, such as `The
-subject old-billing of the question q-1 names nothing.` The message then gives
+any other subject. The message names the subject and the question or gap, such
+as `The subject old-billing of the question q-1 names nothing.` Then it gives
 the forms above. A folder written without `/**` is refused with the selector to
 write, such as `The subject src/billing of the gap g-1 names a folder without
 /**. Write the folder as src/billing/**.` Later stages keep
