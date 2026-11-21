@@ -52,6 +52,11 @@ const cases: PlanCase[] = [
     files: { "llm/plan-scope.json": JSON.stringify({ formatVersion: 1, snapshotRef: "snapshot-check", attemptId: "ATTEMPT",
       suppliedArtifactRefs: ["missing"], limits: [] }) }, message: "Unknown supplied artifact: missing" },
   { name: "the packet folder is inside the run", inside: true, message: "Keep LLM review packets outside the run." },
+  // The IDs that start with <attempt>-knip-gap- belong to the required gaps of the Knip run.
+  { name: "a new gap uses an ID that is reserved for the required gaps of the Knip run",
+    plan: (id) => entryPlan(id, { gaps: [{ id: `${id}-knip-gap-001`, kind: "deferral", subjectRefs: ["app.ts"],
+      reason: "Not reviewed in this attempt.", evidenceRefs: ["inventory-001"] }] }),
+    message: "Invalid or duplicate record ID: ATTEMPT-knip-gap-001" },
 ];
 
 describe("Stage 2 plan checks", () => {
@@ -68,9 +73,10 @@ describe("Stage 2 plan checks", () => {
         if (files) writePacket(folder, Object.fromEntries(Object.entries(files).map(([file, text]) =>
           [file, text.replace("ATTEMPT", id)])));
         const result = stageTwo(attempt, "plan", [folder]);
+        const error = message.replace("ATTEMPT", id);
         expect({ name, status: result.status, error: savedJson(attempt, "operator-plan.json").error })
-          .toEqual({ name, status: 1, error: message });
-        expect(result.stderr).toContain("Error: " + message);
+          .toEqual({ name, status: 1, error });
+        expect(result.stderr).toContain("Error: " + error);
         expect(existsSync(join(attempt.folder, "entry-plan.json"))).toBe(false);
       });
     });

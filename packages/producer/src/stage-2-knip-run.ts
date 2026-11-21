@@ -297,7 +297,7 @@ for (const mode of ['normal', 'production']) {
 }
 const receiptText = `${JSON.stringify(receipt, null, 2)}\n`;
 await writeFile(receiptPath, receiptText, { flag: 'wx' });
-// The review copies each required gap exactly.
+// The review copies each required gap exactly, and finish gives the gaps again from the saved receipts.
 const required: RequiredGaps = { formatVersion: 1,
   gaps: new ToolGaps(`${id}-`).fromKnipRuns(JSON.parse(receiptText), `${id}-knip-runs`, preflight) };
 await writeFile(join(attempt, 'required-gaps.json'), `${JSON.stringify(required, null, 2)}\n`, { flag: 'wx' });

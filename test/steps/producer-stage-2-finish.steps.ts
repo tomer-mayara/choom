@@ -4,7 +4,7 @@ import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { type CommandResult, makeScratch, removeScratch } from "../../packages/producer/test/support/commands.ts";
 import { draftFaultSettings } from "../../packages/producer/test/support/doubles/draft-faults.ts";
 import { folderState } from "../../packages/producer/test/support/producer-record.ts";
-import { analysisPacket, entryAnalysis, type JsonRecord, runAttempt, savedJson, stageOneRun, stageTwo, stageTwoAttempt,
+import { analysisPacket, entryAnalysis, type JsonRecord, runAttempt, stageOneRun, stageTwo, stageTwoAttempt,
   type StageTwoAttempt } from "../../packages/producer/test/support/stage-2-attempt.ts";
 
 // Stage 2 finish on a small run, through the command line. The snapshot holds no
@@ -61,18 +61,9 @@ function runFiles(attempt: StageTwoAttempt): [string, string][] {
   return folderState(attempt.work).filter(([path]) => !path.startsWith(`evidence/${attempt.id}/`));
 }
 
-Given("a Stage 2 attempt s2-check whose Knip preflight marks the profile unsupported, because the snapshot has no package manifest",
-  function (this: StageTwoWorld) {
-    assert.equal(savedJson(preparedAttempt(this), "preflight.json").status, "unsupported");
-  });
-
-Given("the saved entry analysis of the attempt records no gap", function (this: StageTwoWorld) {
-  saveReview(this, entryAnalysis(currentAttempt(this).id, { gaps: [] }));
-});
-
-// The default entry analysis records the gap that cites the Knip records.
+// The default entry analysis copies the required gaps of the Knip outcomes.
 Given("a Stage 2 attempt that is ready to publish", function (this: StageTwoWorld) {
-  saveReview(this, entryAnalysis(preparedAttempt(this).id));
+  saveReview(this, entryAnalysis(preparedAttempt(this)));
 });
 
 Given("the replacement of the run manifest fails", function (this: StageTwoWorld) {
@@ -93,8 +84,4 @@ Then("the publication is refused and the run folder outside the attempt is as it
 
 Then("the operator is told to keep the attempt and use a new attempt ID", function (this: StageTwoWorld) {
   assert.match(lastFinish(this).stderr, /Keep this attempt unchanged; use a new attempt ID after you resolve the cause\./);
-});
-
-Then("the operator is told to record a gap that cites s2-check-preflight", function (this: StageTwoWorld) {
-  assert.match(lastFinish(this).stderr, new RegExp(`Record a gap that cites ${attemptId}-preflight\\.`));
 });

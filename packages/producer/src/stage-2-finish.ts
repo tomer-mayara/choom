@@ -6,9 +6,9 @@ import { isDeepStrictEqual } from 'node:util';
 import { draftUpdate } from './draft-update.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
-import { checkKnipResultGaps } from './result-gaps.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
+import { ToolGaps } from './tool-gaps.ts';
 
 // The Stage 2 finish action runs this module in the tool checkout, after the
 // driver checked the producer code record of the run. It checks every attempt
@@ -345,6 +345,20 @@ function checkAnalysis(finish: Finish, plan: Fields, requireClaims: boolean): Fi
   return analysis;
 }
 
+// The gaps that the Knip outcomes require (DB5): run saved them in required-gaps.json.
+// They must be the gaps that ToolGaps gives from the saved preflight and Knip receipts,
+// and the analysis must copy each one exactly. No other question or gap can have an
+// ID that starts with <attempt>-knip-gap-.
+function checkRequiredGaps(finish: Finish, analysis: Fields): void {
+  const core = (name: string): string => `${finish.id}-${name}`;
+  const knipGaps = new ToolGaps(`${finish.id}-`);
+  const required = knipGaps.fromKnipRuns(document(finish, core('knip-runs')), core('knip-runs'), document(finish, core('preflight')));
+  assert(isDeepStrictEqual(document(finish, core('required-gaps')), { formatVersion: 1, gaps: required }),
+    `The required gaps in ${core('required-gaps')} differ from the gaps that the Knip receipts and the preflight give. Use a new attempt.`);
+  knipGaps.checkCopied(ToolGaps.knip, required, { questions: analysis.questions as unknown[], gaps: analysis.gaps as unknown[] },
+    core('required-gaps'));
+}
+
 // The inventory of the saved snapshot, made with the checkout code, must still be
 // the registered inventory. The saved inventory.mjs stays a registered record;
 // finish does not run it.
@@ -387,9 +401,7 @@ function finishAttempt(): void {
   const plan = checkPlan(finish, discovery);
   checkReceipts(finish, run);
   const analysis = checkAnalysis(finish, plan, typeof run.projectKey === 'string');
-  // An unsupported Knip profile and a Knip mode that failed or was skipped need a gap that cites their record.
-  checkKnipResultGaps({ gaps: analysis.gaps, preflightRef: `${id}-preflight`, preflight: document(finish, `${id}-preflight`),
-    runsRef: `${id}-knip-runs`, runs: document(finish, `${id}-knip-runs`) });
+  checkRequiredGaps(finish, analysis);
   checkInventory(finish, run);
   for (const name of drafts)
     assert((before[name] as Buffer).equals(read(safeFile(work, `${name}.yaml`))), `${name}.yaml changed during finalization.`);

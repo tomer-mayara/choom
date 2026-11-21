@@ -113,7 +113,7 @@ Given("a Stage 2 attempt with a required gap for a skipped Knip run", function (
 Given("a Stage 2 review that leaves out that gap", function (this: ToolGapsWorld) {
   const attempt = currentAttempt(this);
   const gaps = requiredGaps(attempt).filter((gap) => gap.id !== this.leftOutGap);
-  const review = analysisPacket(join(this.toolGapsScratch ?? "", "review"), attempt.id, entryAnalysis(attempt.id, { gaps }));
+  const review = analysisPacket(join(this.toolGapsScratch ?? "", "review"), attempt.id, entryAnalysis(attempt, { gaps }));
   succeeded("save-review", stageTwo(attempt, "save-review", [review]));
 });
 

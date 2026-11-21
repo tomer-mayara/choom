@@ -2,8 +2,9 @@ import { assert, evidenceBase, type Fields } from './record-checks.ts';
 
 // An analysis that did not run keeps its result record, and a gap cites that record,
 // so that the missing coverage stays visible. Each stage checks this where it accepts
-// such a result: Stage 2 finish and the shared record checks of Stages 4 to 6 for the
-// Knip preflight and runs, and the Stage 3 finalizer for the symbol mentions. A gap
+// such a result: the shared record checks of Stages 4 to 6 for the Knip preflight and
+// runs, and the Stage 3 finalizer for the symbol mentions. Stage 2 finish makes the
+// stronger check of tool-gaps.ts: the analysis copies each required gap exactly. A gap
 // cites a record when one of its evidence references names the record, alone or with
 // a JSON Pointer into it.
 export interface KnipResults {

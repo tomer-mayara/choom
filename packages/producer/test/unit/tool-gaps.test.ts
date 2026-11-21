@@ -73,3 +73,54 @@ describe("ToolGaps.fromKnipRuns", () => {
     expect(() => knipGaps.fromKnipRuns(value, receiptsRef, eligible)).toThrow(new Error("Invalid Knip receipts: s2-check-knip-runs"));
   });
 });
+
+// The review copies each required gap exactly, and the IDs that start with
+// <prefix><name>-gap- belong to the required gaps of that tool record.
+describe("ToolGaps.checkCopied", () => {
+  const source = "s2-check-required-gaps";
+  const required = knipGaps.fromKnipRuns(receipts([skipped("normal", [noManifest, noImage]),
+    skipped("production", [noManifest, noImage])]), receiptsRef, unsupported);
+  const question = { id: "s2-check-question-001", subjectRefs: ["app.ts"], text: "Is app.ts used?", evidenceRefs: ["inventory-001"] };
+  const ownGap = { id: "s2-check-gap-001", kind: "deferral", subjectRefs: ["app.ts"], reason: "Not reviewed.",
+    evidenceRefs: ["inventory-001"] };
+  const check = (questions: unknown[], gaps: unknown[]): void => knipGaps.checkCopied(ToolGaps.knip, required, { questions, gaps }, source);
+
+  test("accepts a review that copies each required gap, in any order, with its own questions and gaps", () => {
+    expect(() => check([question], [ownGap, ...[...required].reverse()])).not.toThrow();
+    expect(() => knipGaps.checkCopied(ToolGaps.knip, [], { questions: [question], gaps: [ownGap] }, source)).not.toThrow();
+  });
+
+  test("refuses a review that leaves out a required gap and names the gap", () => {
+    expect(() => check([], required.filter((gap) => gap.id !== "s2-check-knip-gap-002"))).toThrow(new Error(
+      `The entry analysis leaves out the required gap s2-check-knip-gap-002. Copy each gap of ${source} exactly.`));
+  });
+
+  test.each([
+    ["its reason", { reason: "Knip did not run." }],
+    ["its subjects", { subjectRefs: ["app.ts"] }],
+    ["its evidence", { evidenceRefs: ["s2-check-knip-runs"] }],
+    ["its kind", { kind: "deferral" }],
+    ["a field", { note: "Copied." }],
+  ])("refuses a review that changes %s in a required gap", (_name, change) => {
+    const [first, second, third] = required;
+    expect(() => check([], [first, { ...second, ...change }, third])).toThrow(new Error(
+      `The entry analysis changes the required gap s2-check-knip-gap-002. Copy each gap of ${source} exactly.`));
+  });
+
+  test.each([
+    { name: "a question", reserved: "s2-check-knip-gap-004", required,
+      questions: [{ ...question, id: "s2-check-knip-gap-004" }], gaps: required },
+    { name: "another gap", reserved: "s2-check-knip-gap-004", required,
+      questions: [], gaps: [...required, { ...ownGap, id: "s2-check-knip-gap-004" }] },
+    { name: "a gap when no gap is required", reserved: "s2-check-knip-gap-001", required: [],
+      questions: [], gaps: [{ ...ownGap, id: "s2-check-knip-gap-001" }] },
+  ])("refuses $name with an ID that is reserved for the required gaps", ({ reserved, required: gapsToCopy, questions, gaps }) => {
+    expect(() => knipGaps.checkCopied(ToolGaps.knip, gapsToCopy, { questions, gaps }, source)).toThrow(new Error(
+      `The ID ${reserved} is reserved for the required gaps of ${source}. Use a different ID.`));
+  });
+
+  test("reserves the IDs that start with the prefix, the name and -gap-", () => {
+    expect(["s2-check-knip-gap-001", "s2-check-knip-gap-1000", "s2-check-knip-gap-x", "s2-check-gap-001",
+      "s2-other-knip-gap-001", undefined].map((id) => knipGaps.reserves(ToolGaps.knip, id))).toEqual([true, true, true, false, false, false]);
+  });
+});
