@@ -432,9 +432,11 @@ findings. Earlier absence claims do not carry over automatically. If an investig
 needs uncaptured files, capture a new snapshot before using them.
 
 Save the selected source, documents, configuration, and required analysis inputs.
-Record paths, contents, digests, exclusions, and how the copy was made. Retry
-observed concurrent edits or report the capture limit. Copying files does not
-prove they all existed together at one instant.
+Record paths, contents, digests, the exclusion rules, and how the copy was made.
+If a comparison after the copy finds a change, capture stops, and the operator
+retries in a new folder. Excluded paths stay as rules, not as a list; with Git,
+the Git identity record lists the tracked files that the rules leave out.
+Copying files does not prove they all existed together at one instant.
 
 Tools use these saved inputs or the recorded toolchain. Missing inputs stay
 unresolved; tools must not quietly read the live checkout or other directories.
