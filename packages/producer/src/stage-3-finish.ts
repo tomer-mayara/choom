@@ -1,19 +1,18 @@
-import {
-  closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, readdirSync, realpathSync,
-  renameSync, unlinkSync, writeFileSync,
-} from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { isAbsolute, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { draftUpdate } from './draft-update.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, object, savedDocument, text } from './record-checks.ts';
+import { checkSymbolResultGap } from './result-gaps.ts';
 import { checkReview, utf8 } from './stage-3-review.ts';
 
 // The Stage 3 finalizer. It checks the saved attempt, its receipts, the earlier
-// stage records and the LLM review packet, and only then publishes the run and
-// discovery drafts. With verify, it checks that the drafts are still the state
-// that this attempt published.
+// stage records and the LLM review packet, and only then publishes the discovery
+// and run drafts as one update, run.yaml last. With verify, it checks that the
+// drafts are still the state that this attempt published.
 interface Yaml { parse(text: string): unknown; stringify(value: unknown): string }
 interface Entry { path: string; sha256: string }
 interface Settings { id: string; work: string; tools: string; attempt: string; verifyOnly: boolean; yaml: Yaml; analysisRef: string }
@@ -379,6 +378,9 @@ function finish(): void {
   const { analysis, currentExcerpts } = checkReview({ ...records, ...inputs, id: config.id, workspaces,
     names: attempt.names, artifacts: attempt.artifacts, buffers: attempt.buffers, document: attempt.document,
     saved: attempt.saved, receipt: attempt.receipt, checkedSourceBytes });
+  // Symbol mentions that are unavailable or skipped need a gap that cites their record.
+  checkSymbolResultGap(analysis.gaps, attempt.attemptRef('symbol-mentions.json'),
+    (attempt.saved('symbol-mentions.json') as Fields | null | undefined)?.status);
   const state: Finalization = { ...records, config, drafts, attempt, inputs, loading, analysis, currentExcerpts,
     checkedSourceBytes };
   finalChecks(state);
@@ -387,32 +389,25 @@ function finish(): void {
     verifyPublished(state, published);
     return;
   }
-  publish(config.work, published, drafts.checkDrafts);
+  publish(config, drafts, published);
   console.log('Stage 3 drafts updated. Structure and evidence checks passed. Review the analysis for meaning.');
   console.log('Keep all registered attempt files unchanged.');
 }
 
-function publish(work: string, published: Drafts, checkDrafts: () => void): void {
-  const pending = new Map<string, string>();
-  let manifestPublished = false;
+// Replaces discovery.yaml and then run.yaml, the publication marker, as one update.
+// When a step fails before run.yaml is replaced, the update gives discovery.yaml its
+// bytes from before and removes its temporary files.
+function publish({ id, work }: Settings, { before, checkDrafts }: Checkpoints, published: Drafts): void {
+  const update = draftUpdate({ work, prefix: '.' + id + '-publication-', read: name => file(work, name),
+    before: new Map(draftNames.map(name => [name + '.yaml', before[name] as Buffer])),
+    advice: 'Keep this attempt unchanged; use a new attempt ID after you resolve the cause.' });
   try {
-    for (const name of ['run', 'discovery']) {
-      const temp = join(work, '.stage-3-' + name + '.next.yaml');
-      const fd = openSync(temp, 'wx');
-      pending.set(name, temp);
-      try { writeFileSync(fd, published[name] as Buffer); } finally { closeSync(fd); }
-    }
+    update.stage('discovery.yaml', published.discovery as Buffer);
+    update.stage('run.yaml', published.run as Buffer);
     checkDrafts();
-    for (const [name, temp] of pending) {
-      renameSync(temp, join(work, name + '.yaml'));
-      pending.delete(name);
-      if (name === 'run') manifestPublished = true;
-    }
+    update.place();
   } catch (error) {
-    if (manifestPublished) console.error('Draft update incomplete. Restore run.yaml and discovery.yaml from the saved checkpoints before starting a new attempt.');
-    throw error;
-  } finally {
-    for (const temp of pending.values()) unlinkSync(temp);
+    throw update.rollBack(error as Error);
   }
 }
 

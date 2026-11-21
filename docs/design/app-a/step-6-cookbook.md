@@ -137,7 +137,14 @@ scope: excerpt and that a result is omitted when the evidence supports none.
 
 Check that earlier questions, gaps and resolutions remain understandable.
 A historical gap can remain unchanged when a linked later note explains what
-was resolved. Current overview and mapping/resource limits must describe the
+was resolved. The shared record checks refuse a question or gap whose subject
+names nothing of the run: each subject names a file or folder of the snapshot,
+the snapshot ID, a question or gap, an entry candidate or a baseline item, as
+the [record contract](record-format.md#ids-and-evidence) gives. A gap that
+Stage 1 copied from a tool record keeps its subjects. The checks also refuse a
+selected entry analysis whose Knip profile preflight marked unsupported, or
+whose Knip mode failed or was skipped, when no gap cites that record
+([discovery](record-format.md#discovery)). Current overview and mapping/resource limits must describe the
 current records: check counts, owners, inspection scope and statements that a
 finished stage is still pending. Question and gap totals are record counts, not
 defect counts. Do not treat source inspection as execution or proposed intent
@@ -194,10 +201,10 @@ is bound to the reviewed bytes; changing a draft requires a new review.
 `suppliedArtifactRefs` and `limits`. Describe reuse of saved reviews in `limits`.
 This save-only profile adds no new source inspection records.
 
-The manifest's interim coverage prose can still describe an earlier stage.
-Use the selected records for readiness; do not edit the manifest to refresh it.
-The finalizer updates that prose from the selected facts. Check the new summaries
-after publication, as described below.
+The manifest's coverage prose describes the published Stage 5 drafts, not the
+fixed records. Use the selected records for readiness; do not edit the manifest
+to refresh it. The finalizer updates that prose from the selected facts. Check
+the new summaries after publication, as described below.
 
 ## 2. Prepare the saved result
 
@@ -303,7 +310,9 @@ It also refreshes `coverage.inspected` and `coverage.unresolved` from the
 validated selected records. Those summaries point to source-review ranges,
 inspected paths, the proposed baseline, questions, gaps and unknown owners.
 Capture coverage remains separate. Summary counts do not imply full inspection
-or turn historical gaps into current defects.
+or turn historical gaps into current defects: the question and gap lists keep
+their history and linked notes, so the summary calls their lengths the counts of
+recorded questions and recorded gaps.
 
 The selected stage 5 facts remain valid. In particular, membership references
 can still point to the registered stage 5 proposal because its baseline bytes

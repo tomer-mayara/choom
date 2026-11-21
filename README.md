@@ -562,6 +562,19 @@ preload in the helper process and makes one file operation fail. Run them with:
 bun test ./packages/producer/test/interface/stage-6
 ```
 
+Stage 2 finish, the Stage 3 finalizer and the Stage 4/5 publisher publish their
+working drafts as one update (`draft-update.ts`): they save each new draft as a
+temporary file, and replace the drafts one by one, `run.yaml` last. When a step
+fails before `run.yaml` is replaced, the update gives each replaced draft its
+bytes from before, removes its temporary files and names each file that another
+writer changed. The rollback suites use a fault double in the same way
+(`packages/producer/test/support/doubles/draft-faults.ts`). Run them with:
+
+```sh
+bun test ./packages/producer/test/unit/draft-update.test.ts
+bun test ./packages/producer/test/interface/stage-2/rollback.test.ts ./packages/producer/test/interface/stage-3/rollback.test.ts ./packages/producer/test/interface/stage-4/publication-rollback.test.ts
+```
+
 Stage 6 saves the fixed discovery result with `formatVersion: 2`: the reviewed
 working discovery, `baselineRef`, and `baselineDigest`, the SHA-256 of the bytes
 of the fixed baseline file that it saves. `fixedDiscovery` in `stage-6-records.ts`
@@ -607,6 +620,37 @@ Stage 4/5 publisher. Run the focused checks with:
 ```sh
 bun test ./packages/baseline-model/test/unit/discovery-result.test.ts ./packages/producer/test/integration/records/fixed-discovery.test.ts
 bun test ./packages/producer/test/interface/stage-1/review-checks.test.ts ./packages/producer/test/interface/stage-2/plan-checks.test.ts ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
+```
+
+The shared record checks of Stages 4 to 6 also check that each question and gap
+subject names something of the run (`record-subjects.ts`): a file or folder of
+the snapshot, the snapshot ID, a question or gap, an entry candidate of the
+selected entry analysis or its history, or a baseline item by the rule of the
+viewer. A gap that Stage 1 finish copied from a tool record keeps its subjects
+(`isToolGap` in `stage-1-gaps.ts`). The
+[record format](docs/design/app-a/record-format.md#ids-and-evidence) gives the
+rule. They also check that each step of an inspected path cites a source range
+inside a reviewed range of the selected history, as the site of a behavior entry
+does, so that a collected excerpt that no review read does not support a step
+([discovery](docs/design/app-a/record-format.md#discovery)). Run the focused
+checks with:
+
+```sh
+bun test ./packages/producer/test/unit/record-subjects.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts
+bun test ./packages/producer/test/integration/records/stage-6-records.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
+```
+
+An analysis that did not run needs a gap that cites its record (`result-gaps.ts`).
+Stage 2 finish refuses an analysis without a gap that cites the preflight record
+when preflight marked the Knip profile unsupported, or the Knip runs record when
+a Knip mode failed or was skipped. The Stage 3 finalizer refuses an analysis
+without a gap that cites the symbol mentions record when the mentions are
+unavailable or skipped. The shared record checks of Stages 4 to 6 check the Knip
+records of the selected entry analysis again. Run the focused checks with:
+
+```sh
+bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
+bun test ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
 ```
 
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
@@ -699,6 +743,13 @@ Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
 and the source collection, and writes the toolchain and graph receipts that need
 Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
 packet, and refuses a component ID equal to the baseline ID without writing.
+When it publishes, it makes the run summaries `coverage.inspected` and
+`coverage.unresolved` current: they name the records of the attempt and the
+counts of the validated records, and say recorded questions and recorded gaps,
+because the lists keep their history. Stage 6 says the same in the completed
+run manifest. Because `finish` registers every attempt file, the publisher
+refuses an attempt file that no producer action saved, in `check`, `finish` and
+`verify`.
 The Stage 4 inspection suite runs the source collection and the excerpt action on
 that attempt: each kind of source site with its lines, the parser record with the
 ts-morph and TypeScript versions, the source forms, a file with a byte order mark,
@@ -1271,10 +1322,13 @@ and 5 also the record format, as records; Stages 3 and 5 read their review promp
 from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types of
 `run-layout.mjs`. The shared record validator of Stages 4 to 6
 (`stage-6-records.ts` with `record-baseline.ts`, `record-sources.ts`,
-`record-graph.ts`, `record-code-mapping.ts` and `record-checks.ts`) checks the baseline shape with
+`record-graph.ts`, `record-code-mapping.ts`, `record-subjects.ts` and `record-checks.ts`) checks the baseline shape with
 `@choom/baseline-model`, as the viewer does, and adds the producer profile, the
 reserved IDs and the checks against the saved run records. Every stage resolves
-an evidence reference with the one resolver in `record-checks.ts`. `llm-response.ts`
+an evidence reference with the one resolver in `record-checks.ts`.
+`result-gaps.ts` requires a gap that cites an analysis that did not run, and
+`draft-update.ts` publishes the working drafts of Stages 2 to 5 as one update,
+`run.yaml` last. `llm-response.ts`
 holds the design rule "Do not save hidden reasoning": every stage that saves an
 LLM call record checks that the response holds only the visible answer and that
 the call record has `hiddenReasoning: not-saved`.

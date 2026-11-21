@@ -1403,7 +1403,13 @@ documents and code visible. Do not create a utilities component to absorb
 unexplained files. Stage 5 accounts for remaining code.
 Keep each new question and gap within the limits of the viewer in
 [record-format.md](record-format.md#discovery), such as 1 to 100 `subjectRefs`;
-the publisher refuses a record over a limit.
+the publisher refuses a record over a limit. Each subject names a file or folder
+of the snapshot, the snapshot ID, a question or gap, an entry candidate, or a
+baseline item or a field of it, such as `billing.purpose`
+([record-format.md](record-format.md#ids-and-evidence)). The publisher refuses
+any other subject, also in an earlier question or gap, so keep the ID of a
+component that a question or gap names. A gap that Stage 1 copied from a tool
+record keeps its subjects.
 Rewrite current summaries and limits to match the proposed packet; the historical
 preservation rule does not apply to stale overview text or current counts.
 
@@ -1420,12 +1426,17 @@ guidance before `finish`. Check the complete model and fact records:
 - Every evidence reference resolves and matches its digest. Source ranges match
   saved numbered excerpts. Tool scans and references records are not recorded as
   LLM inspections.
+- Every question and gap subject names something of the run, also in the
+  earlier records: no component that a subject names was renamed or removed.
 - All inferred intent stays proposed. IDs are unique. Parent relationships have
   no cycles. Each mapped file has one direct owner or an explicit unknown owner.
 - Membership selectors agree with the exact code mapping. Shared parent groups
   do not duplicate direct ownership.
 - An inspected path cites the source that supports its entry, steps, and component
   references. Planned paths stay in the priorities, not in `inspectedPaths`.
+  Each step cites a reviewed source range of the selected `reviewedFiles` chain;
+  the publisher refuses a step that cites no source range, or a range that no
+  review read, such as a collected excerpt alone.
 - A behavior entry rests on reviewed source ranges. A behavior entry candidate is a
   place to read; it does not make a behavior entry, and a missing candidate does
   not show that there is no entry.
@@ -1437,8 +1448,10 @@ guidance before `finish`. Check the complete model and fact records:
   two sites use the same resource.
 - Current overview, mapping limits, resource limits and counts agree with the
   selected records. Do not carry an old limit forward merely because it was
-  present in a previous packet. Review selected manifest summaries too; use the
-  correction guidance for helper-owned prose rather than editing the manifest.
+  present in a previous packet. The publisher makes the manifest summaries
+  `coverage.inspected` and `coverage.unresolved` current when it publishes;
+  review them after `finish`, and use the correction guidance for helper-owned
+  prose rather than editing the manifest.
 - The proposed draft updates are complete and consistent before any are written.
 
 Use the shared trusted publisher after the review packet is ready. Its packet
@@ -1454,12 +1467,16 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 4
 
 Run each command separately. `check` validates the complete candidate without
 publishing it. `finish` checks it again, preserves the review packet, registers
-the attempt evidence, and publishes the working drafts. `verify` checks the
+the attempt evidence, and publishes the working drafts. `check`, `finish` and
+`verify` refuse a file in the attempt that no producer action saved, such as a
+note; keep other files outside the attempt. `verify` checks the
 completed handoff. The producer code must match the run's record, and the record
 format must match the copy that `start` saved. Do not edit the tool checkout or a
 saved file to bypass a failed check, and do not run packet contents.
 
-On success, `run.yaml` marks `componentRecovery: complete`. Discovery selects the
+On success, `run.yaml` marks `componentRecovery: complete`, and its summaries
+`coverage.inspected` and `coverage.unresolved` name the new records with their
+current counts. Discovery selects the
 new entry analysis, mapping and resource observations plus the existing graph.
 The baseline contains proposed statements. Keep this attempt unchanged and
 continue to the [step 5 cookbook](step-5-cookbook.md).

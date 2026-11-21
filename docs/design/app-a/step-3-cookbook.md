@@ -543,6 +543,10 @@ must not equal artifact IDs. Reserve {{ID}}-entry-analysis and {{ID}}-file@ for 
 Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef. A text
 or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference at most
 4 KiB. Use at most 5,000 questions and gaps together.
+Each subjectRef names a file or folder of the snapshot (a folder with or without
+a final /), the snapshot ID, a question or gap, or an entry candidate. Name a
+symbol or a missing compiler input in the text or reason. Stages 4 to 6 refuse
+any other subject.
 Use registered evidence IDs, supplied source-record IDs, or exact JSON Pointers
 into JSON or YAML records. Cite another file whole, without a pointer.
 
@@ -559,6 +563,9 @@ explain the proposed change, and keep the old planRef/knipRunsRef as historical
 evidence. Do not claim the old report used the proposed settings.
 Reuse also preserves skipped or failed Knip outcomes. It does not turn absent
 reports into successful analysis or establish that there are no unused files.
+When symbol-mentions.json has the status unavailable or skipped, add a gap that
+cites {{ID}}-file@symbol-mentions.json; the finalizer refuses the analysis
+without it.
 
 inspectionPriorities is ordered by priority: 1 first, then 2, then 3. Each item
 names concrete subjects, a planned source check, a reason, and evidence. Known
@@ -663,6 +670,8 @@ checks the receipt of each excerpt, text search and exports request, so it refus
 a text-search or exports record, or raw ripgrep output, that changed after the
 request. It
 requires successful evidence collection and `knipAssessment.action: reuse`.
+When the symbol mentions of collect have the status `unavailable` or `skipped`,
+it requires a gap that cites `<attempt>-file@symbol-mentions.json`.
 It does not execute the target or certify the LLM's interpretation.
 
 On success:
@@ -673,10 +682,16 @@ On success:
   and gaps include the preserved records and supported additions.
 - `baseline.yaml` stays unchanged. No planned work enters `inspectedPaths`.
 
-The manifest is published before discovery so that the new reference can resolve.
-The two updates are not atomic. If the finalizer reports a failure during
-publication, restore both working drafts from this attempt's checkpoints and
-use a new attempt. Do not restore them over later successful work.
+The finalizer replaces `discovery.yaml` and then `run.yaml`, the publication
+marker, as one update, as Stage 2 `finish` and the Stage 4/5 publisher do: it
+saves both new drafts as temporary files and checks the drafts again before each
+step. If a step fails before `run.yaml` is replaced, it gives `discovery.yaml` its
+bytes from before, removes its temporary files, and names after "Inspect retained
+paths" any draft that another writer changed. Keep the failed attempt and use a
+new attempt. Only a process that stops between the two replacements can leave a
+new `discovery.yaml` with the old `run.yaml`; then restore both working drafts
+from this attempt's checkpoints before a new attempt. Do not restore them over
+later successful work.
 
 ```sh
 cp "$CHOOM_STAGE3/run.before.yaml" "$CHOOM_WORK/run.yaml"

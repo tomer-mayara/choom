@@ -55,6 +55,12 @@ const cases: FinishCase[] = [
   { name: "an inspection priority cites a JSON Pointer into a file that is not JSON or YAML",
     change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@operator-start.stdout.txt#/0"]; },
     message: "Only a .json, .yaml or .yml file can take a JSON Pointer: s3-check-file@operator-start.stdout.txt#/0" },
+  // P4: Stage 2 skipped Knip, so the symbol mentions are skipped, and a gap must cite their record.
+  { name: "no gap cites the skipped symbol mentions", change: (packet) => {
+    packet.analysis.gaps = (packet.analysis.gaps as JsonRecord[])
+      .filter((gap) => !(gap.evidenceRefs as string[]).includes("s3-check-file@symbol-mentions.json"));
+  }, message: "The symbol mentions in s3-check-file@symbol-mentions.json have the status skipped. " +
+    "Record a gap that cites s3-check-file@symbol-mentions.json." },
 ];
 
 let scratch = "";

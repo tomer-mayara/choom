@@ -282,6 +282,10 @@ Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef. A te
 or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference at most
 4 KiB. Use at most 5,000 questions and gaps together. Later stages keep each
 question and gap unchanged, and the viewer cannot open a record over these limits.
+Each subjectRef names a file or folder of the snapshot (a folder with or without
+a final /), the snapshot ID, or another question or gap. A missing input is not a
+snapshot file: name the file that refers to it, or the snapshot ID, and give the
+missing path in the reason. Stages 4 to 6 refuse any other subject.
 
 Only supplied excerpts you actually inspected go in reviewedFiles. Copy each
 excerpt's exact source ID, snapshot ID, path, digest and saved range; never invent

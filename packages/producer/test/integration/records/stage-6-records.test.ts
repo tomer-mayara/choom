@@ -105,20 +105,82 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(recordInputs(unownedFirstFile("Owner unknown.")))).toMatchObject({ unknownOwners: 1 });
   });
 
-  // P1: later tickets refuse references that name nothing. Today they pass.
-  test("accepts question and gap subjects that name nothing", () => {
-    expect(validateDiscoveryRecords(recordInputs((records) => nameUnknownSubject(records, "no-such-thing"))))
-      .toMatchObject({ gaps: 1 });
+  // P1: a question or gap subject names something of the run (record-subjects.ts).
+  test("refuses a question or gap subject that names nothing, with the gap ID and the subject", () => {
+    expect(() => validateDiscoveryRecords(recordInputs((records) => nameUnknownSubject(records, "no-such-thing"))))
+      .toThrow(new Error("Gap gap-1 names the subject no-such-thing, which is not a file or folder of the snapshot, " +
+        "the snapshot ID, a question or gap, an entry candidate or a baseline item."));
   });
 
-  // P2: only the entry site must be in a reviewed range. Today a step can cite an unread excerpt.
-  test("accepts an inspected path step that cites a collected but unreviewed excerpt", () => {
+  test("accepts subjects that name a snapshot file, the snapshot ID, an entry candidate, a baseline item or its field, " +
+    "and a question or gap", () => {
+    const subjects = ["cli.ts", snapshotRef, "cli-candidate", "plugin-candidate", "http", "cli.purpose", "q-1"];
+    const change = (records: Records): void => {
+      const question = { id: "q-1", subjectRefs: ["gap-1"], text: "Which plugin starts first?", evidenceRefs };
+      records.discovery.questions = [structuredClone(question)];
+      records.entry.questions = [question];
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.forEach((gap) => { gap.subjectRefs = [...subjects]; });
+    };
+    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 1, questions: 1 });
+  });
+
+  // The gaps of a Stage 1 tool record can name missing inputs and paths outside the snapshot.
+  test("keeps the subjects of a gap that Stage 1 finish copied from the settings record", () => {
+    const toolGap = { id: "s1-settings-gap-001", kind: "missing-input", reason: "The base settings are missing.",
+      subjectRefs: ["tsconfig.missing.json", "/shared/global.d.ts"], evidenceRefs: ["settings-001#/gaps/0"] };
     const inputs = recordInputs((records) => {
-      records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
-        componentIds: ["http"], evidenceRefs: ["unread-cli"], limits: ["l"],
-        steps: [{ action: "Calls start.", evidenceRefs: ["unread-cli"] }] }];
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(toolGap));
     });
-    expect(validateDiscoveryRecords(inputs)).toMatchObject({ mappedFiles: 2 });
+    const { id: _id, evidenceRefs: _evidence, ...entry } = toolGap;
+    const settings = Buffer.from(JSON.stringify({ gaps: [entry] }));
+    inputs.artifacts.set("settings-001", { path: "evidence/settings.json", bytes: settings, sha256: digest(settings) });
+    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 2 });
+  });
+
+  // Stage 3 can retire an earlier entry candidate with a note that names it, so a subject
+  // can name a candidate of an earlier entry analysis of the selected history.
+  test("accepts a subject that names an entry candidate of an earlier entry analysis", () => {
+    const earlier = "s3-x-entry-analysis";
+    const inputs = recordInputs((records) => {
+      records.entry.previousEntryAnalysisRef = earlier;
+      records.mapping.scope.historicalEntryAnalysisRefs = [earlier];
+      nameUnknownSubject(records, "retired-candidate");
+    });
+    const save = (ref: string, path: string, value: unknown): void => {
+      const bytes = Buffer.from(JSON.stringify(value));
+      inputs.artifacts.set(ref, { path, bytes, sha256: digest(bytes) });
+    };
+    save(earlier, "evidence/s3-x/entry-analysis.yaml", { formatVersion: 1, kind: "entry-analysis", snapshotRef,
+      llmReview: "recorded", reviewedFiles: [], questions: [], gaps: [], candidates: [{ id: "retired-candidate" }] });
+    const access = JSON.parse((inputs.artifacts.get(selected.resourceAccessRef)?.bytes ?? "").toString()) as
+      { scope: Record<string, unknown> };
+    access.scope.historicalEntryAnalysisRefs = [earlier];
+    save(selected.resourceAccessRef, "evidence/s5-x/resource-access.json", access);
+    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
+  });
+
+  // P2: each step of an inspected path cites the source that it rests on, and each
+  // cited source range is inside a reviewed range of the selected history, as the
+  // site of a behavior entry is. A collected excerpt alone is not a reviewed range.
+  const inspectedPath = (...steps: string[][]) => (records: Records): void => {
+    records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
+      componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
+      steps: steps.map((refs, index) => ({ action: `Step ${index + 1}.`, evidenceRefs: refs })) }];
+  };
+
+  test("accepts inspected path steps that cite reviewed source ranges, also with a JSON Pointer or with other records", () => {
+    expect(validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler#/lines", "graph"]))))
+      .toMatchObject({ inspectedPaths: 1 });
+  });
+
+  test("refuses an inspected path step that cites a collected but unreviewed excerpt", () => {
+    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler", "unread-cli"]))))
+      .toThrow(new Error("Inspected path step is outside the selected source review history: path-1 step 2: unread-cli"));
+  });
+
+  test("refuses an inspected path step that cites no source range", () => {
+    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["launch#/cli"]))))
+      .toThrow(new Error("Missing cited reviewed source for inspected path step: path-1 step 1"));
   });
 
   test.each(refusedCases)("refuses %s", (_name, change, message) => {
@@ -142,6 +204,39 @@ describe("validateDiscoveryRecords", () => {
     };
     expect(() => validateDiscoveryRecords({ ...recordInputs(change), reservedIds: [receipt] }))
       .toThrow(`The ID ${receipt} is reserved for a record that this publication saves. Use a different model ID.`);
+  });
+});
+
+// P4: an analysis that did not run needs a gap that cites its record. The shared record
+// checks see the Knip preflight and runs of the selected entry analysis, so Stages 4 to 6
+// refuse a run whose Knip result did not run and no gap cites it.
+describe("validateDiscoveryRecords with a Knip result that did not run", () => {
+  const unsupported = (records: Records): void => { records.knip.preflight.status = "unsupported"; };
+  const runs = (...statuses: string[]) => (records: Records): void => {
+    records.knip.runs = statuses.map((status, index) => ({ mode: index === 0 ? "normal" : "production", status }));
+  };
+  const withGap = (...evidence: string[]) => (records: Records): void => {
+    for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push({ id: "gap-knip", kind: "tool-outcome",
+      reason: "Knip did not run.", subjectRefs: [snapshotRef], evidenceRefs: [...evidence] });
+  };
+  const all = (...changes: ((records: Records) => void)[]) => (records: Records): void => changes.forEach((change) => change(records));
+
+  test.each<[string, (records: Records) => void, string]>([
+    ["an unsupported Knip profile", unsupported,
+      "The Knip preflight knip-preflight marks the profile unsupported. Record a gap that cites knip-preflight."],
+    ["a skipped Knip mode", runs("completed", "skipped"),
+      "The production Knip run in knip-runs has the status skipped. Record a gap that cites knip-runs."],
+    ["a failed Knip mode", runs("failed", "completed"),
+      "The normal Knip run in knip-runs has the status failed. Record a gap that cites knip-runs."],
+    ["an unsupported profile whose gap cites only the Knip runs", all(unsupported, runs("skipped", "skipped"), withGap("knip-runs")),
+      "The Knip preflight knip-preflight marks the profile unsupported. Record a gap that cites knip-preflight."],
+  ])("refuses %s without a gap that cites its record", (_name, change, message) => {
+    expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(new Error(message));
+  });
+
+  test("accepts results that did not run when a gap cites each record, also with a JSON Pointer", () => {
+    const change = all(unsupported, runs("failed", "skipped"), withGap("knip-preflight#/status", "knip-runs#/runs/0"));
+    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 2 });
   });
 });
 

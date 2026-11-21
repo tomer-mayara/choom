@@ -19,9 +19,10 @@ const source = { id: `${id}-source-excerpt-001`, snapshotRef: "snapshot-check", 
   sha256: createHash("sha256").update(app.text).digest("hex"), lines: [1, 1] };
 const question = (questionId: string): JsonRecord => ({ id: questionId, subjectRefs: ["app.ts"], text: "Is app.ts used?",
   evidenceRefs: ["inventory-001"] });
-// The analysis with one gap that cites the evidence reference.
-const gapEvidence = (ref: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis, gaps: [{ id: `${id}-gap-001`,
-  kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.", evidenceRefs: [ref] }] });
+// The analysis with a second gap that cites the evidence reference. The first gap
+// records that Knip did not run.
+const gapEvidence = (ref: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis, gaps: [...analysis.gaps as JsonRecord[],
+  { id: `${id}-gap-002`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.", evidenceRefs: [ref] }] });
 
 const cases: FinishCase[] = [
   { name: "a candidate claims support from the skipped production scan",
@@ -125,6 +126,32 @@ describe("Stage 2 finish checks", () => {
           "Use a new attempt ID for more Stage 2 work.\n" });
     }
     expect(folderState(prepared.work)).toEqual(before);
+  });
+
+  // P4: an analysis that did not run needs a gap that cites its record. The prepared
+  // attempt has no package manifest, so preflight marks the profile unsupported and
+  // both Knip modes are skipped.
+  test.each([
+    ["the unsupported preflight", [`${id}-knip-runs`],
+      `The Knip preflight ${id}-preflight marks the profile unsupported. Record a gap that cites ${id}-preflight.`],
+    ["the skipped Knip runs", [`${id}-preflight#/status`],
+      `The normal Knip run in ${id}-knip-runs has the status skipped. Record a gap that cites ${id}-knip-runs.`],
+  ])("refuses an analysis without a gap that cites %s, and leaves the drafts unchanged", (_name, evidenceRefs, message) => {
+    const prepared = restoredAttempt();
+    const before = drafts(prepared);
+    const gaps = [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.", evidenceRefs }];
+    const results = finishAttempt(prepared, scratch, entryAnalysis(id, { gaps }));
+    expect(results["save-review"]?.status).toBe(0);
+    expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
+      .toEqual({ status: 1, stdout: "", stderr: message + "\n" });
+    expect(drafts(prepared)).toEqual(before);
+  });
+
+  test("publishes an analysis whose gap cites a run of the Knip runs record with a JSON Pointer", () => {
+    const prepared = restoredAttempt();
+    const gaps = [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
+      evidenceRefs: [`${id}-preflight`, `${id}-knip-runs#/runs/0`] }];
+    expect(finishAttempt(prepared, scratch, entryAnalysis(id, { gaps })).finish?.status).toBe(0);
   });
 
   test.each(cases)("refuses an analysis in which $name and leaves the drafts unchanged", ({ change, message }) => {

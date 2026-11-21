@@ -15,6 +15,8 @@ import { type MappedOwners, validateCodeMapping } from './record-code-mapping.ts
 import { validateGraph } from './record-graph.ts';
 import { validateResourceCandidates } from './record-resource-candidates.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
+import { checkSubjects } from './record-subjects.ts';
+import { checkKnipResultGaps } from './result-gaps.ts';
 import type { ProjectTools } from './snapshot-project.ts';
 
 // The shared record validator. Stages 4 and 5 check the working discovery
@@ -74,7 +76,9 @@ interface Selection extends References {
   graph: Fields;
   access: Fields;
 }
-interface History { historyRefs: unknown[]; reviewedRanges: Fields[] }
+// The earlier entry analyses of the selected one, their reviewed source ranges, and the
+// IDs of the entry candidates of all of them.
+interface History { historyRefs: unknown[]; reviewedRanges: Fields[]; candidateIds: Set<unknown> }
 
 // `label` names the record that the bounded YAML profile reads, at the start of
 // each message, such as Baseline.
@@ -323,13 +327,15 @@ function selectedHistory({ discovery, document, snapshotRef, source }: Selection
     }
     ref = record.previousEntryAnalysisRef;
   }
+  const candidates = chain.flatMap(item => Array.isArray(item.record.candidates) ? item.record.candidates as Fields[] : []);
   return { historyRefs: chain.slice(1).map(item => item.ref),
-    reviewedRanges: chain.flatMap(item => item.record.reviewedFiles as Fields[]) };
+    reviewedRanges: chain.flatMap(item => item.record.reviewedFiles as Fields[]),
+    candidateIds: new Set(candidates.map(candidate => candidate?.id)) };
 }
 
 // The retained Knip receipts, the reuse decision, the file candidates and the
 // historical inspection priorities of the selected entry analysis.
-function checkEntryFacts({ inputs, entry, document, snapshotRef, indexed, claim, evidence }: Selection): Set<unknown> {
+function checkEntryFacts({ inputs, discovery, entry, document, snapshotRef, indexed, claim, evidence }: Selection): Set<unknown> {
   const { artifacts, run } = inputs;
   const plan = document(entry.planRef) as Fields;
   const runs = document(entry.knipRunsRef) as Fields;
@@ -341,6 +347,8 @@ function checkEntryFacts({ inputs, entry, document, snapshotRef, indexed, claim,
       preflightSha256: (artifacts.get(runs.preflightRef as string) as Artifact).sha256,
       inventorySha256: (artifacts.get(run.snapshot.inventoryRef) as Artifact).sha256 }),
   'Retained Knip receipts differ from their saved inputs.');
+  // A Knip result that did not run needs a gap that cites its record, as Stage 2 finish requires.
+  checkKnipResultGaps({ gaps: discovery.gaps, preflightRef: runs.preflightRef, preflight, runsRef: entry.knipRunsRef, runs });
   const assessment = entry.knipAssessment as Fields | undefined;
   assert(assessment?.action === 'reuse' && text(assessment.reason), 'Missing Knip reuse decision.');
   evidence(entry.knipAssessment);
@@ -383,9 +391,36 @@ function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields
   };
 }
 
-interface BehaviorInputs { componentIds: Set<unknown>; mapped: MappedOwners; fileEntries: Set<unknown>; sourceSite(item: Fields): void }
+// Each step of an inspected path cites at least one saved source range, and each
+// source range that it cites is inside a reviewed range of the selected history: the
+// same snapshot, path and digest, with reviewed lines that include its lines. This is
+// the rule of the site of a behavior entry. A collected excerpt that no review read is
+// not a reviewed range. A step can also cite other records, such as a graph record.
+function stepSourceCheck({ source }: Selection, reviewedRanges: Fields[]): (path: Fields, step: Fields, number: number) => void {
+  const inside = (record: Fields): boolean => reviewedRanges.some(range => {
+    const [first, last] = range.lines as number[];
+    const [from, to] = record.lines as number[];
+    return range.snapshotRef === record.snapshotRef && range.path === record.path && range.sha256 === record.sha256 &&
+      (first as number) <= (from as number) && (last as number) >= (to as number);
+  });
+  return function stepSource(path, step, number) {
+    const name = String(path.id) + ' step ' + number;
+    const cited = (step.evidenceRefs as string[]).filter(ref => source.records.has(evidenceBase(ref)));
+    assert(cited.length > 0, 'Missing cited reviewed source for inspected path step: ' + name);
+    for (const ref of cited) assert(inside(source.records.get(evidenceBase(ref)) as Fields),
+      'Inspected path step is outside the selected source review history: ' + name + ': ' + ref);
+  };
+}
 
-function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries, sourceSite }: BehaviorInputs): void {
+interface BehaviorInputs {
+  componentIds: Set<unknown>;
+  mapped: MappedOwners;
+  fileEntries: Set<unknown>;
+  sourceSite(item: Fields): void;
+  stepSource(path: Fields, step: Fields, number: number): void;
+}
+
+function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries, sourceSite, stepSource }: BehaviorInputs): void {
   const { entry, discovery, claim, evidence } = selection;
   const behaviorEntries = new Map<unknown, Fields>();
   for (const item of list(entry.behaviorEntries, 'behavior entries') as Fields[]) {
@@ -404,9 +439,10 @@ function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries
       item.componentIds.includes((behaviorEntries.get(item.entryPointRef) as Fields).componentRef as string) &&
       Array.isArray(item.steps) && item.steps.length > 0 && strings(item.limits), 'Invalid inspected path: ' + item.id);
     evidence(item);
-    for (const step of item.steps as Fields[]) {
+    for (const [index, step] of (item.steps as Fields[]).entries()) {
       assert(text(step.action), 'Missing inspected path step: ' + item.id);
       evidence(step);
+      stepSource(item, step, index + 1);
     }
   }
 }
@@ -485,6 +521,7 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   const { componentIds, members } = validateBaseline({ baseline, discovery, claim: selection.claim, evidence });
   evidence(discovery.overview);
   const history = selectedHistory(selection);
+  checkSubjects({ discovery, snapshotRef, paths: selection.indexed.keys(), candidateIds: history.candidateIds, baseline });
   const documentation = { baseline, discovery, evidence, source, reviewedRanges: history.reviewedRanges };
   validateDocumentation(documentation);
   const mapped = validateCodeMapping({ ...selection, ...history, members, inventoryRef: inputs.run.snapshot.inventoryRef,
@@ -492,7 +529,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   validateSourceUsage({ ...documentation, snapshotRef, componentIds, mapped });
   validateSystemEntryPoints({ ...documentation, snapshotRef, componentIds, mapped });
   const fileEntries = checkEntryFacts(selection);
-  const behavior = { componentIds, mapped, fileEntries, sourceSite: sourceSiteCheck(selection, history.reviewedRanges) };
+  const behavior = { componentIds, mapped, fileEntries, sourceSite: sourceSiteCheck(selection, history.reviewedRanges),
+    stepSource: stepSourceCheck(selection, history.reviewedRanges) };
   checkBehavior(selection, behavior);
   const { graph, entry, access, indexed, resolve, claim } = selection;
   // Stages 4 and 5 name the behavior entry and resource access candidates of Stage 4 collect; the Stage 4/5 publisher

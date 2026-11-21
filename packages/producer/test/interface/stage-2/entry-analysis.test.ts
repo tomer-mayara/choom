@@ -161,7 +161,7 @@ describe("a Stage 2 attempt with an approved tool image", () => {
       expect(parse(readFileSync(join(work, "discovery.yaml"), "utf8"))).toEqual({ formatVersion: 1,
         kind: "architecture-discovery", runRef: "run-check", questions: [priorQuestion],
         gaps: [{ id: "s2-check-gap-001", kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
-          evidenceRefs: ["s2-check-knip-runs"] }], entryAnalysisRef: "s2-check-entry-analysis" });
+          evidenceRefs: ["s2-check-knip-runs", "s2-check-preflight"] }], entryAnalysisRef: "s2-check-entry-analysis" });
       const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as SavedRun;
       expect(run.progress).toEqual({ inventory: "complete", baselineRecovery: "pending", entryAnalysis: "complete",
         inspectionPriorities: "pending" });
