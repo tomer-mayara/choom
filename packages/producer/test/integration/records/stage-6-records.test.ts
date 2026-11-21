@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import * as yaml from "yaml";
-import { readBaselineYaml, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
+import { readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
 import { candidatesRef, type Component, digest, type Documentation, evidenceRefs, files, location, type MappingUnit, proposal,
   recordInputs, type Records, runRef, selected, snapshotRef, type SourceAssessment, type SourceUse, stage, type Statement, statement }
   from "../../support/stage-6-records.ts";
@@ -157,6 +157,26 @@ describe("validateDiscoveryRecords", () => {
     access.scope.historicalEntryAnalysisRefs = [earlier];
     save(selected.resourceAccessRef, "evidence/s5-x/resource-access.json", access);
     expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
+  });
+
+  // P2: a behavior entry cites the reviewed range of its site itself. A reviewed range
+  // takes the ID of the excerpt that the review read, so an excerpt that a request saved
+  // and that no reviewedFiles item names is not a reviewed range, also when it has the
+  // same path and lines.
+  const unreadExcerpt = `${stage}-source-excerpt-001`;
+  function withUnreadExcerpt(inputs: RecordInputs): RecordInputs {
+    const bytes = Buffer.from(JSON.stringify({ id: unreadExcerpt, ...location, totalLines: 1, truncated: false,
+      excerpt: `1: ${(files["http.ts"] ?? "").trimEnd()}` }));
+    inputs.artifacts.set(`${stage}-file@excerpt-001.json`, { path: `evidence/${stage}/excerpt-001.json`, bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("refuses a behavior entry that cites a requested excerpt of its site that no review read", () => {
+    const inputs = withUnreadExcerpt(recordInputs((records) => {
+      Object.assign(records.entry.behaviorEntries[0] ?? {}, { evidenceRefs: [unreadExcerpt, "launch#/cli"] });
+    }));
+    expect(() => validateDiscoveryRecords(inputs)).toThrow(new Error("Behavior entry http-route does not cite a reviewed range " +
+      "that contains its site. An excerpt that no review read is not a reviewed range."));
   });
 
   // P2: each step of an inspected path cites the source that it rests on, and each

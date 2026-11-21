@@ -374,8 +374,13 @@ function checkEntryFacts({ inputs, discovery, entry, document, snapshotRef, inde
 }
 
 // A behavior entry or resource access names a source site inside a reviewed range that the item cites.
-function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields[]): (item: Fields) => void {
-  return function sourceSite(item) {
+// The item cites the reviewed range itself: a reference that resolves to the whole range and whose ID is
+// the ID of a reviewed range of the selected history. A reviewed range takes the ID of the excerpt that
+// the review read, so an excerpt that no review read is not a reviewed range, also with the same path
+// and lines. `label` names the kind of item in the message.
+function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields[]): (item: Fields, label: string) => void {
+  const reviewedIds = new Set(reviewedRanges.map(range => range.id));
+  return function sourceSite(item, label) {
     const site = item.source as Fields | undefined;
     const lines = site?.lines as number[];
     const supports = (range: unknown): boolean => {
@@ -387,7 +392,9 @@ function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields
     assert(indexed.has(site?.path) && Array.isArray(site?.lines) && lines.length === 2 &&
       lines.every(Number.isSafeInteger) && (lines[0] as number) > 0 && (lines[1] as number) >= (lines[0] as number) &&
       reviewedRanges.some(supports), 'Site is outside the selected source review history: ' + item.id);
-    assert((item.evidenceRefs as unknown[]).some(ref => supports(resolve(ref))), 'Missing cited reviewed source for site: ' + item.id);
+    const cites = (ref: unknown): boolean => supports(resolve(ref)) && reviewedIds.has(evidenceBase(ref as string));
+    assert((item.evidenceRefs as unknown[]).some(cites), label + ' ' + item.id +
+      ' does not cite a reviewed range that contains its site. An excerpt that no review read is not a reviewed range.');
   };
 }
 
@@ -416,7 +423,7 @@ interface BehaviorInputs {
   componentIds: Set<unknown>;
   mapped: MappedOwners;
   fileEntries: Set<unknown>;
-  sourceSite(item: Fields): void;
+  sourceSite(item: Fields, label: string): void;
   stepSource(path: Fields, step: Fields, number: number): void;
 }
 
@@ -427,7 +434,7 @@ function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries
     claim(item.id);
     assert(text(item.kind) && text(item.expression) && componentIds.has(item.componentRef) &&
       strings(item.fileEntryRefs) && item.fileEntryRefs.every(id => fileEntries.has(id)), 'Invalid behavior entry: ' + item.id);
-    sourceSite(item);
+    sourceSite(item, 'Behavior entry');
     assert(mapped.owns((item.source as Fields).path, item.componentRef), 'Behavior entry differs from the mapped source owner: ' + item.id);
     evidence(item);
     behaviorEntries.set(item.id, item);
@@ -461,7 +468,7 @@ function checkResourceAccess(selection: Selection, { componentIds, mapped, sourc
     assert(componentIds.has(item.componentRef) && text(item.operation) && text(item.context) &&
       text(target?.expression) && oneOf(['symbolic', 'unknown'], target.identity) &&
       (target.resourceRef === null || resources.has(target.resourceRef)), 'Invalid resource access: ' + item.id);
-    sourceSite(item);
+    sourceSite(item, 'Resource access observation');
     assert(mapped.owns((item.source as Fields).path, item.componentRef), 'Resource actor differs from the mapped source owner: ' + item.id);
     evidence(item);
   }
