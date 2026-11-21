@@ -3,6 +3,15 @@
 Design: `docs/design/llm-led-architecture-analysis.md` (updated 2026-11-08).
 Code reviewed at `2184d9d` (main). Review was read-only.
 
+**Status at `86c6100` (2026-11-21).** The sections from "Verdict" to
+"Verification limits" record the review of `2184d9d` and stay as history. A
+**Now** note gives the state of each item on `main` at `86c6100`. Appendix A
+(tomer-mayara/choom#57 to tomer-mayara/choom#96) closed G1–G12 and defects 1
+and 3, and moved the producer to `packages/producer/src`. CR-005
+(tomer-mayara/choom#97 to tomer-mayara/choom#99) added baseline version 6.
+Appendix B plans P1–P13. Draft tomer-mayara/choom#101 records the owner
+decisions of 2026-11-16 (plan change 20); it is not merged yet.
+
 ## Verdict
 
 Step 1 is **substantially implemented**, as two parts:
@@ -26,94 +35,123 @@ There is **almost no automated test coverage of the producer**. Only Stage 6
 (`test/interface/entry-points/producer-publication.test.mjs`) and the
 duplication helpers have tests. Stages 1–5 and `recover-capture.mjs` have none.
 
+**Now (`86c6100`):** the producer is TypeScript in `packages/producer/src`, with
+one command line, `bun run producer` (GA-00b, GA-00b2). `docs/design/app-a/`
+holds only documents. An operator and an LLM still run the stages. The producer
+has 109 test files (46 unit, 54 interface and 9 integration) and 17 feature
+files with 61 scenarios. Each stage and `recover-capture.ts` has tests. The
+viewer reads baseline versions 1 to 6, shows a discovery result (CR-004) and
+compares two version 6 files (CR-005). G1–G12 are closed. P1–P13 and most rules
+in "Enforced only by the operator or LLM" stay open.
+
 ## Gaps: in the design, not in code
 
 ### Missing capabilities
 
-| # | Gap | Design | Evidence |
-|---|---|---|---|
-| G1 | **Accepted statements and `acceptanceRef`:** the producer rejects anything except `proposed`. No route creates a child baseline version (the producer always writes `parentId: null`). Acceptance and versioning exist only as fields the viewer can read. | 152–160, 615–616 | `stage-6-records.mjs:459-460`; `record-format.md:65` |
-| G2 | **Dividing a file into code units with the syntax tree:** `unitKind` must be `file`. | 174–180 | `stage-6-records.mjs:663`; `record-format.md:505` |
-| G3 | **Symbol membership selectors:** only an exact path or `/**`. The viewer also accepts `src/a.ts#decode` as an exact path without an error. | 147 | `stage-6-records.mjs:446-449`; `src/domain/baseline.ts:8-13` |
-| G4 | **Git evidence:** no helper collects any, and `.git` is excluded at capture. | 458 | `stage-1-commands.mjs:127` |
-| G5 | **ripgrep:** not used. Content search is a TypeScript `createSourceFile` scan. | 741 | `stage-3-commands.mjs:308` |
-| G6 | **ts-morph:** the helpers use the raw TypeScript parser, with no ts-morph project and no definition or reference queries. | 742, 876 | `stage-4-inspect.mjs:188`; `stage-5-query.mjs:280` |
-| G7 | **Behavior-entry syntax rules:** there are no route, worker or command rules. Resource access is matched by name only. | 877–878 | `stage-4-inspect.mjs:176-179` |
-| G8 | **Approved framework plugins for Knip:** all plugins are turned off, so entries found only by plugins are lost. | 782–783, 788 | `step-2-cookbook.md:364,432` |
-| G9 | **Named parsing profile when there are no project settings:** not present. | 768–769 | Stage 1 helpers |
-| G10 | **Node `type` field:** not read. Each file gets both an import pass and a require pass. The visible defect is TypeScript that compiles to CommonJS: it resolves with the `import` condition (plan change 16). | 866 | `stage-4-commands.mjs:245-254` |
-| G11 | **Gaps, deferred regions, uncovered code and questions in the Baseline view, and corrections submitted from it:** the viewer loads no discovery data and has no editing. | 190–191, 392–394 | Deferred by `cr-baseline-viewer-plan.md:48-49`; the design does not say so |
-| G12 | **"Do not save hidden reasoning":** not stated anywhere. The cookbooks ask for the "complete response". | 475 | `step-1-cookbook.md:245`, `step-2-cookbook.md:1105`, `step-3-cookbook.md:260` |
+| # | Gap | Design | Evidence | Now (`86c6100`) |
+|---|---|---|---|---|
+| G1 | **Accepted statements and `acceptanceRef`:** the producer rejects anything except `proposed`. No route creates a child baseline version (the producer always writes `parentId: null`). Acceptance and versioning exist only as fields the viewer can read. | 152–160, 615–616 | `stage-6-records.mjs:459-460`; `record-format.md:65` | Closed (GA-01a to GA-01c). `baseline decide` records human decisions, and `baseline next` makes a child version with `acceptanceRef`. |
+| G2 | **Dividing a file into code units with the syntax tree:** `unitKind` must be `file`. | 174–180 | `stage-6-records.mjs:663`; `record-format.md:505` | Closed (GA-02a, GA-02b). Stage 5 divides a file into symbol and rest units. Stage 4 keeps whole files. |
+| G3 | **Symbol membership selectors:** only an exact path or `/**`. The viewer also accepts `src/a.ts#decode` as an exact path without an error. | 147 | `stage-6-records.mjs:446-449`; `src/domain/baseline.ts:8-13` | Closed (GA-03a, GA-03b, GA-02a). Versions 5 and 6 have symbol selectors, and a path with `#` is refused. |
+| G4 | **Git evidence:** no helper collects any, and `.git` is excluded at capture. | 458 | `stage-1-commands.mjs:127` | Closed for Git identity only (GA-04, D19). Capture still excludes `.git`. |
+| G5 | **ripgrep:** not used. Content search is a TypeScript `createSourceFile` scan. | 741 | `stage-3-commands.mjs:308` | Closed (GA-05). `stage-3 text-search` runs ripgrep 1.18.0 on the snapshot. |
+| G6 | **ts-morph:** the helpers use the raw TypeScript parser, with no ts-morph project and no definition or reference queries. | 742, 876 | `stage-4-inspect.mjs:188`; `stage-5-query.mjs:280` | Closed (GA-06a, GA-06a2, GA-06b). Stages 3 to 5 use a ts-morph project on the snapshot. |
+| G7 | **Behavior-entry syntax rules:** there are no route, worker or command rules. Resource access is matched by name only. | 877–878 | `stage-4-inspect.mjs:176-179` | Closed for entries, partly closed for resources (GA-07a to GA-07f). 42 entry rules. Only the 4 knex rules check the receiver; other resource calls match by name. |
+| G8 | **Approved framework plugins for Knip:** all plugins are turned off, so entries found only by plugins are lost. | 782–783, 788 | `step-2-cookbook.md:364,432` | Closed by D23, not D15 (GA-08). Every plugin stays off, and Stage 2 copies their entry patterns. |
+| G9 | **Named parsing profile when there are no project settings:** not present. | 768–769 | Stage 1 helpers | Closed (GA-09). |
+| G10 | **Node `type` field:** not read. Each file gets both an import pass and a require pass. The visible defect is TypeScript that compiles to CommonJS: it resolves with the `import` condition (plan change 16). | 866 | `stage-4-commands.mjs:245-254` | Closed (GA-10a, GA-10b, review fix C1). |
+| G11 | **Gaps, deferred regions, uncovered code and questions in the Baseline view, and corrections submitted from it:** the viewer loads no discovery data and has no editing. | 190–191, 392–394 | Deferred by `cr-baseline-viewer-plan.md:48-49`; the design does not say so | Closed as CR-004 defines it (GA-11a, GA-11b1, GA-11b2). The viewer has no editor. |
+| G12 | **"Do not save hidden reasoning":** not stated anywhere. The cookbooks ask for the "complete response". | 475 | `step-1-cookbook.md:245`, `step-2-cookbook.md:1105`, `step-3-cookbook.md:260` | Closed (GA-12, review fix B4), with known misses (see "Open after the final review"). |
 
 ### Partial: present but weaker than the design
 
-| # | Item | Design | Evidence |
-|---|---|---|---|
-| P1 | **Completion check "references resolve":** a question or gap `subjectRefs` that names nothing passes. | 710 | `stage-6-records.mjs:633` (only checks the value is a list of non-empty strings; confirmed by a probe) |
-| P2 | **Completion check "explanations cite evidence":** inspected-path steps can cite an excerpt that was collected but never reviewed. Only the entry site must be in a reviewed range. | 716–717 | `stage-6-records.mjs:718-726` |
-| P3 | **Completion check "summaries are current":** `run.yaml` keeps "The baseline is not yet recovered." through Stages 4–5. `coverage.unresolved` counts historical questions and gaps as well as current ones. | 450–452, 720–721 | `stage-4-5-publish.mjs:232-236`; `stage-6-commands.mjs:400-402` |
-| P4 | **Unavailable analysis needs a result record and a gap:** no check links the two. | 950 | `stage-6-records.mjs` |
-| P5 | **Run manifest:** no baseline ID or digest before Stage 6. Tool and model versions are reachable only through artifacts. No times per stage. | 457 | `stage-1-commands.mjs:336-344` |
-| P6 | **Tool-call records in Stage 1:** only command, arguments, time and exit code. No scope, limits or output digests. | 464–467 | `stage-1-commands.mjs:40-43` |
-| P7 | **LLM audit record:** no prompt-version field. The saved prompt is not compared with its template. Stages 2–3 do not check that cited evidence is a subset of supplied evidence. | 462 | `stage-3-finish.mjs:371` |
-| P8 | **Entry candidates traced to metadata:** the LLM writes them. Code checks only that references resolve, not that the cited data contains the path or expression. | 801–802 | `step-2-cookbook.md:1344-1357` |
-| P9 | **Deferral evidence:** there is no deferral type, so a "checked entry search" and a "precise claim" are not checked. The cookbook example ("inspection budget") conflicts with the design. | 846–848 | `stage-3-finish.mjs:391-395`; `step-3-cookbook.md:234-235` |
-| P10 | **Investigate reported-unused files before a deferral:** the Stage 3 collector queries only unused exports and types. | 825–827 | `stage-3-commands.mjs:217,361-369` |
-| P11 | **Concurrent edits:** a change is detected and capture stops; any retry is manual. Excluded paths are not listed, only the rules. | 426–428, 473 | `stage-1-commands.mjs:126-130,162-166` |
-| P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` |
-| P13 | **Revisit affected work before Stage 6:** roots are frozen after Stage 4, and `record-format.md` says to start a new run instead. | 959–961 | `stage-4-5-publish.mjs:208-219`; `record-format.md:489-495` |
+| # | Item | Design | Evidence | Now (`86c6100`) |
+|---|---|---|---|---|
+| P1 | **Completion check "references resolve":** a question or gap `subjectRefs` that names nothing passes. | 710 | `stage-6-records.mjs:633` (only checks the value is a list of non-empty strings; confirmed by a probe) | Open. Next: the Step 2 gate (Appendix B). |
+| P2 | **Completion check "explanations cite evidence":** inspected-path steps can cite an excerpt that was collected but never reviewed. Only the entry site must be in a reviewed range. | 716–717 | `stage-6-records.mjs:718-726` | Open. Next: the Step 2 gate (Appendix B). |
+| P3 | **Completion check "summaries are current":** `run.yaml` keeps "The baseline is not yet recovered." through Stages 4–5. `coverage.unresolved` counts historical questions and gaps as well as current ones. | 450–452, 720–721 | `stage-4-5-publish.mjs:232-236`; `stage-6-commands.mjs:400-402` | Open. Next: the Step 2 gate (Appendix B). |
+| P4 | **Unavailable analysis needs a result record and a gap:** no check links the two. | 950 | `stage-6-records.mjs` | Partly closed (Stage 1). Next: the Step 2 gate (Appendix B). |
+| P5 | **Run manifest:** no baseline ID or digest before Stage 6. Tool and model versions are reachable only through artifacts. No times per stage. | 457 | `stage-1-commands.mjs:336-344` | Open. Plan change 20: design text only. |
+| P6 | **Tool-call records in Stage 1:** only command, arguments, time and exit code. No scope, limits or output digests. | 464–467 | `stage-1-commands.mjs:40-43` | Partly closed (GA-05, GA-06). Plan change 20: design text only. |
+| P7 | **LLM audit record:** no prompt-version field. The saved prompt is not compared with its template. Stages 2–3 do not check that cited evidence is a subset of supplied evidence. | 462 | `stage-3-finish.mjs:371` | Partly closed (GA-12). Version field: design text only. Other checks: after the first real run. |
+| P8 | **Entry candidates traced to metadata:** the LLM writes them. Code checks only that references resolve, not that the cited data contains the path or expression. | 801–802 | `step-2-cookbook.md:1344-1357` | Open. After the first real run. |
+| P9 | **Deferral evidence:** there is no deferral type, so a "checked entry search" and a "precise claim" are not checked. The cookbook example ("inspection budget") conflicts with the design. | 846–848 | `stage-3-finish.mjs:391-395`; `step-3-cookbook.md:234-235` | Open. After the first real run. |
+| P10 | **Investigate reported-unused files before a deferral:** the Stage 3 collector queries only unused exports and types. | 825–827 | `stage-3-commands.mjs:217,361-369` | Open. After the first real run. |
+| P11 | **Concurrent edits:** a change is detected and capture stops; any retry is manual. Excluded paths are not listed, only the rules. | 426–428, 473 | `stage-1-commands.mjs:126-130,162-166` | Open. Plan change 20: design text only. |
+| P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` | Open. Next: Stages 2 and 3 write `run.yaml` last and roll back. |
+| P13 | **Revisit affected work before Stage 6:** roots are frozen after Stage 4, and `record-format.md` says to start a new run instead. | 959–961 | `stage-4-5-publish.mjs:208-219`; `record-format.md:489-495` | Open. Plan change 20: design text only. |
 
 ### Enforced only by the operator or LLM
 
 These rules depend on the cookbook prompts and are not checked by code:
 
-- Unknown file roles stay unknown.
-- Compiler inclusion is not an entry point.
-- Workers, migrations and outside consumers are considered.
-- An unused export does not make its file unused.
-- Component declarations are included despite the excerpt cap. `component.yaml` sorts last under the 40-path cap (`stage-4-inspect.mjs:314-321`).
-- No "utilities" component is created to remove unknowns.
-- Prose is refreshed.
-- Preflight checks for Docker, access and versions are done.
-- Minor corrections are recorded as dated notes.
+- Unknown file roles stay unknown. **Now:** partly checked. CR-005 checks the use review of each role (`stage-1-role-use.ts`); a purpose role stays free text.
+- Compiler inclusion is not an entry point. **Now:** still not checked.
+- Workers, migrations and outside consumers are considered. **Now:** partly checked. GA-07 rules find worker, command and bin candidates. Migrations and outside consumers stay review items.
+- An unused export does not make its file unused. **Now:** still not checked.
+- Component declarations are included despite the excerpt cap. `component.yaml` sorts last under the 40-path cap (`stage-4-inspect.mjs:314-321`). **Now:** unchanged (`stage-4-inspect.ts:294-300`).
+- No "utilities" component is created to remove unknowns. **Now:** still not checked.
+- Prose is refreshed. **Now:** still not checked. GB-03 refreshes only the run summary.
+- Preflight checks for Docker, access and versions are done. **Now:** partly checked. Code checks the pinned parsers, ripgrep, the tool images, the Docker endpoint and the producer code digest. Node, Bun, Docker access and write access stay manual checks.
+- Minor corrections are recorded as dated notes. **Now:** manual by design (design 500-505).
 
 ## Surplus: in code, not in Step 1 of the design
 
-| # | Surplus | Documented elsewhere? |
-|---|---|---|
-| S1 | **Baseline `formatVersion: 4` with `systemEntryPoints`.** The producer, validator and viewer all support it (Startup/External markers, entry lists). Version 4 also follows the version 3 arrow rules. | Yes: CR-003 and `record-format.md` "Version 4". **Not in the main design**, which still says versions 1–3. |
-| S2 | **Duplication assessment and report** (detector, review, binding, list, comparison, badges). | Yes: design Step 2/Step 3 and `app-a/duplication-assessment.md`. It is a later step, not Step 1. |
-| S3 | **Producer profile stricter than the design:** at least one component is required, `purpose` and `groupingReason` cannot be `null`, every component, including a grouping parent, needs `paths`, inspected paths need `steps` and `limits` (the design's own example fails), readiness must be `ready-with-gaps`, inspection priorities must be 3 or less and must not go down, and the LLM response must contain the record text exactly. | Partly, in `record-format.md`. These conflict with design 617–618 and with the 675–680 example. |
-| S4 | **Viewer YAML profile and display limits enforced in the producer.** | `record-format.md` "Reader limits" |
-| S5 | **`recover-capture.mjs`:** it hard-codes Choom-specific exclusions, writes a Choom-specific `dist` note for any target, silently skips hidden directories (conflicts with design 755), and its output cannot be finished by `stage-1-commands.mjs finish`. | Its cookbook admits the last point (`step-1-cookbook.md:435-437`). Not in the design. |
-| S6 | **Other helper behavior:** the `work-choom` layout, rejection of symbolic links, Knip skip rules (a `knip` key in a manifest skips Knip), `--no-gitignore`, `KNIP_DISABLE_RAW_TRANSFER`, Stage 2 `prepare` changing registry paths (conflicts with "keep completed records unchanged", 449), and `inventory-view.py consolidate` deleting old input folders. | No |
-| S7 | **Viewer reading aids:** v2 documentation detail (examples, Copy example, source notes, provenance), the Used by / Caller source views, canvas behavior, the load workflow (Cancel/Retry), and the built-in starter example. | Yes: viewer plan and readability plan (BV-*, BR-*) |
-| S8 | `scripts/analyze.ts` (ts-morph counts) and `scripts/validate-components.ts` (repository `component.yaml`). | The Compatibility section mentions the counts script. Repository tooling, not Step 1. |
+| # | Surplus | Documented elsewhere? | Now (`86c6100`) |
+|---|---|---|---|
+| S1 | **Baseline `formatVersion: 4` with `systemEntryPoints`.** The producer, validator and viewer all support it (Startup/External markers, entry lists). Version 4 also follows the version 3 arrow rules. | Yes: CR-003 and `record-format.md` "Version 4". **Not in the main design**, which still says versions 1–3. | No longer surplus. The design has versions 4 and 5. CR-005 added version 6, which the design only names. |
+| S2 | **Duplication assessment and report** (detector, review, binding, list, comparison, badges). | Yes: design Step 2/Step 3 and `app-a/duplication-assessment.md`. It is a later step, not Step 1. | Unchanged: a later step. The helpers moved to `packages/producer` (D5). |
+| S3 | **Producer profile stricter than the design:** at least one component is required, `purpose` and `groupingReason` cannot be `null`, every component, including a grouping parent, needs `paths`, inspected paths need `steps` and `limits` (the design's own example fails), readiness must be `ready-with-gaps`, inspection priorities must be 3 or less and must not go down, and the LLM response must contain the record text exactly. | Partly, in `record-format.md`. These conflict with design 617–618 and with the 675–680 example. | Partly in the design (D9, GA-DOC). The readiness, priority and exact-text rules are only in `record-format.md` and the cookbooks. |
+| S4 | **Viewer YAML profile and display limits enforced in the producer.** | `record-format.md` "Reader limits" | The producer uses the shared model and its limits. The producer and the viewer still each have their own YAML reader. |
+| S5 | **`recover-capture.mjs`:** it hard-codes Choom-specific exclusions, writes a Choom-specific `dist` note for any target, silently skips hidden directories (conflicts with design 755), and its output cannot be finished by `stage-1-commands.mjs finish`. | Its cookbook admits the last point (`step-1-cookbook.md:435-437`). Not in the design. | Still true for `recover-capture.ts`, now TypeScript. Draft #101 makes it run the settings collector from the checkout. |
+| S6 | **Other helper behavior:** the `work-choom` layout, rejection of symbolic links, Knip skip rules (a `knip` key in a manifest skips Knip), `--no-gitignore`, `KNIP_DISABLE_RAW_TRANSFER`, Stage 2 `prepare` changing registry paths (conflicts with "keep completed records unchanged", 449), and `inventory-view.py consolidate` deleting old input folders. | No | All remain. Stage 2 `start` now moves the registry paths. `--no-gitignore` is documented nowhere. |
+| S7 | **Viewer reading aids:** v2 documentation detail (examples, Copy example, source notes, provenance), the Used by / Caller source views, canvas behavior, the load workflow (Cancel/Retry), and the built-in starter example. | Yes: viewer plan and readability plan (BV-*, BR-*) | Unchanged. CR-004 and CR-005 added views. |
+| S8 | `scripts/analyze.ts` (ts-morph counts) and `scripts/validate-components.ts` (repository `component.yaml`). | The Compatibility section mentions the counts script. Repository tooling, not Step 1. | Unchanged repository tooling. |
 
 ## Defects found on the way
 
-1. **Reserved ID mismatch.** Stage 6 reserves the baseline ID as an item ID; the Stage 4/5 publisher does not. A component whose ID equals the baseline ID passes Stage 5, then fails at Stage 6, after Stage 5 can no longer be reopened. A probe confirmed this. (`stage-6-commands.mjs:216` vs `stage-4-5-publish.mjs:224`)
-2. **The built-in starter baseline breaks single ownership.** It lists `src/**`, `src/domain/**` and `src/platform/**` as three top-level components with no parents, so `src/domain` and `src/platform` files have two direct owners. (`src/domain/starter-baseline.ts:10-17`)
-3. **`picomatch` is not declared.** It is loaded from `node_modules` but is not a dependency. (`stage-4-commands.mjs:226`)
-4. **The Knip image is not fully pinned.** The base image tag and transitive dependencies are recorded but not pinned. (`step-2-cookbook.md:663-665`)
+1. **Reserved ID mismatch.** Stage 6 reserves the baseline ID as an item ID; the Stage 4/5 publisher does not. A component whose ID equals the baseline ID passes Stage 5, then fails at Stage 6, after Stage 5 can no longer be reopened. A probe confirmed this. (`stage-6-commands.mjs:216` vs `stage-4-5-publish.mjs:224`) **Now:** fixed (GA-00c, review fix B7). Stages 1, 4/5 and 6 reserve the baseline ID.
+2. **The built-in starter baseline breaks single ownership.** It lists `src/**`, `src/domain/**` and `src/platform/**` as three top-level components with no parents, so `src/domain` and `src/platform` files have two direct owners. (`src/domain/starter-baseline.ts:10-17`) **Now:** open on `main` (14 files have two direct owners). Draft #101 fixes it.
+3. **`picomatch` is not declared.** It is loaded from `node_modules` but is not a dependency. (`stage-4-commands.mjs:226`) **Now:** fixed (GA-00b). `packages/producer/package.json` declares it.
+4. **The Knip image is not fully pinned.** The base image tag and transitive dependencies are recorded but not pinned. (`step-2-cookbook.md:663-665`) **Now:** open. The Knip image (`stage-2-tool-image.ts:15`) and the Stage 4 graph image (`stage-4-commands.ts:330`) start from `node:24-bookworm-slim`. Draft #101 records that the owner accepts this: each run pins its images by the saved image ID.
 
 ## Design-document drift to fix
 
-- Appendix A (602–611) lists versions 1–3 only. Add version 4, or link CR-003.
-- The Report views bullet (392–394) promises gaps, deferred regions and corrections, which Compatibility (522–523) rules out. Mark the bullet as deferred.
-- Line 147 says "paths or symbols"; the producer and viewer support paths only.
-- Line 741 says ripgrep and lines 742/876 say ts-morph; the helpers use the TypeScript API.
-- The smell catalog is called "eight families" (208) and "seven-family" (547).
-- The Contents list omits "Duplicated public capabilities" and "Duplicated-interface report".
-- `record-format.md:89`, `step-6-cookbook.md:15-17` and `start-here.md:75` still say "versions 2/3" or "three versions".
-- The viewer plan's BV-05 display table is stale. The readability plan replaced it.
+- Appendix A (602–611) lists versions 1–3 only. Add version 4, or link CR-003. **Now:** versions 4 and 5 are in the design. Version 6 is only named (see the new drift below).
+- The Report views bullet (392–394) promises gaps, deferred regions and corrections, which Compatibility (522–523) rules out. Mark the bullet as deferred. **Now:** fixed (GA-11b2, CR-004).
+- Line 147 says "paths or symbols"; the producer and viewer support paths only. **Now:** no longer drift. The code has symbol selectors.
+- Line 741 says ripgrep and lines 742/876 say ts-morph; the helpers use the TypeScript API. **Now:** no longer drift. The code uses both.
+- The smell catalog is called "eight families" (208) and "seven-family" (547). **Now:** fixed. Both places say eight.
+- The Contents list omits "Duplicated public capabilities" and "Duplicated-interface report". **Now:** fixed.
+- `record-format.md:89`, `step-6-cookbook.md:15-17` and `start-here.md:75` still say "versions 2/3" or "three versions". **Now:** fixed. They say versions 1 to 6.
+- The viewer plan's BV-05 display table is stale. The readability plan replaced it. **Now:** fixed. A note marks the table as history.
+
+**New drift at `86c6100`** (not fixed by draft tomer-mayara/choom#101):
+
+- Design line 5 says "Updated: 2026-11-15", but CR-005 changed the design
+  after that date.
+- Design 556–557 says that the ts-morph script gives "counts, not the proposed
+  queries". The producer now runs those queries (GA-06a, GA-06b).
+- Design 660–663 asks for "at least one path selector" for each component.
+  Versions 5 and 6 accept a component with symbols only
+  (`record-baseline.ts:81-83`).
+- Design 697 and 715 give the discovery `formatVersion` as 1 and leave out
+  `baselineDigest`. The fixed discovery result is version 2
+  (`record-format.md` "Fixed discovery result").
+- Design 636–651 names version 6 but does not define it or link CR-005. The
+  arrow text stops at version 5.
+- Design 837 and 842 still name "supported framework plugins" and "approved
+  built-in plugin" paths. D23 keeps every Knip plugin off and copies their
+  entry patterns.
+- `record-format.md:358` says that versions 3 and 4 can add `sourceUsage`. The
+  model accepts it in versions 3 to 6.
 
 ## Verification limits
 
-- All helpers pass `node --check`.
-- Validator probes ran against an in-memory copy of the producer fixture. They confirmed P1, P2 and Defect 1, and that `accepted`, parent cycles, duplicate owners, non-file units and glob selectors are rejected.
-- Arc probes confirmed that version 3/4 files never draw permission arrows.
-- **No unit, behavior or producer test ran.** `node_modules` is not installed, Node here is 22.23 (the project needs 26.13 or later), and Docker was not used. Before acting on this report, run `bun install`, then `bun run test`, `bun test ./test/interface` and the Stage 4 Docker graph fixture.
+- All helpers pass `node --check`. **Now:** no longer relevant. The helpers are TypeScript, and `bun run typecheck` covers them.
+- Validator probes ran against an in-memory copy of the producer fixture. They confirmed P1, P2 and Defect 1, and that `accepted`, parent cycles, duplicate owners, non-file units and glob selectors are rejected. **Now:** tests cover these cases. Defect 1 is fixed. P1 and P2 stay open (Appendix B).
+- Arc probes confirmed that version 3/4 files never draw permission arrows. **Now:** still true for versions 3 to 5 (`README.md:143-148`).
+- **No unit, behavior or producer test ran.** `node_modules` is not installed, Node here is 22.23 (the project needs 26.13 or later), and Docker was not used. Before acting on this report, run `bun install`, then `bun run test`, `bun test ./test/interface` and the Stage 4 Docker graph fixture. **Now:** CI runs every suite (`.github/workflows/ci.yml`). `package.json` still needs Node 26.13 or later.
 
 
 ---
@@ -1424,8 +1462,7 @@ you want them fixed:
 - **P1–P13:** the partial findings. GA-11b works around P1 (unknown subjects
   become "Unplaced"). GA-00c fixes defect 1. GA-12 and GA-00e touch P7 but do
   not close it (P7 also asks for a prompt-version field, a template check, and
-  a check that cited evidence was supplied). Appendix B plans tickets for
-  P1–P13.
+  a check that cited evidence was supplied).
 
 ### Open after the final review
 
@@ -1503,17 +1540,66 @@ items stay open.
   - the 4 MiB string budget in the app and in `@choom/baseline-model`;
   - the source-file rule in `stage-3-collect.ts`.
 
+### Status at `86c6100`
+
+Checked again on `main` at `86c6100` (2026-11-21), after CR-005. Draft
+tomer-mayara/choom#101 (plan change 20) changes the lines above that record the
+owner decisions, Defect 2, Defect 4 and the recovery collector. This section
+does not repeat those changes and changes none of those lines, so the two PRs
+do not edit the same text.
+
+- **Owner decisions.** On `main`, no record shows the approval of D21 or plan
+  changes 18 and 19. Plan change 20 in #101 records them as approved on
+  2026-11-16. "D5" in plan change 19 and in "Owner decisions" is review fix D5
+  (tomer-mayara/choom#94), not decision D5 of the decision log.
+- **Defects.** GA-00c and review fix B7 fixed defect 1. GA-00b fixed defect 3:
+  `packages/producer/package.json` declares `picomatch`. Defect 2 is open on
+  `main`: 14 files under `src/` have two direct owners, and a parent link alone
+  does not remove the second owner. #101 fixes it. In the defect 4 bullet,
+  `stage-4-commands.ts:330` is the Stage 4 graph image, not the Knip image.
+- **Stray attempt files: confirmed.** A probe put a file that no phase wrote in
+  a Stage 4 attempt folder. The publisher registered it in `run.yaml`, and
+  `check`, `finish` and `verify` passed (`stage-4-5-publish.ts:186-191, 286-291`).
+  Appendix B ticket GB-14 plans the fix.
+- **Stage 2 stack trace.** The Stage 2 driver prints a stack trace for its
+  refusals before `finish` (`stage-2-commands.ts:525`). The finish module
+  prints only the message.
+- **4 MiB budget.** Stages 4 to 6 count the whole discovery draft, so a draft
+  near the limit can fail at Stage 4, 5 or 6.
+- **Code units.** The behavior entry, resource access, source use and system
+  entry site checks in a divided file stay at file level. The CR-005 boundary
+  checks use the parts.
+- **Entry and resource rules.** These limits also hide CR-005 boundary
+  operations, because the boundary review reads the GA-07 candidates. Resource
+  calls other than those of the 4 knex rules still match by method name only.
+- **Viewer lists.** CR-005 adds lists of up to 2,000 accesses and 4,000 notes,
+  and the viewer shows them in full. Their speed was not measured. Plan change
+  20 says that the viewer bundles Inter; no PR does it yet.
+- **Still open and unchanged:** `recover-capture.ts` runs a saved
+  `settings.mts` (until #101 merges), the bare "URI malformed" message, the
+  hidden reasoning misses, the entry and resource rule limits, and the copies
+  for a DRY ticket. CR-005 adds one more bounded reader (`stage-1-project.ts`).
+- **Guides.** Commit 44f2b8a replaced `docs/coding-principles.md` and
+  `docs/new-feature-cookbook.md`, which "How to work every ticket" and "Test
+  types" name, with `docs/engineering-guidelines/`. The tickets followed the
+  old guides. Many ticket texts name `.mjs` files and paths that GA-00a and
+  GA-00b moved. They stay as written history.
+- **Appendix B** plans tickets for P1–P13, as plan change 20 decides.
+
 ---
 
 ## Appendix B: Partial findings - tickets
 
-Revision 2, 2026-11-21. This plan closes the partial findings P1–P13. Appendix A
-closed the gaps G1–G12. The decisions in the [decision log](#decision-log-1)
-below are proposals. The owner approves or changes each one before the tickets
-that it names start. Revision 2 corrects the errors that an independent review
-of revision 1 found, and follows the planning and coding guides that replaced
+Revision 3, 2026-11-21. This plan closes the partial findings P1–P13 as plan
+change 20 decides. Plan change 20 records the owner decisions of 2026-11-16. It
+is in draft tomer-mayara/choom#101, which is not merged yet. On 2026-11-21 the
+owner chose that Appendix B follows it. Revision 2 (commit 3cc3dc1) planned
+code tickets for all 13 findings. "Not planned" below lists the tickets that
+plan change 20 replaces, with the reason. The decisions in the
+[decision log](#decision-log-1) are decided by plan change 20, proposed, deferred
+or dropped, as each row says. Revision 2 also corrected the errors of an
+independent review, and follows the planning and coding guides that replaced
 `docs/coding-principles.md` and `docs/new-feature-cookbook.md` (commit 44f2b8a).
-Appendix A still names the old files.
 
 ### Re-check of the findings at `86c6100`
 
@@ -1542,17 +1628,29 @@ P7 and P8. The design lines are those of the current
 | P12 | Open. Stage 2 renames the discovery draft first. Stage 3 renames `run.yaml` first. Stage 1 writes `run.yaml` directly. Only Stage 4/5 and Stage 6 have a lock, each with its own name. Stage 6 also checks its own temporary files. A probe: after a stop between two renames, Stage 2 `start` accepts the state. | `stage-2-finish.ts:403-409`; `stage-3-finish.ts:395-417`; `stage-1-commands.ts:443-465`; `stage-4-5-publish.ts:140`; `stage-6-commands.ts:100, 238-239` | 491-494 |
 | P13 | Open. The roots are fixed at Stage 4 start. Stage 5 must keep the Stage 4 graph and refuses a new source entry outside the roots. The documents say to start a new run. GA-07 and GA-08 make this more frequent, because they find candidates at Stage 4 collect, after the roots are fixed. | `stage-4-5-publish.ts:300-319`; `record-graph.ts:76-91`; `record-format.md:715-721` | 524, 1013-1015 |
 
-The re-check also found these related defects. Tickets below include them:
+### Scope after plan change 20
 
-- The producer reads a file name with a dot, such as `cli.ts`, as a subject
-  about the item `cli`, and the viewer places it on that item
-  (`src/lib/discovery-placement.ts:33-40`, `record-baseline.ts:222-223`).
-  GB-01a.
+| Findings | Plan change 20 | Appendix B |
+|---|---|---|
+| P1, P2, P3, P4 | The Step 2 gate. Next, in a separate PR. | GB-01a, GB-01b, GB-02a, GB-02b, GB-03, GB-04a to GB-04d |
+| P12 | Next. Stages 2 and 3 write the run manifest last and roll back, as Stages 4 to 6 do. | GB-12a, GB-12b |
+| Stray attempt files | A probe with the Step 2 gate. The probe now shows the defect. | GB-14 |
+| P7 (cited evidence and the template check), P8, P9, P10 | Decided after one real Step 1 run on Choom. | Drafts: GB-07a to GB-07f, GB-08a to GB-08c, GB-09a, GB-09b, GB-10 |
+| P5, P6, P7 (the prompt-version field), P11, P13 | The design text changes, not the code (#101). | None. See "Not planned". |
+
+The re-check also found these related defects:
+
+- Under the viewer's rule, which plan change 20 keeps for P1, a file name with
+  a dot, such as `cli.ts`, names the item `cli` when that item exists
+  (`src/lib/discovery-placement.ts:33-40`, `record-baseline.ts:222-223`). See
+  "Not covered by Appendix B".
 - Stages 2 to 6 do not check that cited evidence was supplied to the LLM. The
-  report named only Stages 2 and 3. GB-07b.
+  report named only Stages 2 and 3. Draft GB-07b.
 - The Stage 2 cookbook cites `settings-002` in an example and says that newer
   settings IDs can exist, but the settings ID is always `settings-001`
-  (`step-2-cookbook.md:121-122, 264`; `stage-1-commands.ts:124`). GB-08a.
+  (`step-2-cookbook.md:121-122, 264`; `stage-1-commands.ts:124`). Draft GB-08a
+  corrects it; any document change can correct it earlier.
+- The Stage 4/5 publisher registers an attempt file that no phase wrote. GB-14.
 
 ### How to work every ticket (Appendix B)
 
@@ -1635,161 +1733,175 @@ it to TypeScript in a separate commit.
 
 ### Decision log
 
-The owner has not approved these decisions yet.
+"Decided" means that plan change 20 (draft #101) decides it. The owner has not
+approved the "Proposed" rows yet.
 
-| # | Question | Proposed decision | Tickets |
-|---|---|---|---|
-| DB1 | What can a subject reference name? (P1) | One of these forms: (1) an ID that the run defines: a baseline item, the baseline, the snapshot, an artifact, a model ID of the current records, or an earlier question or gap; (2) a field path of a baseline item: the item ID, a dot, and a path whose first part is a field of that kind of item in the baseline contract, such as `billing.purpose`, `billing.membership.paths` or `api.documentation.entries.e.interaction.input`; (3) an inventory file, or an inventory folder written as a membership selector `dir/**` that matches at least one inventory file; (4) a path that the snapshot does not hold, only when an evidence record of the same question or gap names it in a `missing` field (the missing compiler inputs of GA-06a); (5) after GB-11b, an excluded path that the capture exclusions record lists. The producer keeps its exact subjects for unknown values (`record-baseline.ts:136-141, 222-223`). | GB-01a, GB-01b, GB-11b |
-| DB2 | When are subjects checked? (P1) | Where a record enters the run, against the names that exist then. Review fix B6 does the same for the question and gap contract. Later stages keep earlier records unchanged. A later change, such as an interface that Stage 5 removes, does not make an earlier record invalid. The record stays as history, and the viewer lists it under "Unplaced" (E1). | GB-01b |
-| DB3 | What supports an inspected path? (P2) | Each step cites at least one reviewed range of the selected review history. Each component in `componentIds` owns a file or part that a reviewed range cited by the steps covers. A step can also cite other evidence, such as a graph or references record. | GB-02b |
-| DB4 | What is a current summary? (P3) | A summary that describes the selected records and the progress of the run. `coverage` has `inventoried`, `inspected`, `recorded` and `pending`. `recorded` replaces `unresolved`: it gives the record counts of the questions and gaps, with history and linked notes. `pending` lists the stages that have not completed. Choom does not decide which question or gap is answered, so there is no status field. A status needs discovery `formatVersion: 3` and a viewer change, which this plan does not include. The LLM review stays responsible for current overview prose. | GB-03 |
-| DB5 | Which tool outcomes need a gap, and who writes it? (P4) | The records of GB-04d: the Knip receipts (`skipped`, `failed`, and an `unsupported` preflight), the Stage 3 symbol mentions (`partial`, `unavailable`, `skipped`) and exports records (each gap that the record lists), and the Stage 4 candidate records (each gap that the record lists, and `status: partial`). Stage 1 keeps plan change 8 for its Git and settings records. The action that saves a tool record also saves the required gaps that it gives, with reserved IDs. The review prompt lists them. The review copies them exactly into the entry analysis and the discovery, because both lists must be the same and the response must hold the exact record text. The publishing action refuses a packet that leaves out or changes a required gap, or that uses a reserved ID for another gap. A dependency graph failure still stops the run: an "analysis unsupported" route for the graph (design 450-451) is not in this plan. | GB-04a to GB-04d |
-| DB6 | Which fields does the run manifest get? (P5) | `baseline: {id}` from Stage 1, with `sha256` added at Stage 6. `drafts: {baselineSha256, discoverySha256}` from every publisher (GB-12c). `stages`: one item for each published stage, `{stage, attemptId, startedAt, finishedAt, tools, models}`. Stage 1 has no attempt, so its `attemptId` is `null`. Each value comes from a saved record, so `verify` can make the same bytes again. `formatVersion` stays 1. | GB-05a, GB-05b, GB-12c |
-| DB7 | What is a prompt version? (P7) | Each LLM prompt comes from a template module in `packages/producer/src`. The call record names `promptTemplate: {id, sha256}`. The publishing action refuses a call record whose template differs from the template that the helper recorded. It also refuses a saved prompt that does not start with the bytes of the prompt that the helper wrote. Follow-up directions after those bytes are allowed. The prompts of Stages 1, 2 and 6, and the prompt blocks of Stages 3 and 5, move from the cookbooks into template modules (D3). | GB-07c to GB-07f |
-| DB8 | How is an entry candidate traced? (P8) | `package-field`: a cited manifest field whose value is the expression; the path is that value from the manifest folder. `script`: a cited package script whose text contains the expression and the path. `convention`: a cited Knip plugin pattern of the Stage 2 profile that is the expression and selects the path. `source`: a cited saved source range or search match whose text contains the expression. For every origin, the path is inside the workspace folder. Choom does not check `inference` and `unknown`. A candidate that these rules cannot trace uses `inference` or `unknown` (design 856). | GB-08a to GB-08c |
-| DB9 | What is a deferral record? (P9, P10) | A gap of `kind: deferred`, which the viewer already groups (CR-004), and one item in a new `deferrals` list of the entry analysis: `{id, gapRef, reasonKind, claim, searchRefs, reportRefs, limitRef}`. `reasonKind` is one of `computed-loading`, `missing-input`, `unsupported-source`, `outside-consumer`, `runtime-evidence` and `run-limit`. A priority choice is not a reason. Stages 3, 4 and 5 can add deferrals, and later stages keep them unchanged. A gap of `kind: suspected-unused` follows the same evidence rules. The gap shape and the viewer do not change. | GB-09a, GB-09b |
-| DB10 | How does capture handle changes and exclusions? (P11) | At most 3 capture attempts. After the third attempt with a change, stop, save no snapshot, and name the changed paths. Each attempt keeps its call records, and `capture-scope.json` lists the attempts and their changed paths. The capture lists each excluded path, the top-most entry for each rule, by name only, with the rule that excluded it. The list has at most 10,000 entries and a truncation flag. Capture never reads an excluded file. Names such as `.env` are listed, because a name is not a credential. | GB-11a, GB-11b |
-| DB11 | What is one complete update? (P12) | `run.yaml` is the commit marker. Each publisher writes every other file first, then `run.yaml` through a temporary file and one rename. `run.yaml` holds the digests of the drafts (DB6). Every reader refuses drafts whose digests differ from `run.yaml`. One lock file for the run replaces the two locks. Every stage action refuses a lock or a leftover temporary file. A new `run cleanup` action restores each draft from its saved checkpoint when the checkpoint digest equals the digest in `run.yaml`, then removes the leftover files. If no checkpoint matches, it refuses and changes nothing. Failed work keeps the last published drafts (design 493). A folder swap is not used, because it would move the drafts out of the run root. | GB-12a to GB-12d |
-| DB12 | How is affected work revisited before Stage 6? (P13) | Change the code, not the design. A new Stage 5 request adds roots and saves a new reachability result from the saved Stage 4 edges. No tool runs again. Roots can only be added. A new root is a kept file candidate, or a candidate that Stage 4 collect saved in `behavior-entry-candidates.json`; the Stage 5 draft then adds a file candidate that cites it. A deferral whose subject a new root reaches needs a linked note. A removed root, changed graph settings, a changed Knip profile or a changed snapshot still needs a new run. Knip does not run again: its reports stay, with a limit that names the added roots (design 890). | GB-13a, GB-13b |
-| DB13 | Where are the contracts of new or changed producer records? (all) | In a new `cookbook/interfaces/producer-run-records.tsp`, as CR-005 did in `producer-boundary-intake.tsp`. The ticket that first adds or changes a record adds its model; later tickets extend it. The models are generated into `packages/producer/src/generated/contracts.ts`, linked from `packages/producer/component.yaml`, and checked by `bun run check:contracts`. | All tickets that change a record |
-| DB14 | Where do the new tests go? (all) | The coding principles place tests beside the code as `*.test.ts`. The producer suites are in `packages/producer/test/`, and `test:native` and `test:integration` scan only those folders. Proposal: new tests extend the existing suites in `packages/producer/test/` and `test/steps/`. A move of the producer tests is a separate change. | All tickets |
+| # | Question | State | Decision | Tickets |
+|---|---|---|---|---|
+| DB1 | What can a subject reference name? (P1) | Decided, with two proposed details | A snapshot file or folder, the snapshot ID, a question or gap, an entry candidate, or a baseline item by the viewer's rule: the item ID, or the ID and a dot. A gap that Stage 1 copies from a tool record keeps its subjects. Proposed details: (a) a folder is written as a membership selector `dir/**` that matches at least one snapshot file; (b) a required gap of GB-04 keeps the subjects of its tool record too, as a Stage 1 tool gap does, so it can name a missing compiler input. | GB-01a, GB-01b, GB-04b |
+| DB2 | Where are subjects checked? (P1) | Decided, with one proposed addition | The shared record checks of Stages 4 to 6 check every question and gap, so a change that orphans a frozen subject is refused at the stage that makes it. Proposed addition: Stages 1 to 3 also check the records that they add, so a subject that names nothing is refused before later stages freeze it. | GB-01a, GB-01b |
+| DB3 | What supports an inspected path? (P2) | Proposed | Each step cites at least one reviewed range of the selected review history. Each component in `componentIds` owns a file or part that a reviewed range cited by the steps covers. A step can also cite other evidence, such as a graph or references record. | GB-02b |
+| DB4 | What is a current summary? (P3) | Proposed | A summary that describes the selected records and the progress of the run. `coverage` has `inventoried`, `inspected`, `recorded` and `pending`. `recorded` replaces `unresolved`: it gives the record counts of the questions and gaps, with history and linked notes. `pending` lists the stages that have not completed. Choom does not decide which question or gap is answered, so there is no status field. A status needs discovery `formatVersion: 3` and a viewer change, which this plan does not include. The LLM review stays responsible for current overview prose. | GB-03 |
+| DB5 | Which tool outcomes need a gap, and who writes it? (P4) | Proposed | The records of GB-04d: the Knip receipts (`skipped`, `failed`, and an `unsupported` preflight), the Stage 3 symbol mentions (`partial`, `unavailable`, `skipped`) and exports records (each gap that the record lists), and the Stage 4 candidate records (each gap that the record lists, and `status: partial`). Stage 1 keeps plan change 8 for its Git and settings records. The action that saves a tool record also saves the required gaps that it gives, with reserved IDs. The review prompt lists them. The review copies them exactly into the entry analysis and the discovery, because both lists must be the same and the response must hold the exact record text. The publishing action refuses a packet that leaves out or changes a required gap, or that uses a reserved ID for another gap. A dependency graph failure still stops the run: an "analysis unsupported" route for the graph (design 450-451) is not in this plan. | GB-04a to GB-04d |
+| DB6 | Which fields does the run manifest get? (P5) | Dropped | Plan change 20: the run manifest and the records that it registers are the run record. The design text says so (#101). | — |
+| DB7 | What is a prompt version? (P7) | Version field dropped; template check deferred | Plan change 20: the producer code digest and the cookbook copy that each stage start saves identify the prompt template, so there is no prompt-version field. The check that a saved prompt starts with the prompt that the helper wrote is decided after the first real run. | Drafts GB-07c to GB-07f |
+| DB8 | How is an entry candidate traced? (P8) | Deferred | Revision 2 proposal: `package-field`: a cited manifest field whose value is the expression; the path is that value from the manifest folder. `script`: a cited package script whose text contains the expression and the path. `convention`: a cited Knip plugin pattern of the Stage 2 profile that is the expression and selects the path. `source`: a cited saved source range or search match whose text contains the expression. For every origin, the path is inside the workspace folder. Choom does not check `inference` and `unknown`. A candidate that these rules cannot trace uses `inference` or `unknown` (design 856). | Drafts GB-08a to GB-08c |
+| DB9 | What is a deferral record? (P9, P10) | Deferred | Revision 2 proposal: a gap of `kind: deferred`, which the viewer already groups (CR-004), and one item in a new `deferrals` list of the entry analysis: `{id, gapRef, reasonKind, claim, searchRefs, reportRefs, limitRef}`. `reasonKind` is one of `computed-loading`, `missing-input`, `unsupported-source`, `outside-consumer`, `runtime-evidence` and `run-limit`. A priority choice is not a reason. Stages 3, 4 and 5 can add deferrals, and later stages keep them unchanged. A gap of `kind: suspected-unused` follows the same evidence rules. The gap shape and the viewer do not change. | Drafts GB-09a, GB-09b |
+| DB10 | How does capture handle changes and exclusions? (P11) | Dropped | Plan change 20: capture stops on a change, the operator retries in a new folder, and the exclusions stay as rules. The design text says so (#101). | — |
+| DB11 | What is one complete update? (P12) | Decided | Plan change 20: Stages 2 and 3 write the run manifest last and roll back, as Stages 4 to 6 do. The rest of the revision 2 proposal (one lock for every action, draft digests in `run.yaml`, a cleanup action) is not planned. | GB-12a, GB-12b |
+| DB12 | How is affected work revisited before Stage 6? (P13) | Dropped | Plan change 20: after Stage 4 publication, a root or settings correction needs a new run. Stage 5 can still revise model statements. The design text says so (#101). | — |
+| DB13 | Where are the contracts of new or changed producer records? (all) | Proposed | In a new `cookbook/interfaces/producer-run-records.tsp`, as CR-005 did in `producer-boundary-intake.tsp`. The ticket that first adds or changes a record adds its model; later tickets extend it. The models are generated into `packages/producer/src/generated/contracts.ts`, linked from `packages/producer/component.yaml`, and checked by `bun run check:contracts`. | All tickets that change a record |
+| DB14 | Where do the new tests go? (all) | Proposed | The coding principles place tests beside the code as `*.test.ts`. The producer suites are in `packages/producer/test/`, and `test:native` and `test:integration` scan only those folders. Proposal: new tests extend the existing suites in `packages/producer/test/` and `test/steps/`. A move of the producer tests is a separate change. | All tickets |
 
 ### Ticket map and order
 
 "Order" is the earliest round in which a ticket can start, from its "Needs".
 
+**Next: the Step 2 gate and P12** (plan change 20)
+
 | Order | Ticket | Finding | Needs | Main files |
 |---|---|---|---|---|
-| 1 | GB-01a Shared subject forms, used by the viewer | P1 | DB1 | `baseline-model/src`, `src/lib/discovery-placement.ts`, `record-baseline.ts` |
+| 1 | GB-01a Stages 4 to 6 refuse a subject that names nothing | P1 | DB1, DB2 | `baseline-model/src`, `src/lib/discovery-placement.ts`, new `record-subjects.ts`, `stage-6-records.ts` |
 | 1 | GB-02a A source site cites its reviewed range | P2 | — | `stage-6-records.ts` |
 | 1 | GB-04a Required gaps from Stage 2 Knip outcomes | P4 | DB5 | `stage-2-knip-run.ts`, `stage-2-finish.ts` |
-| 1 | GB-06a Complete tool-call records in Stage 1 | P6 | — | `stage-1-commands.ts` |
-| 1 | GB-07a One check for LLM call records | P7 | — | `llm-response.ts` and the six callers |
-| 1 | GB-08a Trace package-field and script candidates | P8 | DB8 | new `record-entry-trace.ts`, `stage-2-commands.ts` |
-| 1 | GB-10 Collect evidence for reported-unused files | P10 | — | `stage-3-collect.ts`, `stage-3-finish.ts` |
-| 1 | GB-12a One lock for every stage action | P12 | DB11 | every stage helper |
-| 1 | GB-13a Stage 5 adds roots and refreshes reachability | P13 | DB12 | `stage-5-commands.ts`, `record-graph.ts` |
-| 2 | GB-01b Producer refuses a subject that names nothing | P1 | GB-01a, DB2 | new `record-subjects.ts`, stage entry points |
+| 1 | GB-12a Stage 3 writes the run manifest last and rolls back | P12 | DB11 | `stage-3-finish.ts` |
+| 1 | GB-14 The publisher refuses a stray attempt file | stray files | — | `stage-4-5-publish.ts` |
+| 2 | GB-01b Stages 1 to 3 refuse a subject that names nothing | P1 | GB-01a | `stage-1-commands.ts`, `stage-2-finish.ts`, `stage-3-review.ts` |
 | 2 | GB-02b Inspected paths cite reviewed source | P2 | GB-02a, DB3 | `stage-6-records.ts` |
 | 2 | GB-04b Required gaps from Stage 3 records | P4 | GB-04a | `stage-3-collect.ts`, `stage-3-review.ts` |
 | 2 | GB-04c Required gaps from Stage 4 candidate records | P4 | GB-04a | `stage-4-commands.ts`, `stage-4-5-publish.ts` |
-| 2 | GB-06b A time limit for Stage 2 commands | P6 | GB-06a | `stage-2-commands.ts` |
-| 2 | GB-07b Cited evidence was supplied | P7 | GB-07a | `record-checks.ts`, stage entry points |
-| 2 | GB-07c Prompt versions for Stages 3 to 5 | P7 | GB-07a, DB7 | prompt modules, `stage-3-review.ts`, `stage-4-5-publish.ts` |
-| 2 | GB-08b Trace convention candidates | P8 | GB-08a | `record-entry-trace.ts`, `stage-2-finish.ts` |
-| 2 | GB-08c Trace source candidates | P8 | GB-08a | `record-entry-trace.ts`, `stage-3-review.ts` |
-| 2 | GB-11a Retry a capture that saw a change | P11 | GB-06a, DB10 | `stage-1-commands.ts` |
-| 2 | GB-12b One reader for the working drafts | P12 | GB-12a | every stage helper that reads the drafts |
+| 2 | GB-12b Stage 2 rolls back a failed publication | P12 | GB-12a | `stage-2-finish.ts` |
+| 3 | GB-03 Current summaries in the run manifest | P3 | GB-12a, GB-12b, DB4 | every publisher |
 | 3 | GB-04d Completion check: each tool result has its gap | P4 | GB-04b, GB-04c | `stage-6-records.ts` |
-| 3 | GB-07d Prompt template for Stage 1 | P7 | GB-07c | `stage-1-commands.ts` |
-| 3 | GB-07e Prompt templates for Stage 2 | P7 | GB-07c | `stage-2-commands.ts` |
-| 3 | GB-07f Prompt template for Stage 6 | P7 | GB-07c | `stage-6-commands.ts`, `stage-6-records.ts` |
-| 3 | GB-09a Deferral records with checked evidence | P9 | GB-01b, GB-08a, DB9 | new `record-deferrals.ts`, `stage-3-review.ts`, `stage-4-5-publish.ts` |
-| 3 | GB-11b List the excluded paths | P11 | GB-11a, GB-01b | `stage-1-exclusions.ts`, `stage-1-commands.ts` |
-| 3 | GB-12c `run.yaml` is the commit marker | P12 | GB-12b, DB6 | every publisher |
-| 4 | GB-03 Current summaries in the run manifest | P3 | GB-12c, DB4 | every publisher |
-| 4 | GB-09b Investigate reported-unused files before a deferral | P9, P10 | GB-09a, GB-10 | `record-deferrals.ts` |
-| 4 | GB-12d Clean up an interrupted publication | P12 | GB-12c | new run action |
-| 4 | GB-13b Publish the refreshed reachability | P13 | GB-13a, GB-09a | `stage-4-5-publish.ts`, `record-graph.ts` |
-| 5 | GB-05a Baseline identity in the run manifest | P5 | GB-03, DB6 | `stage-1-commands.ts`, `stage-6-commands.ts` |
-| 6 | GB-05b Stage times, tools and models in the run manifest | P5 | GB-05a, GB-06a | every publisher |
+
+**Drafts: decided after the first real run** (plan change 20)
+
+| Ticket | Finding | Needs |
+|---|---|---|
+| GB-07a One check for LLM call records | P7 | — |
+| GB-07b Cited evidence was supplied | P7 | GB-07a |
+| GB-07c The saved prompt starts with the helper's prompt, Stages 3 to 5 | P7 | GB-07a |
+| GB-07d, GB-07e, GB-07f The same check for Stages 1, 2 and 6 | P7 | GB-07c |
+| GB-08a Trace package-field and script candidates | P8 | DB8 |
+| GB-08b, GB-08c Trace convention and source candidates | P8 | GB-08a |
+| GB-09a Deferral records with checked evidence | P9 | GB-01b, GB-08a, DB9 |
+| GB-09b Investigate reported-unused files before a deferral | P9, P10 | GB-09a, GB-10 |
+| GB-10 Collect evidence for reported-unused files | P10 | — |
 
 ---
 
-### GB-01a Shared subject forms, used by the viewer
+### Next tickets: the Step 2 gate and P12
 
-**Finding:** P1. **Needs:** DB1.
+### GB-01a Stages 4 to 6 refuse a subject that names nothing
 
-The rule "a subject names an item when it equals the item ID or starts with the
-ID and a dot" has two copies: the viewer placement
-(`src/lib/discovery-placement.ts:33-40`) and the producer check of unknown
-values (`record-baseline.ts:222-223`). The P1 check would be the third copy, so
-the coding principles ask for one shared class first. Both copies take
-`cli.ts` as a subject about the component `cli`.
-
-**Constraints:** behavior `discovery-result.feature`. Interface: a new public
-class of `@choom/baseline-model`; the discovery contract does not change.
-Observability and architecture: the defaults.
-
-Add to `cookbook/behavior/baseline-viewer/discovery-result.feature`:
-
-```gherkin
-  Scenario: A file name with a dot is not placed on a component
-    Given an open baseline with the component "cli"
-    And a discovery result for it with a gap whose only subject is the file "cli.ts"
-    When the user opens the discovery result
-    Then the gap is listed under "Unplaced"
-    And the component "cli" shows no recorded gap
-```
-
-**Fails today because** the viewer takes the text before the first dot as the
-item ID.
-
-**Steps:**
-
-1. **U** In `@choom/baseline-model`, `SubjectForms` takes a baseline.
-   `target(reference)` returns the item for an item ID, and the item and field
-   path for a reference whose first part after the item ID is a field of that
-   kind of item in the baseline contract. `billing.membership.paths` and
-   `invoice-api.documentation.summary` name their items, also when the
-   interface has no documentation. `cli.ts` names nothing when a component has
-   no field `ts`.
-2. **U** Interaction facts (`<interface>.documentation.entries.<entry>.interaction.input`)
-   and source-use subjects (`<interface>.sourceUsage.uses.<id>.consumerId`)
-   name their interface.
-3. **N** `placeDiscovery` (`src/lib/discovery-placement.ts`) uses
-   `SubjectForms`. The GA-11b2 placement tests
-   (`test/unit/lib/discovery-placement.test.ts`) still pass.
-4. **N** `validateBaseline` (`record-baseline.ts:222-223`) uses `SubjectForms`
-   to find the question or gap of an unknown value. A dotted file name no
-   longer counts as that question. The exact subjects for unknown interaction
-   facts (`record-baseline.ts:136-141`) do not change.
-5. **A** Add the fixture and the browser step.
-
-### GB-01b Producer refuses a subject that names nothing
-
-**Finding:** P1. **Needs:** GB-01a, DB2.
+**Finding:** P1. **Needs:** DB1, DB2.
 
 **Constraints:** behavior `issue-subjects.feature`. Interface:
 `record-format.md` "Discovery" gets the subject forms; the discovery contract
 does not change. Observability and architecture: the defaults.
+
+The viewer's rule "a subject names an item when it equals the item ID or
+starts with the ID and a dot" has two copies: the viewer placement
+(`src/lib/discovery-placement.ts:33-40`) and the producer check of unknown
+values (`record-baseline.ts:222-223`). The P1 check is the third use, so the
+coding principles ask for one shared class first.
 
 New feature file `cookbook/behavior/producer/issue-subjects.feature`:
 
 ```gherkin
 @producer
 Feature: Questions and gaps name things that the run saved
-  A subject names a baseline item, an item field, a saved record, an inventory
-  file or folder, or a missing input that a tool record names. A stage refuses a
-  question or gap whose subject names nothing, before later stages freeze it.
+  A subject names a snapshot file or folder, the snapshot ID, a question or gap,
+  an entry candidate, or a baseline item. The shared record checks refuse a
+  question or gap whose subject names nothing, also when a later change orphans
+  an earlier subject.
 
-  Scenario Outline: A stage refuses a gap whose subject names nothing
-    Given a <stage> review with a new gap whose subject is "src/no-such-file.ts"
-    When the operator <publishes>
-    Then the <stage> result is not published
+  Scenario Outline: A Stage 4 or 5 draft with a gap whose subject names nothing is refused
+    Given a <stage> draft with a new gap whose subject is "src/no-such-file.ts"
+    When the operator publishes the <stage> draft
+    Then the draft is refused
     And the operator is told that the subject "src/no-such-file.ts" of the gap names nothing
 
     Examples:
-      | stage   | publishes                   |
-      | Stage 1 | finishes Stage 1            |
-      | Stage 2 | finishes Stage 2            |
-      | Stage 3 | finishes Stage 3            |
-      | Stage 4 | publishes the Stage 4 draft |
-      | Stage 5 | publishes the Stage 5 draft |
+      | stage   |
+      | Stage 4 |
+      | Stage 5 |
+
+  Scenario: A change that orphans an earlier subject is refused at the stage that makes it
+    Given a Stage 4 run with a question about the component "billing"
+    And a Stage 5 draft that removes the component "billing"
+    When the operator publishes the Stage 5 draft
+    Then the draft is refused
+    And the operator is told which question names the removed component
 
   Scenario Outline: Each form of subject is accepted
-    Given a Stage 4 review with a new question whose subject is <subject>
+    Given a Stage 4 draft with a new question whose subject is <subject>
     When the operator publishes the Stage 4 draft
     Then the Stage 4 draft is published
 
     Examples:
-      | subject                                                     |
-      | the ID of a component                                       |
-      | the purpose statement of a component                        |
-      | an inventory file                                           |
-      | the inventory folder "src/**"                               |
-      | the ID of an earlier gap                                    |
-      | a missing declaration file that its cited tool record names |
+      | subject                                                |
+      | the ID of a component                                  |
+      | the purpose statement of a component                   |
+      | a snapshot file                                        |
+      | the snapshot folder "src/**"                           |
+      | the snapshot ID                                        |
+      | the ID of an earlier gap                               |
+      | the ID of an entry candidate                           |
+```
+
+**Fails today because** the shared record checks test only that `subjectRefs`
+holds strings (`stage-6-records.ts:295-306`). The outline "Each form of subject
+is accepted" is a guard: it passes today and must still pass.
+
+**Steps:**
+
+1. Refactor first, under the placement tests of GA-11b2
+   (`test/unit/lib/discovery-placement.test.ts`) and the tests of
+   `record-baseline.ts`: move the viewer's rule into a `SubjectItems` class of
+   `@choom/baseline-model`. The viewer placement and `validateBaseline` use it.
+   Behavior does not change.
+2. **U** `SubjectChecker` in a new `record-subjects.ts` takes the inventory,
+   the snapshot ID, the question and gap IDs with their history, the entry
+   candidate IDs and `SubjectItems` of the baseline. `refused(record)` returns
+   each subject that matches no form of DB1.
+3. **U** A `dir/**` subject must match at least one snapshot file (DB1, detail
+   a). A folder written without `/**` is refused with a message that shows the
+   selector form.
+4. **U** A gap that Stage 1 copied from a tool record keeps its subjects
+   (plan change 20).
+5. **N** The shared record checks of Stages 4 to 6 run `SubjectChecker` on
+   every question and gap. Correct the test data that names nothing, such as
+   `support/stage-6-records.ts:103` (`plugin-candidate`) and the subjects
+   `subject-0` to `subject-99` of `interface/stage-6/refusals.test.ts:54-62`.
+   Change the characterization test
+   `integration/records/stage-6-records.test.ts:108-112`. Keep the contract
+   check first, so the limit messages stay the same.
+6. Document the subject forms in `record-format.md` "Discovery", the stage
+   cookbooks and `stage-4-review-prompt.ts`.
+
+### GB-01b Stages 1 to 3 refuse a subject that names nothing
+
+**Finding:** P1. **Needs:** GB-01a. This ticket is the proposed addition of
+DB2.
+
+**Constraints:** behavior `issue-subjects.feature`. Interface: no record
+changes. Observability and architecture: the defaults.
+
+Add to `issue-subjects.feature`:
+
+```gherkin
+  Scenario Outline: An early stage refuses a gap whose subject names nothing
+    Given a <stage> review with a new gap whose subject is "src/no-such-file.ts"
+    When the operator finishes <stage>
+    Then the <stage> result is not published
+    And the operator is told that the subject "src/no-such-file.ts" of the gap names nothing
+
+    Examples:
+      | stage   |
+      | Stage 1 |
+      | Stage 2 |
+      | Stage 3 |
 
   Scenario: An inspection priority names something
     Given a Stage 3 review whose inspection priority names "nothing-here"
@@ -1798,35 +1910,18 @@ Feature: Questions and gaps name things that the run saved
     And the operator is told which inspection priority names nothing
 ```
 
-**Fails today because** each stage checks only that `subjectRefs` holds
-strings (`stage-6-records.ts:295-306` and the copies in the re-check table).
-The outline "Each form of subject is accepted" is a guard: it passes today and
-must still pass. Its last row needs a change of `stageFourPublication`, which
-always uses the settings of its profile.
+**Fails today because** Stages 1 to 3 check only that `subjectRefs` holds
+strings (`stage-1-commands.ts:383`, `stage-2-finish.ts:207`,
+`stage-3-review.ts:228`). Without this ticket, such a record is frozen first
+and refused only at Stage 4, and the run must start again.
 
 **Steps:**
 
-1. **N** `SubjectChecker` in a new `record-subjects.ts` takes the names that
-   exist at the stage: the claimed IDs, the artifact IDs, the question and gap
-   IDs with their history, the snapshot and baseline IDs, the inventory, and
-   `SubjectForms` of the baseline. `refused(record)` returns each subject that
-   matches no form of DB1.
-2. **U** A `dir/**` subject must match at least one inventory file. A folder
-   written without `/**` is refused with a message that shows the selector form.
-3. **U** A path that the snapshot does not hold is accepted only when an
-   evidence record of the same item names it in a `missing` field.
-4. **N** Stage 1 `finish` checks the questions and gaps of the review.
-5. **N** Stage 2 `plan` and `finish` check the records that they add.
-6. **N** The Stage 3 finalizer checks its new records and the subjects of new
+1. **N** Stage 1 `finish` checks the questions and gaps of the review with
+   `SubjectChecker`.
+2. **N** Stage 2 `plan` and `finish` check the records that they add.
+3. **N** The Stage 3 finalizer checks its new records and the subjects of new
    inspection priorities. CR-005 clues keep their own check.
-7. **N** The Stage 4/5 publisher passes the IDs of the new records to
-   `validateDiscoveryRecords`, which checks only those. Stage 6 passes no IDs,
-   so preserved records are not checked again (DB2).
-8. Correct the test data that names nothing where a changed check reads it,
-   such as `support/stage-6-records.ts:103` (`plugin-candidate`). Change the
-   characterization test `integration/records/stage-6-records.test.ts:108-112`.
-9. Document the subject forms in `record-format.md` "Discovery", the stage
-   cookbooks and `stage-4-review-prompt.ts`.
 
 ### GB-02a A source site cites its reviewed range
 
@@ -1913,7 +2008,7 @@ an inspected path today; use the `changeRecords` hook of
 
 ### GB-03 Current summaries in the run manifest
 
-**Finding:** P3. **Needs:** GB-12c, DB4.
+**Finding:** P3. **Needs:** GB-12a, GB-12b, DB4.
 
 **Constraints:** behavior `run-manifest.feature`. Interface: `run.yaml`
 `coverage` changes (DB4); add the run manifest model (DB13) and a "Run
@@ -2057,7 +2152,8 @@ gap (`stage-3-finish.ts:267`).
 1. **U** `ToolGaps.fromSymbolMentions(record, ref)` gives a gap for the status
    `partial`, `unavailable` or `skipped`.
 2. **U** The gaps of an exports record (`snapshot-project.ts`) become required
-   gaps through `ToolGaps`.
+   gaps through `ToolGaps`. They keep the subjects of the tool record (DB1,
+   detail b).
 3. **N** Stage 3 `collect` and the `exports` action save their required gaps.
    The review prompt lists them.
 4. **N** The Stage 3 finalizer refuses a packet that leaves out or changes a
@@ -2127,175 +2223,119 @@ every Stage 4, 5 and 6 action passes.
 2. **N** Each result with an outcome of DB5 has a gap whose evidence cites it.
 3. Add a refused case to `integration/records/stage-6-records.test.ts`.
 
-### GB-05a Baseline identity in the run manifest
+### GB-12a Stage 3 writes the run manifest last and rolls back
 
-**Finding:** P5. **Needs:** GB-03, DB6.
+**Finding:** P12. **Needs:** DB11.
 
-**Constraints:** behavior `run-manifest.feature`. Interface: `run.yaml` gets
-`baseline` (DB6, DB13). Observability and architecture: the defaults.
+**Constraints:** behavior `draft-publication.feature`. Interface: no record
+changes. Observability and architecture: the defaults.
 
-Add to `run-manifest.feature`:
-
-```gherkin
-  Scenario: The run manifest names the baseline from Stage 1
-    Given a new run
-    When the operator finishes Stage 1
-    Then the run manifest names the baseline ID of the run
-
-  Scenario: The completed run manifest names the fixed baseline file
-    Given a reviewed Stage 5 draft
-    When the operator saves the result
-    Then the run manifest names the baseline ID and the SHA-256 of the fixed baseline file
-```
-
-**Fails today because** the baseline ID is only in `evidence/stage1-inputs.json`
-until Stage 6. Stage 6 writes `baselineRef` and keeps the digest only in the
-artifact list.
-
-**Steps:**
-
-1. **N** Stage 1 `finish` writes `baseline: {id}`. Stage 6 refuses
-   `baselineRef` before Stage 6, so the new key is `baseline`.
-2. **N** Each later publisher keeps the value, and its `verify` refuses a
-   change.
-3. **N** Stage 6 adds `baseline.sha256`, the same value as the artifact entry of
-   the baseline.
-4. Change `interface/stage-6/outputs.test.ts` and the "Run manifest" section of
-   `record-format.md`.
-
-### GB-05b Stage times, tools and models in the run manifest
-
-**Finding:** P5. **Needs:** GB-05a, GB-06a.
-
-**Constraints:** behavior `run-manifest.feature`. Interface: `run.yaml` gets
-`stages`, and Stages 1 to 3 save a finish receipt (DB6, DB13). Observability
-and architecture: the defaults.
-
-Add to `run-manifest.feature`:
-
-```gherkin
-  Scenario Outline: Each published stage adds its item to the run manifest
-    Given a run that is ready for <stage> to publish
-    When the operator publishes <stage>
-    Then the run manifest has an item for <stage> with its start and finish times
-    And the item names the attempt of <stage>, or no attempt for Stage 1
-    And the item names the tool versions that <stage> recorded
-    And the item names the provider, model and call record of each LLM call of <stage>
-
-    Examples:
-      | stage   |
-      | Stage 1 |
-      | Stage 2 |
-      | Stage 3 |
-      | Stage 4 |
-      | Stage 5 |
-      | Stage 6 |
-```
-
-**Fails today because** these values are only in receipts and call records.
-
-**Steps:**
-
-1. **U** `StageItem` makes the item from saved records only: the start record,
-   the finish receipt, the tool records and the LLM call records of the stage.
-2. **N** Stage 1 `finish`, Stage 2 `finish` and the Stage 3 finalizer save a
-   finish receipt. Today none of them does, so `verify` could not make the
-   finish time again.
-3. **N** Stage 1 and Stage 2 add their items. The Stage 1 item uses the tool
-   versions of GB-06a.
-4. **N** The Stage 3 finalizer adds its item.
-5. **N** The Stage 4/5 publisher adds its item, with the times of
-   `publication.json`.
-6. **N** Stage 6 adds its item. Each `verify` makes the list again and refuses
-   a difference.
-7. Change the "Run manifest" section of `record-format.md`.
-
-### GB-06a Complete tool-call records in Stage 1
-
-**Finding:** P6. **Needs:** nothing.
-
-**Constraints:** behavior `tool-calls.feature`. Interface: the Stage 1
-tool-call record (DB13). Observability and architecture: the defaults.
-
-New feature file `cookbook/behavior/producer/tool-calls.feature`:
+New feature file `cookbook/behavior/producer/draft-publication.feature`:
 
 ```gherkin
 @producer
-Feature: Record each tool call of a stage
-  A tool-call record names the tool and its version, the scope, the limits, the
-  input, the result and the digests of the outputs.
+Feature: Publish the drafts of a run as one update
+  A stage replaces the working drafts as one update. It replaces the run
+  manifest last. If a step fails, the stage restores the drafts that it had
+  replaced, so the last published drafts stay.
 
-  Scenario: A Stage 1 call record names its tool, scope, limits and outputs
-    Given a target folder that is not a Git repository
-    When the operator captures a snapshot
-    Then the capture call record names the rsync version, the capture scope and the time limit
-    And it records the SHA-256 of its input and of each output file
-
-  Scenario: Stage 1 refuses an output that changed after its call
-    Given a Stage 1 run that is ready to finish
-    And the saved output of its capture call changed after the call
-    When the operator finishes Stage 1
-    Then the Stage 1 result is not published
-    And the operator is told which call record does not match its output
+  Scenario: A failed Stage 3 publication keeps the last published drafts
+    Given a run that is ready for Stage 3 to publish
+    And a fault that stops the publication after its first rename
+    When the operator finishes Stage 3
+    Then the Stage 3 result is not published
+    And the run manifest and the discovery draft are the same as before
 ```
 
-**Fails today because** `recordedCall` saves only the command, the arguments,
-the time and the exit status (`stage-1-commands.ts:71-79`), and `finish`
-registers the outputs as they are.
+**Fails today because** Stage 3 replaces `run.yaml` first and has no rollback
+(`stage-3-finish.ts:395-417`). It only prints that the operator must restore
+the drafts.
 
 **Steps:**
 
-1. Refactor first: move `recordedCall` into a `ToolCall` class in its own
-   module, under the existing Stage 1 interface tests.
-2. **U** A `ToolCall` record has `formatVersion`, `operation`,
-   `tool: {name, version}`, `scope`, `input` with its SHA-256,
-   `limits: {timeoutMs, maxOutputBytes}`, `startedAt`, `finishedAt`, the exit
-   status, and `output: {stdout, stdoutSha256, stderr, stderrSha256}`. It keeps
-   the old fields that later code reads, such as `exitCode`.
-3. **U** The version comes from the saved `rsync --version` and `git version`
-   calls, or from the Node version and the SHA-256 of the collector.
-4. **N** Stage 1 `finish` and `verify` refuse a call output whose digest differs
-   from its call record.
-5. Change `record-format.md` "Git identity record" and `step-1-cookbook.md`.
-   `interface/stage-1/git-identity.test.ts` uses `toMatchObject`, so it stays
-   valid.
+1. **U** Extend the fault double `support/doubles/stage-6-faults.ts`, so a test
+   can stop the Stage 3 publication after a chosen rename. It needs no Docker.
+2. **N** The Stage 3 finalizer replaces the discovery draft first and
+   `run.yaml` last.
+3. **N** If a step fails, it restores each replaced draft from its saved
+   checkpoint, as the Stage 4/5 publisher does (`stage-4-5-publish.ts:384-409`).
+4. Change `step-3-cookbook.md`, which says today that `run.yaml` is renamed
+   first.
 
-### GB-06b A time limit for Stage 2 commands
+### GB-12b Stage 2 rolls back a failed publication
 
-**Finding:** P6. **Needs:** GB-06a.
+**Finding:** P12. **Needs:** GB-12a.
 
-**Constraints:** behavior `tool-calls.feature`. Interface: the Stage 2 command
-record gets its limit and output digests (DB13). Observability and
-architecture: the defaults.
+**Constraints:** behavior `draft-publication.feature`. Interface: no record
+changes. Observability and architecture: the defaults.
 
-Add to `tool-calls.feature`:
+Add to `draft-publication.feature`:
 
 ```gherkin
-  Scenario: A Stage 2 command that does not end stops at its time limit
-    Given a Stage 2 attempt whose saved command does not end
-    And a lower time limit for this attempt
-    When the operator runs that Stage 2 action
-    Then the command stops at the time limit
-    And the action fails with a message that names the time limit
-    And the call record names the time limit and the digests of its outputs
+  Scenario: A failed Stage 2 publication keeps the last published drafts
+    Given a run that is ready for Stage 2 to publish
+    And a fault that stops the publication after its first rename
+    When the operator finishes Stage 2
+    Then the Stage 2 result is not published
+    And the run manifest and the discovery draft are the same as before
 ```
 
-**Fails today because** `execute` (`stage-2-commands.ts:269-284`) has no time
-limit and records no limit or output digest. The first red run would wait
-forever, so the step definition has its own short test timeout.
+**Fails today because** Stage 2 replaces the discovery draft and then
+`run.yaml`, with no rollback (`stage-2-finish.ts:403-409`).
 
 **Steps:**
 
-1. Refactor first: move `execute` into a class in its own module, under the
-   existing Stage 2 interface tests.
-2. **U** Each action has a fixed time limit. An operator setting, such as
-   `CHOOM_STAGE2_COMMAND_TIMEOUT_MS`, can only lower it, and the record names
-   the limit that applied.
-3. **U** The command record names the limit, a stop by the limit, and the
-   SHA-256 of the stdout and stderr files.
-4. Change `step-2-cookbook.md`.
+1. **U** The fault double can stop the Stage 2 publication after a chosen
+   rename.
+2. **N** If the second rename fails, Stage 2 `finish` restores the discovery
+   draft from its saved checkpoint.
+3. Change `step-2-cookbook.md`.
+
+### GB-14 The publisher refuses a stray attempt file
+
+**Finding:** the stray-file suspicion of "Open after the final review". It is
+not a P finding. Plan change 20 puts it with the Step 2 gate. **Needs:**
+nothing.
+
+**Constraints:** behavior `draft-publication.feature`. Interface: no record
+changes. Observability and architecture: the defaults.
+
+Add to `draft-publication.feature`:
+
+```gherkin
+  Scenario: An attempt file that no phase wrote is refused
+    Given a Stage 4 attempt folder with a file that no phase wrote
+    When the operator publishes the Stage 4 draft
+    Then the draft is refused
+    And the operator is told which attempt file no phase wrote
+```
+
+**Fails today because** the publisher registers every file of the attempt
+folder (`stage-4-5-publish.ts:186-191, 286-291`). `checkPhases` checks only the
+files that the receipts name. A probe confirmed it: the stray file was
+registered, and `check`, `finish` and `verify` passed.
+
+**Steps:**
+
+1. **U** The attempt files are the outputs that the phase receipts name, the
+   phase receipts, and the files of the review packet. Any other file is
+   refused with its name.
+2. **N** The Stage 4/5 publisher and its `verify` use this check.
+3. **N** Run the same probe on the Stage 2, Stage 3 and Stage 6 publishers. If
+   one registers a stray file, add the check there with its own failing test.
+4. Change `record-format.md` "Check, publish and verify".
+
+---
+
+### Draft tickets: decided after the first real run
+
+Plan change 20 decides P7 (the two checks), P8, P9 and P10 after one real Step 1
+run on Choom. These tickets are revision 2 drafts for that decision. The run
+journal of `docs/design/app-a/first-real-run.md` (in #101) can change them.
 
 ### GB-07a One check for LLM call records
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P7. **Type:** refactor. Behavior does not change.
 
@@ -2321,6 +2361,8 @@ architecture: the defaults.
 
 ### GB-07b Cited evidence was supplied
 
+**Draft. Plan change 20 decides it after the first real run.**
+
 **Finding:** P7. **Needs:** GB-07a.
 
 **Constraints:** behavior `llm-audit.feature`. Interface: `record-format.md`
@@ -2333,7 +2375,8 @@ New feature file `cookbook/behavior/producer/llm-audit.feature`:
 @producer
 Feature: The LLM audit record shows what the LLM was given
   An LLM review cites only evidence that its review scope lists as supplied, or
-  files of its own packet. The call record names the template of its prompt.
+  files of its own packet. The saved prompt starts with the prompt that the
+  helper wrote.
 
   Scenario Outline: A review that cites evidence it was not given is refused
     Given a <stage> review whose new record cites a saved artifact that its review scope does not list as supplied
@@ -2373,55 +2416,49 @@ resolve the supplied references.
    `fixtures/entry-points/producer.mjs`.
 7. Change `record-format.md` and the cookbooks.
 
-### GB-07c Prompt versions for Stages 3 to 5
+### GB-07c The saved prompt starts with the helper's prompt, Stages 3 to 5
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P7. **Needs:** GB-07a, DB7.
 
-**Constraints:** behavior `llm-audit.feature`. Interface: the call record gets
-`promptTemplate`, and the collect receipts name it (DB13). Observability and
+**Constraints:** behavior `llm-audit.feature`. Interface: no record changes;
+plan change 20 drops the prompt-version field. Observability and
 architecture: the defaults.
 
 Add to `llm-audit.feature`:
 
 ```gherkin
-  Scenario: Stage 3 collect records the template of its review prompt
-    Given a Stage 3 attempt
-    When the operator collects the Stage 3 evidence
-    Then the collect receipt names the Stage 3 prompt template and its SHA-256
-
-  Scenario Outline: A call record or saved prompt that differs from the template is refused
+  Scenario Outline: A saved prompt that does not start with the helper's prompt is refused
     Given a <stage> review whose <difference>
     When the operator <publishes>
     Then the <stage> result is not published
-    And the operator is told that the call record or saved prompt differs from its template
+    And the operator is told that the saved prompt differs from the prompt that the helper wrote
 
     Examples:
       | stage   | difference                                                        | publishes                   |
       | Stage 3 | saved prompt does not start with the prompt that the helper wrote | finishes Stage 3            |
-      | Stage 3 | call record names another prompt template                         | finishes Stage 3            |
       | Stage 4 | saved prompt does not start with the prompt that the helper wrote | publishes the Stage 4 draft |
       | Stage 5 | saved prompt does not start with the prompt that the helper wrote | publishes the Stage 5 draft |
 ```
 
-**Fails today because** no receipt or call record names a template, and the
-saved prompt is checked only for text.
+**Fails today because** the saved prompt is checked only for text.
 
 **Steps:**
 
-1. Move the Stage 3 and Stage 5 prompt blocks from the cookbooks into template
-   modules, like `stage-4-review-prompt.ts`. The prompt text does not change,
-   so the characterization tests stay green. Delete `cookbookPrompt`
-   (`attempt-files.ts:11`), which then has no caller.
-2. **U** `PromptTemplate` gives `{id, sha256}` of a template.
-3. **N** Stage 3 and 5 `collect` and Stage 4 `inspect` record the template in
-   their receipts.
-4. **N** The publishing action requires `promptTemplate` in
-   `llm/analysis-call.yaml` to equal the receipt, and the saved prompt to start
-   with the bytes of the prompt that the helper wrote.
-5. Update the saved prompts of the fixtures, and change `record-format.md`
-   (the call record fields) and the cookbooks.
+1. **N** Stage 3 and 5 `collect` and Stage 4 `inspect` save the prompt that
+   they write, as they do today (`review-prompt.md`).
+2. **U** The publishing action requires `llm/analysis-prompt.md` to start with
+   the bytes of that prompt. Follow-up directions after those bytes are
+   allowed.
+3. **N** The Stage 3 finalizer and the Stage 4/5 publisher use the check.
+4. Change `record-format.md` and the cookbooks. The producer code digest and
+   the saved cookbook copy identify the template (plan change 20), so no new
+   field is needed.
 
 ### GB-07d Prompt template for Stage 1
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P7. **Needs:** GB-07c.
 
@@ -2439,11 +2476,14 @@ Add a row to the Scenario Outline of GB-07c:
 **Steps:**
 
 1. Move the prompt into a template module with marked inputs.
-2. **N** Stage 1 writes the prompt from the template and records the template.
-3. **N** Stage 1 `finish` checks the call record and the saved prompt.
+2. **N** Stage 1 writes the prompt from the template and saves the prompt that
+   it wrote.
+3. **N** Stage 1 `finish` checks the saved prompt with the GB-07c check.
 4. `step-1-cookbook.md` keeps only the commands and review steps (D3).
 
 ### GB-07e Prompt templates for Stage 2
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P7. **Needs:** GB-07c.
 
@@ -2464,12 +2504,13 @@ analysis, are free text in `step-2-cookbook.md`.
 
 1. Move both prompts into template modules with marked inputs.
 2. **N** Stage 2 `start` writes the plan prompt, and `prepare` writes the
-   analysis prompt. Each records its template.
-3. **N** Stage 2 `plan`, `save-review` and `finish` check the call records and
-   the saved prompts.
+   analysis prompt. Each saves the prompt that it wrote.
+3. **N** Stage 2 `plan`, `save-review` and `finish` check the saved prompts.
 4. `step-2-cookbook.md` keeps only the commands and review steps.
 
 ### GB-07f Prompt template for Stage 6
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P7. **Needs:** GB-07c.
 
@@ -2488,12 +2529,14 @@ Add a row to the Scenario Outline of GB-07c:
 **Steps:**
 
 1. Move the prompt into a template module with marked inputs.
-2. **N** Stage 6 writes the prompt from the template and records the template.
-3. **N** The Stage 6 readiness check refuses a call record or saved prompt that
-   differs.
+2. **N** Stage 6 writes the prompt from the template and saves the prompt that
+   it wrote.
+3. **N** The Stage 6 readiness check refuses a saved prompt that differs.
 4. `step-6-cookbook.md` keeps only the commands and review steps.
 
 ### GB-08a Trace package-field and script candidates
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P8. **Needs:** DB8.
 
@@ -2561,6 +2604,8 @@ first scenario is a guard: it passes today and must still pass.
 
 ### GB-08b Trace convention candidates
 
+**Draft. Plan change 20 decides it after the first real run.**
+
 **Finding:** P8. **Needs:** GB-08a.
 
 **Constraints:** behavior `entry-candidates.feature`. Interface: no record
@@ -2599,6 +2644,8 @@ after `plan`.
 
 ### GB-08c Trace source candidates
 
+**Draft. Plan change 20 decides it after the first real run.**
+
 **Finding:** P8. **Needs:** GB-08a.
 
 **Constraints:** behavior `entry-candidates.feature`. Interface: no record
@@ -2634,6 +2681,8 @@ read its text (`stage-3-review.ts:239-268`). The first row is a guard.
 4. Change `step-3-cookbook.md`.
 
 ### GB-09a Deferral records with checked evidence
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P9. **Needs:** GB-01b, GB-08a, DB9.
 
@@ -2701,6 +2750,8 @@ checks the search receipts, but nothing links a gap to a search
 
 ### GB-09b Investigate reported-unused files before a deferral
 
+**Draft. Plan change 20 decides it after the first real run.**
+
 **Finding:** P9 and P10. **Needs:** GB-09a, GB-10.
 
 **Constraints:** behavior `deferrals.feature`. Interface: deferrals use
@@ -2742,6 +2793,8 @@ Given runs Stage 2 with a package manifest and the doubles on `PATH`
 4. Change `step-3-cookbook.md` and `record-format.md`.
 
 ### GB-10 Collect evidence for reported-unused files
+
+**Draft. Plan change 20 decides it after the first real run.**
 
 **Finding:** P10. **Needs:** nothing.
 
@@ -2789,337 +2842,27 @@ GB-09b does.
    summary.
 6. Change `step-3-cookbook.md` and `record-format.md`.
 
-### GB-11a Retry a capture that saw a change
-
-**Finding:** P11. **Needs:** GB-06a, DB10.
-
-**Constraints:** behavior `snapshot-capture.feature`. Interface:
-`capture-scope.json` lists the attempts (DB13). Observability and
-architecture: the defaults.
-
-New feature file `cookbook/behavior/producer/snapshot-capture.feature`:
-
-```gherkin
-@producer
-Feature: Capture a snapshot while files can change
-  Capture retries when a file changed during the copy. It saves no snapshot that
-  it knows is mixed, and it lists what it left out.
-
-  Scenario: A change during capture is retried
-    Given a target folder in which one file changes during the first capture
-    When the operator captures a snapshot
-    Then the snapshot is captured on the second attempt
-    And the capture scope record lists the changed file and both attempts
-
-  Scenario: A target that keeps changing is not captured
-    Given a target folder in which one file changes during every capture
-    When the operator captures a snapshot
-    Then no snapshot is saved
-    And the operator is told which file kept changing and that 3 attempts were made
-```
-
-**Fails today because** capture copies once and stops on the first change
-(`stage-1-commands.ts:206-216`), and a second capture is refused.
-
-**Steps:**
-
-1. Refactor first: move the capture steps into a `SnapshotCapture` class in its
-   own module, under the existing Stage 1 interface tests.
-2. **U** Each attempt copies into a new `snapshot.capture-NNN` folder and
-   compares. A clean attempt is renamed to `snapshot`. A new folder for each
-   attempt avoids `--delete`, which the rsync double does not support.
-3. **U** Each attempt saves numbered call records, and `capture-scope.json`
-   lists the attempts and the changed paths of each.
-4. **U** After the third attempt with a change, capture stops, saves no
-   snapshot, and names the paths.
-5. **N** Simulate the change with a wrapper on `PATH` around the rsync double,
-   so `doubles/rsync.py` does not change.
-6. Change `step-1-cookbook.md`.
-
-### GB-11b List the excluded paths
-
-**Finding:** P11. **Needs:** GB-11a, GB-01b.
-
-**Constraints:** behavior `snapshot-capture.feature`. Interface: a new
-`capture-exclusions.json` record (DB13). Observability and architecture: the
-defaults.
-
-Add to `snapshot-capture.feature`:
-
-```gherkin
-  Scenario: The capture lists the excluded paths
-    Given a target folder with a "node_modules" folder and a ".env" file
-    When the operator captures a snapshot
-    Then the capture exclusions record lists "node_modules/" and ".env" with the rule that excluded each
-    And no content of an excluded file is saved
-```
-
-**Fails today because** the exclusions are recorded only as rules, and GA-04
-lists only the files of the Git commit (`stage-1-git.ts:118-123`).
-
-**Steps:**
-
-1. **U** `readCaptureExclusions` (`stage-1-exclusions.ts`) names the rule that
-   matches a path.
-2. **U** A walk of the target that reads names and file types only lists the
-   top-most excluded entry for each rule, with at most 10,000 entries and a
-   `truncated` flag.
-3. **N** Capture saves `evidence/capture-exclusions.json` with a fixed artifact
-   ID (`artifactId`, `stage-1-commands.ts`).
-4. **U** A rule that Choom cannot read gives a gap through `ToolGaps`.
-5. **U** `SubjectChecker` accepts an excluded path that this record lists
-   (DB1 form 5).
-6. Change `step-1-cookbook.md` and `record-format.md`.
-
-### GB-12a One lock for every stage action
-
-**Finding:** P12. **Needs:** DB11.
-
-**Constraints:** behavior `draft-publication.feature`. Interface: no record
-changes. Observability and architecture: the defaults.
-
-New feature file `cookbook/behavior/producer/draft-publication.feature`:
-
-```gherkin
-@producer
-Feature: Publish the drafts of a run as one update
-  A stage replaces the working drafts as one update. No action starts while a
-  publication is not complete or not cleaned up.
-
-  Scenario: A stage action waits while a publication is not cleaned up
-    Given a run whose Stage 3 publication replaced the run manifest and stopped with its discovery temporary file left
-    When the operator starts Stage 4
-    Then the action is refused
-    And the operator is told which leftover file to inspect
-
-  Scenario: Two publishers cannot work on one run
-    Given a run with the lock of a Stage 4 publication
-    When the operator starts Stage 6
-    Then the action is refused
-    And the operator is told that another publication holds the run
-```
-
-**Fails today because** Stage 4/5 and Stage 6 each have their own lock
-(`stage-4-5-publish.ts:140`, `stage-6-commands.ts:100`). Stage 4 `start` checks
-no lock or temporary file, and accepts the run state of the first scenario
-(`stage-4-commands.ts:128-135`).
-
-**Steps:**
-
-1. **U** One `RunLock` class, from `withLock` in `stage-6-files.ts`, with one
-   lock name for the run. `checkIdle(work)` refuses the lock and any leftover
-   temporary file of a publication, and names them.
-2. **N** The Stage 4/5 publisher and Stage 6 use `RunLock`.
-3. **N** The Stage 1, 2 and 3 actions call `checkIdle` before they read the run.
-4. **N** The Stage 4, 5 and 6 actions call `checkIdle` before they read the run.
-5. Change `record-format.md` "Check, publish and verify" and `start-here.md`.
-
-### GB-12b One reader for the working drafts
-
-**Finding:** P12. **Type:** refactor. Behavior does not change. **Needs:** GB-12a.
-
-About nine stage helpers read and check the working drafts in their own way.
-GB-12c changes all of them, so they become one class first.
-
-**Constraints:** behavior: no new scenario; the characterization tests are the
-acceptance check. Interface: no record changes. Observability and
-architecture: the defaults.
-
-**Steps:**
-
-1. **N** Add characterization tests for each reader where its accepted states
-   and messages are not tested yet.
-2. Move the readers into one `WorkingDrafts` class. Keep the stage checks of
-   each caller.
-
-### GB-12c `run.yaml` is the commit marker
-
-**Finding:** P12. **Needs:** GB-12b, DB6.
-
-**Constraints:** behavior `draft-publication.feature`. Interface: `run.yaml`
-gets `drafts` (DB6, DB13). Observability and architecture: the defaults.
-
-Add to `draft-publication.feature`:
-
-```gherkin
-  Scenario Outline: A half-published draft pair is refused
-    Given a run in which <stage> <half state>
-    When the operator starts <next>
-    Then the action is refused
-    And the operator is told that the drafts do not match the run manifest
-
-    Examples:
-      | stage   | half state                                                       | next    |
-      | Stage 2 | replaced the discovery draft and stopped before the run manifest | Stage 3 |
-      | Stage 3 | replaced the discovery draft and stopped before the run manifest | Stage 4 |
-      | Stage 3 | replaced the run manifest and stopped before the discovery draft | Stage 4 |
-
-  Scenario: Each stage replaces the run manifest last
-    Given a run that is ready for Stage 3 to publish
-    And a fault that stops the publication after its first rename
-    When the operator finishes Stage 3
-    Then the run manifest has not changed
-```
-
-**Fails today because** Stage 3 renames `run.yaml` first
-(`stage-3-finish.ts:395-417`), and no reader compares the drafts with
-`run.yaml`. Today the next stage refuses some of these states with another
-message, and accepts the third one.
-
-**Steps:**
-
-1. **N** Every publisher writes `drafts: {baselineSha256, discoverySha256}` in
-   `run.yaml`.
-2. **N** Every publisher replaces `run.yaml` last, through a temporary file and
-   one rename. Stage 3 changes its order. Stage 1 stops writing `run.yaml`
-   directly.
-3. **U** `WorkingDrafts` refuses drafts whose digests differ from `run.yaml` as
-   an incomplete publication.
-4. **U** Extend the fault double `support/doubles/stage-6-faults.ts`, so a test
-   can stop any publisher after a chosen rename. It needs no Docker.
-5. Change `record-format.md`, `step-2-cookbook.md`, `step-3-cookbook.md` and
-   `start-here.md`.
-
-### GB-12d Clean up an interrupted publication
-
-**Finding:** P12. **Needs:** GB-12c.
-
-**Constraints:** behavior `draft-publication.feature`. Interface: a new
-`run cleanup` action of the command line. Observability and architecture: the
-defaults.
-
-Add to `draft-publication.feature`:
-
-```gherkin
-  Scenario: Cleanup restores the last published drafts
-    Given a run whose Stage 3 publication stopped after it replaced the discovery draft
-    When the operator runs the cleanup of the run
-    Then the discovery draft is restored from its saved checkpoint
-    And the leftover files are removed
-    And the operator can start a new Stage 3 attempt
-
-  Scenario: Cleanup changes nothing when no checkpoint matches the run manifest
-    Given a run whose discovery draft matches neither the run manifest nor a saved checkpoint
-    When the operator runs the cleanup of the run
-    Then the cleanup is refused and no file changes
-    And the operator is told which draft to inspect
-```
-
-**Fails today because** there is no cleanup action.
-
-**Steps:**
-
-1. **U** `RunCleanup` restores each draft from the saved checkpoint whose digest
-   equals the digest in `run.yaml`, then removes the lock and the temporary
-   files.
-2. **U** If a draft matches neither, it refuses and changes nothing.
-3. **N** Add `run cleanup` to the command line (`cli.ts`).
-4. Change `start-here.md` and `record-format.md`.
-
-### GB-13a Stage 5 adds roots and refreshes reachability
-
-**Finding:** P13. **Needs:** DB12.
-
-**Constraints:** behavior `reachability-refresh.feature`. Interface: a new
-Stage 5 request `roots` and a `reachability.json` record (DB12, DB13).
-Observability and architecture: the defaults.
-
-New feature file `cookbook/behavior/producer/reachability-refresh.feature`:
-
-```gherkin
-@producer
-Feature: Revisit reachability when Stage 5 adds an entry
-  Stage 5 can add a root from an entry candidate that the run kept or that
-  Stage 4 collect found. It computes reachability again from the saved Stage 4
-  edges. It cannot remove a root.
-
-  Scenario: Stage 5 adds a root and refreshes reachability
-    Given a Stage 4 run in which Stage 4 collect found "src/worker.ts" as a behavior entry candidate outside the saved roots
-    When the operator adds "src/worker.ts" as a Stage 5 root
-    Then Stage 5 saves a reachability result with the Stage 4 roots and "src/worker.ts"
-    And the files that only "src/worker.ts" reaches are reached
-    And the result keeps the Knip reports with a limit that names the added root
-
-  Scenario: Stage 5 cannot add a root that no candidate names
-    Given a Stage 4 run
-    When the operator adds "src/unknown.ts" as a Stage 5 root
-    Then no reachability result is saved
-    And the operator is told that a root must be an entry candidate
-```
-
-**Fails today because** Stage 5 has no request that changes the roots, and the
-roots come only from the Stage 2 plan (`stage-4-graph-profile.ts`).
-
-**Steps:**
-
-1. **U** One `Reachability` class computes reachability from roots and saved
-   edges. The validator (`record-graph.ts`) and the new request use it. The
-   graph container keeps its own copy in `stage-4-graph.ts`, because it runs
-   that file alone.
-2. **N** The Stage 5 request `roots PATH...` runs after `start` and before
-   `collect`. It saves `reachability.json`: the added roots with the candidate
-   that names each, and for each context the roots, the reached and not reached
-   files, the stopped edges and the limits.
-3. **U** A root is a kept file candidate, or a candidate of
-   `behavior-entry-candidates.json`, whose source path is in the scan files of
-   that context.
-4. **N** Stage 5 `collect` uses the stopped edges of the new result when there
-   is one. Add `roots` to the phase lists of the Stage 5 helper and of the
-   Stage 4/5 publisher (`stage-4-5-publish.ts:203-218`).
-5. Change `step-5-cookbook.md`.
-
-### GB-13b Publish the refreshed reachability
-
-**Finding:** P13. **Needs:** GB-13a, GB-09a.
-
-**Constraints:** behavior `reachability-refresh.feature`. Interface: the
-entry analysis can select `reachability.json`. Observability and
-architecture: the defaults.
-
-Add to `reachability-refresh.feature`:
-
-```gherkin
-  Scenario: Stage 5 publication uses the refreshed reachability
-    Given a Stage 5 root refresh that added "src/worker.ts" from a Stage 4 behavior entry candidate
-    And a Stage 5 draft that adds the file candidate "src/worker.ts" that cites that behavior entry candidate
-    When the operator publishes the Stage 5 draft
-    Then the Stage 5 draft is published
-    And the entry analysis selects the refreshed reachability
-
-  Scenario: A deferral of newly reached code needs a linked note
-    Given a Stage 3 deferral of "src/jobs/**"
-    And a Stage 5 root refresh that reaches "src/jobs/run.ts"
-    When the operator publishes the Stage 5 draft without a note that names the deferral
-    Then the draft is refused
-    And the operator is told which deferral the new root reaches
-```
-
-**Fails today because** the publisher refuses a new source entry outside the
-Stage 4 roots (`stage-4-5-publish.ts:315-319`), and the validator requires the
-roots of the Stage 4 profile (`record-graph.ts:76-91`).
-
-**Steps:**
-
-1. **N** The publisher and the validator accept the refreshed result when the
-   entry analysis selects it. The validator computes the traversal again from
-   the saved edges.
-2. **N** A refreshed result whose roots leave out a profile root is refused
-   with a message that says to start a new run. No action makes such a result,
-   so this is a test of the validator.
-3. **N** Each candidate that the draft adds is checked against the new roots,
-   and a candidate for an added root cites the candidate that the refresh named.
-4. **N** Each earlier deferral whose subject a new root reaches has a linked
-   note: a new question or gap that names the deferral gap ID (design 524).
-5. Change `record-format.md` (`:715-721` and "Check, publish and verify"),
-   `step-5-cookbook.md`, `start-here.md` and `step-6-cookbook.md`, which say to
-   start a new run.
-
 ---
+
+### Not planned
+
+Plan change 20 replaces these revision 2 tickets. Commit 3cc3dc1 has their full
+text.
+
+| Revision 2 ticket | Finding | Why it is not planned |
+|---|---|---|
+| GB-05a, GB-05b (baseline identity, stage times, tools and models in the run manifest) | P5 | The run manifest and the records that it registers are the run record (design text in #101). |
+| GB-06a, GB-06b (complete Stage 1 tool-call records, a time limit for Stage 2 commands) | P6 | A scope or limit for each call adds nothing to a command that the producer fixes (design text in #101). GB-06b also covered the Stage 2 time limit, which plan change 20 does not name. |
+| The prompt-version steps of GB-07c to GB-07f (`promptTemplate` in the call record) | P7 | The producer code digest and the saved cookbook copy identify the template (design text in #101). |
+| GB-11a, GB-11b (retry a capture, list the excluded paths) | P11 | Capture stops on a change, and the exclusions stay as rules (design text in #101). |
+| GB-13a, GB-13b (Stage 5 adds roots and refreshes reachability) | P13 | After Stage 4 publication, a root or settings correction needs a new run (design text in #101). |
+| GB-12a to GB-12d of revision 2 (one lock, one draft reader, draft digests, a cleanup action) | P12 | Plan change 20 decides only that Stages 2 and 3 write the run manifest last and roll back. The new GB-12a and GB-12b do that. |
+| GB-01a of revision 2 (the viewer stops placing dotted file names) | P1 | Plan change 20 keeps the viewer's rule. |
 
 ### Not covered by Appendix B
 
-- **Defects 2 and 4** of the report (see "Not covered by this plan" in
-  Appendix A).
+- **Defects 2 and 4** of the report. Draft #101 fixes Defect 2 and records that
+  the owner accepts Defect 4.
 - **The rules enforced only by the operator or LLM** (the list above). This
   plan does not check them.
 - **The correction note rule.** "Any retained minor prose error has an explicit
@@ -3129,17 +2872,19 @@ roots of the Stage 4 profile (`record-graph.ts:76-91`).
 - **Gaps for partial searches.** A text search with the outcome `truncated`
   (`stage-3-text-search.ts:127`) and a references record with
   `completeness: partial` (`stage-4-references.ts:246`) give no required gap.
-  GB-09a uses a truncated search only as `run-limit` evidence.
+  Draft GB-09a uses a truncated search only as `run-limit` evidence.
 - **A status for questions and gaps.** It needs discovery `formatVersion: 3`
   and a viewer change (DB4). Current overview prose stays an LLM review item.
-- **Knip after a Stage 5 root change.** Knip does not run again; the result
-  records a limit (DB12, design 890).
+- **Dotted file names.** Under the viewer's rule (DB1), a subject such as
+  `cli.ts` names the item `cli` when that item exists. The check accepts it,
+  and the viewer places it on that item.
+- **P12 beyond plan change 20.** Stage 1 to 3 actions check no publication
+  lock, no reader compares the drafts with `run.yaml`, and there is no cleanup
+  action. Stage 1 writes `run.yaml` directly; it is the first publication of a
+  run.
 - **Stage 3 candidates outside the roots.** A Stage 3 source candidate outside
-  the Stage 2 plan patterns is not checked against the roots at Stage 4. GB-13a
-  lets Stage 5 add it as a root, but nothing requires that.
+  the Stage 2 plan patterns is not checked against the roots at Stage 4.
 - **Candidate IDs after a repeated Stage 2.** A new Stage 2 attempt before
   Stage 4 gives new candidate IDs, because new IDs start with the attempt ID
   (`stage-2-finish.ts`). Not confirmed in a run.
-- **The guidance files that Appendix A names.** Commit 44f2b8a replaced
-  `docs/coding-principles.md` and `docs/new-feature-cookbook.md`. Appendix A
-  keeps the old names as a record of how it was done.
+- **The new design drift** listed under "Design-document drift to fix".
