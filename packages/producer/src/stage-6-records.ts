@@ -15,6 +15,7 @@ import { type Artifact, assert, exact, type Fields, hash, json, list, object, on
 import { type MappedOwners, validateCodeMapping } from './record-code-mapping.ts';
 import { validateGraph } from './record-graph.ts';
 import { validateResourceCandidates } from './record-resource-candidates.ts';
+import { ReviewedSource } from './record-reviewed-source.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
 import { SubjectChecker } from './record-subjects.ts';
 import { checkKnipResultGaps } from './result-gaps.ts';
@@ -374,68 +375,21 @@ function checkEntryFacts({ inputs, discovery, entry, document, snapshotRef, inde
   return fileEntries;
 }
 
-// A behavior entry or resource access names a source site inside a reviewed range that the item cites.
-// The item cites the reviewed range itself: a reference that resolves to the whole range and whose ID is
-// the ID of a reviewed range of the selected history. A reviewed range takes the ID of the excerpt that
-// the review read, so an excerpt that no review read is not a reviewed range, also with the same path
-// and lines. `label` names the kind of item in the message.
-function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields[]): (item: Fields, label: string) => void {
-  const reviewedIds = new Set(reviewedRanges.map(range => range.id));
-  return function sourceSite(item, label) {
-    const site = item.source as Fields | undefined;
-    const lines = site?.lines as number[];
-    const supports = (range: unknown): boolean => {
-      const reviewed = range as Fields | undefined;
-      const reviewedLines = reviewed?.lines as number[];
-      return reviewed?.path === site?.path && Array.isArray(reviewed?.lines) &&
-        (reviewedLines[0] as number) <= (lines[0] as number) && (reviewedLines[1] as number) >= (lines[1] as number);
-    };
-    assert(indexed.has(site?.path) && Array.isArray(site?.lines) && lines.length === 2 &&
-      lines.every(Number.isSafeInteger) && (lines[0] as number) > 0 && (lines[1] as number) >= (lines[0] as number) &&
-      reviewedRanges.some(supports), 'Site is outside the selected source review history: ' + item.id);
-    const cites = (ref: unknown): boolean => supports(resolve(ref)) && reviewedIds.has(evidenceBase(ref as string));
-    assert((item.evidenceRefs as unknown[]).some(cites), label + ' ' + item.id +
-      ' does not cite a reviewed range that contains its site. An excerpt that no review read is not a reviewed range.');
-  };
-}
-
-// Each step of an inspected path cites at least one saved source range, and each
-// source range that it cites is inside a reviewed range of the selected history: the
-// same snapshot, path and digest, with reviewed lines that include its lines. A
-// collected excerpt that no review read is not a reviewed range. A step can also cite
-// other records, such as a graph record.
-function stepSourceCheck({ source }: Selection, reviewedRanges: Fields[]): (path: Fields, step: Fields, number: number) => void {
-  const inside = (record: Fields): boolean => reviewedRanges.some(range => {
-    const [first, last] = range.lines as number[];
-    const [from, to] = record.lines as number[];
-    return range.snapshotRef === record.snapshotRef && range.path === record.path && range.sha256 === record.sha256 &&
-      (first as number) <= (from as number) && (last as number) >= (to as number);
-  });
-  return function stepSource(path, step, number) {
-    const name = String(path.id) + ' step ' + number;
-    const cited = (step.evidenceRefs as string[]).filter(ref => source.records.has(evidenceBase(ref)));
-    assert(cited.length > 0, 'Missing cited reviewed source for inspected path step: ' + name);
-    for (const ref of cited) assert(inside(source.records.get(evidenceBase(ref)) as Fields),
-      'Inspected path step is outside the selected source review history: ' + name + ': ' + ref);
-  };
-}
-
 interface BehaviorInputs {
   componentIds: Set<unknown>;
   mapped: MappedOwners;
   fileEntries: Set<unknown>;
-  sourceSite(item: Fields, label: string): void;
-  stepSource(path: Fields, step: Fields, number: number): void;
+  reviewed: ReviewedSource;
 }
 
-function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries, sourceSite, stepSource }: BehaviorInputs): void {
+function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries, reviewed }: BehaviorInputs): void {
   const { entry, discovery, claim, evidence } = selection;
   const behaviorEntries = new Map<unknown, Fields>();
   for (const item of list(entry.behaviorEntries, 'behavior entries') as Fields[]) {
     claim(item.id);
     assert(text(item.kind) && text(item.expression) && componentIds.has(item.componentRef) &&
       strings(item.fileEntryRefs) && item.fileEntryRefs.every(id => fileEntries.has(id)), 'Invalid behavior entry: ' + item.id);
-    sourceSite(item, 'Behavior entry');
+    reviewed.checkSite(item, 'Behavior entry');
     assert(mapped.owns((item.source as Fields).path, item.componentRef), 'Behavior entry differs from the mapped source owner: ' + item.id);
     evidence(item);
     behaviorEntries.set(item.id, item);
@@ -450,12 +404,12 @@ function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries
     for (const [index, step] of (item.steps as Fields[]).entries()) {
       assert(text(step.action), 'Missing inspected path step: ' + item.id);
       evidence(step);
-      stepSource(item, step, index + 1);
+      reviewed.checkStep(item, step, index + 1);
     }
   }
 }
 
-function checkResourceAccess(selection: Selection, { componentIds, mapped, sourceSite }: BehaviorInputs, historyRefs: unknown[]): void {
+function checkResourceAccess(selection: Selection, { componentIds, mapped, reviewed }: BehaviorInputs, historyRefs: unknown[]): void {
   const { access, discovery, baseline, claim, resolve, evidence } = selection;
   const scope = access.scope as Fields | undefined;
   assert(access.kind === 'resource-observations' && scope?.method === 'source-inspection' &&
@@ -469,7 +423,7 @@ function checkResourceAccess(selection: Selection, { componentIds, mapped, sourc
     assert(componentIds.has(item.componentRef) && text(item.operation) && text(item.context) &&
       text(target?.expression) && oneOf(['symbolic', 'unknown'], target.identity) &&
       (target.resourceRef === null || resources.has(target.resourceRef)), 'Invalid resource access: ' + item.id);
-    sourceSite(item, 'Resource access observation');
+    reviewed.checkSite(item, 'Resource access observation');
     assert(mapped.owns((item.source as Fields).path, item.componentRef), 'Resource actor differs from the mapped source owner: ' + item.id);
     evidence(item);
   }
@@ -538,8 +492,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   validateSourceUsage({ ...documentation, snapshotRef, componentIds, mapped });
   validateSystemEntryPoints({ ...documentation, snapshotRef, componentIds, mapped });
   const fileEntries = checkEntryFacts(selection);
-  const behavior = { componentIds, mapped, fileEntries, sourceSite: sourceSiteCheck(selection, history.reviewedRanges),
-    stepSource: stepSourceCheck(selection, history.reviewedRanges) };
+  const behavior = { componentIds, mapped, fileEntries, reviewed: new ReviewedSource({ indexed: selection.indexed,
+    resolve: selection.resolve, source, reviewedRanges: history.reviewedRanges }) };
   checkBehavior(selection, behavior);
   const { graph, entry, access, indexed, resolve, claim } = selection;
   // Stages 4 and 5 name the behavior entry and resource access candidates of Stage 4 collect; the Stage 4/5 publisher

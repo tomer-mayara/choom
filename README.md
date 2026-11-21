@@ -1336,7 +1336,8 @@ and 5 also the record format, as records; Stages 3 and 5 read their review promp
 from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types of
 `run-layout.mjs`. The shared record validator of Stages 4 to 6
 (`stage-6-records.ts` with `record-baseline.ts`, `record-sources.ts`,
-`record-graph.ts`, `record-code-mapping.ts`, `record-subjects.ts` and `record-checks.ts`) checks the baseline shape with
+`record-graph.ts`, `record-code-mapping.ts`, `record-subjects.ts`,
+`record-reviewed-source.ts` and `record-checks.ts`) checks the baseline shape with
 `@choom/baseline-model`, as the viewer does, and adds the producer profile, the
 reserved IDs and the checks against the saved run records. Every stage resolves
 an evidence reference with the one resolver in `record-checks.ts`.
