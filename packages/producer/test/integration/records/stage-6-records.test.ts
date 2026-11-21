@@ -179,6 +179,28 @@ describe("validateDiscoveryRecords", () => {
       "that contains its site. An excerpt that no review read is not a reviewed range."));
   });
 
+  // A resource access observation of http.ts uses the same check of its site.
+  function withObservation(inputs: RecordInputs, refs: string[]): RecordInputs {
+    const saved = inputs.artifacts.get(selected.resourceAccessRef);
+    const access = JSON.parse(saved?.bytes.toString() ?? "null") as { observations: unknown[] };
+    access.observations = [{ id: "orders-read", componentRef: "http", source: { path: "http.ts", lines: [1, 1] },
+      operation: "read", target: { expression: "orders", resourceRef: null, identity: "symbolic" },
+      context: "The order handler.", evidenceRefs: refs }];
+    const bytes = Buffer.from(JSON.stringify(access));
+    inputs.artifacts.set(selected.resourceAccessRef, { path: saved?.path ?? "", bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("accepts a resource access observation that cites the reviewed range of its site", () => {
+    expect(validateDiscoveryRecords(withObservation(recordInputs(), ["orders-handler"]))).toMatchObject({ observations: 1 });
+  });
+
+  test("refuses a resource access observation that cites a requested excerpt of its site that no review read", () => {
+    expect(() => validateDiscoveryRecords(withObservation(withUnreadExcerpt(recordInputs()), [unreadExcerpt])))
+      .toThrow(new Error("Resource access observation orders-read does not cite a reviewed range that contains its site. " +
+        "An excerpt that no review read is not a reviewed range."));
+  });
+
   // P2: each step of an inspected path cites the source that it rests on, and each
   // cited source range is inside a reviewed range of the selected history, as the
   // site of a behavior entry is. A collected excerpt alone is not a reviewed range.
