@@ -12,6 +12,9 @@ The [analysis quality plan](analysis-quality-plan.md) names the checks. The
 from a fixed baseline to the saved source and shows corrections after review.
 Use the method with the target's own entries, roles, resources and evidence.
 
+For the first real run on Choom itself, also follow
+[First real run](first-real-run.md).
+
 The result is a proposed architecture model and a record of its evidence and
 limits. Component health, redesign and independent replaceability belong to the
 next design steps. After Step 1, use the separate
@@ -623,7 +626,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `cli.ts` | Producer command line; runs one trusted helper with the same arguments |
 | `producer-code.ts` | Producer code record that Stage 1 start saves, and the check that every later stage action makes first |
 | `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-5-commands.ts`, `stage-6-commands.ts` | Stage preparation, evidence collection or publication commands |
-| `stage-1-settings.ts` | Stage 1 settings collector; the settings action runs it. Its in-memory file system of the snapshot is also the file system of the snapshot project |
+| `stage-1-settings.ts` | Stage 1 settings collector; the settings action and the recovery capture run it in the tool checkout. Its in-memory file system of the snapshot is also the file system of the snapshot project |
 | `stage-1-git.ts`, `stage-1-exclusions.ts` | The Git identity record that Stage 1 capture saves, and the reader of the capture exclusion rules that it uses |
 | `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record |
 | `parsing-profile.ts` | The named Choom parsing profile for a snapshot without project settings |

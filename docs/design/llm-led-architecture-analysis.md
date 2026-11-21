@@ -437,9 +437,11 @@ findings. Earlier absence claims do not carry over automatically. If an investig
 needs uncaptured files, capture a new snapshot before using them.
 
 Save the selected source, documents, configuration, and required analysis inputs.
-Record paths, contents, digests, exclusions, and how the copy was made. Retry
-observed concurrent edits or report the capture limit. Copying files does not
-prove they all existed together at one instant.
+Record paths, contents, digests, the exclusion rules, and how the copy was made.
+If a comparison after the copy finds a change, capture stops, and the operator
+retries in a new folder. Excluded paths stay as rules, not as a list; with Git,
+the Git identity record lists the tracked files that the rules leave out.
+Copying files does not prove they all existed together at one instant.
 
 Tools use these saved inputs or the recorded toolchain. Missing inputs stay
 unresolved; tools must not quietly read the live checkout or other directories.
@@ -468,17 +470,29 @@ Do not carry an obsolete count or pending-stage claim into a current explanation
 | Record | Contents |
 | --- | --- |
 | Baseline version | `baseline.yaml`: architectural items, membership rules, statement sources and acceptance decisions, parent version, and IDs. |
-| Run manifest | Format version, run ID, analysis mode, snapshot/baseline IDs and digests, artifact references, scope and coverage, tool/model versions, limits, times, and outcome. |
+| Run manifest | `run.yaml`: format version, run ID, analysis mode, status, progress, snapshot identity and capture limit, coverage, and the registry of saved records with their digests. Stage 6 adds the fixed baseline and discovery references, the completion time, and the fixed records with their digests. |
 | Inputs and tool evidence | Saved files, resolution inputs, selected Git evidence, raw results, and tool-call records. |
 | Code mapping and facts | Code units and owners, file roles, project settings, entry candidates and their sources, Knip reports, reachability with its roots and method, dependencies with kinds and contexts, symbol results, and observed resource access. |
 | Discovery result | `discovery.yaml`: baseline and fact references, system explanation, inspected paths, questions, and gaps, including deferred regions and reasons. |
 | Investigation report | Findings, rejected concerns, open questions, evidence links, proposals, and model comparisons from Steps 2 and 3. |
-| LLM audit record | Prompt version, model settings, supplied context, and saved responses under the project's data policy. |
+| LLM audit record | Model settings, supplied context, and saved responses under the project's data policy. The producer code digest and the cookbook copy that each stage start saves identify the prompt template of a run, so the record needs no separate prompt version. |
+
+The run manifest and the records that it registers are the run record; the
+manifest does not repeat their facts. The baseline ID is in the Stage 1 inputs,
+tool versions are in the tool records, model details are in the LLM call
+records, and times are in the stage receipts and command logs. The registry
+checks each record by its digest. The baseline gets a digest when Stage 6 saves
+the fixed version; before that, it is a draft that changes.
 
 Each tool-call record includes its inputs, operation/version, query scope, limits,
 result, and output digests. State what was examined, excluded, unsupported,
 unresolved, or cut short. A query with no matches still needs its searched scope.
 Partial results cannot establish that something is absent.
+In Appendix A, Stage 1 runs only commands that the producer fixes: the copy, its
+comparison, Git and the settings collector. Each of their call records has the
+command, arguments, any environment that the call sets, time, exit code, signal
+and error. The run manifest registers their output with SHA-256 digests. A query
+scope or limit for each call adds nothing to a fixed command.
 
 Source links include the snapshot, file digest, and range. Reopen saved source.
 Validate the report format and check the digests of saved evidence. Show missing
@@ -1010,10 +1024,13 @@ At the end of this stage:
 This completes baseline recovery. Steps 2 and 3 still follow. Partial coverage
 is permitted when its limits are explicit.
 
-Before stage 6, revisit affected work when entry sets or model statements change.
-Refresh reachability, mappings, and dependent explanations as needed; keep
-independent evidence that remains valid. After saving, use the baseline version
-and assessment rules in [Runs and saved evidence](#runs-and-saved-evidence).
+Before Stage 4 is published, a change to the entry set or the analysis settings
+returns to the affected earlier stage with a fresh attempt. After Stage 4
+publication, the roots and settings are fixed: a root or settings correction
+needs a new run. That run can capture the saved snapshot if it keeps the
+original exclusions and limits. Stage 5 can still revise model statements and
+refresh the mappings and explanations that depend on them. After saving, use the
+baseline version and assessment rules in [Runs and saved evidence](#runs-and-saved-evidence).
 
 Existing [TypeDoc](https://typedoc.org/documents/Options.Input.html) or
 [API Extractor](https://api-extractor.com/pages/setup/invoking/) reports can supply

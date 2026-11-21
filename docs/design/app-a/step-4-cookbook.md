@@ -176,7 +176,11 @@ This builds a dedicated Docker image with dependency-cruiser 18.7.2 and
 TypeScript 6.0.2. Dependency installation is confined to the tool image, uses
 fixed requested versions, and disables installation scripts and optional peer
 tool loading. The build has no target repository mount. It can require network
-access to obtain the tool image and packages.
+access to obtain the tool image and packages. The image starts from the tag
+`node:24-bookworm-slim`, and no lockfile is committed, so the base image and the
+dependencies of these packages can differ in a later build. Each run pins its
+image by the saved image ID, not by the base tag: `run` checks that image ID
+before it uses the image.
 
 The helper records the image ID, package lock, versions, command outcomes, and
 fixture result. The image runs the fixture with the graph helper at the same

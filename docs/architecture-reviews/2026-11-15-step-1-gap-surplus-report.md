@@ -143,7 +143,7 @@ commit, so the commits of each PR are in `main` (see "How the stack merged").
 | GA-00b | tomer-mayara/choom#63 | Merged |
 | GA-00d | tomer-mayara/choom#64 | Merged |
 | GA-03b | tomer-mayara/choom#65 | Merged |
-| Plan update | tomer-mayara/choom#66 | Merged. D21 needs owner approval. |
+| Plan update | tomer-mayara/choom#66 | Merged. The owner approved D21 on 2026-11-16. |
 | GA-00b2 | tomer-mayara/choom#67 | Merged |
 | GA-00e | tomer-mayara/choom#68 | Merged |
 | GA-00c | tomer-mayara/choom#69 | Merged. This PR also records plan changes 6 and 7. |
@@ -193,10 +193,11 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
    symbols, with no path (GA-03b). So the producer profile rule "every
    component has a path" becomes "every component has a path or a symbol".
    GA-02a makes this change when it adds version 5 to the producer.
-4. **D21, proposed:** a symbol name is any JavaScript identifier name. Reserved
-   words such as `class` pass the syntax check, as `default` does. The viewer
-   checks syntax only, and the producer (GA-02a) refuses a symbol that the
-   file does not declare. No reserved-word list.
+4. **D21 (the owner approved it on 2026-11-16):** a symbol name is any
+   JavaScript identifier name. Reserved words such as `class` pass the syntax
+   check, as `default` does. The viewer checks syntax only, and the producer
+   (GA-02a) refuses a symbol that the file does not declare. No reserved-word
+   list.
 5. **Local browser acceptance.** `bun run test:e2e` can run in the cloud
    session with the preinstalled Chromium (revision 1243; the project pins
    1254). One layout scenario, "the full two-line name, both entry counts, and
@@ -319,8 +320,10 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
       stays version 1, because only Stage 6 knows the fixed baseline bytes.
     - **GA-11b2 (viewer):** the steps of GA-11b in `@choom/baseline-model` and
       the viewer, as CR-004 says.
-19. **Final review of the stack (2026-11-16; the owner has not reviewed it
-    yet).** A review of the whole stack (tomer-mayara/choom#58 to
+
+    The owner approved this split on 2026-11-16.
+19. **Final review of the stack (2026-11-16; the owner approved it on
+    2026-11-16).** A review of the whole stack (tomer-mayara/choom#58 to
     tomer-mayara/choom#91) found 25 defects in four areas. A reviewer probe or a
     clear code path showed each one. Four PRs fix them, each fix with a test
     that failed first. They are stacked on GA-11b2 in this order:
@@ -340,10 +343,46 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
       actions before React showed the opened disclosure. The step now waits
       for the content first (tomer-mayara/choom#92). Under CPU load, it failed
       in 3 of 20 runs before the fix and in 0 of 30 runs after it.
-    - **D5 changes no behavior:** the documents now say that the GA-08
-      settings-file filter tests only names, and they list its known misses. A
-      list of settings files kept by hand needs an owner decision.
+    - **Review finding D5 changes no behavior:** the documents now say that
+      the GA-08 settings-file filter tests only names, and they list its known
+      misses. A list of settings files kept by hand needs an owner decision
+      (plan change 20 moves it to after the real run).
     - "Open after the final review" below lists what stays open.
+20. **After Step 1: one real run first (the owner decided on 2026-11-16).**
+    The owner went through each item of "Open after the final review".
+    - **Next step:** one real Step 1 run on Choom itself, on the owner's
+      computer, before Step 2. A Claude Code session there is the operator and
+      the LLM, and the owner decides on the statements. The run follows
+      [First real run](../design/app-a/first-real-run.md). A problem that does
+      not block is recorded. A stage that refuses gets a producer fix and a new
+      run from Stage 1, at most twice. The run folders go to the branch
+      `run/choom-step-1`, which never merges into `main`.
+    - **Approved:** D21, plan change 18 and plan change 19, with the CI `web`
+      job limit of 25 minutes.
+    - **The Step 2 gate:** the producer gets the completion checks P1 to P4.
+      For P1, each subject of a question or gap names a snapshot file or
+      folder, the snapshot ID, a question or gap, an entry candidate, or a
+      baseline item by the viewer's rule (the item ID, or the ID and a dot). A
+      gap that Stage 1 copies from a tool record keeps its subjects. The shared
+      record checks of Stages 4 to 6 run the check, so a rename that orphans a
+      frozen subject is refused at the stage that makes it.
+    - **P12:** Stages 2 and 3 write the run manifest last and roll back, as
+      Stages 4 to 6 do.
+    - **The design text changes, not the code:** P5 (the run manifest), P6 (the
+      Stage 1 tool-call records), the prompt-version field of P7, P11
+      (concurrent edits) and P13 (a root correction after Stage 4 needs a new
+      run). The design now says what the producer does.
+    - **Decided after the run:** P8, P9, P10, the other two checks of P7, the
+      settings-file filter (review finding D5), lists that are not
+      virtualized, and one ticket for the copies that DRY3 forbids.
+    - **Fixed now:** Defect 2 (the example's inner components get the parent
+      `workspace`, which excludes their files), and recovery runs the settings
+      collector from the checkout, as Stage 1 does.
+    - **Accepted:** Defect 4. Each run pins its tool images by the saved image
+      ID, and the base tag is not pinned. The other limits in "Open after the
+      final review" stay documented until a real target hits one of them.
+    - **The viewer** bundles its font, Inter.
+    - **The stray-file suspicion** gets a probe with the Step 2 gate.
 
 ### How to work every ticket
 
@@ -1416,15 +1455,19 @@ you want them fixed:
 
 - **Defect 2:** the built-in starter baseline gives `src/domain` and
   `src/platform` files two owners (`src/domain/starter-baseline.ts:10-17`).
-  This is a small fix: add `parent` links or `excludePaths`.
+  This is a small fix: add `parent` links or `excludePaths`. Fixed in plan
+  change 20: the two inner components get the parent `workspace`, and
+  `workspace` excludes their files.
 - **Defect 4:** the Knip image base tag and its transitive dependencies are not
   pinned (`packages/producer/src/stage-2-tool-image.ts:15`, and the same text
   in `packages/producer/src/stage-4-commands.ts:330`; GA-00b2 moved it out of
-  `step-2-cookbook.md`).
+  `step-2-cookbook.md`). The owner accepted it on 2026-11-16 (plan change 20):
+  each run pins its tool images by the saved image ID.
 - **P1–P13:** the partial findings. GA-11b works around P1 (unknown subjects
   become "Unplaced"). GA-00c fixes defect 1. GA-12 and GA-00e touch P7 but do
   not close it (P7 also asks for a prompt-version field, a template check, and
-  a check that cited evidence was supplied).
+  a check that cited evidence was supplied). Plan change 20 decides each of
+  them.
 
 ### Open after the final review
 
@@ -1433,15 +1476,10 @@ tomer-mayara/choom#91, and tomer-mayara/choom#66 for the plan update). The
 review-fix PRs are tomer-mayara/choom#92 to tomer-mayara/choom#95. These
 items stay open.
 
-**Owner decisions:**
-
-- D21 (plan change 4): a symbol name is any JavaScript identifier name, with no
-  reserved-word list. GA-02a does this as proposed.
-- Plan change 18 (the GA-11b split) and plan change 19 (the final review,
-  with the CI `web` job limit of 25 minutes).
-- D5: keep the GA-08 settings-file filter as a test of names, or keep a list of
-  settings files by hand. Some files are unclear, such as `dangerfile.*`,
-  `plopfile.*` and `sanity.config.*`.
+**Owner decisions:** the owner made them on 2026-11-16 (plan change 20). The
+owner decides the settings-file filter of review finding D5 after the real run.
+The review findings A1 to D6 are named by review area. Review findings D1 to D6
+are not the decisions D1 to D6 of the decision log.
 
 **How the stack merged:**
 
@@ -1463,8 +1501,9 @@ items stay open.
 **Limits that the PRs record and do not fix:**
 
 - Producer:
-  - `recover-capture.ts` still saves `settings.mts` in the new run folder and
-    runs it, as B3 was for `inventory.mjs`.
+  - Fixed in plan change 20: `recover-capture.ts` runs the settings collector
+    in the tool checkout and records its SHA-256. It still saves
+    `inventory.mjs` and a copy of itself as records, and runs neither.
   - Suspected, not shown by a probe: the publisher can register stray files
     of an attempt folder.
   - Stage 2 finish refusals print a stack trace.
