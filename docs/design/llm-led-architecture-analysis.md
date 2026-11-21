@@ -463,12 +463,19 @@ Do not carry an obsolete count or pending-stage claim into a current explanation
 | Record | Contents |
 | --- | --- |
 | Baseline version | `baseline.yaml`: architectural items, membership rules, statement sources and acceptance decisions, parent version, and IDs. |
-| Run manifest | Format version, run ID, analysis mode, snapshot/baseline IDs and digests, artifact references, scope and coverage, tool/model versions, limits, times, and outcome. |
+| Run manifest | `run.yaml`: format version, run ID, analysis mode, status, progress, snapshot identity and capture limit, coverage, and the registry of saved records with their digests. Stage 6 adds the fixed baseline and discovery references, the completion time, and the fixed records with their digests. |
 | Inputs and tool evidence | Saved files, resolution inputs, selected Git evidence, raw results, and tool-call records. |
 | Code mapping and facts | Code units and owners, file roles, project settings, entry candidates and their sources, Knip reports, reachability with its roots and method, dependencies with kinds and contexts, symbol results, and observed resource access. |
 | Discovery result | `discovery.yaml`: baseline and fact references, system explanation, inspected paths, questions, and gaps, including deferred regions and reasons. |
 | Investigation report | Findings, rejected concerns, open questions, evidence links, proposals, and model comparisons from Steps 2 and 3. |
 | LLM audit record | Prompt version, model settings, supplied context, and saved responses under the project's data policy. |
+
+The run manifest and the records that it registers are the run record; the
+manifest does not repeat their facts. The baseline ID is in the Stage 1 inputs,
+tool versions are in the tool records, model details are in the LLM call
+records, and times are in the stage receipts and command logs. The registry
+checks each record by its digest. The baseline gets a digest when Stage 6 saves
+the fixed version; before that, it is a draft that changes.
 
 Each tool-call record includes its inputs, operation/version, query scope, limits,
 result, and output digests. State what was examined, excluded, unsupported,
