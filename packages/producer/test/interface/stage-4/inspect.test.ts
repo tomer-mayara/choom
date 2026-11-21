@@ -242,11 +242,13 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("Name the file in resource-access.json as resourceAccessCandidatesRef.");
     // The LLM keeps each question and gap within the contract of the viewer, which every stage checks.
     expect(prompt).toContain("Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef");
+    // Each step of an inspected path cites a reviewed source range, as the publisher checks.
+    expect(prompt).toContain("Each step of an inspected path cites the reviewed source range that it rests on");
     // Each subject names something of the run; the publisher refuses any other subject, also in an earlier record.
     expect(prompt).toContain("Each subjectRef names a file or folder of the snapshot (a folder with or without a final /), " +
       "the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.");
     // The digest of the prompt text without the working folder: the text itself does not change.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("0e4fc61756689d85401231a3a8a5b76da0eb2ba648fffda296fa9b05e4d83b4e");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("431ed03db685e3d8d0256a46dde2aa45b834b209fefa393d00433e2b28546af0");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

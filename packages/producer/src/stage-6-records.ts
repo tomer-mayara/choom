@@ -387,9 +387,36 @@ function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields
   };
 }
 
-interface BehaviorInputs { componentIds: Set<unknown>; mapped: MappedOwners; fileEntries: Set<unknown>; sourceSite(item: Fields): void }
+// Each step of an inspected path cites at least one saved source range, and each
+// source range that it cites is inside a reviewed range of the selected history: the
+// same snapshot, path and digest, with reviewed lines that include its lines. This is
+// the rule of the site of a behavior entry. A collected excerpt that no review read is
+// not a reviewed range. A step can also cite other records, such as a graph record.
+function stepSourceCheck({ source }: Selection, reviewedRanges: Fields[]): (path: Fields, step: Fields, number: number) => void {
+  const inside = (record: Fields): boolean => reviewedRanges.some(range => {
+    const [first, last] = range.lines as number[];
+    const [from, to] = record.lines as number[];
+    return range.snapshotRef === record.snapshotRef && range.path === record.path && range.sha256 === record.sha256 &&
+      (first as number) <= (from as number) && (last as number) >= (to as number);
+  });
+  return function stepSource(path, step, number) {
+    const name = String(path.id) + ' step ' + number;
+    const cited = (step.evidenceRefs as string[]).filter(ref => source.records.has(evidenceBase(ref)));
+    assert(cited.length > 0, 'Missing cited reviewed source for inspected path step: ' + name);
+    for (const ref of cited) assert(inside(source.records.get(evidenceBase(ref)) as Fields),
+      'Inspected path step is outside the selected source review history: ' + name + ': ' + ref);
+  };
+}
 
-function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries, sourceSite }: BehaviorInputs): void {
+interface BehaviorInputs {
+  componentIds: Set<unknown>;
+  mapped: MappedOwners;
+  fileEntries: Set<unknown>;
+  sourceSite(item: Fields): void;
+  stepSource(path: Fields, step: Fields, number: number): void;
+}
+
+function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries, sourceSite, stepSource }: BehaviorInputs): void {
   const { entry, discovery, claim, evidence } = selection;
   const behaviorEntries = new Map<unknown, Fields>();
   for (const item of list(entry.behaviorEntries, 'behavior entries') as Fields[]) {
@@ -408,9 +435,10 @@ function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries
       item.componentIds.includes((behaviorEntries.get(item.entryPointRef) as Fields).componentRef as string) &&
       Array.isArray(item.steps) && item.steps.length > 0 && strings(item.limits), 'Invalid inspected path: ' + item.id);
     evidence(item);
-    for (const step of item.steps as Fields[]) {
+    for (const [index, step] of (item.steps as Fields[]).entries()) {
       assert(text(step.action), 'Missing inspected path step: ' + item.id);
       evidence(step);
+      stepSource(item, step, index + 1);
     }
   }
 }
@@ -488,7 +516,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   validateSourceUsage({ ...documentation, snapshotRef, componentIds, mapped });
   validateSystemEntryPoints({ ...documentation, snapshotRef, componentIds, mapped });
   const fileEntries = checkEntryFacts(selection);
-  const behavior = { componentIds, mapped, fileEntries, sourceSite: sourceSiteCheck(selection, history.reviewedRanges) };
+  const behavior = { componentIds, mapped, fileEntries, sourceSite: sourceSiteCheck(selection, history.reviewedRanges),
+    stepSource: stepSourceCheck(selection, history.reviewedRanges) };
   checkBehavior(selection, behavior);
   const { graph, entry, access, indexed, resolve, claim } = selection;
   // Stages 4 and 5 name the behavior entry and resource access candidates of Stage 4 collect; the Stage 4/5 publisher

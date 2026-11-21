@@ -1402,6 +1402,9 @@ guidance before `finish`. Check the complete model and fact records:
   do not duplicate direct ownership.
 - An inspected path cites the source that supports its entry, steps, and component
   references. Planned paths stay in the priorities, not in `inspectedPaths`.
+  Each step cites a reviewed source range of the selected `reviewedFiles` chain;
+  the publisher refuses a step that cites no source range, or a range that no
+  review read, such as a collected excerpt alone.
 - A behavior entry rests on reviewed source ranges. A behavior entry candidate is a
   place to read; it does not make a behavior entry, and a missing candidate does
   not show that there is no entry.

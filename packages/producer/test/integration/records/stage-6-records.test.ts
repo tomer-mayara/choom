@@ -159,14 +159,28 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
   });
 
-  // P2: only the entry site must be in a reviewed range. Today a step can cite an unread excerpt.
-  test("accepts an inspected path step that cites a collected but unreviewed excerpt", () => {
-    const inputs = recordInputs((records) => {
-      records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
-        componentIds: ["http"], evidenceRefs: ["unread-cli"], limits: ["l"],
-        steps: [{ action: "Calls start.", evidenceRefs: ["unread-cli"] }] }];
-    });
-    expect(validateDiscoveryRecords(inputs)).toMatchObject({ mappedFiles: 2 });
+  // P2: each step of an inspected path cites the source that it rests on, and each
+  // cited source range is inside a reviewed range of the selected history, as the
+  // site of a behavior entry is. A collected excerpt alone is not a reviewed range.
+  const inspectedPath = (...steps: string[][]) => (records: Records): void => {
+    records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
+      componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
+      steps: steps.map((refs, index) => ({ action: `Step ${index + 1}.`, evidenceRefs: refs })) }];
+  };
+
+  test("accepts inspected path steps that cite reviewed source ranges, also with a JSON Pointer or with other records", () => {
+    expect(validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler#/lines", "graph"]))))
+      .toMatchObject({ inspectedPaths: 1 });
+  });
+
+  test("refuses an inspected path step that cites a collected but unreviewed excerpt", () => {
+    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler", "unread-cli"]))))
+      .toThrow(new Error("Inspected path step is outside the selected source review history: path-1 step 2: unread-cli"));
+  });
+
+  test("refuses an inspected path step that cites no source range", () => {
+    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["launch#/cli"]))))
+      .toThrow(new Error("Missing cited reviewed source for inspected path step: path-1 step 1"));
   });
 
   test.each(refusedCases)("refuses %s", (_name, change, message) => {

@@ -38,3 +38,27 @@ Then("the operator is told which question names a subject that names nothing", f
   const message = refusal(this);
   assert.ok(message.includes(`Question ${question.id} names the subject http.purpose`), message);
 });
+
+// The review read the saved range of http.ts. Stage 4 collect also saved the first
+// lines of cli.ts, a file of an entry candidate, but the review did not read them.
+const reviewed = "s4-check-source-http.ts";
+const unread = "s4-check-source-cli.ts";
+
+Given("a Stage 4 draft whose inspected path cites an excerpt that the review did not read", function (this: CompletionWorld) {
+  const route = { id: "s4-check-orders-route", kind: "route", expression: "GET /orders", componentRef: "http",
+    source: { path: "http.ts", lines: [1, 1] }, fileEntryRefs: ["cli-candidate"], evidenceRefs: [reviewed, "launch-settings#/http/0"] };
+  const path = { id: "s4-check-orders-path", description: "The HTTP file serves the order route of the CLI service.",
+    entryPointRef: route.id, componentIds: ["http", "cli"], evidenceRefs: [reviewed],
+    steps: [{ action: "The handler lists the orders.", evidenceRefs: [reviewed] },
+      { action: "The CLI starts the service.", evidenceRefs: [unread] }],
+    limits: ["Source inspection only; the path is not a runtime trace."] };
+  this.stageFourRun = stageFourPublication(() => {}, [], toolsRoot, (records: Records) => {
+    Object.assign(records["entry-analysis.yaml"] ?? {}, { behaviorEntries: [route] });
+    Object.assign(records["discovery.proposed.yaml"] ?? {}, { inspectedPaths: [path] });
+  });
+});
+
+Then("the operator is told which step of the inspected path cites the excerpt", function (this: CompletionWorld) {
+  const message = refusal(this);
+  assert.ok(message.includes(`s4-check-orders-path step 2: ${unread}`), message);
+});

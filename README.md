@@ -562,7 +562,11 @@ selected entry analysis or its history, or a baseline item by the rule of the
 viewer. A gap that Stage 1 finish copied from a tool record keeps its subjects
 (`isToolGap` in `stage-1-gaps.ts`). The
 [record format](docs/design/app-a/record-format.md#ids-and-evidence) gives the
-rule. Run the focused checks with:
+rule. They also check that each step of an inspected path cites a source range
+inside a reviewed range of the selected history, as the site of a behavior entry
+does, so that a collected excerpt that no review read does not support a step
+([discovery](docs/design/app-a/record-format.md#discovery)). Run the focused
+checks with:
 
 ```sh
 bun test ./packages/producer/test/unit/record-subjects.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts

@@ -1012,6 +1012,15 @@ paths actually reviewed. Each has `id`, `description`, `entryPointRef` naming a
 behavior entry, nonempty `componentIds`, `evidenceRefs`, `limits`, and `steps`.
 Each step has `action` and `evidenceRefs`. Include the entry's owner among the
 path's components. These are source inspections, not runtime traces.
+Each step cites at least one saved source range, and each source range that it
+cites lies inside a reviewed range of the selected entry analysis or of an
+earlier one that it names (`reviewedFiles`): the same snapshot, path and digest,
+with reviewed lines that include its lines. This is the rule for the site of a
+behavior entry. A collected excerpt that no review read does not count. A step
+can also cite other records, such as a graph or references record, for its
+scope. The shared record checks refuse a step that breaks this rule, such as
+with `Inspected path step is outside the selected source review history:
+path-1 step 2: s4-001-source-cli.ts`.
 
 Questions have `id`, `subjectRefs`, `text`, and `evidenceRefs`. Gaps have `id`,
 `kind`, `subjectRefs`, `reason`, and `evidenceRefs`. Both lists must be identical

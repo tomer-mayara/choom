@@ -9,3 +9,9 @@ Feature: Check a recovered result before Step 2 reads it
     When the operator publishes the Stage 4 draft
     Then the draft is refused
     And the operator is told which question names a subject that names nothing
+
+  Scenario: An inspected path that cites a source range that no review read is refused
+    Given a Stage 4 draft whose inspected path cites an excerpt that the review did not read
+    When the operator publishes the Stage 4 draft
+    Then the draft is refused
+    And the operator is told which step of the inspected path cites the excerpt

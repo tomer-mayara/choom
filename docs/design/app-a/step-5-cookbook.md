@@ -176,6 +176,8 @@ including initialization and setup candidates. Use source, callers, contracts,
 tests and saved ownership guidance. A reference or shared artifact alone does
 not establish an exclusive owner. Request precise additional source ranges
 when needed; do not ask the operator to classify files or write analysis.
+Each step of an inspected path cites the reviewed source range that it rests
+on; a collected excerpt that you did not review does not count.
 
 Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
@@ -408,7 +410,8 @@ guidance to the complete packet before `finish`. Check that:
   observations, source uses and system entries in a divided file, stay at file
   level.
 - Evidence references, source hashes and numbered ranges resolve. Only ranges
-  actually read by the LLM appear as new inspections.
+  actually read by the LLM appear as new inspections. Each step of an inspected
+  path cites a reviewed source range of the selected `reviewedFiles` chain.
 - Continuing component IDs remain stable. Changed intent stays proposed and
   has evidence; dependency observations are not promoted to access permission.
 - Entry history, prior questions, gaps and deferrals remain traceable. Resolution
