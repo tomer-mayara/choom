@@ -392,3 +392,13 @@ describe("the Stage 4/5 publisher with an incomplete or repeated review", () => 
     });
   }, 60_000);
 });
+
+test("the filled Stage 4 prompt asks for the observed route, member and policy", () => {
+  withPublication((fixture) => {
+    const prompt = readFileSync(join(fixture.attempt, "review-prompt.md"), "utf8");
+    expect(prompt).toContain("written path");
+    expect(prompt).toContain("resolved member");
+    expect(prompt).toContain("effective rule");
+    expect(prompt).toContain("boundaryReview");
+  });
+}, 60_000);

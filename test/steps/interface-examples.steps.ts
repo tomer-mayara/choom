@@ -40,7 +40,7 @@ async function openFixture(world: ExampleWorld, long = false) {
   await writeFile(file, stringify(baseline));
   const driver = new BaselineBrowserDriver(page(world));
   await driver.open();
-  await driver.openBaseline(file);
+  await driver.openHistoricalInventory(file);
   await expect(page(world).getByText("Baseline ready.", { exact: true })).toBeVisible();
   await page(world).getByRole("button", { name: "Billing, billing", exact: true }).click();
   await page(world).getByRole("region", { name: "Owned interfaces" }).getByRole("button", { name: "Invoice API, invoice-api", exact: true }).click();
@@ -184,7 +184,7 @@ When(/^the user changes (example|entry|entry A to B to A|same-ID baseline|closed
   } else {
     if (selection === "same-ID baseline") {
       assert.ok(this.exampleFile);
-      await new BaselineBrowserDriver(page(this)).openBaseline(this.exampleFile);
+      await new BaselineBrowserDriver(page(this)).openHistoricalInventory(this.exampleFile);
       await expect(panel(this)).toHaveCount(0);
     } else await panel(this).getByRole("button", { name: "Close details", exact: true }).click();
     await page(this).getByRole("button", { name: "Billing, billing", exact: true }).click();

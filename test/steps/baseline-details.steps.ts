@@ -66,7 +66,7 @@ async function openFixture(world: BaselineDetailsWorld, baseline: Baseline): Pro
   const viewer = new BaselineBrowserDriver(browserPage);
   await viewer.open();
   world.detailUrl = browserPage.url();
-  await viewer.openBaseline(await saveBaseline(world, baseline));
+  await viewer.openHistoricalInventory(await saveBaseline(world, baseline));
   await expect(browserPage.getByRole("heading", { name: baseline.id, exact: true })).toBeVisible();
 }
 

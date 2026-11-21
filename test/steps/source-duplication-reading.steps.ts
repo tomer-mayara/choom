@@ -31,7 +31,7 @@ Given("the reader is reading source-use details with the matching report attache
   assert.ok(this.page && this.duplicationViewer && this.duplicationBaseline && this.duplicationReport && this.duplicationData);
   const page = this.page;
   await page.setViewportSize({ width: 1280, height: 800 });
-  await this.duplicationViewer.openBaseline(this.duplicationBaseline);
+  await this.duplicationViewer.openHistoricalInventory(this.duplicationBaseline);
   await expect(page.getByRole("heading", { name: this.duplicationData.baseline.id, exact: true })).toBeVisible();
   await page.getByRole("radio", { name: "All", exact: true }).check();
   await expectSourceConnections(page);

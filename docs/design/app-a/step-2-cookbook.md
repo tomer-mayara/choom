@@ -67,10 +67,11 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 run
 ```
 
 `prepare` creates the fixed profile and verified inventory-only input.
-`toolchain` builds and checks the pinned Docker tool image; only that setup can
-use network access. Target analysis is offline. If no image is approved, inspect
-the saved reason. You may deliberately continue to `run` to record skipped Knip
-outcomes; this is the one exception to stopping after a nonzero command.
+`toolchain` builds and checks the Docker tool image and saves its image ID; only
+that setup can use network access. Target analysis is offline. If no image is
+approved, inspect the saved reason. You may deliberately continue to `run` to
+record skipped Knip outcomes; this is the one exception to stopping after a
+nonzero command.
 Unsupported preflight also produces explicit skips. Read `knip-runs.json` for the
 actual normal and production outcomes. A successful driver command means its
 receipts were saved, not that both analyses completed.
@@ -220,8 +221,13 @@ Find evidence for file entry candidates in package fields, scripts, conventions,
 and source. Consider application starts, workers, commands, migrations, tests,
 and published APIs with consumers outside the repository. Keep the declared
 expression. Keep one file candidate even if that file registers several HTTP
-routes or MCP tools. Review those operations in Stages 4 and 5. A generated
+routes or MCP tools. For a library with a declared package entry, cite the
+field and its target. Its external consumers may be outside this
+snapshot. Leave member and caller review for Stages 4 and 5. A generated
 or declaration entry does not prove a source entry.
+Keep direct launch evidence in the candidate evidenceRefs. Give a compiler root
+an unknown role unless more evidence supports a use. The plan precedes the scans.
+In the analysis, tie each tool conclusion to the applicable mode and exact receipt.
 Do not infer production use from compiler inclusion or a directory name.
 This profile keeps every plugin of Knip 6.44.1 turned off, so no settings file
 runs. It adds the default entry file-name patterns of the plugins that the
@@ -485,9 +491,12 @@ that Docker is unavailable, and `run` records the skip.
 Build the tool image from a Dockerfile with an
 [empty build context](https://docs.docker.com/build/concepts/context/#empty-context).
 This preparation can download tools. It sends no target files to the builder.
-The base tag can change; save the build output, resolved image ID, and installed
-lockfile. The analysis uses that image ID. Do not copy macOS `node_modules` into
-the Linux image; Knip uses platform-specific native packages.
+The base tag and the dependencies of Knip are not pinned, and no lockfile is
+committed, so a later build can give a different image. Each run pins its image
+by the saved image ID, not by the base tag: `toolchain` saves the build output,
+the resolved image ID and the generated lockfile (in `toolchain/metadata.json`),
+and `run` checks that image ID before it uses the image. Do not copy macOS
+`node_modules` into the Linux image; Knip uses platform-specific native packages.
 
 The module saves `docker --version` and a Dockerfile in `toolchain/`. The image
 starts from `node:24-bookworm-slim`, installs only `knip@6.44.1` with
@@ -620,7 +629,13 @@ a verified root.
 If evidence contradicts a planned candidate, record the conflict in a question
 or gap. Changing the tool inputs requires a new attempt and new tool records.
 
-Use knipRunsRef for the exact recorded tool outcomes. Do not invent, change,
+For each candidate add knipClaims for conclusions that depend on a tool run.
+Use an empty array for a purely declared launch. Each claim gives mode (normal or
+production), receiptRef (the exact knipRunsRef#/runs/N for that mode), and outcome
+(reported or unknown). Reported requires a completed scan whose saved report names
+the candidate file. A skipped or failed production scan leaves a compiler root's
+production use unknown. Keep launch evidence in evidenceRefs and retain reachability
+as not-assessed. Use knipRunsRef for the exact recorded tool outcomes. Do not invent, change,
 or replace them. Record failed or skipped analysis and coverage limits as gaps.
 When preflight marked the profile unsupported, a gap cites the preflight record
 (<attempt>-preflight). When a Knip mode failed or was skipped, a gap cites the

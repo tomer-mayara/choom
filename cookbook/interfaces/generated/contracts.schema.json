@@ -2227,6 +2227,1004 @@
             ],
             "additionalProperties": false
         },
+        "BaselineV6": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineV6.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 6
+                },
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "parentId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineComponentV5.json"
+                    }
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineInterface.json"
+                    }
+                },
+                "resources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineResource.json"
+                    }
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BaselineRule.json"
+                    }
+                },
+                "sourceUsage": {
+                    "$ref": "BaselineSourceUsage.json"
+                },
+                "systemEntryPoints": {
+                    "$ref": "BaselineSystemEntryPoints.json"
+                },
+                "boundaryReview": {
+                    "$ref": "BaselineBoundaryReview.json"
+                }
+            },
+            "required": [
+                "formatVersion",
+                "id",
+                "parentId",
+                "components",
+                "interfaces",
+                "resources",
+                "rules",
+                "boundaryReview"
+            ],
+            "additionalProperties": false
+        },
+        "BaselineBoundaryReview": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BaselineBoundaryReview.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "current"
+                        },
+                        {
+                            "type": "string",
+                            "const": "needs-refresh"
+                        }
+                    ]
+                },
+                "identity": {
+                    "$ref": "BoundaryIdentity.json"
+                },
+                "componentScopes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryComponentScope.json"
+                    }
+                },
+                "units": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryUnit.json"
+                    }
+                },
+                "operations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryOperation.json"
+                    }
+                },
+                "accesses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryAccess.json"
+                    },
+                    "maxItems": 2000
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryRule.json"
+                    }
+                },
+                "checks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryCheck.json"
+                    }
+                },
+                "callerSearches": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryCallerSearch.json"
+                    }
+                },
+                "sourceNotes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundarySourceNote.json"
+                    },
+                    "maxItems": 4000
+                },
+                "matches": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryMatch.json"
+                    }
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "statementRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                }
+            },
+            "required": [
+                "status",
+                "identity",
+                "componentScopes",
+                "units",
+                "operations",
+                "accesses",
+                "rules",
+                "checks",
+                "callerSearches",
+                "sourceNotes",
+                "matches",
+                "limitations"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryIdentity": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryIdentity.json",
+            "type": "object",
+            "properties": {
+                "projectKey": {
+                    "$ref": "baselineText.json"
+                },
+                "snapshotRef": {
+                    "$ref": "baselineText.json"
+                },
+                "inventoryDigest": {
+                    "$ref": "baselineSourceDigest.json"
+                },
+                "sourceKind": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "commit"
+                        },
+                        {
+                            "type": "string",
+                            "const": "working-tree"
+                        },
+                        {
+                            "type": "string",
+                            "const": "snapshot"
+                        }
+                    ]
+                },
+                "baseCommit": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "analysisRoots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "mappingRef": {
+                    "$ref": "baselineText.json"
+                },
+                "referenceDigest": {
+                    "$ref": "baselineSourceDigest.json"
+                }
+            },
+            "required": [
+                "projectKey",
+                "snapshotRef",
+                "inventoryDigest",
+                "sourceKind",
+                "baseCommit",
+                "analysisRoots",
+                "mappingRef"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryComponentScope": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryComponentScope.json",
+            "type": "object",
+            "properties": {
+                "componentId": {
+                    "$ref": "baselineId.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "purpose": {
+                    "$ref": "baselineText.json"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryRole.json"
+                    }
+                },
+                "basis": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "declaration"
+                        },
+                        {
+                            "type": "string",
+                            "const": "complete-review"
+                        },
+                        {
+                            "type": "string",
+                            "const": "observed"
+                        },
+                        {
+                            "type": "string",
+                            "const": "unknown"
+                        }
+                    ]
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "reason": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "componentId",
+                "name",
+                "purpose",
+                "roles",
+                "basis",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryRole": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryRole.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "production"
+                },
+                {
+                    "type": "string",
+                    "const": "test"
+                },
+                {
+                    "type": "string",
+                    "const": "development"
+                },
+                {
+                    "type": "string",
+                    "const": "build"
+                },
+                {
+                    "type": "string",
+                    "const": "ci"
+                },
+                {
+                    "type": "string",
+                    "const": "benchmark"
+                },
+                {
+                    "type": "string",
+                    "const": "example"
+                },
+                {
+                    "type": "string",
+                    "const": "environment"
+                },
+                {
+                    "type": "string",
+                    "const": "unknown"
+                }
+            ]
+        },
+        "BoundaryUnit": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryUnit.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "path": {
+                    "$ref": "baselineText.json"
+                },
+                "symbol": {
+                    "$ref": "baselineText.json"
+                },
+                "unitKind": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "file"
+                        },
+                        {
+                            "type": "string",
+                            "const": "symbol"
+                        },
+                        {
+                            "type": "string",
+                            "const": "rest"
+                        }
+                    ]
+                },
+                "ownerId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "stableId": {
+                    "$ref": "baselineText.json"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryRole.json"
+                    }
+                },
+                "purposeRoles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "generatedFromRef": {
+                    "$ref": "baselineText.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "reason": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "id",
+                "path",
+                "unitKind",
+                "ownerId",
+                "roles",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryOperation": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryOperation.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "unitId": {
+                    "$ref": "baselineId.json"
+                },
+                "member": {
+                    "$ref": "baselineText.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "stableId": {
+                    "$ref": "baselineText.json"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryRole.json"
+                    }
+                },
+                "visibility": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "public"
+                        },
+                        {
+                            "type": "string",
+                            "const": "private"
+                        },
+                        {
+                            "type": "string",
+                            "const": "unknown"
+                        }
+                    ]
+                },
+                "interfaceId": {
+                    "$ref": "baselineId.json"
+                },
+                "entryId": {
+                    "$ref": "baselineId.json"
+                },
+                "systemEntryIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineId.json"
+                    }
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "reason": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "id",
+                "unitId",
+                "member",
+                "name",
+                "roles",
+                "visibility",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryAccess": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryAccess.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "callerUnitId": {
+                    "$ref": "baselineId.json"
+                },
+                "writtenPath": {
+                    "$ref": "baselineText.json"
+                },
+                "targetUnitId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "member": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineText.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "operationId": {
+                    "$ref": "baselineId.json"
+                },
+                "kind": {
+                    "$ref": "BoundaryAccessKind.json"
+                },
+                "context": {
+                    "$ref": "baselineText.json"
+                },
+                "callerRole": {
+                    "$ref": "BoundaryRole.json"
+                },
+                "targetRole": {
+                    "$ref": "BoundaryRole.json"
+                },
+                "callerRef": {
+                    "$ref": "baselineText.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "sourceUse": {
+                    "$ref": "BoundarySourceUseLink.json"
+                },
+                "emittedCopies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryEmittedCopy.json"
+                    }
+                },
+                "reason": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "id",
+                "callerUnitId",
+                "writtenPath",
+                "targetUnitId",
+                "member",
+                "kind",
+                "context",
+                "callerRole",
+                "targetRole",
+                "callerRef",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryAccessKind": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryAccessKind.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "import"
+                },
+                {
+                    "type": "string",
+                    "const": "re-export"
+                },
+                {
+                    "type": "string",
+                    "const": "dynamic-import"
+                },
+                {
+                    "type": "string",
+                    "const": "require"
+                },
+                {
+                    "type": "string",
+                    "const": "call"
+                },
+                {
+                    "type": "string",
+                    "const": "type"
+                }
+            ]
+        },
+        "BoundarySourceUseLink": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundarySourceUseLink.json",
+            "type": "object",
+            "properties": {
+                "interfaceId": {
+                    "$ref": "baselineId.json"
+                },
+                "useId": {
+                    "$ref": "baselineId.json"
+                }
+            },
+            "required": [
+                "interfaceId",
+                "useId"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryEmittedCopy": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryEmittedCopy.json",
+            "type": "object",
+            "properties": {
+                "sourceRef": {
+                    "$ref": "baselineText.json"
+                },
+                "emittedRef": {
+                    "$ref": "baselineText.json"
+                },
+                "proofRef": {
+                    "$ref": "baselineText.json"
+                }
+            },
+            "required": [
+                "sourceRef",
+                "emittedRef",
+                "proofRef"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryRule": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryRule.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "name": {
+                    "$ref": "baselineText.json"
+                },
+                "kind": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "reachability"
+                        },
+                        {
+                            "type": "string",
+                            "const": "path"
+                        },
+                        {
+                            "type": "string",
+                            "const": "visibility"
+                        },
+                        {
+                            "type": "string",
+                            "const": "allowlist"
+                        },
+                        {
+                            "type": "string",
+                            "const": "exception"
+                        },
+                        {
+                            "type": "string",
+                            "const": "unsupported"
+                        }
+                    ]
+                },
+                "authority": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "repository"
+                        },
+                        {
+                            "type": "string",
+                            "const": "accepted"
+                        },
+                        {
+                            "type": "string",
+                            "const": "proposed"
+                        },
+                        {
+                            "type": "string",
+                            "const": "conflict"
+                        }
+                    ]
+                },
+                "revision": {
+                    "$ref": "baselineText.json"
+                },
+                "scope": {
+                    "$ref": "baselineText.json"
+                },
+                "settings": {
+                    "$ref": "BaselineRuleObject.json"
+                },
+                "accessKinds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryAccessKind.json"
+                    }
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "statementRef": {
+                    "$ref": "baselineText.json"
+                },
+                "acceptanceRef": {
+                    "$ref": "baselineText.json"
+                },
+                "referenceDigest": {
+                    "$ref": "baselineSourceDigest.json"
+                },
+                "overridesRuleId": {
+                    "$ref": "baselineId.json"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "kind",
+                "authority",
+                "revision",
+                "scope",
+                "settings",
+                "accessKinds",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryCheck": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryCheck.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "baselineId.json"
+                },
+                "ruleId": {
+                    "$ref": "baselineId.json"
+                },
+                "sourceUnitId": {
+                    "$ref": "baselineId.json"
+                },
+                "targetUnitId": {
+                    "$ref": "baselineId.json"
+                },
+                "context": {
+                    "$ref": "baselineText.json"
+                },
+                "checker": {
+                    "$ref": "baselineText.json"
+                },
+                "checkerVersion": {
+                    "$ref": "baselineText.json"
+                },
+                "result": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "forbidden"
+                        },
+                        {
+                            "type": "string",
+                            "const": "allowed"
+                        },
+                        {
+                            "type": "string",
+                            "const": "absent"
+                        },
+                        {
+                            "type": "string",
+                            "const": "unknown"
+                        }
+                    ]
+                },
+                "accessIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineId.json"
+                    }
+                },
+                "coverage": {
+                    "$ref": "BoundaryCoverage.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "exceptionId": {
+                    "$ref": "baselineId.json"
+                }
+            },
+            "required": [
+                "id",
+                "ruleId",
+                "sourceUnitId",
+                "targetUnitId",
+                "context",
+                "checker",
+                "checkerVersion",
+                "result",
+                "accessIds",
+                "coverage",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryCoverage": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryCoverage.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "complete"
+                        },
+                        {
+                            "type": "string",
+                            "const": "partial"
+                        },
+                        {
+                            "type": "string",
+                            "const": "unassessed"
+                        }
+                    ]
+                },
+                "roots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "inventoryRoots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "examinedUnitIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineId.json"
+                    }
+                },
+                "accessKinds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "BoundaryAccessKind.json"
+                    }
+                },
+                "missingRoots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                },
+                "unresolvedAccessIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineId.json"
+                    }
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                }
+            },
+            "required": [
+                "status",
+                "roots",
+                "examinedUnitIds",
+                "accessKinds",
+                "missingRoots",
+                "unresolvedAccessIds",
+                "limitations"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryCallerSearch": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryCallerSearch.json",
+            "type": "object",
+            "properties": {
+                "operationId": {
+                    "$ref": "baselineId.json"
+                },
+                "role": {
+                    "$ref": "BoundaryRole.json"
+                },
+                "coverage": {
+                    "$ref": "BoundaryCoverage.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                }
+            },
+            "required": [
+                "operationId",
+                "role",
+                "coverage",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "BoundarySourceNote": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundarySourceNote.json",
+            "type": "object",
+            "properties": {
+                "evidenceRef": {
+                    "$ref": "baselineText.json"
+                },
+                "description": {
+                    "$ref": "baselineText.json"
+                },
+                "location": {
+                    "$ref": "BaselineSourceLocation.json"
+                }
+            },
+            "required": [
+                "evidenceRef",
+                "description",
+                "location"
+            ],
+            "additionalProperties": false
+        },
+        "BoundaryMatch": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "BoundaryMatch.json",
+            "type": "object",
+            "properties": {
+                "referenceDigest": {
+                    "$ref": "baselineSourceDigest.json"
+                },
+                "oldPath": {
+                    "$ref": "baselineText.json"
+                },
+                "oldSymbol": {
+                    "$ref": "baselineText.json"
+                },
+                "oldMember": {
+                    "$ref": "baselineText.json"
+                },
+                "unitId": {
+                    "$ref": "baselineId.json"
+                },
+                "operationId": {
+                    "$ref": "baselineId.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineText.json"
+                    }
+                }
+            },
+            "required": [
+                "referenceDigest",
+                "oldPath",
+                "unitId",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
         "BaselineDecisionObject": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "BaselineDecisionObject.json",
@@ -2410,6 +3408,239 @@
                 }
             ]
         },
+        "IsolationInput": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "IsolationInput.json",
+            "type": "object",
+            "properties": {
+                "baseline": {
+                    "$ref": "Baseline.json"
+                },
+                "sha256": {
+                    "$ref": "baselineSourceDigest.json"
+                }
+            },
+            "required": [
+                "baseline",
+                "sha256"
+            ],
+            "additionalProperties": false
+        },
+        "Baseline": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "Baseline.json",
+            "anyOf": [
+                {
+                    "$ref": "BaselineV1.json"
+                },
+                {
+                    "$ref": "BaselineV2.json"
+                },
+                {
+                    "$ref": "BaselineV3.json"
+                },
+                {
+                    "$ref": "BaselineV4.json"
+                },
+                {
+                    "$ref": "BaselineV5.json"
+                },
+                {
+                    "$ref": "BaselineV6.json"
+                }
+            ]
+        },
+        "IsolationEvidence": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "IsolationEvidence.json",
+            "type": "object",
+            "properties": {
+                "callerUnitId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "targetUnitId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "ruleId": {
+                    "anyOf": [
+                        {
+                            "$ref": "baselineId.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "statementRef": {
+                    "$ref": "baselineText.json"
+                },
+                "accessIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineId.json"
+                    }
+                },
+                "resultIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineId.json"
+                    }
+                },
+                "coverageIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "baselineId.json"
+                    }
+                }
+            },
+            "required": [
+                "callerUnitId",
+                "targetUnitId",
+                "ruleId",
+                "accessIds",
+                "resultIds",
+                "coverageIds"
+            ],
+            "additionalProperties": false
+        },
+        "IsolationFinding": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "IsolationFinding.json",
+            "type": "object",
+            "properties": {
+                "change": {
+                    "$ref": "IsolationChange.json"
+                },
+                "reason": {
+                    "$ref": "baselineText.json"
+                },
+                "before": {
+                    "anyOf": [
+                        {
+                            "$ref": "IsolationEvidence.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "after": {
+                    "anyOf": [
+                        {
+                            "$ref": "IsolationEvidence.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "change",
+                "reason",
+                "before",
+                "after"
+            ],
+            "additionalProperties": false
+        },
+        "IsolationChange": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "IsolationChange.json",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "const": "New violation"
+                },
+                {
+                    "type": "string",
+                    "const": "Resolved violation"
+                },
+                {
+                    "type": "string",
+                    "const": "Existing violation"
+                },
+                {
+                    "type": "string",
+                    "const": "Interface use changed"
+                },
+                {
+                    "type": "string",
+                    "const": "Policy or ownership changed"
+                },
+                {
+                    "type": "string",
+                    "const": "Entered production scope"
+                },
+                {
+                    "type": "string",
+                    "const": "Left production scope"
+                },
+                {
+                    "type": "string",
+                    "const": "Needs review"
+                },
+                {
+                    "type": "string",
+                    "const": "Comparison limited"
+                }
+            ]
+        },
+        "IsolationComparison": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "IsolationComparison.json",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "compared"
+                        },
+                        {
+                            "type": "string",
+                            "const": "identical"
+                        },
+                        {
+                            "type": "string",
+                            "const": "incompatible-format"
+                        },
+                        {
+                            "type": "string",
+                            "const": "project-mismatch"
+                        }
+                    ]
+                },
+                "findings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "IsolationFinding.json"
+                    }
+                },
+                "complete": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "status",
+                "findings",
+                "complete"
+            ],
+            "additionalProperties": false
+        },
         "DiscoveryQuestion": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "DiscoveryQuestion.json",
@@ -2555,27 +3786,6 @@
                 "gaps"
             ],
             "additionalProperties": false
-        },
-        "Baseline": {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "Baseline.json",
-            "anyOf": [
-                {
-                    "$ref": "BaselineV1.json"
-                },
-                {
-                    "$ref": "BaselineV2.json"
-                },
-                {
-                    "$ref": "BaselineV3.json"
-                },
-                {
-                    "$ref": "BaselineV4.json"
-                },
-                {
-                    "$ref": "BaselineV5.json"
-                }
-            ]
         },
         "DecodedBaseline": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2796,6 +4006,10 @@
                         {
                             "type": "number",
                             "const": 5
+                        },
+                        {
+                            "type": "number",
+                            "const": 6
                         }
                     ]
                 },
@@ -3752,6 +4966,236 @@
             "type": "string",
             "maxLength": 16777216
         },
+        "ReviewedRoleUse": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "ReviewedRoleUse.json",
+            "type": "object",
+            "properties": {
+                "role": {
+                    "$ref": "BoundaryRole.json"
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "role",
+                "evidenceRefs"
+            ],
+            "additionalProperties": false
+        },
+        "UnitUseReview": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "UnitUseReview.json",
+            "type": "object",
+            "properties": {
+                "unitScope": {
+                    "anyOf": [
+                        {
+                            "$ref": "BoundaryRole.json"
+                        },
+                        {
+                            "type": "string",
+                            "const": "mixed"
+                        }
+                    ]
+                },
+                "basis": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "declaration"
+                        },
+                        {
+                            "type": "string",
+                            "const": "complete-review"
+                        },
+                        {
+                            "type": "string",
+                            "const": "partial-review"
+                        }
+                    ]
+                },
+                "uses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "ReviewedRoleUse.json"
+                    }
+                },
+                "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1
+                },
+                "limits": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "unitScope",
+                "basis",
+                "uses",
+                "evidenceRefs",
+                "limits"
+            ],
+            "additionalProperties": false
+        },
+        "FrozenBaselineReference": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "FrozenBaselineReference.json",
+            "type": "object",
+            "properties": {
+                "artifactRef": {
+                    "type": "string",
+                    "const": "reference-baseline-001"
+                },
+                "sha256": {
+                    "$ref": "baselineSourceDigest.json"
+                }
+            },
+            "required": [
+                "artifactRef",
+                "sha256"
+            ],
+            "additionalProperties": false
+        },
+        "RunProject": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RunProject.json",
+            "type": "object",
+            "properties": {
+                "projectKey": {
+                    "$ref": "baselineText.json"
+                },
+                "referenceBaseline": {
+                    "anyOf": [
+                        {
+                            "$ref": "FrozenBaselineReference.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "projectKey",
+                "referenceBaseline"
+            ],
+            "additionalProperties": false
+        },
+        "CandidateKnipClaim": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "CandidateKnipClaim.json",
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "normal"
+                        },
+                        {
+                            "type": "string",
+                            "const": "production"
+                        }
+                    ]
+                },
+                "receiptRef": {
+                    "type": "string"
+                },
+                "outcome": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "unknown"
+                        },
+                        {
+                            "type": "string",
+                            "const": "reported"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "mode",
+                "receiptRef",
+                "outcome"
+            ],
+            "additionalProperties": false
+        },
+        "RegistrationClue": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RegistrationClue.json",
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "const": "registration"
+                },
+                "operation": {
+                    "type": "string"
+                },
+                "context": {
+                    "$ref": "BoundaryRole.json"
+                },
+                "sourceRef": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "kind",
+                "operation",
+                "context",
+                "sourceRef"
+            ],
+            "additionalProperties": false
+        },
+        "UnresolvedLoaderClue": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "UnresolvedLoaderClue.json",
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "const": "unresolved-loader"
+                },
+                "context": {
+                    "type": "string",
+                    "const": "unknown"
+                },
+                "sourceRef": {
+                    "type": "string"
+                },
+                "matchRef": {
+                    "type": "string"
+                },
+                "expression": {
+                    "type": "string"
+                },
+                "missingBinding": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "kind",
+                "context",
+                "sourceRef",
+                "matchRef",
+                "expression",
+                "missingBinding"
+            ],
+            "additionalProperties": false
+        },
         "BehaviorEntryCallRule": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "BehaviorEntryCallRule.json",
@@ -4118,6 +5562,18 @@
             ],
             "additionalProperties": false
         },
+        "InspectionClue": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "InspectionClue.json",
+            "anyOf": [
+                {
+                    "$ref": "RegistrationClue.json"
+                },
+                {
+                    "$ref": "UnresolvedLoaderClue.json"
+                }
+            ]
+        },
         "ReadDocumentFileRequest": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "ReadDocumentFileRequest.json",
@@ -4432,6 +5888,10 @@
                         {
                             "type": "string",
                             "const": "discovery"
+                        },
+                        {
+                            "type": "string",
+                            "const": "comparison"
                         }
                     ]
                 },

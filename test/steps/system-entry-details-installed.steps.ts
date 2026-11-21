@@ -25,7 +25,7 @@ Given("the system-entry details baseline is available to installed Choom", { tim
 When("the reader opens its baseline and Checkout component", { timeout: 60_000 },
   async function (this: InstalledEntryWorld) {
     const baseline = systemEntryDetailsBaseline();
-    await this.entryDriver.openBaseline(this.entryBaselinePath);
+    await this.entryDriver.openHistoricalInventory(this.entryBaselinePath);
     await this.entryDriver.expectBaseline(baseline.id, baseline.components.map(({ id, name }) => [id, name]));
     await this.entryDriver.clickControl('.react-flow__node[data-id="checkout"] button[aria-haspopup="dialog"]', "Checkout");
     await waitFor(async () => (await this.entryDriver.panel()).panelTitle === "Component details", "Checkout details must open");

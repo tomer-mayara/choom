@@ -22,7 +22,7 @@ CR, or CRLF pair counts as one line break. The parser checks bounds before
 model validation. See [documents.md](documents.md#yaml-encoding) for the shared
 parser rules.
 
-A numeric `formatVersion` other than 1, 2, 3, 4, or 5 returns `unsupported-version`. Missing
+A numeric `formatVersion` outside 1 through 6 returns `unsupported-version`. Missing
 or invalid model fields return `invalid-document`, with the field path when
 available. YAML syntax and unsupported YAML constructs return
 `invalid-encoding`; exceeded bounds return `limit-exceeded`. Error messages do
@@ -30,7 +30,7 @@ not contain raw input values, unknown field names, or parser exception text.
 Every result includes a nonnegative duration in milliseconds. These local
 results do not establish a production reliability or latency claim.
 
-Version 2 to 5 documentation has these additional limits. They do not restrict old
+Version 2 through 6 documentation has these additional limits. They do not restrict old
 architecture fields in any supported version.
 
 | Value | Limit |
@@ -115,3 +115,11 @@ bun run test:rust
 bun run check:contracts
 bun run check:dependencies
 ```
+
+
+Version 6 requires a boundary review. Its 2,000 logical sites, 4,000 source
+notes and 2 MiB of compact UTF-8 JSON are independent limits checked before
+scope selection. The codec resolves references and rejects inconsistent owner,
+member, source-use and evidence bindings. A valid decision-derived review
+marked `needs-refresh` is readable. The viewer withholds stale verdicts until
+the producer publishes a fresh review.

@@ -476,7 +476,16 @@ or installs. Do not use the live repository or fetch external information.
 
 Review the known entry candidates and relevant loading-search matches first.
 Include test runners, setup and framework loading where saved evidence supports
-them. Then inspect the reported-symbol evidence.
+them. Then inspect the reported-symbol evidence. Preserve each candidate's knipClaims.
+For a registration, record an inspection priority with a clue. Give kind registration,
+operation, context and sourceRef. Cite the reviewed range in evidenceRefs and name
+the file or its candidate in subjectRefs. For example, GET /health registered in
+a Fastify injection test has context test. Stage 4 checks the handler and its use.
+For an unresolved loader give kind unresolved-loader, context unknown, sourceRef,
+matchRef ({{ID}}-file@loading-search.json#/matches/N), expression (as written) and missingBinding. Cite
+the exact reviewed range and loading-search match. Name the loader in subjectRefs
+or the action. Keep the target unresolved when the specifier is computed and no
+binding is known. A literal specifier is a written route only until bound.
 Syntax matches are candidates. Identifier-name matches are not resolved uses.
 Read surrounding source to distinguish module loading from data reads, regex
 calls and other matching syntax. Check excerpt caps and truncated expressions;
@@ -494,7 +503,10 @@ and a truncated outcome is a partial list.
 To find the names that a source file exports, request an exports list with the
 path and a reason. An exports record lists the exports of that file from its
 syntax, with the compiler settings, the missing compiler inputs and the limits.
-An export is not a use, and the names of export * are in the other module.
+For a reviewed public entry that re-exports members, follow the written path
+to the declaring file. Name the export or unresolved binding and its reviewed
+source range in the inspection priority when it could change an interface.
+Stages 4 and 5 check the member and its callers.
 Do not ask the operator to classify files or write analysis records. If evidence
 is unavailable, record the gap and continue with supported conclusions.
 
@@ -512,7 +524,7 @@ gaps: records with exactly id, kind, subjectRefs, reason, evidenceRefs
 reachability: {status: not-assessed, reason: an evidence-supported explanation}
 llmReview: recorded
 knipAssessment: {action: reuse or rerun-required, reason: an explanation, evidenceRefs: [...]}
-inspectionPriorities: records with id, subjectRefs, priority, action, reason, evidenceRefs
+inspectionPriorities: records with id, subjectRefs, priority, action, reason, evidenceRefs; add clue for registrations and unresolved loaders
 
 Keep unchanged candidates, including their IDs and contents. Give a materially
 revised or new candidate a new ID beginning with {{ID}}-. For a revision, cite

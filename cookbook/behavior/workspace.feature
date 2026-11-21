@@ -17,3 +17,9 @@ Feature: Baseline workspace starter
     When I explore the example
     Then the starter baseline is visible
     And no browser page errors have occurred
+
+  Scenario: The starter baseline groups the model and the platform adapter in the workspace
+    Given the browser workspace is open
+    When I explore the example
+    Then Architecture model and Platform adapter appear inside Workspace in the example
+    And no browser page errors have occurred

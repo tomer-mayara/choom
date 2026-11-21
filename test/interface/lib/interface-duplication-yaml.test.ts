@@ -56,7 +56,7 @@ test("generated and runtime report contracts accept a version 3 baseline binding
 
 test("version 3 reports still require supported versions, exact bytes and resolvable facts", () => {
   const { baseline, report, sha256 } = duplicationV3Fixture();
-  expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: { ...report.baseline, formatVersion: 6 } }), baseline, sha256))
+  expect(duplicationReportCodec.decode(JSON.stringify({ ...report, baseline: { ...report.baseline, formatVersion: 7 } }), baseline, sha256))
     .toMatchObject({ status: "failure", code: "invalid-document" });
   for (const changed of [
     { ...report, findings: report.findings.map((finding) => ({ ...finding, facts: [{

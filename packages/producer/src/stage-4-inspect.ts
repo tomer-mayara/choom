@@ -12,7 +12,7 @@ import type * as Yaml from 'yaml';
 import { behaviorEntryRulesFile, readRuleList } from './behavior-entry-rules.ts';
 import { savedSettings, settingsRef } from './compiler-settings.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
-import { assert, type Fields, hash } from './record-checks.ts';
+import { assert, type Fields, hash, list, object, text } from './record-checks.ts';
 import { resourceAccessRuleList, resourceAccessRulesFile } from './resource-access-rules.ts';
 import { checkPinnedRules, readRules } from './rule-lists.ts';
 import { syntaxParser } from './snapshot-project.ts';
@@ -22,7 +22,7 @@ import type { Picomatch } from './stage-4-graph-profile.ts';
 import { registeredPluginPatterns } from './stage-4-plugin-entries.ts';
 import { referencesRecord } from './stage-4-references.ts';
 import { resourceAccessRecord } from './stage-4-resource-access.ts';
-import { reviewPrompt } from './stage-4-review-prompt.ts';
+import { type PromptFacts, type ReviewPass, reviewPrompt } from './stage-4-review-prompt.ts';
 import { stageFourRuleLists } from './stage-4-rule-lists.ts';
 import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 
@@ -39,7 +39,7 @@ interface InventoryFile { path: string; kind: string; bytes: number; sha256: str
 // snapshot files and the selected entry analysis.
 interface InspectState {
   handoff: Fields; run: Fields; artifacts: Map<string, Buffer>; profile: Fields; files: Map<string, InventoryFile>;
-  snapshotRoot: string; entry: Fields;
+  snapshotRoot: string; entry: Fields; graph: PromptFacts['graph'];
   source(path: string, maxBytes?: number): Buffer;
 }
 interface OperatorRecord {
@@ -78,7 +78,7 @@ assert(work !== tools && !tools.startsWith(work + '/'), 'Keep the trusted tool c
 refuseChangedProducerCode(work, tools);
 const artifactId = (name: string): string => id + '-file@' + encodeURIComponent(name);
 const saved = (name: string): Buffer => { assert(safePath(name), 'Invalid saved path.'); return read(join(attempt, name)); };
-const json = (name: string): Fields => JSON.parse(utf8(saved(name), name)) as Fields;
+const json = (name: string, bytes = saved(name)): Fields => JSON.parse(utf8(bytes, name)) as Fields;
 const save = (name: string, bytes: string | Buffer): void => writeFileSync(join(attempt, name), bytes, { flag: 'wx' });
 const saveJson = (name: string, value: unknown): void => save(name, JSON.stringify(value, null, 2) + '\n');
 const require = createRequire(join(tools, 'package.json'));
@@ -176,11 +176,22 @@ function inventoryFiles(handoff: Fields, run: Fields, artifacts: Map<string, Buf
   return files;
 }
 
-// The saved graph profile, after the checks that the graph run completed for its
-// contexts and that its source scope is the saved Stage 3 scope.
-function checkedProfile(handoff: Fields, discovery: Fields, artifacts: Map<string, Buffer>): Fields {
-  const profile = json('graph-profile.json');
-  const graph = json('graph-results.json');
+// Read the saved traversal counts without retaining the raw dependency graph during source collection.
+function reviewPass(context: Fields): ReviewPass {
+  const { id, coverage, reachability } = context;
+  assert(text(id) && text(coverage) && object(reachability), 'Missing traversal evidence for context ' + id);
+  const roots = list(reachability.roots, 'traversal roots');
+  assert(roots.every(text), 'Invalid traversal root paths for context ' + id);
+  return { id, coverage, roots, scanned: list(context.scanFiles, 'scan files').length, edges: list(context.edges, 'edges').length,
+    reached: list(reachability.reached, 'reached files').length, stoppedEdges: list(reachability.stoppedEdges, 'stopped edges').length };
+}
+
+// The profile and the graph evidence from the completed run over the saved Stage 3 scope.
+function checkedGraph(handoff: Fields, discovery: Fields, artifacts: Map<string, Buffer>): Pick<InspectState, 'profile' | 'graph'> {
+  const profileBytes = saved('graph-profile.json');
+  const graphBytes = saved('graph-results.json');
+  const profile = json('graph-profile.json', profileBytes);
+  const graph = json('graph-results.json', graphBytes);
   receipt('run', ['graph-results.json', 'graph-run.json']);
   const loadingRef = (discovery.entryAnalysisRef as string).replace(/-entry-analysis$/, '-file@loading-search.json');
   const loading = JSON.parse(String(artifacts.get(loadingRef))) as Fields;
@@ -199,10 +210,10 @@ function checkedProfile(handoff: Fields, discovery: Fields, artifacts: Map<strin
   'Expected completed graph contexts with documented coverage limits.');
   const graphRun = json('graph-run.json');
   assert(graphRun.attemptId === id && graphRun.snapshotRef === handoff.snapshotRef && graphRun.status === 'completed' &&
-    graphRun.profileRef === artifactId('graph-profile.json') && graphRun.profileSha256 === hash(saved('graph-profile.json')) &&
-    graphRun.graphRef === artifactId('graph-results.json') && graphRun.graphSha256 === hash(saved('graph-results.json')),
+    graphRun.profileRef === artifactId('graph-profile.json') && graphRun.profileSha256 === hash(profileBytes) &&
+    graphRun.graphRef === artifactId('graph-results.json') && graphRun.graphSha256 === hash(graphBytes),
   'Graph run identity or digests changed.');
-  return profile;
+  return { profile, graph: { ref: graphRun.graphRef, contexts: contexts.map(reviewPass) } };
 }
 
 // Streams an indexed file that is too large for an excerpt to check its digest,
@@ -245,7 +256,7 @@ function state(): InspectState {
     discovery.entryAnalysisRef === handoff.entryAnalysisRef, 'Expected a finalized Stage 3 handoff.');
   const artifacts = registeredArtifacts(run);
   const files = inventoryFiles(handoff, run, artifacts);
-  const profile = checkedProfile(handoff, discovery, artifacts);
+  const { profile, graph } = checkedGraph(handoff, discovery, artifacts);
   for (const record of profile.sourceFiles as SourceFile[])
     assert(files.get(record.path)?.kind === 'file' && files.get(record.path)?.sha256 === record.sha256,
       'Source scope does not match the inventory: ' + record.path);
@@ -256,7 +267,7 @@ function state(): InspectState {
   const entry = parse(utf8(artifacts.get(discovery.entryAnalysisRef as string) as Buffer, 'selected entry analysis')) as Fields;
   if (lstatSync(join(attempt, 'source-sites.json'), { throwIfNoEntry: false }))
     assert(isDeepStrictEqual(json('source-sites.json').parser, parser), 'Trusted parser changed since collect.');
-  return { handoff, run, artifacts, profile, files, snapshotRoot: snapshot, source, entry };
+  return { handoff, run, artifacts, profile, graph, files, snapshotRoot: snapshot, source, entry };
 }
 
 function excerpt(current: InspectState, path: string, first: number, last: number, sourceId: string): Fields {
@@ -351,7 +362,7 @@ function collect(current: InspectState): string[] {
   saveJson('resource-access-candidates.json', resourceAccess(current));
   saveJson('source-excerpts.json', initialExcerpts(current));
   save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,
-    entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt }));
+    entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt, graph: current.graph }));
   saveJson('artifact-map.json', { formatVersion: 1, attemptId: id, snapshotRef: current.handoff.snapshotRef,
     status: 'proposed', artifacts: artifactMap(),
     limits: ['This map is not registered yet. It omits itself, the mutable command log, and later files.'] });

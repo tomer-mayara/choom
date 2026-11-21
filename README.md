@@ -50,9 +50,44 @@ Open <http://127.0.0.1:1420>. For the desktop shell, first install the [Tauri sy
 bun run desktop
 ```
 
-Use **Open Baseline** to select a `formatVersion: 1`, `2`, `3`, `4`, or `5` baseline in
-the browser or desktop app.
-The input must be valid UTF-8 and at most 16 MiB.
+## Read a component baseline
+
+Choose **Open Baseline** in the browser or desktop app. Choom accepts baseline
+versions 1 through 6 in a UTF-8 file up to 16 MiB. A v6 baseline opens in
+**Production**. Check the project, revision or working tree, and choose a card
+to see **Provides**, **Uses** and **Evidence**. Provides lists the provider,
+permitted callers, and observed outside callers. Expand a caller to inspect its
+sites. A complete search can establish zero production callers. A partial
+search shows **Caller coverage incomplete**.
+
+Turn on **Show non-production** to include test components, developer tools,
+examples and records whose scope is unknown. The switch also reveals original
+evidence. To read a published run’s questions and gaps, choose **Discovery**,
+then **Open discovery result**, and select `runs/<run-id>/discovery.yaml` from
+the same run. For an older nonempty inventory, **Production scope unavailable**
+means the file predates role classification. Turn on the switch to inspect
+the saved inventory and its known test uses.
+
+## Compare two saved baselines
+
+Open the current v6 file as After. Choose **Compare with earlier baseline** and
+select Before from the same project. The two SHA-256 digests identify the
+files even when their local baseline IDs match. Expand a finding to see the
+actual operation, rule, sites and search coverage from either side. The
+selected order determines the direction for two working trees.
+
+A **New violation** requires evidence of the crossing in After and comparable
+proof of absence in Before. An existing indirect path that becomes direct
+remains an **Existing violation**. **Comparison limited** identifies missing
+evidence or a review that needs refresh. A policy decision can change the
+result on the same snapshot. Cancel, retry or close a comparison to keep
+inspecting the current file. A successful new After starts in Production.
+[Comparison walkthrough](docs/design/app-a/isolation-comparison.md)
+
+## Inspect earlier formats
+
+The following inventory and evidence controls are available after opting in to
+an older inventory.
 Version 2 can add saved interface documentation. Version 3 retains those fields
 and can add source-use records with a shared snapshot and code mapping.
 Version 4 can also add a saved [system-entry assessment](cookbook/interfaces/baseline-system-entry-points.tsp)
@@ -62,9 +97,9 @@ evidence, and optional source lines. An interface link opens the saved operation
 or interface Overview, and Back returns to the component entry.
 Version 5 retains version 4 and lets a component's membership also name
 symbols in a file, such as `computePrice` in `billing/invoice.ts`. Component
-details list them under **Membership → Symbols**. The viewer checks their syntax
-only. The producer writes version 5 in Stage 5 and checks each symbol against the
-saved snapshot. Try the
+details list them under **Membership → Symbols**. The viewer checks their syntax.
+Stage 5 checks each symbol against the saved snapshot. New project-keyed runs
+carry these selectors in version 6. Try the
 [symbol membership example](test/fixtures/baseline-viewer/symbol-membership.yaml).
 Versions 1 and 2 keep their strict fields. An interface's **Original record** disclosure retains all saved
 values, including documentation and statement references.
@@ -246,7 +281,7 @@ Choom does not load referenced files or execute recorded checks.
 After opening a saved baseline, choose **Duplicates**, then **Open duplication
 report** (**Open report** in narrow windows). Select the report published by the external assessment. Its baseline
 ID, format version and SHA-256 must match the original baseline file bytes.
-Report version 1 can bind to baseline versions 1 through 5.
+Report version 1 can bind to baseline versions 1 through 6.
 Reformatting a baseline requires a new bound report. Browser file reading needs
 HTTPS or loopback for SHA-256; the desktop reader hashes the bytes locally.
 
@@ -371,6 +406,18 @@ bun run test:e2e --tags @br-10
 bun run check:contracts
 ```
 
+The built-in example nests Architecture model and Platform adapter in Workspace,
+and Workspace excludes their files, so each file has one direct owner. Run its
+focused checks with:
+
+```sh
+bun test ./packages/producer/test/integration/records/starter-baseline.test.ts
+bun run test:e2e --name "starter baseline"
+```
+
+The suite checks the example with the path rule of the producer's code mapping
+check, which `pathOwners` in `code-units.ts` holds.
+
 Run the focused side-panel checks with:
 
 ```sh
@@ -428,7 +475,8 @@ Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
 starts the `node` on `PATH` and requires the major version in `.node-version`.
 It also runs `packages/producer/test/integration/records`, where the producer
 record validator runs with the shared baseline rules of `@choom/baseline-model`.
-The same folder holds the suites of the `baseline decide` and `baseline next` commands.
+The same folder holds the suites of the `baseline decide` and `baseline next` commands,
+and the suite that checks the direct owners of the built-in example.
 Run all suites from the repository root.
 `bun run test:producer:docker` runs `packages/producer/test/integration/docker`
 and the `docker` Cucumber profile. These suites need a Docker engine and stop
@@ -527,8 +575,9 @@ working discovery, `baselineRef`, and `baselineDigest`, the SHA-256 of the bytes
 of the fixed baseline file that it saves. `fixedDiscovery` in `stage-6-records.ts`
 makes the record. Stage 6 `verify` runs the shared record checks on the saved
 fixed records with the bytes of the saved baseline file, and refuses a discovery
-result whose baseline ID or digest does not match. The working discovery stays
-version 1. The [record format](docs/design/app-a/record-format.md#fixed-discovery-result)
+result whose baseline ID or digest does not match. The reviewed Stage 5 proposal
+uses version 1. Stage 6 `finish` writes the same version 2 bytes to the run-root
+and fixed discovery files. The [record format](docs/design/app-a/record-format.md#fixed-discovery-result)
 gives the fields. The `@producer` scenarios save a Stage 6 result through the
 command line and check its digest, and refuse a run whose discovery result names
 another digest or whose saved baseline file changed. Run the focused checks of
@@ -752,7 +801,7 @@ bun test ./packages/producer/test/interface/stage-5 ./packages/producer/test/uni
 bun test ./packages/producer/test/interface/stage-4/inspect.test.ts
 ```
 
-In Stage 5, the symbol selectors of a version 5 baseline divide a file into code
+In Stage 5, the symbol selectors of a version 5 or 6 baseline divide a file into code
 units: one unit for each named top-level symbol and one rest unit for all other
 text. `divideFile` in `code-units.ts` finds the parts in the syntax tree of the
 saved file and runs no code. The shared record checks (`record-code-mapping.ts`)

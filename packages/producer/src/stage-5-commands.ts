@@ -12,7 +12,7 @@ import { runLayout } from './run-layout.mjs';
 import { directory, read } from './stage-3-inputs.ts';
 import { checkpoint, digest, draftNames, readState, safe, type StageState } from './stage-5-inputs.ts';
 import { partsRecord } from './stage-5-parts.ts';
-import { collectEvidence, excerpt, type SavedScope, scopeFor } from './stage-5-query.ts';
+import { collectEvidence, excerpt, inspectionSummary, type SavedScope, scopeFor } from './stage-5-query.ts';
 
 // The Stage 5 helper. start checks the run after the published Stage 4 review and
 // saves the checkpoints, the documents that the stage follows, the query scope and
@@ -123,10 +123,11 @@ function requireCompleted(phase: string, outputs: string[]): void {
   'Incomplete or changed ' + phase + ' evidence.');
 }
 
-function reviewPrompt(state: StageState): string {
+function reviewPrompt(state: StageState, summary: string): string {
   return cookbookPrompt(saved(cookbook), 5, {
     WORK: work, ATTEMPT: attempt, ID: id, ENTRY_ANALYSIS_REF: state.facts.entryAnalysisRef,
     MAPPING_REF: state.mappingRef, DEPENDENCIES_REF: state.graphRef, RESOURCE_ACCESS_REF: state.resourceAccessRef,
+    INSPECTION_SUMMARY: summary,
   });
 }
 
@@ -194,7 +195,8 @@ function collectAction({ state, toolchain }: Started, prefix: string, output: Ou
   assert(collectOutputs.every(name => !exists(join(attempt, name))), 'Collect output already exists. Use a new attempt.');
   const results = collectEvidence(state, json('scope.json') as unknown as SavedScope,
     { tsMorph: toolchain.tsMorph, versions: toolchain.versions });
-  const prompt = reviewPrompt(state);
+  const prompt = reviewPrompt(state, inspectionSummary(results['inspection-coverage.json'].units,
+    artifactId('inspection-coverage.json'), artifactId('remaining-units.json')));
   for (const [name, value] of Object.entries(results)) output(name, encode(value));
   output('review-prompt.md', prompt);
   const known = [...startOutputs, 'operator-start.json', ...logNames('operator-start'), prefix + '.started.json', ...outputs];
@@ -205,7 +207,7 @@ function collectAction({ state, toolchain }: Started, prefix: string, output: Ou
       artifactId(name), { path: 'evidence/' + id + '/' + name, sha256: hash(saved(name)) },
     ])),
   }));
-  const count = (name: string, key: string): number => ((results[name] as Fields)[key] as unknown[]).length;
+  const count = (name: keyof typeof results, key: string): number => ((results[name] as Fields)[key] as unknown[]).length;
   return `Saved ${count('remaining-units.json', 'units')} owner-null units, ${count('inspection-coverage.json', 'units')} coverage records, ${count('source-candidates.json', 'candidates')} syntax candidates and ${count('source-excerpts.json', 'excerpts')} excerpts.`;
 }
 

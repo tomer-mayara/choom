@@ -97,6 +97,10 @@ function correctionProblem(at: string, name: string, { oldValue, newValue }: Bas
   return [];
 }
 
+// These statements directly control an owner, a public entry or a checked policy.
+// Reviewers can also cite other input statements, for example a purpose used to assign a role.
+const boundaryFields = new Set(["membership", "owner", "publicAccess", "allowedConsumers", "accessRules", "subject", "expected", "check"]);
+
 // The baseline as the decisions change it, before the shared rules check it. The
 // ID of the next version is the ID of the baseline, a hyphen and the ID of the
 // decision record. Both are lowercase IDs with hyphens, so the new ID is one too,
@@ -108,6 +112,13 @@ function decidedCopy(baseline: ReadonlyData<Baseline>, decisions: BaselineDecisi
   // The copy belongs to this function, so it can change its fields and statements.
   Object.assign(copy, { id: `${baseline.id}-${decisions.id}`, parentId: baseline.id });
   const statements = new Map(baselineStatements(copy).map((item) => [statementName(item), item.statement]));
+  if (copy.formatVersion === 6) {
+    const review = copy.boundaryReview;
+    const inputs = new Set([...review.statementRefs ?? [], ...review.rules.flatMap(rule => rule.statementRef ? [rule.statementRef] : [])]);
+    if (decisions.entries.some(entry => boundaryFields.has(entry.field) || inputs.has(statementName(entry)))) {
+      Object.assign(review, { status: "needs-refresh" });
+    }
+  }
   for (const entry of decisions.entries) {
     const value = isCorrection(entry) ? { value: entry.newValue } : {};
     Object.assign(statements.get(statementName(entry)) ?? {}, value, { status: "accepted", acceptanceRef: decisions.id });
@@ -156,7 +167,8 @@ function entryProblems({ entries }: BaselineDecisions, baseline: ReadonlyData<Ba
  * The version has the ID `<parent ID>-<decision record ID>` and names the parent
  * in `parentId`. Each decided statement is `accepted`, with the decision record
  * ID as its `acceptanceRef`, and a correction also replaces its value. All other
- * fields and statements stay as in the parent, with the items and list entries
+ * statements stay as in the parent. Boundary-affecting decisions mark a v6 review
+ * as needing refresh. The review keeps its evidence, with its items and entries
  * in the same order. The version shares no object with the parent or the file.
  */
 export function nextBaselineVersion(parent: SavedBaseline, input: unknown): NextVersion {

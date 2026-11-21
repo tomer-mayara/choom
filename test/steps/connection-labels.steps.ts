@@ -33,7 +33,7 @@ async function open(world: LabelWorld, component?: "Checkout" | "Billing") {
   await writeFile(file, stringify(connectionScopeBaseline(), { aliasDuplicateObjects: false }));
   const viewer = new BaselineBrowserDriver(browser);
   await viewer.open();
-  await viewer.openBaseline(file);
+  await viewer.openHistoricalInventory(file);
   await expect(browser.getByRole("heading", { name: "connection-scope", exact: true })).toBeVisible();
   if (component) await browser.getByRole("button", { name: `${component}, ${component.toLowerCase()}`, exact: true }).click();
   await browser.mouse.move(8, 8);

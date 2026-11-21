@@ -20,14 +20,17 @@ the [README](../../README.md#set-up), then the acceptance tools:
 ```sh
 bun install --frozen-lockfile
 cargo install tauri-driver --version 2.1.0 --locked
-sudo apt-get install dbus webkit2gtk-driver xvfb xauth xdotool xclip
+sudo apt-get satisfy 'webkitgtk-webdriver | webkit2gtk-driver' bubblewrap dbus xvfb xauth xdotool xclip
 ```
 
 The harness uses Node to run Cucumber and WebdriverIO. The installed app starts
-with an empty owned directory as its complete `PATH` and an empty `NODE_PATH`.
-The driver checks the running app's `/proc` environment, executable, and working
-directory. This proves that Node and an analyzer cannot be found through the
-product's runtime path; it does not mean Node is uninstalled from the test host.
+with a private directory as its complete `PATH` and an empty `NODE_PATH`.
+On Ubuntu 26.04, GTK uses the `bubblewrap` package to sandbox image decoding
+in the native picker. When `/usr/bin/bwrap` is installed, the directory contains
+a single symlink to that executable. On hosts without it, the directory stays
+empty. The driver checks the directory contents, link target, and the running
+app's `/proc` environment, executable, and working directory. These checks show
+that the installed app cannot find Node or an analyzer through its `PATH`.
 
 There is no analyzer dependency fixture, production preview server, or Chromium
 dependency in this installed route. Browser acceptance remains separate.
@@ -74,7 +77,7 @@ does not build it or require a separate `dist` directory.
 
 Optional tool overrides are `CHOOM_TAURI_DRIVER`, `CHOOM_WEBKIT_DRIVER`, and
 `CHOOM_XDOTOOL`. The runner resolves those tools before launching the product
-with the empty runtime path. Use a non-root app/test user.
+with the private runtime path. Use a non-root app/test user.
 
 BV-03 copies only the reviewed baseline into a fresh directory outside the
 checkout. No source repository, local analyzer, or evidence bundle accompanies
@@ -192,7 +195,7 @@ assessment. The harness copies the producer's saved version 2 baseline and
 report into a temporary directory, then selects each through its native picker.
 It checks the saved comparison, the recorded entry, Back focus, invalid report
 replacement, removal, and the unchanged selected files. The executable runs
-with the empty product `PATH` used by the installed baseline scenarios.
+with the private product `PATH` used by the installed baseline scenarios.
 
 ```sh
 xvfb-run -a dbus-run-session -- bun run test:behavior:packaged --tags @interface-duplication

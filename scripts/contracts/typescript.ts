@@ -19,11 +19,22 @@ interface Target {
   path: string;
   /** The package export that other workspaces use to import this output. */
   module?: string;
+  includes?: (name: string) => boolean;
+  reexport?: string;
 }
+
+const baselineNamespace = "Choom.BaselineModel";
+const legacyRecord = (name: string) => !/^(?:Boundary|Isolation)/.test(name)
+  && name !== "Baseline" && name !== "BaselineV6" && name !== "BaselineBoundaryReview";
 
 const targets: readonly Target[] = [
   {
-    namespace: "Choom.BaselineModel", path: "packages/baseline-model/src/generated/contracts.ts",
+    namespace: baselineNamespace, path: "packages/baseline-model/src/generated/records.ts",
+    includes: legacyRecord, module: "@choom/baseline-model/contracts",
+  },
+  {
+    namespace: baselineNamespace, path: "packages/baseline-model/src/generated/contracts.ts",
+    includes: (name) => !legacyRecord(name), reexport: "./records",
     module: "@choom/baseline-model/contracts",
   },
   { namespace: "Choom.Domain", path: "src/domain/generated/contracts.ts" },
@@ -66,17 +77,23 @@ function primitiveReference(type: Type): string | undefined {
   return undefined;
 }
 
-function namedReference(namespace: Namespace, name: string, owner: Namespace, imports: Map<string, string>): string {
-  if (namespace === owner) return identifier(name);
-  const target = targets.find((candidate) => candidate.namespace === getNamespaceFullName(namespace));
-  const source = targets.find((candidate) => candidate.namespace === getNamespaceFullName(owner));
-  if (!target || !source) throw new Error(`Unbound contract namespace: ${getNamespaceFullName(namespace)}`);
-  const alias = identifier(target.namespace.replaceAll(".", ""));
-  imports.set(alias, importPath(source, target));
+/** Track which emitted file owns each referenced type while preserving package exports. */
+class BindingImports extends Map<string, string> {
+  readonly source: Target;
+  constructor(source: Target) { super(); this.source = source; }
+}
+
+function namedReference(namespace: Namespace, name: string, imports: BindingImports): string {
+  const destination = targets.find((candidate) => candidate.namespace === getNamespaceFullName(namespace)
+    && (candidate.includes?.(name) ?? true));
+  if (!destination) throw new Error(`Unbound contract namespace: ${getNamespaceFullName(namespace)}`);
+  if (destination === imports.source) return identifier(name);
+  const alias = identifier(destination.namespace.replaceAll(".", ""));
+  imports.set(alias, importPath(imports.source, destination));
   return `${alias}.${identifier(name)}`;
 }
 
-function reference(type: Type, owner: Namespace, imports: Map<string, string>): string {
+function reference(type: Type, owner: Namespace, imports: BindingImports): string {
   if (type.kind === "Model" && isArrayModelType(type)) {
     return `Array<${reference(type.indexer.value, owner, imports)}>`;
   }
@@ -91,16 +108,16 @@ function reference(type: Type, owner: Namespace, imports: Map<string, string>): 
   if (
     (type.kind === "Model" || type.kind === "Scalar" || type.kind === "Union") &&
     type.namespace && type.name
-  ) return namedReference(type.namespace, type.name, owner, imports);
+  ) return namedReference(type.namespace, type.name, imports);
   throw new Error(`Unsupported contract type: ${type.kind} in ${getNamespaceFullName(owner)}`);
 }
 
-function parameter(property: ModelProperty, owner: Namespace, imports: Map<string, string>): string {
+function parameter(property: ModelProperty, owner: Namespace, imports: BindingImports): string {
   if (property.defaultValue !== undefined) throw new Error(`Unsupported default: ${property.name}`);
   return `${identifier(property.name)}${property.optional ? "?" : ""}: ${reference(property.type, owner, imports)}`;
 }
 
-function modelDeclaration(program: Program, model: Model, owner: Namespace, imports: Map<string, string>): string {
+function modelDeclaration(program: Program, model: Model, owner: Namespace, imports: BindingImports): string {
   if (isArrayModelType(model)) {
     return `export type ${identifier(model.name)} = Array<${reference(model.indexer.value, owner, imports)}>;`;
   }
@@ -118,7 +135,7 @@ function modelDeclaration(program: Program, model: Model, owner: Namespace, impo
   return `export interface ${identifier(model.name)} {\n${properties.join("\n")}\n}`;
 }
 
-function interfaceDeclaration(contract: Interface, owner: Namespace, imports: Map<string, string>): string {
+function interfaceDeclaration(contract: Interface, owner: Namespace, imports: BindingImports): string {
   if (contract.sourceInterfaces.length > 0) throw new Error(`Unsupported interface inheritance: ${contract.name}`);
   const operations = [...contract.operations.values()].map((operation) => {
     if (operation.node?.templateParameters.length || operation.sourceOperation) {
@@ -131,15 +148,15 @@ function interfaceDeclaration(contract: Interface, owner: Namespace, imports: Ma
   return `export interface ${identifier(contract.name)} {\n${operations.join("\n")}\n}`;
 }
 
-function namespaceDeclarations(program: Program, owner: Namespace, emitted: Set<Node>): string[] {
+function namespaceDeclarations(program: Program, owner: Namespace, emitted: Set<Node>, target: Target): string[] {
   if (owner.operations.size || owner.enums.size || owner.decoratorDeclarations.size || owner.functionDeclarations.size) {
     throw new Error(`Unsupported declaration in ${getNamespaceFullName(owner)}`);
   }
-  const imports = new Map<string, string>();
+  const imports = new BindingImports(target);
   const types = [
     ...owner.models.values(), ...owner.scalars.values(),
     ...owner.unions.values(), ...owner.interfaces.values(),
-  ].sort((left, right) => (left.name ?? "") < (right.name ?? "") ? -1 : 1);
+  ].filter((type) => target.includes?.(type.name ?? "") ?? true).sort((left, right) => (left.name ?? "") < (right.name ?? "") ? -1 : 1);
   const declarations = types.map((type) => {
     if (!type.name || !type.node || ("templateParameters" in type.node && type.node.templateParameters.length > 0)) {
       throw new Error(`Unsupported generated or template declaration: ${type.name}`);
@@ -158,6 +175,7 @@ function namespaceDeclarations(program: Program, owner: Namespace, emitted: Set<
   return [
     ...[...imports].sort(([left], [right]) => left < right ? -1 : 1)
       .map(([name, path]) => `import type * as ${name} from ${JSON.stringify(path)};`),
+    ...(target.reexport ? [`export type * from ${JSON.stringify(target.reexport)};`] : []),
     ...declarations,
   ];
 }
@@ -182,7 +200,7 @@ export function emitTypeScript(program: Program, sources: Set<string>): Map<stri
   for (const target of targets) {
     const [owner] = program.resolveTypeReference(target.namespace);
     if (owner?.kind !== "Namespace") throw new Error(`Missing contract namespace: ${target.namespace}`);
-    const declarations = namespaceDeclarations(program, owner, emitted);
+    const declarations = namespaceDeclarations(program, owner, emitted, target);
     output.set(target.path, [
       "// Generated from TypeSpec by bun run contracts:generate. Do not edit.",
       "", ...declarations.map((declaration) => `${declaration}\n`),

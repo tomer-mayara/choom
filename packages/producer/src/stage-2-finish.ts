@@ -7,6 +7,7 @@ import { draftUpdate } from './draft-update.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { checkKnipResultGaps } from './result-gaps.ts';
+import { CandidateClaims } from './stage-2-candidate-claims.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
 
 // The Stage 2 finish action runs this module in the tool checkout, after the
@@ -225,11 +226,12 @@ function preserve(id: string, earlier: Fields, later: Fields): void {
   }
 }
 
-function candidates(finish: Finish, value: unknown): void {
+function candidates(finish: Finish, value: unknown, claims?: CandidateClaims, requireClaims = false): void {
   assert(Array.isArray(value), 'Missing candidates.');
   const ids = new Set();
   for (const candidate of value) {
-    exact(candidate, ['id', 'expression', 'path', 'workspace', 'roles', 'origin', 'evidenceRefs'], 'candidate');
+    exact(candidate, ['id', 'expression', 'path', 'workspace', 'roles', 'origin', 'evidenceRefs',
+      ...(claims && candidate && Object.hasOwn(candidate, 'knipClaims') ? ['knipClaims'] : [])], 'candidate');
     assert(text(candidate.id) && candidate.id.startsWith(finish.id) && !ids.has(candidate.id) && !finish.sourceRecords.has(candidate.id) && text(candidate.expression) &&
       (candidate.path === null || (text(candidate.path) && finish.files.has(candidate.path))) && text(candidate.workspace) &&
       strings(candidate.roles) && candidate.roles.length &&
@@ -237,6 +239,7 @@ function candidates(finish: Finish, value: unknown): void {
       `Invalid or duplicate candidate: ${candidate.id}`);
     ids.add(candidate.id);
     evidence(finish, candidate);
+    claims?.validate(candidate, requireClaims);
   }
 }
 
@@ -309,7 +312,7 @@ function checkKnipOutputs(finish: Finish, receipts: Fields): void {
   }
 }
 
-function checkAnalysis(finish: Finish, plan: Fields): Fields {
+function checkAnalysis(finish: Finish, plan: Fields, requireClaims: boolean): Fields {
   const core = (name: string): string => `${finish.id}-${name}`;
   const analysis = document(finish, core('entry-analysis'));
   exact(analysis, ['formatVersion', 'kind', 'snapshotRef', 'planRef', 'knipRunsRef', 'candidates', 'reviewedFiles', 'questions', 'gaps', 'reachability', 'llmReview'], 'entry analysis');
@@ -318,7 +321,13 @@ function checkAnalysis(finish: Finish, plan: Fields): Fields {
     analysis.planRef === core('entry-plan') && analysis.knipRunsRef === core('knip-runs') && analysis.llmReview === 'recorded' &&
     reachability?.status === 'not-assessed' && text(reachability.reason) && Array.isArray(analysis.reviewedFiles),
     'Invalid entry analysis identity or state.');
-  candidates(finish, analysis.candidates);
+  const runs = document(finish, core('knip-runs')).runs as Fields[];
+  const claims = new CandidateClaims(core('knip-runs'), runs, name => {
+    const bytes = finish.buffers.get(finish.id + '-file@' + encodeURIComponent(name));
+    assert(bytes, 'Missing selected Knip report: ' + name);
+    return JSON.parse(bytes.toString('utf8'));
+  });
+  candidates(finish, analysis.candidates, claims, requireClaims);
   for (const source of analysis.reviewedFiles as Fields[]) {
     assert(finish.savedExcerpts.some(excerpt => excerpt.id === source.id && sameRange(excerpt, source)),
       `Copy the exact saved excerpt source ID and range: ${source.id}`);
@@ -376,7 +385,7 @@ function finishAttempt(): void {
   indexSources(finish);
   const plan = checkPlan(finish, discovery);
   checkReceipts(finish, run);
-  const analysis = checkAnalysis(finish, plan);
+  const analysis = checkAnalysis(finish, plan, typeof run.projectKey === 'string');
   // An unsupported Knip profile and a Knip mode that failed or was skipped need a gap that cites their record.
   checkKnipResultGaps({ gaps: analysis.gaps, preflightRef: `${id}-preflight`, preflight: document(finish, `${id}-preflight`),
     runsRef: `${id}-knip-runs`, runs: document(finish, `${id}-knip-runs`) });

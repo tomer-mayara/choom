@@ -54,7 +54,7 @@ async function openView(world: InterfaceViewWorld, width: number, height: number
   });
   world.viewDriver = new BaselineBrowserDriver(browser);
   await world.viewDriver.open(options.controlled);
-  await world.viewDriver.openBaseline(world.viewFile);
+  await world.viewDriver.openHistoricalInventory(world.viewFile);
   await expect(browser.getByRole("heading", { name: baseline.id, exact: true })).toBeVisible();
   await browser.getByRole("radio", { name: "All", exact: true }).check();
   await browser.getByRole("checkbox", { name: "Show self-connections", exact: true }).check();
@@ -130,7 +130,7 @@ Then("Fit uses a positive finite zoom below one percent", async function (this: 
 
 When("the user reopens the original interface file and zooms out", async function (this: InterfaceViewWorld) {
   assert.ok(this.viewDriver && this.viewFile);
-  await this.viewDriver.openBaseline(this.viewFile);
+  await this.viewDriver.openHistoricalInventory(this.viewFile);
   await expect(page(this).getByText("Baseline ready.", { exact: true })).toBeVisible();
   await paint(this);
   const initial = (await observe(this)).camera.zoom;
@@ -340,6 +340,10 @@ async function finishReplacement(world: InterfaceViewWorld, selectCheckout = fal
   assert.ok(world.viewRelease);
   world.viewRelease();
   await expect(page(world).getByRole("heading", { name: "replacement-interface-view", exact: true })).toBeVisible();
+  const scope = page(world).getByRole("switch", { name: "Show non-production" });
+  await expect(scope).not.toBeChecked();
+  await scope.focus();
+  await page(world).keyboard.press("Space");
   await paint(world);
   world.viewFresh = await observe(world);
   world.viewFreshChoices = {

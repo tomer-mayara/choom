@@ -1,12 +1,14 @@
+import { compareIsolation } from "@choom/baseline-model/isolation-comparison";
 import type { Baseline } from "@choom/baseline-model/contracts";
 import type { ArchitectureLayout } from "../lib/architecture-layout.ts";
-import { BaselineDisplayLimitError, displayLimitMessage } from "../lib/baseline-display-limits.ts";
+import { productionBaseline } from "../lib/production-baseline.ts";
+import { BaselineDisplayLimitError, checkBaselineDisplayLimits, displayLimitMessage } from "../lib/baseline-display-limits.ts";
 import { decodeBaselineYaml } from "../lib/baseline-yaml.ts";
 import { decodeDiscoveryResultYaml } from "../lib/discovery-result-yaml.ts";
 import { decodeDuplicationReportYaml } from "../lib/interface-duplication-yaml.ts";
 import type { ReadDocumentTextOutcome } from "../platform/generated/contracts.ts";
 import type { WorkflowFailure, WorkflowOperations, WorkflowOutcome, WorkflowStage, WorkflowState } from "./generated/workflow.ts";
-import { ownCurrentView, ownDiscovery, ownDuplication, ownOutcome, publishedSnapshot, type PublishedViews } from "./load-publication.ts";
+import { ownComparison, ownCurrentView, ownDiscovery, ownDuplication, ownOutcome, publishedSnapshot, type PublishedViews } from "./load-publication.ts";
 import type { LoadWorkflowSnapshot } from "./workspace-view.ts";
 
 /** A selected file remains readable for Retry; selection does not copy or write it. */
@@ -16,6 +18,7 @@ export interface SelectedBaseline {
 
 export interface LoadWorkflowDependencies {
   selectBaseline(signal: AbortSignal): Promise<SelectedBaseline | null>;
+  selectEarlierBaseline?(signal: AbortSignal): Promise<SelectedBaseline | null>;
   selectDuplicationReport?(signal: AbortSignal): Promise<SelectedBaseline | null>;
   selectDiscoveryResult?(signal: AbortSignal): Promise<SelectedBaseline | null>;
   layout(baseline: Baseline): Promise<ArchitectureLayout>;
@@ -23,7 +26,7 @@ export interface LoadWorkflowDependencies {
 
 /** A report that a load attaches to the open baseline. Each kind has its own attachment. */
 type AttachmentKind = Exclude<WorkflowState["operation"], "baseline">;
-const attachmentNames: Readonly<Record<AttachmentKind, string>> = { report: "duplication report", discovery: "discovery result" };
+const attachmentNames: Readonly<Record<AttachmentKind, string>> = { report: "duplication report", discovery: "discovery result", comparison: "comparison" };
 
 type WorkflowBindings = {
   [Name in keyof WorkflowOperations]: () => Promise<ReturnType<WorkflowOperations[Name]>>;
@@ -88,6 +91,8 @@ export class LoadWorkflow implements WorkflowBindings {
     return () => { this.listeners.delete(listener); };
   };
   readonly openBaseline = (): Promise<WorkflowOutcome> => this.start("baseline");
+  readonly openComparison = (): Promise<WorkflowOutcome> => this.start("comparison");
+  readonly closeComparison = async (): Promise<WorkflowOutcome> => this.remove("comparison", { comparison: null });
   readonly openDuplicationReport = (): Promise<WorkflowOutcome> => this.start("report");
   readonly removeDuplicationReport = async (): Promise<WorkflowOutcome> => this.remove("report", { duplication: null });
   readonly openDiscoveryResult = (): Promise<WorkflowOutcome> => this.start("discovery");
@@ -147,9 +152,10 @@ export class LoadWorkflow implements WorkflowBindings {
       }
       // A native picker cannot be closed by an AbortSignal. Keep the slot until it returns.
       const select = { baseline: this.dependencies.selectBaseline, report: this.dependencies.selectDuplicationReport,
-        discovery: this.dependencies.selectDiscoveryResult }[operation.kind];
+        discovery: this.dependencies.selectDiscoveryResult, comparison: this.dependencies.selectEarlierBaseline }[operation.kind];
       if (!select) throw new LoadStopped(failed("selection", "unavailable",
-        operation.kind === "discovery" ? "Discovery result file selection is unavailable." : "Report file selection is unavailable.", operation.started));
+        operation.kind === "report" ? "Report file selection is unavailable." : operation.kind === "comparison"
+          ? "Earlier baseline file selection is unavailable." : "Discovery result file selection is unavailable.", operation.started));
       const selected = selection ?? await select(operation.controller.signal);
       this.check(operation);
       if (!selected) throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
@@ -161,7 +167,7 @@ export class LoadWorkflow implements WorkflowBindings {
       this.stage(operation, "validation");
       return operation.kind === "baseline"
         ? await this.loadBaseline(operation, read.text, read.sha256)
-        : this.loadAttachment(operation, read.text);
+        : this.loadAttachment(operation, read.text, read.sha256);
     } catch (error) {
       return error instanceof LoadStopped ? error.outcome
         : operation.controller.signal.aborted ? { status: "cancelled", durationMs: elapsed(operation.started) }
@@ -174,26 +180,47 @@ export class LoadWorkflow implements WorkflowBindings {
     const decoded = decodeBaselineYaml(text);
     if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
     this.stage(operation, "layout");
-    const layout = await cancellable(this.dependencies.layout(decoded.baseline), operation);
+    checkBaselineDisplayLimits(decoded.baseline);
+    const production = productionBaseline(decoded.baseline);
+    const [layout, productionLayout] = await cancellable(Promise.all([
+      this.dependencies.layout(decoded.baseline),
+      production.components.length ? this.dependencies.layout(production) : { nodes: [] },
+    ]), operation);
     this.check(operation);
-    const current = ownCurrentView(decoded.baseline, layout, sha256);
+    const current = ownCurrentView(decoded.baseline, layout, sha256, { baseline: production, layout: productionLayout });
     this.check(operation);
     const outcome = this.commit(operation);
     // A new baseline view starts without attachments, also when the IDs repeat.
-    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, { current, duplication: null, discovery: null });
+    this.publish({ ...this.snapshot.state, lastOutcome: outcome }, { current, duplication: null, discovery: null, comparison: null });
     return outcome;
   }
 
   /** Checks the file completely against the baseline that the load started with, then attaches it in one step. */
-  private loadAttachment(operation: LoadOperation, text: string): WorkflowOutcome {
+  private loadAttachment(operation: LoadOperation, text: string, sha256: string): WorkflowOutcome {
     const current = operation.baseline;
     if (!current || current !== this.snapshot.current) throw new LoadStopped({ status: "cancelled", durationMs: elapsed(operation.started) });
-    const attachment = operation.kind === "report" ? this.reportAttachment(operation, text, current)
+    const attachment = operation.kind === "comparison" ? this.comparisonAttachment(operation, text, sha256, current)
+      : operation.kind === "report" ? this.reportAttachment(operation, text, current)
       : this.discoveryAttachment(operation, text, current);
     this.check(operation);
     const outcome = this.commit(operation);
     this.publish({ ...this.snapshot.state, lastOutcome: outcome }, attachment);
     return outcome;
+  }
+
+  private comparisonAttachment(operation: LoadOperation, text: string, sha256: string, after: Current): Partial<PublishedViews> {
+    const decoded = decodeBaselineYaml(text);
+    if (decoded.status === "failure") throw new LoadStopped(failed("validation", decoded.code, decoded.message, operation.started));
+    checkBaselineDisplayLimits(decoded.baseline);
+    const before = { baseline: decoded.baseline, sha256 };
+    const result = compareIsolation(before, after);
+    if (result.status === "project-mismatch") {
+      throw new LoadStopped(failed("validation", result.status, "Project mismatch. Select a baseline with the same project key.", operation.started));
+    }
+    if (result.status === "incompatible-format") {
+      throw new LoadStopped(failed("validation", result.status, "Isolation comparison unavailable for this format.", operation.started));
+    }
+    return { comparison: ownComparison(before, result) };
   }
 
   private reportAttachment(operation: LoadOperation, text: string, { baseline, sha256 }: Current): Partial<PublishedViews> {
@@ -238,8 +265,8 @@ export class LoadWorkflow implements WorkflowBindings {
 
   /** Publishes a state; each view that `changed` does not name stays as it is. */
   private publish(state: WorkflowState, changed: Partial<PublishedViews> = {}): void {
-    const { current, duplication, discovery } = this.snapshot;
-    this.snapshot = publishedSnapshot(state, { current, duplication, discovery, ...changed });
+    const { current, duplication, discovery, comparison } = this.snapshot;
+    this.snapshot = publishedSnapshot(state, { current, duplication, discovery, comparison, ...changed });
     for (const listener of [...this.listeners]) {
       try { listener(); } catch {
         // A view observer cannot interrupt the load or take ownership of its result.

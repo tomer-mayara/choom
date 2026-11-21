@@ -3,6 +3,7 @@ description: Manual producer helpers and command line that recover a baseline an
 
 artifacts:
   behavior:
+    - path: ../../cookbook/behavior/producer/component-boundaries.feature
     - path: ../../cookbook/behavior/producer/recovery.feature
     - path: ../../cookbook/behavior/producer/baseline-decisions.feature
     - path: ../../cookbook/behavior/producer/baseline-versions.feature
@@ -25,6 +26,7 @@ artifacts:
   architecture:
     - path: ../../.dependency-cruiser.cjs
   contracts:
+    - path: ../../cookbook/interfaces/producer-boundary-intake.tsp
     - path: ../../cookbook/interfaces/behavior-entry-rules.tsp
     - path: ../../cookbook/interfaces/resource-access-rules.tsp
     # The Stage 4 and 5 review records, the Stage 1 settings and Git identity records, the version 4 publication rules, the decision record and the next baseline version.

@@ -127,7 +127,7 @@ Feature: Arrange the component overview
     And the old pointer cycle moves and releases
     Then the replacement keeps its prepared geometry and starting camera
     And the old inspection is closed
-    And focus is on the replacement baseline heading
+    And focus stays on the scope switch after revealing the replacement
 
     Examples:
       | stage                      |
