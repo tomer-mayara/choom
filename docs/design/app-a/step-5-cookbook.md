@@ -37,7 +37,8 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 start
 
 The helper requires completed component recovery and its published working
 drafts. The baseline must still be proposed, before Stage 6 saves a fixed version.
-Versions 1 to 4 keep their own strict fields. Use version 3 for
+Use [version 6](record-format.md#version-6-boundary-review) in runs with a project key.
+Older runs use the following formats. Versions 1 to 4 keep their own strict fields. Use version 3 for
 [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when `systemEntryPoints`
 is present. Use version 5 when [symbol selectors](record-format.md#version-5-symbol-selectors)
@@ -94,10 +95,10 @@ tests, builds, Knip or dependency-cruiser.
 | --- | --- |
 | `scope.json` | The input references, source query scope, initial excerpt requests and limits fixed at the start. |
 | `remaining-units.json` | Every mapped file with `owner: null`, its original mapping reference, entry-candidate references, and incoming or outgoing graph references in each saved context. Source-site pointers locate matching import syntax. |
-| `inspection-coverage.json` | All mapped files, their owners, exact current reviewed ranges and references to historical reviewed ranges. Uninspected files remain visible, including files with owners. |
+| `inspection-coverage.json` | All mapped files, their owners, ranges in the selected Stage 4 entry analysis and references to ranges in its predecessors. This includes owned files with no range in that history. |
 | `source-candidates.json` | Syntax candidates for module or class initialization, side-effect imports, and setup or registration calls. Includes the parser with the ts-morph and TypeScript versions, parser diagnostics, skipped files, bounded output and omissions. |
 | `source-excerpts.json` | Numbered initial excerpts, each with snapshot identity, file hash, exact lines and truncation state. Missing or skipped requests remain explicit. |
-| `review-prompt.md` | The LLM task and evidence rules for this attempt. |
+| `review-prompt.md` | The LLM task, evidence rules and incoming file counts by ownership and reviewed ranges from `inspection-coverage.json`. |
 | `artifact-map.json` | Proposed IDs and digests for the available attempt artifacts. It excludes itself, the command log, the final collection receipt and logs, and later files. Command receipts bind those outputs and later excerpts. |
 
 The collector does not infer owners from directory names or incoming imports.
@@ -171,11 +172,16 @@ the LLM inspected it. Do not modify saved inputs or the working drafts.
 Use remaining-units.json, inspection-coverage.json, source-candidates.json,
 the separate dependency contexts, and saved numbered source excerpts.
 
-Account for files without owners and inspect important unexplained areas,
-including initialization and setup candidates. Use source, callers, contracts,
-tests and saved ownership guidance. A reference or shared artifact alone does
-not establish an exclusive owner. Request precise additional source ranges
-when needed; do not ask the operator to classify files or write analysis.
+{{INSPECTION_SUMMARY}}
+
+Use these incoming file counts to choose a source range. Look for files
+without owners and for gaps in the entry-analysis history that could change a
+claim, including in owned files. Check the separate Stage 1 role review when
+reporting what the whole run inspected. Inspect unexplained areas such as initialization and
+setup candidates. Use source, callers, contracts, tests and saved ownership
+guidance. A reference or shared artifact alone does not establish an exclusive
+owner. Request the source ranges you need. The worker classifies the files
+and writes the analysis.
 
 Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
@@ -184,12 +190,18 @@ insufficient. Do not create a utilities group to eliminate unknowns.
 The entry-analysis update keeps behaviorEntryCandidatesRef of the selected
 entry analysis. Its candidates are places to read, not proven entries.
 The resource observations keep resourceAccessCandidatesRef of the selected
-resource observations. Keep observed access separate from inferred ownership.
+resource observations. Recheck the mapped actor, the argument or setting that
+selects its runtime target, and the evidence of ownership for that same target.
+If the target cannot be linked to a modeled resource, keep its expression and
+set target.resourceRef to null. Preserve any independently supported owner of a
+planned store. For a modeled resource with unknown ownership, keep owner.value
+null and name <resource-id>.owner in a discovery question or gap.
 
 Start with files. Divide a file only when a boundary inside it needs
 examination: reviewed source shows that a top-level declaration of the file
-has another direct owner than the rest of the file. To divide it, use
-formatVersion: 5 and name the declaration in the membership of its owner as
+has another direct owner than the rest of the file. Use formatVersion: 6 for
+a project-keyed run. An older run can use formatVersion: 5 to divide a file.
+Name the declaration in the membership of its owner as
 symbols: [{path, symbol}]. The symbol is the name of the top-level
 declaration; default names an anonymous default export. A declaration with
 several names, such as const a = 1, b = 2, cannot be a symbol. In the code
@@ -216,7 +228,24 @@ unresolved candidates in the assessment limits or discovery gaps. Verify any
 interface link against the current baseline. Treat a graph root or publicAccess
 value as a lead for review.
 
-Use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
+For a project-keyed run, publish formatVersion: 6. Reconcile each boundary
+review unit and access with this attempt's exact final mapping. For a divided
+file, verify the selected top-level symbol or remainder on both ends. Inspect
+the written route, bound member, roles, rule and reviewed source ranges.
+Combine a source and emitted site only with an exact site-to-site link.
+Explain each complete, partial or unassessed caller search. A complete negative
+reachability check accounts for all starts and every reachable edge in the
+rule's scope. Record omitted roots, unresolved edges and unsupported kinds.
+Keep the production summary free of names, paths or prose about hidden targets.
+Pair each reported caller with the exact operation it uses, its access kind,
+its role at that site and its direct owner in the final map. A test calling a
+production operation is a test use. For a declared operation with no observed
+caller, report the status and scope of the search. A complete search can
+establish zero outside callers in its stated role and scope. Compare earlier
+caller searches with the uses this review adds. If a search covers an earlier
+stage, identify that scope and cite the later sites separately.
+
+Legacy packets use formatVersion: 4 with systemEntryPoints, or 5 when symbol selectors divide a
 file. Set its snapshotRef to this run's
 snapshot and mappingRef to the candidate discovery.codeMappingRef, including
 when carrying entries from Stage 4. With no entry assessment, use the version
@@ -240,6 +269,10 @@ when all assignments are unchanged. Recheck every carried consumer assignment
 and interface/entry binding against the candidate mapping and baseline. Reuse
 unchanged caller evidence; do not copy mappingRef into each use.
 
+Compare modeled entries with the reviewed public declarations. Follow named,
+default and re-exported members to their definitions, including exposed
+classes, schema values and types. Account for missing entries or uses shown
+in the reviewed ranges, including uses within the providing component.
 Map each caller file to its direct owner, not its parent. Read calls and value
 references; resolve aliases, injected callbacks, JSX, and IPC registration where
 needed. For an injected reader, inspect construction, callback assignment, and
@@ -265,6 +298,11 @@ discovery subjects interface-id.sourceUsage.uses.use-id.consumerId or
 interface-id.sourceUsage.uses.use-id.context. Follow the separate source-use
 and reader limits in record-format.md. Preserve supported descriptions, examples,
 source notes, signatures, and explicit unknown facts.
+
+Before Stage 5 closes, compare each displayed example result with the cited
+assertion, returned value or contract for the same input. Check every field and row.
+Use scope: excerpt if only part of the output is shown or supported. Omit an
+unsupported result. Correct the external packet before finish.
 
 Preserve prior questions, gaps and evidence in this manual prototype. Append
 linked resolution notes when the new evidence answers part of an earlier
@@ -354,7 +392,7 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-5 parts \
 ```
 
 The request divides the indexed file by the named symbols, as the symbol
-selectors of a version 5 baseline do, and saves a numbered `parts-NNN.json` and
+selectors of a version 5 or 6 baseline do, and saves a numbered `parts-NNN.json` and
 its receipt. The record lists each part with the ranges of its code unit and the
 dependencies that belong to it, and the dependencies that stay at file level,
 each with its reason: `shared`, `unreferenced` or `not-resolved`. The

@@ -121,6 +121,7 @@ const outputs = new Map<string, Buffer>([
 const handoff = JSON.stringify({
   formatVersion: 1, snapshotRef: run.snapshot.id, checkedAt: new Date().toISOString(),
   inventoryRef: run.snapshot.inventoryRef, registeredArtifacts: Object.keys(run.artifacts),
+  ...(registeredFiles.has('review-001') && { roleReviewRef: 'review-001' }),
   node: process.version, yaml, knip, status: 'verified',
   registrationChanges, originalRunSha256: hash(originalRun), finalRunSha256: hash(finalRun)
 }, null, 2);

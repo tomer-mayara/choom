@@ -27,15 +27,15 @@ interface RecoveryReport {
   retained: { files: number; bytes: number; preflightContentDigestsVerified: number; copiedContentDigestsVerified: number };
   [key: string]: unknown;
 }
+// The Stage 1 settings collector in the trusted tool checkout, and the SHA-256 of its bytes.
+interface Collector { path: string; sha256: string }
 interface Recovery {
   inputs: RecoveryInputs; parent: ParentRun; files: Retained; inventoryBytes: Buffer; exclusions: Buffer;
-  cookbook: Buffer; settings: Buffer; helperBytes: Buffer; versions: unknown; command: unknown; startedAt: string;
+  cookbook: Buffer; collector: Collector; helperBytes: Buffer; versions: unknown; command: unknown; startedAt: string;
   report: RecoveryReport;
 }
 
 const prefixes = ['src-tauri/target/', 'dist/', 'reports/', 'test-results/'];
-// The copy of the Stage 1 settings collector that the new run runs and keeps.
-const collector = 'settings.mts';
 function assert(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
 const hash = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex');
 const utc = (): string => new Date().toISOString();
@@ -189,9 +189,12 @@ function retainedFiles(previous: string, inventory: { files: InventoryRecord[] }
 }
 
 // The trusted Stage 1 settings collector, and the Stage 1 cookbook as a record.
-function settingsCollector(tools: string): { cookbook: Buffer; settings: Buffer } {
+// Recovery runs the collector in the tool checkout, as the Stage 1 settings
+// action does, and records its SHA-256 instead of a copy in the new run.
+function settingsCollector(tools: string): { cookbook: Buffer; collector: Collector } {
   const cookbook = read(join(tools, 'docs/design/app-a/step-1-cookbook.md'));
-  return { cookbook, settings: read(join(tools, 'packages/producer/src/stage-1-settings.ts')) };
+  const path = join(tools, 'packages/producer/src/stage-1-settings.ts');
+  return { cookbook, collector: { path, sha256: hash(read(path)) } };
 }
 
 function recoveryReport(recovery: Omit<Recovery, 'report'>, inventory: { files: InventoryRecord[] }): RecoveryReport {
@@ -241,7 +244,7 @@ function prepareRecovery(): Recovery {
   const exclusionArtifact = Object.entries(parent.parent.artifacts).find(([, record]) => record.path === exclusionPath);
   assert(exclusionArtifact, 'The previous exclusions must be registered.');
   const exclusions = parent.artifacts.get(exclusionArtifact[0]) as Buffer;
-  const { cookbook, settings } = settingsCollector(inputs.tools);
+  const { cookbook, collector } = settingsCollector(inputs.tools);
   const versions = { node: process.version, tsMorph: require('ts-morph/package.json').version,
     typescript: require('ts-morph').ts.version, yaml: require('yaml/package.json').version };
   const startedAt = utc();
@@ -251,7 +254,7 @@ function prepareRecovery(): Recovery {
     CHOOM_PREVIOUS_WORK: inputs.previous, CHOOM_WORK: inputs.work, CHOOM_TOOLS: inputs.tools,
     CHOOM_RUN_ID: inputs.runId, CHOOM_SNAPSHOT_ID: inputs.snapshotId,
   } };
-  const recovery = { inputs, parent, files, inventoryBytes, exclusions, cookbook, settings, helperBytes, versions, command, startedAt };
+  const recovery = { inputs, parent, files, inventoryBytes, exclusions, cookbook, collector, helperBytes, versions, command, startedAt };
   report = recoveryReport(recovery, inventory);
   return { ...recovery, report };
 }
@@ -293,14 +296,13 @@ function scopeNotes({ inputs, parent: { parent } }: Recovery): string {
 }
 
 function collectSettings(recovery: Recovery, save: (name: string, bytes: string | Buffer) => void): { stdout: Buffer; command: unknown } {
-  const { inputs: { work, tools, snapshotId }, report } = recovery;
-  save(collector, recovery.settings);
+  const { inputs: { work, tools, snapshotId }, collector, report } = recovery;
   const env: NodeJS.ProcessEnv = { ...process.env, CHOOM_WORK: work, CHOOM_TOOLS: tools };
   for (const name of ['NODE_OPTIONS', 'NODE_PATH', 'BASH_ENV', 'ENV']) delete env[name];
-  const settingsCommand = { args: [process.execPath, join(work, collector)], cwd: work,
-    environment: { CHOOM_WORK: work, CHOOM_TOOLS: tools }, startedAt: utc(),
+  const settingsCommand = { args: [process.execPath, collector.path], cwd: work,
+    environment: { CHOOM_WORK: work, CHOOM_TOOLS: tools }, collectorSha256: collector.sha256, startedAt: utc(),
     timeoutMs: 60000, maxOutputBytes: 64 * 1024 * 1024 };
-  const settings = spawnSync(process.execPath, [join(work, collector)], { env, cwd: work,
+  const settings = spawnSync(process.execPath, [collector.path], { env, cwd: work,
     timeout: settingsCommand.timeoutMs, maxBuffer: settingsCommand.maxOutputBytes });
   save('evidence/settings.stdout.txt', settings.stdout ?? Buffer.alloc(0));
   save('evidence/settings.stderr.txt', settings.stderr ?? Buffer.alloc(0));

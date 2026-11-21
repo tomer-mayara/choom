@@ -1,5 +1,7 @@
 // Generated from TypeSpec by bun run contracts:generate. Do not edit.
 
+import type * as ChoomBaselineModel from "@choom/baseline-model/contracts";
+
 export interface BehaviorEntryCallRule {
   id: behaviorEntryRuleId;
   version: behaviorEntryRuleVersion;
@@ -39,6 +41,26 @@ export interface BehaviorEntrySettingsLiteralRule {
   propertyPath: behaviorEntryPropertyPath;
 }
 
+export interface CandidateKnipClaim {
+  mode: "normal" | "production";
+  receiptRef: string;
+  outcome: "unknown" | "reported";
+}
+
+export interface FrozenBaselineReference {
+  artifactRef: "reference-baseline-001";
+  sha256: ChoomBaselineModel.baselineSourceDigest;
+}
+
+export type InspectionClue = RegistrationClue | UnresolvedLoaderClue;
+
+export interface RegistrationClue {
+  kind: "registration";
+  operation: string;
+  context: ChoomBaselineModel.BoundaryRole;
+  sourceRef: string;
+}
+
 export interface ResourceAccessRule {
   id: behaviorEntryRuleId;
   version: behaviorEntryRuleVersion;
@@ -55,6 +77,33 @@ export interface ResourceAccessRule {
 export interface ResourceAccessRuleList {
   formatVersion: 1;
   rules: Array<ResourceAccessRule>;
+}
+
+export interface ReviewedRoleUse {
+  role: ChoomBaselineModel.BoundaryRole;
+  evidenceRefs: Array<string>;
+}
+
+export interface RunProject {
+  projectKey: ChoomBaselineModel.baselineText;
+  referenceBaseline: FrozenBaselineReference | null;
+}
+
+export interface UnitUseReview {
+  unitScope: ChoomBaselineModel.BoundaryRole | "mixed";
+  basis: "declaration" | "complete-review" | "partial-review";
+  uses: Array<ReviewedRoleUse>;
+  evidenceRefs: Array<string>;
+  limits: Array<string>;
+}
+
+export interface UnresolvedLoaderClue {
+  kind: "unresolved-loader";
+  context: "unknown";
+  sourceRef: string;
+  matchRef: string;
+  expression: string;
+  missingBinding: string;
 }
 
 export type behaviorEntryArgument = number;

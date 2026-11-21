@@ -16,6 +16,12 @@ Feature: Show what the discovery left uncertain
     When the user opens the discovery result
     Then the viewer refuses it and keeps the open baseline
 
+  @worked-example
+  Scenario: Open the TraceRelic worked example from the manager guide
+    Given the user opens the TraceRelic example baseline and shows non-production components
+    When the user opens the discovery result
+    Then the viewer shows the digest of the example baseline in the discovery summary
+
   Scenario: Copy a decision for one statement
     Given an open baseline
     When the user copies a decision for the Billing purpose

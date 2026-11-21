@@ -25,6 +25,13 @@ export function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+/** Resolve a validated local record ID, retaining its identity in a refusal. */
+export function referenced<Value>(records: ReadonlyMap<string, Value>, id: string): Value {
+  const value = records.get(id);
+  assert(value !== undefined, 'Missing selected record: ' + id);
+  return value;
+}
+
 export const hash = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex');
 export const object = (value: unknown): value is Fields => value !== null && typeof value === 'object' && !Array.isArray(value);
 export const text = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;

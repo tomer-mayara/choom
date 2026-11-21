@@ -3,6 +3,7 @@ description: Host the frontend and read bounded selected baseline files.
 
 artifacts:
   behavior:
+    - path: ../cookbook/behavior/baseline-viewer/isolation-comparison.feature
     - path: ../cookbook/behavior/baseline-viewer/native-retirement.feature
     - path: ../cookbook/behavior/baseline-viewer/installed.feature
     - path: ../cookbook/behavior/baseline-viewer/document-byte-identity.feature

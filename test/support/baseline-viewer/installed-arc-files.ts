@@ -6,6 +6,7 @@ import { expectInstalledArcGeometry } from "./installed-arcs.ts";
 
 interface NativeBaselineOpening {
   openBaseline(path: string | null): Promise<void>;
+  openHistoricalInventory(path: string): Promise<void>;
   expectCancellationComplete(): Promise<void>;
   expectInputError(message: RegExp): Promise<void>;
 }
@@ -32,7 +33,7 @@ export async function inspectInstalledArcOpens(browser: Browser, opening: Native
   await opening.openBaseline(files.invalid);
   await opening.expectInputError(/YAML/i);
   const invalid = await observeWithoutHover(browser);
-  await opening.openBaseline(files.baseline);
+  await opening.openHistoricalInventory(files.baseline);
   await browser.waitUntil(async () => {
     const state = await observeInstalledArcs(browser);
     return state.nodes.length === 4 && state.choices.mode === "selected" && state.choices.showSelf === false

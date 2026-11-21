@@ -41,6 +41,7 @@ Given("a saved architecture is open in the diagram workspace", { timeout: 30_000
   const chooser = browserPage.waitForEvent("filechooser");
   await browserPage.getByRole("button", { name: "Open Baseline", exact: true }).click();
   await (await chooser).setFiles(savedDiagram());
+  await browserPage.getByRole("switch", { name: "Show non-production" }).check();
   await expect(browserPage.locator(".react-flow__node[data-id]")).toHaveCount(2);
   await expect(browserPage.getByRole("heading", { name: "baseline-example", exact: true })).toBeVisible();
 });

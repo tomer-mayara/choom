@@ -3,7 +3,7 @@ import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { After, Given, Then, When, type World } from "@cucumber/cucumber";
-import { expect as browserExpect, type JSHandle, type Locator, type Page } from "@playwright/test";
+import { expect as browserExpect, type Locator, type Page } from "@playwright/test";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
 
 const expect = browserExpect.configure({ timeout: 2_000 });
@@ -26,7 +26,7 @@ interface MovementWorld extends World {
   movementHoldNext?: boolean;
   movementRelease?: () => void;
   movementCompleted?: number;
-  movementOutsideFocus?: JSHandle<Element | null>;
+  retainedOutsideFocus?: boolean;
 }
 
 function page(world: MovementWorld): Page {
@@ -76,12 +76,6 @@ async function remember(world: MovementWorld): Promise<void> {
   world.movementCamera = await camera(world);
 }
 
-async function waitForPaint(world: MovementWorld): Promise<void> {
-  await page(world).evaluate(() => new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  }));
-}
-
 async function prepare(world: MovementWorld, controlled: boolean): Promise<void> {
   const browser = page(world);
   await browser.setViewportSize({ width: 1280, height: 800 });
@@ -107,10 +101,10 @@ async function prepare(world: MovementWorld, controlled: boolean): Promise<void>
 async function openFile(world: MovementWorld, controlled = false): Promise<void> {
   await prepare(world, controlled);
   assert.ok(world.movementFile);
-  await driver(world).openBaseline(world.movementFile);
+  await driver(world).openHistoricalInventory(world.movementFile);
   await expect(page(world).getByText("Baseline ready.", { exact: true })).toBeVisible();
   await expect(header(world, "workspace")).toBeVisible();
-  await waitForPaint(world);
+  await driver(world).waitForPaint();
   await expect.poll(async () => (await camera(world)).zoom).toBe(1);
   world.movementInitial = await geometry(world);
   world.movementInitialCamera = await camera(world);
@@ -463,7 +457,7 @@ Given("the example has a manual arrangement and open inspection", async function
   await expect(header(this, "workspace")).toBeVisible();
   await page(this).getByRole("radio", { name: "All", exact: true }).check();
   await page(this).getByRole("checkbox", { name: "Show self-connections", exact: true }).check();
-  await waitForPaint(this);
+  await driver(this).waitForPaint();
   await expect.poll(async () => (await camera(this)).zoom).toBe(1);
   this.movementInitial = await geometry(this);
   this.movementInitialCamera = await camera(this);
@@ -492,11 +486,13 @@ Then("the example has its initial geometry and no old inspection", async functio
 When(/^the user opens (the same movement baseline|another baseline with reused IDs) successfully$/, async function (this: MovementWorld, file: string) {
   assert.ok(this.movementFile);
   await holdReplacement(this, file === "the same movement baseline" ? this.movementFile : await replacementPath(this));
-  this.movementOutsideFocus = await page(this).evaluateHandle(() => document.activeElement);
-  assert.equal(await this.movementOutsideFocus.evaluate((element) =>
+  const outsideFocus = await page(this).evaluateHandle(() => document.activeElement);
+  assert.equal(await outsideFocus.evaluate((element) =>
     Boolean(element?.closest('[aria-labelledby="current-diagram-heading"]'))), false);
   this.movementRelease?.();
   await expect(page(this).getByText("Baseline ready.", { exact: true })).toBeVisible();
+  this.retainedOutsideFocus = await outsideFocus.evaluate((element) => element === document.activeElement);
+  await page(this).getByRole("switch", { name: "Show non-production" }).check();
   if (file !== "the same movement baseline") await expect(header(this, "choom")).toContainText("Replacement Choom");
 });
 Then("the file's prepared geometry and starting camera replace the manual view", async function (this: MovementWorld) {
@@ -507,8 +503,7 @@ Then("the old inspection is closed", async function (this: MovementWorld) {
   await expect(page(this).getByRole("dialog")).toHaveCount(0);
 });
 Then("focus stays on the same element outside the replaced view", async function (this: MovementWorld) {
-  assert.ok(this.movementOutsideFocus);
-  assert.equal(await this.movementOutsideFocus.evaluate((element) => element === document.activeElement), true);
+  assert.equal(this.retainedOutsideFocus, true);
 });
 
 Given("a replacement baseline with reused IDs is waiting to finish layout", async function (this: MovementWorld) {
@@ -527,6 +522,10 @@ Given(/^the user has pressed Workspace (before|after) the drag threshold$/, asyn
 When("the replacement baseline becomes current", async function (this: MovementWorld) {
   assert.ok(this.movementRelease);
   this.movementRelease();
+  const scope = page(this).getByRole("switch", { name: "Show non-production" });
+  await expect(scope).not.toBeChecked();
+  await expect(page(this).getByRole("heading", { name: "baseline-002", exact: true })).toBeFocused();
+  await scope.focus(); await page(this).keyboard.press("Space");
   await expect(header(this, "choom")).toContainText("Replacement Choom");
 });
 When("the old pointer cycle moves and releases", async function (this: MovementWorld) {
@@ -537,8 +536,8 @@ Then("the replacement keeps its prepared geometry and starting camera", async fu
   await expect.poll(() => geometry(this)).toEqual(this.movementInitial);
   await expect.poll(() => camera(this)).toEqual(this.movementInitialCamera);
 });
-Then("focus is on the replacement baseline heading", async function (this: MovementWorld) {
-  await expect(page(this).getByRole("heading", { name: "baseline-002", exact: true })).toBeFocused();
+Then("focus stays on the scope switch after revealing the replacement", async function (this: MovementWorld) {
+  await expect(page(this).getByRole("switch", { name: "Show non-production" })).toBeFocused();
 });
 
 After({ tags: "@br-03 and @browser" }, async function (this: MovementWorld) {

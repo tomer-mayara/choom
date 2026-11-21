@@ -3,6 +3,9 @@ description: Read-only baseline workspace and graph layout.
 
 artifacts:
   behavior:
+    - path: ../cookbook/behavior/baseline-viewer/component-boundaries.feature
+    - path: ../cookbook/behavior/baseline-viewer/production-scope.feature
+    - path: ../cookbook/behavior/baseline-viewer/isolation-comparison.feature
     - path: ../cookbook/behavior/workspace.feature
     - path: ../cookbook/behavior/diagram-workspace.feature
     - path: ../cookbook/behavior/baseline-viewer/input.feature

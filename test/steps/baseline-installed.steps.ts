@@ -46,10 +46,10 @@ Given("installed Choom has only a standalone reviewed baseline and no analyzer r
     await this.installedBaselineDriver.open();
   });
 
-When("the user selects that baseline through the native Open Baseline picker", { timeout: 30_000 },
+When("the user opens its historical inventory through the native Open Baseline picker", { timeout: 30_000 },
   async function (this: InstalledBaselineWorld) {
     assert.ok(this.installedBaselineFile);
-    await driver(this).openBaseline(this.installedBaselineFile);
+    await driver(this).openHistoricalInventory(this.installedBaselineFile);
   });
 
 Then("the installed viewer shows its baseline ID and five component names", { timeout: 30_000 },
@@ -124,7 +124,7 @@ Then("all twenty-one installed Rules entries can be expanded", { timeout: 60_000
 
 Given("the reviewed baseline is open in installed Choom", { timeout: 30_000 }, async function (this: InstalledBaselineWorld) {
   assert.ok(this.installedBaselineFile);
-  await driver(this).openBaseline(this.installedBaselineFile);
+  await driver(this).openHistoricalInventory(this.installedBaselineFile);
   const baseline = baselineSchema.parse(reviewedBaseline("full"));
   const components = baseline.components.map(({ id, name }) => [id, name] as const);
   assert.equal(components.length, 5);

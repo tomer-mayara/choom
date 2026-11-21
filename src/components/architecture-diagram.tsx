@@ -14,6 +14,8 @@ import { incompleteInterfaceCount, interfaceArcs } from "../lib/interface-arcs.t
 import { shownInterfaceArcs, type ConnectionMode } from "../lib/interface-arc-visibility.ts";
 import { interfaceArcMarkerSize, routeInterfaceArcs } from "../lib/interface-arc-geometry.ts";
 import { InterfaceArc, type InterfaceEdge } from "./interface-arc.tsx";
+import { BoundaryInventory, type ReviewedComponent } from "../lib/boundary-inventory.ts";
+import { BoundaryContext, useBoundaryInventory } from "./boundary-details.tsx";
 import { FitDrawingControl } from "./fit-drawing-control.tsx";
 import type { ArchitecturePanel } from "./architecture-details.tsx";
 import { ArchitectureDetailsPanel } from "./architecture-inspector.tsx";
@@ -30,6 +32,7 @@ import "@xyflow/react/dist/style.css";
 type ArchitectureNode = Node<{
   item: ReadonlyData<BaselineComponent>;
   panel: ArchitecturePanel;
+  reviewed?: ReviewedComponent;
   isGroup: boolean;
   interfaceCount: number;
   duplicateCount: number;
@@ -45,7 +48,7 @@ const arrowSteps: Record<string, { x: number; y: number }> = {
   ArrowLeft: { x: -10, y: 0 }, ArrowRight: { x: 10, y: 0 }, ArrowUp: { x: 0, y: -10 }, ArrowDown: { x: 0, y: 10 },
 };
 
-function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount, discovery, entryCounts, inspect, selected, gestures, announce } }: NodeProps<ArchitectureNode>) {
+function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount, discovery, entryCounts, inspect, selected, gestures, announce, reviewed } }: NodeProps<ArchitectureNode>) {
   const { getNodesBounds, getViewport, setViewport, screenToFlowPosition } = useReactFlow();
   const store = useStoreApi();
   const pointerSelection = useRef(false);
@@ -76,7 +79,7 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount
       <Handle type="source" position={Position.Bottom} style={{ visibility: "hidden" }} />
       <Handle type="target" position={Position.Bottom} style={{ visibility: "hidden" }} />
       <button
-        type="button" aria-label={`${item.name}, ${item.id}`} aria-haspopup="dialog"
+        type="button" aria-label={reviewed ? `${reviewed.name}, ${reviewed.roleLabel}` : `${item.name}, ${item.id}`} aria-haspopup="dialog"
         data-component-id={item.id}
         aria-describedby={headerDescription(item.id, counts)} aria-pressed={selected}
         className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center border-border px-3 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${compactHeader(counts) ? "py-0.5" : "gap-0.5 py-1"} ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
@@ -106,8 +109,16 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount
           inspect(panel, event.currentTarget, keyboard);
         }}
       >
-        <ComponentHeaderText id={item.id} name={item.name} counts={counts} />
+        {reviewed ? <>
+          <strong className="line-clamp-1 max-w-full text-sm" title={reviewed.name}>{reviewed.name}</strong>
+          <span className="line-clamp-1 max-w-full text-xs" title={reviewed.purpose}>{reviewed.purpose}</span>
+          {reviewed.provides[0] && <span className="line-clamp-1 max-w-full text-xs font-semibold" title={reviewed.provides[0].name}>{reviewed.provides[0].name}</span>}
+          <span className="line-clamp-1 text-xs">{reviewed.roleLabel}{reviewed.provides[0]?.markers.length ? " · Entry point" : ""}
+            {reviewed.findings.length > 0 && <span title={reviewed.findings[0]?.label}> · {reviewed.findings.length} {reviewed.findings.length === 1 ? "finding" : "findings"}</span>}</span>
+        </> : <ComponentHeaderText id={item.id} name={item.name} counts={counts} />}
       </button>
+      {reviewed && reviewed.provides.length > 1 && <button type="button" className="nodrag nopan absolute top-[68px] left-[116px] rounded bg-card px-1 text-xs font-semibold underline"
+        onClick={(event) => inspect(panel, event.currentTarget, event.detail === 0)}>Show more ({reviewed.provides.length - 1})</button>}
     </div>
   );
 }
@@ -177,6 +188,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
   discoveryCounts: ReadonlyMap<string, DiscoveryCount>;
   entryCounts: ReadonlyMap<string, SystemEntryCounts>;
 }) {
+  const boundaries = useBoundaryInventory();
   const geometry = useSyncExternalStore(arrangement.subscribe, arrangement.getSnapshot);
   const gestures = useComponentGestures(arrangement);
   const pressGeneration = useRef(0);
@@ -189,22 +201,22 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
   const announce = useCallback((text: string) => { setAnnouncement({ owner: arrangement, text }); }, [arrangement]);
   const firstRootId = baseline.components.find(({ parent }) => !parent?.value)?.id;
   const connections = useMemo(() => {
-    const arcs = interfaceArcs(baseline);
+    const arcs = boundaries?.arcs ?? interfaceArcs(baseline);
     return { arcs, order: new Map(arcs.map(({ id }, index) => [id, index])) };
-  }, [baseline]);
+  }, [baseline, boundaries]);
   const routes = useMemo(() => routeInterfaceArcs(connections.arcs, geometry), [connections, geometry]);
   const items = useMemo(() => {
     const parents = new Set(baseline.components.flatMap((component) => component.parent?.value ? [component.parent.value] : []));
     const items = new Map<string, ArchitectureNode["data"]>();
     const interfaceCounts = directInterfaceCounts(baseline);
     for (const item of baseline.components) items.set(item.id, {
-      item, panel: { kind: "component", componentId: item.id }, isGroup: parents.has(item.id),
+      item, reviewed: boundaries?.components.get(item.id), panel: { kind: "component", componentId: item.id }, isGroup: parents.has(item.id),
       interfaceCount: interfaceCounts.get(item.id) ?? 0, inspect: inspection.open, selected: inspection.componentId === item.id,
       duplicateCount: duplicateCounts.get(item.id) ?? 0, discovery: discoveryCounts.get(item.id), entryCounts: entryCounts.get(item.id),
       gestures, announce,
     });
     return items;
-  }, [baseline, inspection.open, inspection.componentId, gestures, announce, duplicateCounts, discoveryCounts, entryCounts]);
+  }, [baseline, inspection.open, inspection.componentId, gestures, announce, duplicateCounts, discoveryCounts, entryCounts, boundaries]);
   const nodes = useMemo<ArchitectureNode[]>(() => {
     return geometry.nodes.map(({ id, position, width, height, parentId }) => {
       const data = items.get(id);
@@ -216,17 +228,17 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           { type: "source", position: Position.Bottom, x: componentControlWidth / 2, y: componentControlHeight },
           { type: "target", position: Position.Bottom, x: componentControlWidth / 2, y: componentControlHeight },
         ],
-        ariaLabel: `${data.item.name}, ${id}`,
+        ariaLabel: data.reviewed ? `${data.reviewed.name}, ${data.reviewed.roleLabel}` : `${data.item.name}, ${id}`,
       };
     });
   }, [geometry, items]);
   const edges = useMemo<InterfaceEdge[]>(() => {
     const names = new Map(baseline.interfaces.map(({ id, name }) => [id, name]));
-    const components = new Map(baseline.components.map(({ id, name }) => [id, name]));
+    const components = new Map(baseline.components.map(({ id, name }) => [id, boundaries?.components.get(id)?.name ?? name]));
     const visible = shownInterfaceArcs(routes, { mode: connectionMode, showSelfConnections,
       componentId: inspection.componentId, interfaceId: inspection.connectionPanel?.kind === "interface" ? inspection.connectionPanel.interfaceId : undefined });
     return visible.map((route) => {
-      const name = names.get(route.interfaceId) ?? route.interfaceId;
+      const name = boundaries?.arcLabels.get(route.id) ?? names.get(route.interfaceId) ?? route.interfaceId;
       const consumer = `${components.get(route.consumerId)}, ${route.consumerId}`;
       const owner = `${components.get(route.ownerId)}, ${route.ownerId}`;
       const panel = inspection.connectionPanel;
@@ -236,12 +248,13 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
       return { id: route.id, source: route.consumerId, target: route.ownerId, type: "interface",
         domAttributes: { "aria-hidden": true },
         markerEnd: { type: MarkerType.ArrowClosed, color: "var(--foreground)", width: interfaceArcMarkerSize, height: interfaceArcMarkerSize },
-        data: { route, name, accessibleName: `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}`,
+        data: { route, name, operationId: boundaries ? route.interfaceId : undefined,
+          accessibleName: boundaries ? `${name}, ${components.get(route.consumerId)} uses ${components.get(route.ownerId)}` : `${name}, ${route.interfaceId}; consumer ${consumer}; owner ${owner}`,
           inspected: panel?.kind === "interface" && panel.interfaceId === route.interfaceId,
           inspect: inspection.open, view: arrangement, pressGeneration, emphasis, labelOrder: connections.order.get(route.id) ?? 0 },
       };
     });
-  }, [baseline, connections, routes, inspection.open, inspection.connectionPanel, inspection.componentId, arrangement, connectionMode, showSelfConnections]);
+  }, [baseline, connections, routes, inspection.open, inspection.connectionPanel, inspection.componentId, arrangement, connectionMode, showSelfConnections, boundaries]);
 
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card" aria-label="Architecture diagram">
     <div className="flex shrink-0 flex-wrap items-center gap-x-4 border-b border-border px-3 py-1 text-xs text-muted-foreground">
@@ -262,7 +275,7 @@ function ArchitectureCanvas({ baseline, layout, arrangement, inspection, connect
           Show self-connections
         </label>
       </fieldset>
-      {supportsSourceUsage(baseline) ? <div>
+      {boundaries ? <p>Arrows show observed uses between the visible components.</p> : supportsSourceUsage(baseline) ? <div>
         <p>Arrow: component uses the interface in saved source.</p>
         <p>The canvas shows application and tooling value references. Type and test references stay in details. Source use does not prove runtime execution.</p>
       </div> : <p>Arrow: consumer may use the owner's interface.</p>}
@@ -295,52 +308,74 @@ function sourceReviewNotice(baseline: ReadonlyData<Baseline>): string | null {
       : "Source review is partial. See interface details for scope and gaps.";
 }
 
-/** The published pair defines one view; pointer frames only update its canvas. */
-export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false,
-  discovery, onOpenDiscoveryResult, onRemoveDiscoveryResult, baselineSha256 }: {
-  baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
-  /** The SHA-256 of the saved baseline file. The built-in example has none, so it cannot copy a decision. */
-  baselineSha256?: string;
-} & DuplicationControls & DiscoveryControls) {
+function useConnectionChoices(source: ReadonlyData<Baseline>, layout: ReadonlyData<ArchitectureLayout>, scoped: boolean) {
   const [connectionChoice, setConnectionChoice] = useState<{
     baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>; mode: ConnectionMode; showSelfConnections: boolean;
   } | null>(null);
-  if (connectionChoice && (connectionChoice.baseline !== baseline || connectionChoice.layout !== layout)) setConnectionChoice(null);
-  const connectionMode = connectionChoice?.baseline === baseline && connectionChoice.layout === layout ? connectionChoice.mode : "selected";
-  const showSelfConnections = connectionChoice?.baseline === baseline && connectionChoice.layout === layout ? connectionChoice.showSelfConnections : false;
-  const setConnectionMode = useCallback((mode: ConnectionMode) => setConnectionChoice((current) => ({ baseline, layout, mode,
-    showSelfConnections: current?.baseline === baseline && current.layout === layout ? current.showSelfConnections : false,
-  })), [baseline, layout]);
-  const setShowSelfConnections = useCallback((showSelfConnections: boolean) => setConnectionChoice((current) => ({ baseline, layout, showSelfConnections,
-    mode: current?.baseline === baseline && current.layout === layout ? current.mode : "selected",
-  })), [baseline, layout]);
-  const inspection = useArchitectureInspection(baseline, layout, connectionMode, duplication?.session ?? null);
+  const current = connectionChoice?.baseline === source && (scoped || connectionChoice.layout === layout) ? connectionChoice : null;
+  if (connectionChoice && !current) setConnectionChoice(null);
+  const connectionMode = current?.mode ?? "selected";
+  const showSelfConnections = current?.showSelfConnections ?? false;
+  const setConnectionMode = useCallback((mode: ConnectionMode) => setConnectionChoice({ baseline: source, layout, mode, showSelfConnections }), [source, layout, showSelfConnections]);
+  const setShowSelfConnections = useCallback((show: boolean) => setConnectionChoice({ baseline: source, layout, mode: connectionMode, showSelfConnections: show }), [source, layout, connectionMode]);
+  return { connectionMode, showSelfConnections, setConnectionMode, setShowSelfConnections };
+}
+
+function RuleControl({ rules, open }: { rules: number; open: ReturnType<typeof useArchitectureInspection>["open"] }) {
+  const view = useBoundaryInventory();
+  const label = view ? "Boundary findings" : "Rules";
+  const count = view ? (view.fresh ? view.findings.length : undefined) : rules;
+  return <Button variant="outline" aria-label={label}
+    onClick={(event) => open({ kind: "rules" }, event.currentTarget, event.detail === 0)}>{label}{count !== undefined && ` (${count})`}</Button>;
+}
+
+function showEmptyModel(baseline: ReadonlyData<Baseline>, source: ReadonlyData<Baseline> | undefined, showAll: boolean): boolean {
+  if (baseline.components.length) return false;
+  return !source || showAll || source.components.length + source.interfaces.length + source.resources.length + source.rules.length === 0;
+}
+
+/** The published pair defines one view; pointer frames only update its canvas. */
+export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDuplicationReport, onRemoveDuplicationReport, reportBusy = false,
+  discovery, onOpenDiscoveryResult, onRemoveDiscoveryResult, baselineSha256, sourceBaseline, showNonProduction = false }: {
+  baseline: ReadonlyData<Baseline>; layout: ReadonlyData<ArchitectureLayout>;
+  /** The SHA-256 of the saved baseline file. The built-in example has none, so it cannot copy a decision. */
+  baselineSha256?: string;
+  sourceBaseline?: ReadonlyData<Baseline>;
+  showNonProduction?: boolean;
+} & DuplicationControls & DiscoveryControls) {
+  const source = sourceBaseline ?? baseline;
+  const boundaries = useMemo(() => source.formatVersion === 6 ? new BoundaryInventory(source, showNonProduction, baselineSha256) : null, [source, showNonProduction, baselineSha256]);
+  const { connectionMode, showSelfConnections, setConnectionMode, setShowSelfConnections } = useConnectionChoices(source, layout, sourceBaseline !== undefined);
+  const inspectionScope = { source, operations: boundaries?.operations, raw: !sourceBaseline || showNonProduction };
+  const inspection = useArchitectureInspection(baseline, layout, connectionMode, duplication?.session ?? null,
+    inspectionScope);
   const arrangement = useMemo(() => new ComponentArrangement(layout), [baseline, layout]);
   const openPanel = inspection.open;
   const incompleteInterfaces = incompleteInterfaceCount(baseline);
-  const sourceNotice = sourceReviewNotice(baseline);
-  const { assessment, notices: entryNotices } = systemEntryReview(baseline);
+  const sourceNotice = boundaries ? null : sourceReviewNotice(baseline);
+  const { assessment, notices } = systemEntryReview(baseline);
+  const entryNotices = inspectionScope.raw && !boundaries ? notices : [];
   const entryCounts = useMemo(() => systemEntryCounts(assessment?.entries ?? []), [assessment]);
   const counts = useMemo(() => duplicationCounts(baseline, duplication?.report), [baseline, duplication?.report]);
   const { reading, componentCounts } = useDiscoveryReading(baseline, discovery);
   const decisions = useDecisionBaseline(baseline, baselineSha256);
 
-  return (<DiscoveryContext value={reading}><DecisionContext value={decisions}>
+  return (<BoundaryContext value={boundaries}><DiscoveryContext value={reading}><DecisionContext value={decisions}>
     <section aria-labelledby="current-diagram-heading" className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:flex-nowrap sm:gap-3">
         <h1 id="current-diagram-heading" tabIndex={-1} className="min-w-0 flex-1 truncate text-base font-semibold" title={baseline.id}>{baseline.id}</h1>
         <p id="item-inspection-hint" className="sr-only lg:not-sr-only lg:text-xs lg:text-muted-foreground">Select to inspect. Drag a header or use arrow keys to move it.</p>
         {/* In a narrow window, Discovery is a 24px control on the heading row, so it adds no height to the header. */}
-        <Button variant="outline" className="h-6 px-2 py-0 text-xs sm:h-auto sm:px-4 sm:py-2 sm:text-sm"
-          onClick={(event) => openPanel({ kind: "discovery" }, event.currentTarget, event.detail === 0)}>Discovery</Button>
+        {inspectionScope.raw && <Button variant="outline" className="h-6 px-2 py-0 text-xs sm:h-auto sm:px-4 sm:py-2 sm:text-sm"
+          onClick={(event) => openPanel({ kind: "discovery" }, event.currentTarget, event.detail === 0)}>Discovery</Button>}
         <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-4 sm:[&>button]:text-sm">
           {/* A narrow window shows the short label, so that the three actions stay on one row. */}
           <Button id="baseline-details-control" variant="outline" aria-label="Baseline details"
             onClick={(event) => openPanel({ kind: "baseline" }, event.currentTarget, event.detail === 0)}>
             <span className="sm:hidden">Details</span><span className="hidden sm:inline">Baseline details</span>
           </Button>
-          <Button variant="outline" aria-label="Rules" onClick={(event) => openPanel({ kind: "rules" }, event.currentTarget, event.detail === 0)}>Rules ({baseline.rules.length})</Button>
-          <Button variant="outline" onClick={(event) => openPanel({ kind: "duplicates" }, event.currentTarget, event.detail === 0)}>Duplicates</Button>
+          <RuleControl rules={baseline.rules.length} open={openPanel} />
+          {inspectionScope.raw && <Button variant="outline" onClick={(event) => openPanel({ kind: "duplicates" }, event.currentTarget, event.detail === 0)}>Duplicates</Button>}
         </div>
       </div>
       {incompleteInterfaces > 0 || sourceNotice || entryNotices.length > 0 ? (
@@ -352,7 +387,7 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
           {entryNotices.map((notice) => <p key={notice}>{notice}</p>)}
         </div>
       ) : null}
-      {baseline.components.length === 0 ? (
+      {showEmptyModel(baseline, sourceBaseline, showNonProduction) ? (
         <p role="status" className="p-6 text-muted-foreground">{baseline.interfaces.length + baseline.resources.length + baseline.rules.length === 0 ? "No architecture items modeled" : "No components modeled"}</p>
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -365,5 +400,5 @@ export function ArchitectureDiagram({ baseline, layout, duplication, onOpenDupli
         discoveryControls={{ discovery, onOpenDiscoveryResult, onRemoveDiscoveryResult }} />
       </div>
     </section>
-  </DecisionContext></DiscoveryContext>);
+  </DecisionContext></DiscoveryContext></BoundaryContext>);
 }

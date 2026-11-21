@@ -66,3 +66,12 @@ bun run test:behavior --tags @di-02-03
 bun test ./test/interface/platform/documents.test.ts
 bun run test:rust
 ```
+
+
+## Select a file for comparison
+
+**Compare with earlier baseline** selects one baseline as Before. Open Baseline
+selects After. Both actions use the same bounded browser or native reader. The
+digest is computed on the original bytes, including a byte order mark when present.
+A cancelled picker returns no selection. The workspace owns comparison, retry
+and publication of the last valid pair.

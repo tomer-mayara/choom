@@ -4,7 +4,7 @@ import type * as ChoomBaselineModel from "@choom/baseline-model/contracts";
 
 export interface DuplicationBaselineBinding {
   id: duplicationReference;
-  formatVersion: 1 | 2 | 3 | 4 | 5;
+  formatVersion: 1 | 2 | 3 | 4 | 5 | 6;
   sha256: duplicationDigest;
 }
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { Given, Then, When, type World } from "@cucumber/cucumber";
 import { expect, type Page } from "@playwright/test";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
+import { assertContained } from "../support/baseline-viewer/component-containment.ts";
 
 interface WorkspaceWorld extends World { page?: Page; pageErrors: string[] }
 function page(world: WorkspaceWorld): Page {
@@ -29,6 +30,10 @@ Then("the starter baseline is visible", async function (this: WorkspaceWorld) {
   await expect(page(this).getByRole("heading", { name: "example-baseline", exact: true })).toBeVisible();
   await expect(page(this).locator(".react-flow__node[data-id]")).toHaveCount(3);
   await expect(page(this).getByRole("button", { name: "Workspace, workspace", exact: true })).toBeInViewport();
+});
+// The step time limit is longer than the time limit of the check, so a failure names its cause.
+Then("Architecture model and Platform adapter appear inside Workspace in the example", { timeout: 15_000 }, async function (this: WorkspaceWorld) {
+  await assertContained(page(this), "example-baseline", "workspace", ["architecture-model", "desktop-adapter"]);
 });
 Then("no browser page errors have occurred", function (this: WorkspaceWorld) {
   assert.deepEqual(this.pageErrors, []);

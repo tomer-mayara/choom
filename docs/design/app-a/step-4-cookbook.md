@@ -51,7 +51,8 @@ the same for the resource access rule list (see
 [Find the resource access candidates](#find-the-resource-access-candidates)). Every later
 command, the inspection helper and the publication commands in section 6 run from
 the tool checkout and make the same producer code check first.
-The input remains the empty version 1 seed. Versions 1 and 2 remain readable.
+The input remains the empty version 1 seed. Use [version 6](record-format.md#version-6-boundary-review)
+for a project-keyed run and keep each file whole. The following version choices apply to legacy runs. Versions 1 and 2 remain readable.
 Use version 3 for [source-use assessments](record-format.md#version-3-source-use-assessments)
 without a system-entry assessment. Use version 4 when a
 [system-entry assessment](record-format.md#version-4-system-entry-points)
@@ -61,9 +62,10 @@ and signatures. Stage 4 maps whole files and does not write version 5: the
 publisher refuses it. Stage 5 can divide a file by
 [symbol selectors](record-format.md#version-5-symbol-selectors). When both
 assessments are present, they must name the same snapshot and candidate mapping.
-Keep unknown facts explicit. Review a source range before claiming that it
-supports an example; a collected excerpt alone is insufficient. Check the full
-baseline against the reader limits before publication.
+Keep unknown facts explicit. For an example result, read its cited assertion,
+returned value or contract and compare the displayed fields and rows. Mark a
+supported portion as `scope: excerpt`. Omit an unsupported result. Check the full baseline
+against the reader limits before publication.
 
 Before creating the attempt, it also checks every indexed snapshot path, file
 type, and byte count. This catches missing or truncated input before the toolchain
@@ -174,7 +176,11 @@ This builds a dedicated Docker image with dependency-cruiser 18.7.2 and
 TypeScript 6.0.2. Dependency installation is confined to the tool image, uses
 fixed requested versions, and disables installation scripts and optional peer
 tool loading. The build has no target repository mount. It can require network
-access to obtain the tool image and packages.
+access to obtain the tool image and packages. The image starts from the tag
+`node:24-bookworm-slim`, and no lockfile is committed, so the base image and the
+dependencies of these packages can differ in a later build. Each run pins its
+image by the saved image ID, not by the base tag: `run` checks that image ID
+before it uses the image.
 
 The helper records the image ID, package lock, versions, command outcomes, and
 fixture result. The image runs the fixture with the graph helper at the same
@@ -234,13 +240,21 @@ A completed `require` context can contain no dependency edges; an empty edge
 list does not by itself mean the tool failed to execute. The same applies to an
 import pass whose files all compile to CommonJS.
 
-Choom traverses retained internal source edges from the recorded roots. This
-includes type-only, re-export, and literal dynamic dependencies. It saves reached
-files, files not reached in that graph, and edges where traversal stopped.
+The saved review prompt summarizes each completed context and cites it in
+`graph-results.json`. Use the cited context to check each count.
 
-These results are source relationships. They do not prove runtime execution or
-unused code. A target outside the current context is a traversal boundary. Do
-not merge incompatible context results or treat missing edges as absence.
+- `scanFiles` lists the files supplied to the analyzer in this pass.
+- `reachability.roots` lists the paths from which traversal started.
+- `reachability.reached` includes those roots and files reached through
+  retained internal edges, including type-only, re-export and literal dynamic dependencies.
+- `reachability.stoppedEdges` lists edges from reached files that traversal
+  could not follow, such as edges to unresolved targets.
+
+Compare the actual root paths across contexts. Equal counts can cover different
+paths. Identify passes with identical root sets and count each path once when
+reporting distinct starting files. Keep edge policies, results and limits per
+pass. A reached file need not execute, and a file outside the reached set can
+still be used.
 
 The pinned analyzer can lose type-only labels on unresolved imports and combine
 static and dynamic imports of the same specifier. The next source query retains
@@ -317,7 +331,7 @@ level. It saves:
 | `behavior-entry-candidates.json` | The candidates of the pinned behavior entry rules in the source files of the graph scope and in the `package.json` files of the snapshot: their rule, site, name, handler and role, the gaps, the scope and the limits. See [Find the behavior entry candidates](#find-the-behavior-entry-candidates). |
 | `resource-access-candidates.json` | The candidates of the pinned resource access rules in the source files of the graph scope, and the resource call sites of `source-sites.json` that no rule found: their operation, name, confidence and source context, the scope and the limits. See [Find the resource access candidates](#find-the-resource-access-candidates). |
 | `source-excerpts.json` | A bounded initial selection from priority files, entry candidates and component declarations, with file hashes, truncation and skipped paths. |
-| `review-prompt.md` | The LLM review instructions with the current paths and evidence references. |
+| `review-prompt.md` | The LLM review instructions with the current paths, evidence references and [counts for each graph context](#3-collect-dependency-evidence). |
 | `artifact-map.json` | Proposed artifact IDs and digests available at collection time. It omits itself, the mutable command log, and later files. |
 
 Site lines count CRLF, CR and LF in the text that the parser read. A byte order
@@ -1305,7 +1319,8 @@ Give the LLM the saved `review-prompt.md`. In an interactive session, use:
 Review Choom Appendix A stage 4 for the prepared attempt.
 Read its saved review-prompt.md and follow its evidence rules.
 Verify the registered inputs and proposed artifact digests before analysis.
-Use the stage 3 inspection priorities and the separate graph contexts.
+Follow the stage 3 inspection priorities and the prompt's references to each
+graph context. Compare the traversal root paths before describing shared roots.
 Request additional numbered source excerpts when needed.
 Request the references to a top-level symbol (a path and a symbol name) when
 you need to know where it is used; then read the reference ranges.
@@ -1313,12 +1328,28 @@ Read the behavior entry candidates as places to read, not as proven entries,
 and name them in the entry analysis as behaviorEntryCandidatesRef.
 Read the resource access candidates as sites to read, not as proven access,
 and name them in resource-access.json as resourceAccessCandidatesRef.
+Keep target.resourceRef null when the access expression cannot be linked to
+a modeled resource. Assess ownership separately for each modeled resource.
 Recover the apparent intended architecture; do not recommend redesigns.
+When run.before.yaml has a projectKey, write a version 6 boundary review. Record
+who reached which member, through which written path, under which effective rule.
+Inspect outside uses of private or unlisted members as well as public entries.
+Cite the caller and binding ranges and each direct file owner. Link an existing
+source use by interface ID and use ID. Keep unresolved bindings and limits.
+Compare the proposed public paths with the package entries and declarations.
+Follow re-exports and inspect uses of supported members, including error and
+type contracts and uses within the providing component. For an observed
+production or non-production use, cite the exact member, caller, access kind
+and role. For a missing example, describe the searched scope and limit.
+For each reachable target, give ordered edges in a single saved resolution context.
 Keep source-use assessments separate from allowedConsumers.
+Use the registered package-bin name or literal Node test name for an operation
+whose handler has no JavaScript declaration of that name. Cite the registration
+and the handler. Link the reviewed behavior to the matching file entry and role.
 Review launch settings, behavior entries and each external operation's
 registration or host binding. Use the candidate file mapping for the direct
 owner of the start or handler. Keep unresolved paths and owners in discovery.
-Use version 4 for systemEntryPoints, or the version required by the other
+For legacy files use version 4 for systemEntryPoints, or the version required by the other
 saved fields when there is no entry assessment.
 Use one selected mapping and reviewed caller/binding evidence with partial scope.
 Retain structured interface documentation. For each function or method entry
@@ -1360,10 +1391,11 @@ The following table explains their purpose:
 | Discovery update | Overview, completed inspected paths, proposed fact references, questions, and gaps. `baselineRef` stays unset until the fixed baseline is saved in stage 6. |
 | Review record | The prompt, the complete visible response, supplied evidence, exposed model metadata with `hiddenReasoning: not-saved`, and exact source ranges actually inspected. Do not save hidden reasoning. Do not invent unavailable API metadata. |
 
-Keep the dependency facts from the graph separate from the proposed model.
-Do not turn every observed import into an allowed-access rule. Keep intended
-resource ownership separate from observed reads and writes. Do not invent
-interface promises from names or type signatures alone.
+For each resource access, trace the mapped actor's call to the expression or
+setting that selects its target. Check that any proposed owner has evidence for
+that same resource. Keep unknown owners and their exact discovery subjects as
+described in [Resource observations](record-format.md#resource-observations).
+Observed imports and signatures alone cannot establish access rules or promises.
 
 Preserve the prior questions and gaps unchanged in this prototype. Append notes
 that cite the earlier IDs when evidence resolves part of a gap. Keep conflicting
@@ -1397,8 +1429,8 @@ guidance before `finish`. Check the complete model and fact records:
 - A behavior entry rests on reviewed source ranges. A behavior entry candidate is a
   place to read; it does not make a behavior entry, and a missing candidate does
   not show that there is no entry.
-- Reachability retains its context, roots, edge policy, stopped edges, and limits.
-  No report difference or unreachable file is treated as proof of unused code.
+- Each reachability claim cites its [graph context](#3-collect-dependency-evidence),
+  including its actual roots, edge policy, stopped edges and limits.
 - Resource observations and intended ownership remain separate. Unknown targets,
   missing dependencies, native-code coverage, and uninspected code remain visible.
   A resource access candidate is a site to read; a matching name does not show that

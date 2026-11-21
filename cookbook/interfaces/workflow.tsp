@@ -62,7 +62,7 @@ union WorkflowOutcome {
 
 @extension("additionalProperties", false)
 model WorkflowState {
-  operation: "baseline" | "report" | "discovery";
+  operation: "baseline" | "report" | "discovery" | "comparison";
   phase: "idle" | "loading" | "cancelling";
   stage: WorkflowStage | null;
   lastOutcome: WorkflowOutcome | null;
@@ -72,6 +72,8 @@ model WorkflowState {
 // remain TypeScript bindings. Publication owns the full baseline and layout.
 interface WorkflowOperations {
   openBaseline(): WorkflowOutcome;
+  openComparison(): WorkflowOutcome;
+  closeComparison(): WorkflowOutcome;
   openDuplicationReport(): WorkflowOutcome;
   removeDuplicationReport(): WorkflowOutcome;
   openDiscoveryResult(): WorkflowOutcome;

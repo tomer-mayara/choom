@@ -5,7 +5,7 @@ Feature: Open a saved architecture baseline
   @browser
   Scenario: Open a baseline without its repository in the browser
     Given only the reviewed baseline file is available to the viewer
-    When the user opens the saved baseline in Choom
+    When the user opens the saved baseline in Choom and requests its historical inventory
     Then its baseline ID and five component names are shown
     And repository selection and diagram export are unavailable
     And opening the baseline has not changed the selected file
@@ -19,7 +19,7 @@ Feature: Open a saved architecture baseline
   @browser
   Scenario: A legacy diagram cannot replace the current baseline
     Given only the reviewed baseline file is available to the viewer
-    When the user opens the saved baseline in Choom
+    When the user opens the saved baseline in Choom and requests its historical inventory
     And the user opens a legacy diagram
     Then the previous baseline remains visible with a legacy format error
 
@@ -27,7 +27,7 @@ Feature: Open a saved architecture baseline
   Scenario: Retry reads the selected baseline again after a read failure
     Given only the reviewed baseline file is available to the viewer
     When the next selected file read fails
-    And the user opens the saved baseline in Choom
+    And the user opens the saved baseline in Choom and requests its historical inventory
     Then the baseline read failure permits retry
     And the read failure explains how to select the file again
     When the user retries the selected baseline
@@ -36,7 +36,7 @@ Feature: Open a saved architecture baseline
   @browser
   Scenario: Cancelling a delayed layout preserves the previous baseline
     Given the baseline viewer has a controllable layout
-    When the user opens the saved baseline in Choom
+    When the user opens the saved baseline in Choom and requests its historical inventory
     And the user cancels another baseline during layout
     Then its baseline ID and five component names are shown
     And a late layout cannot replace a newer baseline
@@ -44,6 +44,6 @@ Feature: Open a saved architecture baseline
   @browser
   Scenario: A layout failure preserves the current baseline
     Given the baseline viewer has a controllable layout
-    When the user opens the saved baseline in Choom
+    When the user opens the saved baseline in Choom and requests its historical inventory
     And the user opens a baseline whose layout fails
     Then the previous baseline remains visible with a layout error

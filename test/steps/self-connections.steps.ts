@@ -55,7 +55,7 @@ async function open(world: SelfWorld, select = false, self = false, mode = "Sele
   await writeFile(world.selfFile, world.selfBytes);
   const viewer = new BaselineBrowserDriver(browser);
   await viewer.open();
-  await viewer.openBaseline(world.selfFile);
+  await viewer.openHistoricalInventory(world.selfFile);
   await expect(browser.getByRole("heading", { name: "self-connections", exact: true })).toBeVisible();
   if (select) await browser.getByRole("button", { name: "Billing, billing", exact: true }).click();
   if (mode === "All") await browser.getByRole("radio", { name: "All", exact: true }).check();

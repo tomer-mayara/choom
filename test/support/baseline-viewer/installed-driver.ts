@@ -1,20 +1,18 @@
 import { expectInstalledInterfaceRecord, readInstalledInterfaceRecord } from "./installed-interface-record.ts";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { readdir, readFile, readlink, realpath, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
-import { promisify } from "node:util";
 import type { World } from "@cucumber/cucumber";
 import { Key, remote, type Browser } from "webdriverio";
 import { expectInstalledUnknownConsumers, inspectAndArrangeInstalledArcs } from "./installed-arcs.ts";
 import { inspectInstalledArcOpens } from "./installed-arc-files.ts";
 import type { Baseline, BaselineV3 } from "@choom/baseline-model/contracts";
 import { inspectInstalledDocumentation, type InstalledDocumentationTask } from "./published-interface-installed.ts";
-import { captureInstalledView, readInstalledView } from "./installed-view.ts";
+import { captureInstalledView, readInstalledView, waitFor } from "./installed-view.ts";
 import { inspectInstalledSourceConsumers, type InstalledSourceConsumerTask } from "./source-consumer-installed.ts";
 
-const run = promisify(execFile);
+import { environment, InstalledX11Application, xdo } from "./installed-x11.ts";
 
 interface InstalledDiagramState {
   camera: { x: number; y: number; zoom: number };
@@ -54,35 +52,12 @@ function expectNear(actual: number, expected: number, message: string): void {
   assert.ok(Math.abs(actual - expected) <= 0.01, `${message}: expected ${expected}, received ${actual}`);
 }
 
-function environment(name: string): string {
-  const value = process.env[name];
-  assert.ok(value, `${name} is missing; use bun run test:behavior:packaged`);
-  return value;
-}
-
-export async function waitFor(check: () => Promise<boolean>, message: string, timeout = 10_000): Promise<void> {
-  const deadline = Date.now() + timeout;
-  do {
-    if (await check()) return;
-    await delay(100);
-  } while (Date.now() < deadline);
-  assert.fail(message);
-}
-
-async function xdo(args: string[], allowNoMatch = false): Promise<string[]> {
-  try {
-    const result = await run(environment("CHOOM_XDOTOOL"), args, { timeout: 5_000, maxBuffer: 256 * 1024 });
-    return result.stdout.trim().split("\n").filter(Boolean);
-  } catch (error) {
-    if (allowNoMatch && error instanceof Error && "code" in error && error.code === 1) return [];
-    throw error;
-  }
-}
+export { waitFor } from "./installed-view.ts";
 
 /** Operate the ordinary installed app through WebDriver and its native GTK picker. */
 export class InstalledBaselineDriver {
   private browser?: Browser;
-  private processId?: string;
+  private readonly application = new InstalledX11Application();
   private readonly world: World;
 
   constructor(world: World) { this.world = world; }
@@ -95,84 +70,72 @@ export class InstalledBaselineDriver {
   async open(): Promise<void> {
     try {
       const capabilities: Parameters<typeof remote>[0]["capabilities"] & {
-        "tauri:options": { application: string };
-      } = { "tauri:options": { application: environment("CHOOM_PACKAGED_APP") } };
+        "tauri:options": { application: string; args: string[] };
+      } = { "tauri:options": { application: this.application.executable, args: [this.application.sessionArgument] } };
       this.browser = await remote({
         hostname: "127.0.0.1", port: Number(environment("CHOOM_PACKAGED_NO_RUNTIME_DRIVER_PORT")), path: "/",
         logLevel: "error", connectionRetryCount: 0, connectionRetryTimeout: 20_000, capabilities,
       });
+      const pid = await this.application.findVisibleProcess();
       await waitFor(async () => (await this.session().$("body").getText()).trim().length > 0,
         "The installed application did not display its document", 20_000);
       assert.equal(await this.session().execute(() => "__TAURI_INTERNALS__" in window), true,
         "The installed viewer must use the real native host");
-      await this.findApplicationProcess();
-      await this.verifyProductEnvironment();
+      await this.verifyProductEnvironment(pid);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       await writeFile(join(environment("CHOOM_PACKAGED_EVIDENCE_DIR"), "setup-failure.json"),
         JSON.stringify({ phase: "installed-session", reason }, null, 2));
+      await this.releaseSession();
       throw new Error(`Packaged setup failed before a usable installed session: ${reason}`, { cause: error });
     }
   }
 
-  private async findApplicationProcess(): Promise<void> {
-    const executable = environment("CHOOM_PACKAGED_APP");
-    await waitFor(async () => {
-      for (const window of await xdo(["search", "--onlyvisible", "--name", "^Choom$"], true)) {
-        const [pid] = await xdo(["getwindowpid", window]);
-        if (!pid) continue;
-        try {
-          if (await realpath(await readlink(`/proc/${pid}/exe`)) === executable) {
-            this.processId = pid;
-            return true;
-          }
-        } catch (error) {
-          if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
-        }
-      }
-      return false;
-    }, "No visible Choom X11 window belongs to the requested installed executable");
-  }
-
-  private async verifyProductEnvironment(): Promise<void> {
-    assert.ok(this.processId);
+  private async verifyProductEnvironment(pid: string): Promise<void> {
     const path = environment("CHOOM_PACKAGED_NO_RUNTIME_PATH");
     assert.ok(isAbsolute(path), "The product PATH must name an absolute owned directory");
-    assert.deepEqual(await readdir(path), [], "The product PATH directory must be empty");
-    const entries = (await readFile(`/proc/${this.processId}/environ`, "utf8")).split("\0");
+    const pathEntries = await readdir(path);
+    const sandboxHelper = "/usr/bin/bwrap";
+    assert.deepEqual(pathEntries, existsSync(sandboxHelper) ? ["bwrap"] : [], "Only the GTK sandbox helper may be on PATH");
+    if (pathEntries.length) assert.equal(await readlink(join(path, "bwrap")), sandboxHelper);
+    const entries = (await readFile(`/proc/${pid}/environ`, "utf8")).split("\0");
     assert.equal(entries.find((entry) => entry.startsWith("PATH=")), `PATH=${path}`,
-      "The installed process must inherit only the empty PATH, without Node or an analyzer");
-    const workingDirectory = await realpath(await readlink(`/proc/${this.processId}/cwd`));
+      "The installed process must inherit only the private PATH directory");
+    assert.equal(entries.find((entry) => entry.startsWith("NODE_PATH=")), "NODE_PATH=");
+    const workingDirectory = await realpath(await readlink(`/proc/${pid}/cwd`));
     const checkout = await realpath(process.cwd());
     const fromCheckout = relative(checkout, workingDirectory);
     assert.ok(fromCheckout === ".." || fromCheckout.startsWith(`..${sep}`) || isAbsolute(fromCheckout),
       "The installed process must start outside the development checkout");
     await this.world.attach(JSON.stringify({
-      installedPid: this.processId, executable: environment("CHOOM_PACKAGED_APP"),
-      path, workingDirectory, runtimeAvailable: false,
+      installedPid: pid, sessionArgument: this.application.sessionArgument, executable: this.application.executable,
+      path, pathEntries, nodePath: "", workingDirectory, runtimeAvailable: false,
     }), "application/json");
-  }
-
-  private async applicationWindows(): Promise<string[]> {
-    assert.ok(this.processId);
-    return xdo(["search", "--onlyvisible", "--pid", this.processId], true);
   }
 
   async openBaseline(path: string | null): Promise<void> {
     await this.selectFile("Open Baseline", path);
   }
 
-  async selectFile(label: "Open Baseline" | "Open duplication report", path: string | null): Promise<void> {
+  async openHistoricalInventory(path: string): Promise<void> {
+    await this.openBaseline(path);
+    const toggle = this.session().$('#production-scope-switch');
+    await toggle.waitForDisplayed({ timeout: 10_000 });
+    await this.session().waitUntil(async () => await this.session().$("//button[normalize-space(.)='Open Baseline']").isEnabled());
+    if (!await toggle.isSelected()) await toggle.click();
+  }
+
+  async selectFile(label: "Open Baseline" | "Compare with earlier baseline" | "Open duplication report", path: string | null): Promise<void> {
     const action = this.session().$(`//button[@aria-label='${label}' or (not(@aria-label) and normalize-space(.)='${label}')]`);
     assert.equal(await action.isExisting(), true,
       `The loaded installed application must expose ${label} before the user can select a file.`);
     assert.equal(await action.isDisplayed(), true, `${label} must be visible`);
     assert.equal(await action.isEnabled(), true, `${label} must be enabled`);
-    const previous = new Set(await this.applicationWindows());
+    const previous = new Set(await this.application.windows());
     await action.click();
     let dialog = "";
     await waitFor(async () => {
-      const candidates = (await this.applicationWindows()).filter((id) => !previous.has(id));
+      const candidates = (await this.application.windows()).filter((id) => !previous.has(id));
       assert.ok(candidates.length <= 1, "More than one native dialog appeared for the installed app");
       dialog = candidates[0] ?? "";
       return Boolean(dialog);
@@ -187,7 +150,7 @@ export class InstalledBaselineDriver {
       // Accept the location entry's inline completion before submitting the file.
       await xdo(["key", "--clearmodifiers", "--delay", "200", "End", "Return"]);
     }
-    await waitFor(async () => !(await this.applicationWindows()).includes(dialog),
+    await waitFor(async () => !(await this.application.windows()).includes(dialog),
       "The native GTK picker did not close after selection or cancellation");
   }
 
@@ -533,15 +496,19 @@ export class InstalledBaselineDriver {
     }, command);
   }
 
-  async close(): Promise<void> {
+  private async releaseSession(): Promise<void> {
     const browser = this.browser;
-    if (!browser) return;
-    try {
-      await this.capture("final-view");
-    } finally {
-      this.browser = undefined;
-      this.processId = undefined;
-      await browser.deleteSession();
-    }
+    this.browser = undefined;
+    try { await browser?.deleteSession(); }
+    finally { await this.application.stop(); }
+  }
+
+  async close(): Promise<void> {
+    if (!this.browser) return;
+    try { await this.capture("final-view"); }
+    catch (error) {
+      await this.application.stop();
+      throw error;
+    } finally { await this.releaseSession(); }
   }
 }

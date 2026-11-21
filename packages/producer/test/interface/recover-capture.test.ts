@@ -1,15 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { stringify } from "yaml";
 import { producerCommands } from "../../src/cli.ts";
 import { producerDocuments, producerSource, runCli, toolsRoot, withScratch } from "../support/commands.ts";
 import { settingsTarget, writeFiles } from "../support/stage-1-run.ts";
 
 // A recovery capture copies the retained files of an earlier run into a new run
-// and collects their settings with the Stage 1 settings collector.
-interface SettingsCommand { args: string[]; exitCode: number; cwd: string }
+// and collects their settings with the Stage 1 settings collector of the tool
+// checkout, as the Stage 1 settings action does. It saves no copy of the collector.
+interface SettingsCommand { args: string[]; exitCode: number; cwd: string; collectorSha256: string }
 interface SettingsRecord { snapshotId: string; configs: { path: string }[]; contentReads: { path: string }[] }
 
 const sha256 = (bytes: Buffer | string): string => createHash("sha256").update(bytes).digest("hex");
@@ -29,7 +30,7 @@ function earlierRun(previous: string): void {
 }
 
 describe("recovery capture", () => {
-  test("copies the retained files and collects their settings with the saved settings collector", () => {
+  test("copies the retained files and collects their settings with the settings collector of the tool checkout", () => {
     withScratch((scratch) => {
       const previous = join(scratch, "previous");
       const work = join(scratch, "recovered");
@@ -45,9 +46,11 @@ describe("recovery capture", () => {
         configs: expected.configs.filter(({ path }) => path !== "/repo/configs/custom.json"),
         contentReads: expected.contentReads.filter(({ path }) => path !== "configs/custom.json") });
       const command = JSON.parse(readFileSync(join(work, "evidence/settings-command.json"), "utf8")) as SettingsCommand;
-      const [collector] = command.args.slice(1);
-      expect({ folder: dirname(collector ?? ""), cwd: command.cwd, exitCode: command.exitCode }).toEqual({ folder: work,
+      const collector = join(producerSource, "stage-1-settings.ts");
+      expect({ collector: command.args.slice(1), collectorSha256: command.collectorSha256, cwd: command.cwd,
+        exitCode: command.exitCode }).toEqual({ collector: [collector], collectorSha256: sha256(readFileSync(collector)),
         cwd: work, exitCode: 0 });
+      expect(readdirSync(work).sort()).toEqual(["evidence", "exclusions.txt", "inventory.mjs", "snapshot"]);
 
       const helper = readFileSync(join(producerSource, producerCommands.get("recover-capture")?.helper ?? ""));
       const report = JSON.parse(readFileSync(join(work, "evidence/capture-recovery.json"), "utf8")) as Record<string, unknown>;

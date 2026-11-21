@@ -10,6 +10,7 @@ import type { Baseline } from "@choom/baseline-model/contracts";
 import { decodeBaselineYaml } from "../../src/lib/baseline-yaml.ts";
 import { baselineAtComponentLimits, baselineOverDisplayLimit, baselineWithComponents } from "../support/baseline-layout-fixtures.ts";
 import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
+import { assertContained } from "../support/baseline-viewer/component-containment.ts";
 
 interface BaselineHierarchyWorld extends World {
   page?: Page;
@@ -56,7 +57,7 @@ Given("the Previous baseline is displayed", { timeout: 30_000 }, async function 
   previous.id = "previous";
   await prepareBaseline(this, previous);
   assert.ok(this.hierarchyViewer && this.hierarchyPath && this.page);
-  await this.hierarchyViewer.openBaseline(this.hierarchyPath);
+  await this.hierarchyViewer.openHistoricalInventory(this.hierarchyPath);
   await expect(this.page.getByRole("heading", { name: "previous", exact: true })).toBeVisible();
 });
 
@@ -75,7 +76,7 @@ Given("a baseline at the component limits is open", { timeout: 30_000 }, async f
   await openViewer(this);
   await prepareBaseline(this, baselineAtComponentLimits());
   assert.ok(this.hierarchyViewer && this.hierarchyPath && this.page);
-  await this.hierarchyViewer.openBaseline(this.hierarchyPath);
+  await this.hierarchyViewer.openHistoricalInventory(this.hierarchyPath);
   await expect(this.page.locator(".react-flow__node[data-id]")).toHaveCount(500);
 });
 
@@ -109,9 +110,9 @@ Given("its large parent header is outside the diagram after panning", { timeout:
   await page.getByRole("button", { name: "Open Baseline", exact: true }).focus();
 });
 
-When("the user opens the prepared hierarchy baseline", async function (this: BaselineHierarchyWorld) {
+When("the user opens the prepared hierarchy baseline and requests its historical inventory", async function (this: BaselineHierarchyWorld) {
   assert.ok(this.hierarchyViewer && this.hierarchyPath);
-  await this.hierarchyViewer.openBaseline(this.hierarchyPath);
+  await this.hierarchyViewer.openHistoricalInventory(this.hierarchyPath);
 });
 
 When("the user fits the hierarchy after zooming in", async function (this: BaselineHierarchyWorld) {
@@ -144,33 +145,14 @@ Then("the hierarchy starts at 100 percent with its first root header visible", {
   await expect(page.getByRole("button", { name: "Component 0, component-0", exact: true })).toBeInViewport({ ratio: 0.999 });
 });
 
-async function assertContained(page: Page, parentId: string, childIds: string[]): Promise<void> {
-  await expect(page.getByRole("heading", { name: "baseline-002", exact: true })).toBeVisible();
-  const parentNode = page.locator(`.react-flow__node[data-id="${parentId}"]`);
-  await expect(parentNode).toBeVisible();
-  await expect.poll(() => page.evaluate(({ parentId, childIds }) => {
-    const parentNode = document.querySelector(`.react-flow__node[data-id="${parentId}"]`);
-    const parent = parentNode?.getBoundingClientRect();
-    const header = parentNode?.querySelector("button")?.getBoundingClientRect();
-    if (!parent || !header) return false;
-    return childIds.every((childId) => {
-      const child = document.querySelector(`.react-flow__node[data-id="${childId}"]`)?.getBoundingClientRect();
-      return child !== undefined && child.x >= parent.x - 1 && child.y >= header.y + header.height - 1
-        && child.right <= parent.right + 1 && child.bottom <= parent.bottom + 1;
-    });
-  }, { parentId, childIds }), {
-    message: `The children must appear inside ${parentId}, below its inspection control.`,
-  }).toBe(true);
-}
-
 Then("Workspace and Native shell appear inside Choom", async function (this: BaselineHierarchyWorld) {
   assert.ok(this.page);
-  await assertContained(this.page, "choom", ["workspace", "native-shell"]);
+  await assertContained(this.page, "baseline-002", "choom", ["workspace", "native-shell"]);
 });
 
 Then("Architecture model and Platform adapter appear inside Workspace", async function (this: BaselineHierarchyWorld) {
   assert.ok(this.page);
-  await assertContained(this.page, "workspace", ["architecture-model", "desktop-adapter"]);
+  await assertContained(this.page, "baseline-002", "workspace", ["architecture-model", "desktop-adapter"]);
 });
 
 Then("each component name and inspection control is reachable", { timeout: 30_000 }, async function (this: BaselineHierarchyWorld) {

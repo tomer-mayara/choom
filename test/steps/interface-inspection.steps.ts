@@ -56,7 +56,7 @@ async function openBaseline(world: ArcInspectionWorld, baseline: Baseline): Prom
   await writeFile(path, yaml);
   const driver = new BaselineBrowserDriver(browser);
   await driver.open();
-  await driver.openBaseline(path);
+  await driver.openHistoricalInventory(path);
   await expect(browser.getByRole("heading", { name: "interface-inspection", exact: true })).toBeVisible();
   await browser.getByRole("radio", { name: "All", exact: true }).check();
   await expect(browser.locator("path[data-interface-arc]")).toHaveCount(3);
@@ -161,7 +161,7 @@ When("a replacement baseline puts the same interfaces and consumers in a differe
   replacement.interfaces.find(({ id }) => id === "invoice-api")?.allowedConsumers.value?.reverse();
   const path = join(this.arcInspectionDirectory, "replacement.yaml");
   await writeFile(path, stringify(replacement, { aliasDuplicateObjects: false }));
-  await new BaselineBrowserDriver(page(this)).openBaseline(path);
+  await new BaselineBrowserDriver(page(this)).openHistoricalInventory(path);
   await expect(page(this).getByRole("heading", { name: replacement.id, exact: true })).toBeVisible();
   await page(this).getByRole("radio", { name: "All", exact: true }).check();
 });

@@ -2,7 +2,7 @@
 
 [interface-duplication.tsp](interface-duplication.tsp) owns the saved report.
 [interface-duplication-codec.tsp](interface-duplication-codec.tsp) owns decoding
-outcomes. Report version 1 supports baseline versions 1, 2, 3, 4 and 5. The viewer
+outcomes. Report version 1 supports baseline versions 1 through 6. The viewer
 reads saved judgments; it does not run a detector or fetch cited source files.
 
 `decodeDuplicationReportYaml(text, baseline, baselineSha256)` reads strict YAML,
