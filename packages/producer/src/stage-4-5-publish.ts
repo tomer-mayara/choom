@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
 import { constants, closeSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, readSync,
-  readdirSync, realpathSync, renameSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
+  readdirSync, realpathSync, rmdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import type * as Yaml from 'yaml';
+import { draftUpdate, type DraftUpdate } from './draft-update.ts';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { type Artifact, type Fields, sourceExtension } from './record-checks.ts';
@@ -35,8 +36,6 @@ interface State {
   readSource(path: string, limit: number): Buffer;
 }
 interface Candidate { counts: RecordCounts; baseline: unknown; discovery: unknown }
-// The outputs that publication placed and the temporary files that it still holds.
-interface Staged { placed: Map<string, Buffer>; temporary: Map<string, Buffer> }
 
 const [action, stage, reviewDirectory, ...extra] = process.argv.slice(2);
 function assert(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
@@ -109,6 +108,8 @@ const packetFiles = [...recordFiles, 'llm/analysis-prompt.md', 'llm/analysis-res
 // tool checkout; the producer code check covers the code.
 const toolFiles = ['record-format.md'];
 const draftFiles = ['run.yaml', 'baseline.yaml', 'discovery.yaml'];
+// The order in which publication replaces the drafts: the run manifest, the publication marker, last.
+const replacedDrafts = ['baseline.yaml', 'discovery.yaml', 'run.yaml'];
 const checkpoint = (name: string): string => name.replace('.yaml', '.before.yaml');
 const receiptName = 'publication.json';
 const progressKey = stage === '4' ? 'componentRecovery' : 'remainingCode';
@@ -400,8 +401,8 @@ function verify(): Fields {
 }
 
 // Saves the packet and the receipt in the attempt, and the three new drafts as temporary files.
-function stageOutputs(state: State, { packet, counts }: { packet: Packet; counts: RecordCounts }, review: string, staged: Staged):
-{ receipt: Buffer; outputs: Map<string, Buffer> } {
+function stageOutputs(state: State, { packet, counts }: { packet: Packet; counts: RecordCounts }, review: string,
+  update: DraftUpdate): Buffer {
   checkCurrent(state.drafts);
   sameFiles(attempt, state.attemptFiles);
   sameFiles(review, packet);
@@ -414,17 +415,14 @@ function stageOutputs(state: State, { packet, counts }: { packet: Packet; counts
     packetDigests: Object.fromEntries([...packet].map(([name, bytes]) => [name, hash(bytes)])),
     note: 'The updated run manifest is the publication marker. Proposed intent remains proposed.' });
   writeFileSync(join(attempt, receiptName), receipt, { flag: 'wx' });
-  const outputs = new Map([['baseline.yaml', packet.get('baseline.proposed.yaml') as Buffer],
-    ['discovery.yaml', packet.get('discovery.proposed.yaml') as Buffer], ['run.yaml', expectedRun(state, receipt, counts)]]);
-  for (const [name, bytes] of outputs) {
-    const path = '.publication-' + id + '-' + name;
-    writeFileSync(join(work, path), bytes, { flag: 'wx' }); staged.temporary.set(path, bytes);
-  }
-  return { receipt, outputs };
+  update.stage('baseline.yaml', packet.get('baseline.proposed.yaml') as Buffer);
+  update.stage('discovery.yaml', packet.get('discovery.proposed.yaml') as Buffer);
+  update.stage('run.yaml', expectedRun(state, receipt, counts));
+  return receipt;
 }
 
-// Checks every input again, then replaces the drafts one by one.
-function placeOutputs(state: State, packet: Packet, receipt: Buffer, outputs: Map<string, Buffer>, { placed, temporary }: Staged): void {
+// Checks every input again, then replaces the drafts one by one, run.yaml last.
+function placeOutputs(state: State, packet: Packet, receipt: Buffer, update: DraftUpdate): void {
   for (const [ref, item] of state.artifacts) {
     if (item.path.startsWith('evidence/' + id + '/')) continue;
     assert(read(work, item.path).equals(item.bytes), 'Registered input changed before publication: ' + ref);
@@ -432,51 +430,28 @@ function placeOutputs(state: State, packet: Packet, receipt: Buffer, outputs: Ma
   sameFiles(attempt, new Map([...state.attemptFiles, ...packet, [receiptName, receipt]]));
   state.verifySnapshot();
   checkCurrent(state.drafts);
-  for (const [name, bytes] of outputs) {
-    const path = '.publication-' + id + '-' + name;
-    assert(read(work, path).equals(bytes), 'Staged output changed: ' + name);
-    checkCurrent(new Map([...state.drafts].filter(([key]) => !placed.has(key))));
-    for (const [key, value] of placed) assert(read(work, key).equals(value), 'Published output changed: ' + key);
-    renameSync(join(work, path), join(work, name)); temporary.delete(path); placed.set(name, bytes);
-  }
-}
-
-// Restores the replaced drafts and removes the temporary files after a failed publication.
-function rollBack(state: State, { placed, temporary }: Staged, error: Error): Error {
-  const leftovers: string[] = [];
-  for (const [name, bytes] of [...placed].reverse()) {
-    try {
-      assert(read(work, name).equals(bytes), 'Changed output');
-      const rollback = '.publication-' + id + '-rollback-' + name;
-      writeFileSync(join(work, rollback), state.drafts.get(name) as Buffer, { flag: 'wx' });
-      renameSync(join(work, rollback), join(work, name));
-    } catch { leftovers.push(name); }
-  }
-  for (const [name, bytes] of temporary) {
-    try { if (read(work, name).equals(bytes)) unlinkSync(join(work, name)); else leftovers.push(name); }
-    catch { leftovers.push(name); }
-  }
-  return new Error(error.message + ' Keep this attempt unchanged; use a fresh attempt after resolving the cause.' +
-    (leftovers.length ? ' Inspect retained paths: ' + leftovers.join(', ') : ''));
+  update.place();
 }
 
 function publish(state: State, packet: Packet, result: Candidate, review: string): Fields | undefined {
   assert(!exists(lock), 'Another publication owns the lock or cleanup is pending: ' + lock);
   mkdirSync(lock, { mode: 0o700 });
   const lockStat = lstatSync(lock);
-  const staged: Staged = { placed: new Map(), temporary: new Map() };
+  // A failed publication restores the replaced drafts and removes its temporary files.
+  const update = draftUpdate({ work, prefix: '.publication-' + id + '-', before: state.drafts, read: name => read(work, name),
+    advice: 'Keep this attempt unchanged; use a fresh attempt after resolving the cause.' });
   let committed = false;
   let failure: Error | undefined;
   let output: Fields | undefined;
   try {
-    const { receipt, outputs } = stageOutputs(state, { packet, counts: result.counts }, review, staged);
-    placeOutputs(state, packet, receipt, outputs, staged);
+    const receipt = stageOutputs(state, { packet, counts: result.counts }, review, update);
+    placeOutputs(state, packet, receipt, update);
     committed = true;
     output = { status: 'stage' + stage + '-published', ...result.counts,
-      writes: [...packetFiles, receiptName, ...outputs.keys()] };
+      writes: [...packetFiles, receiptName, ...replacedDrafts] };
   } catch (error) {
     failure = error as Error;
-    if (!committed) failure = rollBack(state, staged, error as Error);
+    if (!committed) failure = update.rollBack(error as Error);
   }
   try {
     const current = lstatSync(lock);
