@@ -1348,7 +1348,10 @@ the recovery capture do not use the record.
 A file in the run folder is not trusted code. Stage 1 saves `inventory.mjs` only
 as a record of the code that lists the snapshot. Stage 2 `start` and `finish` do
 not run it: they make the inventory of the saved snapshot with the checkout code
-and compare it byte for byte with the registered inventory.
+and compare it byte for byte with the registered inventory. The recovery capture
+runs the Stage 1 settings collector in the tool checkout, as Stage 1 `settings`
+does, and saves no copy of it in the new run. Its settings command record names
+the collector and its SHA-256.
 
 ## Decision record
 

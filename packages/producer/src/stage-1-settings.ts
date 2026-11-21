@@ -6,13 +6,12 @@ import { pathToFileURL } from 'node:url';
 import type * as TsMorph from 'ts-morph';
 import type * as ParsingProfiles from './parsing-profile.ts';
 
-// The Stage 1 settings collector. The Stage 1 settings action runs it in the tool
-// checkout; the recovery capture runs a settings.mts copy in its new run. It reads
-// package manifests and compiler settings through a snapshot-backed file system
-// and prints the settings record. It runs no target code. Without project
-// settings, the record names the Choom parsing profile and a gap. The copy cannot
-// import other producer files, so the collector is one file and loads ts-morph and
-// the parsing profile from the tool checkout. readProjectSettings is the collector
+// The Stage 1 settings collector. The Stage 1 settings action and the recovery
+// capture run it in the tool checkout. It reads package manifests and compiler
+// settings through a snapshot-backed file system and prints the settings record.
+// It runs no target code. Without project settings, the record names the Choom
+// parsing profile and a gap. It loads ts-morph and the parsing profile from the
+// tool checkout that CHOOM_TOOLS names. readProjectSettings is the collector
 // without its process input and output.
 export interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 interface Diagnostic { code?: number; message: string }

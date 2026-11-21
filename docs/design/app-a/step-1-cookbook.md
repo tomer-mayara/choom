@@ -380,8 +380,8 @@ The collector is
 [`stage-1-settings.ts`](../../../packages/producer/src/stage-1-settings.ts). `settings`
 runs it in the tool checkout after the producer code check, and the settings
 selection records its digest. Review its settings record as section 3 describes;
-do not run the collector separately. The recovery helper below runs a copy of the
-same collector. The collector loads ts-morph and the parsing profile in
+do not run the collector separately. The recovery helper below also runs the
+collector in the tool checkout. The collector loads ts-morph and the parsing profile in
 [`parsing-profile.ts`](../../../packages/producer/src/parsing-profile.ts) from the
 tool checkout.
 
@@ -397,8 +397,10 @@ not finalize stage 1. Its old artifact registry must still be intact.
 Use `--check` for a read-only preflight. Inputs are `CHOOM_PREVIOUS_WORK`, a new
 `CHOOM_WORK`, `CHOOM_TOOLS`, `CHOOM_RUN_ID`, and `CHOOM_SNAPSHOT_ID`. Both runs and
 the tool checkout must be separate canonical directories. Without `--check`, it
-copies evidence and collects settings with a `settings.mts` copy of the trusted
-collector. Review its capture receipt before further
+copies evidence and collects settings with the trusted collector in the tool
+checkout, as `settings` does. It saves no copy of the collector in the new run:
+`evidence/settings-command.json` names the collector path and records its
+SHA-256 in `collectorSha256`. Review its capture receipt before further
 work. Its historical layout requires a separately reviewed stage 1 publication;
 the new driver above does not claim to resume that legacy layout automatically.
 The recovery saves no producer code record, so the stage helpers refuse to
