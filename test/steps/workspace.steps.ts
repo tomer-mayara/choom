@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { Given, Then, When, type World } from "@cucumber/cucumber";
 import { expect, type Page } from "@playwright/test";
+import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
 import { assertContained } from "../support/baseline-viewer/component-containment.ts";
 
 interface WorkspaceWorld extends World { page?: Page; pageErrors: string[] }
@@ -9,8 +10,7 @@ function page(world: WorkspaceWorld): Page {
   return world.page;
 }
 Given("the browser workspace is open", async function (this: WorkspaceWorld) {
-  assert.ok(process.env.CHOOM_BASE_URL);
-  await page(this).goto(process.env.CHOOM_BASE_URL);
+  await new BaselineBrowserDriver(page(this)).open();
 });
 Then("the browser workspace identifies itself", async function (this: WorkspaceWorld) {
   await expect(page(this).getByRole("heading", { name: "Architecture starts here." })).toBeVisible();

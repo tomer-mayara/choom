@@ -202,7 +202,8 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
    session with the preinstalled Chromium (revision 1243; the project pins
    1254). One layout scenario, "the full two-line name, both entry counts, and
    duplication marker fit in the component header", fails locally on the base
-   before any change. CI passes it.
+   before any change. CI passes it. Since the viewer bundles Inter (plan change
+   20), the scenario passes locally too, with or without an installed Inter.
 6. **D4 refinement (approved with plan changes 6 to 16):** a mechanical
    edit does not trigger the TypeScript conversion. A mechanical edit changes
    only an import path, an entry in a list, a mount path or a comment. A change
@@ -1529,9 +1530,10 @@ are not the decisions D1 to D6 of the decision log.
   in a divided file stay at file level.
 - Viewer:
   - Lists are not virtualized: 5,000 unplaced records take about 3 s to show.
-  - Inter is not bundled, so the layout depends on the fonts of the system. With
-    DejaVu Sans and a root font size of 110%, the plot at 320×640 is smaller
-    than 100 px.
+  - The viewer bundles Inter for Latin text (plan change 20), so the layout is
+    the same on each machine. At a root font size of 110%, the plot at 320×640
+    with the panel open is 73.5 px, smaller than 100 px. No scenario covers
+    110%.
 - Copies that a later DRY ticket can share:
   - the safe-path rule (about 12 copies) and the frame-wait helpers of the
     browser tests (7);
