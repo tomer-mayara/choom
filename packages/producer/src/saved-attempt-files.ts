@@ -2,11 +2,11 @@ import { lstatSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { assert } from './record-checks.ts';
 
-// The files that the producer actions saved in an attempt folder: each phase receipt,
-// the outputs and logs that it names, and the files that the stage names itself, such
-// as the files of the review packet and the command log. A publisher registers every
-// file of the attempt folder as evidence, so it refuses any other file, and names it.
-// The record format says not to write into an attempt.
+// The files that the producer actions saved in an attempt folder. They are each phase
+// receipt, the outputs and logs that it names, and the files that the stage names
+// itself, such as the files of the review packet and the command log. A publisher
+// registers every file of the attempt folder as evidence, so it refuses any other
+// file, and names it. The record format says not to write into an attempt.
 export class SavedAttemptFiles {
   private readonly names = new Set<string>();
 

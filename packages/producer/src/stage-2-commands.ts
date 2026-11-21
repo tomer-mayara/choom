@@ -273,7 +273,8 @@ function selection(): Selection {
 }
 
 // Runs a saved command of the phase. The receipt names each file that the command
-// wrote into the attempt, also when the command failed, because finish registers it.
+// wrote into the attempt, also when the command failed, because finish registers each
+// attempt file.
 function execute({ record, stdout, stderr }: PhaseContext, recipe: string, name: string): void {
   const script = 'operator-' + action + '-' + name + '.sh';
   save(script, 'set -eCu\n' + recipe);
