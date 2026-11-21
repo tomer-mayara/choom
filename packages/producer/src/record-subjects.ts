@@ -1,3 +1,4 @@
+import { SubjectItems } from '@choom/baseline-model/subject-items';
 import { assert, type Fields } from './record-checks.ts';
 import { isToolGap } from './stage-1-gaps.ts';
 
@@ -19,10 +20,10 @@ export interface SubjectInputs {
 }
 // The four collections of baseline items, with the ID of each item.
 export interface BaselineItems {
-  readonly components: readonly { readonly id: unknown }[];
-  readonly interfaces: readonly { readonly id: unknown }[];
-  readonly resources: readonly { readonly id: unknown }[];
-  readonly rules: readonly { readonly id: unknown }[];
+  readonly components: readonly { readonly id: string }[];
+  readonly interfaces: readonly { readonly id: string }[];
+  readonly resources: readonly { readonly id: string }[];
+  readonly rules: readonly { readonly id: string }[];
 }
 
 const issueKinds = [['questions', 'Question'], ['gaps', 'Gap']] as const;
@@ -40,22 +41,17 @@ function foldersOf(files: Set<unknown>): Set<string> {
 // A subject names one of these: a file of the snapshot inventory; a folder that holds
 // at least one such file, written with or without a final /; the snapshot ID; the ID
 // of a question or gap of the discovery; the ID of an entry candidate; or a baseline
-// item. A subject names an item, as the viewer places it, when it equals the item ID
-// or starts with the ID and a dot, such as billing.purpose. An item ID has no dot.
+// item, as the viewer places it (SubjectItems), such as billing.purpose.
 // A gap that Stage 1 finish copied from a tool record keeps the subjects of the tool,
 // which can name a missing input or a path outside the snapshot; it is not checked.
 export function checkSubjects({ discovery, snapshotRef, paths, candidateIds, baseline }: SubjectInputs): void {
   const files = new Set<unknown>(paths);
   const folders = foldersOf(files);
   const issueIds = new Set(issueKinds.flatMap(([kind]) => (discovery[kind] as Fields[]).map(issue => issue.id)));
-  const itemIds = new Set([...baseline.components, ...baseline.interfaces, ...baseline.resources, ...baseline.rules]
-    .map(item => item.id));
-  const names = (subject: string): boolean => {
-    const dot = subject.indexOf('.');
-    return files.has(subject) || folders.has(subject.endsWith('/') ? subject.slice(0, -1) : subject) ||
-      subject === snapshotRef || issueIds.has(subject) || candidateIds.has(subject) ||
-      itemIds.has(dot < 0 ? subject : subject.slice(0, dot));
-  };
+  const items = new SubjectItems(baseline);
+  const names = (subject: string): boolean =>
+    files.has(subject) || folders.has(subject.endsWith('/') ? subject.slice(0, -1) : subject) ||
+    subject === snapshotRef || issueIds.has(subject) || candidateIds.has(subject) || items.namedItem(subject) !== undefined;
   for (const [kind, label] of issueKinds) {
     for (const issue of discovery[kind] as Fields[]) {
       if (kind === 'gaps' && isToolGap(issue)) continue;

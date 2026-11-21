@@ -1265,6 +1265,9 @@ baseline (`validateDecisions`) and makes the next version from it
 (`nextBaselineVersion`). The `./item-statements` export lists the
 statements of a baseline with their paths, for the decision checks, the
 producer record checks and the viewer's Recorded statements.
+The `./subject-items` export (`SubjectItems`) gives the item that a subject
+reference of a question or gap names, for the viewer placement and the producer
+record checks.
 The `./discovery-result` export checks a version 2 discovery result against a
 saved baseline file (`validateDiscoveryResult`), for the viewer and for Stage 6
 of the producer.
