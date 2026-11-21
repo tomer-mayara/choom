@@ -3,6 +3,7 @@ import { Given, Then, When, type World } from "@cucumber/cucumber";
 import { expect, type Page } from "@playwright/test";
 import { stringify } from "yaml";
 import { baselineExample } from "../support/baseline-fixtures.ts";
+import { BaselineBrowserDriver } from "../support/baseline-viewer/browser-driver.ts";
 
 interface DiagramWorkspaceWorld extends World {
   page?: Page;
@@ -36,7 +37,7 @@ function readDiagramViewport(world: DiagramWorkspaceWorld): Promise<{ transform:
 Given("a saved architecture is open in the diagram workspace", { timeout: 30_000 }, async function (this: DiagramWorkspaceWorld) {
   const browserPage = page(this);
   await browserPage.setViewportSize({ width: 1280, height: 800 });
-  await browserPage.goto(process.env.CHOOM_BASE_URL ?? (() => { throw new Error("Missing production preview URL"); })());
+  await new BaselineBrowserDriver(browserPage).open();
   const chooser = browserPage.waitForEvent("filechooser");
   await browserPage.getByRole("button", { name: "Open Baseline", exact: true }).click();
   await (await chooser).setFiles(savedDiagram());

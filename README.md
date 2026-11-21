@@ -438,6 +438,11 @@ Cucumber loads `test/steps`; its default/native profile excludes `@browser`,
 production build.
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Failed browser scenarios retain screenshots and traces under `test-results/`.
+The app ships its Inter font (see [Dependency policy](#dependency-policy)), so a
+browser run draws the same text and layout on each machine, whatever fonts the
+machine has. The browser driver (`test/support/baseline-viewer/browser-driver.ts`)
+waits until that font is loaded before a step can measure the page, and it fails
+the scenario when the app does not draw its text in that font.
 
 Run the duplication checks with:
 
