@@ -1,23 +1,21 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { After, Given, Then, When, type World } from "@cucumber/cucumber";
+import { After, Given, Then, When } from "@cucumber/cucumber";
 import { type CommandResult, makeScratch, removeScratch } from "../../packages/producer/test/support/commands.ts";
-import { folderState } from "../../packages/producer/test/support/producer-record.ts";
 import { analysisPacket, entryAnalysis, entryPlan, type JsonRecord, planPacket, requiredGaps, savedJson, stageOneRun,
   stageTwo, stageTwoAttempt, type StageTwoAttempt } from "../../packages/producer/test/support/stage-2-attempt.ts";
+import { finishResult, readyToFinish, runFilesOutsideAttempt, type StageFinishWorld } from "./producer-stage-finish.steps.ts";
 
 // The required gaps of the tool results, through the producer command line. The
 // Stage 2 snapshot holds no package manifest, so preflight marks the Knip profile
 // unsupported and both Knip modes are skipped. No Docker engine is needed.
-interface ToolGapsWorld extends World {
+// producer-stage-finish.steps.ts runs the finish action of the stage.
+interface ToolGapsWorld extends StageFinishWorld {
   toolGapsScratch?: string;
   toolGapsAttempt?: StageTwoAttempt;
   // The ID of the required gap that the review leaves out.
   leftOutGap?: string;
-  // The result of the publishing action, and the run folder outside the attempt before it.
-  publication?: CommandResult;
-  runFilesBefore?: [string, string][];
 }
 
 const app = { path: "app.ts", text: "export const value = 1;\n" };
@@ -65,11 +63,6 @@ function skippedRuns(attempt: StageTwoAttempt): string[] {
   return [...knipRecords(attempt)].flatMap(([ref, record]) => ref.includes("#/runs/") && record.status === "skipped" ? [ref] : []);
 }
 
-// The files of the run folder outside the attempt, which keeps the records of each action.
-function runFiles(attempt: StageTwoAttempt): [string, string][] {
-  return folderState(attempt.work).filter(([path]) => !path.startsWith(`evidence/${attempt.id}/`));
-}
-
 Given("a Stage 2 attempt in which Knip is skipped because the snapshot has no package manifest", function (this: ToolGapsWorld) {
   const preflight = savedJson(preparedAttempt(this), "preflight.json");
   assert.deepEqual({ status: preflight.status, reasons: preflight.reasons }, { status: "unsupported", reasons: [noManifest] });
@@ -115,22 +108,12 @@ Given("a Stage 2 review that leaves out that gap", function (this: ToolGapsWorld
   const gaps = requiredGaps(attempt).filter((gap) => gap.id !== this.leftOutGap);
   const review = analysisPacket(join(this.toolGapsScratch ?? "", "review"), attempt.id, entryAnalysis(attempt, { gaps }));
   succeeded("save-review", stageTwo(attempt, "save-review", [review]));
-});
-
-When("the operator finishes Stage 2", function (this: ToolGapsWorld) {
-  const attempt = currentAttempt(this);
-  this.runFilesBefore = runFiles(attempt);
-  this.publication = stageTwo(attempt, "finish");
-});
-
-Then("the Stage 2 result is not published", function (this: ToolGapsWorld) {
-  const attempt = currentAttempt(this);
-  assert.ok(this.publication, "Finish Stage 2 first.");
-  assert.equal(this.publication.status, 1, this.publication.stdout);
-  assert.deepEqual(runFiles(attempt), this.runFilesBefore);
+  readyToFinish(this, { stage: 2, finish: () => stageTwo(attempt, "finish"),
+    published: () => runFilesOutsideAttempt(attempt.work, attempt.id) });
 });
 
 Then("the operator is told which required tool gap is missing", function (this: ToolGapsWorld) {
-  assert.ok(this.publication && this.leftOutGap, "Leave out a required gap and publish first.");
-  assert.ok(this.publication.stderr.includes(`leaves out the required gap ${this.leftOutGap}.`), this.publication.stderr);
+  assert.ok(this.leftOutGap, "Leave out a required gap first.");
+  const { stderr } = finishResult(this);
+  assert.ok(stderr.includes(`leaves out the required gap ${this.leftOutGap}.`), stderr);
 });

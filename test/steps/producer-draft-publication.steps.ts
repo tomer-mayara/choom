@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { After, Given, Then, When, type World } from "@cucumber/cucumber";
+import { After, Given, Then } from "@cucumber/cucumber";
 import { stageFourPublication, type StageFourPublication }
   from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import { type CommandResult, makeScratch, removeScratch } from "../../packages/producer/test/support/commands.ts";
@@ -10,25 +10,27 @@ import { analysisPacket, entryAnalysis, runAttempt, stageOneRun, stageTwo, stage
   from "../../packages/producer/test/support/stage-2-attempt.ts";
 import { reviewStageThree, stageThree, stageThreeAttempt, stageTwoRun }
   from "../../packages/producer/test/support/stage-3-attempt.ts";
+import { finishResult, readyToFinish, runFilesOutsideAttempt, type StageFinishWorld } from "./producer-stage-finish.steps.ts";
 
 // The publication of the working drafts of a stage, through the command line. The
 // attempt of the run saved its review packet, so the finish action of the stage
 // publishes it. The fault double (support/doubles/draft-faults.ts) can stop the
-// publication after a chosen number of renames. A Stage 4 draft uses the Stage 4
+// publication after a chosen number of renames. producer-stage-finish.steps.ts runs
+// the finish action of Stage 2 or 3. A Stage 4 draft uses the Stage 4
 // publication fixture; producer-recovery.steps.ts publishes it, checks that nothing
 // changed, and removes the run folder after the scenario.
 interface ReadyRun {
   stage: number;
   work: string;
+  attemptId: string;
   // Runs the finish action of the stage with the added settings.
   finish(settings: Record<string, string>): CommandResult;
 }
-interface DraftPublicationWorld extends World {
+interface DraftPublicationWorld extends StageFinishWorld {
   draftScratch?: string;
   draftRun?: ReadyRun;
   draftFaults?: Record<string, string>;
   draftsBefore?: string[];
-  draftFinish?: CommandResult;
   stageFourRun?: StageFourPublication;
   publishCommand?: CommandResult;
 }
@@ -52,7 +54,7 @@ function readyForStageTwo(scratch: string): ReadyRun {
   completed(runAttempt(attempt, scratch));
   const review = analysisPacket(join(scratch, "review"), attempt.id, entryAnalysis(attempt));
   completed({ "save-review": stageTwo(attempt, "save-review", [review]) });
-  return { stage: 2, work, finish: (settings) => stageTwo(attempt, "finish", [], settings) };
+  return { stage: 2, work, attemptId: attempt.id, finish: (settings) => stageTwo(attempt, "finish", [], settings) };
 }
 
 // A run that finished Stage 2, with a Stage 3 attempt that saved its review packet.
@@ -62,16 +64,11 @@ function readyForStageThree(scratch: string): ReadyRun {
   const attempt = stageThreeAttempt(stageTwoRun(scratch), folder);
   for (const [action, result] of Object.entries(reviewStageThree(attempt)))
     assert.equal(result.status, 0, `Stage 3 ${action}: ${result.stderr}`);
-  return { stage: 3, work: attempt.work,
+  return { stage: 3, work: attempt.work, attemptId: attempt.id,
     finish: (settings) => stageThree(attempt, ["stage-3-finish"], settings) };
 }
 
 const readyRuns = new Map<number, (scratch: string) => ReadyRun>([[2, readyForStageTwo], [3, readyForStageThree]]);
-
-function readyRun(world: DraftPublicationWorld, stage: number): ReadyRun {
-  assert.equal(world.draftRun?.stage, stage, `Prepare a run that is ready for Stage ${stage} to publish first.`);
-  return world.draftRun as ReadyRun;
-}
 
 function drafts(run: ReadyRun): string[] {
   return publishedDrafts.map((name) => readFileSync(join(run.work, name), "utf8"));
@@ -85,30 +82,25 @@ Given("a run that is ready for Stage {int} to publish", function (this: DraftPub
   const prepare = readyRuns.get(stage);
   assert.ok(prepare, `No ready run for Stage ${stage}.`);
   this.draftScratch = makeScratch();
-  this.draftRun = prepare(this.draftScratch);
+  const run = prepare(this.draftScratch);
+  this.draftRun = run;
+  this.draftsBefore = drafts(run);
+  // A later Given can add a fault, so the finish action reads the faults when it runs.
+  readyToFinish(this, { stage, finish: () => run.finish(this.draftFaults ?? {}),
+    published: () => runFilesOutsideAttempt(run.work, run.attemptId) });
 });
 
 Given("a fault that stops the publication after its first rename", function (this: DraftPublicationWorld) {
   this.draftFaults = draftFaultSettings(["stop-after-rename-1"]);
 });
 
-When("the operator finishes Stage {int}", function (this: DraftPublicationWorld, stage: number) {
-  const run = readyRun(this, stage);
-  this.draftsBefore = drafts(run);
-  this.draftFinish = run.finish(this.draftFaults ?? {});
-});
-
-Then("the Stage {int} result is not published", function (this: DraftPublicationWorld, stage: number) {
-  readyRun(this, stage);
-  const finish = this.draftFinish;
-  assert.ok(finish, `Finish Stage ${stage} first.`);
-  assert.deepEqual({ status: finish.status, stdout: finish.stdout }, { status: 1, stdout: "" });
-  assert.ok(finish.stderr.includes(advice), finish.stderr);
-});
-
+// The failed update restored the drafts, and tells the operator what to do next.
 Then("the run manifest and the discovery draft are the same as before", function (this: DraftPublicationWorld) {
   const run = this.draftRun;
-  assert.ok(run && this.draftsBefore, "Finish the stage first.");
+  assert.ok(run && this.draftsBefore, "Prepare the run first.");
+  const finish = finishResult(this);
+  assert.equal(finish.stdout, "");
+  assert.ok(finish.stderr.includes(advice), finish.stderr);
   assert.deepEqual(drafts(run), this.draftsBefore);
 });
 
