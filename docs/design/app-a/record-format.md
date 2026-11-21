@@ -84,9 +84,9 @@ being discussed; it is not a substitute for `evidenceRefs`. Each subject names
 one of these:
 
 - a file of the snapshot inventory, such as `src/billing/invoice.ts`;
-- a folder that holds at least one inventory file, written with or without a
-  final `/`, such as `src/billing` or `src/billing/`. Name the whole snapshot by
-  its ID, not as `.` or `/`;
+- a folder that holds at least one inventory file, written as the membership
+  selector `<folder>/**`, such as `src/billing/**`. Name the whole snapshot by
+  its ID, not as `**`, `.` or `/`;
 - the snapshot ID;
 - the ID of a question or gap of the discovery;
 - the ID of an entry candidate of the selected entry analysis or of an earlier
@@ -97,10 +97,12 @@ one of these:
   `billing.purpose`.
 
 Name a symbol, a missing input or another detail in the `text` or `reason`, not
-as a subject. The shared record checks of Stages 4 to 6 refuse any other subject
-and name the question or gap and the subject, such as `Question q-1 names the
-subject old-billing, which is not a file or folder of the snapshot, the snapshot
-ID, a question or gap, an entry candidate or a baseline item.` Later stages keep
+as a subject. The shared record checks of Stages 4 to 6 (`SubjectChecker`) refuse
+any other subject and name the subject and the question or gap, such as `The
+subject old-billing of the question q-1 names nothing.` The message then gives
+the forms above. A folder written without `/**` is refused with the selector to
+write, such as `The subject src/billing of the gap g-1 names a folder without
+/**. Write the folder as src/billing/**.` Later stages keep
 each question and gap unchanged, so a draft cannot rename or remove what an
 earlier record names: keep the ID of a component that a question or gap names.
 Stages 1 to 3 do not check this rule, because the baseline items exist only from
@@ -1144,7 +1146,8 @@ of `@choom/baseline-model` (`validateQuestionsAndGaps`). Each question or gap ha
 has at most 16 KiB of UTF-8, and an ID, a `kind` or a reference at most 4 KiB. The
 IDs are unique across questions and gaps, there are at most 5,000 questions and
 gaps together, and all text values of the discovery have at most 4 MiB together.
-For a deferral of many files, name a folder or a component in `subjectRefs`.
+For a deferral of many files, name a folder as `<folder>/**`, or a component, in
+`subjectRefs`.
 Later stages keep each question and gap unchanged, so every stage checks these
 rules where a record enters the run: Stage 1 `finish`, Stage 2 `plan` and
 `finish`, the Stage 3 finalizer, and the Stage 4/5 publisher with the shared
@@ -1152,10 +1155,11 @@ record checks. A refusal starts with "The questions and gaps do not match the
 discovery contract of the viewer." and names the field, such as
 `The discovery result exceeds a limit at gaps.0.subjectRefs`. Stage 6 checks the
 fixed result again (see [Fixed discovery result](#fixed-discovery-result)).
-Each subject also names a file, folder, record or item of the run, as
-[IDs and evidence](#ids-and-evidence) gives. The shared record checks of
-Stages 4 to 6 check this after the limits, also for the records that earlier
-stages froze.
+Each subject also names a snapshot file, a snapshot folder written as
+`<folder>/**`, the snapshot ID, a question or gap, an entry candidate or a
+baseline item, as [IDs and evidence](#ids-and-evidence) gives. The shared record
+checks of Stages 4 to 6 check this after the limits, also for the records that
+earlier stages froze.
 
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership

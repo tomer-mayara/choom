@@ -623,10 +623,11 @@ bun test ./packages/producer/test/interface/stage-1/review-checks.test.ts ./pack
 ```
 
 The shared record checks of Stages 4 to 6 also check that each question and gap
-subject names something of the run (`record-subjects.ts`): a file or folder of
-the snapshot, the snapshot ID, a question or gap, an entry candidate of the
-selected entry analysis or its history, or a baseline item by the rule of the
-viewer. A gap that Stage 1 finish copied from a tool record keeps its subjects
+subject names something of the run (`SubjectChecker` in `record-subjects.ts`): a
+file of the snapshot, a folder of the snapshot written as `<folder>/**`, the
+snapshot ID, a question or gap, an entry candidate of the selected entry analysis
+or its history, or a baseline item by the rule of the viewer (`SubjectItems`). A
+gap that Stage 1 finish copied from a tool record keeps its subjects
 (`isToolGap` in `stage-1-gaps.ts`). The
 [record format](docs/design/app-a/record-format.md#ids-and-evidence) gives the
 rule. They also check that each step of an inspected path cites a source range
@@ -636,7 +637,7 @@ does, so that a collected excerpt that no review read does not support a step
 checks with:
 
 ```sh
-bun test ./packages/producer/test/unit/record-subjects.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts
+bun test ./packages/producer/test/unit/record-subjects.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts ./packages/baseline-model/test/unit/subject-items.test.ts
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
 ```
 

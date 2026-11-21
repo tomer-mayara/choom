@@ -138,8 +138,9 @@ scope: excerpt and that a result is omitted when the evidence supports none.
 Check that earlier questions, gaps and resolutions remain understandable.
 A historical gap can remain unchanged when a linked later note explains what
 was resolved. The shared record checks refuse a question or gap whose subject
-names nothing of the run: each subject names a file or folder of the snapshot,
-the snapshot ID, a question or gap, an entry candidate or a baseline item, as
+names nothing of the run: each subject names a file of the snapshot, a folder of
+the snapshot written as `<folder>/**`, the snapshot ID, a question or gap, an
+entry candidate or a baseline item, as
 the [record contract](record-format.md#ids-and-evidence) gives. A gap that
 Stage 1 copied from a tool record keeps its subjects. The checks also refuse a
 selected entry analysis whose Knip profile preflight marked unsupported, or

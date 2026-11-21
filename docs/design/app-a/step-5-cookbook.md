@@ -314,12 +314,12 @@ Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least
 one evidenceRef. A text or reason has at most 16 KiB of UTF-8, and an ID, a kind
 or a reference at most 4 KiB. Use at most 5,000 questions and gaps together.
 For a deferral of many files, name a folder or a component in subjectRefs.
-Each subjectRef names a file or folder of the snapshot (a folder with or without
-a final /), the snapshot ID, a question or gap, an entry candidate, or a baseline
-item ID or a field of it, such as billing.purpose. Name a symbol or a missing
-input in the text or reason. The publisher refuses any other subject, also in an
-earlier question or gap, so keep the ID of a component that a question or gap
-names.
+Each subjectRef names a file of the snapshot, a folder of the snapshot written as
+<folder>/** (such as src/billing/**), the snapshot ID, a question or gap, an entry
+candidate, or a baseline item ID or a field of it, such as billing.purpose. Name
+a symbol or a missing input in the text or reason. The publisher refuses any
+other subject, also in an earlier question or gap, so keep the ID of a component
+that a question or gap names.
 
 Rewrite current overview text, mapping/resource limits and counts to describe
 this packet. Do not append a current count while leaving an obsolete count or
@@ -457,8 +457,9 @@ guidance to the complete packet before `finish`. Check that:
   has evidence; dependency observations are not promoted to access permission.
 - Entry history, prior questions, gaps and deferrals remain traceable. Resolution
   notes identify the earlier records. New deferrals state their scope and basis.
-  Every subject names a file or folder of the snapshot, the snapshot ID, a
-  question or gap, an entry candidate or a baseline item, as
+  Every subject names a file of the snapshot, a folder of the snapshot written
+  as `<folder>/**`, the snapshot ID, a question or gap, an entry candidate or a
+  baseline item, as
   [record formats](record-format.md#ids-and-evidence) gives. The publisher
   refuses any other subject, also in an earlier record.
 - Changed entries or settings have the required new analysis. Unaffected graph
