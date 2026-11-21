@@ -34,6 +34,8 @@ export interface StageFivePublication extends StageFiveCollection { reviewFive: 
 export interface StageFiveChanges {
   baseline?(baseline: StageFiveBaseline): void;
   mapping?(mapping: CodeMapping, baseline: StageFiveBaseline): void;
+  // Changes the five records, by file name, after the baseline and the mapping.
+  records?(records: Record<string, Json>): void;
 }
 
 const stageFiveAttemptId = "s5-check";
@@ -101,7 +103,7 @@ function packetRecords(work: string, changes: StageFiveChanges): Record<string, 
   const mapping: CodeMapping = { ...priorMapping, units: fileUnits(work, baseline, reviewed),
     scope: { ...priorMapping.scope, selectedEntryAnalysisRef: stageFiveEntryRef, historicalEntryAnalysisRefs } };
   changes.mapping?.(mapping, baseline);
-  return {
+  const records: Record<string, Json> = {
     "baseline.proposed.yaml": baseline,
     "discovery.proposed.yaml": { ...priorDiscovery, entryAnalysisRef: stageFiveEntryRef,
       codeMappingRef: artifactId("code-mapping.json"), resourceAccessRef: artifactId("resource-access.json") },
@@ -110,6 +112,8 @@ function packetRecords(work: string, changes: StageFiveChanges): Record<string, 
     "resource-access.json": { ...priorAccess, scope: { ...priorAccess.scope,
       reviewedFilesRef: `${stageFiveEntryRef}#/reviewedFiles`, historicalEntryAnalysisRefs } },
   };
+  changes.records?.(records);
+  return records;
 }
 
 const reviewScope = { formatVersion: 1, runRef: "run-check", snapshotRef: "snapshot-check", attemptId: stageFiveAttemptId,
@@ -135,14 +139,20 @@ export function runStageFive(fixture: StageFourPublication, args: readonly strin
   return runCli(["stage-5", ...args], stageEnvironment(fixture.work, fixture.tools), fixture.tools);
 }
 
+// Runs Stage 5 start and collect on a run whose Stage 4 review was published, with
+// the command line of the run's tool checkout.
+export function collectStageFive(stageFour: StageFourPublication): StageFiveCollection {
+  checked(runStageFive(stageFour, ["start"]), "Stage 5 start");
+  checked(runStageFive(stageFour, ["collect"]), "Stage 5 collect");
+  return { ...stageFour, stageFive: join(stageFour.work, "evidence", stageFiveAttemptId) };
+}
+
 // Publishes the Stage 4 review of a run with the extra snapshot files, and runs Stage 5 start and collect,
 // with the command line of `tools`.
 export function stageFiveCollection(extraFiles: readonly ExtraFile[], tools = toolsRoot): StageFiveCollection {
   const stageFour = stageFourPublication(undefined, extraFiles, tools);
   checked(publishStageFour(stageFour, "finish"), "Stage 4 publication");
-  checked(runStageFive(stageFour, ["start"]), "Stage 5 start");
-  checked(runStageFive(stageFour, ["collect"]), "Stage 5 collect");
-  return { ...stageFour, stageFive: join(stageFour.work, "evidence", stageFiveAttemptId) };
+  return collectStageFive(stageFour);
 }
 
 // Writes the Stage 5 packet of a collected run with the changes, in a separate review folder.

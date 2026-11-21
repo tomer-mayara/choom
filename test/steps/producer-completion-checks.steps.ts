@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Given, Then, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
-import { type FixtureBaseline, stageFourPublication, type StageFourPublication }
+import { stageFourPublication, type StageFourPublication }
   from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import { type CommandResult, toolsRoot } from "../../packages/producer/test/support/commands.ts";
 
@@ -17,9 +17,6 @@ interface CompletionWorld extends World {
 
 type Records = Record<string, Record<string, unknown>>;
 
-const question = { id: "s4-check-question-001", subjectRefs: ["http.purpose"], text: "Does http serve every order route?",
-  evidenceRefs: ["launch-settings"] };
-
 function refusal(world: CompletionWorld): string {
   assert.ok(world.publishCommand, "Publish the Stage 4 draft first.");
   return world.publishCommand.stderr;
@@ -29,23 +26,6 @@ function draftRun(world: CompletionWorld): StageFourPublication {
   assert.ok(world.stageFourRun, "Prepare a Stage 4 draft first.");
   return world.stageFourRun;
 }
-
-Given("a Stage 4 draft that renames the component http to web and asks a question about http.purpose", function (this: CompletionWorld) {
-  const rename = (baseline: FixtureBaseline): void => {
-    const http = baseline.components.find((component) => component.id === "http");
-    assert.ok(http, "The fixture has an http component.");
-    http.id = "web";
-  };
-  const ask = (records: Records): void => {
-    for (const name of ["discovery.proposed.yaml", "entry-analysis.yaml"]) Object.assign(records[name] ?? {}, { questions: [question] });
-  };
-  this.stageFourRun = stageFourPublication(rename, [], toolsRoot, ask);
-});
-
-Then("the operator is told that the question names http.purpose, which names nothing in the run", function (this: CompletionWorld) {
-  const message = refusal(this);
-  assert.ok(message.includes(`Question ${question.id} names the subject http.purpose, which is not a file or folder`), message);
-});
 
 // The review read the saved range of http.ts. Stage 4 collect also saved the first
 // lines of cli.ts, a file of an entry candidate, but the review did not read them.

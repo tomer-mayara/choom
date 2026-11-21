@@ -105,11 +105,12 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(recordInputs(unownedFirstFile("Owner unknown.")))).toMatchObject({ unknownOwners: 1 });
   });
 
-  // P1: a question or gap subject names something of the run (record-subjects.ts).
-  test("refuses a question or gap subject that names nothing, with the gap ID and the subject", () => {
+  // P1: a question or gap subject names something of the run (SubjectChecker of record-subjects.ts).
+  test("refuses a question or gap subject that names nothing, with the subject and the gap ID", () => {
     expect(() => validateDiscoveryRecords(recordInputs((records) => nameUnknownSubject(records, "no-such-thing"))))
-      .toThrow(new Error("Gap gap-1 names the subject no-such-thing, which is not a file or folder of the snapshot, " +
-        "the snapshot ID, a question or gap, an entry candidate or a baseline item."));
+      .toThrow(new Error("The subject no-such-thing of the gap gap-1 names nothing. A subject names a file of the snapshot, " +
+        "a folder of the snapshot written as <folder>/**, the snapshot ID, a question or gap, an entry candidate, " +
+        "or a baseline item ID or a field of it, such as billing.purpose."));
   });
 
   test("accepts subjects that name a snapshot file, the snapshot ID, an entry candidate, a baseline item or its field, " +

@@ -249,10 +249,10 @@ Use exactly these top-level fields:
 - Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef.
   A text or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference
   at most 4 KiB. Use at most 5,000 questions and gaps together.
-- Each subjectRef names a file or folder of the snapshot (a folder with or
-  without a final /), the snapshot ID, a question or gap, or an entry
-  candidate. Name a missing input, a package or a symbol in the text or reason.
-  Stages 4 to 6 refuse any other subject.
+- Each subjectRef names a file of the snapshot, a folder of the snapshot
+  written as <folder>/** (such as src/billing/**), the snapshot ID, a question
+  or gap, or an entry candidate. Name a missing input, a package or a symbol in
+  the text or reason. Stages 4 to 6 refuse any other subject.
 
 Candidate rules:
 - Start new IDs with the attempt ID. Use stable IDs within this attempt.
@@ -609,10 +609,10 @@ Use exactly these top-level fields:
   Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef.
   A text or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference
   at most 4 KiB. Use at most 5,000 questions and gaps together.
-  Each subjectRef names a file or folder of the snapshot (a folder with or
-  without a final /), the snapshot ID, a question or gap, or an entry
-  candidate. Name a missing input, a package or a symbol in the text or reason.
-  Stages 4 to 6 refuse any other subject.
+  Each subjectRef names a file of the snapshot, a folder of the snapshot
+  written as <folder>/** (such as src/billing/**), the snapshot ID, a question
+  or gap, or an entry candidate. Name a missing input, a package or a symbol in
+  the text or reason. Stages 4 to 6 refuse any other subject.
 - reachability: {status: not-assessed, reason: a short explanation}
 - llmReview: recorded
 

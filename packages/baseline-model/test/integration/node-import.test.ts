@@ -19,6 +19,7 @@ import "@choom/baseline-model/contracts";
 import "@choom/baseline-model/discovery-result";
 import "@choom/baseline-model/item-statements";
 import "@choom/baseline-model/readonly-data";
+import "@choom/baseline-model/subject-items";
 
 const input = parse(readFileSync("test/fixtures/baseline-viewer/source-consumers-review.yaml", "utf8"));
 const accepted = baselineSchema.safeParse(input);

@@ -12,7 +12,8 @@
     "./discovery-result": "./src/discovery-result.ts",
     "./isolation-comparison": "./src/isolation-comparison.ts",
     "./item-statements": "./src/item-statements.ts",
-    "./readonly-data": "./src/readonly-data.ts"
+    "./readonly-data": "./src/readonly-data.ts",
+    "./subject-items": "./src/subject-items.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

@@ -1,5 +1,6 @@
 import type { Baseline, DiscoveryGap, DiscoveryQuestion, DiscoveryResult } from "@choom/baseline-model/contracts";
 import type { ReadonlyData } from "@choom/baseline-model/readonly-data";
+import { SubjectItems } from "@choom/baseline-model/subject-items";
 
 type Question = ReadonlyData<DiscoveryQuestion>;
 type Gap = ReadonlyData<DiscoveryGap>;
@@ -30,22 +31,14 @@ export function recordCount(records: DiscoveryRecords): number {
   return records.questions.length + records.gaps.length + records.deferred.length;
 }
 
-// A subject reference names an item when it equals the item's ID, or starts with
-// the ID and a dot, such as billing.purpose. The producer uses the same rule. An
-// item ID has no dot, so the ID is the text before the first dot.
-function namedItem(reference: string, itemIds: ReadonlySet<string>): string | undefined {
-  const dot = reference.indexOf(".");
-  const id = dot < 0 ? reference : reference.slice(0, dot);
-  return itemIds.has(id) ? id : undefined;
-}
-
 /**
- * Places each recorded question and gap on every item that it names. A record
- * with a subject reference that names no item, such as a file or an earlier
- * question, is also in the unplaced records. No record is refused or dropped.
+ * Places each recorded question and gap on every item that it names, by the rule
+ * of SubjectItems, which the producer uses too. A record with a subject reference
+ * that names no item, such as a file or an earlier question, is also in the
+ * unplaced records. No record is refused or dropped.
  */
 export function placeDiscovery(baseline: ReadonlyData<Baseline>, result: ReadonlyData<DiscoveryResult>): DiscoveryPlacement {
-  const itemIds = new Set([...baseline.components, ...baseline.interfaces, ...baseline.resources, ...baseline.rules].map(({ id }) => id));
+  const subjects = new SubjectItems(baseline);
   const items = new Map<string, MutableRecords>();
   const unplaced = emptyRecords();
   const unplacedSubjects = new Map<string, string[]>();
@@ -58,7 +51,7 @@ export function placeDiscovery(baseline: ReadonlyData<Baseline>, result: Readonl
     const named = new Set<string>();
     const outside: string[] = [];
     for (const reference of record.subjectRefs) {
-      const id = namedItem(reference, itemIds);
+      const id = subjects.namedItem(reference);
       if (id === undefined) outside.push(reference);
       else named.add(id);
     }

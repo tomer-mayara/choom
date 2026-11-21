@@ -1,6 +1,7 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type { Baseline } from '@choom/baseline-model/contracts';
 import { validateDiscoveryResult } from '@choom/baseline-model/discovery-result';
+import { SubjectItems } from '@choom/baseline-model/subject-items';
 import type * as Yaml from 'yaml';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
@@ -15,7 +16,7 @@ import { type MappedOwners, validateCodeMapping } from './record-code-mapping.ts
 import { validateGraph } from './record-graph.ts';
 import { validateResourceCandidates } from './record-resource-candidates.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
-import { checkSubjects } from './record-subjects.ts';
+import { SubjectChecker } from './record-subjects.ts';
 import { checkKnipResultGaps } from './result-gaps.ts';
 import type { ProjectTools } from './snapshot-project.ts';
 
@@ -528,7 +529,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   const { componentIds, members } = validateBaseline({ baseline, discovery, claim: selection.claim, evidence });
   evidence(discovery.overview);
   const history = selectedHistory(selection);
-  checkSubjects({ discovery, snapshotRef, paths: selection.indexed.keys(), candidateIds: history.candidateIds, baseline });
+  new SubjectChecker({ paths: selection.indexed.keys(), snapshotRef, issues: discovery, candidateIds: history.candidateIds,
+    items: new SubjectItems(baseline) }).check();
   const documentation = { baseline, discovery, evidence, source, reviewedRanges: history.reviewedRanges };
   validateDocumentation(documentation);
   const mapped = validateCodeMapping({ ...selection, ...history, members, inventoryRef: inputs.run.snapshot.inventoryRef,

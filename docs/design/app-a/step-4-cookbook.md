@@ -1403,8 +1403,9 @@ documents and code visible. Do not create a utilities component to absorb
 unexplained files. Stage 5 accounts for remaining code.
 Keep each new question and gap within the limits of the viewer in
 [record-format.md](record-format.md#discovery), such as 1 to 100 `subjectRefs`;
-the publisher refuses a record over a limit. Each subject names a file or folder
-of the snapshot, the snapshot ID, a question or gap, an entry candidate, or a
+the publisher refuses a record over a limit. Each subject names a file of the
+snapshot, a folder of the snapshot written as `<folder>/**` (such as
+`src/billing/**`), the snapshot ID, a question or gap, an entry candidate, or a
 baseline item or a field of it, such as `billing.purpose`
 ([record-format.md](record-format.md#ids-and-evidence)). The publisher refuses
 any other subject, also in an earlier question or gap, so keep the ID of a
