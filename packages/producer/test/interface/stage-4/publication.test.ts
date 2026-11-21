@@ -112,8 +112,9 @@ describe("the Stage 4/5 publisher with a question about a component", () => {
       const http = baseline.components.find((component) => component.id === "http");
       if (http) http.id = "web";
     }, (fixture) => {
-      refusedInCheck(fixture, "Question s4-check-question-001 names the subject http.purpose, which is not a file or folder of " +
-        "the snapshot, the snapshot ID, a question or gap, an entry candidate or a baseline item.");
+      refusedInCheck(fixture, "The subject http.purpose of the question s4-check-question-001 names nothing. A subject names a " +
+        "file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, a question or gap, an entry " +
+        "candidate, or a baseline item ID or a field of it, such as billing.purpose.");
     });
   }, 60_000);
 });
