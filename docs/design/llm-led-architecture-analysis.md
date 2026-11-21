@@ -1005,10 +1005,13 @@ At the end of this stage:
 This completes baseline recovery. Steps 2 and 3 still follow. Partial coverage
 is permitted when its limits are explicit.
 
-Before stage 6, revisit affected work when entry sets or model statements change.
-Refresh reachability, mappings, and dependent explanations as needed; keep
-independent evidence that remains valid. After saving, use the baseline version
-and assessment rules in [Runs and saved evidence](#runs-and-saved-evidence).
+Before Stage 4 is published, a change to the entry set or the analysis settings
+returns to the affected earlier stage with a fresh attempt. After Stage 4
+publication, the roots and settings are fixed: a root or settings correction
+needs a new run. That run can capture the saved snapshot if it keeps the
+original exclusions and limits. Stage 5 can still revise model statements and
+refresh the mappings and explanations that depend on them. After saving, use the
+baseline version and assessment rules in [Runs and saved evidence](#runs-and-saved-evidence).
 
 Existing [TypeDoc](https://typedoc.org/documents/Options.Input.html) or
 [API Extractor](https://api-extractor.com/pages/setup/invoking/) reports can supply
