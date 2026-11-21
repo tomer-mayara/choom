@@ -51,7 +51,7 @@ When("the operator publishes an entry analysis that records no gap about the Kni
   const attempt = currentAttempt(this);
   this.draftsBefore = drafts(attempt);
   const results = finishAttempt(attempt, this.stageTwoScratch ?? "", entryAnalysis(attempt.id, { gaps: [] }));
-  assert.equal(results["save-review"]?.status, 0, results["save-review"]?.stderr);
+  assert.equal(results["save-review"]?.status, 0, results["save-review"]?.stderr ?? "");
   this.stageTwoFinish = results.finish;
 });
 

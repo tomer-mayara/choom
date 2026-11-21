@@ -79,10 +79,10 @@ function runSummaries(world: CompletionWorld): Record<string, string> {
 }
 
 Then("the run summaries name the published Stage 4 records with their current counts", function (this: CompletionWorld) {
-  const { inspected, unresolved } = runSummaries(this);
-  assert.ok(inspected?.includes("s4-check-entry-analysis#/reviewedFiles") && inspected.includes("inspected behavior paths (0)"),
+  const { inspected = "", unresolved = "" } = runSummaries(this);
+  assert.ok(inspected.includes("s4-check-entry-analysis#/reviewedFiles") && inspected.includes("inspected behavior paths (0)"),
     inspected);
-  assert.ok(unresolved?.includes("recorded questions (0) and recorded gaps (1)") &&
+  assert.ok(unresolved.includes("recorded questions (0) and recorded gaps (1)") &&
     unresolved.includes("files with unknown owners (0)"), unresolved);
 });
 
