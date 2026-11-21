@@ -573,6 +573,19 @@ bun test ./packages/producer/test/unit/record-subjects.test.ts ./packages/produc
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
 ```
 
+An analysis that did not run needs a gap that cites its record (`result-gaps.ts`).
+Stage 2 finish refuses an analysis without a gap that cites the preflight record
+when preflight marked the Knip profile unsupported, or the Knip runs record when
+a Knip mode failed or was skipped. The Stage 3 finalizer refuses an analysis
+without a gap that cites the symbol mentions record when the mentions are
+unavailable or skipped. The shared record checks of Stages 4 to 6 check the Knip
+records of the selected entry analysis again. Run the focused checks with:
+
+```sh
+bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
+bun test ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
+```
+
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require

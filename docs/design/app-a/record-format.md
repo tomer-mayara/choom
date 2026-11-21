@@ -1026,6 +1026,17 @@ Questions have `id`, `subjectRefs`, `text`, and `evidenceRefs`. Gaps have `id`,
 `kind`, `subjectRefs`, `reason`, and `evidenceRefs`. Both lists must be identical
 to the lists in the current entry analysis. Keep unsupported languages, missing
 inputs, deferred areas and unknown ownership visible.
+An analysis that did not run keeps its result record, and a gap cites that
+record by its artifact ID, alone or with a JSON Pointer into it: a Knip profile
+that the Stage 2 preflight marked `unsupported` needs a gap that cites the
+preflight record (`<attempt>-preflight`), a Knip mode that `failed` or was
+`skipped` needs a gap that cites the Knip runs record (`<attempt>-knip-runs`),
+and Stage 3 symbol mentions that are `unavailable` or `skipped` need a gap that
+cites their record (`<attempt>-file@symbol-mentions.json`). Stage 2 `finish` and
+the Stage 3 finalizer refuse an analysis without such a gap, such as with `The
+normal Knip run in s2-001-knip-runs has the status skipped. Record a gap that
+cites s2-001-knip-runs.` The shared record checks of Stages 4 to 6 check the Knip
+preflight and runs of the selected entry analysis again.
 The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
 A question or gap has exactly these fields. A linked note that answers or narrows

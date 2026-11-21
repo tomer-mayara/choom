@@ -73,6 +73,8 @@ export interface Records {
   mapping: { scope: { unitKind: string } & Record<string, unknown>; units: MappingUnit[] } & Record<string, unknown>;
   candidates: { candidates: Record<string, unknown>[] } & Record<string, unknown>;
   resourceCandidates: { candidates: Record<string, unknown>[] } & Record<string, unknown>;
+  // The Knip preflight record and the Knip runs of the selected entry analysis.
+  knip: { preflight: Record<string, unknown>; runs: Record<string, unknown>[] };
 }
 interface Artifact { path: string; bytes: Buffer; sha256: string }
 
@@ -137,6 +139,7 @@ function initialRecords(): Records {
         ...resourceRule, confidence: "receiver-import", siteRef: null, path: "http.ts", sha256: location.sha256, range: [{ line: 1, column: 1 },
           { line: 1, column: 28 }], expression: "export function orders() {}", truncated: false, name: "orders", nameReason: null,
         identity: "inferred-from-name", context: { kind: "module", name: null, range: null, graphContext: "default-import" } }] },
+    knip: { preflight: { snapshotRef }, runs: [] },
   };
 }
 
@@ -153,7 +156,7 @@ export function recordInputs(change: (records: Records) => void = () => {}): Rec
         text: (files["cli.ts"] ?? "").trimEnd() }] }],
     "knip-plan": ["evidence/knip-plan.json", { snapshotRef, workspaces: [{ dir: "." }] }],
     "knip-profile": ["evidence/knip-profile.json", {}],
-    "knip-preflight": ["evidence/knip-preflight.json", { snapshotRef }],
+    "knip-preflight": ["evidence/knip-preflight.json", records.knip.preflight],
     "graph-profile": ["evidence/graph-profile.json", { formatVersion: 1, snapshotRef,
       contexts: [{ ...graphInput, sourceFiles: ["cli.ts"] }] }],
     graph: ["evidence/graph-results.json", { formatVersion: 1, snapshotRef, status: "completed", coverage: "partial",
@@ -182,7 +185,7 @@ export function recordInputs(change: (records: Records) => void = () => {}): Rec
   for (const [ref, [path, value]] of Object.entries(saved)) register(ref, path, value);
   const sha = (ref: string): string | undefined => artifacts.get(ref)?.sha256;
   register("knip-runs", "evidence/knip-runs.json", { snapshotRef, profileRef: "knip-profile", preflightRef: "knip-preflight",
-    runs: [], inputDigests: { planSha256: sha("knip-plan"), profileSha256: sha("knip-profile"),
+    runs: records.knip.runs, inputDigests: { planSha256: sha("knip-plan"), profileSha256: sha("knip-profile"),
       preflightSha256: sha("knip-preflight"), inventorySha256: sha("inventory") } });
   return { run: { formatVersion: 1, id: runRef, snapshot: { id: snapshotRef, inventoryRef: "inventory" } },
     baseline: records.baseline, discovery: records.discovery, inventory, artifacts, parse: (text) => JSON.parse(text) as unknown,

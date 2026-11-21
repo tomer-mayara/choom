@@ -5,6 +5,7 @@ import { join, resolve, relative, posix } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
+import { checkKnipResultGaps } from './result-gaps.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
 
 // The Stage 2 finish action runs this module in the tool checkout, after the
@@ -375,6 +376,9 @@ function finishAttempt(): void {
   const plan = checkPlan(finish, discovery);
   checkReceipts(finish, run);
   const analysis = checkAnalysis(finish, plan);
+  // An unsupported Knip profile and a Knip mode that failed or was skipped need a gap that cites their record.
+  checkKnipResultGaps({ gaps: analysis.gaps, preflightRef: `${id}-preflight`, preflight: document(finish, `${id}-preflight`),
+    runsRef: `${id}-knip-runs`, runs: document(finish, `${id}-knip-runs`) });
   checkInventory(finish, run);
   for (const name of drafts)
     assert((before[name] as Buffer).equals(read(safeFile(work, `${name}.yaml`))), `${name}.yaml changed during finalization.`);

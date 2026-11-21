@@ -15,6 +15,7 @@ import { validateGraph } from './record-graph.ts';
 import { validateResourceCandidates } from './record-resource-candidates.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
 import { checkSubjects } from './record-subjects.ts';
+import { checkKnipResultGaps } from './result-gaps.ts';
 import type { ProjectTools } from './snapshot-project.ts';
 
 // The shared record validator. Stages 4 and 5 check the working discovery
@@ -333,7 +334,7 @@ function selectedHistory({ discovery, document, snapshotRef, source }: Selection
 
 // The retained Knip receipts, the reuse decision, the file candidates and the
 // historical inspection priorities of the selected entry analysis.
-function checkEntryFacts({ inputs, entry, document, snapshotRef, indexed, claim, evidence }: Selection): Set<unknown> {
+function checkEntryFacts({ inputs, discovery, entry, document, snapshotRef, indexed, claim, evidence }: Selection): Set<unknown> {
   const { artifacts, run } = inputs;
   const plan = document(entry.planRef) as Fields;
   const runs = document(entry.knipRunsRef) as Fields;
@@ -345,6 +346,8 @@ function checkEntryFacts({ inputs, entry, document, snapshotRef, indexed, claim,
       preflightSha256: (artifacts.get(runs.preflightRef as string) as Artifact).sha256,
       inventorySha256: (artifacts.get(run.snapshot.inventoryRef) as Artifact).sha256 }),
   'Retained Knip receipts differ from their saved inputs.');
+  // A Knip result that did not run needs a gap that cites its record, as Stage 2 finish requires.
+  checkKnipResultGaps({ gaps: discovery.gaps, preflightRef: runs.preflightRef, preflight, runsRef: entry.knipRunsRef, runs });
   const assessment = entry.knipAssessment as Fields | undefined;
   assert(assessment?.action === 'reuse' && text(assessment.reason), 'Missing Knip reuse decision.');
   evidence(entry.knipAssessment);

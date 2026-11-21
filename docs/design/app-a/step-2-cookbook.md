@@ -622,6 +622,9 @@ or gap. Changing the tool inputs requires a new attempt and new tool records.
 
 Use knipRunsRef for the exact recorded tool outcomes. Do not invent, change,
 or replace them. Record failed or skipped analysis and coverage limits as gaps.
+When preflight marked the profile unsupported, a gap cites the preflight record
+(<attempt>-preflight). When a Knip mode failed or was skipped, a gap cites the
+Knip runs record (<attempt>-knip-runs). Finish refuses an analysis without them.
 A successful receipt-writing command does not mean Knip ran. Read each mode's
 status and report references before interpreting the result.
 A normal report does not establish test-only use. Do not infer reached files
@@ -672,7 +675,9 @@ gaps. Structural validation does not replace this semantic review.
 
 The final command checks all attempt paths and artifact IDs before it writes
 either draft. It validates the LLM result and registers the attempt's artifacts
-with paths and SHA-256 digests. It sets `discovery.yaml.entryAnalysisRef` and
+with paths and SHA-256 digests. It refuses an analysis that has no gap that cites
+the preflight record when preflight marked the profile unsupported, or no gap
+that cites the Knip runs record when a Knip mode failed or was skipped. It sets `discovery.yaml.entryAnalysisRef` and
 adds questions and gaps without changing prior records. It updates the run's
 inspection summary to point to the saved reviews and this entry analysis.
 The baseline remains unchanged. The run stays `in-progress`.

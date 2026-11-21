@@ -207,6 +207,39 @@ describe("validateDiscoveryRecords", () => {
   });
 });
 
+// P4: an analysis that did not run needs a gap that cites its record. The shared record
+// checks see the Knip preflight and runs of the selected entry analysis, so Stages 4 to 6
+// refuse a run whose Knip result did not run and no gap cites it.
+describe("validateDiscoveryRecords with a Knip result that did not run", () => {
+  const unsupported = (records: Records): void => { records.knip.preflight.status = "unsupported"; };
+  const runs = (...statuses: string[]) => (records: Records): void => {
+    records.knip.runs = statuses.map((status, index) => ({ mode: index === 0 ? "normal" : "production", status }));
+  };
+  const withGap = (...evidence: string[]) => (records: Records): void => {
+    for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push({ id: "gap-knip", kind: "tool-outcome",
+      reason: "Knip did not run.", subjectRefs: [snapshotRef], evidenceRefs: [...evidence] });
+  };
+  const all = (...changes: ((records: Records) => void)[]) => (records: Records): void => changes.forEach((change) => change(records));
+
+  test.each<[string, (records: Records) => void, string]>([
+    ["an unsupported Knip profile", unsupported,
+      "The Knip preflight knip-preflight marks the profile unsupported. Record a gap that cites knip-preflight."],
+    ["a skipped Knip mode", runs("completed", "skipped"),
+      "The production Knip run in knip-runs has the status skipped. Record a gap that cites knip-runs."],
+    ["a failed Knip mode", runs("failed", "completed"),
+      "The normal Knip run in knip-runs has the status failed. Record a gap that cites knip-runs."],
+    ["an unsupported profile whose gap cites only the Knip runs", all(unsupported, runs("skipped", "skipped"), withGap("knip-runs")),
+      "The Knip preflight knip-preflight marks the profile unsupported. Record a gap that cites knip-preflight."],
+  ])("refuses %s without a gap that cites its record", (_name, change, message) => {
+    expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(new Error(message));
+  });
+
+  test("accepts results that did not run when a gap cites each record, also with a JSON Pointer", () => {
+    const change = all(unsupported, runs("failed", "skipped"), withGap("knip-preflight#/status", "knip-runs#/runs/0"));
+    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 2 });
+  });
+});
+
 // The entry analysis and the resource observations of Stages 4 and 5 name the candidates of Stage 4
 // collect; the resource observations of these records always name them. The validator checks each
 // candidate against the saved snapshot.

@@ -40,8 +40,19 @@ export function stageThree(attempt: StageThreeAttempt, args: string[]): CommandR
     CHOOM_STAGE3: attempt.folder });
 }
 
+// The gap that the finalizer requires when the symbol mentions of collect did not run,
+// as when Stage 2 skipped Knip: it cites the record of the symbol mentions.
+function symbolGaps(attempt: StageThreeAttempt): JsonRecord[] {
+  const mentions = JSON.parse(readFileSync(join(attempt.folder, "symbol-mentions.json"), "utf8")) as JsonRecord;
+  if (!["skipped", "unavailable"].includes(mentions.status as string)) return [];
+  return [{ id: `${attempt.id}-gap-001`, kind: "tool-outcome", subjectRefs: [app.path],
+    reason: "Knip did not run in Stage 2, so the symbol mention query had no reported symbols.",
+    evidenceRefs: [`${attempt.id}-file@symbol-mentions.json`] }];
+}
+
 // A complete Stage 3 packet. The analysis keeps every Stage 2 record, reviews the
-// collected excerpt of app.ts and adds one inspection priority.
+// collected excerpt of app.ts and adds one inspection priority, and the gap of the
+// symbol mentions when they did not run.
 function stageThreePacket(attempt: StageThreeAttempt): StageThreePacket {
   const previous = parse(readFileSync(join(attempt.work, "evidence", stageTwoId, "entry-analysis.yaml"), "utf8")) as JsonRecord;
   const source = `${attempt.id}-source-${app.path}`;
@@ -49,7 +60,8 @@ function stageThreePacket(attempt: StageThreeAttempt): StageThreePacket {
     previousEntryAnalysisRef: `${stageTwoId}-entry-analysis`, planRef: previous.planRef, knipRunsRef: previous.knipRunsRef,
     candidates: previous.candidates, reviewedFiles: [{ id: source, snapshotRef: stagedSnapshotRef, path: app.path,
       sha256: createHash("sha256").update(app.text).digest("hex"), lines: [1, 1] }],
-    questions: previous.questions, gaps: previous.gaps, reachability: previous.reachability, llmReview: "recorded",
+    questions: previous.questions, gaps: [...previous.gaps as JsonRecord[], ...symbolGaps(attempt)],
+    reachability: previous.reachability, llmReview: "recorded",
     knipAssessment: { action: "reuse", reason: "Knip was skipped, and its saved inputs still describe this snapshot.",
       evidenceRefs: [`${stageTwoId}-knip-runs`] },
     inspectionPriorities: [{ id: `${attempt.id}-priority-001`, subjectRefs: [app.path], priority: 1,

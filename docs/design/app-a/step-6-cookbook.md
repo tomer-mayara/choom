@@ -113,7 +113,10 @@ was resolved. The shared record checks refuse a question or gap whose subject
 names nothing of the run: each subject names a file or folder of the snapshot,
 the snapshot ID, a question or gap, an entry candidate or a baseline item, as
 the [record contract](record-format.md#ids-and-evidence) gives. A gap that
-Stage 1 copied from a tool record keeps its subjects. Current overview and mapping/resource limits must describe the
+Stage 1 copied from a tool record keeps its subjects. The checks also refuse a
+selected entry analysis whose Knip profile preflight marked unsupported, or
+whose Knip mode failed or was skipped, when no gap cites that record
+([discovery](record-format.md#discovery)). Current overview and mapping/resource limits must describe the
 current records: check counts, owners, inspection scope and statements that a
 finished stage is still pending. Question and gap totals are record counts, not
 defect counts. Do not treat source inspection as execution or proposed intent

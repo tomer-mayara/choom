@@ -80,11 +80,14 @@ export function entryPlan(id: string, change: JsonRecord = {}): JsonRecord {
     ...change };
 }
 
+// The entry analysis of the attempt. Without a package manifest or a Docker engine,
+// preflight marks the Knip profile unsupported and both Knip modes are skipped, so
+// its gap cites the preflight and the Knip runs records, as finish requires.
 export function entryAnalysis(id: string, change: JsonRecord = {}): JsonRecord {
   return { formatVersion: 1, kind: "entry-analysis", snapshotRef: stagedSnapshotRef, planRef: `${id}-entry-plan`,
     knipRunsRef: `${id}-knip-runs`, candidates: [candidate(id)], reviewedFiles: [], questions: [priorQuestion],
     gaps: [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
-      evidenceRefs: [`${id}-knip-runs`] }],
+      evidenceRefs: [`${id}-knip-runs`, `${id}-preflight`] }],
     reachability: { status: "not-assessed", reason: "This stage records entry candidates and Knip outcomes only." },
     llmReview: "recorded", ...change };
 }

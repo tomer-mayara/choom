@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, object, savedDocument, text } from './record-checks.ts';
+import { checkSymbolResultGap } from './result-gaps.ts';
 import { checkReview, utf8 } from './stage-3-review.ts';
 
 // The Stage 3 finalizer. It checks the saved attempt, its receipts, the earlier
@@ -379,6 +380,9 @@ function finish(): void {
   const { analysis, currentExcerpts } = checkReview({ ...records, ...inputs, id: config.id, workspaces,
     names: attempt.names, artifacts: attempt.artifacts, buffers: attempt.buffers, document: attempt.document,
     saved: attempt.saved, receipt: attempt.receipt, checkedSourceBytes });
+  // Symbol mentions that are unavailable or skipped need a gap that cites their record.
+  checkSymbolResultGap(analysis.gaps, attempt.attemptRef('symbol-mentions.json'),
+    (attempt.saved('symbol-mentions.json') as Fields | null | undefined)?.status);
   const state: Finalization = { ...records, config, drafts, attempt, inputs, loading, analysis, currentExcerpts,
     checkedSourceBytes };
   finalChecks(state);

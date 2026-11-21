@@ -551,6 +551,9 @@ explain the proposed change, and keep the old planRef/knipRunsRef as historical
 evidence. Do not claim the old report used the proposed settings.
 Reuse also preserves skipped or failed Knip outcomes. It does not turn absent
 reports into successful analysis or establish that there are no unused files.
+When symbol-mentions.json has the status unavailable or skipped, add a gap that
+cites {{ID}}-file@symbol-mentions.json; the finalizer refuses the analysis
+without it.
 
 inspectionPriorities is ordered by priority: 1 first, then 2, then 3. Each item
 names concrete subjects, a planned source check, a reason, and evidence. Known
@@ -655,6 +658,8 @@ checks the receipt of each excerpt, text search and exports request, so it refus
 a text-search or exports record, or raw ripgrep output, that changed after the
 request. It
 requires successful evidence collection and `knipAssessment.action: reuse`.
+When the symbol mentions of collect have the status `unavailable` or `skipped`,
+it requires a gap that cites `<attempt>-file@symbol-mentions.json`.
 It does not execute the target or certify the LLM's interpretation.
 
 On success:

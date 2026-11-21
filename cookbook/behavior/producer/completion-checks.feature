@@ -21,3 +21,9 @@ Feature: Check a recovered result before Step 2 reads it
     When the operator publishes the Stage 4 draft
     Then the run summaries name the published Stage 4 records with their current counts
     And the run summaries no longer say that the baseline is not yet recovered
+
+  Scenario: A Stage 2 analysis that records no gap for a Knip analysis that did not run is refused
+    Given a Stage 2 attempt in which Knip did not run
+    When the operator publishes an entry analysis that records no gap about the Knip result
+    Then the analysis is refused and the drafts stay unchanged
+    And the operator is told which Knip record a gap must cite
