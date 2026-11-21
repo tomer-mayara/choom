@@ -334,10 +334,25 @@ function readPacket(root: string): Packet {
   assert(same(names(root), [...packetFiles].sort()), 'Expected exactly the nine review packet files from record-format.md.');
   return new Map(packetFiles.map(name => [name, read(root, name)]));
 }
-function expectedRun(state: State, receipt: Buffer): Buffer {
+// The summaries of the run manifest, current for the published drafts: they name the
+// registered records of this attempt and the counts of the validated records. The
+// question and gap lists keep their history, so their lengths are record counts. The
+// capture summary of Stage 1 stays.
+function currentCoverage(run: RunRecord, counts: RecordCounts): Fields {
+  const discovery = refFor('discovery.proposed.yaml');
+  const mapping = refFor('code-mapping.json');
+  return { ...(run.coverage as Fields | undefined),
+    inspected: `See ${refFor('entry-analysis.yaml')}#/reviewedFiles and its predecessor analyses for reviewed source ranges. ` +
+      `See ${mapping} for file review scope and ${discovery}#/inspectedPaths for inspected behavior paths (${counts.inspectedPaths}).`,
+    unresolved: 'The baseline draft records proposed intent; Stage 6 has not saved the fixed baseline. ' +
+      `See ${discovery} for the recorded questions (${counts.questions}) and recorded gaps (${counts.gaps}), which keep their ` +
+      `history, and ${mapping} for files with unknown owners (${counts.unknownOwners}).` };
+}
+function expectedRun(state: State, receipt: Buffer, counts: RecordCounts): Buffer {
   const artifacts = Object.fromEntries([...state.artifacts].map(([ref, { path, sha256 }]) => [ref, { path, sha256 }]));
   artifacts[refFor(receiptName)] = { path: 'evidence/' + id + '/' + receiptName, sha256: hash(receipt) };
-  return Buffer.from(stringify({ ...state.run, progress: { ...(state.run.progress as Fields), [progressKey]: 'complete' }, artifacts }));
+  return Buffer.from(stringify({ ...state.run, progress: { ...(state.run.progress as Fields), [progressKey]: 'complete' },
+    coverage: currentCoverage(state.run, counts), artifacts }));
 }
 function checkCurrent(drafts: Map<string, Buffer>): void {
   for (const [name, bytes] of drafts) assert(read(work, name).equals(bytes), 'Working draft changed: ' + name);
@@ -362,13 +377,14 @@ function verify(): Fields {
   assert(same(receipt.inputDigests, Object.fromEntries([...state.attemptFiles].map(([name, bytes]) => [name, hash(bytes)]))) &&
     same(receipt.packetDigests, Object.fromEntries([...packet].map(([name, bytes]) => [name, hash(bytes)]))), 'Publication evidence changed.');
   const result = candidate(state, packet);
-  checkCurrent(new Map([['run.yaml', expectedRun(state, receiptBytes)],
+  checkCurrent(new Map([['run.yaml', expectedRun(state, receiptBytes, result.counts)],
     ['baseline.yaml', packet.get('baseline.proposed.yaml') as Buffer], ['discovery.yaml', packet.get('discovery.proposed.yaml') as Buffer]]));
   return { status: 'stage' + stage + '-publication-verified', ...result.counts, writes: [] };
 }
 
 // Saves the packet and the receipt in the attempt, and the three new drafts as temporary files.
-function stageOutputs(state: State, packet: Packet, review: string, staged: Staged): { receipt: Buffer; outputs: Map<string, Buffer> } {
+function stageOutputs(state: State, { packet, counts }: { packet: Packet; counts: RecordCounts }, review: string, staged: Staged):
+{ receipt: Buffer; outputs: Map<string, Buffer> } {
   checkCurrent(state.drafts);
   sameFiles(attempt, state.attemptFiles);
   sameFiles(review, packet);
@@ -382,7 +398,7 @@ function stageOutputs(state: State, packet: Packet, review: string, staged: Stag
     note: 'The updated run manifest is the publication marker. Proposed intent remains proposed.' });
   writeFileSync(join(attempt, receiptName), receipt, { flag: 'wx' });
   const outputs = new Map([['baseline.yaml', packet.get('baseline.proposed.yaml') as Buffer],
-    ['discovery.yaml', packet.get('discovery.proposed.yaml') as Buffer], ['run.yaml', expectedRun(state, receipt)]]);
+    ['discovery.yaml', packet.get('discovery.proposed.yaml') as Buffer], ['run.yaml', expectedRun(state, receipt, counts)]]);
   for (const [name, bytes] of outputs) {
     const path = '.publication-' + id + '-' + name;
     writeFileSync(join(work, path), bytes, { flag: 'wx' }); staged.temporary.set(path, bytes);
@@ -436,7 +452,7 @@ function publish(state: State, packet: Packet, result: Candidate, review: string
   let failure: Error | undefined;
   let output: Fields | undefined;
   try {
-    const { receipt, outputs } = stageOutputs(state, packet, review, staged);
+    const { receipt, outputs } = stageOutputs(state, { packet, counts: result.counts }, review, staged);
     placeOutputs(state, packet, receipt, outputs, staged);
     committed = true;
     output = { status: 'stage' + stage + '-published', ...result.counts,

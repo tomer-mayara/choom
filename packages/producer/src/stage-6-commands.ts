@@ -296,6 +296,9 @@ function checkInputs({ state, prepared }: Pick<Prepared, 'state' | 'prepared'>,
   assert(same(inventory.snapshot, state.facts.snapshot), 'Snapshot identity changed during publication.');
 }
 
+// The completed run manifest. Its summaries name the fixed records and the counts of
+// the validated records. The question and gap lists keep their history, so their
+// lengths are record counts, not counts of open issues.
 function completeManifest({ state, prepared, yaml }: Prepared, phase: Files, completedAt: unknown): Buffer {
   const { baselineRef, baselinePath, discoveryRef, discoveryPath, selectedRefs } = state.facts;
   const { inspectedPaths, questions, gaps, unknownOwners } = state.validation;
@@ -303,8 +306,8 @@ function completeManifest({ state, prepared, yaml }: Prepared, phase: Files, com
     inspected: `See ${selectedRefs.entryAnalysisRef}#/reviewedFiles and its predecessor analyses for reviewed source ranges. ` +
       `See ${selectedRefs.codeMappingRef} for file review scope and ${discoveryRef}#/inspectedPaths for inspected behavior paths (${inspectedPaths}).`,
     unresolved: `Fixed baseline ${baselineRef} records proposed intent. ` +
-      `See fixed discovery ${discoveryRef} for questions (${questions}) and gaps (${gaps}), ` +
-      `and ${selectedRefs.codeMappingRef} for files with unknown owners (${unknownOwners}).`,
+      `See fixed discovery ${discoveryRef} for the recorded questions (${questions}) and recorded gaps (${gaps}), ` +
+      `which keep their history, and ${selectedRefs.codeMappingRef} for files with unknown owners (${unknownOwners}).`,
   };
   const artifacts = { ...(state.run.artifacts as Fields) };
   function add(ref: string, path: string, bytes: Buffer): void {

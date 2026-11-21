@@ -48,6 +48,24 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     });
   }, 60_000);
 
+  // P3: the publisher makes the run summaries current for the published drafts, with
+  // the counts of the validated records, and keeps the capture summary of Stage 1.
+  test("makes the run summaries current, and verify checks them", () => {
+    withPublication((fixture) => {
+      const before = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: Record<string, string> };
+      expect(publishStageFour(fixture, "finish").status).toBe(0);
+      const run = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: unknown };
+      expect(run.coverage).toEqual({ inventoried: before.coverage.inventoried,
+        inspected: "See s4-check-entry-analysis#/reviewedFiles and its predecessor analyses for reviewed source ranges. " +
+          "See s4-check-file@code-mapping.json for file review scope and s4-check-file@discovery.proposed.yaml#/inspectedPaths " +
+          "for inspected behavior paths (0).",
+        unresolved: "The baseline draft records proposed intent; Stage 6 has not saved the fixed baseline. " +
+          "See s4-check-file@discovery.proposed.yaml for the recorded questions (0) and recorded gaps (1), which keep their " +
+          "history, and s4-check-file@code-mapping.json for files with unknown owners (0)." });
+      expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
+    });
+  }, 60_000);
+
   // Defect 1: before this check, Stage 4 published the draft and only Stage 6 refused the ID.
   test("refuses a component ID equal to the baseline ID in check and finish, and writes nothing", () => {
     withPublication((fixture) => {

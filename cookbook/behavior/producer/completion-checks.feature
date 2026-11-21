@@ -15,3 +15,9 @@ Feature: Check a recovered result before Step 2 reads it
     When the operator publishes the Stage 4 draft
     Then the draft is refused
     And the operator is told which step of the inspected path cites the excerpt
+
+  Scenario: A published Stage 4 draft has current run summaries
+    Given a reviewed Stage 4 draft of a run whose summaries describe Stage 3
+    When the operator publishes the Stage 4 draft
+    Then the run summaries name the published Stage 4 records with their current counts
+    And the run summaries no longer say that the baseline is not yet recovered

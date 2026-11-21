@@ -1136,8 +1136,13 @@ in Stage 4 also a references request, and in Stage 5 also a parts request) needs
 keeps the digests of its outputs, and a failed request has no output. `finish`
 copies the packet into the attempt, registers attempt files by digest, replaces
 the working baseline and discovery, and writes the run manifest last. It marks
-`componentRecovery` or `remainingCode` complete. It does not accept intent or
-verify semantic quality. `verify` checks the completed publication without
+`componentRecovery` or `remainingCode` complete. It also makes the run summaries
+`coverage.inspected` and `coverage.unresolved` current: they name the entry
+analysis, code mapping and discovery proposal of the attempt, and the counts of
+inspected paths, recorded questions, recorded gaps and files with unknown owners
+of the validated records. The question and gap lists keep their history, so
+these counts are record counts. `coverage.inventoried` stays as Stage 1 wrote it.
+It does not accept intent or verify semantic quality. `verify` checks the completed publication without
 writing files.
 
 Only one publisher may operate on a run at a time. Keep failed attempts and

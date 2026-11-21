@@ -663,6 +663,11 @@ Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
 and the source collection, and writes the toolchain and graph receipts that need
 Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
 packet, and refuses a component ID equal to the baseline ID without writing.
+When it publishes, it makes the run summaries `coverage.inspected` and
+`coverage.unresolved` current: they name the records of the attempt and the
+counts of the validated records, and say recorded questions and recorded gaps,
+because the lists keep their history. Stage 6 says the same in the completed
+run manifest.
 The Stage 4 inspection suite runs the source collection and the excerpt action on
 that attempt: each kind of source site with its lines, the parser record with the
 ts-morph and TypeScript versions, the source forms, a file with a byte order mark,

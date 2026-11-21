@@ -392,8 +392,9 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 ```
 
 `check` is read-only. It is safe to correct the separate packet and repeat that
-check. `finish` copies and registers the review, updates the working drafts, and
-marks `remainingCode: complete`. `verify` checks the published state. Do not rerun
+check. `finish` copies and registers the review, updates the working drafts,
+marks `remainingCode: complete`, and makes the run summaries `coverage.inspected`
+and `coverage.unresolved` current for the new records. `verify` checks the published state. Do not rerun
 `finish` after success. Publication failure leaves evidence for investigation;
 after resolving the cause, use a fresh attempt rather than editing that evidence.
 
@@ -427,9 +428,9 @@ guidance to the complete packet before `finish`. Check that:
   observation counts from their selected records. Replace stale prose rather
   than appending a conflicting update. Questions and gaps include history and
   linked notes; their totals are not unresolved-defect counts.
-- Review selected manifest summaries as well as packet files. For helper-owned
-  stale prose, use the correction guidance rather than editing the manifest.
-  Keep `baselineRef` unset until Stage 6.
+- Review the manifest summaries after `finish` as well as the packet files: the
+  publisher makes them current. For helper-owned stale prose, use the correction
+  guidance rather than editing the manifest. Keep `baselineRef` unset until Stage 6.
 - The full update is validated before any draft is replaced. Register immutable
   attempt evidence by digest; do not register a mutable draft as evidence.
 

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Given, Then, type World } from "@cucumber/cucumber";
+import { parse } from "yaml";
 import { type FixtureBaseline, stageFourPublication, type StageFourPublication }
   from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import { type CommandResult, toolsRoot } from "../../packages/producer/test/support/commands.ts";
@@ -61,4 +64,28 @@ Given("a Stage 4 draft whose inspected path cites an excerpt that the review did
 Then("the operator is told which step of the inspected path cites the excerpt", function (this: CompletionWorld) {
   const message = refusal(this);
   assert.ok(message.includes(`s4-check-orders-path step 2: ${unread}`), message);
+});
+
+// The Stage 4 publication fixture starts from a run with the summaries of Stages 1 and 3.
+Given("a reviewed Stage 4 draft of a run whose summaries describe Stage 3", function (this: CompletionWorld) {
+  this.stageFourRun = stageFourPublication();
+});
+
+function runSummaries(world: CompletionWorld): Record<string, string> {
+  assert.ok(world.stageFourRun && world.publishCommand, "Publish the Stage 4 draft first.");
+  assert.equal(world.publishCommand.status, 0, world.publishCommand.stderr);
+  const run = parse(readFileSync(join(world.stageFourRun.work, "run.yaml"), "utf8")) as { coverage: Record<string, string> };
+  return run.coverage;
+}
+
+Then("the run summaries name the published Stage 4 records with their current counts", function (this: CompletionWorld) {
+  const { inspected, unresolved } = runSummaries(this);
+  assert.ok(inspected?.includes("s4-check-entry-analysis#/reviewedFiles") && inspected.includes("inspected behavior paths (0)"),
+    inspected);
+  assert.ok(unresolved?.includes("recorded questions (0) and recorded gaps (1)") &&
+    unresolved.includes("files with unknown owners (0)"), unresolved);
+});
+
+Then("the run summaries no longer say that the baseline is not yet recovered", function (this: CompletionWorld) {
+  assert.doesNotMatch(Object.values(runSummaries(this)).join("\n"), /not yet recovered/);
 });

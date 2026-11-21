@@ -119,8 +119,9 @@ function expectedRunManifest(completedAt: string): string {
   const coverage = { ...run.coverage,
     inspected: "See s5-fixture-entry-analysis#/reviewedFiles and its predecessor analyses for reviewed source ranges. " +
       `See s5-fixture-file@code-mapping.json for file review scope and ${discoveryRef}#/inspectedPaths for inspected behavior paths (0).`,
-    unresolved: `Fixed baseline ${baselineRef} records proposed intent. See fixed discovery ${discoveryRef} for questions (0) and ` +
-      "gaps (1), and s5-fixture-file@code-mapping.json for files with unknown owners (0)." };
+    unresolved: `Fixed baseline ${baselineRef} records proposed intent. See fixed discovery ${discoveryRef} for the recorded ` +
+      "questions (0) and recorded gaps (1), which keep their history, and s5-fixture-file@code-mapping.json for files with " +
+      "unknown owners (0)." };
   return stringify({ ...run, status: "completed", progress: { ...run.progress, baselineRecovery: "complete" }, coverage, baselineRef,
     discoveryRef, completedAt, artifacts });
 }

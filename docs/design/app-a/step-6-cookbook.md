@@ -168,10 +168,10 @@ is bound to the reviewed bytes; changing a draft requires a new review.
 `suppliedArtifactRefs` and `limits`. Describe reuse of saved reviews in `limits`.
 This save-only profile adds no new source inspection records.
 
-The manifest's interim coverage prose can still describe an earlier stage.
-Use the selected records for readiness; do not edit the manifest to refresh it.
-The finalizer updates that prose from the selected facts. Check the new summaries
-after publication, as described below.
+The manifest's coverage prose describes the published Stage 5 drafts, not the
+fixed records. Use the selected records for readiness; do not edit the manifest
+to refresh it. The finalizer updates that prose from the selected facts. Check
+the new summaries after publication, as described below.
 
 ## 2. Prepare the saved result
 
@@ -269,7 +269,9 @@ It also refreshes `coverage.inspected` and `coverage.unresolved` from the
 validated selected records. Those summaries point to source-review ranges,
 inspected paths, the proposed baseline, questions, gaps and unknown owners.
 Capture coverage remains separate. Summary counts do not imply full inspection
-or turn historical gaps into current defects.
+or turn historical gaps into current defects: the question and gap lists keep
+their history and linked notes, so the summary calls their lengths the counts of
+recorded questions and recorded gaps.
 
 The selected stage 5 facts remain valid. In particular, membership references
 can still point to the registered stage 5 proposal because its baseline bytes
