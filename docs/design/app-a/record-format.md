@@ -80,7 +80,39 @@ or into a JSON (`.json`) or YAML (`.yaml`, `.yml`) file. A list index is `0` or 
 number without a leading zero, so `length` is not an index. Cite another file,
 such as a `.txt` output, only whole: its ID with no pointer or with an empty one (`#`).
 `subjectRefs` identifies the files, components, statements or earlier issues
-being discussed; it is not a substitute for `evidenceRefs`.
+being discussed; it is not a substitute for `evidenceRefs`. Each subject names
+one of these:
+
+- a file of the snapshot inventory, such as `src/billing/invoice.ts`;
+- a folder that holds at least one inventory file, written with or without a
+  final `/`, such as `src/billing` or `src/billing/`. Name the whole snapshot by
+  its ID, not as `.` or `/`;
+- the snapshot ID;
+- the ID of a question or gap of the discovery;
+- the ID of an entry candidate of the selected entry analysis or of an earlier
+  entry analysis that it names with `previousEntryAnalysisRef`, so that a note
+  can name a candidate that Stage 3 retired;
+- a baseline item (component, interface, resource or rule), as the viewer places
+  a record: the item ID, or the ID followed by a dot and more, such as
+  `billing.purpose`.
+
+Name a symbol, a missing input or another detail in the `text` or `reason`, not
+as a subject. The shared record checks of Stages 4 to 6 refuse any other subject
+and name the question or gap and the subject, such as `Question q-1 names the
+subject old-billing, which is not a file or folder of the snapshot, the snapshot
+ID, a question or gap, an entry candidate or a baseline item.` Later stages keep
+each question and gap unchanged, so a draft cannot rename or remove what an
+earlier record names: keep the ID of a component that a question or gap names.
+Stages 1 to 3 do not check this rule, because the baseline items exist only from
+Stage 4; follow it when you write a record there.
+
+A gap that Stage 1 `finish` copied from a tool record keeps the subjects of the
+tool, which can name a missing input or a path outside the snapshot. The checks
+know such a gap by its form: its ID is `s1-<tool>-gap-NNN`, and its only
+evidence reference is the place of that gap in the tool record,
+`<artifact ID>#/gaps/N` with N one less than NNN, such as `s1-settings-gap-001`
+with `settings-001#/gaps/0`. The tool records are the settings record and the
+Git identity record.
 
 A Stage 4 references record (`references-NNN.json`, see the
 [stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
@@ -1005,6 +1037,10 @@ record checks. A refusal starts with "The questions and gaps do not match the
 discovery contract of the viewer." and names the field, such as
 `The discovery result exceeds a limit at gaps.0.subjectRefs`. Stage 6 checks the
 fixed result again (see [Fixed discovery result](#fixed-discovery-result)).
+Each subject also names a file, folder, record or item of the run, as
+[IDs and evidence](#ids-and-evidence) gives. The shared record checks of
+Stages 4 to 6 check this after the limits, also for the records that earlier
+stages froze.
 
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership

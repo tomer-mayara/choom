@@ -110,8 +110,10 @@ function initialRecords(): Records {
     entry: { formatVersion: 1, kind: "entry-analysis", snapshotRef, planRef: "knip-plan", knipRunsRef: "knip-runs",
       llmReview: "recorded", reviewedFiles: [{ id: "orders-handler", ...location }], gaps, questions: [],
       knipAssessment: { action: "reuse", reason: "Reuse.", evidenceRefs },
+      // The gap names plugin-candidate, as in the Stage 6 producer fixture.
       candidates: [{ id: "cli-candidate", expression: "serve", path: "cli.ts", workspace: ".", roles: ["application"],
-        origin: "script", evidenceRefs }],
+        origin: "script", evidenceRefs }, { id: "plugin-candidate", expression: "plugin", path: null, workspace: ".",
+        roles: ["application"], origin: "unknown", evidenceRefs: ["launch#/unresolved"] }],
       inspectionPriorities: [],
       behaviorEntries: [{ id: "http-route", kind: "route", expression: "GET /orders", componentRef: "http",
         source: { path: "http.ts", lines: [1, 1] }, fileEntryRefs: ["cli-candidate"], evidenceRefs: ["orders-handler"] }],

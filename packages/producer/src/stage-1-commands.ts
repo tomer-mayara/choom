@@ -12,7 +12,7 @@ import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
-import { type DiscoveryGap, toolGaps } from './stage-1-gaps.ts';
+import { type DiscoveryGap, settingsTool, toolGaps } from './stage-1-gaps.ts';
 import { type GitIdentityRecord, gitIdentity, gitIdentityGaps, gitIdentityPath, gitIdentityRef, type RunGit }
   from './stage-1-git.ts';
 
@@ -303,7 +303,7 @@ function checkCapturedInputs(inputs: StageOneInputs): { gaps: unknown[] } {
 // project settings or missing Git evidence, with the name of the record.
 interface AddedGaps { record: string; gaps: DiscoveryGap[] }
 function addedGaps(settings: { gaps: unknown[] }, inputs: StageOneInputs): AddedGaps[] {
-  return [{ record: 'settings', gaps: toolGaps({ name: 'settings', artifactRef: 'settings-001', gaps: settings.gaps }) },
+  return [{ record: 'settings', gaps: toolGaps({ ...settingsTool, gaps: settings.gaps }) },
     { record: 'Git identity', gaps: gitIdentityGaps(json(gitIdentityPath), inputs.snapshotRef) }];
 }
 

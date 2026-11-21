@@ -109,7 +109,11 @@ signature must remain unknown; known interaction facts can remain separate.
 
 Check that earlier questions, gaps and resolutions remain understandable.
 A historical gap can remain unchanged when a linked later note explains what
-was resolved. Current overview and mapping/resource limits must describe the
+was resolved. The shared record checks refuse a question or gap whose subject
+names nothing of the run: each subject names a file or folder of the snapshot,
+the snapshot ID, a question or gap, an entry candidate or a baseline item, as
+the [record contract](record-format.md#ids-and-evidence) gives. A gap that
+Stage 1 copied from a tool record keeps its subjects. Current overview and mapping/resource limits must describe the
 current records: check counts, owners, inspection scope and statements that a
 finished stage is still pending. Question and gap totals are record counts, not
 defect counts. Do not treat source inspection as execution or proposed intent

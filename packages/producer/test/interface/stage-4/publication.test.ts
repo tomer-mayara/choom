@@ -65,6 +65,41 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
   }, 60_000);
 });
 
+// The shared record checks refuse a question or gap subject that names nothing. So a
+// Stage 4 draft that renames a component that a question names is refused while the
+// reviewer can still keep the old component ID.
+describe("the Stage 4/5 publisher with a question about a component", () => {
+  const question = { id: "s4-check-question-001", subjectRefs: ["http.purpose"], text: "Does http serve every order route?",
+    evidenceRefs: ["launch-settings"] };
+  const asked = (records: Record<string, Record<string, unknown>>): void => {
+    for (const name of ["discovery.proposed.yaml", "entry-analysis.yaml"]) Object.assign(records[name] ?? {}, { questions: [question] });
+  };
+  function withQuestion(change: (baseline: FixtureBaseline) => void, use: (fixture: StageFourPublication) => void): void {
+    const fixture = stageFourPublication(change, [], toolsRoot, asked);
+    try {
+      use(fixture);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+
+  test("accepts a question about a component of the draft", () => {
+    withQuestion(() => {}, (fixture) => {
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified", questions: 1 });
+    });
+  }, 60_000);
+
+  test("refuses a question about a component that the draft renamed, and writes nothing", () => {
+    withQuestion((baseline) => {
+      const http = baseline.components.find((component) => component.id === "http");
+      if (http) http.id = "web";
+    }, (fixture) => {
+      refusedInCheck(fixture, "Question s4-check-question-001 names the subject http.purpose, which is not a file or folder of " +
+        "the snapshot, the snapshot ID, a question or gap, an entry candidate or a baseline item.");
+    });
+  }, 60_000);
+});
+
 // The publisher checks the receipt of each numbered request of Stage 4 inspect after collect.
 function requested(fixture: StageFourPublication, args: string[], status: number): void {
   expect({ args, status: inspectStageFour(fixture, args).status }).toEqual({ args, status });

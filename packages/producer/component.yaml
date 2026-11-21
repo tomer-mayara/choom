@@ -19,6 +19,7 @@ artifacts:
     - path: ../../cookbook/behavior/producer/resource-access.feature
     - path: ../../cookbook/behavior/producer/knip-plugins.feature
     - path: ../../cookbook/behavior/producer/discovery-digest.feature
+    - path: ../../cookbook/behavior/producer/completion-checks.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:

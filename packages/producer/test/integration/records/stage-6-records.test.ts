@@ -105,10 +105,58 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(recordInputs(unownedFirstFile("Owner unknown.")))).toMatchObject({ unknownOwners: 1 });
   });
 
-  // P1: later tickets refuse references that name nothing. Today they pass.
-  test("accepts question and gap subjects that name nothing", () => {
-    expect(validateDiscoveryRecords(recordInputs((records) => nameUnknownSubject(records, "no-such-thing"))))
-      .toMatchObject({ gaps: 1 });
+  // P1: a question or gap subject names something of the run (record-subjects.ts).
+  test("refuses a question or gap subject that names nothing, with the gap ID and the subject", () => {
+    expect(() => validateDiscoveryRecords(recordInputs((records) => nameUnknownSubject(records, "no-such-thing"))))
+      .toThrow(new Error("Gap gap-1 names the subject no-such-thing, which is not a file or folder of the snapshot, " +
+        "the snapshot ID, a question or gap, an entry candidate or a baseline item."));
+  });
+
+  test("accepts subjects that name a snapshot file, the snapshot ID, an entry candidate, a baseline item or its field, " +
+    "and a question or gap", () => {
+    const subjects = ["cli.ts", snapshotRef, "cli-candidate", "plugin-candidate", "http", "cli.purpose", "q-1"];
+    const change = (records: Records): void => {
+      const question = { id: "q-1", subjectRefs: ["gap-1"], text: "Which plugin starts first?", evidenceRefs };
+      records.discovery.questions = [structuredClone(question)];
+      records.entry.questions = [question];
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.forEach((gap) => { gap.subjectRefs = [...subjects]; });
+    };
+    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 1, questions: 1 });
+  });
+
+  // The gaps of a Stage 1 tool record can name missing inputs and paths outside the snapshot.
+  test("keeps the subjects of a gap that Stage 1 finish copied from the settings record", () => {
+    const toolGap = { id: "s1-settings-gap-001", kind: "missing-input", reason: "The base settings are missing.",
+      subjectRefs: ["tsconfig.missing.json", "/shared/global.d.ts"], evidenceRefs: ["settings-001#/gaps/0"] };
+    const inputs = recordInputs((records) => {
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(toolGap));
+    });
+    const { id: _id, evidenceRefs: _evidence, ...entry } = toolGap;
+    const settings = Buffer.from(JSON.stringify({ gaps: [entry] }));
+    inputs.artifacts.set("settings-001", { path: "evidence/settings.json", bytes: settings, sha256: digest(settings) });
+    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 2 });
+  });
+
+  // Stage 3 can retire an earlier entry candidate with a note that names it, so a subject
+  // can name a candidate of an earlier entry analysis of the selected history.
+  test("accepts a subject that names an entry candidate of an earlier entry analysis", () => {
+    const earlier = "s3-x-entry-analysis";
+    const inputs = recordInputs((records) => {
+      records.entry.previousEntryAnalysisRef = earlier;
+      records.mapping.scope.historicalEntryAnalysisRefs = [earlier];
+      nameUnknownSubject(records, "retired-candidate");
+    });
+    const save = (ref: string, path: string, value: unknown): void => {
+      const bytes = Buffer.from(JSON.stringify(value));
+      inputs.artifacts.set(ref, { path, bytes, sha256: digest(bytes) });
+    };
+    save(earlier, "evidence/s3-x/entry-analysis.yaml", { formatVersion: 1, kind: "entry-analysis", snapshotRef,
+      llmReview: "recorded", reviewedFiles: [], questions: [], gaps: [], candidates: [{ id: "retired-candidate" }] });
+    const access = JSON.parse((inputs.artifacts.get(selected.resourceAccessRef)?.bytes ?? "").toString()) as
+      { scope: Record<string, unknown> };
+    access.scope.historicalEntryAnalysisRefs = [earlier];
+    save(selected.resourceAccessRef, "evidence/s5-x/resource-access.json", access);
+    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
   });
 
   // P2: only the entry site must be in a reviewed range. Today a step can cite an unread excerpt.

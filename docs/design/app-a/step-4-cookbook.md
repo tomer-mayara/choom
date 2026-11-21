@@ -1371,7 +1371,13 @@ documents and code visible. Do not create a utilities component to absorb
 unexplained files. Stage 5 accounts for remaining code.
 Keep each new question and gap within the limits of the viewer in
 [record-format.md](record-format.md#discovery), such as 1 to 100 `subjectRefs`;
-the publisher refuses a record over a limit.
+the publisher refuses a record over a limit. Each subject names a file or folder
+of the snapshot, the snapshot ID, a question or gap, an entry candidate, or a
+baseline item or a field of it, such as `billing.purpose`
+([record-format.md](record-format.md#ids-and-evidence)). The publisher refuses
+any other subject, also in an earlier question or gap, so keep the ID of a
+component that a question or gap names. A gap that Stage 1 copied from a tool
+record keeps its subjects.
 Rewrite current summaries and limits to match the proposed packet; the historical
 preservation rule does not apply to stale overview text or current counts.
 
@@ -1388,6 +1394,8 @@ guidance before `finish`. Check the complete model and fact records:
 - Every evidence reference resolves and matches its digest. Source ranges match
   saved numbered excerpts. Tool scans and references records are not recorded as
   LLM inspections.
+- Every question and gap subject names something of the run, also in the
+  earlier records: no component that a subject names was renamed or removed.
 - All inferred intent stays proposed. IDs are unique. Parent relationships have
   no cycles. Each mapped file has one direct owner or an explicit unknown owner.
 - Membership selectors agree with the exact code mapping. Shared parent groups

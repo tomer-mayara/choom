@@ -25,9 +25,13 @@ const resourceCandidates = `resource-access-candidates.json lists the calls that
   `resource-access.json as resourceAccessCandidatesRef.\n\n`;
 
 // The limits of the viewer for each question and gap. Every stage checks them where a record enters the run.
+// The shared record checks also refuse a subject that names nothing of the run (record-subjects.ts).
 const questionAndGapLimits = `Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef; ` +
   `a text or reason has at most 16 KiB of UTF-8, an ID, a kind or a reference at most 4 KiB, and there are at most 5,000 ` +
-  `questions and gaps. `;
+  `questions and gaps. Each subjectRef names a file or folder of the snapshot (a folder with or without a final /), ` +
+  `the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose. ` +
+  `Name a symbol or a missing input in the text or reason. The publisher refuses any other subject, also in an earlier ` +
+  `question or gap, so keep the ID of a component that a question or gap names. `;
 
 export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt }: PromptFacts): string {
   return `# Stage 4 component recovery review\n\n` +
