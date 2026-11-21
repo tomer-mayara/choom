@@ -10,3 +10,10 @@ Feature: Publish the drafts of a run as one update
     When the operator publishes the Stage 2 attempt
     Then the publication is refused and the run folder outside the attempt is as it was
     And the operator is told to keep the attempt and use a new attempt ID
+
+  Scenario: A failed Stage 3 publication keeps the last published drafts
+    Given a run that is ready for Stage 3 to publish
+    And a fault that stops the publication after its first rename
+    When the operator finishes Stage 3
+    Then the Stage 3 result is not published
+    And the run manifest and the discovery draft are the same as before

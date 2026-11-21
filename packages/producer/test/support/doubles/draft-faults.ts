@@ -15,6 +15,9 @@ export type DraftFault =
   | "discovery-rename"
   // The rename of the staged run manifest into run.yaml fails.
   | "run-rename"
+  // The publication stops after this number of renames into working drafts: the next
+  // rename fails, whatever draft it replaces.
+  | `stop-after-rename-${number}`
   // Another writer changes discovery.yaml just after the publication replaced it.
   | "discovery-change";
 
@@ -37,13 +40,18 @@ interface FileSystem {
 function install(faults: ReadonlySet<string>): void {
   const fs = createRequire(import.meta.url)("node:fs") as FileSystem;
   const { renameSync, appendFileSync } = fs;
+  // The number of renames after which the publication stops, as text, if a fault names one.
+  const stop = [...faults].map((fault) => /^stop-after-rename-([0-9]+)$/.exec(fault)?.[1]).find((count) => count !== undefined);
+  let renamed = 0;
   fs.renameSync = (from, to) => {
     // A publication renames a temporary file, whose name starts with a dot, into a working
     // draft. A rollback renames a file whose name holds "rollback".
     const draft = basename(to);
     const publication = basename(from).startsWith(".") && !basename(from).includes("rollback") && drafts.has(draft);
-    if (publication && faults.has(draft.replace(".yaml", "-rename"))) throw new Error(injectedRenameFailure);
+    if (publication && (faults.has(draft.replace(".yaml", "-rename")) || String(renamed) === stop))
+      throw new Error(injectedRenameFailure);
     renameSync(from, to);
+    if (publication) renamed += 1;
     if (publication && faults.has("discovery-change") && draft === "discovery.yaml") appendFileSync(to, "# changed\n");
   };
   syncBuiltinESMExports();
