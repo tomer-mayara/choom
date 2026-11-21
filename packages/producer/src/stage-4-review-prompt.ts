@@ -37,6 +37,11 @@ const evidenceRequests = `Request a snapshot-relative path and line range when m
   `and the symbol name. A references record lists sites to read. It does not prove calls, and its unresolved sites can hide ` +
   `other uses.\n\n`;
 
+// What counts as a source inspection. The publisher checks that each step of an inspected path cites a reviewed range.
+const sourceReview = `Review source in priority order. A file query or a graph scan is not a source inspection. ` +
+  `Record only ranges actually read. Each step of an inspected path cites the reviewed source range that it rests on; ` +
+  `a collected excerpt that you did not review does not count, and graph or query records support only the scope.\n\n`;
+
 // How the reviewer uses the behavior entry candidates that the pinned syntax rules and the Knip plugin patterns found.
 const behaviorCandidates = `behavior-entry-candidates.json lists the calls, the settings entries and the bin commands that ` +
   `the pinned Choom behavior entry rules found, and the files that the default patterns of the Knip plugins in the Stage 2 ` +
@@ -65,9 +70,13 @@ const publicDeclarations = `Compare the proposed interfaces with the captured pa
   `error classes and input or result types. Model them where the contract or a reviewed use supports them, or explain the scope limit. `;
 
 // The limits of the viewer for each question and gap. Every stage checks them where a record enters the run.
+// The shared record checks also refuse a subject that names nothing of the run (record-subjects.ts).
 const questionAndGapLimits = `Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef; ` +
   `a text or reason has at most 16 KiB of UTF-8, an ID, a kind or a reference at most 4 KiB, and there are at most 5,000 ` +
-  `questions and gaps. `;
+  `questions and gaps. Each subjectRef names a file or folder of the snapshot (a folder with or without a final /), ` +
+  `the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose. ` +
+  `Name a symbol or a missing input in the text or reason. The publisher refuses any other subject, also in an earlier ` +
+  `question or gap, so keep the ID of a component that a question or gap names. `;
 
 const boundaryReview = `When the run has a projectKey, write formatVersion: 6 with boundaryReview. Cite the selected inventory digest, ` +
     `source identity and whole-file mapping. Identify the caller's written path and the resolved member independently. ` +
@@ -92,7 +101,7 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     evidenceRequests +
     `Read ${entryAnalysisRef}, its inspection priorities, graph-profile.json, graph-results.json, source-sites.json, ` +
     `behavior-entry-candidates.json, resource-access-candidates.json, source-excerpts.json, and the saved step-4-cookbook.md. ` +
-    `Review source in priority order. A file query or a graph scan is not a source inspection. Record only ranges actually read.\n\n` +
+    sourceReview +
     `Recover the apparent intended components. Use documents, callers, tests, and completed source paths as evidence. ` +
     `Existing folders, component.yaml declarations, graph clusters, and dependency edges are clues; they do not alone establish intent. ` +
     `Do not propose boundary improvements, smells, health scores, or deletions in this stage. Keep all inferred statements proposed.\n\n` +

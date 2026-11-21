@@ -35,13 +35,25 @@ export function stageThreeAttempt(stageTwoWork: string, folder: string, id = "s3
   return { work, id, folder: join(work, "evidence", id), review: join(folder, "review") };
 }
 
-export function stageThree(attempt: StageThreeAttempt, args: string[]): CommandResult {
+// Runs a Stage 3 command of the attempt. `settings` adds settings, such as a fault double.
+export function stageThree(attempt: StageThreeAttempt, args: string[], settings: Record<string, string> = {}): CommandResult {
   return runCli(args, { CHOOM_TOOLS: toolsRoot, CHOOM_WORK: attempt.work, CHOOM_STAGE3_ID: attempt.id,
-    CHOOM_STAGE3: attempt.folder });
+    CHOOM_STAGE3: attempt.folder, ...settings });
+}
+
+// The gap that the finalizer requires when the symbol mentions of collect did not run,
+// as when Stage 2 skipped Knip: it cites the record of the symbol mentions.
+function symbolGaps(attempt: StageThreeAttempt): JsonRecord[] {
+  const mentions = JSON.parse(readFileSync(join(attempt.folder, "symbol-mentions.json"), "utf8")) as JsonRecord;
+  if (!["skipped", "unavailable"].includes(mentions.status as string)) return [];
+  return [{ id: `${attempt.id}-gap-001`, kind: "tool-outcome", subjectRefs: [app.path],
+    reason: "Knip did not run in Stage 2, so the symbol mention query had no reported symbols.",
+    evidenceRefs: [`${attempt.id}-file@symbol-mentions.json`] }];
 }
 
 // A complete Stage 3 packet. The analysis keeps every Stage 2 record, reviews the
-// collected excerpt of app.ts and adds one inspection priority.
+// collected excerpt of app.ts and adds one inspection priority, and the gap of the
+// symbol mentions when they did not run.
 function stageThreePacket(attempt: StageThreeAttempt): StageThreePacket {
   const previous = parse(readFileSync(join(attempt.work, "evidence", stageTwoId, "entry-analysis.yaml"), "utf8")) as JsonRecord;
   const source = `${attempt.id}-source-${app.path}`;
@@ -49,7 +61,8 @@ function stageThreePacket(attempt: StageThreeAttempt): StageThreePacket {
     previousEntryAnalysisRef: `${stageTwoId}-entry-analysis`, planRef: previous.planRef, knipRunsRef: previous.knipRunsRef,
     candidates: previous.candidates, reviewedFiles: [{ id: source, snapshotRef: stagedSnapshotRef, path: app.path,
       sha256: createHash("sha256").update(app.text).digest("hex"), lines: [1, 1] }],
-    questions: previous.questions, gaps: previous.gaps, reachability: previous.reachability, llmReview: "recorded",
+    questions: previous.questions, gaps: [...previous.gaps as JsonRecord[], ...symbolGaps(attempt)],
+    reachability: previous.reachability, llmReview: "recorded",
     knipAssessment: { action: "reuse", reason: "Knip was skipped, and its saved inputs still describe this snapshot.",
       evidenceRefs: [`${stageTwoId}-knip-runs`] },
     inspectionPriorities: [{ id: `${attempt.id}-priority-001`, subjectRefs: [app.path], priority: 1,
@@ -68,9 +81,10 @@ function writeStageThreePacket(attempt: StageThreeAttempt, packet: StageThreePac
 }
 
 // Runs start, collect, each text search (its arguments) and each exports request
-// (its path), saves the packet that `change` gives, and runs the finalizer.
+// (its path), saves the packet that `change` gives, and runs the finalizer with the
+// added `finishSettings`.
 export function finishStageThree(attempt: StageThreeAttempt, change: (packet: StageThreePacket) => void = () => {},
-  searches: string[][] = [], exports: string[] = []): Record<string, CommandResult> {
+  searches: string[][] = [], exports: string[] = [], finishSettings: Record<string, string> = {}): Record<string, CommandResult> {
   const results: Record<string, CommandResult> = {};
   for (const action of ["start", "collect"]) results[action] = stageThree(attempt, ["stage-3", action]);
   for (const [index, search] of searches.entries())
@@ -80,6 +94,6 @@ export function finishStageThree(attempt: StageThreeAttempt, change: (packet: St
   const packet = stageThreePacket(attempt);
   change(packet);
   results["save-review"] = stageThree(attempt, ["stage-3", "save-review", writeStageThreePacket(attempt, packet)]);
-  results.finish = stageThree(attempt, ["stage-3-finish"]);
+  results.finish = stageThree(attempt, ["stage-3-finish"], finishSettings);
   return results;
 }

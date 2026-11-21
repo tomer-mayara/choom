@@ -249,6 +249,10 @@ Use exactly these top-level fields:
 - Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef.
   A text or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference
   at most 4 KiB. Use at most 5,000 questions and gaps together.
+- Each subjectRef names a file or folder of the snapshot (a folder with or
+  without a final /), the snapshot ID, a question or gap, or an entry
+  candidate. Name a missing input, a package or a symbol in the text or reason.
+  Stages 4 to 6 refuse any other subject.
 
 Candidate rules:
 - Start new IDs with the attempt ID. Use stable IDs within this attempt.
@@ -605,6 +609,10 @@ Use exactly these top-level fields:
   Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef.
   A text or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference
   at most 4 KiB. Use at most 5,000 questions and gaps together.
+  Each subjectRef names a file or folder of the snapshot (a folder with or
+  without a final /), the snapshot ID, a question or gap, or an entry
+  candidate. Name a missing input, a package or a symbol in the text or reason.
+  Stages 4 to 6 refuse any other subject.
 - reachability: {status: not-assessed, reason: a short explanation}
 - llmReview: recorded
 
@@ -629,6 +637,9 @@ the candidate file. A skipped or failed production scan leaves a compiler root's
 production use unknown. Keep launch evidence in evidenceRefs and retain reachability
 as not-assessed. Use knipRunsRef for the exact recorded tool outcomes. Do not invent, change,
 or replace them. Record failed or skipped analysis and coverage limits as gaps.
+When preflight marked the profile unsupported, a gap cites the preflight record
+(<attempt>-preflight). When a Knip mode failed or was skipped, a gap cites the
+Knip runs record (<attempt>-knip-runs). Finish refuses an analysis without them.
 A successful receipt-writing command does not mean Knip ran. Read each mode's
 status and report references before interpreting the result.
 A normal report does not establish test-only use. Do not infer reached files
@@ -679,7 +690,9 @@ gaps. Structural validation does not replace this semantic review.
 
 The final command checks all attempt paths and artifact IDs before it writes
 either draft. It validates the LLM result and registers the attempt's artifacts
-with paths and SHA-256 digests. It sets `discovery.yaml.entryAnalysisRef` and
+with paths and SHA-256 digests. It refuses an analysis that has no gap that cites
+the preflight record when preflight marked the profile unsupported, or no gap
+that cites the Knip runs record when a Knip mode failed or was skipped. It sets `discovery.yaml.entryAnalysisRef` and
 adds questions and gaps without changing prior records. It updates the run's
 inspection summary to point to the saved reviews and this entry analysis.
 The baseline remains unchanged. The run stays `in-progress`.
@@ -704,8 +717,10 @@ new run after component recovery. For a minor explanatory correction, follow
 [start here](start-here.md#record-a-correction).
 
 `finish` runs [`stage-2-finish.ts`](../../../packages/producer/src/stage-2-finish.ts). It
-registers every attempt file, then renames the new `discovery.yaml` and `run.yaml`
-into place.
+registers every attempt file, and then replaces `discovery.yaml` and `run.yaml` as
+one update: it saves both new drafts as temporary files, and replaces
+`discovery.yaml` and then `run.yaml`, the publication marker. Before each step it
+checks the drafts again.
 
 Expected: the command reports that structure and evidence checks passed.
 It sets `run.progress.entryAnalysis` to `complete` and resets
@@ -715,8 +730,13 @@ The run itself remains
 `in-progress`, with baseline recovery still pending. These checks validate
 records and references. They do not verify the LLM's interpretation.
 
-The two draft updates are not atomic. If the command stops during the final
-writes, restore both checkpoints before starting a new attempt:
+If a step fails before `run.yaml` is replaced, `finish` gives `discovery.yaml` its
+bytes from before and removes its temporary files. A draft that another writer
+changed stays, and the message names it after "Inspect retained paths". Keep the
+failed attempt and use a new attempt ID after you resolve the cause. Only a
+process that stops between the two replacements, such as one that the system
+ends, can leave a new `discovery.yaml` with the old `run.yaml`. Then restore both
+checkpoints before starting a new attempt:
 
 ```sh
 cp "$CHOOM_STAGE2/run.before.yaml" "$CHOOM_WORK/run.yaml"

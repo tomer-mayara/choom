@@ -48,6 +48,24 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     });
   }, 60_000);
 
+  // P3: the publisher makes the run summaries current for the published drafts, with
+  // the counts of the validated records, and keeps the capture summary of Stage 1.
+  test("makes the run summaries current, and verify checks them", () => {
+    withPublication((fixture) => {
+      const before = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: Record<string, string> };
+      expect(publishStageFour(fixture, "finish").status).toBe(0);
+      const run = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: unknown };
+      expect(run.coverage).toEqual({ inventoried: before.coverage.inventoried,
+        inspected: "See s4-check-entry-analysis#/reviewedFiles and its predecessor analyses for reviewed source ranges. " +
+          "See s4-check-file@code-mapping.json for file review scope and s4-check-file@discovery.proposed.yaml#/inspectedPaths " +
+          "for inspected behavior paths (0).",
+        unresolved: "The baseline draft records proposed intent; Stage 6 has not saved the fixed baseline. " +
+          "See s4-check-file@discovery.proposed.yaml for the recorded questions (0) and recorded gaps (1), which keep their " +
+          "history, and s4-check-file@code-mapping.json for files with unknown owners (0)." });
+      expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
+    });
+  }, 60_000);
+
   // Defect 1: before this check, Stage 4 published the draft and only Stage 6 refused the ID.
   test("refuses a component ID equal to the baseline ID in check and finish, and writes nothing", () => {
     withPublication((fixture) => {
@@ -61,6 +79,73 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     }, (baseline) => {
       const http = baseline.components.find((component) => component.id === "http");
       if (http) http.id = baseline.id;
+    });
+  }, 60_000);
+});
+
+// The shared record checks refuse a question or gap subject that names nothing. So a
+// Stage 4 draft that renames a component that a question names is refused while the
+// reviewer can still keep the old component ID.
+describe("the Stage 4/5 publisher with a question about a component", () => {
+  const question = { id: "s4-check-question-001", subjectRefs: ["http.purpose"], text: "Does http serve every order route?",
+    evidenceRefs: ["launch-settings"] };
+  const asked = (records: Record<string, Record<string, unknown>>): void => {
+    for (const name of ["discovery.proposed.yaml", "entry-analysis.yaml"]) Object.assign(records[name] ?? {}, { questions: [question] });
+  };
+  function withQuestion(change: (baseline: FixtureBaseline) => void, use: (fixture: StageFourPublication) => void): void {
+    const fixture = stageFourPublication(change, [], toolsRoot, asked);
+    try {
+      use(fixture);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+
+  test("accepts a question about a component of the draft", () => {
+    withQuestion(() => {}, (fixture) => {
+      expect(result(publishStageFour(fixture, "check"))).toMatchObject({ status: "stage4-review-verified", questions: 1 });
+    });
+  }, 60_000);
+
+  test("refuses a question about a component that the draft renamed, and writes nothing", () => {
+    withQuestion((baseline) => {
+      const http = baseline.components.find((component) => component.id === "http");
+      if (http) http.id = "web";
+    }, (fixture) => {
+      refusedInCheck(fixture, "Question s4-check-question-001 names the subject http.purpose, which is not a file or folder of " +
+        "the snapshot, the snapshot ID, a question or gap, an entry candidate or a baseline item.");
+    });
+  }, 60_000);
+});
+
+// finish registers the attempt files, so each one must be a file that an action saved:
+// a receipt, a log or an output that a receipt records, the command log, or a file of
+// the publication. The record format says not to write into the attempt before
+// publication, so the publisher refuses any other file, as Stage 6 does.
+const strayFileMessage = "Unexpected attempt file that no producer action saved: notes.md. " +
+  "Do not write into the attempt; use a fresh attempt.";
+
+describe("the Stage 4/5 publisher with a file in the attempt that no action saved", () => {
+  test("refuses the attempt in check and finish, and writes nothing", () => {
+    withPublication((fixture) => {
+      writeFileSync(join(fixture.attempt, "notes.md"), "# Notes\n");
+      const before = folderState(fixture.work);
+      for (const action of ["check", "finish"] as const) {
+        const refused = publishStageFour(fixture, action);
+        expect({ action, status: refused.status, stdout: refused.stdout, stderr: refused.stderr })
+          .toEqual({ action, status: 1, stdout: "", stderr: strayFileMessage + "\n" });
+      }
+      expect(folderState(fixture.work)).toEqual(before);
+    });
+  }, 60_000);
+
+  test("verify refuses a file that someone added to the published attempt", () => {
+    withPublication((fixture) => {
+      expect(publishStageFour(fixture, "finish").status).toBe(0);
+      writeFileSync(join(fixture.attempt, "notes.md"), "# Notes\n");
+      const refused = publishStageFour(fixture, "verify");
+      expect({ status: refused.status, stdout: refused.stdout, stderr: refused.stderr })
+        .toEqual({ status: 1, stdout: "", stderr: strayFileMessage + "\n" });
     });
   }, 60_000);
 });

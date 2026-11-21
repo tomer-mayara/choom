@@ -50,10 +50,12 @@ function digestMismatch(run: StageSixFixture): string {
 // 2,600 questions with 100 subject references each, in the working discovery and
 // the selected entry analysis. The records keep every limit of the discovery
 // contract, but the saved fixed result has more than 250,000 lines, which the YAML
-// reader of the viewer refuses. The working files are JSON, which is YAML.
+// reader of the viewer refuses. The working files are JSON, which is YAML. Each
+// subject names a field of the component cli, so the shared record checks accept it.
 function manyQuestions(run: StageSixFixture): Action {
   const questions = Array.from({ length: 2_600 }, (_, index) => ({ id: `question-${index}`,
-    subjectRefs: Array.from({ length: 100 }, (_, ref) => `subject-${ref}`), text: "Who owns this code?", evidenceRefs: ["launch-settings"] }));
+    subjectRefs: Array.from({ length: 100 }, (_, ref) => `cli.subject-${ref}`), text: "Who owns this code?",
+    evidenceRefs: ["launch-settings"] }));
   const withQuestions = (path: string): string =>
     JSON.stringify({ ...(parse(readFileSync(join(run.work, path), "utf8")) as Json), questions });
   const discovery = withQuestions(stageFiveFiles.discovery);

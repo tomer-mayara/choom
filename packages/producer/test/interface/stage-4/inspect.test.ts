@@ -248,11 +248,16 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("Use excerpt for a supported subset.");
     // The LLM keeps each question and gap within the contract of the viewer, which every stage checks.
     expect(prompt).toContain("Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef");
+    // Each step of an inspected path cites a reviewed source range, as the publisher checks.
+    expect(prompt).toContain("Each step of an inspected path cites the reviewed source range that it rests on");
+    // Each subject names something of the run; the publisher refuses any other subject, also in an earlier record.
+    expect(prompt).toContain("Each subjectRef names a file or folder of the snapshot (a folder with or without a final /), " +
+      "the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.");
     expect(prompt).toContain("use its registered name as the operation member");
     expect(prompt).toContain("Follow the default, named and re-exported members on the reviewed public paths.");
     expect(prompt).toContain("If a role has no evidenced example, record the scope checked and the gap.");
     // The prompt for this graph fixture is deterministic once the temporary folder is removed.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("1352d3a41e5beb5e61b6e623429c984603090daef546fdc6710242c8fcb2411b");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("f4ab2add81cf0c133fcdbb2f7bc161192c4faa3a7a7d2e1d98d48458d8806a21");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

@@ -30,6 +30,9 @@ It owns the [Knip plugin patterns](behavior/producer/knip-plugins.feature)
 behavior too: Stage 2 copies the default entry patterns of Knip plugins and never runs a settings file.
 It owns the [discovery digest](behavior/producer/discovery-digest.feature)
 behavior too: Stage 6 binds the discovery result to the saved baseline file by its SHA-256.
+It owns the [completion checks](behavior/producer/completion-checks.feature)
+behavior too: the producer refuses records that fail a completion check of the design
+before Step 2 reads the result.
 
 The workspace also owns the [discovery result](behavior/baseline-viewer/discovery-result.feature)
 behavior: a reader attaches the discovery result of the open baseline file, reads

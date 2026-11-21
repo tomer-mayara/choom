@@ -1,10 +1,12 @@
-import { readFileSync, writeFileSync, readdirSync, lstatSync, realpathSync, renameSync } from 'node:fs';
+import { readFileSync, readdirSync, lstatSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve, relative, posix } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
+import { draftUpdate } from './draft-update.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
+import { checkKnipResultGaps } from './result-gaps.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
 
@@ -12,7 +14,8 @@ import { snapshotInventory } from './snapshot-inventory.ts';
 // driver checked the producer code record of the run. It checks every attempt
 // file, the plan, the Knip receipts and the LLM entry analysis, registers the
 // attempt files with their digests, and only then updates discovery.yaml and
-// run.yaml. Saved JSON and YAML stay unchecked values until the checks below read them.
+// run.yaml as one update, run.yaml last. Saved JSON and YAML stay unchecked values
+// until the checks below read them.
 type Fields = Record<string, unknown>;
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 interface Entry { path: string; sha256: string }
@@ -33,7 +36,6 @@ const exact = (value: unknown, keys: string[], label: string): void => assert(ob
   Object.keys(value).every(key => keys.includes(key)), `Invalid ${label} fields`);
 const read = (path: string): Buffer => readFileSync(path);
 const drafts = ['run', 'discovery', 'baseline'];
-let publishing = false;
 
 function safeFile(root: string, name: unknown): string {
   assert(text(name) && !posix.isAbsolute(name) && !name.includes('\\') &&
@@ -384,15 +386,21 @@ function finishAttempt(): void {
   const plan = checkPlan(finish, discovery);
   checkReceipts(finish, run);
   const analysis = checkAnalysis(finish, plan, typeof run.projectKey === 'string');
+  // An unsupported Knip profile and a Knip mode that failed or was skipped need a gap that cites their record.
+  checkKnipResultGaps({ gaps: analysis.gaps, preflightRef: `${id}-preflight`, preflight: document(finish, `${id}-preflight`),
+    runsRef: `${id}-knip-runs`, runs: document(finish, `${id}-knip-runs`) });
   checkInventory(finish, run);
   for (const name of drafts)
     assert((before[name] as Buffer).equals(read(safeFile(work, `${name}.yaml`))), `${name}.yaml changed during finalization.`);
   for (const [artifactId, entry] of Object.entries(artifacts)) verifyArtifact(finish, artifactId, entry);
-  publish(finish, { run, discovery, analysis, stringify });
+  publish(finish, { before, run, discovery, analysis, stringify });
 }
 
-function publish({ id, work, artifacts }: Finish, { run, discovery, analysis, stringify }:
-  { run: Fields; discovery: Fields; analysis: Fields; stringify: (value: unknown) => string }): void {
+// Replaces discovery.yaml and then run.yaml, the publication marker, as one update.
+// When a step fails before run.yaml is replaced, the update gives discovery.yaml its
+// bytes from before and removes its temporary files.
+function publish({ id, work, artifacts }: Finish, { before, run, discovery, analysis, stringify }:
+  { before: Record<string, Buffer>; run: Fields; discovery: Fields; analysis: Fields; stringify: (value: unknown) => string }): void {
   const core = (name: string): string => `${id}-${name}`;
   const nextDiscovery = { ...discovery, entryAnalysisRef: core('entry-analysis'), questions: analysis.questions, gaps: analysis.gaps };
   const nextRun = { ...run, artifacts, progress: { ...(run.progress as Fields), entryAnalysis: 'complete', inspectionPriorities: 'pending' },
@@ -400,14 +408,16 @@ function publish({ id, work, artifacts }: Finish, { run, discovery, analysis, st
       inspected: `LLM source inspections are listed in the saved reviews and entry analyses. This attempt uses ${core('entry-analysis')}#/reviewedFiles. Tool query scopes and limits are in ${core('knip-runs')}; tool reads do not establish LLM inspection.`
     }
   };
-  const discoveryNext = join(work, `.${id}-discovery.next.yaml`);
-  const runNext = join(work, `.${id}-run.next.yaml`);
-  writeFileSync(discoveryNext, stringify(nextDiscovery), { flag: 'wx' });
-  writeFileSync(runNext, stringify(nextRun), { flag: 'wx' });
-  publishing = true;
-  renameSync(discoveryNext, join(work, 'discovery.yaml'));
-  renameSync(runNext, join(work, 'run.yaml'));
-  publishing = false;
+  const update = draftUpdate({ work, prefix: `.${id}-publication-`, read: name => read(safeFile(work, name)),
+    before: new Map(drafts.map(name => [`${name}.yaml`, before[name] as Buffer])),
+    advice: 'Keep this attempt unchanged; use a new attempt ID after you resolve the cause.' });
+  try {
+    update.stage('discovery.yaml', Buffer.from(stringify(nextDiscovery)));
+    update.stage('run.yaml', Buffer.from(stringify(nextRun)));
+    update.place();
+  } catch (error) {
+    throw update.rollBack(error as Error);
+  }
   console.log('Stage 2 drafts updated. Structure and evidence checks passed; semantic quality was not verified.');
   console.log('Keep every attempt file unchanged.');
 }
@@ -416,6 +426,5 @@ try {
   finishAttempt();
 } catch (error) {
   console.error((error as Error).message);
-  if (publishing) console.error('Draft updates are not atomic. Restore run.yaml and discovery.yaml from this attempt\'s *.before.yaml checkpoints, then use a new attempt before retrying.');
   process.exitCode = 1;
 }

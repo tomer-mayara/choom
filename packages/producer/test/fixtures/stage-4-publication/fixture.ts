@@ -187,10 +187,15 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
   register(stageThreeAnalysis, "evidence/s3-check/entry-analysis.yaml", yamlText({ formatVersion: 1, kind: "entry-analysis",
     snapshotRef, planRef, knipRunsRef, llmReview: "recorded", reviewedFiles: priorRanges(3), questions: [], gaps, knipAssessment,
     candidates: [...candidates, ...project?.fileEntries ?? []], inspectionPriorities: prioritiesOf(project) }));
+  // The summaries that Stage 1 and Stage 3 write. The Stage 4/5 publisher makes them current.
+  const coverage = { inventoried: `${inventoryFiles.length} regular files in the selected capture scope.`,
+    inspected: `Source reviews remain in the saved entry analyses. Stage 3 adds ${stageThreeAnalysis}#/reviewedFiles. ` +
+      "Tool query scope does not establish LLM inspection.",
+    unresolved: "See discovery.yaml questions and gaps. The baseline is not yet recovered." };
   write(join(work, "run.yaml"), yamlText({ formatVersion: 1, id: runRef, mode: "A", status: "in-progress",
     progress: { inventory: "complete", entryAnalysis: "complete", inspectionPriorities: "complete", baselineRecovery: "pending" },
     ...(project ? { projectKey: project.key, referenceBaseline } : {}),
-    snapshot: { id: snapshotRef, root: "snapshot", inventoryRef }, artifacts }));
+    snapshot: { id: snapshotRef, root: "snapshot", inventoryRef }, coverage, artifacts }));
   write(join(work, "discovery.yaml"), yamlText({ formatVersion: 1, kind: "architecture-discovery", runRef,
     entryAnalysisRef: stageThreeAnalysis, questions: [], gaps }));
   write(join(work, "baseline.yaml"), yamlText({ formatVersion: 1, id: stageFourBaselineId, parentId: null,

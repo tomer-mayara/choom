@@ -80,7 +80,39 @@ or into a JSON (`.json`) or YAML (`.yaml`, `.yml`) file. A list index is `0` or 
 number without a leading zero, so `length` is not an index. Cite another file,
 such as a `.txt` output, only whole: its ID with no pointer or with an empty one (`#`).
 `subjectRefs` identifies the files, components, statements or earlier issues
-being discussed; it is not a substitute for `evidenceRefs`.
+being discussed; it is not a substitute for `evidenceRefs`. Each subject names
+one of these:
+
+- a file of the snapshot inventory, such as `src/billing/invoice.ts`;
+- a folder that holds at least one inventory file, written with or without a
+  final `/`, such as `src/billing` or `src/billing/`. Name the whole snapshot by
+  its ID, not as `.` or `/`;
+- the snapshot ID;
+- the ID of a question or gap of the discovery;
+- the ID of an entry candidate of the selected entry analysis or of an earlier
+  entry analysis that it names with `previousEntryAnalysisRef`, so that a note
+  can name a candidate that Stage 3 retired;
+- a baseline item (component, interface, resource or rule), as the viewer places
+  a record: the item ID, or the ID followed by a dot and more, such as
+  `billing.purpose`.
+
+Name a symbol, a missing input or another detail in the `text` or `reason`, not
+as a subject. The shared record checks of Stages 4 to 6 refuse any other subject
+and name the question or gap and the subject, such as `Question q-1 names the
+subject old-billing, which is not a file or folder of the snapshot, the snapshot
+ID, a question or gap, an entry candidate or a baseline item.` Later stages keep
+each question and gap unchanged, so a draft cannot rename or remove what an
+earlier record names: keep the ID of a component that a question or gap names.
+Stages 1 to 3 do not check this rule, because the baseline items exist only from
+Stage 4; follow it when you write a record there.
+
+A gap that Stage 1 `finish` copied from a tool record keeps the subjects of the
+tool, which can name a missing input or a path outside the snapshot. The checks
+know such a gap by its form: its ID is `s1-<tool>-gap-NNN`, and its only
+evidence reference is the place of that gap in the tool record,
+`<artifact ID>#/gaps/N` with N one less than NNN, such as `s1-settings-gap-001`
+with `settings-001#/gaps/0`. The tool records are the settings record and the
+Git identity record.
 
 A Stage 4 references record (`references-NNN.json`, see the
 [stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
@@ -1075,11 +1107,31 @@ paths actually reviewed. Each has `id`, `description`, `entryPointRef` naming a
 behavior entry, nonempty `componentIds`, `evidenceRefs`, `limits`, and `steps`.
 Each step has `action` and `evidenceRefs`. Include the entry's owner among the
 path's components. These are source inspections, not runtime traces.
+Each step cites at least one saved source range, and each source range that it
+cites lies inside a reviewed range of the selected entry analysis or of an
+earlier one that it names (`reviewedFiles`): the same snapshot, path and digest,
+with reviewed lines that include its lines. This is the rule for the site of a
+behavior entry. A collected excerpt that no review read does not count. A step
+can also cite other records, such as a graph or references record, for its
+scope. The shared record checks refuse a step that breaks this rule, such as
+with `Inspected path step is outside the selected source review history:
+path-1 step 2: s4-001-source-cli.ts`.
 
 Questions have `id`, `subjectRefs`, `text`, and `evidenceRefs`. Gaps have `id`,
 `kind`, `subjectRefs`, `reason`, and `evidenceRefs`. Both lists must be identical
 to the lists in the current entry analysis. Keep unsupported languages, missing
 inputs, deferred areas and unknown ownership visible.
+An analysis that did not run keeps its result record, and a gap cites that
+record by its artifact ID, alone or with a JSON Pointer into it: a Knip profile
+that the Stage 2 preflight marked `unsupported` needs a gap that cites the
+preflight record (`<attempt>-preflight`), a Knip mode that `failed` or was
+`skipped` needs a gap that cites the Knip runs record (`<attempt>-knip-runs`),
+and Stage 3 symbol mentions that are `unavailable` or `skipped` need a gap that
+cites their record (`<attempt>-file@symbol-mentions.json`). Stage 2 `finish` and
+the Stage 3 finalizer refuse an analysis without such a gap, such as with `The
+normal Knip run in s2-001-knip-runs has the status skipped. Record a gap that
+cites s2-001-knip-runs.` The shared record checks of Stages 4 to 6 check the Knip
+preflight and runs of the selected entry analysis again.
 The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
 A question or gap has exactly these fields. A linked note that answers or narrows
@@ -1100,6 +1152,10 @@ record checks. A refusal starts with "The questions and gaps do not match the
 discovery contract of the viewer." and names the field, such as
 `The discovery result exceeds a limit at gaps.0.subjectRefs`. Stage 6 checks the
 fixed result again (see [Fixed discovery result](#fixed-discovery-result)).
+Each subject also names a file, folder, record or item of the run, as
+[IDs and evidence](#ids-and-evidence) gives. The shared record checks of
+Stages 4 to 6 check this after the limits, also for the records that earlier
+stages froze.
 
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership
@@ -1186,8 +1242,20 @@ in Stage 4 also a references request, and in Stage 5 also a parts request) needs
 keeps the digests of its outputs, and a failed request has no output. `finish`
 copies the packet into the attempt, registers attempt files by digest, replaces
 the working baseline and discovery, and writes the run manifest last. It marks
-`componentRecovery` or `remainingCode` complete. It does not accept intent or
-verify semantic quality. `verify` checks the completed publication without
+`componentRecovery` or `remainingCode` complete. It also makes the run summaries
+`coverage.inspected` and `coverage.unresolved` current: they name the entry
+analysis, code mapping and discovery proposal of the attempt, and the counts of
+inspected paths, recorded questions, recorded gaps and files with unknown owners
+of the validated records. The question and gap lists keep their history, so
+these counts are record counts. `coverage.inventoried` stays as Stage 1 wrote it.
+It does not accept intent or verify semantic quality.
+
+`finish` registers every attempt file, so each one must be a file that a producer
+action saved: a phase receipt, its start record, an output or log that a receipt
+records, the command log `commands.md`, or a file of the publication. `check`,
+`finish` and `verify` refuse any other file and name it, such as `Unexpected
+attempt file that no producer action saved: notes.md. Do not write into the
+attempt; use a fresh attempt.` Keep notes and other files outside the attempt. `verify` checks the completed publication without
 writing files.
 
 Only one publisher may operate on a run at a time. Keep failed attempts and

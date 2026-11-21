@@ -81,6 +81,10 @@ in "Enforced only by the operator or LLM" stay open.
 | P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` | Open. Next: Stages 2 and 3 write `run.yaml` last and roll back. |
 | P13 | **Revisit affected work before Stage 6:** roots are frozen after Stage 4, and `record-format.md` says to start a new run instead. | 959–961 | `stage-4-5-publish.mjs:208-219`; `record-format.md:489-495` | Open. Plan change 20: design text only. |
 
+Status on 2026-11-21: plan change 21 fixes P1 to P4 and P12. Plan change 20
+closes P5, P6, P11, P13 and the prompt-version field of P7 with design text. P8,
+P9, P10 and the other two checks of P7 wait for the real run.
+
 ### Enforced only by the operator or LLM
 
 These rules depend on the cookbook prompts and are not checked by code:
@@ -422,6 +426,33 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
       final review" stay documented until a real target hits one of them.
     - **The viewer** bundles its font, Inter.
     - **The stray-file suspicion** gets a probe with the Step 2 gate.
+21. **The Step 2 gate (2026-11-21).** The producer now has the completion
+    checks P1 to P4 and the one update of P12, each with a test that failed
+    first. A new feature, `cookbook/behavior/producer/completion-checks.feature`,
+    states them.
+    - **P1:** the shared record checks of Stages 4 to 6 refuse a question or gap
+      subject that names nothing, by the rules of plan change 20. A folder is
+      written with or without a final `/`. The entry candidates of the earlier
+      entry analyses also count, because Stage 3 can retire a candidate with a
+      note that names it. Stages 1 to 3 do not run the check. Their prompts
+      state the rule, and a Stage 1 to 3 record that breaks it fails at Stage 4.
+    - **P2:** each step of an inspected path cites a saved source range, and
+      each range that it cites lies inside a reviewed range of the selected
+      history.
+    - **P3:** the Stage 4 and 5 publisher writes current `coverage` summaries.
+      Stage 6 keeps record counts and says that they keep their history,
+      because no record field marks a question or gap as replaced.
+    - **P4:** Stage 2 finish and the shared record checks refuse an
+      unsupported Knip preflight or a failed or skipped Knip mode without a gap
+      that cites the record. The Stage 3 finalizer does the same for symbol
+      mentions that are unavailable or skipped. The Stage 4 graph stays
+      `completed`.
+    - **P12:** Stages 2 and 3 publish their drafts as one update with `run.yaml`
+      last and roll back, as Stages 4 and 5 do. The three stages share this
+      code.
+    - **Stray files:** a probe showed that the Stage 4 and 5 publisher
+      registered a file that no producer action saved. `check`, `finish` and
+      `verify` now refuse such a file, as Stage 6 already did.
 
 ### How to work every ticket
 
@@ -1543,8 +1574,8 @@ are not the decisions D1 to D6 of the decision log.
   - Fixed in plan change 20: `recover-capture.ts` runs the settings collector
     in the tool checkout and records its SHA-256. It still saves
     `inventory.mjs` and a copy of itself as records, and runs neither.
-  - Suspected, not shown by a probe: the publisher can register stray files
-    of an attempt folder.
+  - Fixed in plan change 21: a probe showed that the Stage 4 and 5 publisher
+    registered stray files of an attempt folder. It now refuses them.
   - Stage 2 finish refusals print a stack trace.
   - A bad `%` escape in an evidence reference gives a bare "URI malformed".
 - Hidden reasoning (GA-12): a key such as `reasoning_content`, a string field
