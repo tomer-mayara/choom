@@ -680,7 +680,9 @@ When it publishes, it makes the run summaries `coverage.inspected` and
 `coverage.unresolved` current: they name the records of the attempt and the
 counts of the validated records, and say recorded questions and recorded gaps,
 because the lists keep their history. Stage 6 says the same in the completed
-run manifest.
+run manifest. Because `finish` registers every attempt file, the publisher
+refuses an attempt file that no producer action saved, in `check`, `finish` and
+`verify`.
 The Stage 4 inspection suite runs the source collection and the excerpt action on
 that attempt: each kind of source site with its lines, the parser record with the
 ts-morph and TypeScript versions, the source forms, a file with a byte order mark,

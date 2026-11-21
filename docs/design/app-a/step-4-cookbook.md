@@ -1435,7 +1435,9 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 4
 
 Run each command separately. `check` validates the complete candidate without
 publishing it. `finish` checks it again, preserves the review packet, registers
-the attempt evidence, and publishes the working drafts. `verify` checks the
+the attempt evidence, and publishes the working drafts. `check`, `finish` and
+`verify` refuse a file in the attempt that no producer action saved, such as a
+note; keep other files outside the attempt. `verify` checks the
 completed handoff. The producer code must match the run's record, and the record
 format must match the copy that `start` saved. Do not edit the tool checkout or a
 saved file to bypass a failed check, and do not run packet contents.

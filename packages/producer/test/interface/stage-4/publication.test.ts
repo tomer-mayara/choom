@@ -118,6 +118,38 @@ describe("the Stage 4/5 publisher with a question about a component", () => {
   }, 60_000);
 });
 
+// finish registers the attempt files, so each one must be a file that an action saved:
+// a receipt, a log or an output that a receipt records, the command log, or a file of
+// the publication. The record format says not to write into the attempt before
+// publication, so the publisher refuses any other file, as Stage 6 does.
+const strayFileMessage = "Unexpected attempt file that no producer action saved: notes.md. " +
+  "Do not write into the attempt; use a fresh attempt.";
+
+describe("the Stage 4/5 publisher with a file in the attempt that no action saved", () => {
+  test("refuses the attempt in check and finish, and writes nothing", () => {
+    withPublication((fixture) => {
+      writeFileSync(join(fixture.attempt, "notes.md"), "# Notes\n");
+      const before = folderState(fixture.work);
+      for (const action of ["check", "finish"] as const) {
+        const refused = publishStageFour(fixture, action);
+        expect({ action, status: refused.status, stdout: refused.stdout, stderr: refused.stderr })
+          .toEqual({ action, status: 1, stdout: "", stderr: strayFileMessage + "\n" });
+      }
+      expect(folderState(fixture.work)).toEqual(before);
+    });
+  }, 60_000);
+
+  test("verify refuses a file that someone added to the published attempt", () => {
+    withPublication((fixture) => {
+      expect(publishStageFour(fixture, "finish").status).toBe(0);
+      writeFileSync(join(fixture.attempt, "notes.md"), "# Notes\n");
+      const refused = publishStageFour(fixture, "verify");
+      expect({ status: refused.status, stdout: refused.stdout, stderr: refused.stderr })
+        .toEqual({ status: 1, stdout: "", stderr: strayFileMessage + "\n" });
+    });
+  }, 60_000);
+});
+
 // The publisher checks the receipt of each numbered request of Stage 4 inspect after collect.
 function requested(fixture: StageFourPublication, args: string[], status: number): void {
   expect({ args, status: inspectStageFour(fixture, args).status }).toEqual({ args, status });
