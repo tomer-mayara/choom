@@ -371,6 +371,18 @@ bun run test:e2e --tags @br-10
 bun run check:contracts
 ```
 
+The built-in example nests Architecture model and Platform adapter in Workspace,
+and Workspace excludes their files, so each file has one direct owner. Run its
+focused checks with:
+
+```sh
+bun test ./packages/producer/test/integration/records/starter-baseline.test.ts
+bun run test:e2e --name "starter baseline"
+```
+
+The suite checks the example with the path rule of the producer's code mapping
+check, which `pathOwners` in `code-units.ts` holds.
+
 Run the focused side-panel checks with:
 
 ```sh
@@ -428,7 +440,8 @@ Keep DOM globals out of native tests. `bun test` defaults to `test/unit/domain`.
 starts the `node` on `PATH` and requires the major version in `.node-version`.
 It also runs `packages/producer/test/integration/records`, where the producer
 record validator runs with the shared baseline rules of `@choom/baseline-model`.
-The same folder holds the suites of the `baseline decide` and `baseline next` commands.
+The same folder holds the suites of the `baseline decide` and `baseline next` commands,
+and the suite that checks the direct owners of the built-in example.
 Run all suites from the repository root.
 `bun run test:producer:docker` runs `packages/producer/test/integration/docker`
 and the `docker` Cucumber profile. These suites need a Docker engine and stop
