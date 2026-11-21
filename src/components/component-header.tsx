@@ -40,11 +40,13 @@ function discoveryBadge({ questions, gaps }: DiscoveryCount): string {
 export function ComponentHeaderText({ id, name, counts }: { id: string; name: string; counts: HeaderCounts }) {
   const { interfaceCount, duplicateCount, discovery, entryCounts } = counts;
   const compact = compactHeader(counts);
-  // The marked header fits a two-line name, metadata, and badges at the shared height.
+  // A compact header has no gap between lines: two 20px name lines and three 14px
+  // lines use all 82px inside the 88px header. A name line must be at least as high
+  // as Inter text at 16px (20px). If it is lower, the clamp cuts the last name line.
   const metadataLine = compact ? "text-xs leading-[14px]" : "text-xs";
   const nameLines = lineCount(counts) >= 4 ? "line-clamp-1" : "line-clamp-2";
   return <>
-    <span className={`${nameLines} max-w-full font-semibold wrap-anywhere ${compact ? "leading-[18px]" : "leading-5"}`} title={name}>{name}</span>
+    <span className={`${nameLines} max-w-full font-semibold wrap-anywhere ${compact ? "leading-[20px]" : "leading-5"}`} title={name}>{name}</span>
     <span className={`${metadataLine} text-muted-foreground`}>{interfaceCount} {interfaceCount === 1 ? "interface" : "interfaces"}</span>
     {duplicateCount > 0 ? <span className={metadataLine}>{duplicateCount} possible {duplicateCount === 1 ? "duplicate" : "duplicates"}</span> : null}
     {discovery ? <span id={`discovery-records-${id}`} className={`${metadataLine} font-medium`}

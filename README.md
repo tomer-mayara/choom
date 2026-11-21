@@ -486,6 +486,11 @@ Cucumber loads `test/steps`; its default/native profile excludes `@browser`,
 production build.
 The browser runner forwards Cucumber arguments such as `--tags` and `--format`.
 Failed browser scenarios retain screenshots and traces under `test-results/`.
+The app ships its Inter font (see [Dependency policy](#dependency-policy)), so a
+browser run draws the same text and layout on each machine, whatever fonts the
+machine has. The browser driver (`test/support/baseline-viewer/browser-driver.ts`)
+waits until that font is loaded before a step can measure the page, and it fails
+the scenario when the app does not draw its text in that font.
 
 Run the duplication checks with:
 
@@ -1372,6 +1377,18 @@ The compatibility wrapper depends on `@typescript/old` through a `^6` range. A d
 Use `bun run typecheck` to check with the native compiler. Do not replace the compatibility alias with TypeScript 7: it does not provide the legacy compiler API.
 
 `cn` supplies the `cn` utility; no separate `clsx` or `tailwind-merge` dependency is needed. The shadcn generator may add dependencies or rewrite the utility when generating components; review those changes before accepting them. Knip checks application, test, tooling, and CSS dependencies.
+
+`@fontsource-variable/inter` at `5.3.0` supplies the Inter font. The `@font-face`
+rule in `src/styles.css` uses only its Latin file, `inter-latin-wght-normal.woff2`
+(48 KB, weights 100 to 900), and the build copies it into `dist/assets/`. The
+browser app and the desktop app load it from the app itself, with no network;
+the Tauri rule `font-src 'self'` allows it. The rule hides an Inter that the
+machine has installed, so each machine draws the same text and layout. A
+character outside the Latin file, such as `↔`, uses a system font. The font is
+under the SIL Open Font License 1.1. `public/licenses/inter-ofl.txt` is a copy of
+the package licence, and the build ships it with the font; copy it again when
+the package changes. The package has no install script, so it is not in
+`trustedDependencies`.
 
 `packages/producer/package.json` declares the packages that the producer helpers load
 from the tool checkout, at the versions already in `bun.lock`: `yaml`, `picomatch`,

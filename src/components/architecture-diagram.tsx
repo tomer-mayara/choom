@@ -82,7 +82,7 @@ function ItemCard({ data: { item, panel, isGroup, interfaceCount, duplicateCount
         type="button" aria-label={reviewed ? `${reviewed.name}, ${reviewed.roleLabel}` : `${item.name}, ${item.id}`} aria-haspopup="dialog"
         data-component-id={item.id}
         aria-describedby={headerDescription(item.id, counts)} aria-pressed={selected}
-        className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center border-border px-3 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${compactHeader(counts) ? "gap-px py-0.5" : "gap-0.5 py-1"} ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
+        className={`nodrag nopan pointer-events-auto flex cursor-grab flex-col justify-center border-border px-3 text-left text-foreground hover:border-primary active:cursor-grabbing aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${compactHeader(counts) ? "py-0.5" : "gap-0.5 py-1"} ${isGroup ? "rounded-t-lg border-b bg-card/70" : "rounded-lg border bg-card shadow-sm"}`}
         style={{ width: componentControlWidth, height: componentControlHeight, touchAction: "none" }}
         onFocus={revealFocusedItem}
         onPointerDown={(event) => {

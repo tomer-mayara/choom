@@ -24,6 +24,21 @@ export class BaselineBrowserDriver {
     await expect(this.page.getByRole("navigation", { name: "Workspace actions" })).toBeVisible();
     assert.equal(await this.page.evaluate(() => "__TAURI_INTERNALS__" in window), false,
       "The browser viewer must use its actual file input without a native transport double.");
+    await this.waitForBundledFont();
+  }
+
+  /**
+   * Steps measure text and layout, so they must not start before the app's own Inter font is ready.
+   * Until then the browser draws a system font, which has other sizes on each machine.
+   */
+  private async waitForBundledFont(): Promise<void> {
+    const faces = await this.page.evaluate(async () => {
+      const inter = await document.fonts.load("16px Inter");
+      await document.fonts.ready;
+      return inter.map((face) => face.status);
+    });
+    assert.ok(faces.length > 0 && faces.every((status) => status === "loaded"),
+      "The app must draw its text in its bundled Inter font, not in a font of the machine.");
   }
 
   async openBaseline(path: string): Promise<void> {
