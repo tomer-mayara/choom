@@ -737,7 +737,16 @@ contexts. The deterministic graph result owns the traversal, not the LLM.
 Each behavior entry has `id`, `kind`, `expression`,
 `source: {path, lines: [first, last]}`, `fileEntryRefs`, `componentRef`, and
 `evidenceRefs`. File entry references must name retained candidates. The source
-must belong to that component and lie within a cited reviewed range.
+must belong to that component and lie within a cited reviewed range. The entry
+cites the reviewed range itself. One of its `evidenceRefs` is the ID of a
+`reviewedFiles` item of the selected entry analysis, or of an earlier one that
+it names. The lines of that item include the lines of the source. A JSON Pointer
+to a field of the range does not count. A reviewed range takes the ID of the
+excerpt that the review read. Thus an excerpt that no `reviewedFiles` item names
+is not a reviewed range, also when the excerpt has the same path and lines. The
+shared record checks of Stages 4 to 6 refuse such an entry, such as with
+`Behavior entry s4-001-orders-route does not cite a reviewed range that contains
+its site. An excerpt that no review read is not a reviewed range.`
 
 New candidates may describe unresolved expressions, non-JavaScript/TypeScript
 entries outside the graph profile, or JavaScript/TypeScript files already in the
@@ -1026,8 +1035,10 @@ Each observation has `id`, `componentRef`, `source: {path, lines: [first, last]}
 `operation`, `target`, `context`, and nonempty `evidenceRefs`. `target` has
 `expression`, `resourceRef` (a modeled resource ID or null), and
 `identity: symbolic` or `unknown`. The actor must own the source file. The source
-site must lie within a cited reviewed range. Describe only the inspected access;
-do not infer a complete mutation history or exclusive access policy.
+site must lie within a cited reviewed range: the observation cites the reviewed
+range itself, as a [behavior entry](#entry-analysis) does. Describe only the
+inspected access; do not infer a complete mutation history or exclusive access
+policy.
 Syntax-query matches identify sites to inspect. Establish the actor, operation
 and source context before adding an observation; a registration inside a
 deferred function body is not automatically a module-start effect. These
@@ -1110,12 +1121,11 @@ path's components. These are source inspections, not runtime traces.
 Each step cites at least one saved source range, and each source range that it
 cites lies inside a reviewed range of the selected entry analysis or of an
 earlier one that it names (`reviewedFiles`): the same snapshot, path and digest,
-with reviewed lines that include its lines. This is the rule for the site of a
-behavior entry. A collected excerpt that no review read does not count. A step
-can also cite other records, such as a graph or references record, for its
-scope. The shared record checks refuse a step that breaks this rule, such as
-with `Inspected path step is outside the selected source review history:
-path-1 step 2: s4-001-source-cli.ts`.
+with reviewed lines that include its lines. A collected excerpt that no review
+read does not count. A step can also cite other records, such as a graph or
+references record, for its scope. The shared record checks refuse a step that
+breaks this rule, such as with `Inspected path step is outside the selected
+source review history: path-1 step 2: s4-001-source-cli.ts`.
 
 Questions have `id`, `subjectRefs`, `text`, and `evidenceRefs`. Gaps have `id`,
 `kind`, `subjectRefs`, `reason`, and `evidenceRefs`. Both lists must be identical

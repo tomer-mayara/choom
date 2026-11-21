@@ -202,8 +202,8 @@ describe("validateDiscoveryRecords", () => {
   });
 
   // P2: each step of an inspected path cites the source that it rests on, and each
-  // cited source range is inside a reviewed range of the selected history, as the
-  // site of a behavior entry is. A collected excerpt alone is not a reviewed range.
+  // cited source range is inside a reviewed range of the selected history. A
+  // collected excerpt alone is not a reviewed range.
   const inspectedPath = (...steps: string[][]) => (records: Records): void => {
     records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
       componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],

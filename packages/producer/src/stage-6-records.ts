@@ -400,9 +400,9 @@ function sourceSiteCheck({ indexed, resolve }: Selection, reviewedRanges: Fields
 
 // Each step of an inspected path cites at least one saved source range, and each
 // source range that it cites is inside a reviewed range of the selected history: the
-// same snapshot, path and digest, with reviewed lines that include its lines. This is
-// the rule of the site of a behavior entry. A collected excerpt that no review read is
-// not a reviewed range. A step can also cite other records, such as a graph record.
+// same snapshot, path and digest, with reviewed lines that include its lines. A
+// collected excerpt that no review read is not a reviewed range. A step can also cite
+// other records, such as a graph record.
 function stepSourceCheck({ source }: Selection, reviewedRanges: Fields[]): (path: Fields, step: Fields, number: number) => void {
   const inside = (record: Fields): boolean => reviewedRanges.some(range => {
     const [first, last] = range.lines as number[];
