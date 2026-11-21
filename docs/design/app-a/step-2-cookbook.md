@@ -67,10 +67,11 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-2 run
 ```
 
 `prepare` creates the fixed profile and verified inventory-only input.
-`toolchain` builds and checks the pinned Docker tool image; only that setup can
-use network access. Target analysis is offline. If no image is approved, inspect
-the saved reason. You may deliberately continue to `run` to record skipped Knip
-outcomes; this is the one exception to stopping after a nonzero command.
+`toolchain` builds and checks the Docker tool image and saves its image ID; only
+that setup can use network access. Target analysis is offline. If no image is
+approved, inspect the saved reason. You may deliberately continue to `run` to
+record skipped Knip outcomes; this is the one exception to stopping after a
+nonzero command.
 Unsupported preflight also produces explicit skips. Read `knip-runs.json` for the
 actual normal and production outcomes. A successful driver command means its
 receipts were saved, not that both analyses completed.
@@ -481,9 +482,12 @@ that Docker is unavailable, and `run` records the skip.
 Build the tool image from a Dockerfile with an
 [empty build context](https://docs.docker.com/build/concepts/context/#empty-context).
 This preparation can download tools. It sends no target files to the builder.
-The base tag can change; save the build output, resolved image ID, and installed
-lockfile. The analysis uses that image ID. Do not copy macOS `node_modules` into
-the Linux image; Knip uses platform-specific native packages.
+The base tag and the dependencies of Knip are not pinned, and no lockfile is
+committed, so a later build can give a different image. Each run pins its image
+by the saved image ID, not by the base tag: `toolchain` saves the build output,
+the resolved image ID and the generated lockfile (in `toolchain/metadata.json`),
+and `run` checks that image ID before it uses the image. Do not copy macOS
+`node_modules` into the Linux image; Knip uses platform-specific native packages.
 
 The module saves `docker --version` and a Dockerfile in `toolchain/`. The image
 starts from `node:24-bookworm-slim`, installs only `knip@6.44.1` with
