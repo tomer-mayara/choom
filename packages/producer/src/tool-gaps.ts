@@ -1,10 +1,13 @@
+import type { RequiredGaps } from './generated/contracts.ts';
 import { assert, type Fields, object, strings, text } from './record-checks.ts';
 
 // The gaps that a stage gives from the records of its tools, so that a gap that a
 // tool found does not depend on the review. Each gap gets a stable ID from the ID
 // prefix of the stage, the name of the tool record and the position of the gap,
 // such as s1-settings-gap-001, and cites its place in the tool record as evidence.
-export interface DiscoveryGap { id: string; kind: string; subjectRefs: string[]; reason: string; evidenceRefs: string[] }
+// A gap has the fields of a discovery gap, as the required-gaps record holds it
+// (cookbook/interfaces/producer-run-records.tsp).
+export type DiscoveryGap = RequiredGaps['gaps'][number];
 // A saved tool record: its name in the gap IDs, its artifact ID and its gaps.
 export interface ToolRecord { readonly name: string; readonly artifactRef: string; readonly gaps: readonly unknown[] }
 interface RecordGap { kind?: unknown; subjectRefs?: unknown; reason?: unknown }

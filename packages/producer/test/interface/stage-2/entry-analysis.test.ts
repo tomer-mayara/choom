@@ -169,7 +169,8 @@ describe("a Stage 2 attempt with an approved tool image", () => {
         "This attempt uses s2-check-entry-analysis#/reviewedFiles. Tool query scopes and limits are in s2-check-knip-runs; " +
         "tool reads do not establish LLM inspection.");
       const core: Record<string, string> = { "entry-plan.json": "entry-plan", "entry-analysis.yaml": "entry-analysis",
-        "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight" };
+        "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight",
+        "required-gaps.json": "required-gaps" };
       const expected = Object.fromEntries(files(attempt.folder).map((name) => [`${id}-${core[name] ?? "file@" + encodeURIComponent(name)}`,
         { path: `evidence/${id}/${name}`, sha256: sha256(saved(name)) }]));
       expect(Object.fromEntries(Object.entries(run.artifacts).filter(([key]) => key.startsWith(id)))).toEqual(expected);

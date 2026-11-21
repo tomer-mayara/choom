@@ -110,6 +110,11 @@ export function savedJson(attempt: StageTwoAttempt, name: string): JsonRecord {
   return JSON.parse(readFileSync(join(attempt.folder, name), "utf8")) as JsonRecord;
 }
 
+// The gaps that the run action saved in required-gaps.json, which the review must copy exactly.
+export function requiredGaps(attempt: StageTwoAttempt): JsonRecord[] {
+  return savedJson(attempt, "required-gaps.json").gaps as JsonRecord[];
+}
+
 // Runs start, plan, prepare, toolchain and run, and returns each result by action.
 export function runAttempt(attempt: StageTwoAttempt, scratch: string, plan = entryPlan(attempt.id),
   env: Record<string, string> = {}): Record<string, CommandResult> {

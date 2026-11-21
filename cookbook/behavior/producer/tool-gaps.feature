@@ -4,6 +4,12 @@ Feature: Unavailable analysis is a visible gap
   gives a gap that cites it. The review copies that gap exactly. A stage refuses
   a review that leaves it out.
 
+  Scenario: A skipped Knip run gives a gap that the review must copy
+    Given a Stage 2 attempt in which Knip is skipped because the snapshot has no package manifest
+    When the operator runs Knip for the attempt
+    Then the attempt lists one required gap for each skipped Knip run
+    And each required gap cites its Knip run record and gives the reason of the skip
+
   Scenario: A Stage 2 analysis with no gap for an unsupported Knip profile is refused
     Given a Stage 2 attempt s2-check whose Knip preflight marks the profile unsupported, because the snapshot has no package manifest
     And the saved entry analysis of the attempt records no gap

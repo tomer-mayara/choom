@@ -61,6 +61,11 @@ export interface RegistrationClue {
   sourceRef: string;
 }
 
+export interface RequiredGaps {
+  formatVersion: 1;
+  gaps: Array<ChoomBaselineModel.DiscoveryGap>;
+}
+
 export interface ResourceAccessRule {
   id: behaviorEntryRuleId;
   version: behaviorEntryRuleVersion;

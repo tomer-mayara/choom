@@ -96,6 +96,7 @@ const requiredFiles = new Map([
   ['knip-runs.json', 'knip-runs'],
   ['knip-profile.json', 'knip-profile'],
   ['preflight.json', 'preflight'],
+  ['required-gaps.json', 'required-gaps'],
 ]);
 
 // Every attempt file, by the artifact ID that it gets.

@@ -53,7 +53,7 @@ const modules = { handoff: 'stage-2-handoff.ts', profile: 'stage-2-knip-profile.
 const runModule = (name: string): string => 'node "$CHOOM_TOOLS/packages/producer/src/' + name + '"\n';
 const drafts = ['run', 'discovery', 'baseline'];
 const planFile = 'entry-plan.json';
-const coreFiles = [planFile, 'entry-analysis.yaml', 'knip-runs.json', 'knip-profile.json', 'preflight.json'];
+const coreFiles = [planFile, 'entry-analysis.yaml', 'knip-runs.json', 'knip-profile.json', 'preflight.json', 'required-gaps.json'];
 const imageFiles = ['image-id.txt', 'build-exit.txt', 'image-inspect-exit.txt', 'check-exit.txt', 'metadata.json']
   .map(name => 'toolchain/' + name);
 
@@ -419,7 +419,7 @@ function runPhase(context: PhaseContext): void {
     env.CHOOM_KNIP_IMAGE = selected.imageId as string;
   }
   execute(context, runModule(modules.knip), 'knip');
-  Object.assign(context.record.digests, digests(['knip-runs.json']));
+  Object.assign(context.record.digests, digests(['knip-runs.json', 'required-gaps.json']));
 }
 
 function phase(context: PhaseContext): void {

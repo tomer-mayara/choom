@@ -4,6 +4,7 @@ import "./baseline-decisions.tsp";
 import "./isolation-comparison.tsp";
 import "./discovery-result.tsp";
 import "./producer-boundary-intake.tsp";
+import "./producer-run-records.tsp";
 import "./behavior-entry-rules.tsp";
 import "./resource-access-rules.tsp";
 import "./desktop.tsp";

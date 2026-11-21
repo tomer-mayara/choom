@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { withScratch } from "../../support/commands.ts";
-import { entryPlan, runAttempt, savedJson, stageOneRun, stageTwoAttempt, type JsonRecord,
+import { entryPlan, requiredGaps, runAttempt, savedJson, stageOneRun, stageTwoAttempt, type JsonRecord,
   type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
 import { dockerCalls, pathWithDoubles } from "../../support/tool-doubles.ts";
 
@@ -20,6 +20,9 @@ interface ImageCase {
 const id = "s2-check";
 const incomplete = "Docker build, image inspection, or fixture check did not produce a complete receipt.";
 const noImage = "No approved available tool image: CHOOM_KNIP_IMAGE must be an inspected sha256 image ID.";
+// The required gap of the Knip run at the given index of the Knip receipts (DB5).
+const knipGap = (number: string, reason: string, index: number): JsonRecord => ({ id: `${id}-knip-gap-${number}`,
+  kind: "tool-outcome", subjectRefs: ["snapshot-check"], reason, evidenceRefs: [`${id}-knip-runs#/runs/${index}`] });
 
 const imageCases: ImageCase[] = [
   { name: "the image build fails", settings: { DOCKER_DOUBLE_BUILD: "fail" },
@@ -67,6 +70,8 @@ describe("Stage 2 tool image steps", () => {
       expect(results.run?.status).toBe(0);
       expect((savedJson(attempt, "knip-runs.json").runs as JsonRecord[]).map(({ mode, status, reasons }) =>
         ({ mode, status, reasons }))).toEqual(["normal", "production"].map((mode) => ({ mode, status: "skipped", reasons: [noImage] })));
+      expect(requiredGaps(attempt)).toEqual([knipGap("001", `The normal Knip run was skipped. ${noImage}`, 0),
+        knipGap("002", `The production Knip run was skipped. ${noImage}`, 1)]);
     });
   }, 30_000);
 
@@ -94,6 +99,8 @@ describe("Stage 2 Knip runs with an approved image", () => {
       const runs = savedJson(attempt, "knip-runs.json").runs as JsonRecord[];
       expect(runs[1]).toMatchObject({ mode: "production", status: "skipped",
         reasons: ["Production analysis was not selected: No production entry is known (inventory-001)."] });
+      expect(requiredGaps(attempt)).toEqual([knipGap("001", "The production Knip run was skipped. " +
+        "Production analysis was not selected: No production entry is known (inventory-001).", 1)]);
       expect(dockerCalls(join(scratch, "docker.log")).filter(({ args }) => args.includes("--production"))).toEqual([]);
     });
   }, 30_000);
@@ -108,6 +115,8 @@ describe("Stage 2 Knip runs with an approved image", () => {
         expect((run.report as JsonRecord).error).toContain("is not valid JSON");
       }
       expect(readFileSync(join(attempt.folder, "knip-normal.stdout.txt"), "utf8")).toBe("test double output that is not JSON\n");
+      expect(requiredGaps(attempt)).toEqual(runs.map((run, index) => knipGap(`00${index + 1}`,
+        `The ${String(run.mode)} Knip run failed. The report is not valid: ${String((run.report as JsonRecord).error)}.`, index)));
     });
   }, 30_000);
 });
