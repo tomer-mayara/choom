@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import * as yaml from "yaml";
-import { readBaselineYaml, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
+import { readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
 import { candidatesRef, type Component, digest, type Documentation, evidenceRefs, files, location, type MappingUnit, proposal,
   recordInputs, type Records, runRef, selected, snapshotRef, type SourceAssessment, type SourceUse, stage, type Statement, statement }
   from "../../support/stage-6-records.ts";
@@ -159,9 +159,51 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
   });
 
+  // P2: a behavior entry cites the reviewed range of its site itself. A reviewed range
+  // takes the ID of the excerpt that the review read, so an excerpt that a request saved
+  // and that no reviewedFiles item names is not a reviewed range, also when it has the
+  // same path and lines.
+  const unreadExcerpt = `${stage}-source-excerpt-001`;
+  function withUnreadExcerpt(inputs: RecordInputs): RecordInputs {
+    const bytes = Buffer.from(JSON.stringify({ id: unreadExcerpt, ...location, totalLines: 1, truncated: false,
+      excerpt: `1: ${(files["http.ts"] ?? "").trimEnd()}` }));
+    inputs.artifacts.set(`${stage}-file@excerpt-001.json`, { path: `evidence/${stage}/excerpt-001.json`, bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("refuses a behavior entry that cites a requested excerpt of its site that no review read", () => {
+    const inputs = withUnreadExcerpt(recordInputs((records) => {
+      Object.assign(records.entry.behaviorEntries[0] ?? {}, { evidenceRefs: [unreadExcerpt, "launch#/cli"] });
+    }));
+    expect(() => validateDiscoveryRecords(inputs)).toThrow(new Error("Behavior entry http-route does not cite a reviewed range " +
+      "that contains its site. An excerpt that no review read is not a reviewed range."));
+  });
+
+  // A resource access observation of http.ts uses the same check of its site.
+  function withObservation(inputs: RecordInputs, refs: string[]): RecordInputs {
+    const saved = inputs.artifacts.get(selected.resourceAccessRef);
+    const access = JSON.parse(saved?.bytes.toString() ?? "null") as { observations: unknown[] };
+    access.observations = [{ id: "orders-read", componentRef: "http", source: { path: "http.ts", lines: [1, 1] },
+      operation: "read", target: { expression: "orders", resourceRef: null, identity: "symbolic" },
+      context: "The order handler.", evidenceRefs: refs }];
+    const bytes = Buffer.from(JSON.stringify(access));
+    inputs.artifacts.set(selected.resourceAccessRef, { path: saved?.path ?? "", bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("accepts a resource access observation that cites the reviewed range of its site", () => {
+    expect(validateDiscoveryRecords(withObservation(recordInputs(), ["orders-handler"]))).toMatchObject({ observations: 1 });
+  });
+
+  test("refuses a resource access observation that cites a requested excerpt of its site that no review read", () => {
+    expect(() => validateDiscoveryRecords(withObservation(withUnreadExcerpt(recordInputs()), [unreadExcerpt])))
+      .toThrow(new Error("Resource access observation orders-read does not cite a reviewed range that contains its site. " +
+        "An excerpt that no review read is not a reviewed range."));
+  });
+
   // P2: each step of an inspected path cites the source that it rests on, and each
-  // cited source range is inside a reviewed range of the selected history, as the
-  // site of a behavior entry is. A collected excerpt alone is not a reviewed range.
+  // cited source range is inside a reviewed range of the selected history. A
+  // collected excerpt alone is not a reviewed range.
   const inspectedPath = (...steps: string[][]) => (records: Records): void => {
     records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
       componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
