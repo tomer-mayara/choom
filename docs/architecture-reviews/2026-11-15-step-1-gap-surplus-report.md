@@ -81,9 +81,11 @@ in "Enforced only by the operator or LLM" stay open.
 | P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` | Open. Next: Stages 2 and 3 write `run.yaml` last and roll back. |
 | P13 | **Revisit affected work before Stage 6:** roots are frozen after Stage 4, and `record-format.md` says to start a new run instead. | 959–961 | `stage-4-5-publish.mjs:208-219`; `record-format.md:489-495` | Open. Plan change 20: design text only. |
 
-Status on 2026-11-21: plan change 21 fixes P1 to P4 and P12. Plan change 20
-closes P5, P6, P11, P13 and the prompt-version field of P7 with design text. P8,
-P9, P10 and the other two checks of P7 wait for the real run.
+Status on 2026-11-21: plan change 21 (tomer-mayara/choom#103) builds the
+decided rules of P1 to P4 and P12. Appendix B, "Scope after plan change 20",
+lists the tickets that it closes and what stays open. Plan change 20 closes P5,
+P6, P11, P13 and the prompt-version field of P7 with design text. P8, P9, P10
+and the other two checks of P7 wait for the real run.
 
 ### Enforced only by the operator or LLM
 
@@ -426,10 +428,11 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
       final review" stay documented until a real target hits one of them.
     - **The viewer** bundles its font, Inter.
     - **The stray-file suspicion** gets a probe with the Step 2 gate.
-21. **The Step 2 gate (2026-11-21).** The producer now has the completion
-    checks P1 to P4 and the one update of P12, each with a test that failed
-    first. A new feature, `cookbook/behavior/producer/completion-checks.feature`,
-    states them.
+21. **The Step 2 gate (2026-11-21, tomer-mayara/choom#103).** The producer
+    now has the decided completion checks of P1 to P4 and the one update of
+    P12, each with a test that failed first. A new feature,
+    `cookbook/behavior/producer/completion-checks.feature`, states them.
+    Appendix B, "Scope after plan change 20", maps this work to its tickets.
     - **P1:** the shared record checks of Stages 4 to 6 refuse a question or gap
       subject that names nothing, by the rules of plan change 20. A folder is
       written with or without a final `/`. The entry candidates of the earlier
@@ -1709,6 +1712,28 @@ P7 and P8. The design lines are those of the current
 | Stray attempt files | A probe with the Step 2 gate. The probe now shows the defect. | GB-14 |
 | P7 (cited evidence and the template check), P8, P9, P10 | Decided after one real Step 1 run on Choom. | Drafts: GB-07a to GB-07f, GB-08a to GB-08c, GB-09a, GB-09b, GB-10 |
 | P5, P6, P7 (the prompt-version field), P11, P13 | The design text changes, not the code (#101). | None. See "Not planned". |
+
+**Built in tomer-mayara/choom#103 (plan change 21).** It follows the decided
+rows DB1, DB2 and DB11, and the proposed row DB14.
+
+- Done: GB-01a, GB-02b, GB-04a, GB-12a, GB-12b and GB-14.
+- Done in part:
+  - GB-03: the Stage 4 and 5 publisher writes current `coverage` text, and
+    Stage 6 says that its counts keep their history.
+  - GB-04b: only the symbol mentions that are `unavailable` or `skipped`.
+  - GB-04d: only the Knip receipts.
+- Open: GB-01b, GB-02a and GB-04c.
+- Not built, because they are proposals that the owner has not approved:
+  - DB1 (a): #103 accepts a folder written with or without a final `/`, not as
+    `dir/**`.
+  - DB1 (b), and the reserved required gaps of DB5: #103 asks for a gap that
+    the LLM writes and that cites the tool record.
+  - The addition of DB2: Stages 1 to 3 do not check subjects (GB-01b).
+  - The component rule of DB3.
+  - The `coverage` fields of DB4.
+
+If the owner approves one of these proposals, its ticket changes the code of
+#103.
 
 The re-check also found these related defects:
 
