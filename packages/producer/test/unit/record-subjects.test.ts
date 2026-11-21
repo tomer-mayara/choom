@@ -171,6 +171,28 @@ describe("SubjectChecker", () => {
     expect(checker(undefined, testItem).refused(asked(["test"]))).toEqual([]);
   });
 
+  // Plan change 20: a gap that Stage 1 copied from a tool record keeps its subjects. A
+  // tool record names missing inputs and paths outside the snapshot on purpose.
+  const toolSubjects = ["tsconfig.missing.json", "/shared/global.d.ts"];
+  test.each([
+    ["the settings record", "s1-settings-gap-002", "settings-001#/gaps/1"],
+    ["the Git identity record", "s1-git-identity-gap-001", "git-identity-001#/gaps/0"],
+  ])("refuses no subject of a gap that Stage 1 copied from %s", (_name, id, evidenceRef) => {
+    const toolGap = found(toolSubjects, id, [evidenceRef]);
+    expect(checker().refused(toolGap)).toEqual([]);
+    expect(() => checker({ questions: [], gaps: [toolGap] }).check()).not.toThrow();
+  });
+
+  test("refuses the subjects of a gap with the ID of a tool gap whose evidence is not its place in the tool record", () => {
+    expect(checker().refused(found(toolSubjects, "s1-settings-gap-002", ["settings-001#/gaps/0"]))).toEqual(toolSubjects);
+  });
+
+  test("refuses the subjects of a question with the ID and the evidence of a tool gap, because Stage 1 copies only gaps", () => {
+    const question = { id: "s1-settings-gap-002", subjectRefs: toolSubjects, text: "Where is the base settings file?",
+      evidenceRefs: ["settings-001#/gaps/1"] };
+    expect(checker().refused(question)).toEqual(toolSubjects);
+  });
+
   test("check accepts questions and gaps whose subjects all name something", () => {
     const issues = { questions: [asked(["gap-1", "cli.ts"])], gaps: [found(["q-1", "billing.purpose"])] };
     expect(() => checker(issues).check()).not.toThrow();
