@@ -1673,6 +1673,58 @@ or dropped, as each row says. Revision 2 also corrected the errors of an
 independent review, and follows the planning and coding guides that replaced
 `docs/coding-principles.md` and `docs/new-feature-cookbook.md` (commit 44f2b8a).
 
+### Changes during implementation (Appendix B)
+
+On 2026-11-21 the owner asked to implement the tickets of Appendix B, and
+decided these points:
+
+1. **The next tickets build on tomer-mayara/choom#103.** Draft
+   tomer-mayara/choom#103 (plan change 21) made a part of the Step 2 gate before
+   Appendix B merged. The ticket work starts from its branch. Where
+   tomer-mayara/choom#103 and a ticket differ, the ticket decides. The table
+   below gives each difference.
+2. **Only the next tickets.** These are GB-01a to GB-14. The draft tickets
+   (GB-07a to GB-10) stay drafts until the first real run, as plan change 20
+   says.
+
+The tickets follow the proposed rows of the decision log as written: DB1
+(details a and b), DB2 (the addition), DB3, DB4, DB5, DB13 and DB14. The owner
+approves the changed constraints with the PR, before merge.
+
+What tomer-mayara/choom#103 has, and what each ticket adds to it:
+
+| Ticket | In tomer-mayara/choom#103 | The ticket adds or changes |
+|---|---|---|
+| GB-01a | `record-subjects.ts` checks each question and gap in the shared record checks of Stages 4 to 6. A folder is written with or without a final `/`. | The shared `SubjectItems` class, the `SubjectChecker` class and the scenarios. The folder form `dir/**` (DB1, detail a) replaces the form of tomer-mayara/choom#103. |
+| GB-01b | Nothing. | The full ticket. |
+| GB-02a | Nothing. The check of tomer-mayara/choom#103 reads only the steps of an inspected path. | The full ticket. |
+| GB-02b | Each step cites a saved source range that is inside a reviewed range. | The component check (step 2) and the scenarios. |
+| GB-03 | The Stage 4/5 publisher writes `coverage.inspected` and `coverage.unresolved`. Stage 6 writes record counts under `unresolved`. | `RunSummary` for each publisher and `verify`, the fields `recorded` and `pending` in place of `unresolved` (DB4), and the run manifest contract. |
+| GB-04a | Stage 2 `finish` and the shared record checks need a gap that cites an `unsupported` preflight or a `failed` or `skipped` run (`result-gaps.ts`). The reviewer writes that gap. | `ToolGaps`, `required-gaps.json` with reserved IDs, and the exact-copy check of DB5, which replaces the Stage 2 check of tomer-mayara/choom#103. |
+| GB-04b | The Stage 3 finalizer needs a gap that cites `unavailable` or `skipped` symbol mentions. | Required gaps for `partial` symbol mentions and for the exports records, and the exact-copy check. |
+| GB-04c | Nothing. | The full ticket. |
+| GB-04d | The shared record checks cover the Knip results. | The Stage 1, Stage 3 and Stage 4 tool results. |
+| GB-12a | `draft-update.ts`: Stage 3 writes `run.yaml` last and rolls back. A fault double (`support/doubles/draft-faults.ts`) and interface tests cover it. | The acceptance scenario, and the cookbook text where it is missing. |
+| GB-12b | The same for Stage 2, with an acceptance scenario. | The scenario of the ticket, where it differs. |
+| GB-14 | `check`, `finish` and `verify` of Stages 4 and 5 refuse a stray attempt file. | The acceptance scenario, and the probe of the Stage 2, 3 and 6 publishers (step 3). |
+
+**Before the tickets.** The one feature file of tomer-mayara/choom#103,
+`completion-checks.feature`, is divided into the five feature files that the
+tickets name: `issue-subjects.feature`, `reviewed-evidence.feature`,
+`run-manifest.feature`, `tool-gaps.feature` and `draft-publication.feature`.
+Each scenario moves unchanged. A ticket then changes or replaces the scenario
+of tomer-mayara/choom#103 where its own scenarios cover the same behavior.
+
+**Rounds.** The tickets run in the three rounds of the ticket map, each ticket
+on its own branch, with at most four workers at one time. After each round the
+manager merges the branches, runs the checks on the combined change and then
+starts the next round. GB-12a, GB-12b and GB-14 are one task in round 1,
+because tomer-mayara/choom#103 has their code.
+
+**Checks on the combined change:** `bun run check`, `bun run check-types`,
+`bun run habit-hooks --all`, `bun run test:producer:docker` and
+`bun run test:e2e`.
+
 ### Re-check of the findings at `86c6100`
 
 Appendix A moved the producer to `packages/producer/src/` and changed it. CR-005

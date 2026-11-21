@@ -20,7 +20,11 @@ artifacts:
     - path: ../../cookbook/behavior/producer/resource-access.feature
     - path: ../../cookbook/behavior/producer/knip-plugins.feature
     - path: ../../cookbook/behavior/producer/discovery-digest.feature
-    - path: ../../cookbook/behavior/producer/completion-checks.feature
+    - path: ../../cookbook/behavior/producer/issue-subjects.feature
+    - path: ../../cookbook/behavior/producer/reviewed-evidence.feature
+    - path: ../../cookbook/behavior/producer/run-manifest.feature
+    - path: ../../cookbook/behavior/producer/tool-gaps.feature
+    - path: ../../cookbook/behavior/producer/draft-publication.feature
   observability:
     - path: ../../cookbook/observability/service.yaml
   architecture:
