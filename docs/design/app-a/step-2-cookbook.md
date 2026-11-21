@@ -702,6 +702,14 @@ First it checks each phase receipt again: every file that start, plan, prepare,
 toolchain, run, an excerpt request or save-review saved must still have the
 digest that its receipt records. It also checks each saved LLM call record and
 response again for hidden reasoning, also a plan packet that no plan receipt covers.
+A phase receipt names each file that a saved command of the phase wrote, also
+when the command failed. Examples are the files in `toolchain/`,
+`knip-input.stderr.txt` and the raw Knip outputs. `finish` registers every
+attempt file. So each attempt file must be a phase receipt, a file that a
+receipt names, `commands.md` or the finish command `operator-finish.sh`.
+`finish` refuses any other file and names it, for example `Unexpected attempt
+file that no producer action saved: notes.md. Do not write into the attempt; use
+a fresh attempt.` Keep notes outside the attempt.
 The saved `inventory.mjs` must already have a digest in the stage 1 artifact
 registry. As start does, finish compares the saved snapshot with the registered
 inventory with the checkout code, and does not run `inventory.mjs`.

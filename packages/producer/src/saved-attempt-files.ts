@@ -1,3 +1,5 @@
+import { lstatSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { assert } from './record-checks.ts';
 
 // The files that the producer actions saved in an attempt folder: each phase receipt,
@@ -7,6 +9,14 @@ import { assert } from './record-checks.ts';
 // The record format says not to write into an attempt.
 export class SavedAttemptFiles {
   private readonly names = new Set<string>();
+
+  // The files of an attempt folder and of its folders, by their paths in the attempt.
+  static namesIn(attempt: string, folder = ''): string[] {
+    return readdirSync(join(attempt, folder)).flatMap(leaf => {
+      const name = folder ? folder + '/' + leaf : leaf;
+      return lstatSync(join(attempt, name)).isDirectory() ? SavedAttemptFiles.namesIn(attempt, name) : [name];
+    });
+  }
 
   // A phase receipt and the outputs and logs that it names.
   addReceipt(receipt: string, named: Iterable<string>): this {

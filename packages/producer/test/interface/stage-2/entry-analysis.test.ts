@@ -177,8 +177,9 @@ describe("a Stage 2 attempt with an approved tool image", () => {
     });
   }, 60_000);
 
-  // knip-runs.json records the SHA-256 of each raw output that the run saved, so
-  // finish refuses a raw report that changed after the run.
+  // knip-runs.json records the SHA-256 of each raw output that the run saved, and the
+  // run receipt names each file that the Knip run wrote. So finish refuses a raw report
+  // that changed after the run: the check of the run receipt finds it first.
   test("finish refuses a raw Knip report that changed after the run", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
@@ -192,8 +193,9 @@ describe("a Stage 2 attempt with an approved tool image", () => {
       appendFileSync(join(attempt.folder, "knip-normal.stdout.txt"), "\n");
       const before = ["run.yaml", "discovery.yaml"].map((name) => readFileSync(join(work, name), "utf8"));
       const finish = finishAttempt(attempt, scratch).finish;
-      expect({ status: finish?.status, stdout: finish?.stdout, stderr: finish?.stderr }).toEqual({ status: 1, stdout: "",
-        stderr: "Recorded Knip output changed: knip-normal.stdout.txt. Use a new attempt.\n" });
+      expect({ status: finish?.status, stdout: finish?.stdout,
+        refused: finish?.stderr.includes("Error: Saved phase input or output changed: knip-normal.stdout.txt\n") })
+        .toEqual({ status: 1, stdout: "", refused: true });
       expect(["run.yaml", "discovery.yaml"].map((name) => readFileSync(join(work, name), "utf8"))).toEqual(before);
     });
   }, 60_000);

@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { SavedAttemptFiles } from "../../src/saved-attempt-files.ts";
 
 // A publisher registers every file of the attempt folder. The attempt files are the
@@ -38,5 +41,16 @@ describe("SavedAttemptFiles", () => {
   test("names each such file in order, also a file in a folder and a receipt that no phase saved", () => {
     expect(() => savedFiles().refuseOthers(["operator-notes.json", ...attemptFiles, "llm/notes.md", "a.txt"]))
       .toThrow(refusal("a.txt, llm/notes.md, operator-notes.json"));
+  });
+
+  test("lists the files of an attempt folder and its folders by their paths in the attempt", () => {
+    const attempt = mkdtempSync(join(realpathSync(tmpdir()), "choom-saved-attempt-files-"));
+    try {
+      for (const folder of ["llm", "toolchain", "empty"]) mkdirSync(join(attempt, folder));
+      for (const name of ["commands.md", "llm/analysis-call.yaml", "toolchain/build.stdout.txt"]) writeFileSync(join(attempt, name), "");
+      expect(SavedAttemptFiles.namesIn(attempt).sort()).toEqual(["commands.md", "llm/analysis-call.yaml", "toolchain/build.stdout.txt"]);
+    } finally {
+      rmSync(attempt, { recursive: true, force: true });
+    }
   });
 });

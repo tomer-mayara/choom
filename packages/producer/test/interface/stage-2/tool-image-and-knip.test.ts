@@ -80,6 +80,8 @@ describe("Stage 2 tool image steps", () => {
       expect(receipt).toMatchObject({ exitCode: 1, error: "Saved command failed: operator-toolchain-image.sh" });
       expect((receipt.commands as JsonRecord[]).map(({ exitCode }) => exitCode)).toEqual([3]);
       expect(readdirSync(join(attempt.folder, "toolchain"))).toEqual(["docker-version.txt"]);
+      // Finish registers every attempt file, so the receipt names the file that the failed command wrote.
+      expect(Object.keys(receipt.digests as JsonRecord)).toEqual(["operator-toolchain-image.sh", "toolchain/docker-version.txt"]);
       expect(existsSync(join(attempt.folder, "toolchain-selection.json"))).toBe(false);
     });
   }, 30_000);
