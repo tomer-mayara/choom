@@ -5,17 +5,23 @@ import { After, Given, Then, When } from "@cucumber/cucumber";
 import { type CommandResult, makeScratch, removeScratch } from "../../packages/producer/test/support/commands.ts";
 import { analysisPacket, entryAnalysis, entryPlan, type JsonRecord, planPacket, requiredGaps, savedJson, stageOneRun,
   stageTwo, stageTwoAttempt, type StageTwoAttempt } from "../../packages/producer/test/support/stage-2-attempt.ts";
-import { finishResult, readyToFinish, runFilesOutsideAttempt, type StageFinishWorld } from "./producer-stage-finish.steps.ts";
+import { readyToFinish, runFilesOutsideAttempt, type StageFinishWorld } from "./producer-stage-finish.steps.ts";
 
 // The required gaps of the tool results, through the producer command line. The
 // Stage 2 snapshot holds no package manifest, so preflight marks the Knip profile
 // unsupported and both Knip modes are skipped. No Docker engine is needed.
 // producer-stage-finish.steps.ts runs the finish action of the stage.
-interface ToolGapsWorld extends StageFinishWorld {
-  toolGapsScratch?: string;
-  toolGapsAttempt?: StageTwoAttempt;
+// A scenario leaves one required gap out of its review. Each stage has its own Given
+// that sets the ID of that gap. One Then, in this file, checks the refusal of each stage.
+export interface LeftOutGapWorld extends StageFinishWorld {
   // The ID of the required gap that the review leaves out.
   leftOutGap?: string;
+  // The publish command of a Stage 4 or 5 draft (producer-recovery.steps.ts).
+  publishCommand?: CommandResult;
+}
+interface ToolGapsWorld extends LeftOutGapWorld {
+  toolGapsScratch?: string;
+  toolGapsAttempt?: StageTwoAttempt;
 }
 
 const app = { path: "app.ts", text: "export const value = 1;\n" };
@@ -112,8 +118,10 @@ Given("a Stage 2 review that leaves out that gap", function (this: ToolGapsWorld
     published: () => runFilesOutsideAttempt(attempt.work, attempt.id) });
 });
 
-Then("the operator is told which required tool gap is missing", function (this: ToolGapsWorld) {
+// The refusal comes from the finish action of Stage 2 or 3, or from the publish command of a Stage 4 or 5 draft.
+Then("the operator is told which required tool gap is missing", function (this: LeftOutGapWorld) {
   assert.ok(this.leftOutGap, "Leave out a required gap first.");
-  const { stderr } = finishResult(this);
+  const stderr = (this.stageFinishResult ?? this.publishCommand)?.stderr;
+  assert.ok(stderr !== undefined, "Finish the stage or publish the draft first.");
   assert.ok(stderr.includes(`leaves out the required gap ${this.leftOutGap}.`), stderr);
 });
