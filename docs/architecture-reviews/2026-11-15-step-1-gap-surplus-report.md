@@ -1828,11 +1828,11 @@ Feature: Questions and gaps name things that the run saved
       | Stage 5 |
 
   Scenario: A change that orphans an earlier subject is refused at the stage that makes it
-    Given a Stage 4 run with a question about the component "billing"
-    And a Stage 5 draft that removes the component "billing"
+    Given a Stage 4 run with a question about the interface "billing-api"
+    And a Stage 5 draft that removes the interface "billing-api"
     When the operator publishes the Stage 5 draft
     Then the draft is refused
-    And the operator is told which question names the removed component
+    And the operator is told which question names the removed interface
 
   Scenario Outline: Each form of subject is accepted
     Given a Stage 4 draft with a new question whose subject is <subject>
@@ -1852,7 +1852,9 @@ Feature: Questions and gaps name things that the run saved
 
 **Fails today because** the shared record checks test only that `subjectRefs`
 holds strings (`stage-6-records.ts:295-306`). The outline "Each form of subject
-is accepted" is a guard: it passes today and must still pass.
+is accepted" is a guard: it passes today and must still pass. The orphan
+scenario uses an interface, because Stage 5 must keep every component ID
+(`stage-4-5-publish.ts:320-321`).
 
 **Steps:**
 
@@ -2258,7 +2260,7 @@ the drafts.
 2. **N** The Stage 3 finalizer replaces the discovery draft first and
    `run.yaml` last.
 3. **N** If a step fails, it restores each replaced draft from its saved
-   checkpoint, as the Stage 4/5 publisher does (`stage-4-5-publish.ts:384-409`).
+   checkpoint, as the Stage 4/5 publisher does (`stage-4-5-publish.ts:417-419`).
 4. Change `step-3-cookbook.md`, which says today that `run.yaml` is renamed
    first.
 
@@ -2288,7 +2290,8 @@ Add to `draft-publication.feature`:
 1. **U** The fault double can stop the Stage 2 publication after a chosen
    rename.
 2. **N** If the second rename fails, Stage 2 `finish` restores the discovery
-   draft from its saved checkpoint.
+   draft from its `discovery.before.yaml` checkpoint. Today it only prints that
+   the operator must restore it (`stage-2-finish.ts:419`).
 3. Change `step-2-cookbook.md`.
 
 ### GB-14 The publisher refuses a stray attempt file
