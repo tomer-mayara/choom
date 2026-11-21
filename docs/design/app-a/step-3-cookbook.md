@@ -670,10 +670,16 @@ On success:
   and gaps include the preserved records and supported additions.
 - `baseline.yaml` stays unchanged. No planned work enters `inspectedPaths`.
 
-The manifest is published before discovery so that the new reference can resolve.
-The two updates are not atomic. If the finalizer reports a failure during
-publication, restore both working drafts from this attempt's checkpoints and
-use a new attempt. Do not restore them over later successful work.
+The finalizer replaces `discovery.yaml` and then `run.yaml`, the publication
+marker, as one update, as Stage 2 `finish` and the Stage 4/5 publisher do: it
+saves both new drafts as temporary files and checks the drafts again before each
+step. If a step fails before `run.yaml` is replaced, it gives `discovery.yaml` its
+bytes from before, removes its temporary files, and names after "Inspect retained
+paths" any draft that another writer changed. Keep the failed attempt and use a
+new attempt. Only a process that stops between the two replacements can leave a
+new `discovery.yaml` with the old `run.yaml`; then restore both working drafts
+from this attempt's checkpoints before a new attempt. Do not restore them over
+later successful work.
 
 ```sh
 cp "$CHOOM_STAGE3/run.before.yaml" "$CHOOM_WORK/run.yaml"

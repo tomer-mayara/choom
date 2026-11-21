@@ -702,8 +702,10 @@ new run after component recovery. For a minor explanatory correction, follow
 [start here](start-here.md#record-a-correction).
 
 `finish` runs [`stage-2-finish.ts`](../../../packages/producer/src/stage-2-finish.ts). It
-registers every attempt file, then renames the new `discovery.yaml` and `run.yaml`
-into place.
+registers every attempt file, and then replaces `discovery.yaml` and `run.yaml` as
+one update: it saves both new drafts as temporary files, and replaces
+`discovery.yaml` and then `run.yaml`, the publication marker. Before each step it
+checks the drafts again.
 
 Expected: the command reports that structure and evidence checks passed.
 It sets `run.progress.entryAnalysis` to `complete` and resets
@@ -713,8 +715,13 @@ The run itself remains
 `in-progress`, with baseline recovery still pending. These checks validate
 records and references. They do not verify the LLM's interpretation.
 
-The two draft updates are not atomic. If the command stops during the final
-writes, restore both checkpoints before starting a new attempt:
+If a step fails before `run.yaml` is replaced, `finish` gives `discovery.yaml` its
+bytes from before and removes its temporary files. A draft that another writer
+changed stays, and the message names it after "Inspect retained paths". Keep the
+failed attempt and use a new attempt ID after you resolve the cause. Only a
+process that stops between the two replacements, such as one that the system
+ends, can leave a new `discovery.yaml` with the old `run.yaml`. Then restore both
+checkpoints before starting a new attempt:
 
 ```sh
 cp "$CHOOM_STAGE2/run.before.yaml" "$CHOOM_WORK/run.yaml"

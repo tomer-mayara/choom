@@ -2,7 +2,9 @@
 Feature: Check a recovered result before Step 2 reads it
   The producer checks the records of a run before it publishes them, so that Step 2
   reads only a result that passes the completion checks of the design. A check that
-  fails stops the publication and tells the operator which record to correct.
+  fails stops the publication and tells the operator which record to correct. A
+  stage publishes its drafts as one update, with the run manifest last, so that a
+  publication that stops leaves the drafts as they were.
 
   Scenario: A question about a component that the draft renamed is refused before Stage 5 closes
     Given a Stage 4 draft with a question about a component that the draft renamed
@@ -27,3 +29,10 @@ Feature: Check a recovered result before Step 2 reads it
     When the operator publishes an entry analysis that records no gap about the Knip result
     Then the analysis is refused and the drafts stay unchanged
     And the operator is told which Knip record a gap must cite
+
+  Scenario: A Stage 2 publication that stops before the run manifest changes leaves the drafts as they were
+    Given a Stage 2 attempt that is ready to publish
+    And the run manifest cannot be replaced
+    When the operator publishes the Stage 2 attempt
+    Then the publication is refused and the run folder outside the attempt is as it was
+    And the operator is told to keep the attempt and use a new attempt ID

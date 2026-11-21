@@ -509,6 +509,19 @@ preload in the helper process and makes one file operation fail. Run them with:
 bun test ./packages/producer/test/interface/stage-6
 ```
 
+Stage 2 finish, the Stage 3 finalizer and the Stage 4/5 publisher publish their
+working drafts as one update (`draft-update.ts`): they save each new draft as a
+temporary file, and replace the drafts one by one, `run.yaml` last. When a step
+fails before `run.yaml` is replaced, the update gives each replaced draft its
+bytes from before, removes its temporary files and names each file that another
+writer changed. The rollback suites use a fault double in the same way
+(`packages/producer/test/support/doubles/draft-faults.ts`). Run them with:
+
+```sh
+bun test ./packages/producer/test/unit/draft-update.test.ts
+bun test ./packages/producer/test/interface/stage-2/rollback.test.ts ./packages/producer/test/interface/stage-3/rollback.test.ts ./packages/producer/test/interface/stage-4/publication-rollback.test.ts
+```
+
 Stage 6 saves the fixed discovery result with `formatVersion: 2`: the reviewed
 working discovery, `baselineRef`, and `baselineDigest`, the SHA-256 of the bytes
 of the fixed baseline file that it saves. `fixedDiscovery` in `stage-6-records.ts`
