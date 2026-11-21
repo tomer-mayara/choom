@@ -640,17 +640,20 @@ bun test ./packages/producer/test/unit/record-subjects.test.ts ./packages/produc
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
 ```
 
-An analysis that did not run needs a gap that cites its record (`result-gaps.ts`).
-Stage 2 finish refuses an analysis without a gap that cites the preflight record
-when preflight marked the Knip profile unsupported, or the Knip runs record when
-a Knip mode failed or was skipped. The Stage 3 finalizer refuses an analysis
-without a gap that cites the symbol mentions record when the mentions are
-unavailable or skipped. The shared record checks of Stages 4 to 6 check the Knip
-records of the selected entry analysis again. Run the focused checks with:
+An analysis that did not run needs a gap that cites its record. Stage 2 `run`
+saves the gaps that the Knip outcomes require in `required-gaps.json`: one for a
+preflight that marked the Knip profile unsupported, and one for each Knip mode
+that failed or was skipped (`tool-gaps.ts`). Stage 2 finish refuses an analysis
+that leaves out or changes a required gap, or that gives another question or gap
+a reserved ID ([record format](docs/design/app-a/record-format.md#required-gaps)).
+The Stage 3 finalizer refuses an analysis without a gap that cites the symbol
+mentions record when the mentions are unavailable or skipped (`result-gaps.ts`).
+The shared record checks of Stages 4 to 6 check the Knip records of the selected
+entry analysis again. Run the focused checks with:
 
 ```sh
-bun test ./packages/producer/test/integration/records/stage-6-records.test.ts
-bun test ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
+bun test ./packages/producer/test/unit/tool-gaps.test.ts ./packages/producer/test/integration/records/stage-6-records.test.ts
+bun test ./packages/producer/test/interface/stage-2/required-gaps.test.ts ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
 ```
 
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
@@ -1316,7 +1319,9 @@ action checks that digest first and refuses a changed producer, so the code
 cannot change during a run. Stage 1 capture saves the Git identity of the target
 (`stage-1-git.ts`, with the capture exclusion rules from `stage-1-exclusions.ts`),
 and Stage 1 finish adds the gaps of the settings record and the Git identity
-record to the discovery gaps (`stage-1-gaps.ts`). The stage starts save their
+record to the discovery gaps (`stage-1-gaps.ts`). `tool-gaps.ts` gives these gaps
+and the required gaps of the Stage 2 Knip outcomes, and checks that a review
+copies the required gaps exactly. The stage starts save their
 cookbooks, and Stages 4
 and 5 also the record format, as records; Stages 3 and 5 read their review prompt
 from the saved cookbook. `run-layout.d.mts` gives TypeScript callers the types of

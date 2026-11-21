@@ -1127,11 +1127,13 @@ that the Stage 2 preflight marked `unsupported` needs a gap that cites the
 preflight record (`<attempt>-preflight`), a Knip mode that `failed` or was
 `skipped` needs a gap that cites the Knip runs record (`<attempt>-knip-runs`),
 and Stage 3 symbol mentions that are `unavailable` or `skipped` need a gap that
-cites their record (`<attempt>-file@symbol-mentions.json`). Stage 2 `finish` and
-the Stage 3 finalizer refuse an analysis without such a gap, such as with `The
-normal Knip run in s2-001-knip-runs has the status skipped. Record a gap that
-cites s2-001-knip-runs.` The shared record checks of Stages 4 to 6 check the Knip
-preflight and runs of the selected entry analysis again.
+cites their record (`<attempt>-file@symbol-mentions.json`). For the Knip records,
+Stage 2 `finish` refuses an analysis that does not copy each
+[required gap](#required-gaps) exactly. The Stage 3 finalizer refuses an analysis
+without the gap of the symbol mentions. The shared record checks of Stages 4 to 6
+check the Knip preflight and runs of the selected entry analysis again, such as
+with `The normal Knip run in s2-001-knip-runs has the status skipped. Record a gap
+that cites s2-001-knip-runs.`
 The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
 A question or gap has exactly these fields. A linked note that answers or narrows
@@ -1508,7 +1510,15 @@ that cites them. `required-gaps.json` holds these gaps, in the form of the
 | `evidenceRefs` | The preflight record, `<attempt>-preflight`, or the run in the receipts, `<attempt>-knip-runs#/runs/N`. |
 
 The record has no gap when the preflight is `eligible` and both runs are
-`completed`. The entry analysis copies each required gap into its `gaps` exactly.
+`completed`. The entry analysis copies each required gap into its `gaps` exactly,
+in any place of the list. Stage 2 `finish` gives the gaps again from the saved
+preflight and receipts, and refuses:
+
+- a `required-gaps.json` that differs from them;
+- an entry analysis that leaves out or changes a required gap;
+- a question or another gap whose ID starts with `<attempt>-knip-gap-`. Stage 2
+  `plan` refuses such an ID in the entry plan too.
+
 Later stages keep these gaps unchanged, as they keep every question and gap. The
 shared record checks of Stages 4 to 6 check again that a gap cites the preflight
 record when it is `unsupported`, and the Knip receipts when a run is `skipped` or

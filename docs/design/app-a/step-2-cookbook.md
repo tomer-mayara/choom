@@ -260,6 +260,7 @@ Candidate rules:
 - Start new IDs with the attempt ID. Use stable IDs within this attempt.
   Candidate, question, and gap IDs must differ from each other and from artifact IDs.
   Reserve the six fixed artifact IDs and the <attempt>-file@ prefix for artifacts.
+  Reserve the <attempt>-knip-gap- prefix for the required gaps of the Knip run.
 - expression preserves the declared value or proposed entry pattern.
 - path is a snapshot-relative file path supported by evidence, or null when
   it cannot be resolved to a saved file. Do not invent missing generated files.
@@ -649,8 +650,10 @@ production use unknown. Keep launch evidence in evidenceRefs and retain reachabi
 as not-assessed. Use knipRunsRef for the exact recorded tool outcomes. Do not invent, change,
 or replace them. Copy each gap of required-gaps.json into gaps exactly, with the
 same id, kind, subjectRefs, reason and evidenceRefs. These gaps record an
-unsupported preflight and each Knip mode that failed or was skipped. Record other
-limits of the analysis and of its coverage as gaps with your own IDs.
+unsupported preflight and each Knip mode that failed or was skipped. Finish refuses
+an analysis that leaves out or changes a required gap. Do not give another question
+or gap an ID that starts with <attempt>-knip-gap-. Record other limits of the
+analysis and of its coverage as gaps with your own IDs.
 A successful receipt-writing command does not mean Knip ran. Read each mode's
 status and report references before interpreting the result.
 A normal report does not establish test-only use. Do not infer reached files
@@ -693,17 +696,20 @@ the rejected attempt and use a new attempt for corrected inputs; do not patch
 analysis records or overwrite a frozen response.
 
 Apply the [review before publication](start-here.md#review-before-publication)
-guidance before saving the packet. Check both mode statuses, unknown loading
-roles, exact source IDs and ranges, and preservation of earlier questions and
-gaps. Structural validation does not replace this semantic review.
+guidance before saving the packet. Check both mode statuses, the exact copy of
+each required gap, unknown loading roles, exact source IDs and ranges, and
+preservation of earlier questions and gaps. Structural validation does not replace
+this semantic review.
 
 ## 6. Update and check the draft outputs
 
 The final command checks all attempt paths and artifact IDs before it writes
 either draft. It validates the LLM result and registers the attempt's artifacts
-with paths and SHA-256 digests. It refuses an analysis that has no gap that cites
-the preflight record when preflight marked the profile unsupported, or no gap
-that cites the Knip runs record when a Knip mode failed or was skipped. It sets `discovery.yaml.entryAnalysisRef` and
+with paths and SHA-256 digests. It gives the required gaps again from the saved
+preflight and Knip receipts, and refuses a `required-gaps.json` that differs from
+them. It refuses an analysis that leaves out or changes a required gap, or that
+gives another question or gap an ID that starts with `<attempt>-knip-gap-`; `plan`
+refuses such an ID in the plan. It sets `discovery.yaml.entryAnalysisRef` and
 adds questions and gaps without changing prior records. It updates the run's
 inspection summary to point to the saved reviews and this entry analysis.
 The baseline remains unchanged. The run stays `in-progress`.
@@ -766,7 +772,8 @@ Check the result:
 - `entryAnalysisRef` selects this attempt's complete analysis. Its `planRef` and
   `knipRunsRef` select the plan and actual receipts used for this attempt.
 - All prior questions and gaps remain unchanged. New records have distinct IDs
-  and evidence. Failed or skipped analysis has an explicit reason.
+  and evidence. Each gap of `required-gaps.json` is in the analysis unchanged, so
+  an unsupported preflight and each failed or skipped mode have an explicit reason.
 - `baseline.yaml` is unchanged and still empty. No components, behavior paths,
   dependencies, or reachability claims were added to discovery.
 - The result records `llmReview: recorded` and `reachability.status: not-assessed`.
