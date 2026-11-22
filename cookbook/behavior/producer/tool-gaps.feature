@@ -36,3 +36,9 @@ Feature: Unavailable analysis is a visible gap
     When the operator publishes the Stage 4 draft
     Then the draft is refused
     And the operator is told which required tool gap is missing
+
+  Scenario: Stage 6 refuses a selected tool result without its gap
+    Given a reviewed Stage 5 draft whose selected history has a skipped Knip run and no gap that cites it
+    When the operator saves the result
+    Then nothing is saved
+    And the operator is told which tool result has no gap

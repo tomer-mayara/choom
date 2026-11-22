@@ -3,9 +3,10 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } fro
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import * as tsMorph from "ts-morph";
-import { stringify } from "yaml";
+import { parse, stringify } from "yaml";
 import { choomDefaultProfile } from "../../../src/parsing-profile.ts";
 import { producerReceipt } from "../../../src/producer-code.ts";
+import { settingsTool, stageOneGaps } from "../../../src/stage-1-gaps.ts";
 import { noProjectSettingsGap, readProjectSettings } from "../../../src/stage-1-settings.ts";
 import { collect, loadTools } from "../../../src/stage-4-graph.ts";
 import { type CommandResult, removeScratch, runCli, toolsRoot } from "../../support/commands.ts";
@@ -168,7 +169,11 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
       gitVersion: null, status: "not-available", reason: "The reviewed fixture has no Git checkout.", gaps: [] }));
   }
   register("s1-file@evidence%2Fproducer.json", "evidence/producer.json", jsonText(producerReceipt(toolsRoot)));
-  register("settings-001", "evidence/settings.json", jsonText(settingsRecord(work, inventoryFiles, settings)));
+  // Both forms of the settings record have the gaps that Stage 1 saves.
+  const settingsValue = settingsRecord(work, inventoryFiles, settings) as { gaps: unknown[] };
+  register("settings-001", "evidence/settings.json", jsonText(settingsValue));
+  // The gaps that Stage 1 finish adds from the settings record, which later stages keep, and then the gap of the Stage 3 review.
+  const priorGaps = [...stageOneGaps.fromRecord({ ...settingsTool, gaps: settingsValue.gaps }), ...gaps];
   // The Stage 1 review. Its role record makes the test folder a test folder.
   register("review-001", "evidence/review.yaml", yamlText({ formatVersion: 1, snapshotRef, reviewedFiles: priorRanges(1),
     roles: [{ selector: "test", roles: ["tests"], basis: "observed", evidenceRefs: [inventoryRef] }],
@@ -188,7 +193,7 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
     status: "completed", scope: inventoryFiles.filter(({ path }) => sourceExtension.test(path))
       .map(({ path, sha256: digest }) => ({ path, sha256: digest })) }));
   register(stageThreeAnalysis, "evidence/s3-check/entry-analysis.yaml", yamlText({ formatVersion: 1, kind: "entry-analysis",
-    snapshotRef, planRef, knipRunsRef, llmReview: "recorded", reviewedFiles: priorRanges(3), questions: [], gaps, knipAssessment,
+    snapshotRef, planRef, knipRunsRef, llmReview: "recorded", reviewedFiles: priorRanges(3), questions: [], gaps: priorGaps, knipAssessment,
     candidates: [...candidates, ...project?.fileEntries ?? []], inspectionPriorities: prioritiesOf(project) }));
   // The summaries that Stage 1 and Stage 3 write. The Stage 4/5 publisher makes them current.
   const coverage = { inventoried: `${inventoryFiles.length} regular files in the selected capture scope.`,
@@ -200,7 +205,7 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
     ...(project ? { projectKey: project.key, referenceBaseline } : {}),
     snapshot: { id: snapshotRef, root: "snapshot", inventoryRef }, coverage, artifacts }));
   write(join(work, "discovery.yaml"), yamlText({ formatVersion: 1, kind: "architecture-discovery", runRef,
-    entryAnalysisRef: stageThreeAnalysis, questions: [], gaps }));
+    entryAnalysisRef: stageThreeAnalysis, questions: [], gaps: priorGaps }));
   write(join(work, "baseline.yaml"), yamlText({ formatVersion: 1, id: stageFourBaselineId, parentId: null,
     components: [], interfaces: [], resources: [], rules: [] }));
   return { root, work };
@@ -269,8 +274,9 @@ function proposedBaseline(): FixtureBaseline {
 }
 
 // The five review records. The code mapping follows the exact paths of the final
-// baseline; a file that no membership selects has no owner.
-function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: string }[] },
+// baseline; a file that no membership selects has no owner. The review keeps the gaps
+// of the run after Stage 3 (`priorGaps`).
+function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: string }[] }, priorGaps: unknown[],
   extraFiles: readonly ExtraFile[], project?: ReviewedProject): Record<string, unknown> {
   const proposal = artifactId("baseline.proposed.yaml");
   const graphRef = artifactId("graph-results.json");
@@ -293,9 +299,9 @@ function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: strin
     "discovery.proposed.yaml": { formatVersion: 1, kind: "architecture-discovery", runRef, entryAnalysisRef: stageFourAnalysis,
       codeMappingRef: artifactId("code-mapping.json"), dependenciesRef: graphRef, resourceAccessRef: artifactId("resource-access.json"),
       overview: { text: "The CLI starts the service, and the HTTP file serves orders.", evidenceRefs: [...evidenceRefs] },
-      inspectedPaths: [], questions: [], gaps },
+      inspectedPaths: [], questions: [], gaps: priorGaps },
     "entry-analysis.yaml": { formatVersion: 1, kind: "entry-analysis", snapshotRef, previousEntryAnalysisRef: stageThreeAnalysis,
-      planRef, knipRunsRef, llmReview: "recorded", reviewedFiles, questions: [], gaps, knipAssessment, candidates: [...candidates, ...project?.fileEntries ?? []],
+      planRef, knipRunsRef, llmReview: "recorded", reviewedFiles, questions: [], gaps: priorGaps, knipAssessment, candidates: [...candidates, ...project?.fileEntries ?? []],
       inspectionPriorities: prioritiesOf(project), behaviorEntries: [], behaviorEntryCandidatesRef: artifactId("behavior-entry-candidates.json"),
       reachability: { status: "assessed-with-limits",
         method: "context-specific-source-graph-traversal", dependenciesRef: graphRef, reason: "Each context has one saved root.",
@@ -397,7 +403,8 @@ export function writeStageFourPacket(prepared: StageFourAttempt, extraFiles: rea
   const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
   const baseline = proposedBaseline();
   change(baseline);
-  const records = packetRecords(baseline, graph, extraFiles, project) as Record<string, Record<string, unknown>>;
+  const { gaps: priorGaps } = parse(readFileSync(join(prepared.work, "discovery.yaml"), "utf8")) as { gaps: unknown[] };
+  const records = packetRecords(baseline, graph, priorGaps, extraFiles, project) as Record<string, Record<string, unknown>>;
   copyRequiredGaps(records, prepared);
   changeRecords(records, prepared);
   writePacket(review, records);

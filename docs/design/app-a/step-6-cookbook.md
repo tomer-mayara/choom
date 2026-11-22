@@ -144,9 +144,9 @@ entry candidate or a baseline item, as
 the [record contract](record-format.md#ids-and-evidence) gives. A gap that
 Stage 1 copied from a tool record, and a required gap of a Stage 3 exports
 record, keep their subjects. The checks also refuse a
-selected entry analysis whose Knip profile preflight marked unsupported, or
-whose Knip mode failed or was skipped, when no gap cites that record
-([discovery](record-format.md#discovery)). Current overview and mapping/resource limits must describe the
+selected tool result that no gap cites, such as a skipped Knip run or a partial
+candidate record
+([tool results](record-format.md#tool-results-of-the-selected-history)). Current overview and mapping/resource limits must describe the
 current records: check counts, owners, inspection scope and statements that a
 finished stage is still pending. Question and gap totals are record counts, not
 defect counts. Do not treat source inspection as execution or proposed intent

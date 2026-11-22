@@ -325,7 +325,10 @@ Each subjectRef names a file of the snapshot, a folder of the snapshot written a
 candidate, or a baseline item ID or a field of it, such as billing.purpose. Name
 a symbol or a missing input in the text or reason. The publisher refuses any
 other subject, also in an earlier question or gap, so keep the ID of a component
-that a question or gap names.
+that a question or gap names. The publisher also refuses a draft in which a
+selected tool result has no gap that cites it, such as a skipped Knip run. The
+required gaps of the earlier stages cite these results, so keep them unchanged
+([tool results](record-format.md#tool-results-of-the-selected-history)).
 
 Rewrite current overview text, mapping/resource limits and counts to describe
 this packet. Do not append a current count while leaving an obsolete count or

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isToolGap } from "../../src/stage-1-gaps.ts";
+import { StageThreeGaps } from "../../src/stage-3-gaps.ts";
 import { type DiscoveryGap, ToolGaps } from "../../src/tool-gaps.ts";
 
 // The required gaps of the Stage 3 tool records (DB5): the symbol mentions that
@@ -129,5 +130,36 @@ describe("isToolGap and the required gaps of a Stage 3 exports record", () => {
       evidenceRefs: ["s3-check-file@symbol-mentions.json"] }],
   ])("does not know %s", (_name, gap) => {
     expect(isToolGap(gap)).toBe(false);
+  });
+});
+
+// The shared record checks of Stages 4 to 6 give the required gaps again from the tool
+// records of each Stage 3 attempt of the selected history, by their artifact IDs in the run.
+describe("StageThreeGaps of an attempt that a run registered", () => {
+  const skipped = mentions("skipped", [report("normal", "skipped"), report("production", "skipped")]);
+  const missingDeclaration = { kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts"], reason: "A declaration file is missing." };
+  // The registered records of a run, by artifact ID: the files of the attempt, and an exports record of another attempt.
+  const saved: Record<string, unknown> = { "s3-check-entry-analysis": {}, "s3-check-file@source-excerpts.json": {},
+    [mentionsRef]: skipped, "s3-check-file@exports-001.json": { gaps: [missingDeclaration] },
+    "s3-check-file@exports-001.required-gaps.json": { formatVersion: 1, gaps: [] },
+    "s3-other-file@exports-001.json": { gaps: [missingDeclaration] } };
+  const read = (id: string): unknown => saved[id];
+
+  test("finds the attempt of a Stage 3 entry analysis, and no attempt for another record", () => {
+    expect(StageThreeGaps.ofEntryAnalysis("s3-review-2-entry-analysis")?.ofSymbolMentions(skipped).gaps.map(({ id }) => id))
+      .toEqual(["s3-review-2-symbol-mentions-gap-001"]);
+    expect(["s2-check-entry-analysis", "s4-check-entry-analysis", "s3-check-file@entry-analysis.yaml", undefined]
+      .map((ref) => StageThreeGaps.ofEntryAnalysis(ref))).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  test("gives the required gaps of the symbol mentions and then of each exports record of the attempt", () => {
+    expect(new StageThreeGaps("s3-check").registered(Object.keys(saved), read).map(({ id, evidenceRefs }) => [id, evidenceRefs]))
+      .toEqual([["s3-check-symbol-mentions-gap-001", [mentionsRef]],
+        ["s3-check-exports-001-gap-001", ["s3-check-file@exports-001.json#/gaps/0"]]]);
+  });
+
+  test("gives no gap for a tool record that the run does not register", () => {
+    expect(new StageThreeGaps("s3-check").registered(["s3-check-entry-analysis", "s3-check-file@exports-001.json"], read)
+      .map(({ id }) => id)).toEqual(["s3-check-exports-001-gap-001"]);
   });
 });

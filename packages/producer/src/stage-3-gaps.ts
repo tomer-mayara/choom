@@ -1,7 +1,7 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type { RequiredGaps } from './generated/contracts.ts';
 import { assert } from './record-checks.ts';
-import { type ReviewIssues, ToolGaps } from './tool-gaps.ts';
+import { type DiscoveryGap, type ReviewIssues, ToolGaps } from './tool-gaps.ts';
 
 // The required gaps of the Stage 3 tool records (DB5). collect saves
 // required-gaps.json with the gap of its symbol mentions when they are partial,
@@ -13,6 +13,13 @@ import { type ReviewIssues, ToolGaps } from './tool-gaps.ts';
 // A tool record of the attempt: its name in the gap IDs, its file, the file of its
 // required gaps, and the required gaps that it gives.
 interface SavedToolRecord { name: string; record: string; file: string; required: RequiredGaps }
+
+// The file of the symbol mentions that collect saves.
+const mentionsFile = 'symbol-mentions.json';
+// The exports request that saved an exports record, such as exports-001 for exports-001.json.
+const exportsPhase = (name: string): string | undefined => /^(exports-[0-9]+)\.json$/.exec(name)?.[1];
+// The artifact ID of the entry analysis of a Stage 3 attempt: the attempt ID and -entry-analysis.
+const entryAnalysisRef = /^(s3-[a-z0-9-]+)-entry-analysis$/;
 
 export class StageThreeGaps {
   // The file of the required gaps of collect.
@@ -30,6 +37,13 @@ export class StageThreeGaps {
     return phase + '.required-gaps.json';
   }
 
+  // The required gaps of the Stage 3 attempt whose entry analysis has the artifact ID
+  // `ref`, such as s3-001-entry-analysis, or undefined when `ref` names no such analysis.
+  static ofEntryAnalysis(ref: unknown): StageThreeGaps | undefined {
+    const [, attempt] = entryAnalysisRef.exec(String(ref)) ?? [];
+    return attempt === undefined ? undefined : new StageThreeGaps(attempt);
+  }
+
   // True when a discovery gap has the form of a required gap of an exports record of a
   // Stage 3 attempt: the ID <attempt>-exports-NNN-gap-MMM, and one evidence reference to
   // gap MMM - 1 of <attempt>-file@exports-NNN.json. Such a gap keeps the subjects of its
@@ -43,12 +57,25 @@ export class StageThreeGaps {
 
   // The required gaps of the symbol mentions that collect saved.
   ofSymbolMentions(mentions: unknown): RequiredGaps {
-    return { formatVersion: 1, gaps: this.#gaps.fromSymbolMentions(mentions, this.#ref('symbol-mentions.json')) };
+    return { formatVersion: 1, gaps: this.#gaps.fromSymbolMentions(mentions, this.#ref(mentionsFile)) };
   }
 
   // The required gaps of the exports record that the exports request `phase` saved as <phase>.json.
   ofExports(phase: string, record: unknown): RequiredGaps {
     return { formatVersion: 1, gaps: this.#gaps.fromExports(phase, record, this.#ref(phase + '.json')) };
+  }
+
+  // The required gaps of the tool records of the attempt that a run registered: the
+  // symbol mentions, and then each exports record, in the order of `ids`, the artifact IDs
+  // of the run. `read` gives a registered record by its artifact ID. The shared record
+  // checks of Stages 4 to 6 use them (result-gaps.ts).
+  registered(ids: Iterable<string>, read: (id: string) => unknown): DiscoveryGap[] {
+    const prefix = this.#ref('');
+    // The names of the registered files of the attempt. The name of a tool record needs no URI encoding.
+    const names = [...ids].flatMap(id => id.startsWith(prefix) ? [id.slice(prefix.length)] : []);
+    const mentions = names.includes(mentionsFile) ? this.ofSymbolMentions(read(this.#ref(mentionsFile))).gaps : [];
+    const phases = names.flatMap(name => exportsPhase(name) ?? []);
+    return [...mentions, ...phases.flatMap(phase => this.ofExports(phase, read(this.#ref(phase + '.json'))).gaps)];
   }
 
   // The check of the finalizer. It gives the required gaps again from the saved symbol
@@ -59,9 +86,9 @@ export class StageThreeGaps {
   // <attempt>-exports-NNN-gap- for a saved exports-NNN.json. `saved` reads a saved
   // JSON file of the attempt.
   check(names: readonly string[], saved: (name: string) => unknown, issues: ReviewIssues): void {
-    const records: SavedToolRecord[] = [{ name: ToolGaps.symbolMentions, record: 'symbol-mentions.json',
-      file: StageThreeGaps.collectFile, required: this.ofSymbolMentions(saved('symbol-mentions.json')) }];
-    for (const phase of names.flatMap(name => /^(exports-[0-9]+)\.json$/.exec(name)?.[1] ?? []))
+    const records: SavedToolRecord[] = [{ name: ToolGaps.symbolMentions, record: mentionsFile,
+      file: StageThreeGaps.collectFile, required: this.ofSymbolMentions(saved(mentionsFile)) }];
+    for (const phase of names.flatMap(name => exportsPhase(name) ?? []))
       records.push({ name: phase, record: phase + '.json', file: StageThreeGaps.exportsFile(phase),
         required: this.ofExports(phase, saved(phase + '.json')) });
     for (const { name, record, file, required } of records) {

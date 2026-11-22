@@ -99,8 +99,8 @@ describe("the Stage 4/5 publisher with the required gaps of collect", () => {
   test("checks a packet that copies each required gap, also a gap that names a file that the snapshot does not hold", () => {
     const result = checkedPacket();
     expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
-    // The gap of the Stage 3 fixture and the three required gaps.
-    expect(JSON.parse(result.stdout)).toMatchObject({ status: "stage4-review-verified", gaps: 4 });
+    // The gap that Stage 1 gave from the settings record, the gap of the Stage 3 fixture and the three required gaps.
+    expect(JSON.parse(result.stdout)).toMatchObject({ status: "stage4-review-verified", gaps: 5 });
   }, 60_000);
 
   test.each([
@@ -119,7 +119,7 @@ describe("the Stage 4/5 publisher with the required gaps of collect", () => {
 
   test("publishes a packet that copies each required gap, and verify checks the gaps again", () => {
     withPublication((fixture) => {
-      expect(JSON.parse(publishStageFour(fixture, "finish").stdout)).toMatchObject({ status: "stage4-published", gaps: 4 });
+      expect(JSON.parse(publishStageFour(fixture, "finish").stdout)).toMatchObject({ status: "stage4-published", gaps: 5 });
       const verified = publishStageFour(fixture, "verify");
       expect({ status: verified.status, stderr: verified.stderr }).toEqual({ status: 0, stderr: "" });
     });

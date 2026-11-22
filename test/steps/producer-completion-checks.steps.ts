@@ -21,13 +21,14 @@ function draftRun(world: CompletionWorld): StageFourPublication {
 }
 
 // The Stage 4 publication fixture starts from a run with the summaries of Stages 1
-// and 3. Its draft records 1 gap, and the components select every file.
-Given("a reviewed Stage 4 draft with 1 gap, no question, no inspected path and no file with an unknown owner",
+// and 3. Its draft records 2 gaps: the gap that Stage 1 gave from the settings record
+// and the gap of the Stage 3 review. The components select every file.
+Given("a reviewed Stage 4 draft with 2 gaps, no question, no inspected path and no file with an unknown owner",
   function (this: CompletionWorld) {
     const run = stageFourPublication();
     const read = (name: string): Record<string, unknown[]> => parse(readFileSync(join(run.review, name), "utf8")) as Record<string, unknown[]>;
     const discovery = read("discovery.proposed.yaml");
-    assert.deepEqual([discovery.gaps?.length, discovery.questions?.length, discovery.inspectedPaths?.length], [1, 0, 0]);
+    assert.deepEqual([discovery.gaps?.length, discovery.questions?.length, discovery.inspectedPaths?.length], [2, 0, 0]);
     const units = read("code-mapping.json").units as { owner: string | null }[];
     assert.ok(units.length > 0 && units.every((unit) => unit.owner !== null), "Every file of the draft has an owner.");
     this.stageFourRun = run;
@@ -53,11 +54,11 @@ Then("the run summaries cite the reviewed files of the Stage 4 entry analysis", 
   assert.ok(inspected.includes("s4-check-entry-analysis#/reviewedFiles"), inspected);
 });
 
-Then("the run summaries count 1 recorded gap, no question, no inspected path and no file with an unknown owner",
+Then("the run summaries count 2 recorded gaps, no question, no inspected path and no file with an unknown owner",
   function (this: CompletionWorld) {
     const { inspected = "", unresolved = "" } = publishedSummaries(this);
     assert.ok(inspected.includes("inspected behavior paths (0)"), inspected);
-    assert.ok(unresolved.includes("recorded questions (0) and recorded gaps (1)") &&
+    assert.ok(unresolved.includes("recorded questions (0) and recorded gaps (2)") &&
       unresolved.includes("files with unknown owners (0)"), unresolved);
   });
 
