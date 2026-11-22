@@ -18,7 +18,7 @@ import { validateResourceCandidates } from './record-resource-candidates.ts';
 import { ReviewedSource } from './record-reviewed-source.ts';
 import { type SourceRecords, sourcesFor } from './record-sources.ts';
 import { SubjectChecker } from './record-subjects.ts';
-import { checkKnipResultGaps } from './result-gaps.ts';
+import { ToolResults } from './result-gaps.ts';
 import type { ProjectTools } from './snapshot-project.ts';
 
 // The shared record validator. Stages 4 and 5 check the working discovery
@@ -337,7 +337,7 @@ function selectedHistory({ discovery, document, snapshotRef, source }: Selection
 
 // The retained Knip receipts, the reuse decision, the file candidates and the
 // historical inspection priorities of the selected entry analysis.
-function checkEntryFacts({ inputs, discovery, entry, document, snapshotRef, indexed, claim, evidence }: Selection): Set<unknown> {
+function checkEntryFacts({ inputs, entry, document, snapshotRef, indexed, claim, evidence }: Selection): Set<unknown> {
   const { artifacts, run } = inputs;
   const plan = document(entry.planRef) as Fields;
   const runs = document(entry.knipRunsRef) as Fields;
@@ -349,8 +349,6 @@ function checkEntryFacts({ inputs, discovery, entry, document, snapshotRef, inde
       preflightSha256: (artifacts.get(runs.preflightRef as string) as Artifact).sha256,
       inventorySha256: (artifacts.get(run.snapshot.inventoryRef) as Artifact).sha256 }),
   'Retained Knip receipts differ from their saved inputs.');
-  // A Knip result that did not run needs a gap that cites its record, as Stage 2 finish requires.
-  checkKnipResultGaps({ gaps: discovery.gaps, preflightRef: runs.preflightRef, preflight, runsRef: entry.knipRunsRef, runs });
   const assessment = entry.knipAssessment as Fields | undefined;
   assert(assessment?.action === 'reuse' && text(assessment.reason), 'Missing Knip reuse decision.');
   evidence(entry.knipAssessment);
@@ -511,6 +509,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
     document: selection.document, readSource: inputs.readSource });
   checkResourceAccess(selection, behavior, history.historyRefs);
   if (access.resourceAccessCandidatesRef !== undefined) validateResourceCandidates(candidates(access.resourceAccessCandidatesRef));
+  // Each selected tool result whose outcome needs a gap (DB5) has a gap that cites it.
+  new ToolResults({ artifacts: inputs.artifacts, document: selection.document, discovery, historyRefs: history.historyRefs }).check();
   if (inputs.packet !== undefined) checkReadiness(selection, inputs.packet);
   return recordCounts(selection, mapped);
 }

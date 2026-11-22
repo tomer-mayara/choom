@@ -7,7 +7,10 @@ import { type DiscoveryGap, ToolGaps } from './tool-gaps.ts';
 // An analysis that did not run fully keeps its result record, and a gap cites that
 // result, so that the missing coverage stays visible (P4, DB5). The action that saves a
 // tool record gives the required gaps of its outcomes, and the stage that publishes the
-// record refuses a review that does not copy each one exactly (tool-gaps.ts).
+// record refuses a review that does not copy each one exactly (tool-gaps.ts). Later
+// stages keep each question and gap unchanged. The shared record checks of Stages 4
+// to 6 then check the completion rule again for all the selected tool results: each
+// one has a gap whose evidence cites it.
 
 // The selected records of a run, as the shared record checks of Stages 4 to 6 read them.
 export interface SelectedHistory {
@@ -15,7 +18,8 @@ export interface SelectedHistory {
   readonly artifacts: ReadonlyMap<string, unknown>;
   // A registered record, as JSON or YAML data.
   document(id: unknown): unknown;
-  // The working or fixed discovery. It names the selected entry analysis and resource observations.
+  // The working or fixed discovery. It names the selected entry analysis and resource
+  // observations, and it has the gaps.
   readonly discovery: Fields;
   // The earlier entry analyses of the selected one, from the newest to the oldest.
   readonly historyRefs: readonly unknown[];
@@ -23,6 +27,23 @@ export interface SelectedHistory {
 // A tool result whose outcome needs a gap: its evidence reference, such as
 // s2-001-knip-runs#/runs/1, and the required gap that its stage gives from it.
 export interface ToolResult { readonly ref: string; readonly gap: DiscoveryGap }
+
+// The JSON Pointer of an evidence reference, decoded as the evidence checks decode it,
+// or '' when the reference names the whole record.
+function pointerOf(ref: string): string {
+  const split = ref.indexOf('#');
+  return split < 0 ? '' : decodeURIComponent(ref.slice(split + 1));
+}
+
+// True when an evidence reference cites the tool result: it names the record of the
+// result, and the result is the whole record, or the JSON Pointer of the reference is
+// the pointer of the result or a pointer inside it. So a reference to one Knip run, or
+// to the whole Knip receipts, does not cite the other run.
+function citesResult(ref: unknown, result: string): boolean {
+  if (typeof ref !== 'string' || evidenceBase(ref) !== evidenceBase(result)) return false;
+  const [pointer, part] = [pointerOf(ref), pointerOf(result)];
+  return part === '' || pointer === part || pointer.startsWith(part + '/');
+}
 
 // The tool results of the selected history whose outcome needs a gap (DB5). Each stage
 // gives the required gaps of its tool records with its own class, and the evidence
@@ -47,6 +68,18 @@ export class ToolResults {
   list(): ToolResult[] {
     return [...this.#stageOne(), ...this.#knip(), ...this.#stageThree(), ...this.#stageFour()]
       .flatMap(gap => gap.evidenceRefs.map(ref => ({ ref, gap })));
+  }
+
+  // Refuses the first tool result that no gap of the discovery cites. Any gap can cite
+  // it, also a gap of an earlier stage; the stages check the exact copy of the required gaps.
+  check(): void {
+    const gaps = this.#history.discovery.gaps;
+    const refs = (Array.isArray(gaps) ? gaps : []).flatMap(gap => {
+      const evidenceRefs = (gap as Fields | null | undefined)?.evidenceRefs;
+      return Array.isArray(evidenceRefs) ? evidenceRefs as unknown[] : [];
+    });
+    for (const { ref } of this.list())
+      assert(refs.some(item => citesResult(item, ref)), `The tool result ${ref} has no gap that cites it. Record a gap that cites ${ref}.`);
   }
 
   #stageOne(): DiscoveryGap[] {
@@ -82,40 +115,5 @@ export class ToolResults {
   // The selected record that the discovery names with the key, such as the entry analysis.
   #selected(key: string): Fields {
     return this.#history.document(this.#history.discovery[key]) as Fields;
-  }
-}
-
-// An analysis that did not run keeps its result record, and a gap cites that record,
-// so that the missing coverage stays visible. The shared record checks of Stages 4 to
-// 6 check this for the Knip preflight and runs. Stage 2 finish and the Stage 3
-// finalizer make the stronger check of tool-gaps.ts: the analysis copies each required
-// gap exactly. A gap cites a record when one of its evidence references names the
-// record, alone or with a JSON Pointer into it.
-export interface KnipResults {
-  // The questions and gaps that the stage accepts with the results.
-  gaps: unknown;
-  preflightRef: unknown;
-  preflight: Fields;
-  runsRef: unknown;
-  runs: Fields;
-}
-
-function cited(gaps: unknown, ref: unknown): boolean {
-  return Array.isArray(gaps) && gaps.some(gap => {
-    const evidenceRefs = (gap as Fields | null | undefined)?.evidenceRefs;
-    return Array.isArray(evidenceRefs) && evidenceRefs.some(item => typeof item === 'string' && evidenceBase(item) === ref);
-  });
-}
-
-// A Knip profile that preflight marked unsupported needs a gap that cites the
-// preflight record. A Knip mode that failed or was skipped needs a gap that cites the
-// Knip runs record.
-export function checkKnipResultGaps({ gaps, preflightRef, preflight, runsRef, runs }: KnipResults): void {
-  if (preflight.status === 'unsupported') assert(cited(gaps, preflightRef),
-    `The Knip preflight ${String(preflightRef)} marks the profile unsupported. Record a gap that cites ${String(preflightRef)}.`);
-  for (const run of (Array.isArray(runs.runs) ? runs.runs : []) as Fields[]) {
-    if (run?.status !== 'failed' && run?.status !== 'skipped') continue;
-    assert(cited(gaps, runsRef), `The ${String(run.mode)} Knip run in ${String(runsRef)} has the status ${run.status}. ` +
-      `Record a gap that cites ${String(runsRef)}.`);
   }
 }
