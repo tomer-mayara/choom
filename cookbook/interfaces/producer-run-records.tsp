@@ -15,6 +15,9 @@ namespace Choom.Producer;
 // a review that leaves out or changes a required gap, or that gives the reserved
 // form of ID to another question or gap. Stage 2 `run` saves required-gaps.json
 // with the gaps of the Knip preflight and runs, with IDs <attempt>-knip-gap-NNN.
+// Stage 4 `collect` saves required-gaps.json with the gaps of its candidate
+// records, with IDs <attempt>-behavior-entry-gap-NNN and
+// <attempt>-resource-access-gap-NNN.
 @extension("additionalProperties", false)
 model RequiredGaps {
   formatVersion: 1;

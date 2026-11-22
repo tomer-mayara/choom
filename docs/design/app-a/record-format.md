@@ -116,6 +116,15 @@ evidence reference is the place of that gap in the tool record,
 with `settings-001#/gaps/0`. The tool records are the settings record and the
 Git identity record.
 
+A [required gap of a Stage 4 candidate record](#required-gaps-of-the-candidate-records)
+keeps the subjects of the gap that the record lists in the same way. The checks
+know it by its form too. Its ID is `<attempt>-behavior-entry-gap-NNN` or
+`<attempt>-resource-access-gap-NNN`, with a Stage 4 attempt ID. Its only evidence
+reference is that gap of the record,
+`<attempt>-file@behavior-entry-candidates.json#/gaps/N` or
+`<attempt>-file@resource-access-candidates.json#/gaps/N`, with N one less than
+NNN.
+
 A Stage 4 references record (`references-NNN.json`, see the
 [stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
 evidence. Cite the record, or one entry with a JSON Pointer, such as
@@ -712,7 +721,7 @@ Use these fields:
 | `candidates` | Preserve prior items unchanged and in order. Append supported candidates under the restrictions below. |
 | `inspectionPriorities` | Preserve the prior list exactly. |
 | `reviewedFiles` | New source ranges actually read in this stage. Earlier ranges stay in the predecessor chain. |
-| `questions`, `gaps` | Preserve earlier records and append new evidence-supported records. |
+| `questions`, `gaps` | Preserve earlier records and append new evidence-supported records. Stage 4 also copies each [required gap of the candidate records](#required-gaps-of-the-candidate-records) into `gaps`. |
 | `llmReview` | `recorded`. |
 | `knipAssessment` | `{action: reuse, reason, evidenceRefs}`; explain why the saved analysis remains applicable. |
 | `reachability` | The context-specific graph selection described below. |
@@ -832,6 +841,58 @@ These checks show that the candidates match the saved files. They do not show
 that a candidate is a real entry or that the list is complete. The checks do not
 match a Knip plugin pattern against its path again, as they do not run the rules
 again.
+
+### Required gaps of the candidate records
+
+Each gap that a candidate record lists, and a record with `status: partial`, need
+a gap that cites them. After it saves `behavior-entry-candidates.json` and
+`resource-access-candidates.json`, Stage 4 `collect` saves these gaps in
+`required-gaps.json`. The record has the form of the
+[contract](../../../cookbook/interfaces/producer-run-records.tsp), as the
+[required gaps](#required-gaps) of the Knip outcomes do. The collect receipt
+records the file, and `finish` registers it as `<attempt>-file@required-gaps.json`.
+
+```json
+{
+  "formatVersion": 1,
+  "gaps": [
+    { "id": "s4-001-behavior-entry-gap-001", "kind": "unknown-settings-value", "subjectRefs": ["web/vite.config.ts"],
+      "reason": "The behavior entry rule vite-build-rollup-options-input (version 1) cannot read the value at line 9, column 16 of web/vite.config.ts. The value at the property path is not a string literal, so it is known only at run time.",
+      "evidenceRefs": ["s4-001-file@behavior-entry-candidates.json#/gaps/0"] },
+    { "id": "s4-001-resource-access-gap-001", "kind": "tool-outcome", "subjectRefs": ["snapshot-001"],
+      "reason": "The resource access candidates are partial: the record keeps the first 10000 candidates and leaves out 12.",
+      "evidenceRefs": ["s4-001-file@resource-access-candidates.json#/status"] }
+  ]
+}
+```
+
+| Field of a gap | Value |
+| --- | --- |
+| `id` | `<attempt>-behavior-entry-gap-` for the behavior entry candidates, or `<attempt>-resource-access-gap-` for the resource access candidates. After it comes the position of the gap among the required gaps of its record, from 1 in three digits. The gaps of a record are in the order of its `gaps`, and the gap of a partial record is last. The gaps of the behavior entry candidates come first. |
+| `kind` | The `kind` of the gap in the record, or `tool-outcome` for a partial record. |
+| `subjectRefs` | The file (`path`) of an `unknown-settings-value` gap; the `subjectRefs` of a `missing-compiler-input` gap, which can name a file that the snapshot does not hold; or the snapshot ID for a partial record. |
+| `reason` | For an `unknown-settings-value` gap, the rule, the line and the column of the value, and then the `reason` of the gap. For a `missing-compiler-input` gap, its `reason`. For a partial record, the number of the candidates that the record keeps and of those that it leaves out. |
+| `evidenceRefs` | The gap in its record, `<record artifact ID>#/gaps/N`, or the status of a partial record, `<record artifact ID>#/status`. |
+
+Both records read the scope with the same snapshot projects. So a compiler input
+that the snapshot does not hold is usually a gap of both records. Each record then
+gives its own required gap. The record has no gap when neither candidate record
+lists a gap and both are `completed`.
+
+The review prompt of `collect` lists the required gaps. The Stage 4 entry analysis
+copies each required gap into its `gaps` exactly, in any place of the list. The
+discovery has the same gaps. Stage 5 keeps them, as it keeps every earlier question
+and gap. `check`, `finish` and `verify` of the Stage 4/5 publisher give the
+required gaps again. They read the candidate records of the Stage 4 attempt that
+the entry analysis names (`behaviorEntryCandidatesRef`). In Stage 5, that is still
+the Stage 4 attempt. They refuse:
+
+- a `required-gaps.json` that differs from those gaps;
+- an entry analysis that leaves out or changes a required gap, such as with
+  `The entry analysis leaves out the required gap s4-001-behavior-entry-gap-001.
+  Copy each gap of s4-001-file@required-gaps.json exactly.`;
+- a question or another gap whose ID starts with `<attempt>-behavior-entry-gap-`
+  or `<attempt>-resource-access-gap-`, where `<attempt>` is the Stage 4 attempt.
 
 ## Code mapping
 
@@ -1106,6 +1167,10 @@ checks of Stages 4, 5 and 6 check them against the saved snapshot:
 These checks show that the candidates match the saved files and the saved source
 sites. They do not show that a candidate accesses a resource, which resource it
 uses, or that the list is complete.
+
+Each gap of the record, and a `partial` status, gives a required gap with an ID
+that starts with `<attempt>-resource-access-gap-`. The review copies it exactly;
+see [Required gaps of the candidate records](#required-gaps-of-the-candidate-records).
 
 ## Discovery
 

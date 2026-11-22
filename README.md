@@ -667,6 +667,19 @@ bun test ./packages/producer/test/unit/tool-gaps.test.ts ./packages/producer/tes
 bun test ./packages/producer/test/interface/stage-2/required-gaps.test.ts ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
 ```
 
+Stage 4 `collect` also saves `required-gaps.json` (`candidate-gaps.ts`). It holds
+one gap for each gap that the behavior entry or resource access candidates list,
+and one for a partial candidate record. The Stage 4/5 publisher refuses a Stage 4
+or Stage 5 packet that leaves out or changes one of these gaps. It also refuses a
+reserved ID for another question or gap
+([record format](docs/design/app-a/record-format.md#required-gaps-of-the-candidate-records)).
+Run the focused checks with:
+
+```sh
+bun test ./packages/producer/test/unit/candidate-gaps.test.ts ./packages/producer/test/unit/record-subjects.test.ts
+bun test ./packages/producer/test/interface/stage-4/required-gaps.test.ts ./packages/producer/test/interface/stage-5/required-gaps.test.ts
+```
+
 The producer interface tests also run in `check:contracts`. The duplication tests execute the
 pinned detector on saved fixtures and use recorded review inputs; they do not
 call a model or prove the truth of a semantic judgment. Packaged checks require
