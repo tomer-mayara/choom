@@ -569,7 +569,8 @@ or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference at most
 4 KiB. Use at most 5,000 questions and gaps together.
 Each subjectRef names a file of the snapshot, a folder of the snapshot written as
 <folder>/** (such as src/billing/**), the snapshot ID, a question or gap, or an
-entry candidate. The candidate is one of this or of the previous entry analysis.
+entry candidate. The candidate is one of this analysis or of an entry analysis
+that the run registers, such as the previous one.
 The subjectRefs of an inspection priority follow the same rule. Name a symbol or
 a missing compiler input in the text or reason. The finalizer refuses any other
 subject in a new question or gap and in an inspection priority. Stages 4 to 6
@@ -720,8 +721,10 @@ It refuses a new question or gap, and an inspection priority, when one of its
 subjects names nothing of the run. The message is the one of Stages 4 to 6, such
 as `The subject nothing-here of the inspection priority s3-001-priority-001
 names nothing.` A subject names a file or folder of the snapshot, the snapshot
-ID, a question or gap of the analysis, or an entry candidate of this or the
-previous entry analysis. So a note can name a candidate that the analysis
+ID, a question or gap of the analysis, or an entry candidate. The candidate is
+one of this analysis or of an entry analysis that the run registers, such as the
+previous one or that of an earlier Stage 2 attempt. So a note can name a
+candidate that the analysis
 retires. No baseline item exists yet. A priority with a clue must also name its
 source file or the candidate of that file. The finalizer does not check an
 earlier question or gap again ([record format](record-format.md#ids-and-evidence)).
