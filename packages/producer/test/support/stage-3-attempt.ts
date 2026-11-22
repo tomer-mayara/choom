@@ -3,7 +3,7 @@ import { cpSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
-import { entryPlan, finishAttempt, type JsonRecord, runAttempt, stageOneRun, stageTwoAttempt, writePacket }
+import { entryPlan, finishAttempt, type JsonRecord, repeatAttempt, runAttempt, stageOneRun, stageTwoAttempt, writePacket }
   from "./stage-2-attempt.ts";
 import { type SnapshotFile, stagedSnapshotRef } from "./staged-run.ts";
 
@@ -26,10 +26,26 @@ export function stageTwoRun(scratch: string, snapshot: SnapshotFile[] = [app], k
   const work = join(scratch, "stage-2-run");
   stageOneRun(work, snapshot);
   const attempt = stageTwoAttempt(work, stageTwoId, knip.env);
-  const results = { ...runAttempt(attempt, scratch, entryPlan(stageTwoId, knip.plan)), ...finishAttempt(attempt, scratch) };
-  for (const [action, result] of Object.entries(results))
-    if (result.status !== 0) throw new Error(`Stage 2 ${action} failed: ${result.stderr}`);
+  completed("Stage 2", { ...runAttempt(attempt, scratch, entryPlan(stageTwoId, knip.plan)), ...finishAttempt(attempt, scratch) });
   return work;
+}
+
+// A run after a fresh Stage 2 attempt (start-here.md): first the attempt `earlierId`, and
+// then s2-check, which keeps each earlier question and gap and has its own candidate. So
+// run.yaml registers both entry analyses, and no selected entry analysis names the
+// candidate of the earlier attempt.
+export function repeatedStageTwoRun(scratch: string, earlierId: string): string {
+  const work = join(scratch, "stage-2-run");
+  stageOneRun(work, [app]);
+  const earlier = stageTwoAttempt(work, earlierId);
+  completed(`Stage 2 ${earlierId}`, { ...runAttempt(earlier, scratch, entryPlan(earlierId)), ...finishAttempt(earlier, scratch) });
+  completed("Stage 2", repeatAttempt(stageTwoAttempt(work, stageTwoId), scratch));
+  return work;
+}
+
+function completed(label: string, results: Record<string, CommandResult>): void {
+  for (const [action, result] of Object.entries(results))
+    if (result.status !== 0) throw new Error(`${label} ${action} failed: ${result.stderr}`);
 }
 
 // A copy of the Stage 2 run in its own folder, with a new Stage 3 attempt ID.

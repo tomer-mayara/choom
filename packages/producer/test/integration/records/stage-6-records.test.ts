@@ -191,6 +191,17 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
   });
 
+  // DB1: after a fresh Stage 2 attempt, run.yaml still registers the entry analysis of the
+  // earlier attempt, but the selected history does not name it. A kept gap can still name
+  // its candidate.
+  test("accepts a subject that names an entry candidate of a registered entry analysis outside the selected history", () => {
+    const inputs = recordInputs((records) => nameUnknownSubject(records, "s2-first-candidate-001"));
+    const bytes = Buffer.from(JSON.stringify({ formatVersion: 1, kind: "entry-analysis", snapshotRef, llmReview: "recorded",
+      reviewedFiles: [], questions: [], gaps: [], candidates: [{ id: "s2-first-candidate-001" }] }));
+    inputs.artifacts.set("s2-first-entry-analysis", { path: "evidence/s2-first/entry-analysis.yaml", bytes, sha256: digest(bytes) });
+    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
+  });
+
   // P2: a behavior entry cites the reviewed range of its site itself. A reviewed range
   // takes the ID of the excerpt that the review read, so an excerpt that a request saved
   // and that no reviewedFiles item names is not a reviewed range, also when it has the

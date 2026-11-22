@@ -78,9 +78,8 @@ interface Selection extends References {
   graph: Fields;
   access: Fields;
 }
-// The earlier entry analyses of the selected one, their reviewed source ranges, and the
-// IDs of the entry candidates of all of them.
-interface History { historyRefs: unknown[]; reviewedRanges: Fields[]; candidateIds: Set<unknown> }
+// The earlier entry analyses of the selected one, and the reviewed source ranges of all of them.
+interface History { historyRefs: unknown[]; reviewedRanges: Fields[] }
 
 // `label` names the record that the bounded YAML profile reads, at the start of
 // each message, such as Baseline.
@@ -329,10 +328,8 @@ function selectedHistory({ discovery, document, snapshotRef, source }: Selection
     }
     ref = record.previousEntryAnalysisRef;
   }
-  const candidates = chain.flatMap(item => Array.isArray(item.record.candidates) ? item.record.candidates as Fields[] : []);
   return { historyRefs: chain.slice(1).map(item => item.ref),
-    reviewedRanges: chain.flatMap(item => item.record.reviewedFiles as Fields[]),
-    candidateIds: new Set(candidates.map(candidate => candidate?.id)) };
+    reviewedRanges: chain.flatMap(item => item.record.reviewedFiles as Fields[]) };
 }
 
 // The retained Knip receipts, the reuse decision, the file candidates and the
@@ -481,8 +478,8 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   const { componentIds, members } = validateBaseline({ baseline, discovery, claim: selection.claim, evidence });
   evidence(discovery.overview);
   const history = selectedHistory(selection);
-  new SubjectChecker({ paths: selection.indexed.keys(), snapshotRef, issues: discovery, candidateIds: history.candidateIds,
-    items: new SubjectItems(baseline) }).check();
+  const candidateIds = SubjectChecker.entryCandidates({ refs: inputs.artifacts.keys(), document: selection.document }, selection.entry);
+  new SubjectChecker({ paths: selection.indexed.keys(), snapshotRef, issues: discovery, candidateIds, items: new SubjectItems(baseline) }).check();
   const documentation = { baseline, discovery, evidence, source, reviewedRanges: history.reviewedRanges };
   validateDocumentation(documentation);
   const mapped = validateCodeMapping({ ...selection, ...history, members, inventoryRef: inputs.run.snapshot.inventoryRef,

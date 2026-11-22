@@ -5,8 +5,8 @@ import { parse, stringify } from "yaml";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 import type { JsonRecord } from "../../support/stage-2-attempt.ts";
-import { finishStageThree, stageThree, stageThreeAttempt, type StageThreeAttempt, type StageThreePacket, stageTwoRun }
-  from "../../support/stage-3-attempt.ts";
+import { finishStageThree, repeatedStageTwoRun, stageThree, stageThreeAttempt, type StageThreeAttempt, type StageThreePacket,
+  stageTwoRun } from "../../support/stage-3-attempt.ts";
 import { subjectForms } from "../../support/subject-forms.ts";
 
 // The Stage 3 finalizer checks the saved attempt and its LLM packet before it
@@ -189,8 +189,9 @@ describe("Stage 3 finish checks", () => {
   }, 60_000);
 
   // GB-01b: before Stage 4 adds baseline items, a subject names a file of the snapshot,
-  // the snapshot ID, a question or gap, or an entry candidate of this or the previous
-  // entry analysis. Here the analysis retires the Stage 2 candidate with a note that names it.
+  // the snapshot ID, a question or gap, or an entry candidate of this analysis or of an
+  // entry analysis that the run registers. Here the analysis retires the Stage 2
+  // candidate with a note that names it.
   test("publishes a packet whose note and inspection priority name a retired candidate, a question, a gap and a file", () => {
     const attempt = newAttempt("subjects");
     const results = finishStageThree(attempt, (packet) => {
@@ -201,6 +202,17 @@ describe("Stage 3 finish checks", () => {
     });
     expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   }, 60_000);
+
+  // DB1: after a fresh Stage 2 attempt, no selected entry analysis names the candidates of
+  // the earlier attempt, but run.yaml still registers its entry analysis. So a new note can
+  // name such a candidate.
+  test("publishes a packet whose new gap names a candidate of an earlier Stage 2 attempt", () => {
+    const folder = join(scratch, "repeated-stage-2");
+    const attempt = stageThreeAttempt(repeatedStageTwoRun(folder, "s2-first"), folder);
+    const results = finishStageThree(attempt, (packet) => addGap(packet, ["s2-first-candidate-001"],
+      ["s2-first-entry-analysis#/candidates/0"]));
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 120_000);
 
   // Any saved file can be cited whole, with an empty JSON Pointer, as Stages 1 and 2 accept it.
   test("publishes a packet that cites a whole saved text file", () => {

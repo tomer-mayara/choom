@@ -3,9 +3,9 @@ import { createHash } from "node:crypto";
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
-import { makeScratch, removeScratch } from "../../support/commands.ts";
+import { type CommandResult, makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
-import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, planPacket, priorQuestion, requiredGaps,
+import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, planPacket, priorQuestion, repeatAttempt, requiredGaps,
   runAttempt, savedJson, stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
 import { stagedRun } from "../../support/staged-run.ts";
 import { subjectForms } from "../../support/subject-forms.ts";
@@ -174,6 +174,23 @@ describe("Stage 2 finish checks", () => {
     const results = finishAttempt(later, folder, entryAnalysis(later, { questions }));
     expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   }, 30_000);
+
+  // DB1: a new record can name an entry candidate of an entry analysis that the run
+  // registers. After an earlier attempt, a fresh attempt adds a question about the
+  // candidate of the earlier attempt, which plan and finish both check.
+  test("publishes a fresh attempt whose new question names a candidate of an earlier attempt", () => {
+    const folder = join(scratch, "fresh-attempt");
+    const work = join(folder, "run");
+    stageOneRun(work, [app]);
+    const earlier = stageTwoAttempt(work, "s2-first");
+    const failures = (results: Record<string, CommandResult>) => Object.entries(results)
+      .filter(([, result]) => result.status !== 0).map(([action, result]) => ({ action, stderr: result.stderr }));
+    expect(failures({ ...runAttempt(earlier, folder, entryPlan(earlier.id)), ...finishAttempt(earlier, folder) })).toEqual([]);
+    const fresh = { ...question(`${id}-question-001`), subjectRefs: ["s2-first-candidate-001"] };
+    expect(failures(repeatAttempt(stageTwoAttempt(work, id), folder, [fresh]))).toEqual([]);
+    const discovery = parse(readFileSync(join(work, "discovery.yaml"), "utf8")) as { questions: JsonRecord[] };
+    expect(discovery.questions).toContainEqual(fresh);
+  }, 60_000);
 
   // run.yaml registers the files of a published attempt as evidence. Each later action
   // refuses the attempt before it saves a receipt or adds to the command log.
