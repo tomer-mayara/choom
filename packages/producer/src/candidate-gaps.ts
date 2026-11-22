@@ -18,7 +18,10 @@ const behaviorEntries: CandidateFile = { name: 'behavior-entry', file: 'behavior
   label: 'behavior entry candidates' };
 const resourceAccess: CandidateFile = { name: 'resource-access', file: 'resource-access-candidates.json',
   label: 'resource access candidates' };
-const stageFourAttempt = /^s4-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// A Stage 4 attempt ID, as the Stage 4 helpers accept it, and the reference to gap N of an attempt file.
+const attemptId = 's4-[a-z0-9]+(?:-[a-z0-9]+)*';
+const stageFourAttempt = new RegExp('^' + attemptId + '$');
+const listedGapRef = new RegExp('^(' + attemptId + ')-file@([^#]+)#/gaps/(0|[1-9][0-9]*)$');
 
 export class CandidateGaps {
   // The attempt file of the required gaps.
@@ -86,7 +89,7 @@ export class CandidateGaps {
   // record, which can name a missing compiler input outside the snapshot.
   static isListedGap({ id, evidenceRefs }: { id?: unknown; evidenceRefs?: unknown }): boolean {
     const [ref, ...others] = Array.isArray(evidenceRefs) ? evidenceRefs as unknown[] : [];
-    const match = /^(s4-[a-z0-9]+(?:-[a-z0-9]+)*)-file@([^#]+)#\/gaps\/(0|[1-9][0-9]*)$/.exec(String(ref));
+    const match = listedGapRef.exec(String(ref));
     const record = CandidateGaps.records.find(({ file }) => encodeURIComponent(file) === match?.[2]);
     return others.length === 0 && match !== null && record !== undefined &&
       id === new ToolGaps(match[1] + '-').id(record.name, Number(match[3]));

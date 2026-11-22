@@ -136,14 +136,14 @@ export class ToolGaps {
   // snapshot. The gap of a partial record has kind tool-outcome, the snapshot ID as
   // its subject, and cites <artifactRef>#/status.
   fromCandidateRecord({ name, artifactRef, label, record }: CandidateRecord): DiscoveryGap[] {
-    const { gaps, candidates, omittedCandidates: omitted, snapshotRef, status } = object(record) ? record : {};
-    assert(Array.isArray(gaps) && Array.isArray(candidates) && text(snapshotRef) && Number.isSafeInteger(omitted) &&
-      (omitted as number) >= 0 && status === ((omitted as number) > 0 ? 'partial' : 'completed'),
-    'Invalid candidate record: ' + artifactRef);
+    const { gaps, candidates, omittedCandidates, snapshotRef, status } = object(record) ? record : {};
+    const omitted = Number.isSafeInteger(omittedCandidates) ? omittedCandidates as number : -1;
+    assert(Array.isArray(gaps) && Array.isArray(candidates) && text(snapshotRef) && omitted >= 0 &&
+      status === (omitted > 0 ? 'partial' : 'completed'), 'Invalid candidate record: ' + artifactRef);
     const listedGaps = this.fromRecord({ name, artifactRef, gaps: gaps.map(locatedGap) });
     if (status !== 'partial') return listedGaps;
     return [...listedGaps, { id: this.id(name, listedGaps.length), kind: 'tool-outcome', subjectRefs: [snapshotRef],
-      reason: `The ${label} are partial: the record keeps the first ${candidates.length} candidates and leaves out ${String(omitted)}.`,
+      reason: `The ${label} are partial: the record keeps the first ${candidates.length} candidates and leaves out ${omitted}.`,
       evidenceRefs: [artifactRef + '#/status'] }];
   }
 
