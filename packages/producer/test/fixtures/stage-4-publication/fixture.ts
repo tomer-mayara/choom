@@ -124,7 +124,7 @@ function stageEnvironment(work: string, tools: string): Record<string, string> {
 
 // The settings record of the run. The fixture record has no compiler settings, so
 // it names the Choom parsing profile.
-function settingsRecord(work: string, inventoryFiles: InventoryFile[], settings: FixtureSettings): { gaps: unknown[] } {
+function settingsRecord(work: string, inventoryFiles: InventoryFile[], settings: FixtureSettings): unknown {
   if (settings === "profile") return { formatVersion: 2, snapshotId: snapshotRef, configs: [], packages: [],
     parsingProfile: choomDefaultProfile, gaps: [noProjectSettingsGap(snapshotRef, choomDefaultProfile)] };
   return readProjectSettings({ inventory: { snapshotId: snapshotRef, files: inventoryFiles },
@@ -169,7 +169,8 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
       gitVersion: null, status: "not-available", reason: "The reviewed fixture has no Git checkout.", gaps: [] }));
   }
   register("s1-file@evidence%2Fproducer.json", "evidence/producer.json", jsonText(producerReceipt(toolsRoot)));
-  const settingsValue = settingsRecord(work, inventoryFiles, settings);
+  // Both forms of the settings record have the gaps that Stage 1 saves.
+  const settingsValue = settingsRecord(work, inventoryFiles, settings) as { gaps: unknown[] };
   register("settings-001", "evidence/settings.json", jsonText(settingsValue));
   // The gaps that Stage 1 finish adds from the settings record, which later stages keep, and then the gap of the Stage 3 review.
   const priorGaps = [...stageOneGaps.fromRecord({ ...settingsTool, gaps: settingsValue.gaps }), ...gaps];
