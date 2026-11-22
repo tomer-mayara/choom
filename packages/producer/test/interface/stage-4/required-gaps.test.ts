@@ -32,7 +32,7 @@ const collected = collectedAttempt([appFile, viteFile]);
 const [valueStart] = rangeIn(String(viteFile.text), "process.env.ADMIN_PAGE");
 const missingFile = "src/app.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file.";
 const inputGap = (gapId: string, evidence: string): Json => ({ id: `${id}-${gapId}`, kind: "missing-compiler-input",
-  subjectRefs: ["src/app.ts", "src/env.d.ts"], reason: missingFile, evidenceRefs: [`${id}-file@${evidence}`] });
+  subjectRefs: ["src/app.ts"], reason: missingFile, evidenceRefs: [`${id}-file@${evidence}`] });
 const requiredGaps = [
   { id: `${id}-behavior-entry-gap-001`, kind: "unknown-settings-value", subjectRefs: [viteFile.path],
     reason: "The behavior entry rule vite-build-rollup-options-input (version 1) cannot read the value at line " +
@@ -95,8 +95,8 @@ function withPublication(use: (fixture: StageFourPublication) => void): void {
 }
 
 describe("the Stage 4/5 publisher with the required gaps of collect", () => {
-  // The subjects of a missing compiler input name src/env.d.ts, which the snapshot does not hold (DB1, detail b).
-  test("checks a packet that copies each required gap, also a gap that names a file that the snapshot does not hold", () => {
+  // The gap of a missing compiler input names src/app.ts, the file that names src/env.d.ts. Its reason names src/env.d.ts (DB1).
+  test("checks a packet that copies each required gap", () => {
     const result = checkedPacket();
     expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
     // The gap that Stage 1 gave from the settings record, the gap of the Stage 3 fixture and the three required gaps.

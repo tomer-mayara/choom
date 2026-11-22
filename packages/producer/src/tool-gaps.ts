@@ -160,8 +160,8 @@ export class ToolGaps {
 
   // The gaps of a Stage 3 exports record, whose name in the gap IDs is `name`, such as
   // exports-001, and whose record is `ref`: one gap for each compiler input that the
-  // snapshot does not hold. Each gap keeps the kind, subjects and reason of the record,
-  // also a subject that names the missing file, as fromRecord gives them.
+  // snapshot does not hold. Each gap has the kind, subjects and reason of the record, as
+  // fromRecord gives them: its subject is the snapshot file that names the input.
   fromExports(name: string, record: unknown, ref: string): DiscoveryGap[] {
     assert(object(record) && Array.isArray(record.gaps), 'Invalid exports record: ' + ref);
     return this.fromRecord({ name, artifactRef: ref, gaps: record.gaps });
@@ -170,9 +170,9 @@ export class ToolGaps {
   // The gaps of a Stage 4 candidate record (DB5): each gap that the record lists, as
   // fromRecord gives it, and then one gap for a record with status partial, which the
   // candidate limit cut. A settings gap gets its file as its subject (see locatedGap);
-  // a gap of a compiler input keeps its subjects, which can name a path outside the
-  // snapshot. The gap of a partial record has kind tool-outcome, the snapshot ID as
-  // its subject, and cites <artifactRef>#/status.
+  // a gap of a compiler input has the subjects of the record, the snapshot file that
+  // names the input. The gap of a partial record has kind tool-outcome, the snapshot ID
+  // as its subject, and cites <artifactRef>#/status.
   fromCandidateRecord({ name, artifactRef, label, record }: CandidateRecord): DiscoveryGap[] {
     const { gaps, candidates, omittedCandidates, snapshotRef, status } = object(record) ? record : {};
     const omitted = Number.isSafeInteger(omittedCandidates) ? omittedCandidates as number : -1;

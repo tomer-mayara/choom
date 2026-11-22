@@ -1,7 +1,5 @@
 import type { SubjectItems } from '@choom/baseline-model/subject-items';
-import { CandidateGaps } from './candidate-gaps.ts';
 import type { Fields } from './record-checks.ts';
-import { isToolGap } from './stage-1-gaps.ts';
 
 // The subjects of the questions and gaps of a discovery. The shared record checks of
 // Stages 4 to 6 check that each subject reference names something that the run
@@ -11,12 +9,10 @@ import { isToolGap } from './stage-1-gaps.ts';
 // The baseline items that a subject can name: SubjectItems of @choom/baseline-model.
 export type ItemNames = Pick<SubjectItems, 'namedItem'>;
 // A question or gap of a discovery, or another record with subjects, such as an
-// inspection priority. A gap has a kind, and a question has none.
+// inspection priority.
 export interface SubjectRecord {
   readonly id: unknown;
-  readonly kind?: unknown;
   readonly subjectRefs: readonly string[];
-  readonly evidenceRefs?: unknown;
   readonly [field: string]: unknown;
 }
 // What the subjects of the questions and gaps of a run can name.
@@ -94,12 +90,9 @@ export class SubjectChecker {
   }
 
   // Each subject of the question or gap that names nothing of the run, in the order of
-  // the record. A gap that keeps the subjects of its tool record (isToolGap), such as a
-  // gap that Stage 1 finish copied or a required gap of a Stage 3 exports record, can
-  // name a missing input or a path outside the snapshot. So can a required gap of a gap
-  // that a Stage 4 candidate record lists (CandidateGaps).
+  // the record. The rule is the same for each question and gap, also for a gap that a
+  // stage gives from a tool record: such a gap names a missing input in its reason.
   refused(record: SubjectRecord): string[] {
-    if (record.kind !== undefined && (isToolGap(record) || CandidateGaps.isListedGap(record))) return [];
     return record.subjectRefs.filter(subject => !this.names(subject));
   }
 

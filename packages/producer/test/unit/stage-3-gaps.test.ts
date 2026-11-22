@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { isToolGap } from "../../src/stage-1-gaps.ts";
 import { StageThreeGaps } from "../../src/stage-3-gaps.ts";
 import { type DiscoveryGap, ToolGaps } from "../../src/tool-gaps.ts";
 
@@ -53,12 +52,12 @@ describe("ToolGaps.fromSymbolMentions", () => {
 });
 
 // The gaps of an exports record (snapshot-project.ts) are the compiler inputs that the
-// snapshot does not hold. A required gap keeps the subjects of the record, which can
-// name the missing file (DB1, detail b).
+// snapshot does not hold. A required gap has the subjects of the record: the snapshot
+// file that names the input. Its reason names the missing input (DB1).
 describe("ToolGaps.fromExports", () => {
   const exportsRef = "s3-check-file@exports-001.json";
   const missingFile = { kind: "missing-compiler-input", input: "reference-path", missing: "src/env.d.ts",
-    subjectRefs: ["src/invoice.ts", "src/env.d.ts"],
+    subjectRefs: ["src/invoice.ts"],
     reason: "src/invoice.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file." };
   const missingTypes = { kind: "missing-compiler-input", input: "types", missing: "node", subjectRefs: ["tsconfig.json"],
     reason: "tsconfig.json (settings-001#/configs/0) names the type package node in its types list, but the snapshot holds " +
@@ -68,7 +67,7 @@ describe("ToolGaps.fromExports", () => {
 
   test("gives one gap for each gap of the record, with its kind, subjects and reason, and cites its place in the record", () => {
     expect(attemptGaps.fromExports("exports-001", record, exportsRef)).toEqual([
-      { id: "s3-check-exports-001-gap-001", kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts", "src/env.d.ts"],
+      { id: "s3-check-exports-001-gap-001", kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts"],
         reason: missingFile.reason, evidenceRefs: [`${exportsRef}#/gaps/0`] },
       { id: "s3-check-exports-001-gap-002", kind: "missing-compiler-input", subjectRefs: ["tsconfig.json"],
         reason: missingTypes.reason, evidenceRefs: [`${exportsRef}#/gaps/1`] },
@@ -89,47 +88,6 @@ describe("ToolGaps.fromExports", () => {
   test("refuses a gap of the record without a subject", () => {
     expect(() => attemptGaps.fromExports("exports-001", { ...record, gaps: [{ ...missingFile, subjectRefs: [] }] }, exportsRef))
       .toThrow(new Error(`Invalid gap in the tool record: ${exportsRef}#/gaps/0`));
-  });
-});
-
-// The subject check of the shared record checks of Stages 4 to 6 (SubjectChecker) skips
-// a gap that isToolGap knows, because such a gap keeps the subjects of its tool record
-// (DB1, detail b). It knows a required gap of a Stage 3 exports record by its form: the
-// ID <attempt>-exports-NNN-gap-MMM of a Stage 3 attempt, and one evidence reference to
-// gap MMM - 1 of <attempt>-file@exports-NNN.json.
-describe("isToolGap and the required gaps of a Stage 3 exports record", () => {
-  const missing = { kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts", "src/env.d.ts"], reason: "The file is missing." };
-  const exportsGaps = (attempt: string, phase: string, count: number): DiscoveryGap[] => new ToolGaps(`${attempt}-`)
-    .fromExports(phase, { gaps: Array.from({ length: count }, () => missing) }, `${attempt}-file@${phase}.json`);
-
-  test("knows each required gap that fromExports gives, also of an attempt ID with hyphens and of a later request", () => {
-    const gaps = [...exportsGaps("s3-check", "exports-001", 2), ...exportsGaps("s3-review-2", "exports-012", 1)];
-    expect(gaps.map((gap) => [gap.id, gap.evidenceRefs])).toEqual([
-      ["s3-check-exports-001-gap-001", ["s3-check-file@exports-001.json#/gaps/0"]],
-      ["s3-check-exports-001-gap-002", ["s3-check-file@exports-001.json#/gaps/1"]],
-      ["s3-review-2-exports-012-gap-001", ["s3-review-2-file@exports-012.json#/gaps/0"]]]);
-    expect(gaps.map(isToolGap)).toEqual([true, true, true]);
-  });
-
-  test.each([
-    ["a gap that cites the whole exports record", { id: "s3-check-exports-001-gap-001", evidenceRefs: ["s3-check-file@exports-001.json"] }],
-    ["a gap that cites another gap of the record", { id: "s3-check-exports-001-gap-001",
-      evidenceRefs: ["s3-check-file@exports-001.json#/gaps/1"] }],
-    ["a gap that cites the gap of another exports record", { id: "s3-check-exports-001-gap-001",
-      evidenceRefs: ["s3-check-file@exports-002.json#/gaps/0"] }],
-    ["a gap that cites the record of another attempt", { id: "s3-check-exports-001-gap-001",
-      evidenceRefs: ["s3-other-file@exports-001.json#/gaps/0"] }],
-    ["a gap with a second evidence reference", { id: "s3-check-exports-001-gap-001",
-      evidenceRefs: ["s3-check-file@exports-001.json#/gaps/0", "inventory-001"] }],
-    ["a gap whose number has another form", { id: "s3-check-exports-001-gap-0001", evidenceRefs: ["s3-check-file@exports-001.json#/gaps/0"] }],
-    ["a gap with the number 000", { id: "s3-check-exports-001-gap-000", evidenceRefs: ["s3-check-file@exports-001.json#/gaps/-1"] }],
-    ["a gap of an attempt that is not a Stage 3 attempt", { id: "s4-check-exports-001-gap-001",
-      evidenceRefs: ["s4-check-file@exports-001.json#/gaps/0"] }],
-    // Its subject is the snapshot ID, which the subject check accepts.
-    ["the required gap of the symbol mentions", { id: "s3-check-symbol-mentions-gap-001",
-      evidenceRefs: ["s3-check-file@symbol-mentions.json"] }],
-  ])("does not know %s", (_name, gap) => {
-    expect(isToolGap(gap)).toBe(false);
   });
 });
 

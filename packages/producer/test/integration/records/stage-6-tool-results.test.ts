@@ -81,11 +81,12 @@ const olderAttempt: Change = (records) => {
   records.saved["s3-old-file@symbol-mentions.json"] = partialMentions("s3-old");
 };
 
-// The settings record lists two gaps, and the Git identity record one.
+// The settings record lists two gaps, and the Git identity record one. A gap names the
+// missing input in its reason, not as a subject (DB1).
 const stageOneOutcomes: Change = (records) => {
   records.saved["settings-001"] = ["evidence/settings.json", { gaps: [
     { kind: "no-project-settings", subjectRefs: [snapshotRef], reason: "No project settings were found." },
-    { kind: "missing-input", subjectRefs: ["tsconfig.base.json"], reason: "The base settings are not in the snapshot." }] }];
+    { kind: "missing-input", subjectRefs: [snapshotRef], reason: "The base settings tsconfig.base.json are not in the snapshot." }] }];
   records.saved["git-identity-001"] = ["evidence/git-identity.json", { gaps: [
     { kind: "git-unavailable", subjectRefs: [snapshotRef], reason: "The target folder is not a Git work tree." }] }];
 };

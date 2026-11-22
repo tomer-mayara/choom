@@ -16,10 +16,10 @@ const settingsGap: Json = { kind: "unknown-settings-value", ruleId: "vite-build-
   entryKind: "frontend-entry", path: "web/vite.config.ts", sha256: "a".repeat(64),
   range: [{ line: 6, column: 64 }, { line: 6, column: 89 }], expression: "`${pages[0]}/index.html`", truncated: false,
   reason: computedValue };
-// A reference path directive names a file that the snapshot does not hold, so a subject names a path outside the snapshot.
+// A reference path directive names a file that the snapshot does not hold. The subject is the file with the directive.
 const missingInput = "src/app.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file.";
 const inputGap: Json = { kind: "missing-compiler-input", input: "reference-path", missing: "src/env.d.ts",
-  subjectRefs: ["src/app.ts", "src/env.d.ts"], reason: missingInput };
+  subjectRefs: ["src/app.ts"], reason: missingInput };
 // A candidates record with `saved` candidates and `omitted` candidates after the limit.
 const candidatesRecord = (gaps: unknown[], saved = 1, omitted = 0): Json => ({ formatVersion: 1, attemptId: "s4-check",
   snapshotRef: "snapshot-check", status: omitted > 0 ? "partial" : "completed",
@@ -33,7 +33,7 @@ describe("ToolGaps.fromCandidateRecord", () => {
       { id: "s4-check-behavior-entry-gap-001", kind: "unknown-settings-value", subjectRefs: ["web/vite.config.ts"],
         reason: "The behavior entry rule vite-build-rollup-options-input (version 1) cannot read the value at line 6, " +
           `column 64 of web/vite.config.ts. ${computedValue}`, evidenceRefs: [`${behaviorRef}#/gaps/0`] },
-      { id: "s4-check-behavior-entry-gap-002", kind: "missing-compiler-input", subjectRefs: ["src/app.ts", "src/env.d.ts"],
+      { id: "s4-check-behavior-entry-gap-002", kind: "missing-compiler-input", subjectRefs: ["src/app.ts"],
         reason: missingInput, evidenceRefs: [`${behaviorRef}#/gaps/1`] },
       { id: "s4-check-behavior-entry-gap-003", kind: "tool-outcome", subjectRefs: ["snapshot-check"],
         reason: "The behavior entry candidates are partial: the record keeps the first 2 candidates and leaves out 3.",
@@ -191,25 +191,3 @@ describe("CandidateGaps.check", () => {
   });
 });
 
-// The shared subject check accepts each subject of a required gap that keeps the subjects of a gap of a candidate record.
-describe("CandidateGaps.isListedGap", () => {
-  test.each([
-    ["the behavior entry candidates", "s4-check-behavior-entry-gap-002", [`${behaviorRef}#/gaps/1`]],
-    ["the resource access candidates of a retried attempt", "s4-retry-2-resource-access-gap-001",
-      ["s4-retry-2-file@resource-access-candidates.json#/gaps/0"]],
-  ])("knows a gap that keeps the subjects of a gap of %s", (_name, id, evidenceRefs) => {
-    expect(CandidateGaps.isListedGap({ id, evidenceRefs })).toBe(true);
-  });
-
-  test.each([
-    ["the gap of a partial record", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/status`]],
-    ["another gap of the record", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/gaps/1`]],
-    ["the gap of the other record", "s4-check-behavior-entry-gap-001", [`${accessRef}#/gaps/0`]],
-    ["a gap of another attempt", "s4-check-behavior-entry-gap-001", ["s4-other-file@behavior-entry-candidates.json#/gaps/0"]],
-    ["a gap with more evidence", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/gaps/0`, "launch-settings"]],
-    ["a gap of another record of the attempt", "s4-check-references-001-gap-001", ["s4-check-file@references-001.json#/gaps/0"]],
-    ["a gap of a Stage 5 attempt", "s5-check-behavior-entry-gap-001", ["s5-check-file@behavior-entry-candidates.json#/gaps/0"]],
-  ])("does not know %s", (_name, id, evidenceRefs) => {
-    expect(CandidateGaps.isListedGap({ id, evidenceRefs })).toBe(false);
-  });
-});

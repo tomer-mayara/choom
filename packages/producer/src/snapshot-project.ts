@@ -22,8 +22,9 @@ export interface ProjectSettings {
 export interface OutsideRead { operation: 'read-file' | 'read-directory' | 'file-exists' | 'directory-exists'; path: string }
 // A compiler input that the snapshot does not hold: a files entry or a types entry
 // of the settings, or a reference path or reference types directive of a loaded
-// file. It has the fields of a discovery gap without its ID and evidence, and
-// `missing` names the missing file or type package.
+// file. It has the fields of a discovery gap without its ID and evidence. Its subject
+// is the snapshot file that names the input: the configuration file or the loaded
+// file. `missing` and the reason name the missing file or type package.
 export interface ProjectGap {
   kind: 'missing-compiler-input'; input: 'files' | 'types' | 'reference-path' | 'reference-types'; missing: string;
   subjectRefs: string[]; reason: string;
@@ -161,7 +162,7 @@ function settingsGaps(settings: ProjectSettings, files: SnapshotFileSystem, proj
     const target = posix.resolve(folder, entry);
     if (files.indexed.has(target)) continue;
     const missing = snapshotPath(target);
-    gaps.push({ kind: 'missing-compiler-input', input: 'files', missing, subjectRefs: [config, missing],
+    gaps.push({ kind: 'missing-compiler-input', input: 'files', missing, subjectRefs: [config],
       reason: `${named} names ${missing} in its files list, ${missingFile} ${openedWithout}` });
   }
   const types = settings.compilerOptions.types;
@@ -191,7 +192,7 @@ function referenceGaps(file: TsMorph.SourceFile, files: SnapshotFileSystem, proj
     const names = posix.extname(target) ? [target] : referenceExtensions.map(extension => target + extension);
     if (names.some(name => files.indexed.has(name))) return [];
     const missing = snapshotPath(target);
-    return [{ kind: 'missing-compiler-input', input: 'reference-path', missing, subjectRefs: [path, missing],
+    return [{ kind: 'missing-compiler-input', input: 'reference-path', missing, subjectRefs: [path],
       reason: `${path} names ${missing} in a reference path directive, ${missingFile}` }];
   });
 }

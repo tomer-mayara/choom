@@ -25,7 +25,7 @@ const mentionsGap = { id: "s3-check-symbol-mentions-gap-001", kind: "tool-outcom
   reason: "The symbol mentions are skipped: Knip did not run, so they cover no reported export or type. " +
     "The normal Knip run of s2-check-knip-runs was skipped. The production Knip run of s2-check-knip-runs was skipped.",
   evidenceRefs: ["s3-check-file@symbol-mentions.json"] };
-const exportsGap = { id: "s3-check-exports-001-gap-001", kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts", "src/env.d.ts"],
+const exportsGap = { id: "s3-check-exports-001-gap-001", kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts"],
   reason: "src/invoice.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file.",
   evidenceRefs: ["s3-check-file@exports-001.json#/gaps/0"] };
 
@@ -118,10 +118,10 @@ describe("the Stage 3 finalizer and the required gaps of an exports request", ()
   test.each([
     { name: "leaves out the required gap of the exports record", message: `The entry analysis leaves out the required gap ${exportsGap.id}. ${copyEach}`,
       change: (gaps: JsonRecord[]): JsonRecord[] => gaps.filter((gap) => gap.id !== exportsGap.id) },
-    { name: "keeps only the subjects of the snapshot in the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
-      change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, subjectRefs: ["src/invoice.ts"] } : gap) },
     // The copy check gives its message before the subject check reads the changed gap, whose
-    // subject is a declaration file that the snapshot does not have.
+    // second subject is a declaration file that the snapshot does not have.
+    { name: "names the missing declaration file as a subject of the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
+      change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, subjectRefs: ["src/invoice.ts", "src/env.d.ts"] } : gap) },
     { name: "cites the whole exports record in the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
       change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, evidenceRefs: ["s3-check-file@exports-001.json"] } : gap) },
     { name: "gives another gap an ID that is reserved for the required gaps of the exports record",

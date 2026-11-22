@@ -18,10 +18,9 @@ const behaviorEntries: CandidateFile = { name: 'behavior-entry', file: 'behavior
   label: 'behavior entry candidates' };
 const resourceAccess: CandidateFile = { name: 'resource-access', file: 'resource-access-candidates.json',
   label: 'resource access candidates' };
-// A Stage 4 attempt ID, as the Stage 4 helpers accept it, and the reference to gap N of an attempt file.
+// A Stage 4 attempt ID, as the Stage 4 helpers accept it.
 const attemptId = 's4-[a-z0-9]+(?:-[a-z0-9]+)*';
 const stageFourAttempt = new RegExp('^' + attemptId + '$');
-const listedGapRef = new RegExp('^(' + attemptId + ')-file@([^#]+)#/gaps/(0|[1-9][0-9]*)$');
 // The artifact ID of a file of a Stage 4 attempt.
 const attemptFileRef = new RegExp('^(' + attemptId + ')-file@([^#]+)$');
 
@@ -92,18 +91,5 @@ export class CandidateGaps {
     const issues = { questions: list(review.questions, 'questions'), gaps: list(review.gaps, 'gaps') };
     for (const { name } of CandidateGaps.records)
       this.#gaps.checkCopied(name, required.filter(gap => this.#gaps.reserves(name, gap.id)), issues, source);
-  }
-
-  // True when a discovery gap has the form of a required gap that Stage 4 collect gave
-  // from a gap that a candidate record lists: its only evidence reference is that gap,
-  // <attempt>-file@<record file>#/gaps/N, and its ID is the ID of that gap,
-  // <attempt>-<name>-gap-NNN with NNN = N + 1. Such a gap keeps the subjects of the
-  // record, which can name a missing compiler input outside the snapshot.
-  static isListedGap({ id, evidenceRefs }: { id?: unknown; evidenceRefs?: unknown }): boolean {
-    const [ref, ...others] = Array.isArray(evidenceRefs) ? evidenceRefs as unknown[] : [];
-    const match = listedGapRef.exec(String(ref));
-    const record = CandidateGaps.records.find(({ file }) => encodeURIComponent(file) === match?.[2]);
-    return others.length === 0 && match !== null && record !== undefined &&
-      id === new ToolGaps(match[1] + '-').id(record.name, Number(match[3]));
   }
 }

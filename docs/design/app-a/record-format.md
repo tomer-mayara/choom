@@ -126,27 +126,15 @@ this rule. An example message is `The subject nothing-here of the inspection
 priority s3-001-priority-001 names nothing.` A priority with a clue must also
 name its source file or the candidate of that file, as the clue check requires.
 
-A gap that Stage 1 `finish` copied from a tool record keeps the subjects of the
-tool, which can name a missing input or a path outside the snapshot. The checks
-know such a gap by its form: its ID is `s1-<tool>-gap-NNN`, and its only
-evidence reference is the place of that gap in the tool record,
-`<artifact ID>#/gaps/N` with N one less than NNN, such as `s1-settings-gap-001`
-with `settings-001#/gaps/0`. The tool records are the settings record and the
-Git identity record. A [required gap of a Stage 3 exports record](#stage-3-required-gaps)
-keeps the subjects of its record in the same way, also a compiler input that the
-snapshot does not hold. Its ID is `<attempt>-exports-NNN-gap-MMM` of a Stage 3
-attempt, and its only evidence reference is `<attempt>-file@exports-NNN.json#/gaps/M`
-with M one less than MMM, such as `s3-001-exports-001-gap-001` with
-`s3-001-file@exports-001.json#/gaps/0`.
-
-A [required gap of a Stage 4 candidate record](#required-gaps-of-the-candidate-records)
-keeps the subjects of the gap that the record lists in the same way. The checks
-know it by its form too. Its ID is `<attempt>-behavior-entry-gap-NNN` or
-`<attempt>-resource-access-gap-NNN`, with a Stage 4 attempt ID. Its only evidence
-reference is that gap of the record,
-`<attempt>-file@behavior-entry-candidates.json#/gaps/N` or
-`<attempt>-file@resource-access-candidates.json#/gaps/N`, with N one less than
-NNN.
+The rule is the same for every question and gap, in every stage. A gap that a
+stage gives from a tool record follows it too: a gap that Stage 1 `finish` adds
+from the settings record or the Git identity record, and a required gap of the
+Knip outcomes, of a [Stage 3 tool record](#stage-3-required-gaps) or of a
+[Stage 4 candidate record](#required-gaps-of-the-candidate-records). Such a gap
+names only files of the snapshot or the snapshot ID. Its reason and its tool
+record name a missing input. For example, the gap of a declaration file that a
+reference path directive names has the file with the directive as its subject,
+and its reason names the declaration file.
 
 A Stage 4 references record (`references-NNN.json`, see the
 [stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
@@ -893,7 +881,7 @@ records the file, and `finish` registers it as `<attempt>-file@required-gaps.jso
 | --- | --- |
 | `id` | `<attempt>-behavior-entry-gap-` for the behavior entry candidates, or `<attempt>-resource-access-gap-` for the resource access candidates. After it comes the position of the gap among the required gaps of its record, from 1 in three digits. The gaps of a record are in the order of its `gaps`, and the gap of a partial record is last. The gaps of the behavior entry candidates come first. |
 | `kind` | The `kind` of the gap in the record, or `tool-outcome` for a partial record. |
-| `subjectRefs` | The file (`path`) of an `unknown-settings-value` gap; the `subjectRefs` of a `missing-compiler-input` gap, which can name a file that the snapshot does not hold; or the snapshot ID for a partial record. |
+| `subjectRefs` | The file (`path`) of an `unknown-settings-value` gap; the `subjectRefs` of a `missing-compiler-input` gap, which is the snapshot file that names the input; or the snapshot ID for a partial record. |
 | `reason` | For an `unknown-settings-value` gap, the rule, the line and the column of the value, and then the `reason` of the gap. For a `missing-compiler-input` gap, its `reason`. For a partial record, the number of the candidates that the record keeps and of those that it leaves out. |
 | `evidenceRefs` | The gap in its record, `<record artifact ID>#/gaps/N`, or the status of a partial record, `<record artifact ID>#/status`. |
 
@@ -1725,9 +1713,10 @@ Collect saves this record after a Stage 2 attempt that skipped both Knip runs:
 }
 ```
 
-A required gap of an exports record keeps the subjects of its record, also a
-file that the snapshot does not hold, such as `src/env.d.ts`. The subject checks
-know such a gap by its form (see [IDs and evidence](#ids-and-evidence)).
+The subject of a required gap of an exports record is the snapshot file that
+names the missing input, such as `src/invoice.ts`. Its reason names the missing
+file, such as `src/env.d.ts`. The subject rule is the same as for every other
+question and gap (see [IDs and evidence](#ids-and-evidence)).
 
 The review prompt of `collect` lists the gaps of `required-gaps.json`. The
 message of each exports request names its required-gaps file, and the operator

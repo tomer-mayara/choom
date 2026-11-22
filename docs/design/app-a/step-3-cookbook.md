@@ -418,7 +418,7 @@ example, and `notes` is cut:
   ],
   "gaps": [
     { "kind": "missing-compiler-input", "input": "files", "missing": "types/env.d.ts",
-      "subjectRefs": ["tsconfig.json", "types/env.d.ts"],
+      "subjectRefs": ["tsconfig.json"],
       "reason": "tsconfig.json (settings-001#/configs/0) names types/env.d.ts in its files list, but the snapshot does not hold that file. The project opened without it." },
     { "kind": "missing-compiler-input", "input": "reference-types", "missing": "node",
       "subjectRefs": ["src/billing/invoice.ts"],
@@ -444,10 +444,10 @@ After the record, the helper saves `exports-NNN.required-gaps.json` from the
 saved record: one gap for each gap of the record, with the ID
 `<attempt>-exports-NNN-gap-MMM`, the `kind`, `subjectRefs` and `reason` of the
 record, and its place in the record as its evidence, such as
-`s3-001-file@exports-001.json#/gaps/0` for `s3-001-exports-001-gap-001`. A
-required gap keeps the subjects of the record, also a file that the snapshot
-does not hold, such as `types/env.d.ts`. A record without gaps gives a file
-without gaps. See [Stage 3 required gaps](record-format.md#stage-3-required-gaps).
+`s3-001-file@exports-001.json#/gaps/0` for `s3-001-exports-001-gap-001`. The
+subject of a gap is the snapshot file that names the missing input, such as
+`tsconfig.json`. The `missing` field and the reason name the missing file, such
+as `types/env.d.ts`. A record without gaps gives a file without gaps. See [Stage 3 required gaps](record-format.md#stage-3-required-gaps).
 
 The helper refuses a request and saves only a failed receipt when the path is not
 an indexed regular file or not a JavaScript or TypeScript source file, when the
@@ -573,8 +573,7 @@ entry candidate. The candidate is one of this or of the previous entry analysis.
 The subjectRefs of an inspection priority follow the same rule. Name a symbol or
 a missing compiler input in the text or reason. The finalizer refuses any other
 subject in a new question or gap and in an inspection priority. Stages 4 to 6
-refuse it in a question or gap. A copied required gap keeps the subjects of its
-record, also a missing compiler input.
+refuse it in a question or gap.
 Use registered evidence IDs, supplied source-record IDs, or exact JSON Pointers
 into JSON or YAML records. Cite another file whole, without a pointer.
 
