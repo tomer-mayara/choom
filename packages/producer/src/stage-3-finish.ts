@@ -6,7 +6,6 @@ import { isDeepStrictEqual } from 'node:util';
 import { draftUpdate } from './draft-update.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, object, savedDocument, text } from './record-checks.ts';
-import { checkSymbolResultGap } from './result-gaps.ts';
 import { SavedAttemptFiles } from './saved-attempt-files.ts';
 import { StageThreeGaps } from './stage-3-gaps.ts';
 import { checkReview, utf8 } from './stage-3-review.ts';
@@ -412,9 +411,9 @@ function finish(): void {
     saved: attempt.saved, receipt: attempt.receipt, checkedSourceBytes });
   // The finalizer registers every attempt file, so each one must be a file that a producer action saved.
   attempt.refuseUnsaved();
-  // Symbol mentions that are unavailable or skipped need a gap that cites their record.
-  checkSymbolResultGap(analysis.gaps, attempt.attemptRef('symbol-mentions.json'),
-    (attempt.saved('symbol-mentions.json') as Fields | null | undefined)?.status);
+  // The analysis copies each required gap of the symbol mentions and of the exports records exactly (DB5).
+  new StageThreeGaps(config.id).check(attempt.names, attempt.saved,
+    { questions: analysis.questions as unknown[], gaps: analysis.gaps as unknown[] });
   const state: Finalization = { ...records, config, drafts, attempt, inputs, loading, analysis, currentExcerpts,
     checkedSourceBytes };
   finalChecks(state);

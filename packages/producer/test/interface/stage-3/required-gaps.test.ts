@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -95,7 +95,7 @@ describe("the required gaps of a Stage 3 exports request", () => {
       .toEqual({ [record]: sha256(savedFile(attempt, record)), [gaps]: sha256(savedFile(attempt, gaps)) });
   }, 60_000);
 
-  test("the finalizer registers the required-gaps files of collect and of the exports request", () => {
+  test("the finalizer publishes the copied required gaps and registers the required-gaps files of collect and of the request", () => {
     const attempt = newAttempt("published");
     const results = finishStageThree(attempt, () => {}, [], [invoice.path]);
     expect({ exports: results["exports-1"]?.status, finish: results.finish?.status, stderr: results.finish?.stderr })
@@ -103,5 +103,52 @@ describe("the required gaps of a Stage 3 exports request", () => {
     const run = parse(readFileSync(join(attempt.work, "run.yaml"), "utf8")) as { artifacts: Record<string, { path: string }> };
     for (const name of ["required-gaps.json", "exports-001.required-gaps.json"])
       expect(run.artifacts[`s3-check-file@${name}`]?.path).toBe(`evidence/s3-check/${name}`);
+    const discovery = parse(readFileSync(join(attempt.work, "discovery.yaml"), "utf8")) as { gaps: JsonRecord[] };
+    expect(discovery.gaps).toEqual(expect.arrayContaining([mentionsGap, exportsGap]));
+    expect(stageThree(attempt, ["stage-3-finish", "verify"]).status).toBe(0);
+  }, 60_000);
+});
+
+// The finalizer gives the required gaps again from the saved tool records, and refuses
+// an analysis that leaves out or changes one, or that gives another gap a reserved ID.
+describe("the Stage 3 finalizer and the required gaps of an exports request", () => {
+  const copyEach = "Copy each gap of s3-check-file@exports-001.required-gaps.json exactly.";
+  const ownGap = { id: "s3-check-exports-001-gap-002", kind: "deferral", subjectRefs: ["src/invoice.ts"], reason: "Not reviewed.",
+    evidenceRefs: ["s3-check-file@exports-001.json"] };
+  test.each([
+    { name: "leaves out the required gap of the exports record", message: `The entry analysis leaves out the required gap ${exportsGap.id}. ${copyEach}`,
+      change: (gaps: JsonRecord[]): JsonRecord[] => gaps.filter((gap) => gap.id !== exportsGap.id) },
+    { name: "keeps only the subjects of the snapshot in the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
+      change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, subjectRefs: ["src/invoice.ts"] } : gap) },
+    { name: "gives another gap an ID that is reserved for the required gaps of the exports record",
+      message: `The ID ${ownGap.id} is reserved for the required gaps of s3-check-file@exports-001.required-gaps.json. Use a different ID.`,
+      change: (gaps: JsonRecord[]): JsonRecord[] => [...gaps, ownGap] },
+  ])("refuses an analysis that $name, and leaves the drafts unchanged", ({ name, message, change }) => {
+    const attempt = newAttempt(name.replaceAll(" ", "-"));
+    const drafts = (): string[] => ["run.yaml", "discovery.yaml"].map((file) => readFileSync(join(attempt.work, file), "utf8"));
+    const before = drafts();
+    const results = finishStageThree(attempt, (packet) => { packet.analysis.gaps = change(packet.analysis.gaps as JsonRecord[]); },
+      [], [invoice.path]);
+    expect({ save: results["save-review"]?.status, status: results.finish?.status, stderr: results.finish?.stderr })
+      .toEqual({ save: 0, status: 1, stderr: message + "\n" });
+    expect(drafts()).toEqual(before);
+  }, 60_000);
+
+  // The finalizer gives the required gaps again from the saved exports record. Here the
+  // required-gaps file of the request leaves out the gap, and its receipt names the new digest.
+  test("refuses required gaps that differ from the gaps of the exports record, and leaves the drafts unchanged", () => {
+    const attempt = newAttempt("changed-required-gaps");
+    const before = readFileSync(join(attempt.work, "discovery.yaml"), "utf8");
+    const results = finishStageThree(attempt, () => {
+      const text = JSON.stringify({ formatVersion: 1, gaps: [] }, null, 2) + "\n";
+      writeFileSync(join(attempt.folder, "exports-001.required-gaps.json"), text);
+      const receipt = savedJson(attempt, "operator-exports-001.json");
+      writeFileSync(join(attempt.folder, "operator-exports-001.json"), JSON.stringify({ ...receipt,
+        digests: { ...receipt.digests as JsonRecord, "exports-001.required-gaps.json": sha256(Buffer.from(text)) } }));
+    }, [], [invoice.path]);
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 1,
+      stderr: "The required gaps in s3-check-file@exports-001.required-gaps.json differ from the gaps that " +
+        "s3-check-file@exports-001.json gives. Use a new attempt.\n" });
+    expect(readFileSync(join(attempt.work, "discovery.yaml"), "utf8")).toBe(before);
   }, 60_000);
 });

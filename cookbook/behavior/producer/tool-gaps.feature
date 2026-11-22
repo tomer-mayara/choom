@@ -16,3 +16,16 @@ Feature: Unavailable analysis is a visible gap
     When the operator finishes Stage 2
     Then the Stage 2 result is not published
     And the operator is told which required tool gap is missing
+
+  Scenario Outline: Stage 3 refuses a review that leaves out the gap of a tool result
+    Given a Stage 3 attempt whose <record> is <outcome>
+    And a Stage 3 review that leaves out the required gap of the <record>
+    When the operator finishes Stage 3
+    Then the Stage 3 result is not published
+    And the operator is told which required tool gap is missing
+
+    Examples:
+      | record          | outcome                                     |
+      | symbol mentions | partial                                     |
+      | symbol mentions | unavailable                                 |
+      | exports record  | missing a declaration file that it names    |
