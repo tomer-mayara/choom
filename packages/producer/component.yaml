@@ -31,7 +31,7 @@ artifacts:
     - path: ../../.dependency-cruiser.cjs
   contracts:
     - path: ../../cookbook/interfaces/producer-boundary-intake.tsp
-    # The producer run records that only the producer reads, such as the required gaps of the Knip run.
+    # The producer run records that only the producer reads, such as the run manifest and the required gaps of the Knip run.
     - path: ../../cookbook/interfaces/producer-run-records.tsp
     - path: ../../cookbook/interfaces/behavior-entry-rules.tsp
     - path: ../../cookbook/interfaces/resource-access-rules.tsp

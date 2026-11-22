@@ -1,5 +1,6 @@
 import "@typespec/json-schema";
 import "./discovery-result.tsp";
+import "./producer-boundary-intake.tsp";
 
 using TypeSpec.JsonSchema;
 
@@ -28,4 +29,89 @@ model RequiredGaps {
 
   // Each gap is a discovery gap, so the review can copy it without a change.
   gaps: Choom.BaselineModel.DiscoveryGap[];
+}
+
+// The run manifest, run.yaml. Stage 1 `finish` writes it. Each later publisher
+// writes it again, last, as the marker of its publication: it keeps the identity
+// of the run and the snapshot, and it changes the progress, the summary and the
+// registry. Stage 6 also adds the fixed records and the time of completion.
+@extension("additionalProperties", false)
+model RunManifest {
+  formatVersion: 1;
+  id: string;
+  mode: "A";
+  status: "in-progress" | "completed";
+
+  // The project key and the frozen reference baseline that Stage 1 `start` selected.
+  projectKey: Choom.BaselineModel.baselineText;
+
+  referenceBaseline: FrozenBaselineReference | null;
+  progress: RunProgress;
+  snapshot: RunSnapshot;
+  coverage: RunCoverage;
+
+  // The saved records of the run, by artifact ID.
+  artifacts: Record<RunArtifact>;
+
+  // Stage 6 adds the IDs of the fixed baseline and discovery result, and the time
+  // of completion from its receipt.
+  baselineRef?: Choom.BaselineModel.baselineId;
+
+  discoveryRef?: string;
+  completedAt?: string;
+}
+
+// The progress of the run. Each stage sets its key to complete when it
+// publishes. A stage that has no key yet has not completed.
+@extension("additionalProperties", false)
+model RunProgress {
+  inventory: "complete";
+  entryAnalysis?: "complete";
+  inspectionPriorities?: "pending" | "complete";
+  componentRecovery?: "complete";
+  remainingCode?: "complete";
+  baselineRecovery: "pending" | "complete";
+}
+
+// The snapshot of the run and how Stage 1 captured it.
+@extension("additionalProperties", false)
+model RunSnapshot {
+  id: string;
+  root: "snapshot";
+  inventoryRef: string;
+  exclusions: "exclusions.txt";
+  captureMethod: string;
+  captureLimit: string;
+  sourcePath: string;
+  capturedAt: string;
+}
+
+// A saved record of the run: its path in the run folder and the SHA-256 of its
+// bytes.
+@extension("additionalProperties", false)
+model RunArtifact {
+  path: string;
+
+  @pattern("^[a-f0-9]{64}$")
+  sha256: string;
+}
+
+// The summary of the run (DB4). Each publisher writes a new summary from the
+// progress that it writes and the records that it selects, in place of the
+// summary of the earlier stage. Choom does not decide which question or gap is
+// answered, so the summary gives record counts and no status.
+@extension("additionalProperties", false)
+model RunCoverage {
+  // The number of regular files that the selected inventory lists.
+  inventoried: string;
+
+  // The selected review with the reviewed source ranges: the Stage 1 review or
+  // the selected entry analysis. From Stage 4 also the selected code mapping.
+  inspected: string;
+
+  // The record counts of the questions and gaps, with history and linked notes.
+  recorded: string;
+
+  // The stages that have not completed.
+  pending: string;
 }
