@@ -151,6 +151,12 @@ const verifyCases: RefusalCase[] = [
     arrange: (run) => { writeFileSync(join(run.work, ".stage-6-discovery.next.yaml"), ""); return { args: ["verify"] }; } },
   { name: "a changed working discovery", state: "published", message: "Working draft changed: discovery.yaml",
     arrange: (run) => { appendFileSync(join(run.work, "discovery.yaml"), "# edited\n"); return { args: ["verify"] }; } },
+  // verify makes the summary of the run again from the saved records (DB4).
+  { name: "a run summary that says that Stage 6 is pending", state: "published", message: "Working draft changed: run.yaml",
+    arrange: (run) => {
+      changeRunYaml(run, (manifest) => { (manifest.coverage as Json).pending = "Stage 6 is pending."; });
+      return { args: ["verify"] };
+    } },
   { name: "a changed fixed discovery", state: "published", message: "Fixed records do not match the prepared result.",
     arrange: (run) => { appendFileSync(join(run.work, fixtureRecords.discoveryPath), "# edited\n"); return { args: ["verify"] }; } },
   // verify reads the saved file as the viewer reads it, before it compares the bytes.

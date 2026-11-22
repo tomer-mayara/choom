@@ -12,8 +12,8 @@ import { fixtureRecords, fixtureValidation, jsonText, nodeVersion, publishedResu
 // What each Stage 6 action reports and saves for the producer fixture, when an
 // operator runs preflight, start, check, finish and verify in this order: the
 // command results, the receipts, the prepared and fixed records, and the completed
-// run manifest with its coverage summaries. The texts of the saved JSON and YAML
-// files are compared exactly, so the order of their fields is recorded too.
+// run manifest with its summary. The texts of the saved JSON and YAML files are
+// compared exactly, so the order of their fields is recorded too.
 type Json = Record<string, unknown>;
 interface RunManifest extends Json { progress: Json; coverage?: Json; artifacts: Record<string, { path: string; sha256: string }> }
 type FolderState = [string, string][];
@@ -107,8 +107,8 @@ function expectedHandoff(): Json {
 }
 
 // The completed run manifest: the draft manifest with the completed state, the
-// coverage summaries, the fixed record IDs and every attempt file and fixed record
-// in the registry.
+// summary of the fixed records in place of the summary of Stage 5, the fixed record
+// IDs and every attempt file and fixed record in the registry.
 function expectedRunManifest(completedAt: string): string {
   const run = draftRun();
   const artifacts = { ...run.artifacts };
@@ -116,12 +116,12 @@ function expectedRunManifest(completedAt: string): string {
     artifacts[`${id}-file@${encodeURIComponent(name)}`] = { path: `evidence/${id}/${name}`, sha256: sha256(attemptFile(name)) };
   artifacts[baselineRef] = { path: baselinePath, sha256: sha256(draft("baseline.yaml")) };
   artifacts[discoveryRef] = { path: discoveryPath, sha256: sha256(fixedDiscovery()) };
-  const coverage = { ...run.coverage,
-    inspected: "See s5-fixture-entry-analysis#/reviewedFiles and its predecessor analyses for reviewed source ranges. " +
-      `See s5-fixture-file@code-mapping.json for file review scope and ${discoveryRef}#/inspectedPaths for inspected behavior paths (0).`,
-    unresolved: `Fixed baseline ${baselineRef} records proposed intent. See fixed discovery ${discoveryRef} for the recorded ` +
-      "questions (0) and recorded gaps (1), which keep their history, and s5-fixture-file@code-mapping.json for files with " +
-      "unknown owners (0)." };
+  const coverage = { inventoried: "3 regular files in the selected capture scope.",
+    inspected: "s5-fixture-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+      "reviews keep their own ranges. s5-fixture-file@code-mapping.json maps each code unit to its owner and says whether a " +
+      "review read it. Tool reads are not LLM inspection.",
+    recorded: `${discoveryRef} records 0 questions and 1 gap, with history and linked notes.`,
+    pending: "No stage is pending." };
   return stringify({ ...run, status: "completed", progress: { ...run.progress, baselineRecovery: "complete" }, coverage, baselineRef,
     discoveryRef, completedAt, artifacts });
 }
