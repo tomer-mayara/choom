@@ -1808,9 +1808,53 @@ and its effect on the code. The decision log below has the decided text.
 | DB13 and DB14 | Approved. | None. |
 | The known limits | Accepted: a folder subject with `[`, two gaps for a compiler input in the two Stage 4 candidate records, the limit of 5,000 records, the Stage 4 candidate records of the selected attempt only (GB-04d), and the Stage 6 message without the name of a stray file. | None. |
 
-The changes of this table are not in the code yet. Two recorded limits go with
-them: the ID form of a failed exports request, and reserved IDs after the
-stage.
+**Plan of the changes.** Three tasks make the four changes of the table. Each
+task is on its own branch and follows "How to work every ticket (Appendix B)".
+The manager then merges the branches and runs the checks of the combined
+change.
+
+*Task S1: tool gap subjects and gap IDs.* Behavior, added to
+`tool-gaps.feature`:
+
+```gherkin
+  Scenario: The gap of a missing input names the file that asks for it
+    Given a Stage 3 attempt whose exports record is missing a declaration file that it names
+    When the operator requests the exports of the file
+    Then the only subject of the required gap is the file that names the declaration file
+    And the reason of the required gap names the missing declaration file
+```
+
+Interface: a gap of kind `missing-compiler-input` in the settings record, an
+exports record or a candidate record lists only files of the snapshot in
+`subjectRefs`. Its `missing` field and its reason keep the missing input. No
+ID form of a required gap is reserved, and the message "The ID ... is reserved
+..." goes. Observability: the defaults. Architecture: `record-subjects.ts` does
+not depend on a module of one stage.
+
+*Task S2: one rule for entry candidates.* Behavior, added to
+`issue-subjects.feature`:
+
+```gherkin
+  Scenario: A question about an entry candidate of an earlier attempt stays valid
+    Given a Stage 4 draft that keeps a question about an entry candidate of an earlier Stage 2 attempt
+    When the operator publishes the Stage 4 draft
+    Then the Stage 4 draft is published
+```
+
+Interface: no record changes. In `record-format.md` one rule replaces the
+table of the stages. Observability: the defaults. Architecture: one operation
+gives each stage the entry candidates of the registered entry analyses.
+
+*Task S3: the fields of the run summary.* Behavior: the scenario "After Stage 4
+the summary describes the Stage 4 records" of `run-manifest.feature` loses the
+step "And it says that Stages 5 and 6 are pending". The feature text says that
+`progress` has the state of each stage. Interface: `RunCoverage` in
+`producer-run-records.tsp` loses `pending`. Observability and architecture: the
+defaults.
+
+Checks of the combined change: `bun run check`, `bun run check-types`,
+`bun run habit-hooks --all`, `bun run test:producer:docker` and
+`bun run test:e2e`.
 
 **Independent review.** A reviewer that did not write the tickets read the
 combined change and ran probes. It found no serious defect. It had four
