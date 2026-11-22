@@ -203,6 +203,13 @@ describe("Stage 3 collect", () => {
       ] });
   });
 
+  // Both Knip modes completed, so the symbol mentions cover every reported export and type (DB5).
+  test("saves no required gap for completed symbol mentions, and the review prompt lists the empty record", () => {
+    expect(saved("required-gaps.json")).toEqual({ formatVersion: 1, gaps: [] });
+    expect(savedText("review-prompt.md")).toContain(`The required gaps of collect are in\n${id}-file@required-gaps.json:\n` +
+      JSON.stringify({ formatVersion: 1, gaps: [] }, null, 2) + "\n");
+  });
+
   test("saves the first lines of at most 20 focused paths and the reason for each skipped path", () => {
     const excerpt = (path: string, text: string, lines: string[]): Json => ({ id: `${id}-source-${encodeURIComponent(path)}`,
       snapshotRef, ...source(path, text), lines: [1, lines.length], excerpt: lines.map((line, index) => `${index + 1}: ${line}`)
@@ -233,12 +240,14 @@ describe("Stage 3 collect", () => {
     expect(prompt).not.toContain("{{");
     const names = ["run.before.yaml", "discovery.before.yaml", "baseline.before.yaml", "step-3-cookbook.md", "handoff.json",
       "operator-start.json", "operator-start.started.json", "operator-start.stdout.txt", "operator-start.stderr.txt",
-      "operator-collect.started.json", "loading-search.json", "symbol-mentions.json", "source-excerpts.json", "review-prompt.md"];
+      "operator-collect.started.json", "loading-search.json", "symbol-mentions.json", "source-excerpts.json", "required-gaps.json",
+      "review-prompt.md"];
     expect(saved("artifact-map.json")).toEqual({ formatVersion: 1, attemptId: id, snapshotRef, status: "proposed",
       limits: ["Proposed IDs for immutable evidence available to the review.", "The map omits the mutable command log, itself, and later files."],
       artifacts: Object.fromEntries(names.map((name) => [`${id}-file@${encodeURIComponent(name)}`,
         { path: `evidence/${id}/${name}`, sha256: sha256(readFileSync(join(folder(), name))) }])) });
-    const outputs = ["loading-search.json", "symbol-mentions.json", "source-excerpts.json", "review-prompt.md", "artifact-map.json"];
+    const outputs = ["loading-search.json", "symbol-mentions.json", "source-excerpts.json", "required-gaps.json", "review-prompt.md",
+      "artifact-map.json"];
     expect(saved("operator-collect.json")).toMatchObject({ formatVersion: 1, attemptId: id, action: "collect", phase: "collect",
       status: "completed", exitCode: 0, digests: Object.fromEntries(outputs.map((name) => [name, sha256(readFileSync(join(folder(), name)))])) });
   });
