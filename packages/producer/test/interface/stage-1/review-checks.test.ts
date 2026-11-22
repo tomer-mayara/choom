@@ -14,6 +14,9 @@ const listItem = (packet: ReviewPacket, key: string): Record<string, unknown> =>
   if (item === undefined) throw new Error("The packet has no " + key);
   return item;
 };
+// The forms of a subject, which a refusal of a subject that names nothing gives.
+const subjectForms = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
+  "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
 
 const reviewCases: ReviewCase[] = [
   { name: "one test use is classified as an exclusively test unit", change: packet => {
@@ -71,6 +74,16 @@ const reviewCases: ReviewCase[] = [
   { name: "a question has another field", change: (packet) => { listItem(packet, "questions").answer = "Yes."; },
     message: "The questions and gaps do not match the discovery contract of the viewer. " +
       'The discovery result is invalid at questions.0: Unrecognized key: "answer"' },
+  // GB-01b: each subject names something that the run holds, as Stages 4 to 6 check later.
+  { name: "a gap names a file that is not in the snapshot",
+    change: (packet) => { listItem(packet, "gaps").subjectRefs = ["tsconfig.missing.json", "src/no-such-file.ts"]; },
+    message: `The subject src/no-such-file.ts of the gap s1-gap-001 names nothing. ${subjectForms}` },
+  { name: "a question names a folder without /**", change: (packet) => { listItem(packet, "questions").subjectRefs = ["packages/lib"]; },
+    message: "The subject packages/lib of the question s1-question-001 names a folder without /**. Write the folder as packages/lib/**." },
+  // Stage 2 adds the first entry candidates, and Stage 4 the first baseline items.
+  { name: "a question names a baseline item, which Stage 1 does not have",
+    change: (packet) => { listItem(packet, "questions").subjectRefs = ["billing.purpose"]; },
+    message: `The subject billing.purpose of the question s1-question-001 names nothing. ${subjectForms}` },
   // Stages 4 to 6 reserve the baseline ID for the fixed baseline, and later stages keep each question and gap.
   { name: "a question uses the baseline ID", change: (packet) => { listItem(packet, "questions").id = "baseline-check"; },
     message: "The ID baseline-check is reserved for the baseline. Use a different ID." },
@@ -118,6 +131,20 @@ describe("Stage 1 review and excerpt checks", () => {
       const complete = reviewPacket(excerpt);
       listItem(complete, "roles").evidenceRefs = ["inventory-001", "scope-notes-001#"];
       expect(stageOne(run, "finish", writeReview(run, complete))).toMatchObject({ status: 0, stderr: "" });
+    });
+  }, 60_000);
+
+  // GB-01b: before Stage 2 adds entry candidates and Stage 4 baseline items, a subject
+  // names a file or folder of the snapshot, the snapshot ID, or a question or gap. A
+  // gap that finish adds from a tool record counts, such as the gap of the missing Git
+  // evidence: the scratch target is not a Git repository.
+  test("saves a review whose subjects name a file, a folder, the snapshot ID, a gap and a gap that finish adds", () => {
+    withScratch((scratch) => {
+      const { run, excerpt } = capturedStageOneRun(scratch);
+      const packet = reviewPacket(excerpt);
+      listItem(packet, "questions").subjectRefs = ["app.ts", "packages/lib/**", "snapshot-check", "s1-gap-001",
+        "s1-git-identity-gap-001"];
+      expect(stageOne(run, "finish", writeReview(run, packet))).toMatchObject({ status: 0, stderr: "" });
     });
   }, 60_000);
 });

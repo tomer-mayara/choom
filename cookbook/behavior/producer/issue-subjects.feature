@@ -37,3 +37,13 @@ Feature: Questions and gaps name things that the run saved
       | the snapshot ID                      |
       | the ID of an earlier gap             |
       | the ID of an entry candidate         |
+
+  Scenario Outline: An early stage refuses a gap whose subject names nothing
+    Given a <stage> review with a new gap whose subject is "src/no-such-file.ts"
+    When the operator finishes <stage>
+    Then the <stage> result is not published
+    And the operator is told that the subject "src/no-such-file.ts" of the gap names nothing
+
+    Examples:
+      | stage   |
+      | Stage 1 |
