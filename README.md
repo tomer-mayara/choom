@@ -552,7 +552,7 @@ describes the review and publication requirements.
 The Stage 6 suites run preflight, start, check, finish and verify on the Stage 6
 producer fixture through the command line. They record each result, the
 receipts, the prepared and fixed records, the completed run manifest with its
-coverage summaries, the refusals with their messages, a finish or verify after
+run summary, the refusals with their messages, a finish or verify after
 ts-morph changed in a copied tool checkout, and a start or finish that
 fails after it wrote files. For a failure, a fault double
 (`packages/producer/test/support/doubles/stage-6-faults.ts`) runs as a Node
@@ -776,13 +776,15 @@ Stage 4 publication suite prepares a run after Stage 3, runs Stage 4 start
 and the source collection, and writes the toolchain and graph receipts that need
 Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
 packet, and refuses a component ID equal to the baseline ID without writing.
-When it publishes, it makes the run summaries `coverage.inspected` and
-`coverage.unresolved` current: they name the records of the attempt and the
-counts of the validated records, and say recorded questions and recorded gaps,
-because the lists keep their history. Stage 6 says the same in the completed
-run manifest. Because `finish` registers every attempt file, the publisher
-refuses an attempt file that no producer action saved, in `check`, `finish` and
-`verify`.
+When it publishes, it writes the run summary, `coverage` in `run.yaml`, for the
+new records: the file count of the inventory, the entry analysis and code
+mapping of the attempt, the record counts of the questions and gaps, which keep
+their history and linked notes, and the stages that are still pending. `verify`
+makes the summary again and refuses a different one. The other publishers of
+Stages 1, 2, 3 and 6 write the summary of their records in the same way
+(`packages/producer/src/run-summary.ts`). Because `finish` registers every
+attempt file, the publisher refuses an attempt file that no producer action
+saved, in `check`, `finish` and `verify`.
 The Stage 4 inspection suite runs the source collection and the excerpt action on
 that attempt: each kind of source site with its lines, the parser record with the
 ts-morph and TypeScript versions, the source forms, a file with a byte order mark,

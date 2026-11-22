@@ -722,9 +722,10 @@ only the candidates of the selected entry analyses. `plan` checks each new plan
 record in the same way, with the candidates of the plan. Neither checks an
 earlier record again ([record format](record-format.md#ids-and-evidence)). It sets
 `discovery.yaml.entryAnalysisRef` and adds questions and gaps without changing
-prior records. It updates the run's inspection summary to point to the saved
-reviews and this entry analysis. The baseline remains unchanged. The run stays
-`in-progress`.
+prior records. It writes the [run summary](record-format.md#run-summary) for
+this entry analysis. The summary gives the file count and the reviewed source
+ranges of the analysis. It counts the questions and gaps, and says that Stages 3
+to 6 are pending. The baseline remains unchanged. The run stays `in-progress`.
 
 The driver finishes the command log and requires saved LLM call records before publication.
 First it checks each phase receipt again: every file that start, plan, prepare,

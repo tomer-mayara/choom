@@ -366,7 +366,7 @@ graph roots and prior records. Compare fixed fields separately from explanations
 that can change. Allow supported updates to current prose and added evidence
 references only where the record contract permits them.
 After publication, require the saved packet copies to match the approved bytes.
-Check the selected records, receipts, digests and manifest summaries. Use the
+Check the selected records, receipts, digests and the run summary. Use the
 stage's verification action where available. Stage 3 provides
 `stage-3-finish verify` for its latest completed state. Leave the finalizer
 copies that older attempts saved unchanged. Semantic review is separate from the
@@ -566,8 +566,9 @@ The final Stage 6 verification must succeed. Confirm that:
    reason. Proposed membership and exact mapping agree.
 4. Questions, gaps, partial coverage and source inspection limits remain visible.
 5. Inferred architectural statements remain proposed. Saving does not accept them.
-6. Current coverage summaries agree with completion and selected facts. Any
-   retained explanatory defect is identified precisely in readiness or run notes.
+6. The [run summary](record-format.md#run-summary) names the selected records
+   and says that no stage is pending. Any retained explanatory defect is
+   identified precisely in readiness or run notes.
 7. The fixed discovery result has `formatVersion: 2` and names the fixed baseline
    by its ID and the SHA-256 of its file (`baselineDigest`).
    Stage 6 verifies the saved bytes using the viewer's reader.

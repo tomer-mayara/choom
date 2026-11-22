@@ -3,10 +3,11 @@
 Read this with the [stage 4 cookbook](step-4-cookbook.md) or
 [stage 5 cookbook](step-5-cookbook.md). It defines the data that the LLM supplies
 to the shared publisher. The publisher is a trusted tool. Review folders contain
-data only; do not generate or execute a run-specific save script. The last five
+data only; do not generate or execute a run-specific save script. Later
 sections define the [settings record](#settings-record) that Stage 1 saves and
 Stage 4 reads, the [Git identity record](#git-identity-record) that the Stage 1
-capture saves, the [producer code record](#producer-code-record) that every
+capture saves, the [run manifest](#run-manifest) that the publisher of each
+stage writes, the [producer code record](#producer-code-record) that every
 stage checks, the [decision record](#decision-record) of human decisions
 after Stage 6, and the [next baseline version](#next-baseline-version) that a
 decision record makes.
@@ -1337,8 +1338,9 @@ run with a smaller discovery result.
 Apply the [review before publication](start-here.md#review-before-publication)
 guidance to the complete proposed packet before `finish`. Check the meaning of
 the source claims and current prose as well as the record structure. Include
-mapping/resource limits, the overview, selected manifest summaries and all
-current counts. Helper checks cannot detect an obsolete explanatory sentence.
+mapping/resource limits, the overview and all current counts. The publisher
+writes the [run summary](#run-summary) itself. Helper checks cannot detect an
+obsolete explanatory sentence.
 Keep full prompts and responses when correcting a packet before publication.
 
 Set `CHOOM_REVIEW` to the canonical absolute review-folder path. Keep the current
@@ -1360,13 +1362,12 @@ in Stage 4 also a references request, and in Stage 5 also a parts request) needs
 keeps the digests of its outputs, and a failed request has no output. `finish`
 copies the packet into the attempt, registers attempt files by digest, replaces
 the working baseline and discovery, and writes the run manifest last. It marks
-`componentRecovery` or `remainingCode` complete. It also makes the run summaries
-`coverage.inspected` and `coverage.unresolved` current: they name the entry
-analysis, code mapping and discovery proposal of the attempt, and the counts of
-inspected paths, recorded questions, recorded gaps and files with unknown owners
-of the validated records. The question and gap lists keep their history, so
-these counts are record counts. `coverage.inventoried` stays as Stage 1 wrote it.
-It does not accept intent or verify semantic quality.
+`componentRecovery` or `remainingCode` complete. It also writes the
+[run summary](#run-summary) for the new records. The summary names the entry
+analysis and code mapping of the attempt. It counts the questions and gaps of
+the discovery proposal and gives the stages that are still pending. `finish`
+does not accept intent or verify semantic quality. `verify` makes the same summary again
+and refuses a `run.yaml` with another summary.
 
 `finish` registers every attempt file. So each attempt file must be a file that a
 producer action saved:
@@ -1695,6 +1696,78 @@ records, also with `verify`. It refuses:
   or with `<attempt>-exports-NNN-gap-` for a saved `exports-NNN.json`.
 
 Later stages keep these gaps unchanged, as they keep every question and gap.
+
+## Run manifest
+
+`run.yaml` is the run manifest. Stage 1 `finish` writes it. Each later publisher
+writes it again, last, as the marker of its publication. These publishers are
+Stage 2 `finish`, the Stage 3 finalizer, the Stage 4/5 publisher and Stage 6
+`finish`. Before its checkpoints, Stage 2 `start` can also write it again to
+correct the paths of the registry; it keeps the other fields. Only the producer
+reads the manifest, so it keeps `formatVersion: 1`. The `RunManifest` model of
+the [TypeSpec contract](../../../cookbook/interfaces/producer-run-records.tsp)
+gives its fields:
+
+| Field | Value |
+| --- | --- |
+| `formatVersion` | `1`. |
+| `id` | The run ID that Stage 1 `start` got in `CHOOM_RUN_ID`. |
+| `mode` | `A`. |
+| `status` | `in-progress`, and `completed` after Stage 6 `finish`. |
+| `projectKey`, `referenceBaseline` | The project key and the frozen reference baseline of Stage 1 `start` ([project key](#stage-1-role-evidence-and-project-key)). |
+| `progress` | The progress of each stage, by key: `inventory` (Stage 1), `entryAnalysis` (Stage 2), `inspectionPriorities` (Stage 3), `componentRecovery` (Stage 4), `remainingCode` (Stage 5) and `baselineRecovery` (Stage 6). A stage that completed has `complete`. Stage 1 also writes `baselineRecovery: pending`, and Stage 2 writes `inspectionPriorities: pending`. A stage without a key has not completed. |
+| `snapshot` | The snapshot ID, the folder `snapshot`, the ID of the inventory, the file of the capture exclusions, and the method, the limit, the source folder and the time of the capture. |
+| `coverage` | The [run summary](#run-summary). |
+| `artifacts` | Each registered record of the run, by artifact ID, with its path in the run folder and the SHA-256 of its bytes. A working draft is never registered. |
+| `baselineRef`, `discoveryRef`, `completedAt` | Stage 6 `finish` adds the ID of the fixed baseline, the ID of the fixed discovery result and the completion time of its receipt. |
+
+### Run summary
+
+`coverage` is the summary of the run. Each publisher makes a new summary from the
+progress that it writes and from the records that it selects. It writes this
+summary in place of the summary of the earlier stage. Thus the summary describes
+the published drafts. It keeps no claim that a later stage made obsolete, such as
+an old count or a pending stage that completed. A failed publication does not
+replace `run.yaml`, so the summary of the earlier stage stays. After Stage 4 the
+summary can be:
+
+```yaml
+coverage:
+  inventoried: 120 regular files in the selected capture scope.
+  inspected: s4-001-entry-analysis#/reviewedFiles lists the source ranges that
+    the selected review read. Earlier reviews keep their own ranges.
+    s4-001-file@code-mapping.json maps each code unit to its owner and says
+    whether a review read it. Tool reads are not LLM inspection.
+  recorded: s4-001-file@discovery.proposed.yaml records 3 questions and 12 gaps,
+    with history and linked notes.
+  pending: Stages 5 and 6 are pending.
+```
+
+| Field | Text |
+| --- | --- |
+| `inventoried` | The number of regular files that the selected inventory lists. |
+| `inspected` | The selected record with the reviewed source ranges: `review-001` at Stage 1, then the selected entry analysis. From Stage 4 it also names the selected code mapping. |
+| `recorded` | The record counts of the questions and gaps of the discovery. |
+| `pending` | The stages that have not completed, such as `Stage 6 is pending.` After Stage 6 it is `No stage is pending.` |
+
+The record that `recorded` names holds the questions and gaps of the discovery:
+
+- Stage 1: `discovery-001`.
+- Stages 2 and 3: the selected entry analysis.
+- Stages 4 and 5: the discovery proposal of the attempt.
+- Stage 6: the fixed discovery result.
+
+The question and gap lists keep their history. A later question or gap that
+answers or narrows an earlier one is a linked note that names its ID
+([discovery](#discovery)). Choom does not decide which question or gap is
+answered, so the summary gives record counts and no status. No summary text calls
+a count unresolved.
+
+In `verify`, the Stage 3 finalizer, the Stage 4/5 publisher and Stage 6 make the
+manifest again from the saved records. Stage 6 also uses the completion time of
+its receipt. They refuse a `run.yaml` that differs from this manifest, also when
+only the summary differs, such as with `Working draft changed: run.yaml`. Do not
+edit the summary.
 
 ## Producer code record
 
