@@ -637,9 +637,9 @@ subject names something of the run (`SubjectChecker` in `record-subjects.ts`): a
 file of the snapshot, a folder of the snapshot written as `<folder>/**`, the
 snapshot ID, a question or gap, an entry candidate of an entry analysis that the
 run registers or of the record that the stage checks (`entryCandidates`), or a
-baseline item by the rule of the viewer (`SubjectItems`). A
-gap that Stage 1 finish copied from a tool record keeps its subjects
-(`isToolGap` in `stage-1-gaps.ts`). Stage 1 finish, Stage 2 plan and finish and
+baseline item by the rule of the viewer (`SubjectItems`). The
+rule is the same for a gap that a stage copies from a tool record: such a gap
+names a missing input in its reason. Stage 1 finish, Stage 2 plan and finish and
 the Stage 3 finalizer check the records that they add in the same way. The
 Stage 3 finalizer also checks the subjects of each inspection priority. Before
 Stage 4 the baseline has no items, and Stage 2 adds the first entry candidates
@@ -662,8 +662,8 @@ An analysis that did not run needs a gap that cites its record. Stage 2 `run`
 saves the gaps that the Knip outcomes require in `required-gaps.json`: one for a
 preflight that marked the Knip profile unsupported, and one for each Knip mode
 that failed or was skipped (`tool-gaps.ts`). Stage 2 finish refuses an analysis
-that leaves out or changes a required gap, or that gives another question or gap
-a reserved ID ([record format](docs/design/app-a/record-format.md#required-gaps)).
+that leaves out or changes a required gap. No ID form is reserved
+([record format](docs/design/app-a/record-format.md#required-gaps)).
 The Stage 3 finalizer refuses an analysis without a gap that cites the symbol
 mentions record when the mentions are unavailable or skipped (`result-gaps.ts`).
 The shared record checks of Stages 4 to 6 check the Knip records of the selected
@@ -677,8 +677,7 @@ bun test ./packages/producer/test/interface/stage-2/required-gaps.test.ts ./pack
 Stage 4 `collect` also saves `required-gaps.json` (`candidate-gaps.ts`). It holds
 one gap for each gap that the behavior entry or resource access candidates list,
 and one for a partial candidate record. The Stage 4/5 publisher refuses a Stage 4
-or Stage 5 packet that leaves out or changes one of these gaps. It also refuses a
-reserved ID for another question or gap
+or Stage 5 packet that leaves out or changes one of these gaps
 ([record format](docs/design/app-a/record-format.md#required-gaps-of-the-candidate-records)).
 Run the focused checks with:
 

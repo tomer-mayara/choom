@@ -1092,17 +1092,16 @@ partial record. A gap of the behavior entry candidates has the ID
 `<attempt>-behavior-entry-gap-NNN`. A gap of the resource access candidates has the
 ID `<attempt>-resource-access-gap-NNN`. Each gap cites its place in its record, such
 as `s4-001-file@behavior-entry-candidates.json#/gaps/0`, or the status of a partial
-record (`#/status`). A gap of a missing compiler input keeps the subjects of the
-record, also a file that the snapshot does not hold. See
+record (`#/status`). The subject of a gap of a missing compiler input is the
+snapshot file that names the input, and its reason names the missing input. See
 [Required gaps of the candidate records](record-format.md#required-gaps-of-the-candidate-records)
 for the fields.
 
 The review prompt lists the required gaps. The review copies each one exactly into
-the `gaps` of the entry analysis and of the discovery. It gives no other question or
-gap an ID that starts with `<attempt>-behavior-entry-gap-` or
-`<attempt>-resource-access-gap-`. The publisher refuses a packet that leaves out or
-changes a required gap, or that uses such an ID. Stage 5 keeps these gaps
-unchanged, and its publisher refuses a Stage 5 packet that leaves one out.
+the `gaps` of the entry analysis and of the discovery. The publisher refuses a
+packet that leaves out or changes a required gap. No ID form is reserved for the
+required gaps. Stage 5 keeps these gaps unchanged, and its publisher refuses a
+Stage 5 packet that leaves one out.
 
 The shared record checks of the publisher also refuse a draft in which a selected
 tool result has no gap that cites it. These tool results include the outcomes of
@@ -1443,9 +1442,8 @@ snapshot, a folder of the snapshot written as `<folder>/**` (such as
 baseline item or a field of it, such as `billing.purpose`
 ([record-format.md](record-format.md#ids-and-evidence)). The publisher refuses
 any other subject, also in an earlier question or gap, so keep the ID of a
-component that a question or gap names. A gap that Stage 1 copied from a tool
-record keeps its subjects. So does a required gap of a Stage 3 exports record or
-of a Stage 4 candidate record.
+component that a question or gap names. The rule is the same for a gap that is
+copied from a tool record, such as a required gap.
 Rewrite current summaries and limits to match the proposed packet; the historical
 preservation rule does not apply to stale overview text or current counts.
 

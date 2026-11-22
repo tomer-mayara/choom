@@ -141,32 +141,22 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 1, questions: 1 });
   });
 
-  // The gaps of a Stage 1 tool record can name missing inputs and paths outside the snapshot.
-  test("keeps the subjects of a gap that Stage 1 finish copied from the settings record", () => {
-    const toolGap = { id: "s1-settings-gap-001", kind: "missing-input", reason: "The base settings are missing.",
-      subjectRefs: ["tsconfig.missing.json", "/shared/global.d.ts"], evidenceRefs: ["settings-001#/gaps/0"] };
-    const inputs = recordInputs((records) => {
-      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(toolGap));
-    });
-    const { id: _id, evidenceRefs: _evidence, ...entry } = toolGap;
-    const settings = Buffer.from(JSON.stringify({ gaps: [entry] }));
-    inputs.artifacts.set("settings-001", { path: "evidence/settings.json", bytes: settings, sha256: digest(settings) });
-    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 2 });
-  });
-
-  // DB1, detail b: a required gap of a Stage 3 exports record keeps the subjects of its
-  // record, which can name a compiler input that the snapshot does not hold.
-  test("keeps the subjects of a required gap that Stage 3 gave from an exports record", () => {
+  // DB1: no gap has an exception. A gap that a stage gives from a tool record names only
+  // files of the snapshot or the snapshot ID, and its reason names a missing input. A
+  // gap with the form of such a gap that names a missing input as a subject is refused.
+  test.each([
+    ["Stage 1 finish copied from the settings record", "s1-", "settings", "settings-001", "evidence/settings.json"],
+    ["Stage 3 gave from an exports record", "s3-check-", "exports-001", "s3-check-file@exports-001.json", "evidence/s3-check/exports-001.json"],
+  ])("refuses a subject that names nothing in a gap that %s", (_name, prefix, name, recordRef, path) => {
     const missing = { kind: "missing-compiler-input", input: "reference-path", missing: "env.d.ts",
       subjectRefs: ["cli.ts", "env.d.ts"], reason: "cli.ts names env.d.ts in a reference path directive, but the snapshot does not hold that file." };
-    const exportsRecord = Buffer.from(JSON.stringify({ formatVersion: 1, gaps: [missing] }));
-    const [requiredGap] = new ToolGaps("s3-check-").fromExports("exports-001", { gaps: [missing] }, "s3-check-file@exports-001.json");
+    const record = Buffer.from(JSON.stringify({ formatVersion: 1, gaps: [missing] }));
+    const [toolGap] = new ToolGaps(prefix).fromRecord({ name, artifactRef: recordRef, gaps: [missing] });
     const inputs = recordInputs((records) => {
-      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(requiredGap) as (typeof gaps)[number]);
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(toolGap) as (typeof gaps)[number]);
     });
-    inputs.artifacts.set("s3-check-file@exports-001.json",
-      { path: "evidence/s3-check/exports-001.json", bytes: exportsRecord, sha256: digest(exportsRecord) });
-    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 2 });
+    inputs.artifacts.set(recordRef, { path, bytes: record, sha256: digest(record) });
+    expect(() => validateDiscoveryRecords(inputs)).toThrow(`The subject env.d.ts of the gap ${toolGap?.id} names nothing.`);
   });
 
   // Stage 3 can retire an earlier entry candidate with a note that names it, so a subject

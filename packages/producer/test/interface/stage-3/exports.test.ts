@@ -76,11 +76,11 @@ describe("Stage 3 exports", () => {
         { name: "createInvoice", kind: "function", typeOnly: false, range: [position(4, 1), position(6, 2)] },
       ],
       gaps: [
-        gap("files", "types/global.d.ts", ["tsconfig.json", "types/global.d.ts"], "tsconfig.json (settings-001#/configs/0) " +
+        gap("files", "types/global.d.ts", ["tsconfig.json"], "tsconfig.json (settings-001#/configs/0) " +
           "names types/global.d.ts in its files list, but the snapshot does not hold that file. The project opened without it."),
         gap("types", "node", ["tsconfig.json"], "tsconfig.json (settings-001#/configs/0) names the type package node in its " +
           "types list, but the snapshot holds no declaration file for it. The project opened without it."),
-        gap("reference-path", "src/env.d.ts", ["src/invoice.ts", "src/env.d.ts"], "src/invoice.ts names src/env.d.ts in a " +
+        gap("reference-path", "src/env.d.ts", ["src/invoice.ts"], "src/invoice.ts names src/env.d.ts in a " +
           "reference path directive, but the snapshot does not hold that file."),
         gap("reference-types", "vite/client", ["src/invoice.ts"], "src/invoice.ts names the type package vite/client in a " +
           "reference types directive, but the snapshot holds no declaration file for it."),
@@ -89,7 +89,8 @@ describe("Stage 3 exports", () => {
         "/repo/src/node_modules"].map((path) => ({ operation: "directory-exists", path })),
       notes: exportsNotes,
     });
-    // Each gap of the record is a required gap that keeps its kind, subjects and reason (DB5, DB1 detail b).
+    // Each gap of the record is a required gap with its kind, subjects and reason (DB5). Its
+    // subject is the snapshot file that names the missing input (DB1).
     const record = saved("configured", "exports-001.json");
     expect(saved("configured", "exports-001.required-gaps.json")).toEqual({ formatVersion: 1,
       gaps: (record.gaps as Json[]).map(({ kind, subjectRefs, reason }, index) => ({ id: `s3-exports-exports-001-gap-00${index + 1}`,

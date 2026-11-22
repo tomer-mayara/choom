@@ -318,12 +318,9 @@ export function checkReview(inputs: ReviewInputs): Review {
   checkCandidates(inputs, analysis, sources, evidence, addedIssues);
   checkPriorities(inputs, analysis, sources, evidence);
   // The analysis copies each required gap of the symbol mentions and of the exports
-  // records exactly (DB5). This check is before the subject check: a required gap of an
-  // exports record keeps the subjects of its tool record, and the subject check knows it
-  // by its exact form. So a required gap that the review changed gets the message of the
-  // copy check, and not a message about a subject that it must keep.
-  new StageThreeGaps(inputs.id).check(inputs.names, inputs.saved,
-    { questions: analysis.questions as unknown[], gaps: analysis.gaps as unknown[] });
+  // records exactly (DB5). This check is before the subject check, so a required gap
+  // that the review changed gets the message of the copy check.
+  new StageThreeGaps(inputs.id).check(inputs.names, inputs.saved, analysis.gaps as unknown[]);
   checkSubjects(inputs, analysis);
   return { analysis, currentExcerpts };
 }

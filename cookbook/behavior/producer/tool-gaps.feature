@@ -2,7 +2,9 @@
 Feature: Unavailable analysis is a visible gap
   Each tool result that is unavailable, unsupported, skipped, failed or partial
   gives a gap that cites it. The review copies that gap exactly. A stage refuses
-  a review that leaves it out.
+  a review that leaves it out. The gap follows the subject rule of every gap: it
+  names only files of the snapshot or the snapshot ID, and its reason names a
+  missing input.
 
   Scenario: A skipped Knip run gives a gap that the review must copy
     Given a Stage 2 attempt in which Knip is skipped because the snapshot has no package manifest
@@ -29,6 +31,12 @@ Feature: Unavailable analysis is a visible gap
       | symbol mentions | partial                                     |
       | symbol mentions | unavailable                                 |
       | exports record  | missing a declaration file that it names    |
+
+  Scenario: The gap of a missing input names the file that asks for it
+    Given a Stage 3 attempt with a source file that names a declaration file that the snapshot does not hold
+    When the operator requests the exports of the file
+    Then the only subject of the required gap is the file that names the declaration file
+    And the reason of the required gap names the missing declaration file
 
   Scenario: Stage 4 refuses a review that leaves out the gap of a candidate record
     Given a Stage 4 collection whose behavior entry candidates record a settings value that is not a literal

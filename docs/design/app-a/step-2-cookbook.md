@@ -656,8 +656,7 @@ as not-assessed. Use knipRunsRef for the exact recorded tool outcomes. Do not in
 or replace them. Copy each gap of required-gaps.json into gaps exactly, with the
 same id, kind, subjectRefs, reason and evidenceRefs. These gaps record an
 unsupported preflight and each Knip mode that failed or was skipped. Finish refuses
-an analysis that leaves out or changes a required gap. Do not give another question
-or gap an ID that starts with <attempt>-knip-gap-. Record other limits of the
+an analysis that leaves out or changes a required gap. Record other limits of the
 analysis and of its coverage as gaps with your own IDs.
 A successful receipt-writing command does not mean Knip ran. Read each mode's
 status and report references before interpreting the result.
@@ -712,10 +711,9 @@ The final command checks all attempt paths and artifact IDs before it writes
 either draft. It validates the LLM result and registers the attempt's artifacts
 with paths and SHA-256 digests. It gives the required gaps again from the saved
 preflight and Knip receipts, and refuses a `required-gaps.json` that differs from
-them. It refuses an analysis that leaves out or changes a required gap, or that
-gives another question or gap an ID that starts with `<attempt>-knip-gap-`; `plan`
-refuses such an ID in the plan. It refuses a question or gap that the attempt
-adds when one of its subjects names nothing of the run. The message is the one of
+them. It refuses an analysis that leaves out or changes a required gap. No ID
+form is reserved for the required gaps. It refuses a question or gap that the
+attempt adds when one of its subjects names nothing of the run. The message is the one of
 Stages 4 to 6, such as `The subject src/no-such-file.ts of the gap
 s2-001-gap-001 names nothing.` A subject names a file or folder of the snapshot,
 the snapshot ID, a question or gap of the analysis, or an entry candidate. The

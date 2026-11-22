@@ -1,7 +1,7 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type { RequiredGaps } from './generated/contracts.ts';
 import { assert } from './record-checks.ts';
-import { type DiscoveryGap, type ReviewIssues, ToolGaps } from './tool-gaps.ts';
+import { type DiscoveryGap, ToolGaps } from './tool-gaps.ts';
 
 // The required gaps of the Stage 3 tool records (DB5). collect saves
 // required-gaps.json with the gap of its symbol mentions when they are partial,
@@ -10,9 +10,8 @@ import { type DiscoveryGap, type ReviewIssues, ToolGaps } from './tool-gaps.ts';
 // form of the RequiredGaps contract (cookbook/interfaces/producer-run-records.tsp),
 // and the receipt of the action names it. The review copies each gap exactly.
 
-// A tool record of the attempt: its name in the gap IDs, its file, the file of its
-// required gaps, and the required gaps that it gives.
-interface SavedToolRecord { name: string; record: string; file: string; required: RequiredGaps }
+// A tool record of the attempt: its file, the file of its required gaps, and the required gaps that it gives.
+interface SavedToolRecord { record: string; file: string; required: RequiredGaps }
 
 // The file of the symbol mentions that collect saves.
 const mentionsFile = 'symbol-mentions.json';
@@ -44,17 +43,6 @@ export class StageThreeGaps {
     return attempt === undefined ? undefined : new StageThreeGaps(attempt);
   }
 
-  // True when a discovery gap has the form of a required gap of an exports record of a
-  // Stage 3 attempt: the ID <attempt>-exports-NNN-gap-MMM, and one evidence reference to
-  // gap MMM - 1 of <attempt>-file@exports-NNN.json. Such a gap keeps the subjects of its
-  // record, which can name a compiler input that the snapshot does not hold.
-  static isExportsGap({ id, evidenceRefs }: { id?: unknown; evidenceRefs?: unknown }): boolean {
-    const [, attempt = '', phase = '', number = ''] = /^(s3-[a-z0-9-]+)-(exports-[0-9]{3,})-gap-([0-9]{3,})$/.exec(String(id)) ?? [];
-    const index = Number(number) - 1;
-    return index >= 0 && id === new ToolGaps(attempt + '-').id(phase, index) &&
-      same(evidenceRefs, [attempt + '-file@' + phase + '.json#/gaps/' + index]);
-  }
-
   // The required gaps of the symbol mentions that collect saved.
   ofSymbolMentions(mentions: unknown): RequiredGaps {
     return { formatVersion: 1, gaps: this.#gaps.fromSymbolMentions(mentions, this.#ref(mentionsFile)) };
@@ -81,20 +69,18 @@ export class StageThreeGaps {
   // The check of the finalizer. It gives the required gaps again from the saved symbol
   // mentions and from each exports record among the attempt files (`names`), and
   // refuses a saved required-gaps file that differs from them. Then it refuses an
-  // analysis that leaves out or changes a required gap, or that gives a question or
-  // another gap an ID that starts with <attempt>-symbol-mentions-gap-, or with
-  // <attempt>-exports-NNN-gap- for a saved exports-NNN.json. `saved` reads a saved
+  // analysis whose `gaps` leave out or change a required gap. `saved` reads a saved
   // JSON file of the attempt.
-  check(names: readonly string[], saved: (name: string) => unknown, issues: ReviewIssues): void {
-    const records: SavedToolRecord[] = [{ name: ToolGaps.symbolMentions, record: mentionsFile,
-      file: StageThreeGaps.collectFile, required: this.ofSymbolMentions(saved(mentionsFile)) }];
+  check(names: readonly string[], saved: (name: string) => unknown, gaps: readonly unknown[]): void {
+    const records: SavedToolRecord[] = [{ record: mentionsFile, file: StageThreeGaps.collectFile,
+      required: this.ofSymbolMentions(saved(mentionsFile)) }];
     for (const phase of names.flatMap(name => exportsPhase(name) ?? []))
-      records.push({ name: phase, record: phase + '.json', file: StageThreeGaps.exportsFile(phase),
+      records.push({ record: phase + '.json', file: StageThreeGaps.exportsFile(phase),
         required: this.ofExports(phase, saved(phase + '.json')) });
-    for (const { name, record, file, required } of records) {
+    for (const { record, file, required } of records) {
       assert(same(saved(file), required),
         `The required gaps in ${this.#ref(file)} differ from the gaps that ${this.#ref(record)} gives. Use a new attempt.`);
-      this.#gaps.checkCopied(name, required.gaps, issues, this.#ref(file));
+      ToolGaps.checkCopied(required.gaps, gaps, this.#ref(file));
     }
   }
 

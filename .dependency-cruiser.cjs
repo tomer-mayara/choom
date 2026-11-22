@@ -66,6 +66,13 @@ module.exports = {
       to: { path: "^src/", pathNot: producerDuplicationAppImports },
     },
     {
+      // The subject check has one rule for each question and gap in every stage (DB1).
+      name: "producer-subject-check-uses-no-stage-module",
+      severity: "error",
+      from: { path: "^packages/producer/src/record-subjects\\.ts$" },
+      to: { path: "^packages/producer/src/(stage-[0-9]|candidate-gaps\\.ts$)" },
+    },
+    {
       name: "libraries-do-not-depend-on-ui-or-platform",
       severity: "error",
       from: { path: "^src/lib/" },

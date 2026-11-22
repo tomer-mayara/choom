@@ -120,37 +120,19 @@ describe("SubjectChecker", () => {
     expect(checker(undefined, testItem).refused(asked(["test"]))).toEqual([]);
   });
 
-  // Plan change 20: a gap that Stage 1 copied from a tool record keeps its subjects. A
-  // tool record names missing inputs and paths outside the snapshot on purpose.
-  const toolSubjects = ["tsconfig.missing.json", "/shared/global.d.ts"];
+  // DB1: no gap has an exception. A gap that a stage gives from a tool record names only
+  // files of the snapshot or the snapshot ID, and its reason names a missing input. So a
+  // gap with the ID and the evidence of such a gap follows the same rule as any gap.
   test.each([
-    ["the settings record", "s1-settings-gap-002", "settings-001#/gaps/1"],
-    ["the Git identity record", "s1-git-identity-gap-001", "git-identity-001#/gaps/0"],
-  ])("refuses no subject of a gap that Stage 1 copied from %s", (_name, id, evidenceRef) => {
-    const toolGap = found(toolSubjects, id, [evidenceRef]);
-    expect(checker().refused(toolGap)).toEqual([]);
-    expect(() => checker({ questions: [], gaps: [toolGap] }).check()).not.toThrow();
-  });
-
-  test("refuses the subjects of a gap with the ID of a tool gap whose evidence is not its place in the tool record", () => {
-    expect(checker().refused(found(toolSubjects, "s1-settings-gap-002", ["settings-001#/gaps/0"]))).toEqual(toolSubjects);
-  });
-
-  test("refuses the subjects of a question with the ID and the evidence of a tool gap, because Stage 1 copies only gaps", () => {
-    const question = { id: "s1-settings-gap-002", subjectRefs: toolSubjects, text: "Where is the base settings file?",
-      evidenceRefs: ["settings-001#/gaps/1"] };
-    expect(checker().refused(question)).toEqual(toolSubjects);
-  });
-
-  // DB1, detail b: a required gap of a Stage 4 candidate record keeps the subjects of the
-  // record, such as a declaration file that a reference path directive names and the
-  // snapshot does not hold.
-  test("refuses no subject of a required gap that keeps the subjects of a gap of a Stage 4 candidate record", () => {
-    const required = found(["cli.ts", "types/env.d.ts"], "s4-001-behavior-entry-gap-002",
-      ["s4-001-file@behavior-entry-candidates.json#/gaps/1"]);
-    expect(checker().refused(required)).toEqual([]);
-    expect(checker().refused({ ...required, evidenceRefs: ["s4-001-file@behavior-entry-candidates.json#/gaps/0"] }))
-      .toEqual(["types/env.d.ts"]);
+    ["the Stage 1 settings record", "s1-settings-gap-002", "settings-001#/gaps/1"],
+    ["the Stage 1 Git identity record", "s1-git-identity-gap-001", "git-identity-001#/gaps/0"],
+    ["a Stage 3 exports record", "s3-001-exports-001-gap-001", "s3-001-file@exports-001.json#/gaps/0"],
+    ["a Stage 4 candidate record", "s4-001-behavior-entry-gap-002", "s4-001-file@behavior-entry-candidates.json#/gaps/1"],
+  ])("refuses a subject that names nothing in a gap with the form of a gap of %s", (_name, id, evidenceRef) => {
+    const toolGap = found(["cli.ts", "types/env.d.ts"], id, [evidenceRef]);
+    expect(checker().refused(toolGap)).toEqual(["types/env.d.ts"]);
+    expect(() => checker({ questions: [], gaps: [toolGap] }).check())
+      .toThrow(new Error(`The subject types/env.d.ts of the gap ${id} names nothing. ${nameNothing}`));
   });
 
   test("check accepts questions and gaps whose subjects all name something", () => {

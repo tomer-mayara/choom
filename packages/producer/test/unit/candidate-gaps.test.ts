@@ -16,10 +16,10 @@ const settingsGap: Json = { kind: "unknown-settings-value", ruleId: "vite-build-
   entryKind: "frontend-entry", path: "web/vite.config.ts", sha256: "a".repeat(64),
   range: [{ line: 6, column: 64 }, { line: 6, column: 89 }], expression: "`${pages[0]}/index.html`", truncated: false,
   reason: computedValue };
-// A reference path directive names a file that the snapshot does not hold, so a subject names a path outside the snapshot.
+// A reference path directive names a file that the snapshot does not hold. The subject is the file with the directive.
 const missingInput = "src/app.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file.";
 const inputGap: Json = { kind: "missing-compiler-input", input: "reference-path", missing: "src/env.d.ts",
-  subjectRefs: ["src/app.ts", "src/env.d.ts"], reason: missingInput };
+  subjectRefs: ["src/app.ts"], reason: missingInput };
 // A candidates record with `saved` candidates and `omitted` candidates after the limit.
 const candidatesRecord = (gaps: unknown[], saved = 1, omitted = 0): Json => ({ formatVersion: 1, attemptId: "s4-check",
   snapshotRef: "snapshot-check", status: omitted > 0 ? "partial" : "completed",
@@ -33,7 +33,7 @@ describe("ToolGaps.fromCandidateRecord", () => {
       { id: "s4-check-behavior-entry-gap-001", kind: "unknown-settings-value", subjectRefs: ["web/vite.config.ts"],
         reason: "The behavior entry rule vite-build-rollup-options-input (version 1) cannot read the value at line 6, " +
           `column 64 of web/vite.config.ts. ${computedValue}`, evidenceRefs: [`${behaviorRef}#/gaps/0`] },
-      { id: "s4-check-behavior-entry-gap-002", kind: "missing-compiler-input", subjectRefs: ["src/app.ts", "src/env.d.ts"],
+      { id: "s4-check-behavior-entry-gap-002", kind: "missing-compiler-input", subjectRefs: ["src/app.ts"],
         reason: missingInput, evidenceRefs: [`${behaviorRef}#/gaps/1`] },
       { id: "s4-check-behavior-entry-gap-003", kind: "tool-outcome", subjectRefs: ["snapshot-check"],
         reason: "The behavior entry candidates are partial: the record keeps the first 2 candidates and leaves out 3.",
@@ -76,15 +76,6 @@ describe("ToolGaps.fromCandidateRecord", () => {
   });
 });
 
-describe("ToolGaps.reservedPrefix", () => {
-  test("is the start of each ID that id gives and that reserves reserves", () => {
-    const prefix = stageFourGaps.reservedPrefix("behavior-entry");
-    expect(prefix).toBe("s4-check-behavior-entry-gap-");
-    expect(stageFourGaps.id("behavior-entry", 11).startsWith(prefix)).toBe(true);
-    expect([prefix + "x", "s4-check-behavior-entry-x"].map((id) => stageFourGaps.reserves("behavior-entry", id))).toEqual([true, false]);
-  });
-});
-
 // The two candidate records of a Stage 4 attempt, by attempt file name.
 const savedBehaviorRecord = candidatesRecord([settingsGap], 3);
 const savedAccessRecord = candidatesRecord([inputGap], 10000, 2);
@@ -104,10 +95,9 @@ describe("CandidateGaps of a Stage 4 attempt", () => {
       "s4-check-resource-access-gap-001", "s4-check-resource-access-gap-002"]);
   });
 
-  test("names the attempt files by their artifact IDs, and reserves an ID prefix for each record", () => {
+  test("names the attempt files by their artifact IDs", () => {
     expect([CandidateGaps.file, ...CandidateGaps.records.map(({ file }) => file)].map((file) => attemptGaps.ref(file))).toEqual([
       "s4-check-file@required-gaps.json", behaviorRef, accessRef]);
-    expect(attemptGaps.reservedPrefixes()).toEqual(["s4-check-behavior-entry-gap-", "s4-check-resource-access-gap-"]);
   });
 
   // Stage 5 keeps the behavior entry candidates of Stage 4, so their artifact ID names the Stage 4 attempt.
@@ -168,12 +158,12 @@ describe("CandidateGaps.check", () => {
       new Error(`The entry analysis leaves out the required gap ${leftOut}. Copy each gap of ${source} exactly.`));
   });
 
-  test("refuses a question with an ID that is reserved for the gaps of either record", () => {
-    for (const reserved of ["s4-check-behavior-entry-gap-002", "s4-check-resource-access-gap-003"]) {
-      const question = { id: reserved, subjectRefs: ["web/vite.config.ts"], text: "Which pages exist?", evidenceRefs: ["e"] };
-      expect(() => attemptGaps.check(artifacts, { questions: [question], gaps: required })).toThrow(new Error(
-        `The ID ${reserved} is reserved for the required gaps of ${source}. Use a different ID.`));
-    }
+  // DB5: no ID form is reserved.
+  test("accepts a question and another gap with an ID of the form of a required gap of either record", () => {
+    const question = { id: "s4-check-behavior-entry-gap-002", subjectRefs: ["web/vite.config.ts"], text: "Which pages exist?",
+      evidenceRefs: ["e"] };
+    const gaps = [...required, { ...ownGap, id: "s4-check-resource-access-gap-003" }];
+    expect(() => attemptGaps.check(artifacts, { questions: [question], gaps })).not.toThrow();
   });
 
   test("refuses saved required gaps that differ from the gaps of the candidate records", () => {
@@ -185,31 +175,9 @@ describe("CandidateGaps.check", () => {
   test.each([
     ["a record that is not registered", registered(savedRecords), { questions: [], gaps: required },
       `Missing registered artifact: ${source}`],
-    ["a review without a list of questions", artifacts, { gaps: required }, "Missing questions list."],
+    ["a review without a list of gaps", artifacts, { questions: [], gaps: {} }, "Missing gaps list."],
   ])("refuses %s", (_name, files, review, message) => {
     expect(() => attemptGaps.check(files, review)).toThrow(new Error(message));
   });
 });
 
-// The shared subject check accepts each subject of a required gap that keeps the subjects of a gap of a candidate record.
-describe("CandidateGaps.isListedGap", () => {
-  test.each([
-    ["the behavior entry candidates", "s4-check-behavior-entry-gap-002", [`${behaviorRef}#/gaps/1`]],
-    ["the resource access candidates of a retried attempt", "s4-retry-2-resource-access-gap-001",
-      ["s4-retry-2-file@resource-access-candidates.json#/gaps/0"]],
-  ])("knows a gap that keeps the subjects of a gap of %s", (_name, id, evidenceRefs) => {
-    expect(CandidateGaps.isListedGap({ id, evidenceRefs })).toBe(true);
-  });
-
-  test.each([
-    ["the gap of a partial record", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/status`]],
-    ["another gap of the record", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/gaps/1`]],
-    ["the gap of the other record", "s4-check-behavior-entry-gap-001", [`${accessRef}#/gaps/0`]],
-    ["a gap of another attempt", "s4-check-behavior-entry-gap-001", ["s4-other-file@behavior-entry-candidates.json#/gaps/0"]],
-    ["a gap with more evidence", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/gaps/0`, "launch-settings"]],
-    ["a gap of another record of the attempt", "s4-check-references-001-gap-001", ["s4-check-file@references-001.json#/gaps/0"]],
-    ["a gap of a Stage 5 attempt", "s5-check-behavior-entry-gap-001", ["s5-check-file@behavior-entry-candidates.json#/gaps/0"]],
-  ])("does not know %s", (_name, id, evidenceRefs) => {
-    expect(CandidateGaps.isListedGap({ id, evidenceRefs })).toBe(false);
-  });
-});

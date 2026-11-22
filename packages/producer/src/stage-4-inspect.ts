@@ -363,13 +363,11 @@ function collect(current: InspectState): string[] {
   saveJson('behavior-entry-candidates.json', behaviorEntries(current));
   saveJson('resource-access-candidates.json', resourceAccess(current));
   // DB5: the gaps that the saved candidate records require. The review copies each one exactly.
-  const requiredGaps = new CandidateGaps(id);
-  saveJson(CandidateGaps.file, requiredGaps.record(name => json(name)));
+  saveJson(CandidateGaps.file, new CandidateGaps(id).record(name => json(name)));
   saveJson('source-excerpts.json', initialExcerpts(current));
   save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,
     entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt, graph: current.graph,
-    requiredGaps: { ref: artifactId(CandidateGaps.file), prefixes: requiredGaps.reservedPrefixes(),
-      gaps: json(CandidateGaps.file).gaps as unknown[] } }));
+    requiredGaps: { ref: artifactId(CandidateGaps.file), gaps: json(CandidateGaps.file).gaps as unknown[] } }));
   saveJson('artifact-map.json', { formatVersion: 1, attemptId: id, snapshotRef: current.handoff.snapshotRef,
     status: 'proposed', artifacts: artifactMap(),
     limits: ['This map is not registered yet. It omits itself, the mutable command log, and later files.'] });

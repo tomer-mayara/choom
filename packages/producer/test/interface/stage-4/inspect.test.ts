@@ -258,14 +258,16 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("Each subjectRef names a file of the snapshot, a folder of the snapshot written as <folder>/** " +
       "(such as src/billing/**), the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, " +
       "such as billing.purpose.");
-    // A gap that is copied from a tool record is the exception: it keeps the subjects of its record.
-    expect(prompt).toContain("The one exception is a gap that is copied from a tool record, such as a required gap: copy it " +
-      "exactly, because it keeps the subjectRefs of its record, also a missing compiler input.");
+    // No gap has an exception, also not a gap that is copied from a tool record (DB1).
+    expect(prompt).not.toContain("exception");
+    // The candidate records of this fixture give no required gap, and no ID form is reserved (DB5).
+    expect(prompt).toContain(`Required gaps (${id}-file@required-gaps.json): none. The candidate records list no gap and are ` +
+      "complete.\n\n");
     expect(prompt).toContain("use its registered name as the operation member");
     expect(prompt).toContain("Follow the default, named and re-exported members on the reviewed public paths.");
     expect(prompt).toContain("If a role has no evidenced example, record the scope checked and the gap.");
     // The prompt for this graph fixture is deterministic once the temporary folder is removed.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("439cbc7ca053f72d60127b5196a1af64d62883d3396f445782eab4adb11392ab");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("6c6d207512c7ef2e0b4629623cbca5018c28daf57abce3cb2982a5961b439427");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

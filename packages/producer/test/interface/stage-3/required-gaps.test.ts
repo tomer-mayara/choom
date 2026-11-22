@@ -25,7 +25,7 @@ const mentionsGap = { id: "s3-check-symbol-mentions-gap-001", kind: "tool-outcom
   reason: "The symbol mentions are skipped: Knip did not run, so they cover no reported export or type. " +
     "The normal Knip run of s2-check-knip-runs was skipped. The production Knip run of s2-check-knip-runs was skipped.",
   evidenceRefs: ["s3-check-file@symbol-mentions.json"] };
-const exportsGap = { id: "s3-check-exports-001-gap-001", kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts", "src/env.d.ts"],
+const exportsGap = { id: "s3-check-exports-001-gap-001", kind: "missing-compiler-input", subjectRefs: ["src/invoice.ts"],
   reason: "src/invoice.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file.",
   evidenceRefs: ["s3-check-file@exports-001.json#/gaps/0"] };
 
@@ -77,6 +77,8 @@ describe("the required gaps of Stage 3 collect", () => {
     expect(prompt).toContain("The required gaps of collect are in\ns3-check-file@required-gaps.json:\n" +
       JSON.stringify({ formatVersion: 1, gaps: [mentionsGap] }, null, 2) + "\n");
     expect(prompt).toContain("Copy each required gap into gaps exactly");
+    // DB5: no ID form is reserved.
+    expect(prompt).not.toContain("an ID that starts with");
     expect(prompt).not.toContain("{{");
   }, 60_000);
 });
@@ -110,23 +112,18 @@ describe("the required gaps of a Stage 3 exports request", () => {
 });
 
 // The finalizer gives the required gaps again from the saved tool records, and refuses
-// an analysis that leaves out or changes one, or that gives another gap a reserved ID.
+// an analysis that leaves out or changes one.
 describe("the Stage 3 finalizer and the required gaps of an exports request", () => {
   const copyEach = "Copy each gap of s3-check-file@exports-001.required-gaps.json exactly.";
-  const ownGap = { id: "s3-check-exports-001-gap-002", kind: "deferral", subjectRefs: ["src/invoice.ts"], reason: "Not reviewed.",
-    evidenceRefs: ["s3-check-file@exports-001.json"] };
   test.each([
     { name: "leaves out the required gap of the exports record", message: `The entry analysis leaves out the required gap ${exportsGap.id}. ${copyEach}`,
       change: (gaps: JsonRecord[]): JsonRecord[] => gaps.filter((gap) => gap.id !== exportsGap.id) },
-    { name: "keeps only the subjects of the snapshot in the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
-      change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, subjectRefs: ["src/invoice.ts"] } : gap) },
     // The copy check gives its message before the subject check reads the changed gap, whose
-    // subject is a declaration file that the snapshot does not have.
+    // second subject is a declaration file that the snapshot does not have.
+    { name: "names the missing declaration file as a subject of the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
+      change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, subjectRefs: ["src/invoice.ts", "src/env.d.ts"] } : gap) },
     { name: "cites the whole exports record in the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
       change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, evidenceRefs: ["s3-check-file@exports-001.json"] } : gap) },
-    { name: "gives another gap an ID that is reserved for the required gaps of the exports record",
-      message: `The ID ${ownGap.id} is reserved for the required gaps of s3-check-file@exports-001.required-gaps.json. Use a different ID.`,
-      change: (gaps: JsonRecord[]): JsonRecord[] => [...gaps, ownGap] },
   ])("refuses an analysis that $name, and leaves the drafts unchanged", ({ name, message, change }) => {
     const attempt = newAttempt(name.replaceAll(" ", "-"));
     const drafts = (): string[] => ["run.yaml", "discovery.yaml"].map((file) => readFileSync(join(attempt.work, file), "utf8"));

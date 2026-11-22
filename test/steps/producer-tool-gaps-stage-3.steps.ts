@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { After, Given } from "@cucumber/cucumber";
+import { After, Given, Then, When } from "@cucumber/cucumber";
 import { type CommandResult, makeScratch, removeScratch } from "../../packages/producer/test/support/commands.ts";
 import { type JsonRecord, stageTwoSnapshot } from "../../packages/producer/test/support/stage-2-attempt.ts";
 import { saveStageThreeReview, stageThree, stageThreeAttempt, type StageThreeAttempt, stageThreeRequiredGaps, type StageTwoKnip,
@@ -84,6 +84,32 @@ Given("a Stage 3 attempt whose exports record is missing a declaration file that
   succeeded("exports", stageThree(attempt, ["stage-3", "exports", invoice.path]));
   const gaps = savedJson(attempt, "exports-001.json").gaps as JsonRecord[];
   assert.deepEqual(gaps.map(({ input, missing }) => ({ input, missing })), [{ input: "reference-path", missing: "src/env.d.ts" }]);
+});
+
+// The same snapshot, before the exports request.
+Given("a Stage 3 attempt with a source file that names a declaration file that the snapshot does not hold",
+  function (this: StageThreeGapsWorld) {
+    collectedAttempt(this, [app, invoice]);
+  });
+
+When("the operator requests the exports of the file", function (this: StageThreeGapsWorld) {
+  succeeded("exports", stageThree(currentAttempt(this), ["stage-3", "exports", invoice.path]));
+});
+
+// The one required gap of the exports request: the gap of the reference path directive of src/invoice.ts.
+function exportsGap(world: StageThreeGapsWorld): JsonRecord {
+  const gaps = savedJson(currentAttempt(world), "exports-001.required-gaps.json").gaps as JsonRecord[];
+  assert.equal(gaps.length, 1, "The exports request saved " + gaps.length + " required gaps.");
+  return gaps[0] as JsonRecord;
+}
+
+Then("the only subject of the required gap is the file that names the declaration file", function (this: StageThreeGapsWorld) {
+  assert.deepEqual(exportsGap(this).subjectRefs, [invoice.path]);
+});
+
+Then("the reason of the required gap names the missing declaration file", function (this: StageThreeGapsWorld) {
+  const { reason } = exportsGap(this);
+  assert.ok(String(reason).includes("src/env.d.ts"), "The reason does not name src/env.d.ts: " + String(reason));
 });
 
 // The review copies every other required gap of the attempt.

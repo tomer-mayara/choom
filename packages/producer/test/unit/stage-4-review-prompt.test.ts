@@ -1,8 +1,7 @@
 import { expect, test } from "bun:test";
 import { reviewPrompt } from "../../src/stage-4-review-prompt.ts";
 
-const prefixes = ["s4-review-behavior-entry-gap-", "s4-review-resource-access-gap-"];
-const noRequiredGaps = { ref: "s4-review-file@required-gaps.json", prefixes, gaps: [] };
+const noRequiredGaps = { ref: "s4-review-file@required-gaps.json", gaps: [] };
 const facts = { runRef: "run", snapshotRef: "snapshot", entryAnalysisRef: "entry", attemptId: "s4-review",
   work: "/work", attempt: "/work/evidence/s4-review", graph: { ref: "s4-review-file@graph-results.json", contexts: [] },
   requiredGaps: noRequiredGaps };
@@ -22,7 +21,8 @@ test("groups identical traversal roots in any order and keeps each pass's own tr
 });
 
 // DB5: the review copies each gap that the candidate records require, and the publisher refuses a packet that does not.
-test("lists the required gaps of the candidate records, asks for their exact copy and names the reserved IDs", () => {
+// No ID form is reserved, so the prompt names none.
+test("lists the required gaps of the candidate records and asks for their exact copy", () => {
   const gaps = [{ id: "s4-review-resource-access-gap-001", kind: "tool-outcome", subjectRefs: ["snapshot"],
     reason: "The resource access candidates are partial: the record keeps the first 10000 candidates and leaves out 1.",
     evidenceRefs: ["s4-review-file@resource-access-candidates.json#/status"] }];
@@ -30,13 +30,11 @@ test("lists the required gaps of the candidate records, asks for their exact cop
   expect(section).toBe("s4-review-file@required-gaps.json): each gap that behavior-entry-candidates.json or " +
     "resource-access-candidates.json lists gives one required gap, and so does a record with status: partial. Copy each gap " +
     "below into the gaps of entry-analysis.yaml and discovery.proposed.yaml exactly, with the same id, kind, subjectRefs, " +
-    "reason and evidenceRefs. The publisher refuses a packet that leaves out or changes a required gap, or that gives a " +
-    "question or another gap an ID that starts with s4-review-behavior-entry-gap- or s4-review-resource-access-gap-.\n\n" +
+    "reason and evidenceRefs. The publisher refuses a packet that leaves out or changes a required gap.\n\n" +
     "```json\n" + JSON.stringify(gaps, null, 2));
 });
 
-test("says when the candidate records require no gap, and keeps their ID prefixes reserved", () => {
+test("says when the candidate records require no gap", () => {
   expect(reviewPrompt(facts)).toContain("Required gaps (s4-review-file@required-gaps.json): none. The candidate records list no " +
-    "gap and are complete. Do not give a question or gap an ID that starts with s4-review-behavior-entry-gap- or " +
-    "s4-review-resource-access-gap-.\n\n");
+    "gap and are complete.\n\n");
 });

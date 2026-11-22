@@ -418,7 +418,7 @@ example, and `notes` is cut:
   ],
   "gaps": [
     { "kind": "missing-compiler-input", "input": "files", "missing": "types/env.d.ts",
-      "subjectRefs": ["tsconfig.json", "types/env.d.ts"],
+      "subjectRefs": ["tsconfig.json"],
       "reason": "tsconfig.json (settings-001#/configs/0) names types/env.d.ts in its files list, but the snapshot does not hold that file. The project opened without it." },
     { "kind": "missing-compiler-input", "input": "reference-types", "missing": "node",
       "subjectRefs": ["src/billing/invoice.ts"],
@@ -444,10 +444,10 @@ After the record, the helper saves `exports-NNN.required-gaps.json` from the
 saved record: one gap for each gap of the record, with the ID
 `<attempt>-exports-NNN-gap-MMM`, the `kind`, `subjectRefs` and `reason` of the
 record, and its place in the record as its evidence, such as
-`s3-001-file@exports-001.json#/gaps/0` for `s3-001-exports-001-gap-001`. A
-required gap keeps the subjects of the record, also a file that the snapshot
-does not hold, such as `types/env.d.ts`. A record without gaps gives a file
-without gaps. See [Stage 3 required gaps](record-format.md#stage-3-required-gaps).
+`s3-001-file@exports-001.json#/gaps/0` for `s3-001-exports-001-gap-001`. The
+subject of a gap is the snapshot file that names the missing input, such as
+`tsconfig.json`. The `missing` field and the reason name the missing file, such
+as `types/env.d.ts`. A record without gaps gives a file without gaps. See [Stage 3 required gaps](record-format.md#stage-3-required-gaps).
 
 The helper refuses a request and saves only a failed receipt when the path is not
 an indexed regular file or not a JavaScript or TypeScript source file, when the
@@ -574,8 +574,7 @@ that the run registers, such as the previous one.
 The subjectRefs of an inspection priority follow the same rule. Name a symbol or
 a missing compiler input in the text or reason. The finalizer refuses any other
 subject in a new question or gap and in an inspection priority. Stages 4 to 6
-refuse it in a question or gap. A copied required gap keeps the subjects of its
-record, also a missing compiler input.
+refuse it in a question or gap.
 Use registered evidence IDs, supplied source-record IDs, or exact JSON Pointers
 into JSON or YAML records. Cite another file whole, without a pointer.
 
@@ -601,9 +600,7 @@ the snapshot does not hold. The required gaps of collect are in
 {{REQUIRED_GAPS}}
 Each exports request also saves exports-NNN.required-gaps.json with one required
 gap for each gap of exports-NNN.json. Copy those gaps exactly too. The finalizer
-refuses an analysis that leaves out or changes a required gap. Do not give
-another question or gap an ID that starts with {{ID}}-symbol-mentions-gap-, or
-with {{ID}}-exports-NNN-gap- for a saved exports-NNN.json. Record other limits
+refuses an analysis that leaves out or changes a required gap. Record other limits
 as gaps with your own IDs.
 
 inspectionPriorities is ordered by priority: 1 first, then 2, then 3. Each item
@@ -714,9 +711,8 @@ It gives the required gaps again from the saved symbol mentions and from each
 saved exports record. It refuses a required-gaps file that differs from them.
 It refuses an analysis that leaves out or changes a required gap, for example
 `The entry analysis leaves out the required gap s3-001-symbol-mentions-gap-001.
-Copy each gap of s3-001-file@required-gaps.json exactly.` It also refuses a
-question or another gap whose ID starts with `<attempt>-symbol-mentions-gap-`,
-or with `<attempt>-exports-NNN-gap-` for a saved `exports-NNN.json`.
+Copy each gap of s3-001-file@required-gaps.json exactly.` No ID form is reserved
+for the required gaps.
 It refuses a new question or gap, and an inspection priority, when one of its
 subjects names nothing of the run. The message is the one of Stages 4 to 6, such
 as `The subject nothing-here of the inspection priority s3-001-priority-001
