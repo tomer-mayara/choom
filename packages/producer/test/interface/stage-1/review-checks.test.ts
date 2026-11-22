@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { stringify } from "yaml";
 import { withScratch } from "../../support/commands.ts";
 import { capturedStageOneRun, type ReviewPacket, reviewPacket, stageOne, writeReview } from "../../support/stage-1-run.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // Finish checks the complete review packet before it copies anything, and excerpt
 // checks the requested range. Each refused command leaves the run unchanged.
@@ -14,9 +15,6 @@ const listItem = (packet: ReviewPacket, key: string): Record<string, unknown> =>
   if (item === undefined) throw new Error("The packet has no " + key);
   return item;
 };
-// The forms of a subject, which a refusal of a subject that names nothing gives.
-const subjectForms = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
-  "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
 
 const reviewCases: ReviewCase[] = [
   { name: "one test use is classified as an exclusively test unit", change: packet => {

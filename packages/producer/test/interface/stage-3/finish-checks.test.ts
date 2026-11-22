@@ -7,6 +7,7 @@ import { folderState } from "../../support/producer-record.ts";
 import type { JsonRecord } from "../../support/stage-2-attempt.ts";
 import { finishStageThree, stageThree, stageThreeAttempt, type StageThreeAttempt, type StageThreePacket, stageTwoRun }
   from "../../support/stage-3-attempt.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // The Stage 3 finalizer checks the saved attempt and its LLM packet before it
 // changes the drafts. Each case copies one run that finished Stage 2 through its
@@ -16,10 +17,7 @@ interface FinishCase { name: string; change: (packet: StageThreePacket) => void;
 const record = (value: unknown): JsonRecord => value as JsonRecord;
 const firstPriority = (packet: StageThreePacket): JsonRecord =>
   record((packet.analysis.inspectionPriorities as unknown[])[0]);
-// GB-01b: the forms of a subject, which a refusal of a subject that names nothing gives.
-const subjectForms = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
-  "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
-// Adds a new gap of the attempt. The Stage 3 packet has the gap s3-check-gap-001 for the skipped symbol mentions.
+// GB-01b: adds a new gap of the attempt. The Stage 3 packet has the gap s3-check-gap-001 for the skipped symbol mentions.
 const addGap = (packet: StageThreePacket, subjectRefs: string[], evidenceRefs = ["s3-check-file@loading-search.json"]): void => {
   packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: "s3-check-gap-002", kind: "missing-input", subjectRefs,
     reason: "The review names what it did not find.", evidenceRefs }];

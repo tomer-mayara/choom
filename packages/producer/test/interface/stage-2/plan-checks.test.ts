@@ -4,14 +4,12 @@ import { join } from "node:path";
 import { withScratch } from "../../support/commands.ts";
 import { candidate, entryPlan, planPacket, priorQuestion, savedJson, stageOneRun, stageTwo, stageTwoAttempt,
   writePacket, type JsonRecord } from "../../support/stage-2-attempt.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // The plan action checks the LLM plan packet before it copies it into the
 // attempt. A refused packet leaves no packet file in the attempt.
 interface PlanCase { name: string; plan?: (id: string) => JsonRecord; files?: Record<string, string>; inside?: boolean; message: string }
 
-// The forms of a subject, which a refusal of a subject that names nothing gives.
-const subjectForms = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
-  "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
 const newQuestion = (id: string, subjectRefs: string[]): JsonRecord => ({ id: `${id}-question-001`, subjectRefs,
   text: "Which command starts the application?", evidenceRefs: ["inventory-001"] });
 

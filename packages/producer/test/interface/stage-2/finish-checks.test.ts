@@ -8,6 +8,7 @@ import { folderState } from "../../support/producer-record.ts";
 import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, planPacket, priorQuestion, requiredGaps,
   runAttempt, savedJson, stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
 import { stagedRun } from "../../support/staged-run.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // Finish checks the complete attempt before it changes either draft. The
 // prepared attempt has no package manifest, so preflight skips Knip. Each case
@@ -34,9 +35,7 @@ const reservedId = (reserved: string): string =>
   `The ID ${reserved} is reserved for the required gaps of ${id}-required-gaps. Use a different ID.`;
 const withoutGap = (gapId: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
   gaps: (analysis.gaps as JsonRecord[]).filter((gap) => gap.id !== gapId) });
-// GB-01b: the forms of a subject, which a refusal of a subject that names nothing gives.
-const subjectForms = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
-  "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
+// GB-01b: the analysis with a new question that names the subjects, and with the changed fields.
 const withQuestion = (subjectRefs: string[], change: JsonRecord = {}) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
   questions: [...analysis.questions as JsonRecord[], { ...question(`${id}-question-001`), subjectRefs }], ...change });
 const changedGap = (change: JsonRecord) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
