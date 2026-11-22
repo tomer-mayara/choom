@@ -13,6 +13,9 @@ export type DiscoveryGap = RequiredGaps['gaps'][number];
 export interface ToolRecord { readonly name: string; readonly artifactRef: string; readonly gaps: readonly unknown[] }
 // The questions and gaps of a review, such as an entry analysis.
 export interface ReviewIssues { readonly questions: readonly unknown[]; readonly gaps: readonly unknown[] }
+// A saved Stage 4 candidate record: its name in the gap IDs, its artifact ID, the words
+// that name it in a reason, such as behavior entry candidates, and the record.
+export interface CandidateRecord { readonly name: string; readonly artifactRef: string; readonly label: string; readonly record: unknown }
 interface RecordGap { kind?: unknown; subjectRefs?: unknown; reason?: unknown }
 // A tool outcome that needs a gap: its reason and the record that shows it.
 interface Outcome { reason: string; evidenceRef: string }
@@ -51,6 +54,20 @@ function failureReasons(run: Fields): string[] {
   return reasons;
 }
 
+// A settings gap of the behavior entry candidates (kind unknown-settings-value) names
+// its file and the range of the value, and no subjects. As a required gap, its subject
+// is its file, and its reason first names the rule and the start of the value. Any
+// other gap stays as it is, and fromRecord refuses a gap without subjects.
+function locatedGap(gap: unknown): unknown {
+  if (!object(gap) || gap.kind !== 'unknown-settings-value') return gap;
+  const [start] = Array.isArray(gap.range) ? gap.range as unknown[] : [];
+  const { line, column } = object(start) ? start : {};
+  if (!text(gap.path) || !text(gap.ruleId) || !text(gap.reason) || !Number.isSafeInteger(line) || !Number.isSafeInteger(column))
+    return gap;
+  return { kind: gap.kind, subjectRefs: [gap.path], reason: `The behavior entry rule ${gap.ruleId} (version ` +
+    `${String(gap.ruleVersion)}) cannot read the value at line ${String(line)}, column ${String(column)} of ${gap.path}. ${gap.reason}` };
+}
+
 export class ToolGaps {
   // The name of the Knip outcomes in the gap IDs, as in s2-001-knip-gap-001.
   static readonly knip = 'knip';
@@ -70,6 +87,12 @@ export class ToolGaps {
   // only a gap that the stage gives from that record can have such an ID.
   reserves(name: string, id: unknown): boolean {
     return typeof id === 'string' && id.startsWith(this.#prefix + name + '-gap-');
+  }
+
+  // The start of each ID that `id` gives for the named tool record and that `reserves`
+  // reserves, such as s4-001-behavior-entry-gap-. A review prompt can name it.
+  reservedPrefix(name: string): string {
+    return this.#prefix + name + '-gap-';
   }
 
   // The gaps that a tool record lists, each with the kind, subjects and reason of the record.
@@ -104,6 +127,24 @@ export class ToolGaps {
     });
     return outcomes.map(({ reason, evidenceRef }, index) => ({ id: this.id(ToolGaps.knip, index), kind: 'tool-outcome',
       subjectRefs: [snapshotRef], reason, evidenceRefs: [evidenceRef] }));
+  }
+
+  // The gaps of a Stage 4 candidate record (DB5): each gap that the record lists, as
+  // fromRecord gives it, and then one gap for a record with status partial, which the
+  // candidate limit cut. A settings gap gets its file as its subject (see locatedGap);
+  // a gap of a compiler input keeps its subjects, which can name a path outside the
+  // snapshot. The gap of a partial record has kind tool-outcome, the snapshot ID as
+  // its subject, and cites <artifactRef>#/status.
+  fromCandidateRecord({ name, artifactRef, label, record }: CandidateRecord): DiscoveryGap[] {
+    const { gaps, candidates, omittedCandidates: omitted, snapshotRef, status } = object(record) ? record : {};
+    assert(Array.isArray(gaps) && Array.isArray(candidates) && text(snapshotRef) && Number.isSafeInteger(omitted) &&
+      (omitted as number) >= 0 && status === ((omitted as number) > 0 ? 'partial' : 'completed'),
+    'Invalid candidate record: ' + artifactRef);
+    const listedGaps = this.fromRecord({ name, artifactRef, gaps: gaps.map(locatedGap) });
+    if (status !== 'partial') return listedGaps;
+    return [...listedGaps, { id: this.id(name, listedGaps.length), kind: 'tool-outcome', subjectRefs: [snapshotRef],
+      reason: `The ${label} are partial: the record keeps the first ${candidates.length} candidates and leaves out ${String(omitted)}.`,
+      evidenceRefs: [artifactRef + '#/status'] }];
   }
 
   // Refuses a review that leaves out or changes one of the required gaps of the named

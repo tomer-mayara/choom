@@ -1,0 +1,125 @@
+import { describe, expect, test } from "bun:test";
+import { CandidateGaps } from "../../src/candidate-gaps.ts";
+import { ToolGaps } from "../../src/tool-gaps.ts";
+
+// The required gaps of the Stage 4 candidate records (DB5): each gap that a behavior
+// entry or resource access candidates record lists, and one gap for a record that is
+// partial. Their IDs start with the attempt ID and the name of the record.
+type Json = Record<string, unknown>;
+
+const stageFourGaps = new ToolGaps("s4-check-");
+const behaviorRef = "s4-check-file@behavior-entry-candidates.json";
+const accessRef = "s4-check-file@resource-access-candidates.json";
+const computedValue = "The value at the property path is not a string literal, so it is known only at run time.";
+// The settings rule of the Vite input cannot read the value at line 6, column 64 of the settings file.
+const settingsGap: Json = { kind: "unknown-settings-value", ruleId: "vite-build-rollup-options-input", ruleVersion: 1,
+  entryKind: "frontend-entry", path: "web/vite.config.ts", sha256: "a".repeat(64),
+  range: [{ line: 6, column: 64 }, { line: 6, column: 89 }], expression: "`${pages[0]}/index.html`", truncated: false,
+  reason: computedValue };
+// A reference path directive names a file that the snapshot does not hold, so a subject names a path outside the snapshot.
+const missingInput = "src/app.ts names src/env.d.ts in a reference path directive, but the snapshot does not hold that file.";
+const inputGap: Json = { kind: "missing-compiler-input", input: "reference-path", missing: "src/env.d.ts",
+  subjectRefs: ["src/app.ts", "src/env.d.ts"], reason: missingInput };
+// A candidates record with `saved` candidates and `omitted` candidates after the limit.
+const candidatesRecord = (gaps: unknown[], saved = 1, omitted = 0): Json => ({ formatVersion: 1, attemptId: "s4-check",
+  snapshotRef: "snapshot-check", status: omitted > 0 ? "partial" : "completed",
+  candidates: Array.from({ length: saved }, (_, index) => ({ name: `/route-${index}` })), omittedCandidates: omitted, gaps });
+const behaviorRecord = (record: Json) => ({ name: "behavior-entry", artifactRef: behaviorRef, label: "behavior entry candidates",
+  record });
+
+describe("ToolGaps.fromCandidateRecord", () => {
+  test("gives a gap for each gap that the record lists, in its order, and then a gap for a partial record", () => {
+    expect(stageFourGaps.fromCandidateRecord(behaviorRecord(candidatesRecord([settingsGap, inputGap], 2, 3)))).toEqual([
+      { id: "s4-check-behavior-entry-gap-001", kind: "unknown-settings-value", subjectRefs: ["web/vite.config.ts"],
+        reason: "The behavior entry rule vite-build-rollup-options-input (version 1) cannot read the value at line 6, " +
+          `column 64 of web/vite.config.ts. ${computedValue}`, evidenceRefs: [`${behaviorRef}#/gaps/0`] },
+      { id: "s4-check-behavior-entry-gap-002", kind: "missing-compiler-input", subjectRefs: ["src/app.ts", "src/env.d.ts"],
+        reason: missingInput, evidenceRefs: [`${behaviorRef}#/gaps/1`] },
+      { id: "s4-check-behavior-entry-gap-003", kind: "tool-outcome", subjectRefs: ["snapshot-check"],
+        reason: "The behavior entry candidates are partial: the record keeps the first 2 candidates and leaves out 3.",
+        evidenceRefs: [`${behaviorRef}#/status`] },
+    ]);
+  });
+
+  test("gives no gap for a completed record that lists no gap", () => {
+    expect(stageFourGaps.fromCandidateRecord(behaviorRecord(candidatesRecord([], 4)))).toEqual([]);
+  });
+
+  test("gives the gaps of the resource access candidates the name of their record", () => {
+    const access = { name: "resource-access", artifactRef: accessRef, label: "resource access candidates",
+      record: candidatesRecord([inputGap], 10000, 1) };
+    expect(stageFourGaps.fromCandidateRecord(access).map(({ id, kind, evidenceRefs }) => ({ id, kind, evidenceRefs }))).toEqual([
+      { id: "s4-check-resource-access-gap-001", kind: "missing-compiler-input", evidenceRefs: [`${accessRef}#/gaps/0`] },
+      { id: "s4-check-resource-access-gap-002", kind: "tool-outcome", evidenceRefs: [`${accessRef}#/status`] },
+    ]);
+  });
+
+  test.each([
+    ["is not an object", null],
+    ["has no list of gaps", { ...candidatesRecord([]), gaps: {} }],
+    ["has no list of candidates", { ...candidatesRecord([]), candidates: 3 }],
+    ["has no snapshot ID", { ...candidatesRecord([]), snapshotRef: "" }],
+    ["counts omitted candidates but is completed", { ...candidatesRecord([], 1, 2), status: "completed" }],
+    ["is partial but omits no candidate", { ...candidatesRecord([]), status: "partial" }],
+  ])("refuses a record that %s", (_name, record) => {
+    expect(() => stageFourGaps.fromCandidateRecord(behaviorRecord(record as Json)))
+      .toThrow(new Error(`Invalid candidate record: ${behaviorRef}`));
+  });
+
+  test.each([
+    ["a settings gap without a range", { ...settingsGap, range: null }],
+    ["a settings gap without a reason", { ...settingsGap, reason: "" }],
+    ["a gap without subjects", { kind: "missing-compiler-input", reason: missingInput }],
+  ])("refuses %s", (_name, gap) => {
+    expect(() => stageFourGaps.fromCandidateRecord(behaviorRecord(candidatesRecord([inputGap, gap]))))
+      .toThrow(new Error(`Invalid gap in the tool record: ${behaviorRef}#/gaps/1`));
+  });
+});
+
+describe("ToolGaps.reservedPrefix", () => {
+  test("is the start of each ID that id gives and that reserves reserves", () => {
+    const prefix = stageFourGaps.reservedPrefix("behavior-entry");
+    expect(prefix).toBe("s4-check-behavior-entry-gap-");
+    expect(stageFourGaps.id("behavior-entry", 11).startsWith(prefix)).toBe(true);
+    expect([prefix + "x", "s4-check-behavior-entry-x"].map((id) => stageFourGaps.reserves("behavior-entry", id))).toEqual([true, false]);
+  });
+});
+
+// The two candidate records of a Stage 4 attempt, by attempt file name.
+const savedRecords: Record<string, Json> = { "behavior-entry-candidates.json": candidatesRecord([settingsGap], 3),
+  "resource-access-candidates.json": candidatesRecord([inputGap], 10000, 2) };
+const readSaved = (file: string): unknown => savedRecords[file];
+
+describe("CandidateGaps of a Stage 4 attempt", () => {
+  const attemptGaps = new CandidateGaps("s4-check");
+
+  test("gives the required gaps of the behavior entry candidates and then of the resource access candidates", () => {
+    expect(attemptGaps.record(readSaved)).toEqual({ formatVersion: 1, gaps: [
+      ...stageFourGaps.fromCandidateRecord(behaviorRecord(savedRecords["behavior-entry-candidates.json"])),
+      ...stageFourGaps.fromCandidateRecord({ name: "resource-access", artifactRef: accessRef, label: "resource access candidates",
+        record: savedRecords["resource-access-candidates.json"] })] });
+    expect(attemptGaps.record(readSaved).gaps.map(({ id }) => id)).toEqual(["s4-check-behavior-entry-gap-001",
+      "s4-check-resource-access-gap-001", "s4-check-resource-access-gap-002"]);
+  });
+
+  test("names the attempt files by their artifact IDs, and reserves an ID prefix for each record", () => {
+    expect([CandidateGaps.file, ...CandidateGaps.records.map(({ file }) => file)].map((file) => attemptGaps.ref(file))).toEqual([
+      "s4-check-file@required-gaps.json", behaviorRef, accessRef]);
+    expect(attemptGaps.reservedPrefixes()).toEqual(["s4-check-behavior-entry-gap-", "s4-check-resource-access-gap-"]);
+  });
+
+  // Stage 5 keeps the behavior entry candidates of Stage 4, so their artifact ID names the Stage 4 attempt.
+  test("finds the Stage 4 attempt of a behavior entry candidates record", () => {
+    expect(CandidateGaps.ofCandidates("s4-retry-2-file@behavior-entry-candidates.json").ref(CandidateGaps.file))
+      .toBe("s4-retry-2-file@required-gaps.json");
+  });
+
+  test.each([
+    ["another record of the attempt", accessRef],
+    ["the candidates of another stage", "s5-check-file@behavior-entry-candidates.json"],
+    ["no reference", undefined],
+  ])("refuses %s as the behavior entry candidates", (_name, ref) => {
+    expect(() => CandidateGaps.ofCandidates(ref)).toThrow(new Error(
+      `The behavior entry candidates ${String(ref)} are not a record of a Stage 4 attempt.`));
+  });
+});
