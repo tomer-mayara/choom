@@ -5,6 +5,9 @@ export interface ReviewPass {
 export interface PromptFacts {
   runRef: unknown; snapshotRef: unknown; entryAnalysisRef: unknown; attemptId: string; work: string; attempt: string;
   graph: { ref: string; contexts: ReviewPass[] };
+  // The gaps that the candidate records require: the artifact ID of required-gaps.json,
+  // the start of the IDs that only these gaps can use, and the gaps.
+  requiredGaps: { ref: string; prefixes: readonly string[]; gaps: readonly unknown[] };
 }
 
 function graphEvidence({ ref, contexts }: PromptFacts['graph']): string {
@@ -60,6 +63,19 @@ const resourceCandidates = `resource-access-candidates.json lists the calls that
   `its own documented owner. For a modeled resource with unknown ownership, set the modeled resource's owner.value to null ` +
   `and name \`<resource-id>.owner\` in discovery. See [Resource observations](record-format.md#resource-observations).\n\n`;
 
+// The gaps that the candidate records require (DB5). The Stage 4/5 publisher refuses a
+// packet that does not copy each one exactly, or that uses a reserved ID for another record.
+function requiredGapsText({ ref, prefixes, gaps }: PromptFacts['requiredGaps']): string {
+  const reserved = `an ID that starts with ${prefixes.join(' or ')}.`;
+  if (!gaps.length) return `Required gaps (${ref}): none. The candidate records list no gap and are complete. ` +
+    `Do not give a question or gap ${reserved}\n\n`;
+  return `Required gaps (${ref}): each gap that behavior-entry-candidates.json or resource-access-candidates.json lists ` +
+    `gives one required gap, and so does a record with status: partial. Copy each gap below into the gaps of ` +
+    `entry-analysis.yaml and discovery.proposed.yaml exactly, with the same id, kind, subjectRefs, reason and evidenceRefs. ` +
+    `The publisher refuses a packet that leaves out or changes a required gap, or that gives a question or another gap ` +
+    `${reserved}\n\n\`\`\`json\n${JSON.stringify(gaps, null, 2)}\n\`\`\`\n\n`;
+}
+
 const exampleReview = `For a source-reviewed example, read its cited source range. Compare each displayed field, value and row ` +
   `with the cited assertion, return value or contract for that input. Set result.scope to complete only when the evidence establishes the whole ` +
   `result and the example shows it all. Use excerpt for a supported subset. Omit the result when only the call or input is supported. ` +
@@ -91,7 +107,7 @@ const boundaryReview = `When the run has a projectKey, write formatVersion: 6 wi
     `Report the caller search status and scope. Keep a use with unknown role explicitly unknown. If a role has no evidenced example, record the ` +
     `scope checked and the gap.\n\n`;
 
-export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt, graph }: PromptFacts): string {
+export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId, work, attempt, graph, requiredGaps }: PromptFacts): string {
   return `# Stage 4 component recovery review\n\n` +
     `Run: ${runRef}\nSnapshot: ${snapshotRef}\nAttempt: ${attemptId}\n` +
     `Working folder: ${work}\nSaved attempt: ${attempt}\n\n` +
@@ -146,6 +162,7 @@ export function reviewPrompt({ runRef, snapshotRef, entryAnalysisRef, attemptId,
     `Preserve prior questions and gaps unchanged and append resolution notes with links to the old IDs. ${questionAndGapLimits}` +
     `Unknown owners and contract promises stay null with reasons. Keep excluded inputs and uninspected regions visible. ` +
     `If supported entry or Knip setting changes are needed, report them before interpreting affected issues.\n\n` +
+    requiredGapsText(requiredGaps) +
     `Do not edit the working drafts or register this attempt during review. Save the complete visible LLM response ` +
     `and call metadata with hiddenReasoning: not-saved. Do not save hidden reasoning. ` +
     `The operator validates and publishes the packet with the trusted stage-4-5-publish.ts helper. Do not write a custom finalizer.\n`;
