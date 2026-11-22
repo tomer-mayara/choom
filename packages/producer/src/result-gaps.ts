@@ -1,12 +1,11 @@
 import { assert, evidenceBase, type Fields } from './record-checks.ts';
 
 // An analysis that did not run keeps its result record, and a gap cites that record,
-// so that the missing coverage stays visible. Each stage checks this where it accepts
-// such a result: the shared record checks of Stages 4 to 6 for the Knip preflight and
-// runs, and the Stage 3 finalizer for the symbol mentions. Stage 2 finish makes the
-// stronger check of tool-gaps.ts: the analysis copies each required gap exactly. A gap
-// cites a record when one of its evidence references names the record, alone or with
-// a JSON Pointer into it.
+// so that the missing coverage stays visible. The shared record checks of Stages 4 to
+// 6 check this for the Knip preflight and runs. Stage 2 finish and the Stage 3
+// finalizer make the stronger check of tool-gaps.ts: the analysis copies each required
+// gap exactly. A gap cites a record when one of its evidence references names the
+// record, alone or with a JSON Pointer into it.
 export interface KnipResults {
   // The questions and gaps that the stage accepts with the results.
   gaps: unknown;
@@ -34,10 +33,4 @@ export function checkKnipResultGaps({ gaps, preflightRef, preflight, runsRef, ru
     assert(cited(gaps, runsRef), `The ${String(run.mode)} Knip run in ${String(runsRef)} has the status ${run.status}. ` +
       `Record a gap that cites ${String(runsRef)}.`);
   }
-}
-
-// Symbol mentions that are unavailable or skipped need a gap that cites their record.
-export function checkSymbolResultGap(gaps: unknown, ref: string, status: unknown): void {
-  if (status === 'unavailable' || status === 'skipped')
-    assert(cited(gaps, ref), `The symbol mentions in ${ref} have the status ${status}. Record a gap that cites ${ref}.`);
 }

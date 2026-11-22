@@ -22,6 +22,14 @@ interface Outcome { reason: string; evidenceRef: string }
 
 // The discovery contract limits a gap reason to 16 KiB of UTF-8.
 const reasonLimit = 16 * 1024;
+// The first sentence of the gap of the symbol mentions, by their status. Completed symbol mentions need no gap.
+const symbolOutcomes: Readonly<Record<string, string | null>> = {
+  completed: null,
+  partial: 'The symbol mentions are partial: they cover only the exports and types that the completed Knip runs reported.',
+  unavailable: 'The symbol mentions are unavailable: no Knip run completed, so they cover no reported export or type.',
+  skipped: 'The symbol mentions are skipped: Knip did not run, so they cover no reported export or type.',
+};
+const knipStatuses = ['completed', 'failed', 'skipped'];
 const listed = (value: unknown): string[] => Array.isArray(value) ? value.filter(text) : [];
 const sentence = (value: string): string => /[.!?]$/.test(value.trimEnd()) ? value.trimEnd() : value.trimEnd() + '.';
 
@@ -71,9 +79,11 @@ function locatedGap(gap: unknown): unknown {
 export class ToolGaps {
   // The name of the Knip outcomes in the gap IDs, as in s2-001-knip-gap-001.
   static readonly knip = 'knip';
+  // The name of the Stage 3 symbol mentions in the gap IDs, as in s3-001-symbol-mentions-gap-001.
+  static readonly symbolMentions = 'symbol-mentions';
   readonly #prefix: string;
 
-  // `prefix` starts each gap ID: s1- for Stage 1, and the attempt ID and a hyphen for Stage 2.
+  // `prefix` starts each gap ID: s1- for Stage 1, and the attempt ID and a hyphen for Stages 2 and 3.
   constructor(prefix: string) {
     this.#prefix = prefix;
   }
@@ -127,6 +137,34 @@ export class ToolGaps {
     });
     return outcomes.map(({ reason, evidenceRef }, index) => ({ id: this.id(ToolGaps.knip, index), kind: 'tool-outcome',
       subjectRefs: [snapshotRef], reason, evidenceRefs: [evidenceRef] }));
+  }
+
+  // The gap of the symbol mentions of Stage 3 collect, whose record is `ref`: one gap
+  // when their status is partial, unavailable or skipped, and none when it is completed.
+  // The gap has kind tool-outcome, the snapshot ID as its subject, the outcome and each
+  // Knip run that did not complete as its reason, the ID <prefix>symbol-mentions-gap-001,
+  // and cites the record.
+  fromSymbolMentions(record: unknown, ref: string): DiscoveryGap[] {
+    const reports = object(record) ? record.reports : undefined;
+    assert(object(record) && text(record.snapshotRef) && text(record.knipRunsRef) && typeof record.status === 'string' &&
+      Object.hasOwn(symbolOutcomes, record.status) && Array.isArray(reports) &&
+      reports.every(report => object(report) && text(report.mode) && knipStatuses.includes(report.status as string)),
+    'Invalid symbol mentions: ' + ref);
+    const outcome = symbolOutcomes[record.status];
+    if (!outcome) return [];
+    const reasons = (reports as Fields[]).filter(report => report.status !== 'completed').map(({ mode, status }) =>
+      `The ${String(mode)} Knip run of ${String(record.knipRunsRef)} ${status === 'failed' ? 'failed' : 'was skipped'}.`);
+    return [{ id: this.id(ToolGaps.symbolMentions, 0), kind: 'tool-outcome', subjectRefs: [record.snapshotRef],
+      reason: reasonText(outcome, reasons, ref), evidenceRefs: [ref] }];
+  }
+
+  // The gaps of a Stage 3 exports record, whose name in the gap IDs is `name`, such as
+  // exports-001, and whose record is `ref`: one gap for each compiler input that the
+  // snapshot does not hold. Each gap keeps the kind, subjects and reason of the record,
+  // also a subject that names the missing file, as fromRecord gives them.
+  fromExports(name: string, record: unknown, ref: string): DiscoveryGap[] {
+    assert(object(record) && Array.isArray(record.gaps), 'Invalid exports record: ' + ref);
+    return this.fromRecord({ name, artifactRef: ref, gaps: record.gaps });
   }
 
   // The gaps of a Stage 4 candidate record (DB5): each gap that the record lists, as

@@ -142,7 +142,8 @@ names nothing of the run: each subject names a file of the snapshot, a folder of
 the snapshot written as `<folder>/**`, the snapshot ID, a question or gap, an
 entry candidate or a baseline item, as
 the [record contract](record-format.md#ids-and-evidence) gives. A gap that
-Stage 1 copied from a tool record keeps its subjects. The checks also refuse a
+Stage 1 copied from a tool record, and a required gap of a Stage 3 exports
+record, keep their subjects. The checks also refuse a
 selected entry analysis whose Knip profile preflight marked unsupported, or
 whose Knip mode failed or was skipped, when no gap cites that record
 ([discovery](record-format.md#discovery)). Current overview and mapping/resource limits must describe the

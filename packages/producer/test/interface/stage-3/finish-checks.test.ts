@@ -17,7 +17,12 @@ interface FinishCase { name: string; change: (packet: StageThreePacket) => void;
 const record = (value: unknown): JsonRecord => value as JsonRecord;
 const firstPriority = (packet: StageThreePacket): JsonRecord =>
   record((packet.analysis.inspectionPriorities as unknown[])[0]);
-// GB-01b: adds a new gap of the attempt. The Stage 3 packet has the gap s3-check-gap-001 for the skipped symbol mentions.
+// The required gap of the symbol mentions, which collect saved in required-gaps.json.
+const mentionsGapId = "s3-check-symbol-mentions-gap-001";
+const mentionsGap = (packet: StageThreePacket): JsonRecord =>
+  record((packet.analysis.gaps as JsonRecord[]).find((gap) => gap.id === mentionsGapId));
+const copyEach = "Copy each gap of s3-check-file@required-gaps.json exactly.";
+// GB-01b: adds a new gap of the attempt. The Stage 3 packet has the required gap of the skipped symbol mentions.
 const addGap = (packet: StageThreePacket, subjectRefs: string[], evidenceRefs = ["s3-check-file@loading-search.json"]): void => {
   packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: "s3-check-gap-002", kind: "missing-input", subjectRefs,
     reason: "The review names what it did not find.", evidenceRefs }];
@@ -61,12 +66,18 @@ const cases: FinishCase[] = [
   { name: "an inspection priority cites a JSON Pointer into a file that is not JSON or YAML",
     change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@operator-start.stdout.txt#/0"]; },
     message: "Only a .json, .yaml or .yml file can take a JSON Pointer: s3-check-file@operator-start.stdout.txt#/0" },
-  // P4: Stage 2 skipped Knip, so the symbol mentions are skipped, and a gap must cite their record.
-  { name: "no gap cites the skipped symbol mentions", change: (packet) => {
-    packet.analysis.gaps = (packet.analysis.gaps as JsonRecord[])
-      .filter((gap) => !(gap.evidenceRefs as string[]).includes("s3-check-file@symbol-mentions.json"));
-  }, message: "The symbol mentions in s3-check-file@symbol-mentions.json have the status skipped. " +
-    "Record a gap that cites s3-check-file@symbol-mentions.json." },
+  // P4 (DB5): Stage 2 skipped Knip, so the symbol mentions are skipped. The analysis copies their required gap exactly.
+  { name: "the analysis leaves out the required gap of the skipped symbol mentions", change: (packet) => {
+    packet.analysis.gaps = (packet.analysis.gaps as JsonRecord[]).filter((gap) => gap.id !== mentionsGapId);
+  }, message: `The entry analysis leaves out the required gap ${mentionsGapId}. ${copyEach}` },
+  { name: "the analysis changes the reason of the required gap of the symbol mentions", change: (packet) => {
+    mentionsGap(packet).reason = "Knip did not run in Stage 2.";
+  }, message: `The entry analysis changes the required gap ${mentionsGapId}. ${copyEach}` },
+  { name: "a new gap has an ID that is reserved for the required gaps of the symbol mentions", change: (packet) => {
+    packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: "s3-check-symbol-mentions-gap-002", kind: "deferral",
+      subjectRefs: ["app.ts"], reason: "Not reviewed.", evidenceRefs: ["s3-check-file@symbol-mentions.json"] }];
+  }, message: "The ID s3-check-symbol-mentions-gap-002 is reserved for the required gaps of s3-check-file@required-gaps.json. " +
+    "Use a different ID." },
   // GB-01b: each subject of a new question or gap, and of each inspection priority, names something that the run holds.
   { name: "a new gap names a file that is not in the snapshot", change: (packet) => addGap(packet, ["app.ts", "src/no-such-file.ts"]),
     message: `The subject src/no-such-file.ts of the gap s3-check-gap-002 names nothing. ${subjectForms}` },

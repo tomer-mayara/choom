@@ -6,8 +6,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { draftUpdate } from './draft-update.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, object, savedDocument, text } from './record-checks.ts';
-import { checkSymbolResultGap } from './result-gaps.ts';
 import { SavedAttemptFiles } from './saved-attempt-files.ts';
+import { StageThreeGaps } from './stage-3-gaps.ts';
 import { checkReview, utf8 } from './stage-3-review.ts';
 
 // The Stage 3 finalizer. It checks the saved attempt, its receipts, the earlier
@@ -60,7 +60,7 @@ const draftNames = ['run', 'discovery', 'baseline'];
 // The documents that Stage 3 start saved; the attempt holds no producer code.
 const toolFiles = ['step-3-cookbook.md'];
 const checkpoints = draftNames.map(name => name + '.before.yaml');
-const collectFiles = ['loading-search.json', 'symbol-mentions.json', 'source-excerpts.json',
+const collectFiles = ['loading-search.json', 'symbol-mentions.json', 'source-excerpts.json', StageThreeGaps.collectFile,
   'review-prompt.md', 'artifact-map.json'];
 const reviewFiles = ['entry-analysis.yaml', 'llm/analysis-prompt.md', 'llm/analysis-response.md',
   'llm/analysis-call.yaml', 'llm/review-scope.json'];
@@ -396,9 +396,11 @@ function finish(): void {
     const phase = name.slice(0, -'.json'.length);
     attempt.receipt(phase, 'text-search', [phase + '.stdout.jsonl', phase + '.stderr.txt', name]);
   }
-  // Each exports record must be as the exports action saved it.
-  for (const name of attempt.names.filter(name => /^exports-[0-9]+\.json$/.test(name)))
-    attempt.receipt(name.slice(0, -'.json'.length), 'exports', [name]);
+  // Each exports record and its required gaps must be as the exports action saved them.
+  for (const name of attempt.names.filter(name => /^exports-[0-9]+\.json$/.test(name))) {
+    const phase = name.slice(0, -'.json'.length);
+    attempt.receipt(phase, 'exports', [name, StageThreeGaps.exportsFile(phase)]);
+  }
   assert(attempt.buffers.has(attempt.attemptRef('commands.md')), 'Missing command log.');
   const inputs = selectedInputs(config, records, attempt);
   const loading = checkQueries(attempt, inputs);
@@ -409,9 +411,9 @@ function finish(): void {
     saved: attempt.saved, receipt: attempt.receipt, checkedSourceBytes });
   // The finalizer registers every attempt file, so each one must be a file that a producer action saved.
   attempt.refuseUnsaved();
-  // Symbol mentions that are unavailable or skipped need a gap that cites their record.
-  checkSymbolResultGap(analysis.gaps, attempt.attemptRef('symbol-mentions.json'),
-    (attempt.saved('symbol-mentions.json') as Fields | null | undefined)?.status);
+  // The analysis copies each required gap of the symbol mentions and of the exports records exactly (DB5).
+  new StageThreeGaps(config.id).check(attempt.names, attempt.saved,
+    { questions: analysis.questions as unknown[], gaps: analysis.gaps as unknown[] });
   const state: Finalization = { ...records, config, drafts, attempt, inputs, loading, analysis, currentExcerpts,
     checkedSourceBytes };
   finalChecks(state);

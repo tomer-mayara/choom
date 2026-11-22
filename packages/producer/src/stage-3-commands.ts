@@ -12,6 +12,7 @@ import { assert, type Fields, hash, object } from './record-checks.ts';
 import { ripgrepVersion, runRipgrep } from './ripgrep.ts';
 import { collect, type Output } from './stage-3-collect.ts';
 import { exportsRecord } from './stage-3-exports.ts';
+import { StageThreeGaps } from './stage-3-gaps.ts';
 import {
   checkpoint, directory, drafts, handoffState, numberedExcerpt, type Parse, read, safePath, type StageState,
 } from './stage-3-inputs.ts';
@@ -22,11 +23,12 @@ import {
 
 // The Stage 3 helper. start checks the run after Stage 2 and saves the checkpoints,
 // the cookbook and the handoff; collect saves the loading search, the symbol
-// mentions, the first excerpts, the review prompt and the proposed artifact map;
-// excerpt saves a requested range; text-search saves the record of a ripgrep search
-// of the snapshot; exports saves the exports of a source file, read with the
-// snapshot project; save-review copies the LLM review packet. Each action saves a
-// receipt and appends its outcome to the command log.
+// mentions, the first excerpts, their required gaps, the review prompt and the
+// proposed artifact map; excerpt saves a requested range; text-search saves the
+// record of a ripgrep search of the snapshot; exports saves the exports of a source
+// file, read with the snapshot project, and their required gaps; save-review copies
+// the LLM review packet. Each action saves a receipt and appends its outcome to the
+// command log.
 interface Toolchain {
   parse: Parse;
   // ts-morph, with its own copy of TypeScript, which Stage 3 uses.
@@ -80,6 +82,8 @@ const digests = (names: string[]): Record<string, string> => Object.fromEntries(
 const logs = (prefix: string): string[] => ['.started.json', '.stdout.txt', '.stderr.txt'].map(suffix => prefix + suffix);
 const require = createRequire(join(tools, 'package.json'));
 const modules = join(tools, 'node_modules') + '/';
+// The gaps that the tool records of this attempt require (DB5). The review copies each one exactly.
+const attemptGaps = new StageThreeGaps(id);
 
 // A module of the trusted tool checkout, from the node_modules folder of the checkout.
 function load(name: string, file = ''): unknown {
@@ -106,8 +110,10 @@ function loadTools(): Toolchain {
   } };
 }
 
-function reviewPrompt({ entryAnalysisRef }: { entryAnalysisRef: unknown }): string {
-  return cookbookPrompt(saved(cookbook), 3, { WORK: work, ATTEMPT: attempt, ID: id, PREVIOUS_ENTRY_REF: entryAnalysisRef });
+// The review prompt of the saved cookbook. It lists the required gaps of collect, the text of their saved record.
+function reviewPrompt({ entryAnalysisRef }: { entryAnalysisRef: unknown }, requiredGaps: string): string {
+  return cookbookPrompt(saved(cookbook), 3, { WORK: work, ATTEMPT: attempt, ID: id, PREVIOUS_ENTRY_REF: entryAnalysisRef,
+    REQUIRED_GAPS: requiredGaps });
 }
 
 // Saves the started record of this action. Each excerpt request, text search and
@@ -198,9 +204,9 @@ function startedAttempt(): Started {
 }
 
 function collectAction({ toolchain, state }: Started, prefix: string, output: Output, outputNames: string[]): string {
-  const prompt = reviewPrompt(state.facts);
   const summary = collect(state, toolchain, output, id);
-  save('review-prompt.md', prompt);
+  output(StageThreeGaps.collectFile, attemptGaps.ofSymbolMentions(JSON.parse(saved('symbol-mentions.json').toString())));
+  save('review-prompt.md', reviewPrompt(state.facts, saved(StageThreeGaps.collectFile).toString().trimEnd()));
   outputNames.push('review-prompt.md');
   const known = [...frozen, 'operator-start.json', ...logs('operator-start'),
     prefix + '.started.json', ...outputNames];
@@ -258,15 +264,19 @@ function textSearchAction({ toolchain, state }: Started, phase: string, output: 
     `Outcome: ${searchOutcome(search)}. ripgrep searched ${scope.searchedFiles} files.`;
 }
 
-// Lists the exports of one indexed source file and saves the record. Nothing is
-// saved for a refused request; its receipt keeps the reason.
+// Lists the exports of one indexed source file and saves the record, and then the
+// required gaps of the saved record. Nothing is saved for a refused request; its
+// receipt keeps the reason.
 function exportsAction({ toolchain, state }: Started, phase: string, output: Output): string {
   const [path = ''] = args;
   const record = exportsRecord({ attemptId: id, state, path, tsMorph: toolchain.tsMorph, versions: toolchain.versions });
   const name = phase + '.json';
   output(name, record);
+  const gapsName = StageThreeGaps.exportsFile(phase);
+  output(gapsName, attemptGaps.ofExports(phase, JSON.parse(saved(name).toString())));
   return `Saved ${artifactId(name)} at ${join(attempt, name)} (SHA-256 ${hash(saved(name))}). ` +
-    `Listed ${(record.exports as unknown[]).length} exports of ${path} and ${(record.gaps as unknown[]).length} gaps.`;
+    `Listed ${(record.exports as unknown[]).length} exports of ${path} and ${(record.gaps as unknown[]).length} gaps. ` +
+    `Saved the required gaps as ${artifactId(gapsName)} at ${join(attempt, gapsName)}; the entry analysis copies each one exactly.`;
 }
 
 function runAction(prepared: Prepared | undefined, { phase, prefix }: Reservation, output: Output,
