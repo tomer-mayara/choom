@@ -177,7 +177,7 @@ export function producerFixture(change: (baseline: Record<string, unknown>) => v
   const progress = { inventory: 'complete', entryAnalysis: 'complete', inspectionPriorities: 'complete',
     componentRecovery: 'complete', remainingCode: 'complete', baselineRecovery: 'pending' };
   // The summary that the Stage 4/5 publisher writes for the Stage 5 records.
-  const coverage = new RunSummary({ progress, inventory, reviewRef: selectedRefs.entryAnalysisRef,
+  const coverage = new RunSummary({ inventory, reviewRef: selectedRefs.entryAnalysisRef,
     codeMappingRef: selectedRefs.codeMappingRef, issuesRef: stage + '-file@discovery.proposed.yaml', issues: discovery }).coverage();
   const runYaml = stringify({
     formatVersion: 1, id: runRef, mode: 'A', status: 'in-progress', snapshot: { id: snapshotRef, root: 'snapshot', inventoryRef },

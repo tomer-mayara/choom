@@ -334,7 +334,7 @@ function completeManifest({ state, prepared, yaml }: Prepared, phase: Files, com
   add(baselineRef, baselinePath, candidate(state, 'baseline.candidate.yaml'));
   add(discoveryRef, discoveryPath, candidate(state, 'discovery.candidate.yaml'));
   const progress = { ...(state.run.progress as Fields), baselineRecovery: 'complete' };
-  const coverage = new RunSummary({ progress, inventory: state.recordInputs.inventory,
+  const coverage = new RunSummary({ inventory: state.recordInputs.inventory,
     reviewRef: selectedRefs.entryAnalysisRef as string, codeMappingRef: selectedRefs.codeMappingRef as string,
     issuesRef: discoveryRef, issues: state.recordInputs.discovery as Fields }).coverage();
   const run = { ...state.run, status: 'completed', progress, coverage, baselineRef, discoveryRef, completedAt, artifacts };

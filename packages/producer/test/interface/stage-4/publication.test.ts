@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
+import type { RunCoverage } from "../../../src/generated/contracts.ts";
 import { type ExtraFile, type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
   type StageFourPublication } from "../../fixtures/stage-4-publication/fixture.ts";
 import { publishStageFive, stageFivePublication } from "../../fixtures/stage-5-publication/fixture.ts";
@@ -57,7 +58,7 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     withPublication((fixture) => {
       expect(publishStageFour(fixture, "finish").status).toBe(0);
       const runPath = join(fixture.work, "run.yaml");
-      const manifest = parse(readFileSync(runPath, "utf8")) as { coverage: { recorded: string } };
+      const manifest = parse(readFileSync(runPath, "utf8")) as { coverage: RunCoverage };
       expect(manifest.coverage).toEqual({
         inventoried: "2 regular files in the selected capture scope.",
         inspected: "s4-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +

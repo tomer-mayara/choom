@@ -353,7 +353,7 @@ function expectedRun(state: State, receipt: Buffer, discovery: Fields): Buffer {
   const artifacts = Object.fromEntries([...state.artifacts].map(([ref, { path, sha256 }]) => [ref, { path, sha256 }]));
   artifacts[refFor(receiptName)] = { path: 'evidence/' + id + '/' + receiptName, sha256: hash(receipt) };
   const progress = { ...(state.run.progress as Fields), [progressKey]: 'complete' };
-  return Buffer.from(stringify({ ...state.run, progress, coverage: new RunSummary({ progress, inventory: state.inventory,
+  return Buffer.from(stringify({ ...state.run, progress, coverage: new RunSummary({ inventory: state.inventory,
     reviewRef: refFor('entry-analysis.yaml'), codeMappingRef: refFor('code-mapping.json'),
     issuesRef: refFor('discovery.proposed.yaml'), issues: discovery }).coverage(), artifacts }));
 }

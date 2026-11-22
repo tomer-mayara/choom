@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
+import type { RunCoverage } from "../../../src/generated/contracts.ts";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 import type { JsonRecord } from "../../support/stage-2-attempt.ts";
@@ -149,7 +150,7 @@ describe("Stage 3 finish checks", () => {
   test("publishes the summary of the run, and verify makes the same summary", () => {
     const attempt = newAttempt("summary");
     expect(finishStageThree(attempt).finish?.status).toBe(0);
-    const manifest = parse(folderText(attempt, "run.yaml")) as { coverage: { recorded: string } };
+    const manifest = parse(folderText(attempt, "run.yaml")) as { coverage: RunCoverage };
     expect(manifest.coverage).toEqual({
       inventoried: "1 regular file in the selected capture scope.",
       inspected: "s3-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +

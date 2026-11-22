@@ -86,7 +86,7 @@ export function stagedRun(work: string, finishedStage: 1 | 2 | 3, options: Stage
   // The summary that the publisher of the finished stage writes. A staged entry analysis
   // has no question and gap lists, so the summary counts the lists of the discovery.
   const reviewRef = finishedStage === 1 ? "review-001" : String(discovery.entryAnalysisRef);
-  const coverage = new RunSummary({ progress, inventory: { files }, reviewRef,
+  const coverage = new RunSummary({ inventory: { files }, reviewRef,
     issuesRef: finishedStage === 1 ? "discovery-001" : reviewRef, issues: discovery }).coverage();
   save("run.yaml", stringify({ formatVersion: 1, id: "run-check", mode: "A", status: "in-progress", progress,
     snapshot: { id: snapshotRef, root: "snapshot", inventoryRef: "inventory-001", exclusions: "exclusions.txt" }, coverage,
