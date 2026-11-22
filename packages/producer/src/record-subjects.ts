@@ -4,11 +4,13 @@ import { isToolGap } from './stage-1-gaps.ts';
 
 // The subjects of the questions and gaps of a discovery. The shared record checks of
 // Stages 4 to 6 check that each subject reference names something that the run
-// holds, so that no question or gap is about nothing.
+// holds, so that no question or gap is about nothing. Stages 1 to 3 check the
+// records that they add in the same way, before later stages keep them unchanged.
 
 // The baseline items that a subject can name: SubjectItems of @choom/baseline-model.
 export type ItemNames = Pick<SubjectItems, 'namedItem'>;
-// A question or gap of a discovery. A gap has a kind, and a question has none.
+// A question or gap of a discovery, or another record with subjects, such as an
+// inspection priority. A gap has a kind, and a question has none.
 export interface SubjectRecord {
   readonly id: unknown;
   readonly kind?: unknown;
@@ -25,6 +27,7 @@ export interface SubjectRun {
   readonly issues: Fields;
   // The IDs of the entry candidates of the selected entry analysis and of the earlier
   // entry analyses that it names. Stage 3 can retire a candidate with a note that names it.
+  // Stage 2 plan gives the candidates of the plan, and Stage 1 none.
   readonly candidateIds: Iterable<unknown>;
   readonly items: ItemNames;
 }
@@ -32,6 +35,11 @@ export interface SubjectRun {
 const issueLists = [['questions', 'question'], ['gaps', 'gap']] as const;
 const subjectForms = 'A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, ' +
   'a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.';
+// The baseline items of Stages 1 to 3: none. Each of these stages checks that the baseline is still empty.
+const noItems: ItemNames = { namedItem: () => undefined };
+
+const issueIdsOf = (issues: Fields): Set<unknown> =>
+  new Set(issueLists.flatMap(([kind]) => (issues[kind] as SubjectRecord[]).map(issue => issue.id)));
 
 // The folders that hold at least one of the files, without a final /.
 function foldersOf(files: Iterable<unknown>): Set<string> {
@@ -65,9 +73,15 @@ export class SubjectChecker {
     this.folders = foldersOf(this.files);
     this.snapshotRef = snapshotRef;
     this.issues = issues;
-    this.issueIds = new Set(issueLists.flatMap(([kind]) => (issues[kind] as SubjectRecord[]).map(issue => issue.id)));
+    this.issueIds = issueIdsOf(issues);
     this.candidateIds = new Set(candidateIds);
     this.items = items;
+  }
+
+  // The subject check of Stages 1 to 3 (DB2). These stages run before Stage 4 recovers
+  // the baseline items, so a subject can name no baseline item yet.
+  static beforeBaseline(run: Omit<SubjectRun, 'items'>): SubjectChecker {
+    return new SubjectChecker({ ...run, items: noItems });
   }
 
   // Each subject of the question or gap that names nothing of the run, in the order of
@@ -78,18 +92,30 @@ export class SubjectChecker {
     return record.subjectRefs.filter(subject => !this.names(subject));
   }
 
-  // Refuses the first question or gap with a subject that names nothing. The message
-  // names the subject and the question or gap. For a folder written without /**, it
-  // gives the folder selector to write.
+  // Refuses the first question or gap with a subject that names nothing.
   check(): void {
-    for (const [kind, label] of issueLists) {
-      for (const record of this.issues[kind] as SubjectRecord[]) {
-        const [subject] = this.refused(record);
-        if (subject === undefined) continue;
-        const selector = this.folderSelector(subject);
-        throw new Error(`The subject ${subject} of the ${label} ${String(record.id)} ` + (selector === undefined
-          ? `names nothing. ${subjectForms}` : `names a folder without /**. Write the folder as ${selector}.`));
-      }
+    for (const [kind, label] of issueLists) this.checkRecords(this.issues[kind] as SubjectRecord[], label);
+  }
+
+  // Refuses the first question or gap that the stage adds, that is, whose ID is not in
+  // `earlier`, the questions and gaps before the stage. Stages 1 to 3 check only the
+  // records that they add.
+  checkAdded(earlier: Fields): void {
+    const earlierIds = issueIdsOf(earlier);
+    for (const [kind, label] of issueLists)
+      this.checkRecords((this.issues[kind] as SubjectRecord[]).filter(issue => !earlierIds.has(issue.id)), label);
+  }
+
+  // Refuses the first of the records with a subject that names nothing. The message
+  // names the subject, the kind of the record (`label`, such as question) and its ID.
+  // For a folder written without /**, it gives the folder selector to write.
+  checkRecords(records: readonly SubjectRecord[], label: string): void {
+    for (const record of records) {
+      const [subject] = this.refused(record);
+      if (subject === undefined) continue;
+      const selector = this.folderSelector(subject);
+      throw new Error(`The subject ${subject} of the ${label} ${String(record.id)} ` + (selector === undefined
+        ? `names nothing. ${subjectForms}` : `names a folder without /**. Write the folder as ${selector}.`));
     }
   }
 
