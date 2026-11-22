@@ -386,7 +386,7 @@ It saves `evidence/stage1-discovery.yaml` as `discovery-001`; mutable root draft
 are never registered as immutable evidence. `run.yaml` has the
 [run summary](record-format.md#run-summary). It gives the file count and names
 `review-001` for the reviewed source ranges. It counts the questions and gaps of
-`discovery-001` and says that Stages 2 to 6 are pending.
+`discovery-001`. `progress` has the state of each stage.
 
 `verify` is read-only. Expected: `stage1-inputs-verified`, with the run/snapshot IDs,
 artifact count and inventory count. It also derives the gaps again from the saved

@@ -737,8 +737,8 @@ On success:
 
 - `run.yaml` registers the new evidence and marks `inspectionPriorities` complete.
   The run stays `in-progress`; baseline recovery is still pending. Its
-  [summary](record-format.md#run-summary) names the analysis of this attempt,
-  counts its questions and gaps, and says that Stages 4, 5 and 6 are pending.
+  [summary](record-format.md#run-summary) names the analysis of this attempt and
+  counts its questions and gaps. `progress` has the state of each stage.
 - `discovery.yaml.entryAnalysisRef` selects this attempt's analysis. Its questions
   and gaps include the preserved records and supported additions.
 - `baseline.yaml` stays unchanged. No planned work enters `inspectedPaths`.

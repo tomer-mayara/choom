@@ -778,11 +778,11 @@ Docker. The Stage 4/5 publisher checks, publishes and verifies the reviewed
 packet, and refuses a component ID equal to the baseline ID without writing.
 When it publishes, it writes the run summary, `coverage` in `run.yaml`, for the
 new records: the file count of the inventory, the entry analysis and code
-mapping of the attempt, the record counts of the questions and gaps, which keep
-their history and linked notes, and the stages that are still pending. `verify`
-makes the summary again and refuses a different one. The other publishers of
-Stages 1, 2, 3 and 6 write the summary of their records in the same way
-(`packages/producer/src/run-summary.ts`). Because `finish` registers every
+mapping of the attempt, and the record counts of the questions and gaps, which
+keep their history and linked notes. `progress` has the state of each stage.
+`verify` makes the summary again and refuses a different one. The other
+publishers of Stages 1, 2, 3 and 6 write the summary of their records in the
+same way (`packages/producer/src/run-summary.ts`). Because `finish` registers every
 attempt file, the publisher refuses an attempt file that no producer action
 saved, in `check`, `finish` and `verify`.
 The Stage 4 inspection suite runs the source collection and the excerpt action on

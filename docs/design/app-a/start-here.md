@@ -566,9 +566,9 @@ The final Stage 6 verification must succeed. Confirm that:
    reason. Proposed membership and exact mapping agree.
 4. Questions, gaps, partial coverage and source inspection limits remain visible.
 5. Inferred architectural statements remain proposed. Saving does not accept them.
-6. The [run summary](record-format.md#run-summary) names the selected records
-   and says that no stage is pending. Any retained explanatory defect is
-   identified precisely in readiness or run notes.
+6. The [run summary](record-format.md#run-summary) names the selected records,
+   and `progress` has `complete` for each stage. Any retained explanatory
+   defect is identified precisely in readiness or run notes.
 7. The fixed discovery result has `formatVersion: 2` and names the fixed baseline
    by its ID and the SHA-256 of its file (`baselineDigest`).
    Stage 6 verifies the saved bytes using the viewer's reader.

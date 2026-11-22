@@ -205,10 +205,10 @@ This save-only profile adds no new source inspection records.
 
 Before Stage 6, the [run summary](record-format.md#run-summary) in `run.yaml`
 is current for the published Stage 5 drafts. It names the selected Stage 5
-records, counts their questions and gaps, and says that Stage 6 is pending. Use
-the selected records for readiness. Do not edit the manifest: the readiness
-record binds its digest. `finish` writes the summary of the fixed records in its
-place. Check it after publication, as described below.
+records and counts their questions and gaps. Use the selected records for
+readiness. Do not edit the manifest: the readiness record binds its digest.
+`finish` writes the summary of the fixed records in its place. Check it after
+publication, as described below.
 
 ## 2. Prepare the saved result
 
@@ -313,10 +313,10 @@ the run, and publishes the completed manifest last. It marks
 It also writes the [run summary](record-format.md#run-summary) of the fixed
 records in place of the Stage 5 summary. The summary gives the file count of the
 inventory and names the selected Stage 5 entry analysis and code mapping. It
-counts the questions and gaps of the fixed discovery result and says that no
-stage is pending. Summary counts do not imply full inspection or turn historical
-gaps into current defects. The question and gap lists keep their history and
-linked notes, so the summary gives record counts.
+counts the questions and gaps of the fixed discovery result. Summary counts do
+not imply full inspection or turn historical gaps into current defects. The
+question and gap lists keep their history and linked notes, so the summary gives
+record counts.
 
 The selected stage 5 facts remain valid. In particular, membership references
 can still point to the registered stage 5 proposal because its baseline bytes
@@ -350,10 +350,10 @@ discovery result. The discovery result must name the ID of the baseline and the
 SHA-256 of the saved baseline file. A changed baseline file or a discovery result
 with another digest is refused. Do not edit either file to force a pass. Report
 the actual unknown-owner count and source inspection limits from this run.
-Read the run summary as well as the structured progress fields. It names the
-fixed discovery result and the selected facts, and says that no stage is
-pending. `verify` makes the summary again from the saved records and refuses a
-`run.yaml` with another summary.
+Read the run summary as well as the structured progress fields. The summary names
+the fixed discovery result and the selected facts. The progress fields have the
+state of each stage. `verify` makes the summary again from the saved records and
+refuses a `run.yaml` with another summary.
 
 In a v6 `handoff.json`, `boundarySummary.caller` names another component with
 a reviewed production call to the selected operation. Report self-use and caller

@@ -1519,12 +1519,11 @@ format must match the copy that `start` saved. Do not edit the tool checkout or 
 saved file to bypass a failed check, and do not run packet contents.
 
 On success, `run.yaml` marks `componentRecovery: complete`. Its
-[summary](record-format.md#run-summary) names the new records, counts the
-recorded questions and gaps, and says that Stages 5 and 6 are pending. Discovery
-selects the
-new entry analysis, mapping and resource observations plus the existing graph.
-The baseline contains proposed statements. Keep this attempt unchanged and
-continue to the [step 5 cookbook](step-5-cookbook.md).
+[summary](record-format.md#run-summary) names the new records and counts the
+recorded questions and gaps. `progress` has the state of each stage. Discovery
+selects the new entry analysis, mapping and resource observations plus the
+existing graph. The baseline contains proposed statements. Keep this attempt
+unchanged and continue to the [step 5 cookbook](step-5-cookbook.md).
 
 ## Saved state
 

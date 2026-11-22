@@ -441,12 +441,11 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 `check` is read-only. It is safe to correct the separate packet and repeat that
 check. `finish` copies and registers the review, updates the working drafts and
 marks `remainingCode: complete`. It also writes the
-[run summary](record-format.md#run-summary) for the new records, which says that
-Stage 6 is pending. `verify` checks the published state, the summary too. All
-three refuse a file in the attempt that no producer action saved. Do not rerun
-`finish` after success. Publication failure leaves evidence
-for investigation; after resolving the cause, use a fresh attempt rather than
-editing that evidence.
+[run summary](record-format.md#run-summary) for the new records. `verify` checks
+the published state, the summary too. All three refuse a file in the attempt that
+no producer action saved. Do not rerun `finish` after success. Publication
+failure leaves evidence for investigation; after resolving the cause, use a fresh
+attempt rather than editing that evidence.
 
 Apply the [review before publication](start-here.md#review-before-publication)
 guidance to the complete packet before `finish`. Check that:
