@@ -114,7 +114,12 @@ know such a gap by its form: its ID is `s1-<tool>-gap-NNN`, and its only
 evidence reference is the place of that gap in the tool record,
 `<artifact ID>#/gaps/N` with N one less than NNN, such as `s1-settings-gap-001`
 with `settings-001#/gaps/0`. The tool records are the settings record and the
-Git identity record.
+Git identity record. A [required gap of a Stage 3 exports record](#stage-3-required-gaps)
+keeps the subjects of its record in the same way, also a compiler input that the
+snapshot does not hold. Its ID is `<attempt>-exports-NNN-gap-MMM` of a Stage 3
+attempt, and its only evidence reference is `<attempt>-file@exports-NNN.json#/gaps/M`
+with M one less than MMM, such as `s3-001-exports-001-gap-001` with
+`s3-001-file@exports-001.json#/gaps/0`.
 
 A Stage 4 references record (`references-NNN.json`, see the
 [stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
@@ -1136,13 +1141,14 @@ inputs, deferred areas and unknown ownership visible.
 An analysis that did not run keeps its result record, and a gap cites that
 record by its artifact ID, alone or with a JSON Pointer into it: a Knip profile
 that the Stage 2 preflight marked `unsupported` needs a gap that cites the
-preflight record (`<attempt>-preflight`), a Knip mode that `failed` or was
-`skipped` needs a gap that cites the Knip runs record (`<attempt>-knip-runs`),
-and Stage 3 symbol mentions that are `unavailable` or `skipped` need a gap that
-cites their record (`<attempt>-file@symbol-mentions.json`). For the Knip records,
-Stage 2 `finish` refuses an analysis that does not copy each
-[required gap](#required-gaps) exactly. The Stage 3 finalizer refuses an analysis
-without the gap of the symbol mentions. The shared record checks of Stages 4 to 6
+preflight record (`<attempt>-preflight`), and a Knip mode that `failed` or was
+`skipped` needs a gap that cites the Knip runs record (`<attempt>-knip-runs`).
+For the Knip records, Stage 2 `finish` refuses an analysis that does not copy
+each [required gap](#required-gaps) exactly. The Stage 3 finalizer refuses an
+analysis that does not copy each [Stage 3 required gap](#stage-3-required-gaps)
+exactly: the gap of symbol mentions that are `partial`, `unavailable` or
+`skipped`, and the gap of each compiler input that an exports record names and
+the snapshot does not hold. The shared record checks of Stages 4 to 6
 check the Knip preflight and runs of the selected entry analysis again, such as
 with `The normal Knip run in s2-001-knip-runs has the status skipped. Record a gap
 that cites s2-001-knip-runs.`
@@ -1544,6 +1550,55 @@ Later stages keep these gaps unchanged, as they keep every question and gap. The
 shared record checks of Stages 4 to 6 check again that a gap cites the preflight
 record when it is `unsupported`, and the Knip receipts when a run is `skipped` or
 `failed`.
+
+## Stage 3 required gaps
+
+Stage 3 `collect` saves `required-gaps.json`, and each Stage 3 `exports` request
+saves `exports-NNN.required-gaps.json` after its record. The receipt of the
+action names the file with its SHA-256. The Stage 3 finalizer registers it as
+`<attempt>-file@required-gaps.json` or `<attempt>-file@exports-NNN.required-gaps.json`.
+Each file has the form of the [Knip required gaps](#required-gaps), the
+`RequiredGaps` model of the [contract](../../../cookbook/interfaces/producer-run-records.tsp).
+The [Stage 3 cookbook](step-3-cookbook.md#2-collect-focused-evidence) describes
+the tool records.
+
+| Tool record | Required gaps |
+| --- | --- |
+| `symbol-mentions.json` | One gap when the `status` is `partial`, `unavailable` or `skipped`, and none when it is `completed`. The ID is `<attempt>-symbol-mentions-gap-001`, the `kind` is `tool-outcome`, the subject is the snapshot ID and the evidence is the record, `<attempt>-file@symbol-mentions.json`. The `reason` gives the status and each Knip run of the selected Knip receipts that did not complete. |
+| `exports-NNN.json` | One gap for each gap of the record, which is a compiler input that the snapshot does not hold. The ID is `<attempt>-exports-NNN-gap-MMM`, with the position of the gap from 1 in three digits. The `kind`, `subjectRefs` and `reason` are those of the record, and the evidence is the place of the gap in the record, `<attempt>-file@exports-NNN.json#/gaps/M`, with M one less than MMM. A record without gaps gives a file without gaps. |
+
+Collect saves this record after a Stage 2 attempt that skipped both Knip runs:
+
+```json
+{
+  "formatVersion": 1,
+  "gaps": [
+    { "id": "s3-001-symbol-mentions-gap-001", "kind": "tool-outcome", "subjectRefs": ["snapshot-001"],
+      "reason": "The symbol mentions are skipped: Knip did not run, so they cover no reported export or type. The normal Knip run of s2-001-knip-runs was skipped. The production Knip run of s2-001-knip-runs was skipped.",
+      "evidenceRefs": ["s3-001-file@symbol-mentions.json"] }
+  ]
+}
+```
+
+A required gap of an exports record keeps the subjects of its record, also a
+file that the snapshot does not hold, such as `src/env.d.ts`. The subject checks
+know such a gap by its form (see [IDs and evidence](#ids-and-evidence)).
+
+The review prompt of `collect` lists the gaps of `required-gaps.json`. The
+message of each exports request names its required-gaps file, and the operator
+gives that file to the LLM with the record. The entry analysis copies each
+required gap into its `gaps` exactly, in any place of the list. The Stage 3
+finalizer gives the gaps again from the saved symbol mentions and exports
+records, also with `verify`. It refuses:
+
+- a required-gaps file that differs from them;
+- an entry analysis that leaves out or changes a required gap, such as with
+  `The entry analysis leaves out the required gap s3-001-exports-001-gap-001.
+  Copy each gap of s3-001-file@exports-001.required-gaps.json exactly.`;
+- a question or another gap whose ID starts with `<attempt>-symbol-mentions-gap-`,
+  or with `<attempt>-exports-NNN-gap-` for a saved `exports-NNN.json`.
+
+Later stages keep these gaps unchanged, as they keep every question and gap.
 
 ## Producer code record
 

@@ -115,8 +115,17 @@ Expected outputs:
 | `loading-search.json` | Query scope, source hashes, syntax matches, parser diagnostics, and limits. |
 | `symbol-mentions.json` | Selected Knip reports and identifier-name matches for their export/type issues. |
 | `source-excerpts.json` | Numbered excerpts for the focused paths, with missing and bounded inputs recorded. |
+| `required-gaps.json` | The gap of symbol mentions that are `partial`, `unavailable` or `skipped`. The entry analysis copies it exactly. |
 | `artifact-map.json` | IDs, paths, and digests for the evidence available to the review. These are proposed registrations until finalization. |
-| `review-prompt.md` | The filled LLM prompt below, with this attempt's paths and IDs. |
+| `review-prompt.md` | The filled LLM prompt below, with this attempt's paths and IDs and the required gaps of `required-gaps.json`. |
+
+The status of the symbol mentions comes from the two Knip modes. It is
+`completed` when the two modes completed, and `partial` when one mode completed.
+It is `unavailable` when no mode completed and one or two failed, and `skipped`
+when Knip ran no mode. Collect saves `required-gaps.json` from the saved symbol
+mentions. For each status other than `completed`, it holds one gap with the ID
+`<attempt>-symbol-mentions-gap-001`. The gap names the Knip runs that did not
+complete. See [Stage 3 required gaps](record-format.md#stage-3-required-gaps).
 
 An empty completed query is different from a failed query. Keep parser failures
 and truncation visible. If the syntax scan fails, keep the failure and stop.
@@ -332,7 +341,8 @@ The helper saves:
 | File | Contents |
 | --- | --- |
 | `exports-NNN.json` | The record below. |
-| `operator-exports-NNN.json` | The receipt, with the digest of the record. |
+| `exports-NNN.required-gaps.json` | One required gap for each gap of the record. The entry analysis copies each one exactly. |
+| `operator-exports-NNN.json` | The receipt, with the digests of the record and of its required gaps. |
 
 | Record field | Meaning |
 | --- | --- |
@@ -343,7 +353,7 @@ The helper saves:
 | `tool` | `name` (`ts-morph`), its `version`, and `typescript`: the version of the TypeScript that ts-morph brings and that the project uses. |
 | `virtualRoot` | `/repo`, the snapshot root as the project sees it. |
 | `exports` | Each export in source order: `name`, `kind`, `typeOnly` and `range`, and `local` and `from` when they apply. |
-| `gaps` | The compiler inputs that the snapshot does not hold. Each gap has the fields of a discovery gap without its ID and evidence (`kind: missing-compiler-input`, `subjectRefs` and `reason`), the `input` (`files`, `types`, `reference-path` or `reference-types`) and the `missing` file or type package. |
+| `gaps` | The compiler inputs that the snapshot does not hold. Each gap has the fields of a discovery gap without its ID and evidence (`kind: missing-compiler-input`, `subjectRefs` and `reason`), the `input` (`files`, `types`, `reference-path` or `reference-types`) and the `missing` file or type package. Each gap is also a required gap in `exports-NNN.required-gaps.json`. |
 | `outsideReads` | Each request of the project for a path that the snapshot does not hold, once: the `operation` (`read-file`, `read-directory`, `file-exists` or `directory-exists`) and the `path` as the project sees it. The answer was "not found". |
 | `notes` | What the list covers and does not cover, in plain text. |
 
@@ -430,13 +440,23 @@ The file of this example starts with `/// <reference types="node" />`, and the
 `tsconfig.json` of the snapshot names `types/env.d.ts` in its `files` list. The
 lookups for the `node` types are the `outsideReads`.
 
+After the record, the helper saves `exports-NNN.required-gaps.json` from the
+saved record: one gap for each gap of the record, with the ID
+`<attempt>-exports-NNN-gap-MMM`, the `kind`, `subjectRefs` and `reason` of the
+record, and its place in the record as its evidence, such as
+`s3-001-file@exports-001.json#/gaps/0` for `s3-001-exports-001-gap-001`. A
+required gap keeps the subjects of the record, also a file that the snapshot
+does not hold, such as `types/env.d.ts`. A record without gaps gives a file
+without gaps. See [Stage 3 required gaps](record-format.md#stage-3-required-gaps).
+
 The helper refuses a request and saves only a failed receipt when the path is not
 an indexed regular file or not a JavaScript or TypeScript source file, when the
 file changed after the capture or is not UTF-8 text, or when the run has no
 registered settings record for this snapshot. Keep the failed receipt; request a
 corrected path in the same attempt.
 
-Give the LLM the printed ID and path. The review can cite the record, or one
+Give the LLM the printed IDs and paths of the record and of its required gaps.
+The review copies each required gap exactly. It can cite the record, or one
 export, as evidence, such as `s3-001-file@exports-001.json#/exports/0`. Name each
 supplied record in `suppliedArtifactRefs`. An export shows what the file declares
 or re-exports. It is not a use, and it does not show that another file imports it.
@@ -451,6 +471,9 @@ timing, or token count that the session does not expose.
 
 The helper fills the following template. It supplies the current entry analysis
 through the manifest, so the operator does not classify files or write records.
+It also puts the text of `required-gaps.json` in the prompt, so that the prompt
+lists the required gaps of collect. The required gaps of each exports request
+come with its record.
 
 <!-- stage3-review-prompt:start -->
 ```text
@@ -628,7 +651,8 @@ read by the LLM.
 
 Review the complete packet for meaning before `save-review` and publication.
 Check that conclusions have source context, reviewed ranges were actually read,
-and current prose matches the saved tool outcomes. Refresh current explanations
+current prose matches the saved tool outcomes, and each required gap is in the
+analysis unchanged. Refresh current explanations
 that still describe completed work as future work. Preserve earlier questions
 and gaps unchanged; add linked notes when new evidence narrows them. The gap
 count includes such notes and is not a count of unresolved defects. This review
@@ -682,8 +706,13 @@ checks the receipt of each excerpt, text search and exports request, so it refus
 a text-search or exports record, or raw ripgrep output, that changed after the
 request. It
 requires successful evidence collection and `knipAssessment.action: reuse`.
-When the symbol mentions of collect have the status `unavailable` or `skipped`,
-it requires a gap that cites `<attempt>-file@symbol-mentions.json`.
+It gives the required gaps again from the saved symbol mentions and from each
+saved exports record. It refuses a required-gaps file that differs from them.
+It refuses an analysis that leaves out or changes a required gap, for example
+`The entry analysis leaves out the required gap s3-001-symbol-mentions-gap-001.
+Copy each gap of s3-001-file@required-gaps.json exactly.` It also refuses a
+question or another gap whose ID starts with `<attempt>-symbol-mentions-gap-`,
+or with `<attempt>-exports-NNN-gap-` for a saved `exports-NNN.json`.
 The finalizer registers every attempt file. So each attempt file must be a
 receipt, an output or a log that a receipt names, or `commands.md`. The failed
 receipt of a request and its logs stay registered. The finalizer refuses any
@@ -765,7 +794,9 @@ and adds three fields:
 | `knipAssessment` | Whether the existing Knip settings still fit this review, with a reason and evidence. `rerun-required` prevents finalization. |
 | `inspectionPriorities` | Ordered planned checks, each with `id`, `subjectRefs`, integer `priority` from 1 to 3, `action`, `reason`, and `evidenceRefs`. |
 
-Keep deferrals in `gaps`, with their exact scope, reason, and evidence. A priority
+Keep deferrals in `gaps`, with their exact scope, reason, and evidence. `gaps`
+also holds an exact copy of each required gap of `required-gaps.json` and of each
+`exports-NNN.required-gaps.json`. A priority
 is planned work; a source record is an inspection already performed. Neither is
 a component boundary or a traced behavior path.
 

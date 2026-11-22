@@ -1410,7 +1410,7 @@ baseline item or a field of it, such as `billing.purpose`
 ([record-format.md](record-format.md#ids-and-evidence)). The publisher refuses
 any other subject, also in an earlier question or gap, so keep the ID of a
 component that a question or gap names. A gap that Stage 1 copied from a tool
-record keeps its subjects.
+record, and a required gap of a Stage 3 exports record, keep their subjects.
 Rewrite current summaries and limits to match the proposed packet; the historical
 preservation rule does not apply to stale overview text or current counts.
 
