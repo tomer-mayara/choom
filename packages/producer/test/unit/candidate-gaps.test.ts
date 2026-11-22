@@ -126,6 +126,25 @@ describe("CandidateGaps of a Stage 4 attempt", () => {
   });
 });
 
+// The shared record checks of Stages 4 to 6 give the required gaps again from each
+// candidate record that the selected entry analysis or resource observations name.
+describe("CandidateGaps.ofRecord", () => {
+  test("gives the required gaps of one saved candidate record, as record gives them for its attempt", () => {
+    expect([...CandidateGaps.ofRecord(behaviorRef, savedBehaviorRecord), ...CandidateGaps.ofRecord(accessRef, savedAccessRecord)])
+      .toEqual(new CandidateGaps("s4-check").record(readSaved).gaps);
+  });
+
+  test.each([
+    ["another file of a Stage 4 attempt", "s4-check-file@code-mapping.json"],
+    ["the candidates of another stage", "s5-check-file@behavior-entry-candidates.json"],
+    ["a gap of a candidate record", `${behaviorRef}#/gaps/0`],
+    ["no reference", undefined],
+  ])("refuses %s", (_name, ref) => {
+    expect(() => CandidateGaps.ofRecord(ref, savedBehaviorRecord))
+      .toThrow(new Error(`${String(ref)} is not a candidate record of a Stage 4 attempt.`));
+  });
+});
+
 // The publisher reads the registered records by artifact ID, also the attempt files of
 // Stage 4 that Stage 5 keeps. The review must hold each required gap of both records.
 describe("CandidateGaps.check", () => {
