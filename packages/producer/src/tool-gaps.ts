@@ -135,6 +135,15 @@ export class ToolGaps {
       reason: reasonText(outcome, reasons, ref), evidenceRefs: [ref] }];
   }
 
+  // The gaps of a Stage 3 exports record, whose name in the gap IDs is `name`, such as
+  // exports-001, and whose record is `ref`: one gap for each compiler input that the
+  // snapshot does not hold. Each gap keeps the kind, subjects and reason of the record,
+  // also a subject that names the missing file, as fromRecord gives them.
+  fromExports(name: string, record: unknown, ref: string): DiscoveryGap[] {
+    assert(object(record) && Array.isArray(record.gaps), 'Invalid exports record: ' + ref);
+    return this.fromRecord({ name, artifactRef: ref, gaps: record.gaps });
+  }
+
   // Refuses a review that leaves out or changes one of the required gaps of the named
   // tool record, or that gives a question or another gap an ID that `reserves` reserves
   // for them. A review keeps each required gap exactly, in any place of its gaps.
