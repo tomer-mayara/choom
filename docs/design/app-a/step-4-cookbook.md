@@ -1435,12 +1435,15 @@ guidance before `finish`. Check the complete model and fact records:
   do not duplicate direct ownership.
 - An inspected path cites the source that supports its entry, steps, and component
   references. Planned paths stay in the priorities, not in `inspectedPaths`.
-  Each step cites a reviewed source range of the selected `reviewedFiles` chain;
-  the publisher refuses a step that cites no source range, or a range that no
-  review read, such as a collected excerpt alone.
-- A behavior entry rests on reviewed source ranges. A behavior entry candidate is a
-  place to read; it does not make a behavior entry, and a missing candidate does
-  not show that there is no entry.
+  Each step cites a reviewed range of the selected `reviewedFiles` chain by its
+  ID; the publisher refuses a step that cites no reviewed range, only a JSON
+  Pointer to a field of a range, or a saved excerpt that no review read. Each
+  component in `componentIds` owns code that a reviewed range cited by the steps
+  covers.
+- A behavior entry rests on reviewed source ranges. It cites the reviewed range
+  that contains its site by its ID, and so does a resource access observation.
+  A behavior entry candidate is a place to read; it does not make a behavior
+  entry, and a missing candidate does not show that there is no entry.
 - Each reachability claim cites its [graph context](#3-collect-dependency-evidence),
   including its actual roots, edge policy, stopped edges and limits.
 - Resource observations and intended ownership remain separate. Unknown targets,

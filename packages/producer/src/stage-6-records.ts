@@ -401,11 +401,11 @@ function checkBehavior(selection: Selection, { componentIds, mapped, fileEntries
       item.componentIds.includes((behaviorEntries.get(item.entryPointRef) as Fields).componentRef as string) &&
       Array.isArray(item.steps) && item.steps.length > 0 && strings(item.limits), 'Invalid inspected path: ' + item.id);
     evidence(item);
-    for (const [index, step] of (item.steps as Fields[]).entries()) {
+    for (const step of item.steps as Fields[]) {
       assert(text(step.action), 'Missing inspected path step: ' + item.id);
       evidence(step);
-      reviewed.checkStep(item, step, index + 1);
     }
+    reviewed.checkPath(item);
   }
 }
 
@@ -493,7 +493,7 @@ export function validateRecords(inputs: RecordInputs): RecordCounts {
   validateSystemEntryPoints({ ...documentation, snapshotRef, componentIds, mapped });
   const fileEntries = checkEntryFacts(selection);
   const behavior = { componentIds, mapped, fileEntries, reviewed: new ReviewedSource({ indexed: selection.indexed,
-    resolve: selection.resolve, source, reviewedRanges: history.reviewedRanges }) };
+    resolve: selection.resolve, source, reviewedRanges: history.reviewedRanges, mapped }) };
   checkBehavior(selection, behavior);
   const { graph, entry, access, indexed, resolve, claim } = selection;
   // Stages 4 and 5 name the behavior entry and resource access candidates of Stage 4 collect; the Stage 4/5 publisher

@@ -78,6 +78,18 @@ describe("validateCodeMapping with a divided file", () => {
       .toEqual({ files: 2, pricing: true, billing: true, cli: false, cliFile: true });
   });
 
+  // The component check of an inspected path asks who owns code on the lines of a reviewed
+  // range. computePrice is on lines 7 to 10; the rest holds lines 1 to 6 and the line break
+  // after line 10.
+  test("gives the owners of code on the lines of a file: the owner of a file unit, or of a part with a range on the lines", () => {
+    const mapped = checked();
+    const owners = (path: string, lines: [number, number]): string[] =>
+      ["billing", "pricing", "cli"].filter((owner) => mapped.ownsLines(path, lines, owner));
+    expect({ price: owners("billing.ts", [8, 9]), setup: owners("billing.ts", [3, 4]), both: owners("billing.ts", [6, 7]),
+      sharedLine: owners("billing.ts", [10, 10]), file: owners("cli.ts", [1, 1]) })
+      .toEqual({ price: ["pricing"], setup: ["billing"], both: ["billing", "pricing"], sharedLine: ["billing", "pricing"], file: ["cli"] });
+  });
+
   test("accepts a rest with no path owner: no owner, no membership and the reason no-path-owner", () => {
     const mapped = checked((run) => {
       run.memberships.billing = { paths: ["other.ts"] };

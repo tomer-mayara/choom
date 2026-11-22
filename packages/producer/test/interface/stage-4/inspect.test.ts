@@ -248,8 +248,12 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("Use excerpt for a supported subset.");
     // The LLM keeps each question and gap within the contract of the viewer, which every stage checks.
     expect(prompt).toContain("Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef");
-    // Each step of an inspected path cites a reviewed source range, as the publisher checks.
+    // A site and each step of an inspected path cite a reviewed range by its ID, and each component of
+    // the path owns code that a range of the steps covers, as the publisher checks.
     expect(prompt).toContain("Each step of an inspected path cites the reviewed source range that it rests on");
+    expect(prompt).toContain("Cite a reviewed range by the ID of its reviewedFiles item, not by a JSON Pointer to its fields");
+    expect(prompt).toContain("A behavior entry and a resource access observation cite the reviewed range that contains their " +
+      "site in the same way. Name in componentIds only components that own code that a reviewed range of the steps covers.");
     // Each subject names something of the run; the publisher refuses any other subject, also in an earlier record.
     expect(prompt).toContain("Each subjectRef names a file of the snapshot, a folder of the snapshot written as <folder>/** " +
       "(such as src/billing/**), the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, " +
@@ -258,7 +262,7 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("Follow the default, named and re-exported members on the reviewed public paths.");
     expect(prompt).toContain("If a role has no evidenced example, record the scope checked and the gap.");
     // The prompt for this graph fixture is deterministic once the temporary folder is removed.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("72a56cb5d72b0373fceac944116fde6dda737065f547e7c0035cdcb2a3b0efd9");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("b6d1933826aa7438736164a80b7114af01ca29211113bfa1e21f36fecc99a98b");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);
