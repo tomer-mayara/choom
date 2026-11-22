@@ -37,10 +37,15 @@ const evidenceRequests = `Request a snapshot-relative path and line range when m
   `and the symbol name. A references record lists sites to read. It does not prove calls, and its unresolved sites can hide ` +
   `other uses.\n\n`;
 
-// What counts as a source inspection. The publisher checks that each step of an inspected path cites a reviewed range.
+// What counts as a source inspection. The publisher checks that a site and each step of an inspected path cite a
+// reviewed range by its ID, and that each component of the path owns code that a range of its steps covers.
 const sourceReview = `Review source in priority order. A file query or a graph scan is not a source inspection. ` +
   `Record only ranges actually read. Each step of an inspected path cites the reviewed source range that it rests on; ` +
-  `a collected excerpt that you did not review does not count, and graph or query records support only the scope.\n\n`;
+  `a collected excerpt that you did not review does not count, and graph or query records support only the scope. ` +
+  `Cite a reviewed range by the ID of its reviewedFiles item, not by a JSON Pointer to its fields. Do not cite an ` +
+  `excerpt that you did not review. A behavior entry and a resource access observation cite the reviewed range that ` +
+  `contains their site in the same way. Name in componentIds only components that own code that a reviewed range of ` +
+  `the steps covers.\n\n`;
 
 // How the reviewer uses the behavior entry candidates that the pinned syntax rules and the Knip plugin patterns found.
 const behaviorCandidates = `behavior-entry-candidates.json lists the calls, the settings entries and the bin commands that ` +

@@ -183,7 +183,13 @@ guidance. A reference or shared artifact alone does not establish an exclusive
 owner. Request the source ranges you need. The worker classifies the files
 and writes the analysis.
 Each step of an inspected path cites the reviewed source range that it rests
-on; a collected excerpt that you did not review does not count.
+on; a collected excerpt that you did not review does not count. Cite a reviewed
+range by the ID of its reviewedFiles item, not by a JSON Pointer to its fields.
+Do not cite an excerpt that you did not review. A behavior entry and a
+resource access observation cite the reviewed range that contains their site in
+the same way. Name in componentIds only components that own code that a
+reviewed range of the steps covers. In a divided file, the range must include a
+line of a part that the component owns.
 
 Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
@@ -452,7 +458,11 @@ guidance to the complete packet before `finish`. Check that:
   level.
 - Evidence references, source hashes and numbered ranges resolve. Only ranges
   actually read by the LLM appear as new inspections. Each step of an inspected
-  path cites a reviewed source range of the selected `reviewedFiles` chain.
+  path cites a reviewed source range of the selected `reviewedFiles` chain by
+  its ID, and each component of the path owns code that one of these ranges
+  covers; in a divided file, a range covers a part when the part has text on
+  one of its lines. A behavior entry and a resource access observation cite the
+  reviewed range of their site by its ID.
 - Continuing component IDs remain stable. Changed intent stays proposed and
   has evidence; dependency observations are not promoted to access permission.
 - Entry history, prior questions, gaps and deferrals remain traceable. Resolution

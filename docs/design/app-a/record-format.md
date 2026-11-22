@@ -941,8 +941,10 @@ symbol or rest units of a file that no selector divides.
 The `inspection` of a part follows its file, as for a file unit. The checks of
 the source sites stay at file level: a behavior entry, a resource observation, a
 source use or a system entry in a divided file can name the owner of any unit of
-that file. The graph edges and the evidence of Stage 5 `collect` name whole
-files. The Stage 5 parts request records the
+that file. The component check of an inspected path uses the parts: a reviewed
+range covers a part when one of the ranges of the part has text on one of its
+lines (see [Discovery](#discovery)). The graph edges and the evidence of Stage 5
+`collect` name whole files. The Stage 5 parts request records the
 [dependencies of file parts](#dependencies-of-file-parts).
 
 ### Dependencies of file parts
@@ -1120,14 +1122,24 @@ paths actually reviewed. Each has `id`, `description`, `entryPointRef` naming a
 behavior entry, nonempty `componentIds`, `evidenceRefs`, `limits`, and `steps`.
 Each step has `action` and `evidenceRefs`. Include the entry's owner among the
 path's components. These are source inspections, not runtime traces.
-Each step cites at least one saved source range, and each source range that it
-cites lies inside a reviewed range of the selected entry analysis or of an
-earlier one that it names (`reviewedFiles`): the same snapshot, path and digest,
-with reviewed lines that include its lines. A collected excerpt that no review
-read does not count. A step can also cite other records, such as a graph or
-references record, for its scope. The shared record checks refuse a step that
-breaks this rule, such as with `Inspected path step is outside the selected
-source review history: path-1 step 2: s4-001-source-cli.ts`.
+Each step cites at least one reviewed range itself, as a behavior entry does.
+One of its `evidenceRefs` is the ID of a `reviewedFiles` item of the selected
+entry analysis or of an earlier one that it names. The ID can have an empty
+JSON Pointer (`id#`). A JSON Pointer to a field of the range, such as
+`id#/lines`, does not count. An excerpt that no `reviewedFiles` item names is
+not a reviewed range, also when it has the same path and lines. Each other
+saved source range that a step cites must also be a reviewed range. A step can
+also cite other records, such as a graph or references record, for its scope.
+Each component in `componentIds` owns, in the selected code mapping, a file or a
+part that a reviewed range cited by the steps covers. A reviewed range covers a
+file unit of its file. It covers a part of a divided file when one of the
+ranges of the part has text on one of its lines. A range that only the path
+cites, and not a step, does not count. The shared record checks of Stages 4
+to 6 refuse a path that breaks these rules, such as with `Inspected path
+s4-001-orders-path step 2 does not cite a reviewed range. An excerpt that no
+review read is not a reviewed range.` or `Inspected path s4-001-orders-path
+names the component cli, but no reviewed range that its steps cite covers code
+that cli owns.`
 
 Questions have `id`, `subjectRefs`, `text`, and `evidenceRefs`. Gaps have `id`,
 `kind`, `subjectRefs`, `reason`, and `evidenceRefs`. Both lists must be identical
