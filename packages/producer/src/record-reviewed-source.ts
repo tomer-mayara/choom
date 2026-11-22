@@ -1,3 +1,4 @@
+import { isDeepStrictEqual as same } from 'node:util';
 import { assert, evidenceBase, type Fields } from './record-checks.ts';
 import type { SourceRecords } from './record-sources.ts';
 
@@ -23,14 +24,14 @@ export class ReviewedSource {
   private readonly resolve: (ref: unknown) => unknown;
   private readonly records: ReadonlyMap<unknown, Fields>;
   private readonly reviewedRanges: readonly Fields[];
-  private readonly reviewedIds: ReadonlySet<unknown>;
+  private readonly reviewedById: ReadonlyMap<unknown, Fields>;
 
   constructor({ indexed, resolve, source, reviewedRanges }: ReviewedSourceInputs) {
     this.indexed = indexed;
     this.resolve = resolve;
     this.records = source.records;
     this.reviewedRanges = reviewedRanges;
-    this.reviewedIds = new Set(reviewedRanges.map(range => range.id));
+    this.reviewedById = new Map(reviewedRanges.map(range => [range.id, range]));
   }
 
   // A behavior entry or resource access names a source site inside a reviewed range
@@ -49,29 +50,30 @@ export class ReviewedSource {
     assert(this.indexed.has(site?.path) && Array.isArray(site?.lines) && lines.length === 2 &&
       lines.every(Number.isSafeInteger) && (lines[0] as number) > 0 && (lines[1] as number) >= (lines[0] as number) &&
       this.reviewedRanges.some(supports), 'Site is outside the selected source review history: ' + item.id);
-    const cites = (ref: unknown): boolean => supports(this.resolve(ref)) && this.reviewedIds.has(evidenceBase(ref as string));
+    const cites = (ref: unknown): boolean => supports(this.citedRange(ref));
     assert((item.evidenceRefs as unknown[]).some(cites), label + ' ' + item.id +
       ' does not cite a reviewed range that contains its site. An excerpt that no review read is not a reviewed range.');
   }
 
-  // Each step of an inspected path cites at least one saved source range, and each
-  // source range that it cites is inside a reviewed range of the selected history: the
-  // same snapshot, path and digest, with reviewed lines that include its lines. A step
-  // can also cite other records, such as a graph record.
+  // Each step of an inspected path cites at least one reviewed range of the selected
+  // history itself, as a site does. Each other saved source range that the step cites is
+  // a reviewed range too. A step can also cite other records, such as a graph or a
+  // references record, for its scope.
   checkStep(path: Fields, step: Fields, number: number): void {
-    const name = String(path.id) + ' step ' + number;
-    const cited = (step.evidenceRefs as string[]).filter(ref => this.records.has(evidenceBase(ref)));
-    assert(cited.length > 0, 'Missing cited reviewed source for inspected path step: ' + name);
-    for (const ref of cited) assert(this.inside(this.records.get(evidenceBase(ref)) as Fields),
-      'Inspected path step is outside the selected source review history: ' + name + ': ' + ref);
+    const name = 'Inspected path ' + String(path.id) + ' step ' + number;
+    const refs = step.evidenceRefs as string[];
+    assert(refs.some(ref => this.citedRange(ref) !== undefined),
+      name + ' does not cite a reviewed range. An excerpt that no review read is not a reviewed range.');
+    for (const ref of refs) assert(!this.records.has(evidenceBase(ref)) || this.reviewedById.has(evidenceBase(ref)),
+      name + ' cites ' + ref + ', a saved source range that is not a reviewed range of the selected history.');
   }
 
-  private inside(record: Fields): boolean {
-    return this.reviewedRanges.some(range => {
-      const [first, last] = range.lines as number[];
-      const [from, to] = record.lines as number[];
-      return range.snapshotRef === record.snapshotRef && range.path === record.path && range.sha256 === record.sha256 &&
-        (first as number) <= (from as number) && (last as number) >= (to as number);
-    });
+  // The reviewed range that a reference cites itself: by the ID of the range, alone or
+  // with an empty JSON Pointer. A pointer to a field of the range, such as id#/lines,
+  // does not cite the range.
+  private citedRange(ref: unknown): Fields | undefined {
+    const value = this.resolve(ref);
+    const range = this.reviewedById.get(evidenceBase(ref as string));
+    return range !== undefined && same(value, range) ? range : undefined;
   }
 }

@@ -203,28 +203,40 @@ describe("validateDiscoveryRecords", () => {
         "An excerpt that no review read is not a reviewed range."));
   });
 
-  // P2: each step of an inspected path cites the source that it rests on, and each
-  // cited source range is inside a reviewed range of the selected history. A
-  // collected excerpt alone is not a reviewed range.
+  // P2: each step of an inspected path cites a reviewed range of the selected history
+  // itself, as a site does. Each other saved source range that a step cites is a
+  // reviewed range too. A step can also cite other records, such as a graph record.
   const inspectedPath = (...steps: string[][]) => (records: Records): void => {
     records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
       componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
       steps: steps.map((refs, index) => ({ action: `Step ${index + 1}.`, evidenceRefs: refs })) }];
   };
+  const noReviewedRange = (step: number): Error => new Error(`Inspected path path-1 step ${step} does not cite a reviewed range. ` +
+    "An excerpt that no review read is not a reviewed range.");
 
-  test("accepts inspected path steps that cite reviewed source ranges, also with a JSON Pointer or with other records", () => {
-    expect(validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler#/lines", "graph"]))))
-      .toMatchObject({ inspectedPaths: 1 });
+  test("accepts inspected path steps that cite reviewed ranges, also beside a JSON Pointer into one or other records", () => {
+    expect(validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler#"],
+      ["orders-handler", "orders-handler#/lines", "graph"])))).toMatchObject({ inspectedPaths: 1 });
   });
 
-  test("refuses an inspected path step that cites a collected but unreviewed excerpt", () => {
+  test("refuses an inspected path step that cites only a requested excerpt with the lines of a reviewed range", () => {
+    expect(() => validateDiscoveryRecords(withUnreadExcerpt(recordInputs(inspectedPath(["orders-handler"], [unreadExcerpt])))))
+      .toThrow(noReviewedRange(2));
+  });
+
+  test("refuses an inspected path step that cites a reviewed range only with a JSON Pointer to its lines", () => {
+    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler#/lines", "graph"]))))
+      .toThrow(noReviewedRange(2));
+  });
+
+  test("refuses an inspected path step that cites a collected but unreviewed excerpt beside a reviewed range", () => {
     expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler", "unread-cli"]))))
-      .toThrow(new Error("Inspected path step is outside the selected source review history: path-1 step 2: unread-cli"));
+      .toThrow(new Error("Inspected path path-1 step 2 cites unread-cli, a saved source range that is not a reviewed range " +
+        "of the selected history."));
   });
 
   test("refuses an inspected path step that cites no source range", () => {
-    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["launch#/cli"]))))
-      .toThrow(new Error("Missing cited reviewed source for inspected path step: path-1 step 1"));
+    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["launch#/cli"])))).toThrow(noReviewedRange(1));
   });
 
   test.each(refusedCases)("refuses %s", (_name, change, message) => {
