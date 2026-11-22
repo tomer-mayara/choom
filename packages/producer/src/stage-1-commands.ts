@@ -12,9 +12,10 @@ import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { SubjectChecker } from './record-subjects.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
+import { RunSummary } from './run-summary.ts';
 import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
 import { prepareRunProject, referencePath, referenceRef } from './stage-1-project.ts';
-import type { RunProject } from './generated/contracts.ts';
+import type { RunManifest, RunProgress, RunProject } from './generated/contracts.ts';
 import { validateUnitUseReview } from './stage-1-role-use.ts';
 import { settingsTool, stageOneGaps } from './stage-1-gaps.ts';
 import { type GitIdentityRecord, gitIdentity, gitIdentityGaps, gitIdentityPath, gitIdentityRef, type RunGit }
@@ -455,16 +456,15 @@ function publish(inputs: StageOneInputs, bytes: Map<string, Buffer>, review: Rev
   const all = [...enumerate('evidence'), 'exclusions.txt', 'inventory.mjs'];
   const registry = Object.fromEntries(all.map(path => [artifactId(path), { path, sha256: hash(read(path)) }]));
   assert(Object.keys(registry).length === all.length, 'Duplicate artifact IDs.');
+  const progress: RunProgress = { inventory: 'complete', baselineRecovery: 'pending' };
   save('run.yaml', stringify({ formatVersion: 1, id: inputs.runRef, mode: 'A', status: 'in-progress',
-    projectKey: inputs.projectKey, referenceBaseline: inputs.referenceBaseline,
-    progress: { inventory: 'complete', baselineRecovery: 'pending' }, snapshot: { id: inputs.snapshotRef,
+    projectKey: inputs.projectKey, referenceBaseline: inputs.referenceBaseline, progress, snapshot: { id: inputs.snapshotRef,
       root: 'snapshot', inventoryRef: 'inventory-001', exclusions: 'exclusions.txt',
       captureMethod: 'rsync copy followed by a checksum dry-run comparison',
       captureLimit: 'The copy was checked for differences; atomic capture is not proven.', sourcePath: inputs.target,
       capturedAt: read('evidence/captured-at.txt').toString().trim() },
-    coverage: { inventoried: inventory.files.length + ' regular files in the selected capture scope.',
-      inspected: 'Source ranges are in review-001#/reviewedFiles. Tool reads are separate.',
-      unresolved: 'See discovery.yaml questions and gaps. The baseline is not yet recovered.' }, artifacts: registry }));
+    coverage: new RunSummary({ progress, inventory, reviewRef: 'review-001', issuesRef: 'discovery-001', issues: discovery })
+      .coverage(), artifacts: registry } satisfies RunManifest));
   console.log('Stage 1 saved. Run verify, then continue to Stage 2.');
 }
 
