@@ -66,7 +66,7 @@ export class ToolGaps {
   static readonly symbolMentions = 'symbol-mentions';
   readonly #prefix: string;
 
-  // `prefix` starts each gap ID: s1- for Stage 1, and the attempt ID and a hyphen for Stage 2.
+  // `prefix` starts each gap ID: s1- for Stage 1, and the attempt ID and a hyphen for Stages 2 and 3.
   constructor(prefix: string) {
     this.#prefix = prefix;
   }

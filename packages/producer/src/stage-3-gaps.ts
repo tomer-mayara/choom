@@ -9,6 +9,7 @@ import { type ReviewIssues, ToolGaps } from './tool-gaps.ts';
 // with one gap for each gap of its exports record, exports-NNN.json. Each file has the
 // form of the RequiredGaps contract (cookbook/interfaces/producer-run-records.tsp),
 // and the receipt of the action names it. The review copies each gap exactly.
+
 // A tool record of the attempt: its name in the gap IDs, its file, the file of its
 // required gaps, and the required gaps that it gives.
 interface SavedToolRecord { name: string; record: string; file: string; required: RequiredGaps }
