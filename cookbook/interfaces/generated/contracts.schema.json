@@ -5413,16 +5413,12 @@
                 },
                 "recorded": {
                     "type": "string"
-                },
-                "pending": {
-                    "type": "string"
                 }
             },
             "required": [
                 "inventoried",
                 "inspected",
-                "recorded",
-                "pending"
+                "recorded"
             ],
             "additionalProperties": false
         },

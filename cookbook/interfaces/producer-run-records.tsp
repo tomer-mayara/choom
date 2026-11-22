@@ -61,8 +61,9 @@ model RunManifest {
   completedAt?: string;
 }
 
-// The progress of the run. Each stage sets its key to complete when it
-// publishes. A stage that has no key yet has not completed.
+// The progress of the run: the one place for the state of each stage. Each stage
+// sets its key to complete when it publishes. A stage that has no key yet has not
+// completed.
 @extension("additionalProperties", false)
 model RunProgress {
   inventory: "complete";
@@ -97,9 +98,10 @@ model RunArtifact {
 }
 
 // The summary of the run (DB4). Each publisher writes a new summary from the
-// progress that it writes and the records that it selects, in place of the
-// summary of the earlier stage. Choom does not decide which question or gap is
-// answered, so the summary gives record counts and no status.
+// records that it selects, in place of the summary of the earlier stage. The
+// summary has three fields. It does not give the state of a stage, because
+// `progress` has the state of each stage. Choom does not decide which question
+// or gap is answered, so the summary gives record counts and no status.
 @extension("additionalProperties", false)
 model RunCoverage {
   // The number of regular files that the selected inventory lists.
@@ -111,7 +113,4 @@ model RunCoverage {
 
   // The record counts of the questions and gaps, with history and linked notes.
   recorded: string;
-
-  // The stages that have not completed.
-  pending: string;
 }
