@@ -3,8 +3,8 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { After, Given, Then } from "@cucumber/cucumber";
 import { parse } from "yaml";
-import { type ExtraFile, type FixtureBaseline, publishStageFour, stageFourPublication, type StageFourPublication }
-  from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
+import { collectedAfterEarlierAttempt, earlierQuestion, type ExtraFile, type FixtureBaseline, publishStageFour, stageFourPublication,
+  type StageFourPublication, writeStageFourPacket } from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import { collectStageFive, type StageFiveBaseline, stageFivePublication, type StageFivePublication, writeStageFivePacket }
   from "../../packages/producer/test/fixtures/stage-5-publication/fixture.ts";
 import { type CommandResult, makeScratch, removeScratch, toolsRoot } from "../../packages/producer/test/support/commands.ts";
@@ -139,6 +139,16 @@ Given(/^a Stage 4 draft with a new question whose subject is (.+)$/, function (t
   this.subjectIssue = { id, subject };
   this.stageFourRun = stageFourPublication(undefined, [ordersFile], toolsRoot,
     (records) => addIssue(records, "questions", newQuestion(id, subject)));
+});
+
+// A run after a fresh Stage 2 attempt: run.yaml keeps the entry analysis of the earlier
+// attempt registered, and no selected entry analysis names it. The run and the draft
+// keep the question of the earlier attempt about its candidate.
+Given("a Stage 4 draft that keeps a question about an entry candidate of an earlier Stage 2 attempt", function (this: SubjectsWorld) {
+  const { id, subjectRefs: [subject] } = earlierQuestion;
+  assert.ok(subject, "The question of the earlier attempt names its candidate.");
+  this.subjectIssue = { id, subject };
+  this.stageFourRun = writeStageFourPacket(collectedAfterEarlierAttempt());
 });
 
 Then("the Stage 4 draft is published", function (this: SubjectsWorld) {

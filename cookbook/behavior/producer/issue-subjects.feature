@@ -39,6 +39,11 @@ Feature: Questions and gaps name things that the run saved
       | the ID of an earlier gap             |
       | the ID of an entry candidate         |
 
+  Scenario: A question about an entry candidate of an earlier attempt stays valid
+    Given a Stage 4 draft that keeps a question about an entry candidate of an earlier Stage 2 attempt
+    When the operator publishes the Stage 4 draft
+    Then the Stage 4 draft is published
+
   Scenario Outline: An early stage refuses a gap whose subject names nothing
     Given a <stage> review with a new gap whose subject is "src/no-such-file.ts"
     When the operator finishes <stage>
