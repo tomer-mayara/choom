@@ -166,9 +166,12 @@ describe("a Stage 2 attempt with an approved tool image", () => {
       const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as SavedRun;
       expect(run.progress).toEqual({ inventory: "complete", baselineRecovery: "pending", entryAnalysis: "complete",
         inspectionPriorities: "pending" });
-      expect(run.coverage.inspected).toBe("LLM source inspections are listed in the saved reviews and entry analyses. " +
-        "This attempt uses s2-check-entry-analysis#/reviewedFiles. Tool query scopes and limits are in s2-check-knip-runs; " +
-        "tool reads do not establish LLM inspection.");
+      // DB4: finish writes the summary of the run in place of the summary of Stage 1.
+      expect(run.coverage).toEqual({ inventoried: "2 regular files in the selected capture scope.",
+        inspected: "s2-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+          "reviews keep their own ranges. Tool reads are not LLM inspection.",
+        recorded: "s2-check-entry-analysis records 1 question and 0 gaps, with history and linked notes.",
+        pending: "Stages 3, 4, 5 and 6 are pending." });
       const core: Record<string, string> = { "entry-plan.json": "entry-plan", "entry-analysis.yaml": "entry-analysis",
         "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight",
         "required-gaps.json": "required-gaps" };
