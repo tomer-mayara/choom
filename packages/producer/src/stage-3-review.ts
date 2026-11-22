@@ -3,6 +3,7 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { assert, evidenceBase, exact, type Fields, object, type PointerMessages, resolveEvidence, strings, text }
   from './record-checks.ts';
+import { SubjectChecker, type SubjectRecord } from './record-subjects.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
 import { InspectionClues } from './stage-3-inspection-clues.ts';
 
@@ -293,6 +294,15 @@ function checkPriorities(inputs: ReviewInputs, analysis: Fields, sources: Source
   }
 }
 
+// Each subject of a new question or gap, and of each inspection priority, names a file
+// or folder of the snapshot, the snapshot ID, a question or gap, or an entry candidate
+// of this or the previous entry analysis. A clue keeps its own check (InspectionClues).
+function checkSubjects({ paths, snapshotRef, previous, discovery }: ReviewInputs, analysis: Fields): void {
+  const subjects = SubjectChecker.forEntryRecord(paths.keys(), snapshotRef, analysis, [previous]);
+  subjects.checkAdded(discovery);
+  subjects.checkRecords(analysis.inspectionPriorities as SubjectRecord[], 'inspection priority');
+}
+
 export function checkReview(inputs: ReviewInputs): Review {
   const analysis = inputs.document(inputs.id + '-entry-analysis');
   checkIdentity(inputs, analysis);
@@ -305,5 +315,6 @@ export function checkReview(inputs: ReviewInputs): Review {
   const addedIssues = checkIssues(inputs, analysis, sources, evidence);
   checkCandidates(inputs, analysis, sources, evidence, addedIssues);
   checkPriorities(inputs, analysis, sources, evidence);
+  checkSubjects(inputs, analysis);
   return { analysis, currentExcerpts };
 }

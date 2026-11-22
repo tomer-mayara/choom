@@ -48,3 +48,10 @@ Feature: Questions and gaps name things that the run saved
       | stage   |
       | Stage 1 |
       | Stage 2 |
+      | Stage 3 |
+
+  Scenario: An inspection priority names something
+    Given a Stage 3 review whose inspection priority names "nothing-here"
+    When the operator finishes Stage 3
+    Then the Stage 3 result is not published
+    And the operator is told which inspection priority names nothing
