@@ -10,6 +10,7 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { producerReceipt, producerRecordPath, refuseChangedProducerCode } from './producer-code.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
+import { SubjectChecker } from './record-subjects.ts';
 import { localRunExclusion, pathsOverlap, runLayout } from './run-layout.mjs';
 import { defaultCaptureExclusions, readCaptureExclusions } from './stage-1-exclusions.ts';
 import { prepareRunProject, referencePath, referenceRef } from './stage-1-project.ts';
@@ -477,7 +478,11 @@ function finish(inputs: StageOneInputs): void {
   const evidence = reviewSources(review, inventory);
   checkReviewItems(review, evidence);
   checkReservedIds(review, added, inputs.baselineId);
-  checkQuestionsAndGaps({ questions: review.questions, gaps: [...review.gaps, ...added.flatMap(({ gaps }) => gaps)] });
+  const discovery = { questions: review.questions, gaps: [...review.gaps, ...added.flatMap(({ gaps }) => gaps)] };
+  checkQuestionsAndGaps(discovery);
+  // Each subject names a file or folder of the snapshot, the snapshot ID, or a question or gap. Stage 2 adds the first entry candidates.
+  SubjectChecker.beforeBaseline({ paths: inventory.files.map(file => file.path), snapshotRef: inputs.snapshotRef, issues: discovery,
+    candidateIds: [] }).check();
   checkSuppliedScope(bytes.get('review-scope.json') as Buffer, inputs, review, evidence);
   publish(inputs, bytes, review, inventory, added.flatMap(({ gaps }) => gaps));
 }

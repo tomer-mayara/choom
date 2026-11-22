@@ -7,6 +7,7 @@ import { folderState } from "../../support/producer-record.ts";
 import type { JsonRecord } from "../../support/stage-2-attempt.ts";
 import { finishStageThree, stageThree, stageThreeAttempt, type StageThreeAttempt, type StageThreePacket, stageTwoRun }
   from "../../support/stage-3-attempt.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // The Stage 3 finalizer checks the saved attempt and its LLM packet before it
 // changes the drafts. Each case copies one run that finished Stage 2 through its
@@ -16,6 +17,11 @@ interface FinishCase { name: string; change: (packet: StageThreePacket) => void;
 const record = (value: unknown): JsonRecord => value as JsonRecord;
 const firstPriority = (packet: StageThreePacket): JsonRecord =>
   record((packet.analysis.inspectionPriorities as unknown[])[0]);
+// GB-01b: adds a new gap of the attempt. The Stage 3 packet has the gap s3-check-gap-001 for the skipped symbol mentions.
+const addGap = (packet: StageThreePacket, subjectRefs: string[], evidenceRefs = ["s3-check-file@loading-search.json"]): void => {
+  packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: "s3-check-gap-002", kind: "missing-input", subjectRefs,
+    reason: "The review names what it did not find.", evidenceRefs }];
+};
 
 const cases: FinishCase[] = [
   { name: "the call record has no model", change: (packet) => { delete packet.call.model; },
@@ -61,6 +67,13 @@ const cases: FinishCase[] = [
       .filter((gap) => !(gap.evidenceRefs as string[]).includes("s3-check-file@symbol-mentions.json"));
   }, message: "The symbol mentions in s3-check-file@symbol-mentions.json have the status skipped. " +
     "Record a gap that cites s3-check-file@symbol-mentions.json." },
+  // GB-01b: each subject of a new question or gap, and of each inspection priority, names something that the run holds.
+  { name: "a new gap names a file that is not in the snapshot", change: (packet) => addGap(packet, ["app.ts", "src/no-such-file.ts"]),
+    message: `The subject src/no-such-file.ts of the gap s3-check-gap-002 names nothing. ${subjectForms}` },
+  { name: "a new gap names a candidate of no entry analysis", change: (packet) => addGap(packet, ["s3-check-candidate-001"]),
+    message: `The subject s3-check-candidate-001 of the gap s3-check-gap-002 names nothing. ${subjectForms}` },
+  { name: "an inspection priority names nothing", change: (packet) => { firstPriority(packet).subjectRefs = ["app.ts", "nothing-here"]; },
+    message: `The subject nothing-here of the inspection priority s3-check-priority-001 names nothing. ${subjectForms}` },
 ];
 
 let scratch = "";
@@ -148,6 +161,20 @@ describe("Stage 3 finish checks", () => {
       expect(run.artifacts[`${attempt.id}-file@${name}`]?.path).toBe(`evidence/${attempt.id}/${name}`);
     const verify = stageThree(attempt, ["stage-3-finish", "verify"]);
     expect({ status: verify.status, stderr: verify.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 60_000);
+
+  // GB-01b: before Stage 4 adds baseline items, a subject names a file of the snapshot,
+  // the snapshot ID, a question or gap, or an entry candidate of this or the previous
+  // entry analysis. Here the analysis retires the Stage 2 candidate with a note that names it.
+  test("publishes a packet whose note and inspection priority name a retired candidate, a question, a gap and a file", () => {
+    const attempt = newAttempt("subjects");
+    const results = finishStageThree(attempt, (packet) => {
+      packet.analysis.candidates = [];
+      addGap(packet, ["s2-check-candidate-001"], ["s2-check-entry-analysis#/candidates/0"]);
+      firstPriority(packet).subjectRefs = ["app.ts", "s2-check-candidate-001", "s1-question-001", "s3-check-gap-001",
+        "snapshot-check"];
+    });
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   }, 60_000);
 
   // Any saved file can be cited whole, with an empty JSON Pointer, as Stages 1 and 2 accept it.

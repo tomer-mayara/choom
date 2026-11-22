@@ -1,25 +1,35 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Given, Then, type World } from "@cucumber/cucumber";
+import { After, Given, Then } from "@cucumber/cucumber";
 import { parse } from "yaml";
 import { type ExtraFile, type FixtureBaseline, publishStageFour, stageFourPublication, type StageFourPublication }
   from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
 import { collectStageFive, type StageFiveBaseline, stageFivePublication, type StageFivePublication, writeStageFivePacket }
   from "../../packages/producer/test/fixtures/stage-5-publication/fixture.ts";
-import { type CommandResult, toolsRoot } from "../../packages/producer/test/support/commands.ts";
+import { type CommandResult, makeScratch, removeScratch, toolsRoot } from "../../packages/producer/test/support/commands.ts";
+import { folderState } from "../../packages/producer/test/support/producer-record.ts";
+import { capturedStageOneRun, reviewPacket, stageOne, writeReview } from "../../packages/producer/test/support/stage-1-run.ts";
+import { analysisPacket, entryAnalysis, requiredGaps, runAttempt, stageOneRun as savedStageOneRun, stageTwo, stageTwoAttempt }
+  from "../../packages/producer/test/support/stage-2-attempt.ts";
+import { reviewStageThree, stageThree, stageThreeAttempt, type StageThreePacket, stageTwoRun }
+  from "../../packages/producer/test/support/stage-3-attempt.ts";
+import { readyToFinish, runFilesOutsideAttempt, type StageFinish, type StageFinishWorld } from "./producer-stage-finish.steps.ts";
 
 // The subjects of questions and gaps, checked by the Stage 4/5 publisher. The Stage 4
 // drafts use the Stage 4 publication fixture, and the Stage 5 drafts the Stage 5
 // publication fixture. producer-recovery.steps.ts publishes a draft, checks that a
 // refused draft changes no file of the run, and removes the run folder after the
-// scenario.
-interface SubjectsWorld extends World {
+// scenario. Stages 1 to 3 check the subjects of the records that they add when the
+// operator finishes the stage: producer-stage-finish.steps.ts runs the finish action.
+interface SubjectsWorld extends StageFinishWorld {
   stageFourRun?: StageFourPublication;
   stageFiveRun?: StageFivePublication;
   publishCommand?: CommandResult;
-  // The ID of the question or gap that the scenario adds, and its subject.
+  // The ID of the question, gap or inspection priority that the scenario adds, and its subject.
   subjectIssue?: { id: string; subject: string };
+  // The folder of the Stage 1, 2 or 3 run, which the scenario removes at the end.
+  earlyStageScratch?: string;
 }
 
 type Records = Record<string, Record<string, unknown>>;
@@ -57,9 +67,11 @@ function newQuestion(id: string, subject: string): Record<string, unknown> {
   return { id, subjectRefs: [subject], text: "Which code uses this?", evidenceRefs };
 }
 
+// The finish action of Stage 1, 2 or 3, or the publish command of a Stage 4 or 5 draft.
 function lastCommand(world: SubjectsWorld): CommandResult {
-  assert.ok(world.publishCommand, "Publish the draft first.");
-  return world.publishCommand;
+  const command = world.stageFinishResult ?? world.publishCommand;
+  assert.ok(command, "Finish the stage or publish the draft first.");
+  return command;
 }
 
 function addedIssue(world: SubjectsWorld): { id: string; subject: string } {
@@ -138,4 +150,84 @@ Then("the Stage 4 draft is published", function (this: SubjectsWorld) {
     { questions: { id: string; subjectRefs: string[] }[] };
   const { id, subject } = addedIssue(this);
   assert.deepEqual(discovery.questions.find((question) => question.id === id)?.subjectRefs, [subject]);
+});
+
+// Stages 1 to 3 run through their command line. Stage 1 captures the settings target
+// with the rsync test double. Stage 2 runs on a saved Stage 1 run whose snapshot
+// holds only app.ts, so Knip is skipped, and Stage 3 continues a Stage 2 run that
+// finished through its commands. Each review is complete except for the record that
+// the scenario changes.
+const app = { path: "app.ts", text: "export const value = 1;\n" };
+// The ID of the new gap of each stage. Stages 2 and 3 start a new ID with the attempt
+// ID. The Stage 1 review has the gap s1-gap-001, and the Stage 3 review has the gap
+// s3-check-gap-001 for the skipped symbol mentions.
+const newGapIds = new Map([[1, "s1-gap-002"], [2, "s2-check-gap-001"], [3, "s3-check-gap-002"]]);
+
+After({ tags: "@producer" }, function (this: SubjectsWorld) {
+  if (this.earlyStageScratch) removeScratch(this.earlyStageScratch);
+});
+
+function newScratch(world: SubjectsWorld): string {
+  world.earlyStageScratch = makeScratch();
+  return world.earlyStageScratch;
+}
+
+function completed(stage: string, results: Record<string, CommandResult>): void {
+  for (const [action, result] of Object.entries(results)) assert.equal(result.status, 0, `${stage} ${action}: ${result.stderr}`);
+}
+
+// A refused Stage 1 finish changes no file of the run.
+function stageOneReview(scratch: string, gap: Record<string, unknown>): StageFinish {
+  const { run, excerpt } = capturedStageOneRun(scratch);
+  const packet = reviewPacket(excerpt);
+  packet.review.gaps = [...packet.review.gaps as unknown[], gap];
+  const review = writeReview(run, packet);
+  return { stage: 1, finish: () => stageOne(run, "finish", review), published: () => folderState(run.work) };
+}
+
+function stageTwoReview(scratch: string, gap: Record<string, unknown>): StageFinish {
+  const work = join(scratch, "run");
+  savedStageOneRun(work, [app]);
+  const attempt = stageTwoAttempt(work, "s2-check");
+  completed("Stage 2", runAttempt(attempt, scratch));
+  const review = analysisPacket(join(scratch, "review"), attempt.id,
+    entryAnalysis(attempt, { gaps: [...requiredGaps(attempt), gap] }));
+  completed("Stage 2", { "save-review": stageTwo(attempt, "save-review", [review]) });
+  return { stage: 2, finish: () => stageTwo(attempt, "finish"), published: () => runFilesOutsideAttempt(work, attempt.id) };
+}
+
+function stageThreeReview(scratch: string, change: (packet: StageThreePacket) => void): StageFinish {
+  const folder = join(scratch, "stage-3");
+  mkdirSync(folder);
+  const attempt = stageThreeAttempt(stageTwoRun(scratch), folder);
+  completed("Stage 3", reviewStageThree(attempt, change));
+  return { stage: 3, finish: () => stageThree(attempt, ["stage-3-finish"]),
+    published: () => runFilesOutsideAttempt(attempt.work, attempt.id) };
+}
+
+Given("a Stage {int} review with a new gap whose subject is {string}", function (this: SubjectsWorld, stage: number,
+  subject: string) {
+  const id = newGapIds.get(stage);
+  assert.ok(id, "Stages 1, 2 and 3 have a review that the operator finishes.");
+  const gap = { id, kind: "missing-input", subjectRefs: [subject], reason: "The review names a file that it did not find.",
+    evidenceRefs: ["inventory-001"] };
+  this.subjectIssue = { id, subject };
+  const scratch = newScratch(this);
+  readyToFinish(this, stage === 1 ? stageOneReview(scratch, gap) : stage === 2 ? stageTwoReview(scratch, gap)
+    : stageThreeReview(scratch, (packet) => { packet.analysis.gaps = [...packet.analysis.gaps as unknown[], gap]; }));
+});
+
+Given("a Stage 3 review whose inspection priority names {string}", function (this: SubjectsWorld, subject: string) {
+  readyToFinish(this, stageThreeReview(newScratch(this), (packet) => {
+    const [priority] = packet.analysis.inspectionPriorities as Record<string, unknown>[];
+    assert.ok(priority, "The Stage 3 review has no inspection priority.");
+    priority.subjectRefs = [subject];
+    this.subjectIssue = { id: String(priority.id), subject };
+  }));
+});
+
+Then("the operator is told which inspection priority names nothing", function (this: SubjectsWorld) {
+  const message = lastCommand(this).stderr;
+  const { id, subject } = addedIssue(this);
+  assert.ok(message.startsWith(`The subject ${subject} of the inspection priority ${id} names nothing.`), message);
 });

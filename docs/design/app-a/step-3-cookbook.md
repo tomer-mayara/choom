@@ -545,8 +545,11 @@ or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference at most
 4 KiB. Use at most 5,000 questions and gaps together.
 Each subjectRef names a file of the snapshot, a folder of the snapshot written as
 <folder>/** (such as src/billing/**), the snapshot ID, a question or gap, or an
-entry candidate. Name a symbol or a missing compiler input in the text or
-reason. Stages 4 to 6 refuse any other subject.
+entry candidate. The candidate is one of this or of the previous entry analysis.
+The subjectRefs of an inspection priority follow the same rule. Name a symbol or
+a missing compiler input in the text or reason. The finalizer refuses any other
+subject in a new question or gap and in an inspection priority. Stages 4 to 6
+refuse it in a question or gap.
 Use registered evidence IDs, supplied source-record IDs, or exact JSON Pointers
 into JSON or YAML records. Cite another file whole, without a pointer.
 
@@ -672,6 +675,15 @@ request. It
 requires successful evidence collection and `knipAssessment.action: reuse`.
 When the symbol mentions of collect have the status `unavailable` or `skipped`,
 it requires a gap that cites `<attempt>-file@symbol-mentions.json`.
+It refuses a new question or gap, and an inspection priority, when one of its
+subjects names nothing of the run. The message is the one of Stages 4 to 6, such
+as `The subject nothing-here of the inspection priority s3-001-priority-001
+names nothing.` A subject names a file or folder of the snapshot, the snapshot
+ID, a question or gap of the analysis, or an entry candidate of this or the
+previous entry analysis. So a note can name a candidate that the analysis
+retires. No baseline item exists yet. A priority with a clue must also name its
+source file or the candidate of that file. The finalizer does not check an
+earlier question or gap again ([record format](record-format.md#ids-and-evidence)).
 The finalizer registers every attempt file. So each attempt file must be a
 receipt, an output or a log that a receipt names, or `commands.md`. The failed
 receipt of a request and its logs stay registered. The finalizer refuses any
@@ -751,7 +763,7 @@ and adds three fields:
 | --- | --- |
 | `previousEntryAnalysisRef` | The registered analysis selected when this attempt started. It preserves the earlier candidates, source reviews, and tool history. |
 | `knipAssessment` | Whether the existing Knip settings still fit this review, with a reason and evidence. `rerun-required` prevents finalization. |
-| `inspectionPriorities` | Ordered planned checks, each with `id`, `subjectRefs`, integer `priority` from 1 to 3, `action`, `reason`, and `evidenceRefs`. |
+| `inspectionPriorities` | Ordered planned checks, each with `id`, `subjectRefs`, integer `priority` from 1 to 3, `action`, `reason`, and `evidenceRefs`. Each subject names something of the run, as a subject of a question or gap does. |
 
 Keep deferrals in `gaps`, with their exact scope, reason, and evidence. A priority
 is planned work; a source record is an inspection already performed. Neither is

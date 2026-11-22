@@ -105,8 +105,25 @@ write, such as `The subject src/billing of the gap g-1 names a folder without
 /**. Write the folder as src/billing/**.` Later stages keep
 each question and gap unchanged, so a draft cannot rename or remove what an
 earlier record names: keep the ID of a component that a question or gap names.
-Stages 1 to 3 do not check this rule, because the baseline items exist only from
-Stage 4; follow it when you write a record there.
+
+Stages 1 to 3 check the subjects of the records that they add, with the same rule
+and the same messages. So a subject that names nothing is refused before later
+stages keep the record unchanged. These checks do not read an earlier record
+again. The baseline is empty until Stage 4, so before Stage 4 a subject can name
+no baseline item. At each check a subject can name a file or folder of the
+snapshot and the snapshot ID. It can also name these records:
+
+| Check | Questions and gaps | Entry candidates |
+| --- | --- | --- |
+| Stage 1 `finish` | Those of the review, and the gaps that `finish` adds from the tool records. | None. Stage 2 adds the first candidates. |
+| Stage 2 `plan`, and `start` with a plan | Those of the plan. | Those of the plan. |
+| Stage 2 `finish` | Those of the entry analysis. | Those of the entry analysis. A candidate of the plan does not count, because Stages 4 to 6 accept only the candidates of the selected entry analyses. |
+| Stage 3 finalizer | Those of the entry analysis. | Those of the entry analysis and of the previous entry analysis. So a note can name a candidate that Stage 3 retires. |
+
+The Stage 3 finalizer also checks the subjects of each inspection priority with
+this rule. An example message is `The subject nothing-here of the inspection
+priority s3-001-priority-001 names nothing.` A priority with a clue must also
+name its source file or the candidate of that file, as the clue check requires.
 
 A gap that Stage 1 `finish` copied from a tool record keeps the subjects of the
 tool, which can name a missing input or a path outside the snapshot. The checks
@@ -1181,8 +1198,10 @@ discovery contract of the viewer." and names the field, such as
 fixed result again (see [Fixed discovery result](#fixed-discovery-result)).
 Each subject also names a snapshot file, a snapshot folder written as
 `<folder>/**`, the snapshot ID, a question or gap, an entry candidate or a
-baseline item, as [IDs and evidence](#ids-and-evidence) gives. The shared record
-checks of Stages 4 to 6 check this after the limits, also for the records that
+baseline item, as [IDs and evidence](#ids-and-evidence) gives. Stage 1 `finish`,
+Stage 2 `plan` and `finish` and the Stage 3 finalizer check this after the limits
+for the records that they add. The shared record checks of Stages 4 to 6 check it
+after the limits for every question and gap. This includes the records that
 earlier stages froze.
 
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and

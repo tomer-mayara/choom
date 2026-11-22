@@ -12,6 +12,7 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
+import { SubjectChecker } from './record-subjects.ts';
 import { SavedAttemptFiles } from './saved-attempt-files.ts';
 import { ToolGaps } from './tool-gaps.ts';
 
@@ -237,6 +238,8 @@ function validatePlan(bytes: Buffer, { discovery, artifacts, inventory }: RunSta
   checkPlanRecords(plan, discovery, { ids: new Set(), artifacts, reviewed }, workspaces, paths);
   // The entry analysis must keep the questions and gaps of the plan, so they enter the run here.
   checkQuestionsAndGaps({ questions: plan.questions, gaps: plan.gaps });
+  // Each subject of a new record names a snapshot file or folder, the snapshot ID, a question or gap, or a plan candidate.
+  SubjectChecker.forEntryRecord(paths.keys(), inventory.snapshotId, plan).checkAdded(discovery);
 }
 
 function digests(names: string[]): Record<string, string> {

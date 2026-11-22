@@ -638,7 +638,11 @@ file of the snapshot, a folder of the snapshot written as `<folder>/**`, the
 snapshot ID, a question or gap, an entry candidate of the selected entry analysis
 or its history, or a baseline item by the rule of the viewer (`SubjectItems`). A
 gap that Stage 1 finish copied from a tool record keeps its subjects
-(`isToolGap` in `stage-1-gaps.ts`). The
+(`isToolGap` in `stage-1-gaps.ts`). Stage 1 finish, Stage 2 plan and finish and
+the Stage 3 finalizer check the records that they add in the same way. The
+Stage 3 finalizer also checks the subjects of each inspection priority. Before
+Stage 4 the baseline has no items, and Stage 2 adds the first entry candidates
+(`SubjectChecker.beforeBaseline` and `SubjectChecker.forEntryRecord`). The
 [record format](docs/design/app-a/record-format.md#ids-and-evidence) gives the
 rule. They also check that each step of an inspected path cites a reviewed range
 of the selected history by its ID, as a behavior entry and a resource access
@@ -650,6 +654,7 @@ the focused checks with:
 ```sh
 bun test ./packages/producer/test/unit/record-subjects.test.ts ./packages/producer/test/unit/stage-1-gaps.test.ts ./packages/baseline-model/test/unit/subject-items.test.ts
 bun test ./packages/producer/test/integration/records/stage-6-records.test.ts ./packages/producer/test/interface/stage-4/publication.test.ts
+bun test ./packages/producer/test/interface/stage-1/review-checks.test.ts ./packages/producer/test/interface/stage-2/plan-checks.test.ts ./packages/producer/test/interface/stage-2/finish-checks.test.ts ./packages/producer/test/interface/stage-3/finish-checks.test.ts
 ```
 
 An analysis that did not run needs a gap that cites its record. Stage 2 `run`

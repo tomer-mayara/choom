@@ -7,6 +7,8 @@ import { makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, planPacket, priorQuestion, requiredGaps,
   runAttempt, savedJson, stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
+import { stagedRun } from "../../support/staged-run.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // Finish checks the complete attempt before it changes either draft. The
 // prepared attempt has no package manifest, so preflight skips Knip. Each case
@@ -33,6 +35,9 @@ const reservedId = (reserved: string): string =>
   `The ID ${reserved} is reserved for the required gaps of ${id}-required-gaps. Use a different ID.`;
 const withoutGap = (gapId: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
   gaps: (analysis.gaps as JsonRecord[]).filter((gap) => gap.id !== gapId) });
+// GB-01b: the analysis with a new question that names the subjects, and with the changed fields.
+const withQuestion = (subjectRefs: string[], change: JsonRecord = {}) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
+  questions: [...analysis.questions as JsonRecord[], { ...question(`${id}-question-001`), subjectRefs }], ...change });
 const changedGap = (change: JsonRecord) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
   gaps: (analysis.gaps as JsonRecord[]).map((gap) => gap.id === `${id}-knip-gap-002` ? { ...gap, ...change } : gap) });
 
@@ -89,6 +94,13 @@ const cases: FinishCase[] = [
     message: reservedId(`${id}-knip-gap-004`) },
   { name: "another gap has an ID that is reserved for the required gaps",
     change: gapEvidence(`${id}-knip-runs#/runs/0`, `${id}-knip-gap-004`), message: reservedId(`${id}-knip-gap-004`) },
+  // GB-01b: each subject of a record that finish adds names something that the run holds.
+  { name: "a new question names a file that is not in the snapshot", change: withQuestion(["app.ts", "src/no-such-file.ts"]),
+    message: `The subject src/no-such-file.ts of the question ${id}-question-001 names nothing. ${subjectForms}` },
+  // Later stages accept the candidates of the selected entry analyses as subjects. The plan is not an entry analysis.
+  { name: "a new question names a candidate of the plan that the analysis leaves out",
+    change: withQuestion([`${id}-candidate-001`], { candidates: [] }),
+    message: `The subject ${id}-candidate-001 of the question ${id}-question-001 names nothing. ${subjectForms}` },
 ];
 
 let scratch = "";
@@ -137,6 +149,31 @@ describe("Stage 2 finish checks", () => {
     const results = finishAttempt(prepared, scratch, gapEvidence(`${id}-file@operator-start.stdout.txt#`)(entryAnalysis(prepared)));
     expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   });
+
+  // GB-01b: before Stage 4 adds baseline items, a subject of a record that finish adds
+  // names a file of the snapshot, the snapshot ID, a question or gap, or a candidate of the analysis.
+  test("publishes a new question that names a candidate, a question, a required gap, a file and the snapshot ID", () => {
+    const prepared = restoredAttempt();
+    const results = finishAttempt(prepared, scratch, withQuestion([`${id}-candidate-001`, priorQuestion.id, `${id}-knip-gap-001`,
+      "app.ts", "snapshot-check"])(entryAnalysis(prepared)));
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+  });
+
+  // Plan and finish check only the records that the attempt adds. The attempt keeps each
+  // earlier record as it is, such as a question of an earlier attempt about a candidate
+  // that only the entry analysis of that attempt holds.
+  test("publishes an attempt that keeps an earlier question about a candidate of an earlier attempt", () => {
+    const folder = join(scratch, "earlier-attempt");
+    const work = join(folder, "run");
+    const earlier = { ...question("s2-check-question-001"), subjectRefs: ["s2-check-candidate-001"] };
+    stagedRun(work, 2, { snapshot: [app], questions: [priorQuestion, earlier] });
+    const later = stageTwoAttempt(work, "s2-later");
+    const questions = [priorQuestion, earlier];
+    for (const [action, result] of Object.entries(runAttempt(later, folder, entryPlan(later.id, { questions }))))
+      expect({ action, status: result.status }).toEqual({ action, status: 0 });
+    const results = finishAttempt(later, folder, entryAnalysis(later, { questions }));
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 30_000);
 
   // run.yaml registers the files of a published attempt as evidence. Each later action
   // refuses the attempt before it saves a receipt or adds to the command log.

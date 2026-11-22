@@ -133,4 +133,73 @@ describe("SubjectChecker", () => {
     expect(() => checker({ questions: [asked(["old-billing"])], gaps: [found(["plugin-runner"])] }).check())
       .toThrow(new Error(`The subject old-billing of the question q-1 names nothing. ${nameNothing}`));
   });
+
+  // Each record that has subjects, such as an inspection priority of Stage 3, follows the same rule.
+  test("checkRecords refuses the first record with a subject that names nothing, and names the kind of the record", () => {
+    const priority = (subjectRefs: string[], id: string): SubjectRecord => ({ id, subjectRefs, priority: 1, action: "Read it.",
+      reason: "The entry names it.", evidenceRefs: ["e"] });
+    const priorities = [priority(["cli.ts", "q-1"], "p-1"), priority(["gap-1", "nothing-here"], "p-2"), priority(["old"], "p-3")];
+    expect(() => checker().checkRecords(priorities, "inspection priority"))
+      .toThrow(new Error(`The subject nothing-here of the inspection priority p-2 names nothing. ${nameNothing}`));
+    expect(() => checker().checkRecords([priority(["src/billing"], "p-1")], "inspection priority")).toThrow(new Error(
+      "The subject src/billing of the inspection priority p-1 names a folder without /**. Write the folder as src/billing/**."));
+    expect(() => checker().checkRecords(priorities.slice(0, 1), "inspection priority")).not.toThrow();
+  });
+
+  // DB2, the proposed addition: Stages 1 to 3 check only the questions and gaps that they add to the discovery.
+  test("checkAdded refuses the first question or gap that the earlier questions and gaps do not hold", () => {
+    const issues = { questions: [asked(["old-billing"]), asked(["plugin-runner"], "q-2")],
+      gaps: [found(["cli.ts"]), found(["payments.purpose"], "gap-2")] };
+    const earlier = { questions: [asked(["old-billing"])], gaps: [found(["cli.ts"])] };
+    expect(() => checker(issues).checkAdded(earlier))
+      .toThrow(new Error(`The subject plugin-runner of the question q-2 names nothing. ${nameNothing}`));
+    expect(() => checker({ ...issues, questions: issues.questions.slice(0, 1) }).checkAdded(earlier))
+      .toThrow(new Error(`The subject payments.purpose of the gap gap-2 names nothing. ${nameNothing}`));
+    expect(() => checker(earlier).checkAdded(earlier)).not.toThrow();
+  });
+});
+
+// Stages 1 to 3 run before Stage 4 recovers the baseline items: the baseline is still
+// empty, so a subject can name no baseline item yet.
+describe("SubjectChecker before the baseline has items", () => {
+  const early = (): SubjectChecker => SubjectChecker.beforeBaseline({ paths: ["cli.ts", "src/billing/invoice.ts"],
+    snapshotRef: "snapshot-001", issues: { questions: [asked(["cli.ts"])], gaps: [found(["q-1"])] },
+    candidateIds: ["cli-candidate"] });
+
+  test.each([
+    ["a file of the snapshot", "src/billing/invoice.ts"],
+    ["a folder of the snapshot", "src/billing/**"],
+    ["the snapshot ID", "snapshot-001"],
+    ["a question ID", "q-1"],
+    ["a gap ID", "gap-1"],
+    ["an entry candidate ID", "cli-candidate"],
+  ])("refuses no subject that names %s", (_name, subject) => {
+    expect(early().refused(asked([subject]))).toEqual([]);
+  });
+
+  test.each([["a baseline item ID", "billing"], ["a field of a baseline item", "billing.purpose"]])(
+    "refuses a subject that would name %s, because the baseline has no items yet", (_name, subject) => {
+      expect(early().refused(asked([subject]))).toEqual([subject]);
+    });
+
+  // The entry plan or entry analysis of Stage 2 or 3 holds the questions, the gaps and
+  // the entry candidates. At Stage 3 the earlier entry analysis holds the candidates
+  // that a note about a retired candidate names.
+  const entryRecord = (candidateIds: string[]) => ({ questions: [asked(["cli.ts"])], gaps: [found(["q-1"])],
+    candidates: candidateIds.map((id) => ({ id, expression: "cli.ts", path: "cli.ts" })) });
+  const forEntry = (...earlier: string[][]): SubjectChecker => SubjectChecker.forEntryRecord(["cli.ts"], "snapshot-001",
+    entryRecord(["s3-candidate-001"]), earlier.map(entryRecord));
+
+  test.each([
+    ["a candidate of the entry record", "s3-candidate-001"],
+    ["a candidate of an earlier entry analysis", "s2-candidate-001"],
+    ["a question of the entry record", "q-1"],
+    ["a file of the snapshot", "cli.ts"],
+  ])("forEntryRecord refuses no subject that names %s", (_name, subject) => {
+    expect(forEntry(["s2-candidate-001"]).refused(asked([subject]))).toEqual([]);
+  });
+
+  test("forEntryRecord refuses a subject that names a candidate of no entry record, and a baseline item", () => {
+    expect(forEntry(["s2-candidate-001"]).refused(asked(["s2-candidate-002", "billing"]))).toEqual(["s2-candidate-002", "billing"]);
+  });
 });

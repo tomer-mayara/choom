@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { draftUpdate } from './draft-update.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
+import { SubjectChecker } from './record-subjects.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
 import { ToolGaps } from './tool-gaps.ts';
@@ -402,6 +403,9 @@ function finishAttempt(): void {
   checkReceipts(finish, run);
   const analysis = checkAnalysis(finish, plan, typeof run.projectKey === 'string');
   checkRequiredGaps(finish, analysis);
+  // Each subject of a record that finish adds names a snapshot file or folder, the snapshot ID, a question or gap, or
+  // a candidate of the analysis. Later stages do not accept a candidate of the plan.
+  SubjectChecker.forEntryRecord(finish.files.keys(), finish.inventory.snapshotId, analysis).checkAdded(discovery);
   checkInventory(finish, run);
   for (const name of drafts)
     assert((before[name] as Buffer).equals(read(safeFile(work, `${name}.yaml`))), `${name}.yaml changed during finalization.`);
