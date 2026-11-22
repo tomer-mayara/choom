@@ -30,7 +30,9 @@ export interface SubjectRun {
   readonly candidateIds: Iterable<unknown>;
   readonly items: ItemNames;
 }
-// The records that a run registers: the artifact ID of each, and a reader of its saved document.
+// The records that a run registers: the artifact ID of each, and a reader of its saved
+// document. The shared record checks of Stages 4 and 5 also get the attempt files that
+// the publication registers.
 export interface RegisteredRecords {
   readonly refs: Iterable<string>;
   document(ref: string): unknown;
@@ -109,10 +111,10 @@ export class SubjectChecker {
   // plan does not count. The run keeps the records of each earlier attempt registered, and
   // a candidate ID starts with the ID of its attempt. So after a fresh Stage 2 attempt, a
   // kept question or gap still names a saved candidate, also one that Stage 3 retired.
-  static entryCandidates({ refs, document }: RegisteredRecords, record?: Fields): Set<unknown> {
+  static entryCandidates({ refs, document }: RegisteredRecords, record: Fields): Set<unknown> {
     const analyses = [...refs].filter(ref => entryAnalysisRef.test(ref)).map(document)
       .filter((value): value is Fields => (value as Fields | null | undefined)?.kind === 'entry-analysis');
-    return new Set([...analyses, ...record === undefined ? [] : [record]].flatMap(candidateIdsOf));
+    return new Set([...analyses, record].flatMap(candidateIdsOf));
   }
 
   // Each subject of the question or gap that names nothing of the run, in the order of

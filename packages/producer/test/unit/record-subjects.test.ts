@@ -245,10 +245,8 @@ describe("SubjectChecker.entryCandidates", () => {
   });
 
   test("gives the candidates of the record that the stage checks when the run registers no entry analysis", () => {
-    expect(SubjectChecker.entryCandidates(registry({}), { candidates: [{ id: "s2-check-candidate-001" }] }))
-      .toEqual(new Set(["s2-check-candidate-001"]));
-    expect(SubjectChecker.entryCandidates(registry({ "s2-check-entry-plan": entryAnalysis("s2-check-candidate-002") })))
-      .toEqual(new Set());
+    expect(SubjectChecker.entryCandidates(registry({ "s2-check-entry-plan": entryAnalysis("s2-check-candidate-002") }),
+      { candidates: [{ id: "s2-check-candidate-001" }] })).toEqual(new Set(["s2-check-candidate-001"]));
   });
 
   // A registered entry analysis has the artifact ID <attempt>-entry-analysis, with the ID of
@@ -264,12 +262,13 @@ describe("SubjectChecker.entryCandidates", () => {
     const counted = SubjectChecker.entryCandidates({ refs: run.refs, document: (artifactId) => {
       reads.push(artifactId);
       return run.document(artifactId);
-    } });
+    } }, { candidates: [] });
     expect(counted).toEqual(new Set(["s2-check-candidate-001"]));
     expect(reads.includes(ref)).toBe(read);
   });
 
   test("counts no candidate of a registered entry analysis without a candidate list", () => {
-    expect(SubjectChecker.entryCandidates(registry({ "s2-check-entry-analysis": { kind: "entry-analysis" } }))).toEqual(new Set());
+    expect(SubjectChecker.entryCandidates(registry({ "s2-check-entry-analysis": { kind: "entry-analysis" } }), { candidates: [] }))
+      .toEqual(new Set());
   });
 });
