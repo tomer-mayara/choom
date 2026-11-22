@@ -410,9 +410,6 @@ function finish(): void {
     saved: attempt.saved, receipt: attempt.receipt, checkedSourceBytes });
   // The finalizer registers every attempt file, so each one must be a file that a producer action saved.
   attempt.refuseUnsaved();
-  // The analysis copies each required gap of the symbol mentions and of the exports records exactly (DB5).
-  new StageThreeGaps(config.id).check(attempt.names, attempt.saved,
-    { questions: analysis.questions as unknown[], gaps: analysis.gaps as unknown[] });
   const state: Finalization = { ...records, config, drafts, attempt, inputs, loading, analysis, currentExcerpts,
     checkedSourceBytes };
   finalChecks(state);

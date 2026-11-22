@@ -98,7 +98,9 @@ const questionAndGapLimits = `Each question or gap has exactly its fields, 1 to 
   `(such as src/billing/**), the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, ` +
   `such as billing.purpose. ` +
   `Name a symbol or a missing input in the text or reason. The publisher refuses any other subject, also in an earlier ` +
-  `question or gap, so keep the ID of a component that a question or gap names. `;
+  `question or gap, so keep the ID of a component that a question or gap names. The one exception is a gap that is ` +
+  `copied from a tool record, such as a required gap: copy it exactly, because it keeps the subjectRefs of its record, ` +
+  `also a missing compiler input. `;
 
 const boundaryReview = `When the run has a projectKey, write formatVersion: 6 with boundaryReview. Cite the selected inventory digest, ` +
     `source identity and whole-file mapping. Identify the caller's written path and the resolved member independently. ` +

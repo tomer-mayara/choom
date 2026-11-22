@@ -120,6 +120,10 @@ describe("the Stage 3 finalizer and the required gaps of an exports request", ()
       change: (gaps: JsonRecord[]): JsonRecord[] => gaps.filter((gap) => gap.id !== exportsGap.id) },
     { name: "keeps only the subjects of the snapshot in the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
       change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, subjectRefs: ["src/invoice.ts"] } : gap) },
+    // The copy check gives its message before the subject check reads the changed gap, whose
+    // subject is a declaration file that the snapshot does not have.
+    { name: "cites the whole exports record in the required gap", message: `The entry analysis changes the required gap ${exportsGap.id}. ${copyEach}`,
+      change: (gaps: JsonRecord[]): JsonRecord[] => gaps.map((gap) => gap.id === exportsGap.id ? { ...gap, evidenceRefs: ["s3-check-file@exports-001.json"] } : gap) },
     { name: "gives another gap an ID that is reserved for the required gaps of the exports record",
       message: `The ID ${ownGap.id} is reserved for the required gaps of s3-check-file@exports-001.required-gaps.json. Use a different ID.`,
       change: (gaps: JsonRecord[]): JsonRecord[] => [...gaps, ownGap] },

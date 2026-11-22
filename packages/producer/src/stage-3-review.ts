@@ -5,6 +5,7 @@ import { assert, evidenceBase, exact, type Fields, object, type PointerMessages,
   from './record-checks.ts';
 import { SubjectChecker, type SubjectRecord } from './record-subjects.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
+import { StageThreeGaps } from './stage-3-gaps.ts';
 import { InspectionClues } from './stage-3-inspection-clues.ts';
 
 // The checks of the Stage 3 entry analysis and its LLM review packet against the
@@ -316,6 +317,13 @@ export function checkReview(inputs: ReviewInputs): Review {
   const addedIssues = checkIssues(inputs, analysis, sources, evidence);
   checkCandidates(inputs, analysis, sources, evidence, addedIssues);
   checkPriorities(inputs, analysis, sources, evidence);
+  // The analysis copies each required gap of the symbol mentions and of the exports
+  // records exactly (DB5). This check is before the subject check: a required gap of an
+  // exports record keeps the subjects of its tool record, and the subject check knows it
+  // by its exact form. So a required gap that the review changed gets the message of the
+  // copy check, and not a message about a subject that it must keep.
+  new StageThreeGaps(inputs.id).check(inputs.names, inputs.saved,
+    { questions: analysis.questions as unknown[], gaps: analysis.gaps as unknown[] });
   checkSubjects(inputs, analysis);
   return { analysis, currentExcerpts };
 }
