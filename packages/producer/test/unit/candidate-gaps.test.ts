@@ -86,8 +86,10 @@ describe("ToolGaps.reservedPrefix", () => {
 });
 
 // The two candidate records of a Stage 4 attempt, by attempt file name.
-const savedRecords: Record<string, Json> = { "behavior-entry-candidates.json": candidatesRecord([settingsGap], 3),
-  "resource-access-candidates.json": candidatesRecord([inputGap], 10000, 2) };
+const savedBehaviorRecord = candidatesRecord([settingsGap], 3);
+const savedAccessRecord = candidatesRecord([inputGap], 10000, 2);
+const savedRecords: Record<string, Json> = { "behavior-entry-candidates.json": savedBehaviorRecord,
+  "resource-access-candidates.json": savedAccessRecord };
 const readSaved = (file: string): unknown => savedRecords[file];
 
 describe("CandidateGaps of a Stage 4 attempt", () => {
@@ -95,9 +97,9 @@ describe("CandidateGaps of a Stage 4 attempt", () => {
 
   test("gives the required gaps of the behavior entry candidates and then of the resource access candidates", () => {
     expect(attemptGaps.record(readSaved)).toEqual({ formatVersion: 1, gaps: [
-      ...stageFourGaps.fromCandidateRecord(behaviorRecord(savedRecords["behavior-entry-candidates.json"])),
+      ...stageFourGaps.fromCandidateRecord(behaviorRecord(savedBehaviorRecord)),
       ...stageFourGaps.fromCandidateRecord({ name: "resource-access", artifactRef: accessRef, label: "resource access candidates",
-        record: savedRecords["resource-access-candidates.json"] })] });
+        record: savedAccessRecord })] });
     expect(attemptGaps.record(readSaved).gaps.map(({ id }) => id)).toEqual(["s4-check-behavior-entry-gap-001",
       "s4-check-resource-access-gap-001", "s4-check-resource-access-gap-002"]);
   });
