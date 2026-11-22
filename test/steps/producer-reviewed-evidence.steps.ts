@@ -104,6 +104,20 @@ Then("the operator is told which step of the inspected path has no reviewed sour
   assert.ok(message.includes(`Inspected path ${pathId} step 2 does not cite a reviewed range.`), message);
 });
 
+// The cli component owns cli.ts, but the steps cite only the reviewed range of http.ts.
+Given("a Stage 4 draft with an inspected path that names a component whose files no cited reviewed range covers",
+  function (this: ReviewedEvidenceWorld) {
+    this.stageFourRun = stageFourPublication(() => {}, [], toolsRoot, (records: Records) => {
+      addOrderPath(records, ["http", "cli"], [[reviewedRoute], [reviewedRoute]]);
+    });
+  });
+
+Then("the operator is told which component of the inspected path has no reviewed source", function (this: ReviewedEvidenceWorld) {
+  const message = refusal(this);
+  assert.ok(message.includes(`Inspected path ${pathId} names the component cli, but no reviewed range that its steps cite ` +
+    "covers code that cli owns"), message);
+});
+
 // The review also read the excerpt of cli.ts that collect saved. The second step cites
 // that reviewed range and, for its scope, a context of the saved graph.
 Given("a Stage 4 draft with an inspected path whose steps each cite a reviewed range", function (this: ReviewedEvidenceWorld) {

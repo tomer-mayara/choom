@@ -1,6 +1,7 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type * as TsMorph from 'ts-morph';
-import { divideFile, dividedFileBytes, pathOwners, type PathSelectors, restOwner, type SavedFile } from './code-units.ts';
+import { divideFile, dividedFileBytes, pathOwners, type PathSelectors, restOwner, type SavedFile, type SourceRange }
+  from './code-units.ts';
 import { assert, exact, type Fields, oneOf, strings, text } from './record-checks.ts';
 import { parseSnapshotText, type ProjectTools } from './snapshot-project.ts';
 
@@ -42,6 +43,11 @@ export interface MappedOwners {
   readonly files: number;
   // Whether the component, or null for an unknown owner, directly owns code of the file.
   owns(path: unknown, owner: unknown): boolean;
+  // Whether the component directly owns code on the lines [first, last] of the file: a
+  // file unit of the file, or a part with a range on one of these lines. A line that two
+  // parts share, such as the last line of a symbol and the line break after it, counts
+  // for both owners.
+  ownsLines(path: unknown, lines: readonly number[], owner: unknown): boolean;
 }
 // The checks of each unit, with the units that passed them by file.
 interface Context {
@@ -177,5 +183,14 @@ export function validateCodeMapping(inputs: MappingInputs): MappedOwners {
     for (const [path, symbols] of context.divided) checkDivision(context, path, symbols, tools);
   }
   const owners = new Map([...context.units].map(([path, units]) => [path, new Set(units.map(unit => unit.owner))]));
-  return { files: owners.size, owns: (path, owner) => owners.get(path)?.has(owner) ?? false };
+  const onLines = (unit: Fields, [first, last]: readonly number[]): boolean => !parts || unit.unitKind === 'file' ||
+    (unit.ranges as SourceRange[]).some(range => range[0].line <= (last as number) && lastLine(range) >= (first as number));
+  return { files: owners.size, owns: (path, owner) => owners.get(path)?.has(owner) ?? false,
+    ownsLines: (path, lines, owner) => (context.units.get(path) ?? []).some(unit => unit.owner === owner && onLines(unit, lines)) };
+}
+
+// The last line with text of a range. A range ends at the position after its last
+// character, so a range that ends at column 1 ends on the line before.
+function lastLine([start, end]: SourceRange): number {
+  return end.column === 1 && end.line > start.line ? end.line - 1 : end.line;
 }

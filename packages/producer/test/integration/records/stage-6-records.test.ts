@@ -239,6 +239,42 @@ describe("validateDiscoveryRecords", () => {
     expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["launch#/cli"])))).toThrow(noReviewedRange(1));
   });
 
+  // Each component of an inspected path owns, in the selected code mapping, a file or a
+  // part that a reviewed range cited by the steps covers. cli owns cli.ts.
+  const startLocation = { snapshotRef, path: "cli.ts", sha256: digest(files["cli.ts"] ?? ""), lines: [1, 1] };
+  const cliAndHttpPath = (...steps: string[][]) => (records: Records): void => {
+    inspectedPath(...steps)(records);
+    records.discovery.inspectedPaths.forEach((path) => { path.componentIds = ["http", "cli"]; });
+  };
+  // The review also read line 1 of cli.ts: the reviewed range cli-start of a requested excerpt.
+  function withReviewedStart(change: (records: Records) => void): RecordInputs {
+    const inputs = recordInputs((records) => {
+      (records.entry.reviewedFiles as unknown[]).push({ id: "cli-start", ...startLocation });
+      records.mapping.units.forEach((unit) => { if (unit.path === "cli.ts") unit.inspection = "reviewed"; });
+      change(records);
+    });
+    const bytes = Buffer.from(JSON.stringify({ id: "cli-start", ...startLocation, totalLines: 1, truncated: false,
+      excerpt: `1: ${(files["cli.ts"] ?? "").trimEnd()}` }));
+    inputs.artifacts.set(`${stage}-file@excerpt-002.json`, { path: `evidence/${stage}/excerpt-002.json`, bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("accepts an inspected path whose steps cite a reviewed range of code of each of its components", () => {
+    expect(validateDiscoveryRecords(withReviewedStart(cliAndHttpPath(["orders-handler"], ["cli-start", "graph"]))))
+      .toMatchObject({ inspectedPaths: 1 });
+  });
+
+  test.each<[string, (records: Records) => void]>([
+    ["no step cites a reviewed range of its code", cliAndHttpPath(["orders-handler"], ["orders-handler", "graph"])],
+    ["only the path itself cites a reviewed range of its code", (records) => {
+      cliAndHttpPath(["orders-handler"])(records);
+      records.discovery.inspectedPaths.forEach((path) => { path.evidenceRefs.push("cli-start"); });
+    }],
+  ])("refuses an inspected path that names a component when %s", (_name, change) => {
+    expect(() => validateDiscoveryRecords(withReviewedStart(change))).toThrow(new Error("Inspected path path-1 names the " +
+      "component cli, but no reviewed range that its steps cite covers code that cli owns."));
+  });
+
   test.each(refusedCases)("refuses %s", (_name, change, message) => {
     expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(message);
   });

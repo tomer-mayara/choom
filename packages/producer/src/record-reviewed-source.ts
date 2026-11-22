@@ -1,5 +1,6 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import { assert, evidenceBase, type Fields } from './record-checks.ts';
+import type { MappedOwners } from './record-code-mapping.ts';
 import type { SourceRecords } from './record-sources.ts';
 
 // What the reviewed source checks read from the selected records of a run.
@@ -12,26 +13,30 @@ export interface ReviewedSourceInputs {
   readonly source: Pick<SourceRecords, 'records'>;
   // The reviewed ranges of the selected entry analysis and of the earlier ones that it names.
   readonly reviewedRanges: readonly Fields[];
+  // The direct owners of the code of each file in the selected code mapping.
+  readonly mapped: MappedOwners;
 }
 
 // The source that the reviews of the selected history read. A reviewed range takes
 // the ID of the excerpt that the review read. So an excerpt that no review read is not
 // a reviewed range, also when it has the same path and lines. The shared record checks
 // of Stages 4 to 6 use these checks for a behavior entry, a resource access
-// observation and each step of an inspected path.
+// observation, and the steps and the components of an inspected path.
 export class ReviewedSource {
   private readonly indexed: ReadonlyMap<unknown, Fields>;
   private readonly resolve: (ref: unknown) => unknown;
   private readonly records: ReadonlyMap<unknown, Fields>;
   private readonly reviewedRanges: readonly Fields[];
   private readonly reviewedById: ReadonlyMap<unknown, Fields>;
+  private readonly mapped: MappedOwners;
 
-  constructor({ indexed, resolve, source, reviewedRanges }: ReviewedSourceInputs) {
+  constructor({ indexed, resolve, source, reviewedRanges, mapped }: ReviewedSourceInputs) {
     this.indexed = indexed;
     this.resolve = resolve;
     this.records = source.records;
     this.reviewedRanges = reviewedRanges;
     this.reviewedById = new Map(reviewedRanges.map(range => [range.id, range]));
+    this.mapped = mapped;
   }
 
   // A behavior entry or resource access names a source site inside a reviewed range
@@ -56,16 +61,27 @@ export class ReviewedSource {
   }
 
   // Each step of an inspected path cites at least one reviewed range of the selected
-  // history itself, as a site does. Each other saved source range that the step cites is
-  // a reviewed range too. A step can also cite other records, such as a graph or a
-  // references record, for its scope.
-  checkStep(path: Fields, step: Fields, number: number): void {
+  // history itself, as a site does. Each other saved source range that a step cites is a
+  // reviewed range too. A step can also cite other records, such as a graph or a
+  // references record, for its scope. Each component of the path owns, in the selected
+  // code mapping, a file or a part that a reviewed range cited by the steps covers.
+  checkPath(path: Fields): void {
+    const cited = (path.steps as Fields[]).flatMap((step, index) => this.stepRanges(path, step, index + 1));
+    for (const component of path.componentIds as unknown[])
+      assert(cited.some(range => this.mapped.ownsLines(range.path, range.lines as number[], component)),
+        'Inspected path ' + String(path.id) + ' names the component ' + String(component) +
+        ', but no reviewed range that its steps cite covers code that ' + String(component) + ' owns.');
+  }
+
+  // The reviewed ranges that a step of an inspected path cites itself.
+  private stepRanges(path: Fields, step: Fields, number: number): Fields[] {
     const name = 'Inspected path ' + String(path.id) + ' step ' + number;
     const refs = step.evidenceRefs as string[];
-    assert(refs.some(ref => this.citedRange(ref) !== undefined),
-      name + ' does not cite a reviewed range. An excerpt that no review read is not a reviewed range.');
+    const ranges = refs.map(ref => this.citedRange(ref)).filter((range): range is Fields => range !== undefined);
+    assert(ranges.length > 0, name + ' does not cite a reviewed range. An excerpt that no review read is not a reviewed range.');
     for (const ref of refs) assert(!this.records.has(evidenceBase(ref)) || this.reviewedById.has(evidenceBase(ref)),
       name + ' cites ' + ref + ', a saved source range that is not a reviewed range of the selected history.');
+    return ranges;
   }
 
   // The reviewed range that a reference cites itself: by the ID of the range, alone or
