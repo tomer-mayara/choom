@@ -188,8 +188,8 @@ describe("Stage 4 collect", () => {
     "artifact map", () => {
     expect(collected).toEqual({ status: 0, stderr: "", stdout: "Saved source sites, behavior entry candidates, resource access " +
       "candidates, bounded excerpts, and the Stage 4 review prompt.\n" });
-    const outputs = ["source-sites.json", "behavior-entry-candidates.json", "resource-access-candidates.json", "source-excerpts.json",
-      "review-prompt.md", "artifact-map.json"];
+    const outputs = ["source-sites.json", "behavior-entry-candidates.json", "resource-access-candidates.json", "required-gaps.json",
+      "source-excerpts.json", "review-prompt.md", "artifact-map.json"];
     expect(saved("operator-collect.json")).toMatchObject({ formatVersion: 1, attemptId: id, action: "collect",
       phase: "collect", status: "completed", exitCode: 0,
       digests: Object.fromEntries(outputs.map((name) => [name, sha256(readFileSync(join(fixture.attempt, name)))])) });
@@ -262,7 +262,7 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("Follow the default, named and re-exported members on the reviewed public paths.");
     expect(prompt).toContain("If a role has no evidenced example, record the scope checked and the gap.");
     // The prompt for this graph fixture is deterministic once the temporary folder is removed.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("b6d1933826aa7438736164a80b7114af01ca29211113bfa1e21f36fecc99a98b");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("d3c523693f04735ee5998892d6e05156ae756c56be6945beaea0194b3657083a");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

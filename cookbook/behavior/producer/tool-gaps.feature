@@ -16,3 +16,10 @@ Feature: Unavailable analysis is a visible gap
     When the operator finishes Stage 2
     Then the Stage 2 result is not published
     And the operator is told which required tool gap is missing
+
+  Scenario: Stage 4 refuses a review that leaves out the gap of a candidate record
+    Given a Stage 4 collection whose behavior entry candidates record a settings value that is not a literal
+    And a Stage 4 review that leaves out the required gap of that value
+    When the operator publishes the Stage 4 draft
+    Then the draft is refused
+    And the operator is told which required tool gap is missing

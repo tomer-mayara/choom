@@ -122,6 +122,17 @@ describe("SubjectChecker", () => {
     expect(checker().refused(question)).toEqual(toolSubjects);
   });
 
+  // DB1, detail b: a required gap of a Stage 4 candidate record keeps the subjects of the
+  // record, such as a declaration file that a reference path directive names and the
+  // snapshot does not hold.
+  test("refuses no subject of a required gap that keeps the subjects of a gap of a Stage 4 candidate record", () => {
+    const required = found(["cli.ts", "types/env.d.ts"], "s4-001-behavior-entry-gap-002",
+      ["s4-001-file@behavior-entry-candidates.json#/gaps/1"]);
+    expect(checker().refused(required)).toEqual([]);
+    expect(checker().refused({ ...required, evidenceRefs: ["s4-001-file@behavior-entry-candidates.json#/gaps/0"] }))
+      .toEqual(["types/env.d.ts"]);
+  });
+
   test("check accepts questions and gaps whose subjects all name something", () => {
     const issues = { questions: [asked(["gap-1", "cli.ts"])], gaps: [found(["q-1", "billing.purpose"])] };
     expect(() => checker(issues).check()).not.toThrow();

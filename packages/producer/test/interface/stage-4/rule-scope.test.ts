@@ -65,4 +65,14 @@ describe("the limit of the Stage 4 rule records", () => {
     expect(limitOf("resource-access-candidates.json")).toEqual({ status: "partial", saved: 10000, omittedCandidates: 1,
       rules: ["knex-select"], last: "t9999" });
   });
+
+  // DB5: a partial record gives a required gap that cites its status. Neither record lists a gap.
+  test("collect saves a required gap for each partial record", () => {
+    const partial = (name: string, label: string, omitted: number): Json => ({ id: `s4-check-${name}-gap-001`,
+      kind: "tool-outcome", subjectRefs: ["snapshot-check"],
+      reason: `The ${label} are partial: the record keeps the first 10000 candidates and leaves out ${omitted}.`,
+      evidenceRefs: [`s4-check-file@${name}-candidates.json#/status`] });
+    expect(limited.saved("required-gaps.json")).toEqual({ formatVersion: 1, gaps: [
+      partial("behavior-entry", "behavior entry candidates", 3), partial("resource-access", "resource access candidates", 1)] });
+  });
 });
