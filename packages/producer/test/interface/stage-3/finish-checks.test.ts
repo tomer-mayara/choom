@@ -182,7 +182,7 @@ describe("Stage 3 finish checks", () => {
     const results = finishStageThree(attempt, (packet) => {
       packet.analysis.candidates = [];
       addGap(packet, ["s2-check-candidate-001"], ["s2-check-entry-analysis#/candidates/0"]);
-      firstPriority(packet).subjectRefs = ["app.ts", "s2-check-candidate-001", "s1-question-001", "s3-check-gap-001",
+      firstPriority(packet).subjectRefs = ["app.ts", "s2-check-candidate-001", "s1-question-001", mentionsGapId,
         "snapshot-check"];
     });
     expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
