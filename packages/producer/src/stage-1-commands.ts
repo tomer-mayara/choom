@@ -463,7 +463,7 @@ function publish(inputs: StageOneInputs, bytes: Map<string, Buffer>, review: Rev
       captureMethod: 'rsync copy followed by a checksum dry-run comparison',
       captureLimit: 'The copy was checked for differences; atomic capture is not proven.', sourcePath: inputs.target,
       capturedAt: read('evidence/captured-at.txt').toString().trim() },
-    coverage: new RunSummary({ progress, inventory, reviewRef: 'review-001', issuesRef: 'discovery-001', issues: discovery })
+    coverage: new RunSummary({ inventory, reviewRef: 'review-001', issuesRef: 'discovery-001', issues: discovery })
       .coverage(), artifacts: registry } satisfies RunManifest));
   console.log('Stage 1 saved. Run verify, then continue to Stage 2.');
 }

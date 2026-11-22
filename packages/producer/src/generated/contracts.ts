@@ -98,7 +98,6 @@ export interface RunCoverage {
   inventoried: string;
   inspected: string;
   recorded: string;
-  pending: string;
 }
 
 export interface RunManifest {

@@ -1408,9 +1408,9 @@ the working baseline and discovery, and writes the run manifest last. It marks
 `componentRecovery` or `remainingCode` complete. It also writes the
 [run summary](#run-summary) for the new records. The summary names the entry
 analysis and code mapping of the attempt. It counts the questions and gaps of
-the discovery proposal and gives the stages that are still pending. `finish`
-does not accept intent or verify semantic quality. `verify` makes the same summary again
-and refuses a `run.yaml` with another summary.
+the discovery proposal. `finish` does not accept intent or verify semantic
+quality. `verify` makes the same summary again and refuses a `run.yaml` with
+another summary.
 
 `finish` registers every attempt file. So each attempt file must be a file that a
 producer action saved:
@@ -1766,7 +1766,7 @@ gives its fields:
 | `mode` | `A`. |
 | `status` | `in-progress`, and `completed` after Stage 6 `finish`. |
 | `projectKey`, `referenceBaseline` | The project key and the frozen reference baseline of Stage 1 `start` ([project key](#stage-1-role-evidence-and-project-key)). |
-| `progress` | The progress of each stage, by key: `inventory` (Stage 1), `entryAnalysis` (Stage 2), `inspectionPriorities` (Stage 3), `componentRecovery` (Stage 4), `remainingCode` (Stage 5) and `baselineRecovery` (Stage 6). A stage that completed has `complete`. Stage 1 also writes `baselineRecovery: pending`, and Stage 2 writes `inspectionPriorities: pending`. A stage without a key has not completed. |
+| `progress` | The progress of each stage, by key: `inventory` (Stage 1), `entryAnalysis` (Stage 2), `inspectionPriorities` (Stage 3), `componentRecovery` (Stage 4), `remainingCode` (Stage 5) and `baselineRecovery` (Stage 6). A stage that completed has `complete`. Stage 1 also writes `baselineRecovery: pending`, and Stage 2 writes `inspectionPriorities: pending`. A stage without a key has not completed. This is the one place for the state of each stage: the summary has no field for it. |
 | `snapshot` | The snapshot ID, the folder `snapshot`, the ID of the inventory, the file of the capture exclusions, and the method, the limit, the source folder and the time of the capture. |
 | `coverage` | The [run summary](#run-summary). |
 | `artifacts` | Each registered record of the run, by artifact ID, with its path in the run folder and the SHA-256 of its bytes. A working draft is never registered. |
@@ -1775,12 +1775,12 @@ gives its fields:
 ### Run summary
 
 `coverage` is the summary of the run. Each publisher makes a new summary from the
-progress that it writes and from the records that it selects. It writes this
-summary in place of the summary of the earlier stage. Thus the summary describes
-the published drafts. It keeps no claim that a later stage made obsolete, such as
-an old count or a pending stage that completed. A failed publication does not
-replace `run.yaml`, so the summary of the earlier stage stays. After Stage 4 the
-summary can be:
+records that it selects. It writes this summary in place of the summary of the
+earlier stage. Thus the summary describes the published drafts. It keeps no claim
+that a later stage made obsolete, such as an old count. The summary does not give
+the state of a stage: `progress` has the state of each stage, and no other field
+repeats it. A failed publication does not replace `run.yaml`, so the summary of
+the earlier stage stays. After Stage 4 the summary can be:
 
 ```yaml
 coverage:
@@ -1791,7 +1791,6 @@ coverage:
     whether a review read it. Tool reads are not LLM inspection.
   recorded: s4-001-file@discovery.proposed.yaml records 3 questions and 12 gaps,
     with history and linked notes.
-  pending: Stages 5 and 6 are pending.
 ```
 
 | Field | Text |
@@ -1799,7 +1798,6 @@ coverage:
 | `inventoried` | The number of regular files that the selected inventory lists. |
 | `inspected` | The selected record with the reviewed source ranges: `review-001` at Stage 1, then the selected entry analysis. From Stage 4 it also names the selected code mapping. |
 | `recorded` | The record counts of the questions and gaps of the discovery. |
-| `pending` | The stages that have not completed, such as `Stage 6 is pending.` After Stage 6 it is `No stage is pending.` |
 
 The record that `recorded` names holds the questions and gaps of the discovery:
 
@@ -1812,7 +1810,7 @@ The question and gap lists keep their history. A later question or gap that
 answers or narrows an earlier one is a linked note that names its ID
 ([discovery](#discovery)). Choom does not decide which question or gap is
 answered, so the summary gives record counts and no status. No summary text calls
-a count unresolved.
+a count unresolved, and none names a stage as pending.
 
 In `verify`, the Stage 3 finalizer, the Stage 4/5 publisher and Stage 6 make the
 manifest again from the saved records. Stage 6 also uses the completion time of

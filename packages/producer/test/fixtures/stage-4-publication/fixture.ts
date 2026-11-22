@@ -198,7 +198,7 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
     candidates: [...candidates, ...project?.fileEntries ?? []], inspectionPriorities: prioritiesOf(project) }));
   // The summary that the Stage 3 finalizer writes. The Stage 4/5 publisher writes a new one.
   const progress = { inventory: "complete", entryAnalysis: "complete", inspectionPriorities: "complete", baselineRecovery: "pending" };
-  const coverage = new RunSummary({ progress, inventory: { files: inventoryFiles }, reviewRef: stageThreeAnalysis,
+  const coverage = new RunSummary({ inventory: { files: inventoryFiles }, reviewRef: stageThreeAnalysis,
     issuesRef: stageThreeAnalysis, issues: { questions: [], gaps: priorGaps } }).coverage();
   write(join(work, "run.yaml"), yamlText({ formatVersion: 1, id: runRef, mode: "A", status: "in-progress", progress,
     ...(project ? { projectKey: project.key, referenceBaseline } : {}),

@@ -356,7 +356,7 @@ function finalChecks({ config, drafts, attempt, inputs, loading, currentExcerpts
 function publishedDrafts({ config, drafts, attempt, run, discovery, analysis, inputs }: Finalization): Drafts {
   const { yaml, analysisRef } = config;
   const progress = { ...(run.progress as Fields), inspectionPriorities: 'complete' };
-  const nextRun = { ...run, artifacts: attempt.artifacts, progress, coverage: new RunSummary({ progress,
+  const nextRun = { ...run, artifacts: attempt.artifacts, progress, coverage: new RunSummary({
     inventory: inputs.inventory, reviewRef: analysisRef, issuesRef: analysisRef, issues: analysis }).coverage() };
   const nextDiscovery = { ...discovery, entryAnalysisRef: analysisRef, questions: analysis.questions, gaps: analysis.gaps };
   return { run: Buffer.from(yaml.stringify(nextRun)), discovery: Buffer.from(yaml.stringify(nextDiscovery)),

@@ -422,7 +422,7 @@ function publish({ id, work, artifacts, inventory }: Finish, { before, run, disc
   const core = (name: string): string => `${id}-${name}`;
   const nextDiscovery = { ...discovery, entryAnalysisRef: core('entry-analysis'), questions: analysis.questions, gaps: analysis.gaps };
   const progress = { ...(run.progress as Fields), entryAnalysis: 'complete', inspectionPriorities: 'pending' };
-  const nextRun = { ...run, artifacts, progress, coverage: new RunSummary({ progress, inventory,
+  const nextRun = { ...run, artifacts, progress, coverage: new RunSummary({ inventory,
     reviewRef: core('entry-analysis'), issuesRef: core('entry-analysis'), issues: analysis }).coverage() };
   const update = draftUpdate({ work, prefix: `.${id}-publication-`, read: name => read(safeFile(work, name)),
     before: new Map(drafts.map(name => [`${name}.yaml`, before[name] as Buffer])),

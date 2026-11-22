@@ -79,15 +79,15 @@ Then("the run summary says that the discovery result records 1 question and 2 ga
       `${String(manifest.discoveryRef)} records 1 question and 2 gaps, with history and linked notes.`);
   });
 
-Then("it says that Stages 5 and 6 are pending", function (this: RunManifestWorld) {
-  assert.equal(summary(this).pending, "Stages 5 and 6 are pending.");
-});
-
 Then("it does not say that the baseline is not yet recovered", function (this: RunManifestWorld) {
   assert.doesNotMatch(Object.values(summary(this)).join("\n"), /not yet recovered/);
 });
 
+// The summary has three fields. progress has the state of each stage, so no text of the
+// summary names a stage as pending.
 Then("it does not call them unresolved", function (this: RunManifestWorld) {
-  assert.deepEqual(Object.keys(summary(this)), ["inventoried", "inspected", "recorded", "pending"]);
-  assert.doesNotMatch(Object.values(summary(this)).join("\n"), /unresolved/i);
+  assert.deepEqual(Object.keys(summary(this)), ["inventoried", "inspected", "recorded"]);
+  const text = Object.values(summary(this)).join("\n");
+  assert.doesNotMatch(text, /unresolved/i);
+  assert.doesNotMatch(text, /pending/i);
 });
