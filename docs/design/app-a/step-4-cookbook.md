@@ -1098,11 +1098,10 @@ snapshot file that names the input, and its reason names the missing input. See
 for the fields.
 
 The review prompt lists the required gaps. The review copies each one exactly into
-the `gaps` of the entry analysis and of the discovery. It gives no other question or
-gap an ID that starts with `<attempt>-behavior-entry-gap-` or
-`<attempt>-resource-access-gap-`. The publisher refuses a packet that leaves out or
-changes a required gap, or that uses such an ID. Stage 5 keeps these gaps
-unchanged, and its publisher refuses a Stage 5 packet that leaves one out.
+the `gaps` of the entry analysis and of the discovery. The publisher refuses a
+packet that leaves out or changes a required gap. No ID form is reserved for the
+required gaps. Stage 5 keeps these gaps unchanged, and its publisher refuses a
+Stage 5 packet that leaves one out.
 
 The shared record checks of the publisher also refuse a draft in which a selected
 tool result has no gap that cites it. These tool results include the outcomes of

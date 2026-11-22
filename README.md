@@ -661,8 +661,8 @@ An analysis that did not run needs a gap that cites its record. Stage 2 `run`
 saves the gaps that the Knip outcomes require in `required-gaps.json`: one for a
 preflight that marked the Knip profile unsupported, and one for each Knip mode
 that failed or was skipped (`tool-gaps.ts`). Stage 2 finish refuses an analysis
-that leaves out or changes a required gap, or that gives another question or gap
-a reserved ID ([record format](docs/design/app-a/record-format.md#required-gaps)).
+that leaves out or changes a required gap. No ID form is reserved
+([record format](docs/design/app-a/record-format.md#required-gaps)).
 The Stage 3 finalizer refuses an analysis without a gap that cites the symbol
 mentions record when the mentions are unavailable or skipped (`result-gaps.ts`).
 The shared record checks of Stages 4 to 6 check the Knip records of the selected
@@ -676,8 +676,7 @@ bun test ./packages/producer/test/interface/stage-2/required-gaps.test.ts ./pack
 Stage 4 `collect` also saves `required-gaps.json` (`candidate-gaps.ts`). It holds
 one gap for each gap that the behavior entry or resource access candidates list,
 and one for a partial candidate record. The Stage 4/5 publisher refuses a Stage 4
-or Stage 5 packet that leaves out or changes one of these gaps. It also refuses a
-reserved ID for another question or gap
+or Stage 5 packet that leaves out or changes one of these gaps
 ([record format](docs/design/app-a/record-format.md#required-gaps-of-the-candidate-records)).
 Run the focused checks with:
 

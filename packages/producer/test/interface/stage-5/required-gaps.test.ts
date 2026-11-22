@@ -7,11 +7,11 @@ import type { CommandResult } from "../../support/commands.ts";
 
 // Stage 5 keeps the questions and gaps of Stage 4, so it keeps the required gaps of the
 // Stage 4 candidate records too (DB5). The Stage 4/5 publisher refuses a Stage 5 packet
-// that leaves one out, or that gives another question or gap an ID that Stage 4
-// reserved for them. Here the Vite settings of the snapshot name the input of the
-// build with a template that the code completes, so the behavior entry candidates of
-// Stage 4 list one settings gap. The published Stage 4 packet copies its required gap,
-// and the Stage 5 packet of the fixture starts from the published Stage 4 records.
+// that leaves one out. No ID form is reserved. Here the Vite settings of the snapshot
+// name the input of the build with a template that the code completes, so the behavior
+// entry candidates of Stage 4 list one settings gap. The published Stage 4 packet copies
+// its required gap, and the Stage 5 packet of the fixture starts from the published
+// Stage 4 records.
 type Json = Record<string, unknown>;
 type Records = Parameters<NonNullable<StageFiveChanges["records"]>>[0];
 
@@ -52,10 +52,10 @@ describe("the Stage 4/5 publisher with a Stage 5 packet and the required gaps of
       stderr: `The entry analysis leaves out the required gap ${requiredGap}. Copy each gap of s4-check-file@required-gaps.json exactly.\n` });
   }, 60_000);
 
-  test("refuses a Stage 5 gap with an ID that Stage 4 reserved for the required gaps", () => {
+  test("checks a Stage 5 packet with a new gap whose ID has the form of a required gap of Stage 4", () => {
     const added = (gaps: Json[]): Json[] => [...gaps, { id: "s4-check-behavior-entry-gap-002", kind: "deferred",
       subjectRefs: [settingsFile.path], reason: "The other inputs of the build are not reviewed.", evidenceRefs: ["launch-settings"] }];
-    expect(checkedPacket(changeGaps(added))).toEqual({ status: 1, stdout: "", stderr: "The ID s4-check-behavior-entry-gap-002 is " +
-      "reserved for the required gaps of s4-check-file@required-gaps.json. Use a different ID.\n" });
+    const result = checkedPacket(changeGaps(added));
+    expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
   }, 60_000);
 });

@@ -5,9 +5,8 @@ export interface ReviewPass {
 export interface PromptFacts {
   runRef: unknown; snapshotRef: unknown; entryAnalysisRef: unknown; attemptId: string; work: string; attempt: string;
   graph: { ref: string; contexts: ReviewPass[] };
-  // The gaps that the candidate records require: the artifact ID of required-gaps.json,
-  // the start of the IDs that only these gaps can use, and the gaps.
-  requiredGaps: { ref: string; prefixes: readonly string[]; gaps: readonly unknown[] };
+  // The gaps that the candidate records require: the artifact ID of required-gaps.json, and the gaps.
+  requiredGaps: { ref: string; gaps: readonly unknown[] };
 }
 
 function graphEvidence({ ref, contexts }: PromptFacts['graph']): string {
@@ -69,16 +68,13 @@ const resourceCandidates = `resource-access-candidates.json lists the calls that
   `and name \`<resource-id>.owner\` in discovery. See [Resource observations](record-format.md#resource-observations).\n\n`;
 
 // The gaps that the candidate records require (DB5). The Stage 4/5 publisher refuses a
-// packet that does not copy each one exactly, or that uses a reserved ID for another record.
-function requiredGapsText({ ref, prefixes, gaps }: PromptFacts['requiredGaps']): string {
-  const reserved = `an ID that starts with ${prefixes.join(' or ')}.`;
-  if (!gaps.length) return `Required gaps (${ref}): none. The candidate records list no gap and are complete. ` +
-    `Do not give a question or gap ${reserved}\n\n`;
+// packet that does not copy each one exactly.
+function requiredGapsText({ ref, gaps }: PromptFacts['requiredGaps']): string {
+  if (!gaps.length) return `Required gaps (${ref}): none. The candidate records list no gap and are complete.\n\n`;
   return `Required gaps (${ref}): each gap that behavior-entry-candidates.json or resource-access-candidates.json lists ` +
     `gives one required gap, and so does a record with status: partial. Copy each gap below into the gaps of ` +
     `entry-analysis.yaml and discovery.proposed.yaml exactly, with the same id, kind, subjectRefs, reason and evidenceRefs. ` +
-    `The publisher refuses a packet that leaves out or changes a required gap, or that gives a question or another gap ` +
-    `${reserved}\n\n\`\`\`json\n${JSON.stringify(gaps, null, 2)}\n\`\`\`\n\n`;
+    `The publisher refuses a packet that leaves out or changes a required gap.\n\n\`\`\`json\n${JSON.stringify(gaps, null, 2)}\n\`\`\`\n\n`;
 }
 
 const exampleReview = `For a source-reviewed example, read its cited source range. Compare each displayed field, value and row ` +

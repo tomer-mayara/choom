@@ -62,11 +62,6 @@ export class CandidateGaps {
     return this.#attempt + '-file@' + encodeURIComponent(file);
   }
 
-  // The start of the IDs that the required gaps of each record use. No other question or gap can use them.
-  reservedPrefixes(): string[] {
-    return CandidateGaps.records.map(({ name }) => this.#gaps.reservedPrefix(name));
-  }
-
   // The required gaps of the saved candidate records. `read` gives a saved attempt file, by its name.
   record(read: (file: string) => unknown): RequiredGaps {
     return { formatVersion: 1, gaps: CandidateGaps.records.flatMap(({ name, file, label }) =>
@@ -75,9 +70,8 @@ export class CandidateGaps {
 
   // Refuses saved required gaps that differ from the gaps that the saved candidate
   // records give, and a review (an entry analysis) that leaves out or changes a
-  // required gap or that gives a question or another gap a reserved ID. `artifacts`
-  // holds the files of the attempt by artifact ID: for Stage 5, the registered files of
-  // the Stage 4 attempt.
+  // required gap. `artifacts` holds the files of the attempt by artifact ID: for
+  // Stage 5, the registered files of the Stage 4 attempt.
   check(artifacts: Registered, review: Fields): void {
     const read = (file: string): unknown => {
       const artifact = artifacts.get(this.ref(file));
@@ -88,8 +82,6 @@ export class CandidateGaps {
     const required = this.record(read).gaps;
     assert(same(read(CandidateGaps.file), { formatVersion: 1, gaps: required }),
       `The required gaps in ${source} differ from the gaps that the candidate records give. Use a new attempt.`);
-    const issues = { questions: list(review.questions, 'questions'), gaps: list(review.gaps, 'gaps') };
-    for (const { name } of CandidateGaps.records)
-      this.#gaps.checkCopied(name, required.filter(gap => this.#gaps.reserves(name, gap.id)), issues, source);
+    ToolGaps.checkCopied(required, list(review.gaps, 'gaps'), source);
   }
 }

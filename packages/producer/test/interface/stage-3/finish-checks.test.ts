@@ -73,11 +73,11 @@ const cases: FinishCase[] = [
   { name: "the analysis changes the reason of the required gap of the symbol mentions", change: (packet) => {
     mentionsGap(packet).reason = "Knip did not run in Stage 2.";
   }, message: `The entry analysis changes the required gap ${mentionsGapId}. ${copyEach}` },
-  { name: "a new gap has an ID that is reserved for the required gaps of the symbol mentions", change: (packet) => {
-    packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: "s3-check-symbol-mentions-gap-002", kind: "deferral",
+  // DB5: no ID form is reserved, but a second gap with the ID of the required gap is refused.
+  { name: "a new gap has the ID of the required gap of the symbol mentions", change: (packet) => {
+    packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: mentionsGapId, kind: "deferral",
       subjectRefs: ["app.ts"], reason: "Not reviewed.", evidenceRefs: ["s3-check-file@symbol-mentions.json"] }];
-  }, message: "The ID s3-check-symbol-mentions-gap-002 is reserved for the required gaps of s3-check-file@required-gaps.json. " +
-    "Use a different ID." },
+  }, message: `Invalid or colliding analysis ID: ${mentionsGapId}` },
   // GB-01b: each subject of a new question or gap, and of each inspection priority, names something that the run holds.
   { name: "a new gap names a file that is not in the snapshot", change: (packet) => addGap(packet, ["app.ts", "src/no-such-file.ts"]),
     message: `The subject src/no-such-file.ts of the gap s3-check-gap-002 names nothing. ${subjectForms}` },

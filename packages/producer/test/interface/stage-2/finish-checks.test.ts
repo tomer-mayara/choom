@@ -31,8 +31,6 @@ const gapEvidence = (ref: string, gapId = `${id}-gap-002`) => (analysis: JsonRec
 // and both Knip modes are skipped: gap 001 cites the preflight, and gaps 002 and 003
 // cite the runs. The analysis must copy each one exactly.
 const copyAdvice = `Copy each gap of ${id}-required-gaps exactly.`;
-const reservedId = (reserved: string): string =>
-  `The ID ${reserved} is reserved for the required gaps of ${id}-required-gaps. Use a different ID.`;
 const withoutGap = (gapId: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
   gaps: (analysis.gaps as JsonRecord[]).filter((gap) => gap.id !== gapId) });
 // GB-01b: the analysis with a new question that names the subjects, and with the changed fields.
@@ -89,11 +87,13 @@ const cases: FinishCase[] = [
     message: `The entry analysis changes the required gap ${id}-knip-gap-002. ${copyAdvice}` },
   { name: "a required gap has other subjects", change: changedGap({ subjectRefs: ["app.ts"] }),
     message: `The entry analysis changes the required gap ${id}-knip-gap-002. ${copyAdvice}` },
-  { name: "a question has an ID that is reserved for the required gaps",
-    change: (analysis) => ({ ...analysis, questions: [priorQuestion, question(`${id}-knip-gap-004`)] }),
-    message: reservedId(`${id}-knip-gap-004`) },
-  { name: "another gap has an ID that is reserved for the required gaps",
-    change: gapEvidence(`${id}-knip-runs#/runs/0`, `${id}-knip-gap-004`), message: reservedId(`${id}-knip-gap-004`) },
+  // DB5: no ID form is reserved. The ID of a required gap names that gap: the copy check
+  // refuses other content with that ID, and the unique ID check refuses a second gap with it.
+  { name: "the gap with the ID of a required gap has other content",
+    change: changedGap({ kind: "deferral", subjectRefs: ["app.ts"], reason: "Not reviewed.", evidenceRefs: ["inventory-001"] }),
+    message: `The entry analysis changes the required gap ${id}-knip-gap-002. ${copyAdvice}` },
+  { name: "another gap has the ID of a required gap", change: gapEvidence(`${id}-knip-runs#/runs/0`, `${id}-knip-gap-002`),
+    message: "Invalid or duplicate analysis.gaps record" },
   // GB-01b: each subject of a record that finish adds names something that the run holds.
   { name: "a new question names a file that is not in the snapshot", change: withQuestion(["app.ts", "src/no-such-file.ts"]),
     message: `The subject src/no-such-file.ts of the question ${id}-question-001 names nothing. ${subjectForms}` },
@@ -141,6 +141,15 @@ describe("Stage 2 finish checks", () => {
     expect((discovery.gaps as JsonRecord[]).map((gap) => gap.id)).toEqual([`${id}-knip-gap-001`, `${id}-knip-gap-002`,
       `${id}-knip-gap-003`]);
     expect(discovery.gaps).toEqual(requiredGaps(prepared));
+  });
+
+  // DB5: no ID form is reserved. A question and a gap that the analysis adds can have an
+  // ID of the form <attempt>-knip-gap-NNN when no required gap has that ID.
+  test("publishes a new question and a new gap whose IDs have the form of a required gap", () => {
+    const prepared = restoredAttempt();
+    const analysis = gapEvidence(`${id}-knip-runs#/runs/0`, `${id}-knip-gap-005`)(entryAnalysis(prepared));
+    const results = finishAttempt(prepared, scratch, { ...analysis, questions: [priorQuestion, question(`${id}-knip-gap-004`)] });
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   });
 
   // Any saved file can be cited whole, with an empty JSON Pointer. Stage 3 reads the gap again.

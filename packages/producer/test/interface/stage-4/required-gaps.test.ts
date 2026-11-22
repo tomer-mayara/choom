@@ -56,14 +56,14 @@ describe("the required gaps of Stage 4 collect", () => {
     expect(prompt).toContain(`Required gaps (${id}-file@required-gaps.json): `);
     expect(prompt).toContain("\n```json\n" + JSON.stringify(requiredGaps, null, 2) + "\n```\n");
     expect(prompt).toContain("Copy each gap below into the gaps of entry-analysis.yaml and discovery.proposed.yaml exactly");
-    expect(prompt).toContain(`an ID that starts with ${id}-behavior-entry-gap- or ${id}-resource-access-gap-.`);
+    // DB5: no ID form is reserved.
+    expect(prompt).not.toContain("an ID that starts with");
   });
 });
 
-// The Stage 4/5 publisher refuses a packet that leaves out or changes a required gap,
-// or that gives another question or gap a reserved ID. The packets of the fixture copy
-// each required gap. check writes nothing, so each test writes its own packet for the
-// attempt above.
+// The Stage 4/5 publisher refuses a packet that leaves out or changes a required gap.
+// The packets of the fixture copy each required gap. check writes nothing, so each test
+// writes its own packet for the attempt above.
 type Records = Record<string, Record<string, unknown>>;
 const copyAdvice = `Copy each gap of ${id}-file@required-gaps.json exactly.`;
 const extraFiles = [appFile, viteFile];
@@ -74,11 +74,6 @@ const changeGaps = (change: (gaps: Json[]) => Json[]) => (records: Records): voi
     const record = records[name] as { gaps: Json[] };
     record.gaps = change(record.gaps);
   }
-};
-const reservedQuestion = (records: Records): void => {
-  for (const name of ["entry-analysis.yaml", "discovery.proposed.yaml"]) Object.assign(records[name] ?? {}, { questions: [
-    { id: `${id}-resource-access-gap-002`, subjectRefs: ["src/app.ts"], text: "Which file declares the environment?",
-      evidenceRefs: ["launch-settings"] }] });
 };
 
 function checkedPacket(changeRecords?: (records: Records) => void): CommandResult {
@@ -109,8 +104,6 @@ describe("the Stage 4/5 publisher with the required gaps of collect", () => {
     ["changes a required gap", changeGaps((gaps) => gaps.map((gap) =>
       gap.id === `${id}-resource-access-gap-001` ? { ...gap, reason: "The environment file is missing." } : gap)),
     `The entry analysis changes the required gap ${id}-resource-access-gap-001. ${copyAdvice}`],
-    ["gives a question a reserved ID", reservedQuestion,
-      `The ID ${id}-resource-access-gap-002 is reserved for the required gaps of ${id}-file@required-gaps.json. Use a different ID.`],
   ])("refuses a packet that %s, and writes nothing", (_name, change, message) => {
     const before = folderState(collected.attempt().work);
     expect(checkedPacket(change)).toEqual({ status: 1, stdout: "", stderr: message + "\n" });

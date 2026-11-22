@@ -11,8 +11,6 @@ import { assert, type Fields, object, strings, text } from './record-checks.ts';
 export type DiscoveryGap = RequiredGaps['gaps'][number];
 // A saved tool record: its name in the gap IDs, its artifact ID and its gaps.
 export interface ToolRecord { readonly name: string; readonly artifactRef: string; readonly gaps: readonly unknown[] }
-// The questions and gaps of a review, such as an entry analysis.
-export interface ReviewIssues { readonly questions: readonly unknown[]; readonly gaps: readonly unknown[] }
 // A saved Stage 4 candidate record: its name in the gap IDs, its artifact ID, the words
 // that name it in a reason, such as behavior entry candidates, and the record.
 export interface CandidateRecord { readonly name: string; readonly artifactRef: string; readonly label: string; readonly record: unknown }
@@ -91,18 +89,6 @@ export class ToolGaps {
   // The ID of gap N (from 0) of the named tool record: the prefix, the name, -gap- and N + 1 in three digits.
   id(name: string, index: number): string {
     return this.#prefix + name + '-gap-' + String(index + 1).padStart(3, '0');
-  }
-
-  // True when the ID starts with the prefix, the name of the tool record and -gap-:
-  // only a gap that the stage gives from that record can have such an ID.
-  reserves(name: string, id: unknown): boolean {
-    return typeof id === 'string' && id.startsWith(this.#prefix + name + '-gap-');
-  }
-
-  // The start of each ID that `id` gives for the named tool record and that `reserves`
-  // reserves, such as s4-001-behavior-entry-gap-. A review prompt can name it.
-  reservedPrefix(name: string): string {
-    return this.#prefix + name + '-gap-';
   }
 
   // The gaps that a tool record lists, each with the kind, subjects and reason of the record.
@@ -185,18 +171,12 @@ export class ToolGaps {
       evidenceRefs: [artifactRef + '#/status'] }];
   }
 
-  // Refuses a review that leaves out or changes one of the required gaps of the named
-  // tool record, or that gives a question or another gap an ID that `reserves` reserves
-  // for them. A review keeps each required gap exactly, in any place of its gaps.
-  // `source` is the artifact ID of the saved required gaps.
-  checkCopied(name: string, required: readonly DiscoveryGap[], { questions, gaps }: ReviewIssues, source: string): void {
-    const requiredIds = new Set<unknown>(required.map(gap => gap.id));
-    const idOf = (item: unknown): unknown => object(item) ? item.id : undefined;
-    // Each question, and each gap that does not have the ID of a required gap.
-    for (const id of [...questions.map(idOf), ...gaps.map(idOf).filter(id => !requiredIds.has(id))])
-      assert(!this.reserves(name, id) && !requiredIds.has(id),
-        `The ID ${String(id)} is reserved for the required gaps of ${source}. Use a different ID.`);
-    const copies = new Map(gaps.map(item => [idOf(item), item]));
+  // Refuses a review whose gaps leave out or change one of the required gaps. A review
+  // keeps each required gap exactly, in any place of its gaps. No ID form is reserved:
+  // a gap of the review with the ID of a required gap must be that gap. `source` is the
+  // artifact ID of the saved required gaps.
+  static checkCopied(required: readonly DiscoveryGap[], gaps: readonly unknown[], source: string): void {
+    const copies = new Map(gaps.map(item => [object(item) ? item.id : undefined, item]));
     for (const gap of required) {
       assert(copies.has(gap.id), `The entry analysis leaves out the required gap ${gap.id}. Copy each gap of ${source} exactly.`);
       assert(same(copies.get(gap.id), gap), `The entry analysis changes the required gap ${gap.id}. Copy each gap of ${source} exactly.`);

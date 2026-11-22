@@ -126,15 +126,16 @@ this rule. An example message is `The subject nothing-here of the inspection
 priority s3-001-priority-001 names nothing.` A priority with a clue must also
 name its source file or the candidate of that file, as the clue check requires.
 
-The rule is the same for every question and gap, in every stage. A gap that a
-stage gives from a tool record follows it too: a gap that Stage 1 `finish` adds
-from the settings record or the Git identity record, and a required gap of the
-Knip outcomes, of a [Stage 3 tool record](#stage-3-required-gaps) or of a
-[Stage 4 candidate record](#required-gaps-of-the-candidate-records). Such a gap
+The rule is the same for every question and gap, in every stage. It applies also
+to a gap that a stage gives from a tool record. Such gaps are the gaps that
+Stage 1 `finish` adds from the settings record and the Git identity record. They
+are also the required gaps of the Knip outcomes, of the
+[Stage 3 tool records](#stage-3-required-gaps) and of the
+[Stage 4 candidate records](#required-gaps-of-the-candidate-records). Such a gap
 names only files of the snapshot or the snapshot ID. Its reason and its tool
 record name a missing input. For example, the gap of a declaration file that a
-reference path directive names has the file with the directive as its subject,
-and its reason names the declaration file.
+reference path directive names has the file with the directive as its subject.
+Its reason names the declaration file.
 
 A Stage 4 references record (`references-NNN.json`, see the
 [stage 4 cookbook](step-4-cookbook.md#find-the-references-to-a-symbol)) is query
@@ -901,9 +902,9 @@ the Stage 4 attempt. They refuse:
 - a `required-gaps.json` that differs from those gaps;
 - an entry analysis that leaves out or changes a required gap, such as with
   `The entry analysis leaves out the required gap s4-001-behavior-entry-gap-001.
-  Copy each gap of s4-001-file@required-gaps.json exactly.`;
-- a question or another gap whose ID starts with `<attempt>-behavior-entry-gap-`
-  or `<attempt>-resource-access-gap-`, where `<attempt>` is the Stage 4 attempt.
+  Copy each gap of s4-001-file@required-gaps.json exactly.`
+
+No ID form is reserved, as for the [Knip required gaps](#required-gaps).
 
 The shared record checks of Stages 4 to 6 also check that a gap cites each of
 these outcomes of the selected candidate records. See
@@ -1675,9 +1676,12 @@ in any place of the list. Stage 2 `finish` gives the gaps again from the saved
 preflight and receipts, and refuses:
 
 - a `required-gaps.json` that differs from them;
-- an entry analysis that leaves out or changes a required gap;
-- a question or another gap whose ID starts with `<attempt>-knip-gap-`. Stage 2
-  `plan` refuses such an ID in the entry plan too.
+- an entry analysis that leaves out or changes a required gap.
+
+No ID form is reserved for the required gaps. Another question or gap can have
+an ID such as `<attempt>-knip-gap-004` when no required gap has it. A gap with
+the ID of a required gap must be that gap, else the copy check refuses it. The
+IDs of the questions and gaps stay unique (see [Discovery](#discovery)).
 
 Later stages keep these gaps unchanged, as they keep every question and gap. The
 shared record checks of Stages 4 to 6 check again that a gap cites the preflight
@@ -1728,9 +1732,9 @@ records, also with `verify`. It refuses:
 - a required-gaps file that differs from them;
 - an entry analysis that leaves out or changes a required gap, such as with
   `The entry analysis leaves out the required gap s3-001-exports-001-gap-001.
-  Copy each gap of s3-001-file@exports-001.required-gaps.json exactly.`;
-- a question or another gap whose ID starts with `<attempt>-symbol-mentions-gap-`,
-  or with `<attempt>-exports-NNN-gap-` for a saved `exports-NNN.json`.
+  Copy each gap of s3-001-file@exports-001.required-gaps.json exactly.`
+
+No ID form is reserved, as for the [Knip required gaps](#required-gaps).
 
 Later stages keep these gaps unchanged, as they keep every question and gap. When
 the attempt is in the selected history, the shared record checks of Stages 4 to 6

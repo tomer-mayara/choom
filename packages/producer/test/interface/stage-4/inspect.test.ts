@@ -260,11 +260,14 @@ describe("Stage 4 collect", () => {
       "such as billing.purpose.");
     // No gap has an exception, also not a gap that is copied from a tool record (DB1).
     expect(prompt).not.toContain("exception");
+    // The candidate records of this fixture give no required gap, and no ID form is reserved (DB5).
+    expect(prompt).toContain(`Required gaps (${id}-file@required-gaps.json): none. The candidate records list no gap and are ` +
+      "complete.\n\n");
     expect(prompt).toContain("use its registered name as the operation member");
     expect(prompt).toContain("Follow the default, named and re-exported members on the reviewed public paths.");
     expect(prompt).toContain("If a role has no evidenced example, record the scope checked and the gap.");
     // The prompt for this graph fixture is deterministic once the temporary folder is removed.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("d3c523693f04735ee5998892d6e05156ae756c56be6945beaea0194b3657083a");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("6c6d207512c7ef2e0b4629623cbca5018c28daf57abce3cb2982a5961b439427");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

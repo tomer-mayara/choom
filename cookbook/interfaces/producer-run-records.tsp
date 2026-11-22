@@ -11,14 +11,13 @@ namespace Choom.Producer;
 
 // The gaps that the outcomes of the tool records of one action require. The
 // action saves them with its tool records. Each gap cites the record that gives
-// it. As each discovery gap, it names only files of the snapshot or the snapshot
-// ID as subjects; its reason names a missing input, such as a declaration file
-// that the snapshot does not hold. Its ID has a form that the stage reserves for
-// these gaps. The review copies each gap exactly into the entry analysis. The
-// publishing action refuses a review that leaves out or changes a required gap,
-// or that gives the reserved form of ID to another question or gap. Stage 2
-// `run` saves required-gaps.json with the gaps of the Knip preflight and runs,
-// with IDs <attempt>-knip-gap-NNN.
+// it. It names only files of the snapshot or the snapshot ID as subjects, as each
+// discovery gap does. Its reason names a missing input, such as a declaration file
+// that the snapshot does not hold. The review copies each gap exactly into the
+// entry analysis. The publishing action refuses a review that leaves out or
+// changes a required gap. No ID form is reserved: another question or gap can
+// have any ID that no required gap has. Stage 2 `run` saves required-gaps.json
+// with the gaps of the Knip preflight and runs, with IDs <attempt>-knip-gap-NNN.
 // Stage 3 `collect` saves required-gaps.json with the gap of its symbol mentions,
 // with the ID <attempt>-symbol-mentions-gap-001, and each Stage 3 `exports` request
 // saves exports-NNN.required-gaps.json with the gaps of its exports record, with IDs

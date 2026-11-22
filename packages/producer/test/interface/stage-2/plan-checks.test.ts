@@ -56,11 +56,6 @@ const cases: PlanCase[] = [
     files: { "llm/plan-scope.json": JSON.stringify({ formatVersion: 1, snapshotRef: "snapshot-check", attemptId: "ATTEMPT",
       suppliedArtifactRefs: ["missing"], limits: [] }) }, message: "Unknown supplied artifact: missing" },
   { name: "the packet folder is inside the run", inside: true, message: "Keep LLM review packets outside the run." },
-  // The IDs that start with <attempt>-knip-gap- belong to the required gaps of the Knip run.
-  { name: "a new gap uses an ID that is reserved for the required gaps of the Knip run",
-    plan: (id) => entryPlan(id, { gaps: [{ id: `${id}-knip-gap-001`, kind: "deferral", subjectRefs: ["app.ts"],
-      reason: "Not reviewed in this attempt.", evidenceRefs: ["inventory-001"] }] }),
-    message: "Invalid or duplicate record ID: ATTEMPT-knip-gap-001" },
   // GB-01b: each subject of a new record names something that the run holds when the plan is saved.
   { name: "a new gap names a file that is not in the snapshot",
     plan: (id) => entryPlan(id, { gaps: [{ id: `${id}-gap-001`, kind: "deferral", subjectRefs: ["app.ts", "src/no-such-file.ts"],
@@ -96,16 +91,22 @@ describe("Stage 2 plan checks", () => {
 
   // GB-01b: before Stage 4 adds baseline items, a subject of a new plan record names a
   // file of the snapshot, the snapshot ID, a question or gap, or a candidate of the plan.
-  test("saves a plan whose new question names a candidate of the plan, an earlier question, a file and the snapshot ID", () => {
+  // DB5: no ID form is reserved, also not the form of the required gaps of the Knip run.
+  test.each([
+    ["a new question names a candidate of the plan, an earlier question, a file and the snapshot ID", (id: string) =>
+      entryPlan(id, { questions: [priorQuestion, newQuestion(id, [`${id}-candidate-001`, priorQuestion.id, "package.json",
+        "snapshot-check"])] })],
+    ["a new gap has an ID of the form of a required gap of the Knip run", (id: string) => entryPlan(id, { gaps: [
+      { id: `${id}-knip-gap-001`, kind: "deferral", subjectRefs: ["app.ts"], reason: "Not reviewed in this attempt.",
+        evidenceRefs: ["inventory-001"] }] })],
+  ])("saves a plan in which %s", (_name, plan) => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
       stageOneRun(work);
-      const id = "s2-plan-subjects";
+      const id = "s2-plan-saved";
       const attempt = stageTwoAttempt(work, id);
       expect(stageTwo(attempt, "start").status).toBe(0);
-      const plan = entryPlan(id, { questions: [priorQuestion,
-        newQuestion(id, [`${id}-candidate-001`, priorQuestion.id, "package.json", "snapshot-check"])] });
-      const result = stageTwo(attempt, "plan", [planPacket(join(scratch, "plan"), id, plan)]);
+      const result = stageTwo(attempt, "plan", [planPacket(join(scratch, "plan"), id, plan(id))]);
       expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
     });
   }, 60_000);

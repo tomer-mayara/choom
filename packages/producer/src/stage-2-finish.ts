@@ -349,16 +349,14 @@ function checkAnalysis(finish: Finish, plan: Fields, requireClaims: boolean): Fi
 
 // The gaps that the Knip outcomes require (DB5): run saved them in required-gaps.json.
 // They must be the gaps that ToolGaps gives from the saved preflight and Knip receipts,
-// and the analysis must copy each one exactly. No other question or gap can have an
-// ID that starts with <attempt>-knip-gap-.
+// and the analysis must copy each one exactly.
 function checkRequiredGaps(finish: Finish, analysis: Fields): void {
   const core = (name: string): string => `${finish.id}-${name}`;
-  const knipGaps = new ToolGaps(`${finish.id}-`);
-  const required = knipGaps.fromKnipRuns(document(finish, core('knip-runs')), core('knip-runs'), document(finish, core('preflight')));
+  const required = new ToolGaps(`${finish.id}-`).fromKnipRuns(document(finish, core('knip-runs')), core('knip-runs'),
+    document(finish, core('preflight')));
   assert(isDeepStrictEqual(document(finish, core('required-gaps')), { formatVersion: 1, gaps: required }),
     `The required gaps in ${core('required-gaps')} differ from the gaps that the Knip receipts and the preflight give. Use a new attempt.`);
-  knipGaps.checkCopied(ToolGaps.knip, required, { questions: analysis.questions as unknown[], gaps: analysis.gaps as unknown[] },
-    core('required-gaps'));
+  ToolGaps.checkCopied(required, analysis.gaps as unknown[], core('required-gaps'));
 }
 
 // The inventory of the saved snapshot, made with the checkout code, must still be

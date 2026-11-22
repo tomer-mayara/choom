@@ -599,9 +599,7 @@ the snapshot does not hold. The required gaps of collect are in
 {{REQUIRED_GAPS}}
 Each exports request also saves exports-NNN.required-gaps.json with one required
 gap for each gap of exports-NNN.json. Copy those gaps exactly too. The finalizer
-refuses an analysis that leaves out or changes a required gap. Do not give
-another question or gap an ID that starts with {{ID}}-symbol-mentions-gap-, or
-with {{ID}}-exports-NNN-gap- for a saved exports-NNN.json. Record other limits
+refuses an analysis that leaves out or changes a required gap. Record other limits
 as gaps with your own IDs.
 
 inspectionPriorities is ordered by priority: 1 first, then 2, then 3. Each item
@@ -712,9 +710,8 @@ It gives the required gaps again from the saved symbol mentions and from each
 saved exports record. It refuses a required-gaps file that differs from them.
 It refuses an analysis that leaves out or changes a required gap, for example
 `The entry analysis leaves out the required gap s3-001-symbol-mentions-gap-001.
-Copy each gap of s3-001-file@required-gaps.json exactly.` It also refuses a
-question or another gap whose ID starts with `<attempt>-symbol-mentions-gap-`,
-or with `<attempt>-exports-NNN-gap-` for a saved `exports-NNN.json`.
+Copy each gap of s3-001-file@required-gaps.json exactly.` No ID form is reserved
+for the required gaps.
 It refuses a new question or gap, and an inspection priority, when one of its
 subjects names nothing of the run. The message is the one of Stages 4 to 6, such
 as `The subject nothing-here of the inspection priority s3-001-priority-001

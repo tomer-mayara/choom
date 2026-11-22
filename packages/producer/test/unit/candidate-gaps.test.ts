@@ -76,15 +76,6 @@ describe("ToolGaps.fromCandidateRecord", () => {
   });
 });
 
-describe("ToolGaps.reservedPrefix", () => {
-  test("is the start of each ID that id gives and that reserves reserves", () => {
-    const prefix = stageFourGaps.reservedPrefix("behavior-entry");
-    expect(prefix).toBe("s4-check-behavior-entry-gap-");
-    expect(stageFourGaps.id("behavior-entry", 11).startsWith(prefix)).toBe(true);
-    expect([prefix + "x", "s4-check-behavior-entry-x"].map((id) => stageFourGaps.reserves("behavior-entry", id))).toEqual([true, false]);
-  });
-});
-
 // The two candidate records of a Stage 4 attempt, by attempt file name.
 const savedBehaviorRecord = candidatesRecord([settingsGap], 3);
 const savedAccessRecord = candidatesRecord([inputGap], 10000, 2);
@@ -104,10 +95,9 @@ describe("CandidateGaps of a Stage 4 attempt", () => {
       "s4-check-resource-access-gap-001", "s4-check-resource-access-gap-002"]);
   });
 
-  test("names the attempt files by their artifact IDs, and reserves an ID prefix for each record", () => {
+  test("names the attempt files by their artifact IDs", () => {
     expect([CandidateGaps.file, ...CandidateGaps.records.map(({ file }) => file)].map((file) => attemptGaps.ref(file))).toEqual([
       "s4-check-file@required-gaps.json", behaviorRef, accessRef]);
-    expect(attemptGaps.reservedPrefixes()).toEqual(["s4-check-behavior-entry-gap-", "s4-check-resource-access-gap-"]);
   });
 
   // Stage 5 keeps the behavior entry candidates of Stage 4, so their artifact ID names the Stage 4 attempt.
@@ -168,12 +158,12 @@ describe("CandidateGaps.check", () => {
       new Error(`The entry analysis leaves out the required gap ${leftOut}. Copy each gap of ${source} exactly.`));
   });
 
-  test("refuses a question with an ID that is reserved for the gaps of either record", () => {
-    for (const reserved of ["s4-check-behavior-entry-gap-002", "s4-check-resource-access-gap-003"]) {
-      const question = { id: reserved, subjectRefs: ["web/vite.config.ts"], text: "Which pages exist?", evidenceRefs: ["e"] };
-      expect(() => attemptGaps.check(artifacts, { questions: [question], gaps: required })).toThrow(new Error(
-        `The ID ${reserved} is reserved for the required gaps of ${source}. Use a different ID.`));
-    }
+  // DB5: no ID form is reserved.
+  test("accepts a question and another gap with an ID of the form of a required gap of either record", () => {
+    const question = { id: "s4-check-behavior-entry-gap-002", subjectRefs: ["web/vite.config.ts"], text: "Which pages exist?",
+      evidenceRefs: ["e"] };
+    const gaps = [...required, { ...ownGap, id: "s4-check-resource-access-gap-003" }];
+    expect(() => attemptGaps.check(artifacts, { questions: [question], gaps })).not.toThrow();
   });
 
   test("refuses saved required gaps that differ from the gaps of the candidate records", () => {
@@ -185,7 +175,7 @@ describe("CandidateGaps.check", () => {
   test.each([
     ["a record that is not registered", registered(savedRecords), { questions: [], gaps: required },
       `Missing registered artifact: ${source}`],
-    ["a review without a list of questions", artifacts, { gaps: required }, "Missing questions list."],
+    ["a review without a list of gaps", artifacts, { questions: [], gaps: {} }, "Missing gaps list."],
   ])("refuses %s", (_name, files, review, message) => {
     expect(() => attemptGaps.check(files, review)).toThrow(new Error(message));
   });
