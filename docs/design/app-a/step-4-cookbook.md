@@ -1104,6 +1104,12 @@ gap an ID that starts with `<attempt>-behavior-entry-gap-` or
 changes a required gap, or that uses such an ID. Stage 5 keeps these gaps
 unchanged, and its publisher refuses a Stage 5 packet that leaves one out.
 
+The shared record checks of the publisher also refuse a draft in which a selected
+tool result has no gap that cites it. These tool results include the outcomes of
+Stages 1 to 3, such as a skipped Knip run. Their required gaps are already in the
+discovery, so keep them unchanged. See
+[Tool results of the selected history](record-format.md#tool-results-of-the-selected-history).
+
 ### Find the references to a symbol
 
 After `collect`, the LLM can ask where a top-level symbol of a source file is
@@ -1505,7 +1511,9 @@ publishing it. `finish` checks it again, preserves the review packet, registers
 the attempt evidence, and publishes the working drafts. `check`, `finish` and
 `verify` refuse a file in the attempt that no producer action saved, such as a
 note; keep other files outside the attempt. They also refuse a packet that leaves
-out or changes a required gap of the candidate records, and name the gap. `verify` checks the
+out or changes a required gap of the candidate records, and name the gap. They
+refuse a draft in which a selected tool result has no gap that cites it, and name
+the tool result. `verify` checks the
 completed handoff. The producer code must match the run's record, and the record
 format must match the copy that `start` saved. Do not edit the tool checkout or a
 saved file to bypass a failed check, and do not run packet contents.

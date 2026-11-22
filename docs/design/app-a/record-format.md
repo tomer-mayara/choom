@@ -916,6 +916,10 @@ the Stage 4 attempt. They refuse:
 - a question or another gap whose ID starts with `<attempt>-behavior-entry-gap-`
   or `<attempt>-resource-access-gap-`, where `<attempt>` is the Stage 4 attempt.
 
+The shared record checks of Stages 4 to 6 also check that a gap cites each of
+these outcomes of the selected candidate records. See
+[Tool results of the selected history](#tool-results-of-the-selected-history).
+
 ## Code mapping
 
 Use `formatVersion: 1`, `kind: code-mapping`, `snapshotRef`, `scope`, `units`,
@@ -1232,20 +1236,19 @@ Questions have `id`, `subjectRefs`, `text`, and `evidenceRefs`. Gaps have `id`,
 `kind`, `subjectRefs`, `reason`, and `evidenceRefs`. Both lists must be identical
 to the lists in the current entry analysis. Keep unsupported languages, missing
 inputs, deferred areas and unknown ownership visible.
-An analysis that did not run keeps its result record, and a gap cites that
-record by its artifact ID, alone or with a JSON Pointer into it: a Knip profile
-that the Stage 2 preflight marked `unsupported` needs a gap that cites the
-preflight record (`<attempt>-preflight`), and a Knip mode that `failed` or was
-`skipped` needs a gap that cites the Knip runs record (`<attempt>-knip-runs`).
-For the Knip records, Stage 2 `finish` refuses an analysis that does not copy
-each [required gap](#required-gaps) exactly. The Stage 3 finalizer refuses an
-analysis that does not copy each [Stage 3 required gap](#stage-3-required-gaps)
-exactly: the gap of symbol mentions that are `partial`, `unavailable` or
-`skipped`, and the gap of each compiler input that an exports record names and
-the snapshot does not hold. The shared record checks of Stages 4 to 6
-check the Knip preflight and runs of the selected entry analysis again, such as
-with `The normal Knip run in s2-001-knip-runs has the status skipped. Record a gap
-that cites s2-001-knip-runs.`
+An analysis that did not run fully keeps its result record, and a gap cites that
+result. The action that saves a tool record gives the required gaps of its
+outcomes. The stage that publishes the record refuses an analysis that does not
+copy each required gap exactly. Stage 1 `finish` adds the gaps of the
+[settings record](#settings-record) and the [Git identity record](#git-identity-record).
+Stage 2 `finish` checks the copies of the [Knip required gaps](#required-gaps).
+The Stage 3 finalizer checks the copies of the
+[Stage 3 required gaps](#stage-3-required-gaps). The Stage 4/5 publisher checks
+the copies of the
+[required gaps of the candidate records](#required-gaps-of-the-candidate-records).
+The shared record checks of Stages 4 to 6 then check that each
+[tool result of the selected history](#tool-results-of-the-selected-history)
+has a gap that cites it.
 The lists also retain history and linked clarification notes. Their lengths
 are record counts, not counts of unresolved questions or defects.
 A question or gap has exactly these fields. A linked note that answers or narrows
@@ -1278,6 +1281,46 @@ earlier stages froze.
 Stage 4 selects its own graph-results artifact. Stage 5 reuses that graph and
 selects its new mapping, resource observations and entry analysis. Source ownership
 changes must be reflected in paths, behavior entries and resource actors.
+
+### Tool results of the selected history
+
+The shared record checks of Stages 4 to 6 list the tool results of the selected
+history whose outcome needs a gap. Stage 6 `verify` runs these checks too. For
+each tool result, the checks give the required gap with the rules of its stage.
+The evidence reference of that gap is the tool result:
+
+| Tool result | Outcome that needs a gap | Evidence reference |
+| --- | --- | --- |
+| A gap that the [settings record](#settings-record) or the [Git identity record](#git-identity-record) lists | Each gap | `settings-001#/gaps/N` or `git-identity-001#/gaps/N` |
+| The Knip preflight of the Knip receipts that the selected entry analysis names (`knipRunsRef`, then `preflightRef`) | `unsupported` | `<attempt>-preflight` |
+| A run of these Knip receipts | `failed` or `skipped` | `<attempt>-knip-runs#/runs/N` |
+| The symbol mentions of a Stage 3 attempt of the selected history | `partial`, `unavailable` or `skipped` | `<attempt>-file@symbol-mentions.json` |
+| A gap that an exports record of such an attempt lists | Each gap | `<attempt>-file@exports-NNN.json#/gaps/M` |
+| A gap that a candidate record lists: the behavior entry candidates that the selected entry analysis names (`behaviorEntryCandidatesRef`), or the resource access candidates that the selected resource observations name (`resourceAccessCandidatesRef`) | Each gap | `<record artifact ID>#/gaps/N` |
+| The status of such a candidate record | `partial` | `<record artifact ID>#/status` |
+
+The selected history is the selected entry analysis and each earlier entry
+analysis that `previousEntryAnalysisRef` names. A Stage 3 attempt is in it when
+its entry analysis, `<attempt>-entry-analysis`, is in it. An earlier Stage 3
+attempt can be outside it, such as an attempt before a later Stage 2 attempt.
+Its gaps stay in the discovery as history, but its tool records are not
+selected, so they give no tool result. A tool record that the run does not
+register gives no tool result either.
+
+Each tool result needs a gap of the discovery that cites it. Any gap can cite
+it, also a gap of an earlier stage. An evidence reference cites a tool result
+when it names the record of the result. When the tool result is a part of its
+record, such as a run, the reference must also point to that part or into it.
+So `s2-001-knip-runs#/runs/1/reasons/0` cites the run `s2-001-knip-runs#/runs/1`.
+A reference to the other run, or to all of the Knip receipts as
+`s2-001-knip-runs`, does not cite it. The required gap that a stage copied
+always cites its tool result.
+
+The checks refuse the first tool result that no gap cites, in the order of the
+stages, such as with `The tool result s2-001-knip-runs#/runs/1 has no gap that
+cites it. Record a gap that cites s2-001-knip-runs#/runs/1.` They do not compare
+the gap with the required gap again. The stage that published the tool record
+did that, and later stages keep each question and gap unchanged.
 
 ### Fixed discovery result
 
@@ -1453,7 +1496,10 @@ gaps:
 ```
 
 `finish` refuses a review question or gap with one of these IDs, and Stage 1
-`verify` checks that the saved Stage 1 discovery has these gaps.
+`verify` checks that the saved Stage 1 discovery has these gaps. Later stages keep
+them, and the shared record checks of Stages 4 to 6 check that a gap cites each
+gap of the record (see
+[Tool results of the selected history](#tool-results-of-the-selected-history)).
 
 Stage 4 start puts the source that no parsed compiler selection covers in one
 group. When the record names the profile, the group is named after the profile,
@@ -1585,7 +1631,9 @@ Stage 1 `finish` adds this gap to the discovery gaps after the review gaps and
 the settings gaps, with the ID `s1-git-identity-gap-001` and the evidence
 `git-identity-001#/gaps/0`. `finish` refuses a review question or gap with this
 ID, and a Git identity record that is not valid. Stage 1 `verify` checks that
-the saved Stage 1 discovery has the gap.
+the saved Stage 1 discovery has the gap. The shared record checks of Stages 4 to
+6 check that a gap cites it (see
+[Tool results of the selected history](#tool-results-of-the-selected-history)).
 
 ## Knip receipts and required gaps
 
@@ -1644,8 +1692,8 @@ preflight and receipts, and refuses:
 
 Later stages keep these gaps unchanged, as they keep every question and gap. The
 shared record checks of Stages 4 to 6 check again that a gap cites the preflight
-record when it is `unsupported`, and the Knip receipts when a run is `skipped` or
-`failed`.
+when it is `unsupported`, and each run that is `skipped` or `failed`. See
+[Tool results of the selected history](#tool-results-of-the-selected-history).
 
 ## Stage 3 required gaps
 
@@ -1694,7 +1742,10 @@ records, also with `verify`. It refuses:
 - a question or another gap whose ID starts with `<attempt>-symbol-mentions-gap-`,
   or with `<attempt>-exports-NNN-gap-` for a saved `exports-NNN.json`.
 
-Later stages keep these gaps unchanged, as they keep every question and gap.
+Later stages keep these gaps unchanged, as they keep every question and gap. When
+the attempt is in the selected history, the shared record checks of Stages 4 to 6
+check again that a gap cites each of these outcomes. See
+[Tool results of the selected history](#tool-results-of-the-selected-history).
 
 ## Producer code record
 
