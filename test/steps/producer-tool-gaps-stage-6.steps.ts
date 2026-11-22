@@ -10,7 +10,7 @@ import { rewriteStageFiveFiles, type StageSixFixture, stageSixFixture }
 // The completion check of the tool results, through the producer command line. The
 // shared record checks of Stages 4 to 6 list the tool results of the selected history,
 // and each result whose outcome needs a gap must have a gap that cites it. The run is
-// the Stage 6 producer fixture (fixtures/entry-points/producer.mjs).
+// the Stage 6 producer fixture (fixtures/entry-points/producer.ts).
 // producer-recovery.steps.ts saves the result, checks that nothing changed, and removes
 // the run folder after the scenario.
 interface ToolResultWorld extends World {

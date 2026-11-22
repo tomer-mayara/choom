@@ -439,11 +439,12 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 ```
 
 `check` is read-only. It is safe to correct the separate packet and repeat that
-check. `finish` copies and registers the review, updates the working drafts,
-marks `remainingCode: complete`, and makes the run summaries `coverage.inspected`
-and `coverage.unresolved` current for the new records. `verify` checks the
-published state. All three refuse a file in the attempt that no producer action
-saved. Do not rerun `finish` after success. Publication failure leaves evidence
+check. `finish` copies and registers the review, updates the working drafts and
+marks `remainingCode: complete`. It also writes the
+[run summary](record-format.md#run-summary) for the new records, which says that
+Stage 6 is pending. `verify` checks the published state, the summary too. All
+three refuse a file in the attempt that no producer action saved. Do not rerun
+`finish` after success. Publication failure leaves evidence
 for investigation; after resolving the cause, use a fresh attempt rather than
 editing that evidence.
 
@@ -482,9 +483,10 @@ guidance to the complete packet before `finish`. Check that:
   observation counts from their selected records. Replace stale prose rather
   than appending a conflicting update. Questions and gaps include history and
   linked notes; their totals are not unresolved-defect counts.
-- Review the manifest summaries after `finish` as well as the packet files: the
-  publisher makes them current. For helper-owned stale prose, use the correction
-  guidance rather than editing the manifest. Keep `baselineRef` unset until Stage 6.
+- Review the run summary after `finish` as well as the packet files. The
+  publisher writes it from the selected records, and `verify` refuses a
+  `run.yaml` with another summary. Do not edit the manifest. Keep `baselineRef`
+  unset until Stage 6.
 - The full update is validated before any draft is replaced. Register immutable
   attempt evidence by digest; do not register a mutable draft as evidence.
 

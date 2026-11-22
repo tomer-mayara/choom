@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { draftUpdate } from './draft-update.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, object, savedDocument, text } from './record-checks.ts';
+import { RunSummary } from './run-summary.ts';
 import { SavedAttemptFiles } from './saved-attempt-files.ts';
 import { StageThreeGaps } from './stage-3-gaps.ts';
 import { checkReview, utf8 } from './stage-3-review.ts';
@@ -352,13 +353,11 @@ function finalChecks({ config, drafts, attempt, inputs, loading, currentExcerpts
   for (const [ref, entry] of Object.entries(attempt.artifacts)) attempt.verify(ref, entry);
 }
 
-function publishedDrafts({ config, drafts, attempt, run, discovery, analysis }: Finalization): Drafts {
+function publishedDrafts({ config, drafts, attempt, run, discovery, analysis, inputs }: Finalization): Drafts {
   const { yaml, analysisRef } = config;
-  const nextRun = { ...run, artifacts: attempt.artifacts, progress: { ...(run.progress as Fields), inspectionPriorities: 'complete' },
-    coverage: { ...(run.coverage as Fields),
-      inspected: 'Source reviews remain in the saved entry analyses. Stage 3 adds ' +
-        analysisRef + '#/reviewedFiles. Tool query scope does not establish LLM inspection.' },
-  };
+  const progress = { ...(run.progress as Fields), inspectionPriorities: 'complete' };
+  const nextRun = { ...run, artifacts: attempt.artifacts, progress, coverage: new RunSummary({ progress,
+    inventory: inputs.inventory, reviewRef: analysisRef, issuesRef: analysisRef, issues: analysis }).coverage() };
   const nextDiscovery = { ...discovery, entryAnalysisRef: analysisRef, questions: analysis.questions, gaps: analysis.gaps };
   return { run: Buffer.from(yaml.stringify(nextRun)), discovery: Buffer.from(yaml.stringify(nextDiscovery)),
     baseline: drafts.before.baseline as Buffer };

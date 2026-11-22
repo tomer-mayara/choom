@@ -7,6 +7,7 @@ import { draftUpdate } from './draft-update.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
 import { SubjectChecker } from './record-subjects.ts';
+import { RunSummary } from './run-summary.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
 import { ToolGaps } from './tool-gaps.ts';
@@ -416,15 +417,13 @@ function finishAttempt(): void {
 // Replaces discovery.yaml and then run.yaml, the publication marker, as one update.
 // When a step fails before run.yaml is replaced, the update gives discovery.yaml its
 // bytes from before and removes its temporary files.
-function publish({ id, work, artifacts }: Finish, { before, run, discovery, analysis, stringify }:
+function publish({ id, work, artifacts, inventory }: Finish, { before, run, discovery, analysis, stringify }:
   { before: Record<string, Buffer>; run: Fields; discovery: Fields; analysis: Fields; stringify: (value: unknown) => string }): void {
   const core = (name: string): string => `${id}-${name}`;
   const nextDiscovery = { ...discovery, entryAnalysisRef: core('entry-analysis'), questions: analysis.questions, gaps: analysis.gaps };
-  const nextRun = { ...run, artifacts, progress: { ...(run.progress as Fields), entryAnalysis: 'complete', inspectionPriorities: 'pending' },
-    coverage: { ...(run.coverage as Fields),
-      inspected: `LLM source inspections are listed in the saved reviews and entry analyses. This attempt uses ${core('entry-analysis')}#/reviewedFiles. Tool query scopes and limits are in ${core('knip-runs')}; tool reads do not establish LLM inspection.`
-    }
-  };
+  const progress = { ...(run.progress as Fields), entryAnalysis: 'complete', inspectionPriorities: 'pending' };
+  const nextRun = { ...run, artifacts, progress, coverage: new RunSummary({ progress, inventory,
+    reviewRef: core('entry-analysis'), issuesRef: core('entry-analysis'), issues: analysis }).coverage() };
   const update = draftUpdate({ work, prefix: `.${id}-publication-`, read: name => read(safeFile(work, name)),
     before: new Map(drafts.map(name => [`${name}.yaml`, before[name] as Buffer])),
     advice: 'Keep this attempt unchanged; use a new attempt ID after you resolve the cause.' });

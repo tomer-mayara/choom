@@ -383,7 +383,10 @@ producer code record, the Git identity record as `git-identity-001` and the Git
 calls, and `inventory.mjs` with computed SHA-256 digests, then writes
 `run.yaml` last. No manual digest entry or analysis-record editing is needed.
 It saves `evidence/stage1-discovery.yaml` as `discovery-001`; mutable root drafts
-are never registered as immutable evidence.
+are never registered as immutable evidence. `run.yaml` has the
+[run summary](record-format.md#run-summary). It gives the file count and names
+`review-001` for the reviewed source ranges. It counts the questions and gaps of
+`discovery-001` and says that Stages 2 to 6 are pending.
 
 `verify` is read-only. Expected: `stage1-inputs-verified`, with the run/snapshot IDs,
 artifact count and inventory count. It also derives the gaps again from the saved

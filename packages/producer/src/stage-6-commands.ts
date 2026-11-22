@@ -6,6 +6,7 @@ import { isDeepStrictEqual as same } from 'node:util';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { type Artifact, assert, type Fields, hash, json, object, oneOf, text } from './record-checks.ts';
 import { runLayout } from './run-layout.mjs';
+import { RunSummary } from './run-summary.ts';
 import { directory, ensureDirectory, file, fileNames, type OwnedFile, type OwnedFolder, present, removeOwned,
   removeOwnedDirectories, requireNames, saveNew, stillOwned, withLock } from './stage-6-files.ts';
 import { type CheckedInventory, draftNames, loadParsers, plainId, readRegistry, type SnapshotIdentity, type TrustedParsers,
@@ -319,19 +320,11 @@ function checkInputs({ state, prepared }: Pick<Prepared, 'state' | 'prepared'>,
   assert(same(inventory.snapshot, state.facts.snapshot), 'Snapshot identity changed during publication.');
 }
 
-// The completed run manifest. Its summaries name the fixed records and the counts of
-// the validated records. The question and gap lists keep their history, so their
-// lengths are record counts, not counts of open issues.
+// The completed run manifest. Its summary names the selected Stage 5 records and the
+// fixed discovery result, and counts the questions and gaps of the checked discovery.
+// verify makes it again from the saved records and the completion time of the receipt.
 function completeManifest({ state, prepared, yaml }: Prepared, phase: Files, completedAt: unknown): Buffer {
   const { baselineRef, baselinePath, discoveryRef, discoveryPath, selectedRefs } = state.facts;
-  const { inspectedPaths, questions, gaps, unknownOwners } = state.validation;
-  const coverage = { ...(state.run.coverage as Fields | undefined),
-    inspected: `See ${selectedRefs.entryAnalysisRef}#/reviewedFiles and its predecessor analyses for reviewed source ranges. ` +
-      `See ${selectedRefs.codeMappingRef} for file review scope and ${discoveryRef}#/inspectedPaths for inspected behavior paths (${inspectedPaths}).`,
-    unresolved: `Fixed baseline ${baselineRef} records proposed intent. ` +
-      `See fixed discovery ${discoveryRef} for the recorded questions (${questions}) and recorded gaps (${gaps}), ` +
-      `which keep their history, and ${selectedRefs.codeMappingRef} for files with unknown owners (${unknownOwners}).`,
-  };
   const artifacts = { ...(state.run.artifacts as Fields) };
   function add(ref: string, path: string, bytes: Buffer): void {
     assert(!Object.hasOwn(artifacts, ref), 'Artifact ID already exists: ' + ref);
@@ -340,8 +333,11 @@ function completeManifest({ state, prepared, yaml }: Prepared, phase: Files, com
   for (const [name, bytes] of [...prepared, ...phase]) add(artifactId(name), 'evidence/' + id + '/' + name, bytes);
   add(baselineRef, baselinePath, candidate(state, 'baseline.candidate.yaml'));
   add(discoveryRef, discoveryPath, candidate(state, 'discovery.candidate.yaml'));
-  const run = { ...state.run, status: 'completed', progress: { ...(state.run.progress as Fields), baselineRecovery: 'complete' },
-    coverage, baselineRef, discoveryRef, completedAt, artifacts };
+  const progress = { ...(state.run.progress as Fields), baselineRecovery: 'complete' };
+  const coverage = new RunSummary({ progress, inventory: state.recordInputs.inventory,
+    reviewRef: selectedRefs.entryAnalysisRef as string, codeMappingRef: selectedRefs.codeMappingRef as string,
+    issuesRef: discoveryRef, issues: state.recordInputs.discovery as Fields }).coverage();
+  const run = { ...state.run, status: 'completed', progress, coverage, baselineRef, discoveryRef, completedAt, artifacts };
   return Buffer.from(yaml.stringify(run));
 }
 

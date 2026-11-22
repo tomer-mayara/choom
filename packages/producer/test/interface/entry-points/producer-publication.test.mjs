@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { decodeBaselineYaml } from '../../../../../src/lib/baseline-yaml.ts';
-import { producerFixture } from '../../fixtures/entry-points/producer.mjs';
+import { producerFixture } from '../../fixtures/entry-points/producer.ts';
 
 const tools = realpathSync(fileURLToPath(new URL('../../../../../', import.meta.url)));
 const attempt = 's6-fixture';

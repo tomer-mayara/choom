@@ -142,6 +142,20 @@ describe("Stage 3 finish checks", () => {
     expect({ status: again.status, stderr: again.stderr }).toEqual({ status: 1, stderr: "run.yaml changed after checkpointing.\n" });
   }, 60_000);
 
+  // DB4: the run after Stage 2 has 1 file, 1 question and the 3 gaps of the skipped Knip
+  // run, and the analysis adds the gap of the skipped symbol mentions.
+  test("publishes the summary of the run, and verify makes the same summary", () => {
+    const attempt = newAttempt("summary");
+    expect(finishStageThree(attempt).finish?.status).toBe(0);
+    expect((parse(folderText(attempt, "run.yaml")) as JsonRecord).coverage).toEqual({
+      inventoried: "1 regular file in the selected capture scope.",
+      inspected: "s3-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+        "reviews keep their own ranges. Tool reads are not LLM inspection.",
+      recorded: "s3-check-entry-analysis records 1 question and 4 gaps, with history and linked notes.",
+      pending: "Stages 4, 5 and 6 are pending." });
+    expect(stageThree(attempt, ["stage-3-finish", "verify"])).toMatchObject({ status: 0, stderr: "" });
+  }, 60_000);
+
   // run.yaml registers the files of a published attempt as evidence. Each later action
   // refuses the attempt before it saves a receipt or adds to the command log.
   test("refuses each action on the published attempt, changes no file of the run, and still verifies", () => {

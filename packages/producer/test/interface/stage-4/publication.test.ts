@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { type ExtraFile, type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
   type StageFourPublication } from "../../fixtures/stage-4-publication/fixture.ts";
+import { publishStageFive, stageFivePublication } from "../../fixtures/stage-5-publication/fixture.ts";
 import { toolsRoot } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 
@@ -48,21 +49,24 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     });
   }, 60_000);
 
-  // P3: the publisher makes the run summaries current for the published drafts, with
-  // the counts of the validated records, and keeps the capture summary of Stage 1.
-  test("makes the run summaries current, and verify checks them", () => {
+  // P3 (DB4): the publisher writes the summary of the run for the published drafts in
+  // place of the summary of Stage 3. verify makes the summary again from the saved
+  // records, and refuses a run.yaml whose summary differs.
+  test("writes the summary of the run, and verify refuses a summary that differs", () => {
     withPublication((fixture) => {
-      const before = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: Record<string, string> };
       expect(publishStageFour(fixture, "finish").status).toBe(0);
-      const run = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: unknown };
-      expect(run.coverage).toEqual({ inventoried: before.coverage.inventoried,
-        inspected: "See s4-check-entry-analysis#/reviewedFiles and its predecessor analyses for reviewed source ranges. " +
-          "See s4-check-file@code-mapping.json for file review scope and s4-check-file@discovery.proposed.yaml#/inspectedPaths " +
-          "for inspected behavior paths (0).",
-        unresolved: "The baseline draft records proposed intent; Stage 6 has not saved the fixed baseline. " +
-          "See s4-check-file@discovery.proposed.yaml for the recorded questions (0) and recorded gaps (2), which keep their " +
-          "history, and s4-check-file@code-mapping.json for files with unknown owners (0)." });
+      const runPath = join(fixture.work, "run.yaml");
+      const published = readFileSync(runPath, "utf8");
+      expect((parse(published) as { coverage: unknown }).coverage).toEqual({
+        inventoried: "2 regular files in the selected capture scope.",
+        inspected: "s4-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+          "reviews keep their own ranges. s4-check-file@code-mapping.json maps each code unit to its owner and says whether " +
+          "a review read it. Tool reads are not LLM inspection.",
+        recorded: "s4-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes.",
+        pending: "Stages 5 and 6 are pending." });
       expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
+      writeFileSync(runPath, published.replace("Stages 5 and 6 are pending.", "Stages 4, 5 and 6 are pending."));
+      expect(publishStageFour(fixture, "verify")).toEqual({ status: 1, stdout: "", stderr: "Working draft changed: run.yaml\n" });
     });
   }, 60_000);
 
@@ -80,6 +84,26 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
       const http = baseline.components.find((component) => component.id === "http");
       if (http) http.id = baseline.id;
     });
+  }, 60_000);
+});
+
+// The same publisher in Stage 5, on the run of the published Stage 4 packet.
+describe("the Stage 4/5 publisher with a reviewed Stage 5 packet", () => {
+  test("writes the summary of the run for the Stage 5 records, and verify accepts it", () => {
+    const fixture = stageFivePublication([]);
+    try {
+      expect(publishStageFive(fixture, "finish").status).toBe(0);
+      expect((parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: unknown }).coverage).toEqual({
+        inventoried: "2 regular files in the selected capture scope.",
+        inspected: "s5-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+          "reviews keep their own ranges. s5-check-file@code-mapping.json maps each code unit to its owner and says whether " +
+          "a review read it. Tool reads are not LLM inspection.",
+        recorded: "s5-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes.",
+        pending: "Stage 6 is pending." });
+      expect(result(publishStageFive(fixture, "verify"))).toMatchObject({ status: "stage5-publication-verified" });
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
   }, 60_000);
 });
 

@@ -1489,10 +1489,10 @@ guidance before `finish`. Check the complete model and fact records:
   two sites use the same resource.
 - Current overview, mapping limits, resource limits and counts agree with the
   selected records. Do not carry an old limit forward merely because it was
-  present in a previous packet. The publisher makes the manifest summaries
-  `coverage.inspected` and `coverage.unresolved` current when it publishes;
-  review them after `finish`, and use the correction guidance for helper-owned
-  prose rather than editing the manifest.
+  present in a previous packet. The publisher writes the
+  [run summary](record-format.md#run-summary) when it publishes; review it after
+  `finish`. Do not edit the manifest: `verify` refuses a `run.yaml` with another
+  summary.
 - The proposed draft updates are complete and consistent before any are written.
 
 Use the shared trusted publisher after the review packet is ready. Its packet
@@ -1518,9 +1518,10 @@ completed handoff. The producer code must match the run's record, and the record
 format must match the copy that `start` saved. Do not edit the tool checkout or a
 saved file to bypass a failed check, and do not run packet contents.
 
-On success, `run.yaml` marks `componentRecovery: complete`, and its summaries
-`coverage.inspected` and `coverage.unresolved` name the new records with their
-current counts. Discovery selects the
+On success, `run.yaml` marks `componentRecovery: complete`. Its
+[summary](record-format.md#run-summary) names the new records, counts the
+recorded questions and gaps, and says that Stages 5 and 6 are pending. Discovery
+selects the
 new entry analysis, mapping and resource observations plus the existing graph.
 The baseline contains proposed statements. Keep this attempt unchanged and
 continue to the [step 5 cookbook](step-5-cookbook.md).
