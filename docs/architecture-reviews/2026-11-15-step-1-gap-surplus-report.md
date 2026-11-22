@@ -67,10 +67,10 @@ in "Enforced only by the operator or LLM" stay open.
 
 | # | Item | Design | Evidence | Now (`86c6100`) |
 |---|---|---|---|---|
-| P1 | **Completion check "references resolve":** a question or gap `subjectRefs` that names nothing passes. | 710 | `stage-6-records.mjs:633` (only checks the value is a list of non-empty strings; confirmed by a probe) | Closed (GB-01a, GB-01b). |
-| P2 | **Completion check "explanations cite evidence":** inspected-path steps can cite an excerpt that was collected but never reviewed. Only the entry site must be in a reviewed range. | 716–717 | `stage-6-records.mjs:718-726` | Closed (GB-02a, GB-02b). |
-| P3 | **Completion check "summaries are current":** `run.yaml` keeps "The baseline is not yet recovered." through Stages 4–5. `coverage.unresolved` counts historical questions and gaps as well as current ones. | 450–452, 720–721 | `stage-4-5-publish.mjs:232-236`; `stage-6-commands.mjs:400-402` | Closed (GB-03). |
-| P4 | **Unavailable analysis needs a result record and a gap:** no check links the two. | 950 | `stage-6-records.mjs` | Closed (GB-04a to GB-04d), with the limits in "Not covered by Appendix B". |
+| P1 | **Completion check "references resolve":** a question or gap `subjectRefs` that names nothing passes. | 710 | `stage-6-records.mjs:633` (only checks the value is a list of non-empty strings; confirmed by a probe) | Closed (plan change 21; GB-01a, GB-01b). |
+| P2 | **Completion check "explanations cite evidence":** inspected-path steps can cite an excerpt that was collected but never reviewed. Only the entry site must be in a reviewed range. | 716–717 | `stage-6-records.mjs:718-726` | Closed (plan change 21; GB-02a, GB-02b). |
+| P3 | **Completion check "summaries are current":** `run.yaml` keeps "The baseline is not yet recovered." through Stages 4–5. `coverage.unresolved` counts historical questions and gaps as well as current ones. | 450–452, 720–721 | `stage-4-5-publish.mjs:232-236`; `stage-6-commands.mjs:400-402` | Closed (plan change 21; GB-03). |
+| P4 | **Unavailable analysis needs a result record and a gap:** no check links the two. | 950 | `stage-6-records.mjs` | Closed (Stage 1; plan change 21; GB-04a to GB-04d), with the limits in "Not covered by Appendix B". |
 | P5 | **Run manifest:** no baseline ID or digest before Stage 6. Tool and model versions are reachable only through artifacts. No times per stage. | 457 | `stage-1-commands.mjs:336-344` | Open. Plan change 20: design text only. |
 | P6 | **Tool-call records in Stage 1:** only command, arguments, time and exit code. No scope, limits or output digests. | 464–467 | `stage-1-commands.mjs:40-43` | Partly closed (GA-05, GA-06). Plan change 20: design text only. |
 | P7 | **LLM audit record:** no prompt-version field. The saved prompt is not compared with its template. Stages 2–3 do not check that cited evidence is a subset of supplied evidence. | 462 | `stage-3-finish.mjs:371` | Partly closed (GA-12). Version field: design text only. Other checks: after the first real run. |
@@ -78,14 +78,15 @@ in "Enforced only by the operator or LLM" stay open.
 | P9 | **Deferral evidence:** there is no deferral type, so a "checked entry search" and a "precise claim" are not checked. The cookbook example ("inspection budget") conflicts with the design. | 846–848 | `stage-3-finish.mjs:391-395`; `step-3-cookbook.md:234-235` | Open. After the first real run. |
 | P10 | **Investigate reported-unused files before a deferral:** the Stage 3 collector queries only unused exports and types. | 825–827 | `stage-3-commands.mjs:217,361-369` | Open. After the first real run. |
 | P11 | **Concurrent edits:** a change is detected and capture stops; any retry is manual. Excluded paths are not listed, only the rules. | 426–428, 473 | `stage-1-commands.mjs:126-130,162-166` | Open. Plan change 20: design text only. |
-| P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` | Closed as far as plan change 20 decides (GB-12a, GB-12b). "Not covered by Appendix B" lists the rest. |
+| P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` | Closed as far as plan change 20 decides (plan change 21; GB-12a, GB-12b). "Not covered by Appendix B" lists the rest. |
 | P13 | **Revisit affected work before Stage 6:** roots are frozen after Stage 4, and `record-format.md` says to start a new run instead. | 959–961 | `stage-4-5-publish.mjs:208-219`; `record-format.md:489-495` | Open. Plan change 20: design text only. |
 
-Status on 2026-11-21: plan change 21 and the tickets GB-01a to GB-14 of
-Appendix B close P1 to P4 and P12. "Changes during implementation (Appendix B)"
-gives the state of each ticket and the open points. Plan change 20 closes P5,
-P6, P11, P13 and the prompt-version field of P7 with design text. P8, P9, P10
-and the other two checks of P7 wait for the real run.
+Status on 2026-11-21: plan change 21 (tomer-mayara/choom#103) and the tickets
+GB-01a to GB-14 of Appendix B close P1 to P4 and P12. Appendix B, "Changes
+during implementation (Appendix B)", gives the state of each ticket and the
+open points. Plan change 20 closes P5, P6, P11, P13 and the prompt-version
+field of P7 with design text. P8, P9, P10 and the other two checks of P7 wait
+for the real run.
 
 ### Enforced only by the operator or LLM
 
@@ -428,10 +429,11 @@ Plan changes (the owner approved plan changes 6 to 16 on 2026-11-15):
       final review" stay documented until a real target hits one of them.
     - **The viewer** bundles its font, Inter.
     - **The stray-file suspicion** gets a probe with the Step 2 gate.
-21. **The Step 2 gate (2026-11-21).** The producer now has the completion
-    checks P1 to P4 and the one update of P12, each with a test that failed
-    first. A new feature, `cookbook/behavior/producer/completion-checks.feature`,
-    states them.
+21. **The Step 2 gate (2026-11-21, tomer-mayara/choom#103).** The producer
+    now has the decided completion checks of P1 to P4 and the one update of
+    P12, each with a test that failed first. A new feature,
+    `cookbook/behavior/producer/completion-checks.feature`, states them.
+    Appendix B, "Scope after plan change 20", maps this work to its tickets.
     - **P1:** the shared record checks of Stages 4 to 6 refuse a question or gap
       subject that names nothing, by the rules of plan change 20. A folder is
       written with or without a final `/`. The entry candidates of the earlier
@@ -1680,11 +1682,12 @@ independent review, and follows the planning and coding guides that replaced
 On 2026-11-21 the owner asked to implement the tickets of Appendix B, and
 decided these points:
 
-1. **The next tickets build on tomer-mayara/choom#103.** Draft
-   tomer-mayara/choom#103 (plan change 21) made a part of the Step 2 gate before
-   Appendix B merged. The ticket work starts from its branch. Where
-   tomer-mayara/choom#103 and a ticket differ, the ticket decides. The table
-   below gives each difference.
+1. **The next tickets build on tomer-mayara/choom#103.**
+   tomer-mayara/choom#103 (plan change 21), then a draft, made a part of the
+   Step 2 gate before Appendix B merged. The ticket work starts from its
+   branch. Where tomer-mayara/choom#103 and a ticket differ, the ticket
+   decides. The table below gives each difference. tomer-mayara/choom#103
+   merged on 2026-11-21, while the tickets were in work.
 2. **Only the next tickets.** These are GB-01a to GB-14. The draft tickets
    (GB-07a to GB-10) stay drafts until the first real run, as plan change 20
    says.
@@ -1841,6 +1844,33 @@ P7 and P8. The design lines are those of the current
 | Stray attempt files | A probe with the Step 2 gate. The probe now shows the defect. | GB-14 |
 | P7 (cited evidence and the template check), P8, P9, P10 | Decided after one real Step 1 run on Choom. | Drafts: GB-07a to GB-07f, GB-08a to GB-08c, GB-09a, GB-09b, GB-10 |
 | P5, P6, P7 (the prompt-version field), P11, P13 | The design text changes, not the code (#101). | None. See "Not planned". |
+
+**Built in tomer-mayara/choom#103 (plan change 21).** It follows the decided
+rows DB1, DB2 and DB11, and the proposed row DB14.
+
+- Done: GB-01a, GB-02b, GB-04a, GB-12a, GB-12b and GB-14.
+- Done in part:
+  - GB-03: the Stage 4 and 5 publisher writes current `coverage` text, and
+    Stage 6 says that its counts keep their history.
+  - GB-04b: only the symbol mentions that are `unavailable` or `skipped`.
+  - GB-04d: only the Knip receipts.
+- Open: GB-01b, GB-02a and GB-04c.
+- Not built, because they are proposals that the owner has not approved:
+  - DB1 (a): #103 accepts a folder written with or without a final `/`, not as
+    `dir/**`.
+  - DB1 (b), and the reserved required gaps of DB5: #103 asks for a gap that
+    the LLM writes and that cites the tool record.
+  - The addition of DB2: Stages 1 to 3 do not check subjects (GB-01b).
+  - The component rule of DB3.
+  - The `coverage` fields of DB4.
+
+If the owner approves one of these proposals, its ticket changes the code of
+#103.
+
+The tickets GB-01a to GB-14 then built the open parts and these proposals, as
+the owner asked on 2026-11-21. "Changes during implementation (Appendix B)"
+gives the state of each ticket. The owner approves the proposed rows with the
+PR of the tickets.
 
 The re-check also found these related defects:
 
