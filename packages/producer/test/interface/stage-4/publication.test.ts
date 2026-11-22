@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse } from "yaml";
+import { parse, stringify } from "yaml";
 import { type ExtraFile, type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
   type StageFourPublication } from "../../fixtures/stage-4-publication/fixture.ts";
 import { publishStageFive, stageFivePublication } from "../../fixtures/stage-5-publication/fixture.ts";
@@ -51,21 +51,25 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
 
   // P3 (DB4): the publisher writes the summary of the run for the published drafts in
   // place of the summary of Stage 3. verify makes the summary again from the saved
-  // records, and refuses a run.yaml whose summary differs.
+  // records, and refuses a run.yaml whose summary differs, such as one with another
+  // count of the questions. The unchanged manifest, written again, is accepted.
   test("writes the summary of the run, and verify refuses a summary that differs", () => {
     withPublication((fixture) => {
       expect(publishStageFour(fixture, "finish").status).toBe(0);
       const runPath = join(fixture.work, "run.yaml");
-      const published = readFileSync(runPath, "utf8");
-      expect((parse(published) as { coverage: unknown }).coverage).toEqual({
+      const manifest = parse(readFileSync(runPath, "utf8")) as { coverage: { recorded: string } };
+      expect(manifest.coverage).toEqual({
         inventoried: "2 regular files in the selected capture scope.",
         inspected: "s4-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
           "reviews keep their own ranges. s4-check-file@code-mapping.json maps each code unit to its owner and says whether " +
           "a review read it. Tool reads are not LLM inspection.",
-        recorded: "s4-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes.",
-        pending: "Stages 5 and 6 are pending." });
+        recorded: "s4-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes." });
       expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
-      writeFileSync(runPath, published.replace("Stages 5 and 6 are pending.", "Stages 4, 5 and 6 are pending."));
+      writeFileSync(runPath, stringify(manifest));
+      expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
+      const recorded = manifest.coverage.recorded.replace("records 0 questions", "records 1 question");
+      expect(recorded).not.toBe(manifest.coverage.recorded);
+      writeFileSync(runPath, stringify({ ...manifest, coverage: { ...manifest.coverage, recorded } }));
       expect(publishStageFour(fixture, "verify")).toEqual({ status: 1, stdout: "", stderr: "Working draft changed: run.yaml\n" });
     });
   }, 60_000);
@@ -98,8 +102,7 @@ describe("the Stage 4/5 publisher with a reviewed Stage 5 packet", () => {
         inspected: "s5-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
           "reviews keep their own ranges. s5-check-file@code-mapping.json maps each code unit to its owner and says whether " +
           "a review read it. Tool reads are not LLM inspection.",
-        recorded: "s5-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes.",
-        pending: "Stage 6 is pending." });
+        recorded: "s5-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes." });
       expect(result(publishStageFive(fixture, "verify"))).toMatchObject({ status: "stage5-publication-verified" });
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });

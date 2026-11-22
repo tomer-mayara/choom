@@ -120,8 +120,7 @@ function expectedRunManifest(completedAt: string): string {
     inspected: "s5-fixture-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
       "reviews keep their own ranges. s5-fixture-file@code-mapping.json maps each code unit to its owner and says whether a " +
       "review read it. Tool reads are not LLM inspection.",
-    recorded: `${discoveryRef} records 0 questions and 1 gap, with history and linked notes.`,
-    pending: "No stage is pending." };
+    recorded: `${discoveryRef} records 0 questions and 1 gap, with history and linked notes.` };
   return stringify({ ...run, status: "completed", progress: { ...run.progress, baselineRecovery: "complete" }, coverage, baselineRef,
     discoveryRef, completedAt, artifacts });
 }

@@ -151,10 +151,16 @@ const verifyCases: RefusalCase[] = [
     arrange: (run) => { writeFileSync(join(run.work, ".stage-6-discovery.next.yaml"), ""); return { args: ["verify"] }; } },
   { name: "a changed working discovery", state: "published", message: "Working draft changed: discovery.yaml",
     arrange: (run) => { appendFileSync(join(run.work, "discovery.yaml"), "# edited\n"); return { args: ["verify"] }; } },
-  // verify makes the summary of the run again from the saved records (DB4).
-  { name: "a run summary that says that Stage 6 is pending", state: "published", message: "Working draft changed: run.yaml",
+  // verify makes the summary of the run again from the saved records (DB4), so it refuses a summary
+  // with another count of the questions. The fixed discovery result has no question.
+  { name: "a run summary with another count of the questions", state: "published", message: "Working draft changed: run.yaml",
     arrange: (run) => {
-      changeRunYaml(run, (manifest) => { (manifest.coverage as Json).pending = "Stage 6 is pending."; });
+      changeRunYaml(run, (manifest) => {
+        const coverage = manifest.coverage as Json;
+        const recorded = String(coverage.recorded);
+        coverage.recorded = recorded.replace(" records 0 questions", " records 1 question");
+        expect(coverage.recorded).not.toBe(recorded);
+      });
       return { args: ["verify"] };
     } },
   { name: "a changed fixed discovery", state: "published", message: "Fixed records do not match the prepared result.",

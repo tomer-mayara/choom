@@ -121,8 +121,7 @@ describe("Stage 1 capture, settings and save", () => {
       expect(saved.coverage).toEqual({ inventoried: "10 regular files in the selected capture scope.",
         inspected: "review-001#/reviewedFiles lists the source ranges that the selected review read. Earlier reviews keep " +
           "their own ranges. Tool reads are not LLM inspection.",
-        recorded: "discovery-001 records 1 question and 2 gaps, with history and linked notes.",
-        pending: "Stages 2, 3, 4, 5 and 6 are pending." });
+        recorded: "discovery-001 records 1 question and 2 gaps, with history and linked notes." });
       expect(runManifestContract(saved)).toBe(true);
     });
   }, 60_000);

@@ -170,8 +170,7 @@ describe("a Stage 2 attempt with an approved tool image", () => {
       expect(run.coverage).toEqual({ inventoried: "2 regular files in the selected capture scope.",
         inspected: "s2-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
           "reviews keep their own ranges. Tool reads are not LLM inspection.",
-        recorded: "s2-check-entry-analysis records 1 question and 0 gaps, with history and linked notes.",
-        pending: "Stages 3, 4, 5 and 6 are pending." });
+        recorded: "s2-check-entry-analysis records 1 question and 0 gaps, with history and linked notes." });
       const core: Record<string, string> = { "entry-plan.json": "entry-plan", "entry-analysis.yaml": "entry-analysis",
         "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight",
         "required-gaps.json": "required-gaps" };

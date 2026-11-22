@@ -143,17 +143,27 @@ describe("Stage 3 finish checks", () => {
   }, 60_000);
 
   // DB4: the run after Stage 2 has 1 file, 1 question and the 3 gaps of the skipped Knip
-  // run, and the analysis adds the gap of the skipped symbol mentions.
+  // run, and the analysis adds the gap of the skipped symbol mentions. verify makes the
+  // summary again, so it refuses a run.yaml with another count of the gaps. The unchanged
+  // manifest, written again, is accepted.
   test("publishes the summary of the run, and verify makes the same summary", () => {
     const attempt = newAttempt("summary");
     expect(finishStageThree(attempt).finish?.status).toBe(0);
-    expect((parse(folderText(attempt, "run.yaml")) as JsonRecord).coverage).toEqual({
+    const manifest = parse(folderText(attempt, "run.yaml")) as { coverage: { recorded: string } };
+    expect(manifest.coverage).toEqual({
       inventoried: "1 regular file in the selected capture scope.",
       inspected: "s3-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
         "reviews keep their own ranges. Tool reads are not LLM inspection.",
-      recorded: "s3-check-entry-analysis records 1 question and 4 gaps, with history and linked notes.",
-      pending: "Stages 4, 5 and 6 are pending." });
+      recorded: "s3-check-entry-analysis records 1 question and 4 gaps, with history and linked notes." });
     expect(stageThree(attempt, ["stage-3-finish", "verify"])).toMatchObject({ status: 0, stderr: "" });
+    writeFileSync(join(attempt.work, "run.yaml"), stringify(manifest));
+    expect(stageThree(attempt, ["stage-3-finish", "verify"])).toMatchObject({ status: 0, stderr: "" });
+    const recorded = manifest.coverage.recorded.replace("and 4 gaps", "and 3 gaps");
+    expect(recorded).not.toBe(manifest.coverage.recorded);
+    writeFileSync(join(attempt.work, "run.yaml"), stringify({ ...manifest, coverage: { ...manifest.coverage, recorded } }));
+    const refused = stageThree(attempt, ["stage-3-finish", "verify"]);
+    expect({ status: refused.status, stdout: refused.stdout, stderr: refused.stderr }).toEqual({ status: 1, stdout: "",
+      stderr: "run.yaml differs from this attempt's published Stage 3 state. Do not use verify after later publication.\n" });
   }, 60_000);
 
   // run.yaml registers the files of a published attempt as evidence. Each later action
