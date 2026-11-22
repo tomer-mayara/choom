@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
 import { producerReceipt } from '../../../src/producer-code.ts';
+import { RunSummary } from '../../../src/run-summary.ts';
 
 interface InventoryFile { path: string; kind: string; bytes: number; sha256: string }
 
@@ -173,11 +174,14 @@ export function producerFixture(change: (baseline: Record<string, unknown>) => v
   const discoveryYaml = stringify(discovery, { aliasDuplicateObjects: false });
   register(proposal, 'evidence/s5-fixture/baseline.proposed.yaml', baselineYaml);
   register(stage + '-file@discovery.proposed.yaml', 'evidence/s5-fixture/discovery.proposed.yaml', discoveryYaml);
+  const progress = { inventory: 'complete', entryAnalysis: 'complete', inspectionPriorities: 'complete',
+    componentRecovery: 'complete', remainingCode: 'complete', baselineRecovery: 'pending' };
+  // The summary that the Stage 4/5 publisher writes for the Stage 5 records.
+  const coverage = new RunSummary({ progress, inventory, reviewRef: selectedRefs.entryAnalysisRef,
+    codeMappingRef: selectedRefs.codeMappingRef, issuesRef: stage + '-file@discovery.proposed.yaml', issues: discovery }).coverage();
   const runYaml = stringify({
     formatVersion: 1, id: runRef, mode: 'A', status: 'in-progress', snapshot: { id: snapshotRef, root: 'snapshot', inventoryRef },
-    progress: { inventory: 'complete', entryAnalysis: 'complete', inspectionPriorities: 'complete',
-      componentRecovery: 'complete', remainingCode: 'complete', baselineRecovery: 'pending' },
-    artifacts,
+    progress, coverage, artifacts,
   });
   const drafts = { 'run.yaml': runYaml, 'baseline.yaml': baselineYaml, 'discovery.yaml': discoveryYaml };
   for (const [name, bytes] of Object.entries(drafts)) write(work, name, bytes);
