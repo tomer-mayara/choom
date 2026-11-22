@@ -43,7 +43,8 @@ describe("the Stage 4/5 publisher with a Stage 5 packet and the required gaps of
   test("checks a Stage 5 packet that keeps the required gap of Stage 4", () => {
     const result = checkedPacket();
     expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
-    expect(JSON.parse(result.stdout)).toMatchObject({ status: "stage5-review-verified", gaps: 2 });
+    // The gap that Stage 1 gave from the settings record, the gap of the Stage 3 fixture and the required gap of Stage 4.
+    expect(JSON.parse(result.stdout)).toMatchObject({ status: "stage5-review-verified", gaps: 3 });
   }, 60_000);
 
   test("refuses a Stage 5 packet that leaves out the required gap of Stage 4", () => {

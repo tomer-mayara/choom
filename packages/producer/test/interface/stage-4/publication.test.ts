@@ -37,7 +37,7 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
   test("checks the packet, publishes it, and verifies the published run", () => {
     withPublication((fixture) => {
       expect(result(publishStageFour(fixture, "check")))
-        .toMatchObject({ status: "stage4-review-verified", components: 2, mappedFiles: 2, gaps: 1, writes: [] });
+        .toMatchObject({ status: "stage4-review-verified", components: 2, mappedFiles: 2, gaps: 2, writes: [] });
       expect(result(publishStageFour(fixture, "finish"))).toMatchObject({ status: "stage4-published",
         writes: expect.arrayContaining(["publication.json", "baseline.yaml", "discovery.yaml", "run.yaml"]) as unknown });
       const run = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { progress: Record<string, string> };
@@ -60,7 +60,7 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
           "See s4-check-file@code-mapping.json for file review scope and s4-check-file@discovery.proposed.yaml#/inspectedPaths " +
           "for inspected behavior paths (0).",
         unresolved: "The baseline draft records proposed intent; Stage 6 has not saved the fixed baseline. " +
-          "See s4-check-file@discovery.proposed.yaml for the recorded questions (0) and recorded gaps (1), which keep their " +
+          "See s4-check-file@discovery.proposed.yaml for the recorded questions (0) and recorded gaps (2), which keep their " +
           "history, and s4-check-file@code-mapping.json for files with unknown owners (0)." });
       expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
     });
