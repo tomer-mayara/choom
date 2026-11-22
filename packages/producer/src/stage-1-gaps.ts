@@ -8,7 +8,8 @@ export interface ToolRecordName { readonly name: string; readonly artifactRef: s
 // The tool records whose gaps Stage 1 finish adds to the discovery gaps.
 export const settingsTool: ToolRecordName = { name: 'settings', artifactRef: 'settings-001' };
 export const gitIdentityTool: ToolRecordName = { name: 'git-identity', artifactRef: 'git-identity-001' };
-const toolRecords = new Map([settingsTool, gitIdentityTool].map(record => [record.name, record.artifactRef]));
+export const stageOneTools: readonly ToolRecordName[] = [settingsTool, gitIdentityTool];
+const toolRecords = new Map(stageOneTools.map(record => [record.name, record.artifactRef]));
 
 // The gaps of the Stage 1 tool records, as discovery gaps. Stage 1 finish adds
 // them to the review gaps. Their IDs start with s1-, such as s1-settings-gap-001.

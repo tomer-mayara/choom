@@ -75,6 +75,8 @@ export interface Records {
   resourceCandidates: { candidates: Record<string, unknown>[] } & Record<string, unknown>;
   // The Knip preflight record and the Knip runs of the selected entry analysis.
   knip: { preflight: Record<string, unknown>; runs: Record<string, unknown>[] };
+  // More registered records, such as the tool records of Stages 1 and 3: the path and the value, by artifact ID.
+  saved: Record<string, [string, unknown]>;
 }
 interface Artifact { path: string; bytes: Buffer; sha256: string }
 
@@ -140,10 +142,12 @@ function initialRecords(): Records {
           { line: 1, column: 28 }], expression: "export function orders() {}", truncated: false, name: "orders", nameReason: null,
         identity: "inferred-from-name", context: { kind: "module", name: null, range: null, graphContext: "default-import" } }] },
     knip: { preflight: { snapshotRef }, runs: [] },
+    saved: {},
   };
 }
 
 // JSON text is also valid YAML, so the caller can parse every saved record with JSON.parse.
+// The resource observations name the same earlier entry analyses as the code mapping.
 export function recordInputs(change: (records: Records) => void = () => {}): RecordInputs {
   const records = initialRecords();
   change(records);
@@ -168,14 +172,16 @@ export function recordInputs(change: (records: Records) => void = () => {}): Rec
     [selected.entryAnalysisRef]: ["evidence/s5-x/entry-analysis.yaml", records.entry],
     [selected.codeMappingRef]: ["evidence/s5-x/code-mapping.json", records.mapping],
     [selected.resourceAccessRef]: ["evidence/s5-x/resource-access.json", { formatVersion: 1, kind: "resource-observations",
-      snapshotRef, resourceAccessCandidatesRef: resourceCandidatesRef, scope: { historicalEntryAnalysisRefs: [],
-        method: "source-inspection", reviewedFilesRef: `${selected.entryAnalysisRef}#/reviewedFiles` }, observations: [], limits: ["l"] }],
+      snapshotRef, resourceAccessCandidatesRef: resourceCandidatesRef, scope: {
+        historicalEntryAnalysisRefs: records.mapping.scope.historicalEntryAnalysisRefs, method: "source-inspection",
+        reviewedFilesRef: `${selected.entryAnalysisRef}#/reviewedFiles` }, observations: [], limits: ["l"] }],
     [proposal]: ["evidence/s5-x/baseline.proposed.yaml", records.baseline],
     [candidatesRef]: ["evidence/s4-x/behavior-entry-candidates.json", records.candidates],
     "s4-x-file@behavior-entry-rules.yaml": ["evidence/s4-x/behavior-entry-rules.yaml", rules],
     [resourceCandidatesRef]: ["evidence/s4-x/resource-access-candidates.json", records.resourceCandidates],
     "s4-x-file@resource-access-rules.yaml": ["evidence/s4-x/resource-access-rules.yaml", resourceRules],
     "s4-x-file@source-sites.json": ["evidence/s4-x/source-sites.json", { formatVersion: 1, snapshotRef, sites: [] }],
+    ...records.saved,
   };
   const artifacts = new Map<string, Artifact>();
   const register = (ref: string, path: string, value: unknown): void => {

@@ -1,7 +1,7 @@
 import { isDeepStrictEqual as same } from 'node:util';
 import type { RequiredGaps } from './generated/contracts.ts';
 import { assert, type Fields, list } from './record-checks.ts';
-import { ToolGaps } from './tool-gaps.ts';
+import { type DiscoveryGap, ToolGaps } from './tool-gaps.ts';
 
 // The required gaps of the candidate records of a Stage 4 attempt (DB5). Stage 4
 // collect saves the behavior entry candidates and the resource access candidates, and
@@ -22,6 +22,8 @@ const resourceAccess: CandidateFile = { name: 'resource-access', file: 'resource
 const attemptId = 's4-[a-z0-9]+(?:-[a-z0-9]+)*';
 const stageFourAttempt = new RegExp('^' + attemptId + '$');
 const listedGapRef = new RegExp('^(' + attemptId + ')-file@([^#]+)#/gaps/(0|[1-9][0-9]*)$');
+// The artifact ID of a file of a Stage 4 attempt.
+const attemptFileRef = new RegExp('^(' + attemptId + ')-file@([^#]+)$');
 
 export class CandidateGaps {
   // The attempt file of the required gaps.
@@ -44,6 +46,16 @@ export class CandidateGaps {
     const attempt = typeof ref === 'string' && ref.endsWith(suffix) ? ref.slice(0, -suffix.length) : '';
     assert(stageFourAttempt.test(attempt), `The behavior entry candidates ${String(ref)} are not a record of a Stage 4 attempt.`);
     return new CandidateGaps(attempt);
+  }
+
+  // The required gaps of one saved candidate record of a Stage 4 attempt, whose artifact ID
+  // is `ref`, such as s4-001-file@resource-access-candidates.json: the gaps that collect
+  // gave from `record`. The shared record checks of Stages 4 to 6 use them (result-gaps.ts).
+  static ofRecord(ref: unknown, record: unknown): DiscoveryGap[] {
+    const [, attempt = '', file] = attemptFileRef.exec(String(ref)) ?? [];
+    const named = CandidateGaps.records.find(item => encodeURIComponent(item.file) === file);
+    assert(named, `${String(ref)} is not a candidate record of a Stage 4 attempt.`);
+    return new CandidateGaps(attempt).#gaps.fromCandidateRecord({ ...named, artifactRef: String(ref), record });
   }
 
   // The artifact ID of an attempt file.
