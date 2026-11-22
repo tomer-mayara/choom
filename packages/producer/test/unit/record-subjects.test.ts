@@ -181,4 +181,25 @@ describe("SubjectChecker before the baseline has items", () => {
     "refuses a subject that would name %s, because the baseline has no items yet", (_name, subject) => {
       expect(early().refused(asked([subject]))).toEqual([subject]);
     });
+
+  // The entry plan or entry analysis of Stage 2 or 3 holds the questions, the gaps and
+  // the entry candidates. At Stage 3 the earlier entry analysis holds the candidates
+  // that a note about a retired candidate names.
+  const entryRecord = (candidateIds: string[]) => ({ questions: [asked(["cli.ts"])], gaps: [found(["q-1"])],
+    candidates: candidateIds.map((id) => ({ id, expression: "cli.ts", path: "cli.ts" })) });
+  const forEntry = (...earlier: string[][]): SubjectChecker => SubjectChecker.forEntryRecord(["cli.ts"], "snapshot-001",
+    entryRecord(["s3-candidate-001"]), earlier.map(entryRecord));
+
+  test.each([
+    ["a candidate of the entry record", "s3-candidate-001"],
+    ["a candidate of an earlier entry analysis", "s2-candidate-001"],
+    ["a question of the entry record", "q-1"],
+    ["a file of the snapshot", "cli.ts"],
+  ])("forEntryRecord refuses no subject that names %s", (_name, subject) => {
+    expect(forEntry(["s2-candidate-001"]).refused(asked([subject]))).toEqual([]);
+  });
+
+  test("forEntryRecord refuses a subject that names a candidate of no entry record, and a baseline item", () => {
+    expect(forEntry(["s2-candidate-001"]).refused(asked(["s2-candidate-002", "billing"]))).toEqual(["s2-candidate-002", "billing"]);
+  });
 });

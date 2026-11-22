@@ -47,3 +47,4 @@ Feature: Questions and gaps name things that the run saved
     Examples:
       | stage   |
       | Stage 1 |
+      | Stage 2 |

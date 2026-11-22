@@ -9,6 +9,12 @@ import { candidate, entryPlan, planPacket, priorQuestion, savedJson, stageOneRun
 // attempt. A refused packet leaves no packet file in the attempt.
 interface PlanCase { name: string; plan?: (id: string) => JsonRecord; files?: Record<string, string>; inside?: boolean; message: string }
 
+// The forms of a subject, which a refusal of a subject that names nothing gives.
+const subjectForms = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
+  "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
+const newQuestion = (id: string, subjectRefs: string[]): JsonRecord => ({ id: `${id}-question-001`, subjectRefs,
+  text: "Which command starts the application?", evidenceRefs: ["inventory-001"] });
+
 const cases: PlanCase[] = [
   { name: "the plan has an extra field", plan: (id) => ({ ...entryPlan(id), extra: true }), message: "Invalid plan fields." },
   { name: "the plan has no root workspace",
@@ -57,6 +63,14 @@ const cases: PlanCase[] = [
     plan: (id) => entryPlan(id, { gaps: [{ id: `${id}-knip-gap-001`, kind: "deferral", subjectRefs: ["app.ts"],
       reason: "Not reviewed in this attempt.", evidenceRefs: ["inventory-001"] }] }),
     message: "Invalid or duplicate record ID: ATTEMPT-knip-gap-001" },
+  // GB-01b: each subject of a new record names something that the run holds when the plan is saved.
+  { name: "a new gap names a file that is not in the snapshot",
+    plan: (id) => entryPlan(id, { gaps: [{ id: `${id}-gap-001`, kind: "deferral", subjectRefs: ["app.ts", "src/no-such-file.ts"],
+      reason: "Not reviewed in this attempt.", evidenceRefs: ["inventory-001"] }] }),
+    message: `The subject src/no-such-file.ts of the gap ATTEMPT-gap-001 names nothing. ${subjectForms}` },
+  { name: "a new question names an entry candidate that the plan does not have",
+    plan: (id) => entryPlan(id, { questions: [priorQuestion, newQuestion(id, [`${id}-candidate-002`])] }),
+    message: `The subject ATTEMPT-candidate-002 of the question ATTEMPT-question-001 names nothing. ${subjectForms}` },
 ];
 
 describe("Stage 2 plan checks", () => {
@@ -73,12 +87,28 @@ describe("Stage 2 plan checks", () => {
         if (files) writePacket(folder, Object.fromEntries(Object.entries(files).map(([file, text]) =>
           [file, text.replace("ATTEMPT", id)])));
         const result = stageTwo(attempt, "plan", [folder]);
-        const error = message.replace("ATTEMPT", id);
+        const error = message.replaceAll("ATTEMPT", id);
         expect({ name, status: result.status, error: savedJson(attempt, "operator-plan.json").error })
           .toEqual({ name, status: 1, error });
         expect(result.stderr).toContain("Error: " + error);
         expect(existsSync(join(attempt.folder, "entry-plan.json"))).toBe(false);
       });
+    });
+  }, 60_000);
+
+  // GB-01b: before Stage 4 adds baseline items, a subject of a new plan record names a
+  // file of the snapshot, the snapshot ID, a question or gap, or a candidate of the plan.
+  test("saves a plan whose new question names a candidate of the plan, an earlier question, a file and the snapshot ID", () => {
+    withScratch((scratch) => {
+      const work = join(scratch, "run");
+      stageOneRun(work);
+      const id = "s2-plan-subjects";
+      const attempt = stageTwoAttempt(work, id);
+      expect(stageTwo(attempt, "start").status).toBe(0);
+      const plan = entryPlan(id, { questions: [priorQuestion,
+        newQuestion(id, [`${id}-candidate-001`, priorQuestion.id, "package.json", "snapshot-check"])] });
+      const result = stageTwo(attempt, "plan", [planPacket(join(scratch, "plan"), id, plan)]);
+      expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
     });
   }, 60_000);
 });

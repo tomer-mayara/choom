@@ -84,6 +84,14 @@ export class SubjectChecker {
     return new SubjectChecker({ ...run, items: noItems });
   }
 
+  // The check of Stages 2 and 3 for the questions and gaps of an entry plan or entry
+  // analysis (`record`). A subject can name an entry candidate of the record or of the
+  // `earlier` entry analyses that it names, such as a candidate that Stage 3 retired.
+  static forEntryRecord(paths: Iterable<unknown>, snapshotRef: string, record: Fields, earlier: readonly Fields[] = []): SubjectChecker {
+    const candidateIds = [record, ...earlier].flatMap(item => (item.candidates as { id: unknown }[]).map(candidate => candidate.id));
+    return SubjectChecker.beforeBaseline({ paths, snapshotRef, issues: record, candidateIds });
+  }
+
   // Each subject of the question or gap that names nothing of the run, in the order of
   // the record. A gap that Stage 1 finish copied from a tool record keeps the subjects
   // of the tool, which can name a missing input or a path outside the snapshot.
