@@ -4,10 +4,14 @@ import { join } from "node:path";
 import { withScratch } from "../../support/commands.ts";
 import { candidate, entryPlan, planPacket, priorQuestion, savedJson, stageOneRun, stageTwo, stageTwoAttempt,
   writePacket, type JsonRecord } from "../../support/stage-2-attempt.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // The plan action checks the LLM plan packet before it copies it into the
 // attempt. A refused packet leaves no packet file in the attempt.
 interface PlanCase { name: string; plan?: (id: string) => JsonRecord; files?: Record<string, string>; inside?: boolean; message: string }
+
+const newQuestion = (id: string, subjectRefs: string[]): JsonRecord => ({ id: `${id}-question-001`, subjectRefs,
+  text: "Which command starts the application?", evidenceRefs: ["inventory-001"] });
 
 const cases: PlanCase[] = [
   { name: "the plan has an extra field", plan: (id) => ({ ...entryPlan(id), extra: true }), message: "Invalid plan fields." },
@@ -52,6 +56,14 @@ const cases: PlanCase[] = [
     files: { "llm/plan-scope.json": JSON.stringify({ formatVersion: 1, snapshotRef: "snapshot-check", attemptId: "ATTEMPT",
       suppliedArtifactRefs: ["missing"], limits: [] }) }, message: "Unknown supplied artifact: missing" },
   { name: "the packet folder is inside the run", inside: true, message: "Keep LLM review packets outside the run." },
+  // GB-01b: each subject of a new record names something that the run holds when the plan is saved.
+  { name: "a new gap names a file that is not in the snapshot",
+    plan: (id) => entryPlan(id, { gaps: [{ id: `${id}-gap-001`, kind: "deferral", subjectRefs: ["app.ts", "src/no-such-file.ts"],
+      reason: "Not reviewed in this attempt.", evidenceRefs: ["inventory-001"] }] }),
+    message: `The subject src/no-such-file.ts of the gap ATTEMPT-gap-001 names nothing. ${subjectForms}` },
+  { name: "a new question names an entry candidate that the plan does not have",
+    plan: (id) => entryPlan(id, { questions: [priorQuestion, newQuestion(id, [`${id}-candidate-002`])] }),
+    message: `The subject ATTEMPT-candidate-002 of the question ATTEMPT-question-001 names nothing. ${subjectForms}` },
 ];
 
 describe("Stage 2 plan checks", () => {
@@ -68,11 +80,34 @@ describe("Stage 2 plan checks", () => {
         if (files) writePacket(folder, Object.fromEntries(Object.entries(files).map(([file, text]) =>
           [file, text.replace("ATTEMPT", id)])));
         const result = stageTwo(attempt, "plan", [folder]);
+        const error = message.replaceAll("ATTEMPT", id);
         expect({ name, status: result.status, error: savedJson(attempt, "operator-plan.json").error })
-          .toEqual({ name, status: 1, error: message });
-        expect(result.stderr).toContain("Error: " + message);
+          .toEqual({ name, status: 1, error });
+        expect(result.stderr).toContain("Error: " + error);
         expect(existsSync(join(attempt.folder, "entry-plan.json"))).toBe(false);
       });
+    });
+  }, 60_000);
+
+  // GB-01b: before Stage 4 adds baseline items, a subject of a new plan record names a
+  // file of the snapshot, the snapshot ID, a question or gap, or a candidate of the plan.
+  // DB5: no ID form is reserved, also not the form of the required gaps of the Knip run.
+  test.each([
+    ["a new question names a candidate of the plan, an earlier question, a file and the snapshot ID", (id: string) =>
+      entryPlan(id, { questions: [priorQuestion, newQuestion(id, [`${id}-candidate-001`, priorQuestion.id, "package.json",
+        "snapshot-check"])] })],
+    ["a new gap has an ID of the form of a required gap of the Knip run", (id: string) => entryPlan(id, { gaps: [
+      { id: `${id}-knip-gap-001`, kind: "deferral", subjectRefs: ["app.ts"], reason: "Not reviewed in this attempt.",
+        evidenceRefs: ["inventory-001"] }] })],
+  ])("saves a plan in which %s", (_name, plan) => {
+    withScratch((scratch) => {
+      const work = join(scratch, "run");
+      stageOneRun(work);
+      const id = "s2-plan-saved";
+      const attempt = stageTwoAttempt(work, id);
+      expect(stageTwo(attempt, "start").status).toBe(0);
+      const result = stageTwo(attempt, "plan", [planPacket(join(scratch, "plan"), id, plan(id))]);
+      expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
     });
   }, 60_000);
 });

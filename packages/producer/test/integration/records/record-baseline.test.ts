@@ -196,6 +196,18 @@ describe("the run checks of the baseline items", () => {
       expect(check([`${name.split(".")[0] ?? ""}.other`])).not.toThrow();
     });
 
+  // The rule of the viewer: a subject names an item when it equals the item ID or starts with the ID and a dot.
+  test("accept a null statement of an item that a subject names by its ID, and not by a longer ID or another case", () => {
+    const input = withoutDocumentation(documentedBaseline());
+    Object.assign(statementOf(input, "orders.owner"), { value: null });
+    const baseline = checkBaselineDocument(input);
+    const check = (subjects: string[]) => (): unknown =>
+      validateBaseline({ baseline, discovery: discovery(subjects), claim: () => undefined, evidence: () => undefined });
+    expect(check(["orders"])).not.toThrow();
+    expect(check(["orders-api.owner", "ordersx.owner", "Orders.owner", "orders"])).not.toThrow();
+    expect(check(["orders-api.owner", "ordersx.owner", "Orders.owner"])).toThrow(new Error("Unexplained unknown intent: orders.owner"));
+  });
+
   test("name the first null statement of an item in field order, and accept a null parent", () => {
     const input = withoutDocumentation(documentedBaseline());
     for (const name of ["orders-api.promises", "orders-api.publicAccess"]) Object.assign(statementOf(input, name), { value: null });

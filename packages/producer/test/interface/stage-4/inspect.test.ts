@@ -188,8 +188,8 @@ describe("Stage 4 collect", () => {
     "artifact map", () => {
     expect(collected).toEqual({ status: 0, stderr: "", stdout: "Saved source sites, behavior entry candidates, resource access " +
       "candidates, bounded excerpts, and the Stage 4 review prompt.\n" });
-    const outputs = ["source-sites.json", "behavior-entry-candidates.json", "resource-access-candidates.json", "source-excerpts.json",
-      "review-prompt.md", "artifact-map.json"];
+    const outputs = ["source-sites.json", "behavior-entry-candidates.json", "resource-access-candidates.json", "required-gaps.json",
+      "source-excerpts.json", "review-prompt.md", "artifact-map.json"];
     expect(saved("operator-collect.json")).toMatchObject({ formatVersion: 1, attemptId: id, action: "collect",
       phase: "collect", status: "completed", exitCode: 0,
       digests: Object.fromEntries(outputs.map((name) => [name, sha256(readFileSync(join(fixture.attempt, name)))])) });
@@ -248,16 +248,26 @@ describe("Stage 4 collect", () => {
     expect(prompt).toContain("Use excerpt for a supported subset.");
     // The LLM keeps each question and gap within the contract of the viewer, which every stage checks.
     expect(prompt).toContain("Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least one evidenceRef");
-    // Each step of an inspected path cites a reviewed source range, as the publisher checks.
+    // A site and each step of an inspected path cite a reviewed range by its ID, and each component of
+    // the path owns code that a range of the steps covers, as the publisher checks.
     expect(prompt).toContain("Each step of an inspected path cites the reviewed source range that it rests on");
+    expect(prompt).toContain("Cite a reviewed range by the ID of its reviewedFiles item, not by a JSON Pointer to its fields");
+    expect(prompt).toContain("A behavior entry and a resource access observation cite the reviewed range that contains their " +
+      "site in the same way. Name in componentIds only components that own code that a reviewed range of the steps covers.");
     // Each subject names something of the run; the publisher refuses any other subject, also in an earlier record.
-    expect(prompt).toContain("Each subjectRef names a file or folder of the snapshot (a folder with or without a final /), " +
-      "the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.");
+    expect(prompt).toContain("Each subjectRef names a file of the snapshot, a folder of the snapshot written as <folder>/** " +
+      "(such as src/billing/**), the snapshot ID, a question or gap, an entry candidate, or a baseline item ID or a field of it, " +
+      "such as billing.purpose.");
+    // No gap has an exception, also not a gap that is copied from a tool record (DB1).
+    expect(prompt).not.toContain("exception");
+    // The candidate records of this fixture give no required gap, and no ID form is reserved (DB5).
+    expect(prompt).toContain(`Required gaps (${id}-file@required-gaps.json): none. The candidate records list no gap and are ` +
+      "complete.\n\n");
     expect(prompt).toContain("use its registered name as the operation member");
     expect(prompt).toContain("Follow the default, named and re-exported members on the reviewed public paths.");
     expect(prompt).toContain("If a role has no evidenced example, record the scope checked and the gap.");
     // The prompt for this graph fixture is deterministic once the temporary folder is removed.
-    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("f4ab2add81cf0c133fcdbb2f7bc161192c4faa3a7a7d2e1d98d48458d8806a21");
+    expect(sha256(prompt.replaceAll(work, "$CHOOM_WORK"))).toBe("6c6d207512c7ef2e0b4629623cbca5018c28daf57abce3cb2982a5961b439427");
     // The map names each attempt file that collect found, except the command log and the map itself.
     const later = (name: string): boolean => ["commands.md", "artifact-map.json", "operator-collect.json"].includes(name) ||
       /^(?:operator-)?excerpt-/.test(name);

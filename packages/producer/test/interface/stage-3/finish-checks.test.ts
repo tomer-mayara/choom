@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
+import type { RunCoverage } from "../../../src/generated/contracts.ts";
 import { makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 import type { JsonRecord } from "../../support/stage-2-attempt.ts";
-import { finishStageThree, stageThree, stageThreeAttempt, type StageThreeAttempt, type StageThreePacket, stageTwoRun }
-  from "../../support/stage-3-attempt.ts";
+import { finishStageThree, repeatedStageTwoRun, stageThree, stageThreeAttempt, type StageThreeAttempt, type StageThreePacket,
+  stageTwoRun } from "../../support/stage-3-attempt.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // The Stage 3 finalizer checks the saved attempt and its LLM packet before it
 // changes the drafts. Each case copies one run that finished Stage 2 through its
@@ -16,6 +18,16 @@ interface FinishCase { name: string; change: (packet: StageThreePacket) => void;
 const record = (value: unknown): JsonRecord => value as JsonRecord;
 const firstPriority = (packet: StageThreePacket): JsonRecord =>
   record((packet.analysis.inspectionPriorities as unknown[])[0]);
+// The required gap of the symbol mentions, which collect saved in required-gaps.json.
+const mentionsGapId = "s3-check-symbol-mentions-gap-001";
+const mentionsGap = (packet: StageThreePacket): JsonRecord =>
+  record((packet.analysis.gaps as JsonRecord[]).find((gap) => gap.id === mentionsGapId));
+const copyEach = "Copy each gap of s3-check-file@required-gaps.json exactly.";
+// GB-01b: adds a new gap of the attempt. The Stage 3 packet has the required gap of the skipped symbol mentions.
+const addGap = (packet: StageThreePacket, subjectRefs: string[], evidenceRefs = ["s3-check-file@loading-search.json"]): void => {
+  packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: "s3-check-gap-002", kind: "missing-input", subjectRefs,
+    reason: "The review names what it did not find.", evidenceRefs }];
+};
 
 const cases: FinishCase[] = [
   { name: "the call record has no model", change: (packet) => { delete packet.call.model; },
@@ -55,12 +67,25 @@ const cases: FinishCase[] = [
   { name: "an inspection priority cites a JSON Pointer into a file that is not JSON or YAML",
     change: (packet) => { firstPriority(packet).evidenceRefs = ["s3-check-file@operator-start.stdout.txt#/0"]; },
     message: "Only a .json, .yaml or .yml file can take a JSON Pointer: s3-check-file@operator-start.stdout.txt#/0" },
-  // P4: Stage 2 skipped Knip, so the symbol mentions are skipped, and a gap must cite their record.
-  { name: "no gap cites the skipped symbol mentions", change: (packet) => {
-    packet.analysis.gaps = (packet.analysis.gaps as JsonRecord[])
-      .filter((gap) => !(gap.evidenceRefs as string[]).includes("s3-check-file@symbol-mentions.json"));
-  }, message: "The symbol mentions in s3-check-file@symbol-mentions.json have the status skipped. " +
-    "Record a gap that cites s3-check-file@symbol-mentions.json." },
+  // P4 (DB5): Stage 2 skipped Knip, so the symbol mentions are skipped. The analysis copies their required gap exactly.
+  { name: "the analysis leaves out the required gap of the skipped symbol mentions", change: (packet) => {
+    packet.analysis.gaps = (packet.analysis.gaps as JsonRecord[]).filter((gap) => gap.id !== mentionsGapId);
+  }, message: `The entry analysis leaves out the required gap ${mentionsGapId}. ${copyEach}` },
+  { name: "the analysis changes the reason of the required gap of the symbol mentions", change: (packet) => {
+    mentionsGap(packet).reason = "Knip did not run in Stage 2.";
+  }, message: `The entry analysis changes the required gap ${mentionsGapId}. ${copyEach}` },
+  // DB5: no ID form is reserved, but a second gap with the ID of the required gap is refused.
+  { name: "a new gap has the ID of the required gap of the symbol mentions", change: (packet) => {
+    packet.analysis.gaps = [...packet.analysis.gaps as unknown[], { id: mentionsGapId, kind: "deferral",
+      subjectRefs: ["app.ts"], reason: "Not reviewed.", evidenceRefs: ["s3-check-file@symbol-mentions.json"] }];
+  }, message: `Invalid or colliding analysis ID: ${mentionsGapId}` },
+  // GB-01b: each subject of a new question or gap, and of each inspection priority, names something that the run holds.
+  { name: "a new gap names a file that is not in the snapshot", change: (packet) => addGap(packet, ["app.ts", "src/no-such-file.ts"]),
+    message: `The subject src/no-such-file.ts of the gap s3-check-gap-002 names nothing. ${subjectForms}` },
+  { name: "a new gap names a candidate of no entry analysis", change: (packet) => addGap(packet, ["s3-check-candidate-001"]),
+    message: `The subject s3-check-candidate-001 of the gap s3-check-gap-002 names nothing. ${subjectForms}` },
+  { name: "an inspection priority names nothing", change: (packet) => { firstPriority(packet).subjectRefs = ["app.ts", "nothing-here"]; },
+    message: `The subject nothing-here of the inspection priority s3-check-priority-001 names nothing. ${subjectForms}` },
 ];
 
 let scratch = "";
@@ -118,6 +143,30 @@ describe("Stage 3 finish checks", () => {
     expect({ status: again.status, stderr: again.stderr }).toEqual({ status: 1, stderr: "run.yaml changed after checkpointing.\n" });
   }, 60_000);
 
+  // DB4: the run after Stage 2 has 1 file, 1 question and the 3 gaps of the skipped Knip
+  // run, and the analysis adds the gap of the skipped symbol mentions. verify makes the
+  // summary again, so it refuses a run.yaml with another count of the gaps. The unchanged
+  // manifest, written again, is accepted.
+  test("publishes the summary of the run, and verify makes the same summary", () => {
+    const attempt = newAttempt("summary");
+    expect(finishStageThree(attempt).finish?.status).toBe(0);
+    const manifest = parse(folderText(attempt, "run.yaml")) as { coverage: RunCoverage };
+    expect(manifest.coverage).toEqual({
+      inventoried: "1 regular file in the selected capture scope.",
+      inspected: "s3-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+        "reviews keep their own ranges. Tool reads are not LLM inspection.",
+      recorded: "s3-check-entry-analysis records 1 question and 4 gaps, with history and linked notes." });
+    expect(stageThree(attempt, ["stage-3-finish", "verify"])).toMatchObject({ status: 0, stderr: "" });
+    writeFileSync(join(attempt.work, "run.yaml"), stringify(manifest));
+    expect(stageThree(attempt, ["stage-3-finish", "verify"])).toMatchObject({ status: 0, stderr: "" });
+    const recorded = manifest.coverage.recorded.replace("and 4 gaps", "and 3 gaps");
+    expect(recorded).not.toBe(manifest.coverage.recorded);
+    writeFileSync(join(attempt.work, "run.yaml"), stringify({ ...manifest, coverage: { ...manifest.coverage, recorded } }));
+    const refused = stageThree(attempt, ["stage-3-finish", "verify"]);
+    expect({ status: refused.status, stdout: refused.stdout, stderr: refused.stderr }).toEqual({ status: 1, stdout: "",
+      stderr: "run.yaml differs from this attempt's published Stage 3 state. Do not use verify after later publication.\n" });
+  }, 60_000);
+
   // run.yaml registers the files of a published attempt as evidence. Each later action
   // refuses the attempt before it saves a receipt or adds to the command log.
   test("refuses each action on the published attempt, changes no file of the run, and still verifies", () => {
@@ -149,6 +198,32 @@ describe("Stage 3 finish checks", () => {
     const verify = stageThree(attempt, ["stage-3-finish", "verify"]);
     expect({ status: verify.status, stderr: verify.stderr }).toEqual({ status: 0, stderr: "" });
   }, 60_000);
+
+  // GB-01b: before Stage 4 adds baseline items, a subject names a file of the snapshot,
+  // the snapshot ID, a question or gap, or an entry candidate of this analysis or of an
+  // entry analysis that the run registers. Here the analysis retires the Stage 2
+  // candidate with a note that names it.
+  test("publishes a packet whose note and inspection priority name a retired candidate, a question, a gap and a file", () => {
+    const attempt = newAttempt("subjects");
+    const results = finishStageThree(attempt, (packet) => {
+      packet.analysis.candidates = [];
+      addGap(packet, ["s2-check-candidate-001"], ["s2-check-entry-analysis#/candidates/0"]);
+      firstPriority(packet).subjectRefs = ["app.ts", "s2-check-candidate-001", "s1-question-001", mentionsGapId,
+        "snapshot-check"];
+    });
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 60_000);
+
+  // DB1: after a fresh Stage 2 attempt, no selected entry analysis names the candidates of
+  // the earlier attempt, but run.yaml still registers its entry analysis. So a new note can
+  // name such a candidate.
+  test("publishes a packet whose new gap names a candidate of an earlier Stage 2 attempt", () => {
+    const folder = join(scratch, "repeated-stage-2");
+    const attempt = stageThreeAttempt(repeatedStageTwoRun(folder, "s2-first"), folder);
+    const results = finishStageThree(attempt, (packet) => addGap(packet, ["s2-first-candidate-001"],
+      ["s2-first-entry-analysis#/candidates/0"]));
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 120_000);
 
   // Any saved file can be cited whole, with an empty JSON Pointer, as Stages 1 and 2 accept it.
   test("publishes a packet that cites a whole saved text file", () => {
@@ -192,5 +267,46 @@ describe("Stage 3 finish checks", () => {
     expect({ search: results["text-search-1"]?.status, status: results.finish?.status, stderr: results.finish?.stderr })
       .toEqual({ search: 0, status: 1, stderr: "The text-search-001 receipt is incomplete, failed, or changed. Use a new attempt.\n" });
     expect(draftState(attempt)).toEqual(before);
+  }, 60_000);
+});
+
+// The finalizer registers every attempt file. So each one must be a file that a
+// producer action saved: a phase receipt, a file that the receipt names, or the
+// command log. The finalizer refuses any other file and names it.
+const strayFileMessage = "Unexpected attempt file that no producer action saved: notes.md. " +
+  "Do not write into the attempt; use a fresh attempt.";
+
+describe("Stage 3 finish with an attempt file that no action saved", () => {
+  test("refuses the attempt, names the file, and leaves the drafts unchanged", () => {
+    const attempt = newAttempt("stray-file");
+    const before = draftState(attempt);
+    const results = finishStageThree(attempt, () => writeFileSync(join(attempt.folder, "notes.md"), "# Notes\n"));
+    expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
+      .toEqual({ status: 1, stdout: "", stderr: strayFileMessage + "\n" });
+    expect(draftState(attempt)).toEqual(before);
+  }, 60_000);
+
+  test("verify refuses a file that someone added to the published attempt, and names it", () => {
+    const attempt = newAttempt("stray-file-after-publication");
+    expect(finishStageThree(attempt).finish?.status).toBe(0);
+    writeFileSync(join(attempt.folder, "notes.md"), "# Notes\n");
+    const verify = stageThree(attempt, ["stage-3-finish", "verify"]);
+    expect({ status: verify.status, stdout: verify.stdout, stderr: verify.stderr })
+      .toEqual({ status: 1, stdout: "", stderr: strayFileMessage + "\n" });
+  }, 60_000);
+
+  // The cookbook says to keep the failed receipt of a request and to request again in
+  // the same attempt. A failed request saved its receipt and logs, and no record.
+  test("publishes an attempt with failed requests, and registers their receipts", () => {
+    const attempt = newAttempt("failed-requests");
+    const results = finishStageThree(attempt, () => {
+      expect(stageThree(attempt, ["stage-3", "excerpt", "missing.ts", "1", "1"]).status).toBe(1);
+    }, [["two\nlines"]], ["missing.ts"]);
+    expect({ search: results["text-search-1"]?.status, exports: results["exports-1"]?.status, finish: results.finish?.status,
+      stderr: results.finish?.stderr }).toEqual({ search: 1, exports: 1, finish: 0, stderr: "" });
+    const run = parse(folderText(attempt, "run.yaml")) as { artifacts: Record<string, { path: string }> };
+    for (const name of ["operator-excerpt-001.json", "operator-text-search-001.stderr.txt", "operator-exports-001.started.json"])
+      expect(run.artifacts[`${attempt.id}-file@${name}`]?.path).toBe(`evidence/${attempt.id}/${name}`);
+    expect(stageThree(attempt, ["stage-3-finish", "verify"]).status).toBe(0);
   }, 60_000);
 });

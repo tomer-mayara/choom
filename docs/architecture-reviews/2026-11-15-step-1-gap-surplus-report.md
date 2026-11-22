@@ -67,10 +67,10 @@ in "Enforced only by the operator or LLM" stay open.
 
 | # | Item | Design | Evidence | Now (`86c6100`) |
 |---|---|---|---|---|
-| P1 | **Completion check "references resolve":** a question or gap `subjectRefs` that names nothing passes. | 710 | `stage-6-records.mjs:633` (only checks the value is a list of non-empty strings; confirmed by a probe) | Mostly closed (plan change 21, GB-01a). Open: GB-01b. |
-| P2 | **Completion check "explanations cite evidence":** inspected-path steps can cite an excerpt that was collected but never reviewed. Only the entry site must be in a reviewed range. | 716–717 | `stage-6-records.mjs:718-726` | Mostly closed (plan change 21, GB-02b). Open: GB-02a. |
-| P3 | **Completion check "summaries are current":** `run.yaml` keeps "The baseline is not yet recovered." through Stages 4–5. `coverage.unresolved` counts historical questions and gaps as well as current ones. | 450–452, 720–721 | `stage-4-5-publish.mjs:232-236`; `stage-6-commands.mjs:400-402` | Mostly closed (plan change 21, part of GB-03). |
-| P4 | **Unavailable analysis needs a result record and a gap:** no check links the two. | 950 | `stage-6-records.mjs` | Mostly closed (Stage 1; plan change 21, GB-04a). Open: parts of GB-04b and GB-04d, and GB-04c. |
+| P1 | **Completion check "references resolve":** a question or gap `subjectRefs` that names nothing passes. | 710 | `stage-6-records.mjs:633` (only checks the value is a list of non-empty strings; confirmed by a probe) | Closed (plan change 21; GB-01a, GB-01b). |
+| P2 | **Completion check "explanations cite evidence":** inspected-path steps can cite an excerpt that was collected but never reviewed. Only the entry site must be in a reviewed range. | 716–717 | `stage-6-records.mjs:718-726` | Closed (plan change 21; GB-02a, GB-02b). |
+| P3 | **Completion check "summaries are current":** `run.yaml` keeps "The baseline is not yet recovered." through Stages 4–5. `coverage.unresolved` counts historical questions and gaps as well as current ones. | 450–452, 720–721 | `stage-4-5-publish.mjs:232-236`; `stage-6-commands.mjs:400-402` | Closed (plan change 21; GB-03). |
+| P4 | **Unavailable analysis needs a result record and a gap:** no check links the two. | 950 | `stage-6-records.mjs` | Closed (Stage 1; plan change 21; GB-04a to GB-04d), with the limits in "Not covered by Appendix B". |
 | P5 | **Run manifest:** no baseline ID or digest before Stage 6. Tool and model versions are reachable only through artifacts. No times per stage. | 457 | `stage-1-commands.mjs:336-344` | Open. Plan change 20: design text only. |
 | P6 | **Tool-call records in Stage 1:** only command, arguments, time and exit code. No scope, limits or output digests. | 464–467 | `stage-1-commands.mjs:40-43` | Partly closed (GA-05, GA-06). Plan change 20: design text only. |
 | P7 | **LLM audit record:** no prompt-version field. The saved prompt is not compared with its template. Stages 2–3 do not check that cited evidence is a subset of supplied evidence. | 462 | `stage-3-finish.mjs:371` | Partly closed (GA-12). Version field: design text only. Other checks: after the first real run. |
@@ -78,14 +78,15 @@ in "Enforced only by the operator or LLM" stay open.
 | P9 | **Deferral evidence:** there is no deferral type, so a "checked entry search" and a "precise claim" are not checked. The cookbook example ("inspection budget") conflicts with the design. | 846–848 | `stage-3-finish.mjs:391-395`; `step-3-cookbook.md:234-235` | Open. After the first real run. |
 | P10 | **Investigate reported-unused files before a deferral:** the Stage 3 collector queries only unused exports and types. | 825–827 | `stage-3-commands.mjs:217,361-369` | Open. After the first real run. |
 | P11 | **Concurrent edits:** a change is detected and capture stops; any retry is manual. Excluded paths are not listed, only the rules. | 426–428, 473 | `stage-1-commands.mjs:126-130,162-166` | Open. Plan change 20: design text only. |
-| P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` | Closed (plan change 21, GB-12a and GB-12b). |
+| P12 | **Publishing two files as one update:** temporary files are renamed one at a time. Stage 2 renames discovery before the manifest; Stage 3 does the reverse. | 477–480 | `step-2-cookbook.md:1441-1442`; `stage-3-finish.mjs:474-485` | Closed as far as plan change 20 decides (plan change 21; GB-12a, GB-12b). "Not covered by Appendix B" lists the rest. |
 | P13 | **Revisit affected work before Stage 6:** roots are frozen after Stage 4, and `record-format.md` says to start a new run instead. | 959–961 | `stage-4-5-publish.mjs:208-219`; `record-format.md:489-495` | Open. Plan change 20: design text only. |
 
-Status on 2026-11-21: plan change 21 (tomer-mayara/choom#103) builds the
-decided rules of P1 to P4 and P12. Appendix B, "Scope after plan change 20",
-lists the tickets that it closes and what stays open. Plan change 20 closes P5,
-P6, P11, P13 and the prompt-version field of P7 with design text. P8, P9, P10
-and the other two checks of P7 wait for the real run.
+Status on 2026-11-21: plan change 21 (tomer-mayara/choom#103) and the tickets
+GB-01a to GB-14 of Appendix B close P1 to P4 and P12. Appendix B, "Changes
+during implementation (Appendix B)", gives the state of each ticket and the
+open points. Plan change 20 closes P5, P6, P11, P13 and the prompt-version
+field of P7 with design text. P8, P9, P10 and the other two checks of P7 wait
+for the real run.
 
 ### Enforced only by the operator or LLM
 
@@ -1676,6 +1677,227 @@ or dropped, as each row says. Revision 2 also corrected the errors of an
 independent review, and follows the planning and coding guides that replaced
 `docs/coding-principles.md` and `docs/new-feature-cookbook.md` (commit 44f2b8a).
 
+### Changes during implementation (Appendix B)
+
+On 2026-11-21 the owner asked to implement the tickets of Appendix B, and
+decided these points:
+
+1. **The next tickets build on tomer-mayara/choom#103.**
+   tomer-mayara/choom#103 (plan change 21), then a draft, made a part of the
+   Step 2 gate before Appendix B merged. The ticket work starts from its
+   branch. Where tomer-mayara/choom#103 and a ticket differ, the ticket
+   decides. The table below gives each difference. tomer-mayara/choom#103
+   merged on 2026-11-21, while the tickets were in work.
+2. **Only the next tickets.** These are GB-01a to GB-14. The draft tickets
+   (GB-07a to GB-10) stay drafts until the first real run, as plan change 20
+   says.
+
+The tickets follow the proposed rows of the decision log as written: DB1
+(details a and b), DB2 (the addition), DB3, DB4, DB5, DB13 and DB14. The owner
+decided each row after the tickets. See "Owner decisions of 2026-11-21, after
+the tickets" below.
+
+What tomer-mayara/choom#103 has, and what each ticket adds to it:
+
+| Ticket | In tomer-mayara/choom#103 | The ticket adds or changes |
+|---|---|---|
+| GB-01a | `record-subjects.ts` checks each question and gap in the shared record checks of Stages 4 to 6. A folder is written with or without a final `/`. | The shared `SubjectItems` class, the `SubjectChecker` class and the scenarios. The folder form `dir/**` (DB1, detail a) replaces the form of tomer-mayara/choom#103. |
+| GB-01b | Nothing. | The full ticket. |
+| GB-02a | Nothing. The check of tomer-mayara/choom#103 reads only the steps of an inspected path. | The full ticket. |
+| GB-02b | Each step cites a saved source range that is inside a reviewed range. | The component check (step 2) and the scenarios. |
+| GB-03 | The Stage 4/5 publisher writes `coverage.inspected` and `coverage.unresolved`. Stage 6 writes record counts under `unresolved`. | `RunSummary` for each publisher and `verify`, the fields `recorded` and `pending` in place of `unresolved` (DB4), and the run manifest contract. |
+| GB-04a | Stage 2 `finish` and the shared record checks need a gap that cites an `unsupported` preflight or a `failed` or `skipped` run (`result-gaps.ts`). The reviewer writes that gap. | `ToolGaps`, `required-gaps.json` with reserved IDs, and the exact-copy check of DB5, which replaces the Stage 2 check of tomer-mayara/choom#103. |
+| GB-04b | The Stage 3 finalizer needs a gap that cites `unavailable` or `skipped` symbol mentions. | Required gaps for `partial` symbol mentions and for the exports records, and the exact-copy check. |
+| GB-04c | Nothing. | The full ticket. |
+| GB-04d | The shared record checks cover the Knip results. | The Stage 1, Stage 3 and Stage 4 tool results. |
+| GB-12a | `draft-update.ts`: Stage 3 writes `run.yaml` last and rolls back. A fault double (`support/doubles/draft-faults.ts`) and interface tests cover it. | The acceptance scenario, and the cookbook text where it is missing. |
+| GB-12b | The same for Stage 2, with an acceptance scenario. | The scenario of the ticket, where it differs. |
+| GB-14 | `check`, `finish` and `verify` of Stages 4 and 5 refuse a stray attempt file. | The acceptance scenario, and the probe of the Stage 2, 3 and 6 publishers (step 3). |
+
+**Before the tickets.** The one feature file of tomer-mayara/choom#103,
+`completion-checks.feature`, is divided into the five feature files that the
+tickets name: `issue-subjects.feature`, `reviewed-evidence.feature`,
+`run-manifest.feature`, `tool-gaps.feature` and `draft-publication.feature`.
+Each scenario moves unchanged. A ticket then changes or replaces the scenario
+of tomer-mayara/choom#103 where its own scenarios cover the same behavior.
+
+**Rounds.** The tickets run in the three rounds of the ticket map, each ticket
+on its own branch, with at most four workers at one time. After each round the
+manager merges the branches, runs the checks on the combined change and then
+starts the next round. GB-12a, GB-12b and GB-14 are one task in round 1,
+because tomer-mayara/choom#103 has their code.
+
+**Checks on the combined change:** `bun run check`, `bun run check-types`,
+`bun run habit-hooks --all`, `bun run test:producer:docker` and
+`bun run test:e2e`.
+
+**State after round 3.** The 12 tickets are done. Each ticket has its
+scenarios, its tests and its document changes. The table gives each difference
+from the ticket text.
+
+| Ticket | Differences from the ticket text |
+|---|---|
+| GB-01a | None in the check. A folder subject is compared as text with the folders of the snapshot. Thus `src/app/[id]/**` is a valid subject, although a membership selector cannot contain `[`. |
+| GB-01b | None in the check. Stage 2 `finish` also checks the plan records that it adds to the discovery. The owner decision on the entry candidates changes the rule of each stage (task S2). |
+| GB-02a | None. |
+| GB-02b | The check is stricter than step 1. Each saved source range that a step cites must be a reviewed range. Thus a step that cites one reviewed range and one unread excerpt is refused. A line that two parts share counts for each owner (`MappedOwners.ownsLines`). The guard scenario has other step text. |
+| GB-03 | The owner removed `pending` after the tickets (task S3), so the summary has three fields. The summary no longer counts the inspected paths and the files with unknown owners, which tomer-mayara/choom#103 added. The publisher output and `validation.json` keep these counts. The Stage 3 `verify` also makes the summary again. A test checks only the Stage 1 manifest against the full `RunManifest` schema, because the test fixtures write smaller manifests. `fixtures/entry-points/producer.mjs` is now `producer.ts`. `fixtures/boundary-publication/fixture.ts` writes no `run.yaml`, so step 7 does not change it. |
+| GB-04a | `finish` makes the required gaps again and refuses a changed `required-gaps.json`. A reason longer than 16 KiB is cut. The owner removed the reserved ID forms after the tickets (task S1). |
+| GB-04b | None after task S1. A required gap of an exports record names only the file that names the missing input. |
+| GB-04c | A compiler input that the two candidate records name gives two required gaps. The limit of 5,000 records of the discovery is not handled for a very large number of settings values that cannot be read. |
+| GB-04d | The check is for each tool result, not for each record. A gap that cites one Knip run does not cover the other run. Every kind of tool result has the same message. The check needs a gap that cites the result. The exact copy stays the check of the stage that publishes the record. The refused cases are in `integration/records/stage-6-tool-results.test.ts`, because `stage-6-records.test.ts` is at the line limit. The Stage 4 publication fixture now keeps the settings gap of Stage 1, so it has 2 gaps. The check lists the Stage 4 candidate records that the selected entry analysis and the selected resource observations name. It does not list those of an earlier Stage 4 attempt. |
+| GB-12a, GB-12b | Only the scenarios and the cookbook text, because tomer-mayara/choom#103 has the code. One step definition serves "the operator finishes Stage N" for each feature (`test/steps/producer-stage-finish.steps.ts`). |
+| GB-14 | The probe showed that the Stage 2 and Stage 3 publishers also registered a stray file. They refuse it now (`SavedAttemptFiles`). The Stage 2 receipts record the digest of each file that a saved command wrote. The Stage 6 message does not name the stray file. |
+
+**Check results on the combined change**, after the review fixes and the
+changes that follow the owner decisions (macOS, Node 26.13.0, Bun 1.4.4,
+`TMPDIR` set to its real path):
+
+| Check | Result |
+|---|---|
+| `bun run check` | Pass: 1,622 unit tests, 299 DOM tests, 249 integration tests, 179 scenarios and 773 interface tests. Lint, the cookbook check, the contract checks, the dependency rules, Knip and the duplicate check pass. |
+| `bun run check-types` | Pass. |
+| `bun run habit-hooks --all` | Pass. |
+| `bun run test:producer:docker` | Pass: 1 test and 2 scenarios. These tests stop at Stage 4 `collect` or at the graph run, so they do not reach the shared record checks of Stages 4 to 6. |
+| `bun run test:e2e` | Pass: 368 scenarios. |
+
+**Open after the tickets.** These points were open after round 3. "Owner
+decisions of 2026-11-21" below decides each one:
+
+1. **A second Stage 2 attempt orphans earlier subjects.** A Stage 2 entry
+   analysis has no `previousEntryAnalysisRef`, and Stage 2 can run again, also
+   after Stage 3. The selected history of Stage 4 then has no candidate of the
+   earlier attempts. Stage 4 refuses a kept question or gap that names one of
+   them, such as a Stage 3 note about a retired candidate. The run must then
+   start again. Stages 2 and 3 check only the records that they add (DB2), so
+   they accept the kept record. A test shows the Stage 2 part
+   (`interface/stage-2/finish-checks.test.ts`). The refusal at Stage 4 follows
+   from the code and is not confirmed in a run. See also "Candidate IDs after
+   a repeated Stage 2" in "Not covered by Appendix B".
+2. **The proposed decision rows.** DB1 (details a and b), the addition of DB2,
+   DB3, DB4, DB5, DB13 and DB14 are implemented as written. They stay
+   "Proposed" in the decision log until the owner approves them with the PR.
+3. **GB-02b is stricter than DB3.** DB3 says that a step can also cite other
+   evidence, such as a graph or references record. The code accepts such a
+   record. It refuses a step that also cites a saved source range that no
+   review read, also when a reviewed range has the same lines. The rule of
+   tomer-mayara/choom#103 accepted a cited range inside a reviewed range. The
+   stricter rule agrees with GB-02a, where an unread excerpt is not a reviewed
+   range. The owner keeps it or changes it to the rule of
+   tomer-mayara/choom#103.
+4. **The other differences of the table above.** Each stricter check (GB-04a,
+   GB-04d, GB-14) and each known limit (GB-01a, GB-04b, GB-04c, GB-04d) stays
+   as it is unless the owner decides differently.
+
+**Owner decisions of 2026-11-21, after the tickets.** The owner and the
+manager examined the four open points and each proposed row. For each point the
+question was also: is it as simple as it can be? The table gives each decision
+and its effect on the code. The decision log below has the decided text.
+
+| Point | Decision | Effect on the code |
+|---|---|---|
+| Subjects of a tool gap (DB1, detail b) | No exception. A tool gap names only files of the snapshot, or the snapshot ID. Its reason and its tool record name a missing input. Detail (b) is dropped, and the Stage 1 exception of plan change 8 goes. | Changed (task S1). `snapshot-project.ts` listed a missing compiler input as a subject in two places. These subjects are gone. The three checks that knew a tool gap by its form (`isStageOneToolGap`, `isExportsGap`, `isListedGap`) are gone, and the subject check has one rule. |
+| Reserved gap IDs (DB5) | Removed. | Changed (task S1). Stages 2, 3 and 4, Stage 2 `plan` and the review prompts do not reserve an ID form. The copy check stays: a required gap that is left out or changed is refused. |
+| The completion check of GB-04d (DB5) | Kept. Stage 6 `verify` then shows the rule from the final records. | None. |
+| Folder form `dir/**` (DB1, detail a) | Approved. | None. |
+| Stages 1 to 3 check subjects (DB2, the addition) | Approved. | None. |
+| A second Stage 2 attempt (open point 1) | One rule for all stages: a subject can name an entry candidate of each entry analysis that the run registers, and of the record that the stage checks. | Changed (task S2). The four rules of the stages are one rule. The way back to Stage 2 before Stage 4 works. |
+| The component rule (DB3) | Approved. | None. |
+| The step rule (open point 3) | As built: a step cites at least one reviewed range, and each saved source range that it cites is a reviewed range. The text of DB3 changes. | None. |
+| The fields of the run summary (DB4) | Three fields: `inventoried`, `inspected` and `recorded`. No `pending`, because `progress` has the state of each stage. | Changed (task S3). `RunSummary`, the run manifest contract, the scenario and the documents have no `pending`. |
+| The counts of inspected paths and of files with unknown owners | They stay out of the summary. | None. |
+| DB13 and DB14 | Approved. | None. |
+| The known limits | Accepted: a folder subject with `[`, two gaps for a compiler input in the two Stage 4 candidate records, the limit of 5,000 records, the Stage 4 candidate records of the selected attempt only (GB-04d), and the Stage 6 message without the name of a stray file. | None. |
+
+**The changes.** Three tasks made the four changes of the table. Each task was
+on its own branch and followed "How to work every ticket (Appendix B)". The
+manager then merged the branches and ran the checks of the combined change.
+The three tasks are done. The producer source lost about 100 lines.
+
+*Task S1: tool gap subjects and gap IDs.* Behavior, added to
+`tool-gaps.feature`:
+
+```gherkin
+  Scenario: The gap of a missing input names the file that asks for it
+    Given a Stage 3 attempt whose exports record is missing a declaration file that it names
+    When the operator requests the exports of the file
+    Then the only subject of the required gap is the file that names the declaration file
+    And the reason of the required gap names the missing declaration file
+```
+
+Interface: a gap of kind `missing-compiler-input` in the settings record, an
+exports record or a candidate record lists only files of the snapshot in
+`subjectRefs`. Its `missing` field and its reason keep the missing input. No
+ID form of a required gap is reserved, and the message "The ID ... is reserved
+..." goes. Observability: the defaults. Architecture: `record-subjects.ts` does
+not depend on a module of one stage.
+
+*Task S2: one rule for entry candidates.* Behavior, added to
+`issue-subjects.feature`:
+
+```gherkin
+  Scenario: A question about an entry candidate of an earlier attempt stays valid
+    Given a Stage 4 draft that keeps a question about an entry candidate of an earlier Stage 2 attempt
+    When the operator publishes the Stage 4 draft
+    Then the Stage 4 draft is published
+```
+
+Interface: no record changes. In `record-format.md` one rule replaces the
+table of the stages. Observability: the defaults. Architecture: one operation
+gives each stage the entry candidates of the registered entry analyses.
+
+*Task S3: the fields of the run summary.* Behavior: the scenario "After Stage 4
+the summary describes the Stage 4 records" of `run-manifest.feature` loses the
+step "And it says that Stages 5 and 6 are pending". The feature text says that
+`progress` has the state of each stage. Interface: `RunCoverage` in
+`producer-run-records.tsp` loses `pending`. Observability and architecture: the
+defaults.
+
+Differences from this plan:
+
+- **S1.** The Given of the scenario is "a Stage 3 attempt with a source file
+  that names a declaration file that the snapshot does not hold", because the
+  earlier Given already made the exports request. A dependency rule
+  (`producer-subject-check-uses-no-stage-module`) keeps the architecture
+  constraint. Stage 1 `finish` still refuses a review gap that has the exact
+  ID of a gap that `finish` adds, because the two would be one ID for two
+  gaps.
+- **S2.** A registered entry analysis is a record with the artifact ID
+  `<attempt>-entry-analysis` and the kind `entry-analysis`. The selected
+  history no longer gives candidate IDs, because the subject check was their
+  only reader.
+- **S3.** A new test shows that the Stage 3 `verify` refuses a changed
+  summary.
+
+Checks of the combined change: `bun run check`, `bun run check-types`,
+`bun run habit-hooks --all`, `bun run test:producer:docker` and
+`bun run test:e2e`. "Check results on the combined change" above has the
+results after these changes.
+
+**Independent review.** A reviewer that did not write the tickets read the
+combined change and ran probes. It found no serious defect. It had four
+findings:
+
+- **Fixed.** The Stage 3 finalizer checked the subjects before the copy of the
+  required gaps. A review that changed the required gap of an exports record
+  got a message about a subject that it must keep. The copy check is now first
+  (`stage-3-review.ts`), as in Stages 2 and 4.
+- **Fixed, then removed.** The Stage 4 review prompt gave the subject rule
+  with no exception for a gap that is copied from a tool record. The prompt
+  got the exception. Task S1 then removed the exception from the code and from
+  the prompt.
+- **Removed.** After a stage published, no check refused a new gap that had
+  the reserved ID form of that stage. Task S1 removed the reserved ID forms.
+- **Decided.** GB-02b is stricter than DB3. The owner keeps the rule, and DB3
+  now has its text.
+
+Two smaller items are not part of a ticket. The Stage 4 publication fixture
+registers a Git identity record with the status `not-available` and no gap,
+which Stage 1 refuses in a real run. And
+`packages/producer/test/interface/local-checks.test.ts` fails on macOS when
+`TMPDIR` is a path under `/var`, because macOS gives the same folder as
+`/private/var`. The test passes when `TMPDIR` is the real path.
+
 ### Re-check of the findings at `86c6100`
 
 Appendix A moved the producer to `packages/producer/src/` and changed it. CR-005
@@ -1734,6 +1956,11 @@ rows DB1, DB2 and DB11, and the proposed row DB14.
 
 If the owner approves one of these proposals, its ticket changes the code of
 #103.
+
+The tickets GB-01a to GB-14 then built the open parts and these proposals, as
+the owner asked on 2026-11-21. "Changes during implementation (Appendix B)"
+gives the state of each ticket and the decisions of the owner on the proposed
+rows.
 
 The re-check also found these related defects:
 
@@ -1835,11 +2062,11 @@ approved the "Proposed" rows yet.
 
 | # | Question | State | Decision | Tickets |
 |---|---|---|---|---|
-| DB1 | What can a subject reference name? (P1) | Decided, with two proposed details | A snapshot file or folder, the snapshot ID, a question or gap, an entry candidate, or a baseline item by the viewer's rule: the item ID, or the ID and a dot. A gap that Stage 1 copies from a tool record keeps its subjects. Proposed details: (a) a folder is written as a membership selector `dir/**` that matches at least one snapshot file; (b) a required gap of GB-04 keeps the subjects of its tool record too, as a Stage 1 tool gap does, so it can name a missing compiler input. | GB-01a, GB-01b, GB-04b |
-| DB2 | Where are subjects checked? (P1) | Decided, with one proposed addition | The shared record checks of Stages 4 to 6 check every question and gap, so a change that orphans a frozen subject is refused at the stage that makes it. Proposed addition: Stages 1 to 3 also check the records that they add, so a subject that names nothing is refused before later stages freeze it. | GB-01a, GB-01b |
-| DB3 | What supports an inspected path? (P2) | Proposed | Each step cites at least one reviewed range of the selected review history. Each component in `componentIds` owns a file or part that a reviewed range cited by the steps covers. A step can also cite other evidence, such as a graph or references record. | GB-02b |
-| DB4 | What is a current summary? (P3) | Proposed | A summary that describes the selected records and the progress of the run. `coverage` has `inventoried`, `inspected`, `recorded` and `pending`. `recorded` replaces `unresolved`: it gives the record counts of the questions and gaps, with history and linked notes. `pending` lists the stages that have not completed. Choom does not decide which question or gap is answered, so there is no status field. A status needs discovery `formatVersion: 3` and a viewer change, which this plan does not include. The LLM review stays responsible for current overview prose. | GB-03 |
-| DB5 | Which tool outcomes need a gap, and who writes it? (P4) | Proposed | The records of GB-04d: the Knip receipts (`skipped`, `failed`, and an `unsupported` preflight), the Stage 3 symbol mentions (`partial`, `unavailable`, `skipped`) and exports records (each gap that the record lists), and the Stage 4 candidate records (each gap that the record lists, and `status: partial`). Stage 1 keeps plan change 8 for its Git and settings records. The action that saves a tool record also saves the required gaps that it gives, with reserved IDs. The review prompt lists them. The review copies them exactly into the entry analysis and the discovery, because both lists must be the same and the response must hold the exact record text. The publishing action refuses a packet that leaves out or changes a required gap, or that uses a reserved ID for another gap. A dependency graph failure still stops the run: an "analysis unsupported" route for the graph (design 450-451) is not in this plan. | GB-04a to GB-04d |
+| DB1 | What can a subject reference name? (P1) | Decided (owner, 2026-11-21) | A snapshot file or folder, the snapshot ID, a question or gap, an entry candidate, or a baseline item by the viewer's rule: the item ID, or the ID and a dot. A folder is written as a membership selector `dir/**` that matches at least one snapshot file. An entry candidate is a candidate of an entry analysis that the run registers, or of the record that the stage checks. No gap has an exception: a tool gap names only files of the snapshot or the snapshot ID, and its reason names a missing input. The proposed detail (b) is dropped, and the Stage 1 exception of plan change 8 goes. | GB-01a, GB-01b, GB-04b |
+| DB2 | Where are subjects checked? (P1) | Decided (owner, 2026-11-21) | The shared record checks of Stages 4 to 6 check every question and gap, so a change that orphans a frozen subject is refused at the stage that makes it. Stages 1 to 3 also check the records that they add, so a subject that names nothing is refused before later stages freeze it. | GB-01a, GB-01b |
+| DB3 | What supports an inspected path? (P2) | Decided (owner, 2026-11-21) | Each step cites at least one reviewed range of the selected review history, and each saved source range that a step cites is a reviewed range. Each component in `componentIds` owns a file or part that a reviewed range cited by the steps covers. A step can also cite other records, such as a graph or references record. | GB-02b |
+| DB4 | What is a current summary? (P3) | Decided (owner, 2026-11-21) | A summary that describes the selected records. `coverage` has `inventoried`, `inspected` and `recorded`. `recorded` replaces `unresolved`: it gives the record counts of the questions and gaps, with history and linked notes. There is no `pending` field, because `progress` has the state of each stage. Choom does not decide which question or gap is answered, so there is no status field. A status needs discovery `formatVersion: 3` and a viewer change, which this plan does not include. The LLM review stays responsible for current overview prose. | GB-03 |
+| DB5 | Which tool outcomes need a gap, and who writes it? (P4) | Decided (owner, 2026-11-21) | The records of GB-04d: the Knip receipts (`skipped`, `failed`, and an `unsupported` preflight), the Stage 3 symbol mentions (`partial`, `unavailable`, `skipped`) and exports records (each gap that the record lists), and the Stage 4 candidate records (each gap that the record lists, and `status: partial`). Stage 1 keeps plan change 8 for its Git and settings records. The action that saves a tool record also saves the required gaps that it gives. The review prompt lists them. The review copies them exactly into the entry analysis and the discovery, because both lists must be the same and the response must hold the exact record text. The publishing action refuses a packet that leaves out or changes a required gap. No ID form is reserved. The shared record checks of Stages 4 to 6 check again that each selected tool result has a gap that cites it. A dependency graph failure still stops the run: an "analysis unsupported" route for the graph (design 450-451) is not in this plan. | GB-04a to GB-04d |
 | DB6 | Which fields does the run manifest get? (P5) | Dropped | Plan change 20: the run manifest and the records that it registers are the run record. The design text says so (#101). | — |
 | DB7 | What is a prompt version? (P7) | Version field dropped; template check deferred | Plan change 20: the producer code digest and the cookbook copy that each stage start saves identify the prompt template, so there is no prompt-version field. The check that a saved prompt starts with the prompt that the helper wrote is decided after the first real run. | Drafts GB-07c to GB-07f |
 | DB8 | How is an entry candidate traced? (P8) | Deferred | Revision 2 proposal: `package-field`: a cited manifest field whose value is the expression; the path is that value from the manifest folder. `script`: a cited package script whose text contains the expression and the path. `convention`: a cited Knip plugin pattern of the Stage 2 profile that is the expression and selects the path. `source`: a cited saved source range or search match whose text contains the expression. For every origin, the path is inside the workspace folder. Choom does not check `inference` and `unknown`. A candidate that these rules cannot trace uses `inference` or `unknown` (design 856). | Drafts GB-08a to GB-08c |
@@ -1847,8 +2074,8 @@ approved the "Proposed" rows yet.
 | DB10 | How does capture handle changes and exclusions? (P11) | Dropped | Plan change 20: capture stops on a change, the operator retries in a new folder, and the exclusions stay as rules. The design text says so (#101). | — |
 | DB11 | What is one complete update? (P12) | Decided | Plan change 20: Stages 2 and 3 write the run manifest last and roll back, as Stages 4 to 6 do. The rest of the revision 2 proposal (one lock for every action, draft digests in `run.yaml`, a cleanup action) is not planned. | GB-12a, GB-12b |
 | DB12 | How is affected work revisited before Stage 6? (P13) | Dropped | Plan change 20: after Stage 4 publication, a root or settings correction needs a new run. Stage 5 can still revise model statements. The design text says so (#101). | — |
-| DB13 | Where are the contracts of new or changed producer records? (all) | Proposed | In a new `cookbook/interfaces/producer-run-records.tsp`, as CR-005 did in `producer-boundary-intake.tsp`. The ticket that first adds or changes a record adds its model; later tickets extend it. The models are generated into `packages/producer/src/generated/contracts.ts`, linked from `packages/producer/component.yaml`, and checked by `bun run check:contracts`. | All tickets that change a record |
-| DB14 | Where do the new tests go? (all) | Proposed | The coding principles place tests beside the code as `*.test.ts`. The producer suites are in `packages/producer/test/`, and `test:native` and `test:integration` scan only those folders. Proposal: new tests extend the existing suites in `packages/producer/test/` and `test/steps/`. A move of the producer tests is a separate change. | All tickets |
+| DB13 | Where are the contracts of new or changed producer records? (all) | Decided (owner, 2026-11-21) | In a new `cookbook/interfaces/producer-run-records.tsp`, as CR-005 did in `producer-boundary-intake.tsp`. The ticket that first adds or changes a record adds its model; later tickets extend it. The models are generated into `packages/producer/src/generated/contracts.ts`, linked from `packages/producer/component.yaml`, and checked by `bun run check:contracts`. | All tickets that change a record |
+| DB14 | Where do the new tests go? (all) | Decided (owner, 2026-11-21) | The coding principles place tests beside the code as `*.test.ts`. The producer suites are in `packages/producer/test/`, and `test:native` and `test:integration` scan only those folders. New tests extend the existing suites in `packages/producer/test/` and `test/steps/`. A move of the producer tests is a separate change. | All tickets |
 
 ### Ticket map and order
 
@@ -1888,6 +2115,12 @@ approved the "Proposed" rows yet.
 ---
 
 ### Next tickets: the Step 2 gate and P12
+
+The tickets below are the plan as it was written. The owner decisions of
+2026-11-21 changed parts of GB-01b, GB-03 and GB-04a to GB-04c: the rule for
+entry candidates, the `pending` field, the reserved ID forms and the subjects
+of a tool gap. "Owner decisions of 2026-11-21, after the tickets" has the
+decided text.
 
 ### GB-01a Stages 4 to 6 refuse a subject that names nothing
 
@@ -2973,6 +3206,14 @@ text.
   (`stage-3-text-search.ts:127`) and a references record with
   `completeness: partial` (`stage-4-references.ts:246`) give no required gap.
   Draft GB-09a uses a truncated search only as `run-limit` evidence.
+- **Limits of the tool gap tickets.** A compiler input that the two Stage 4
+  candidate records name gives two required gaps. The limit of 5,000 records
+  of the discovery is not handled for a very large number of settings values
+  that cannot be read (GB-04c). The completion check does not list the
+  candidate records of an earlier Stage 4 attempt (GB-04d).
+- **Folder subjects with selector characters.** A folder subject is compared
+  as text with the folders of the snapshot, so `src/app/[id]/**` is a valid
+  subject, although a membership selector cannot contain `[` (GB-01a).
 - **A status for questions and gaps.** It needs discovery `formatVersion: 3`
   and a viewer change (DB4). Current overview prose stays an LLM review item.
 - **Dotted file names.** Under the viewer's rule (DB1), a subject such as
@@ -2984,7 +3225,9 @@ text.
   run.
 - **Stage 3 candidates outside the roots.** A Stage 3 source candidate outside
   the Stage 2 plan patterns is not checked against the roots at Stage 4.
-- **Candidate IDs after a repeated Stage 2.** A new Stage 2 attempt before
-  Stage 4 gives new candidate IDs, because new IDs start with the attempt ID
-  (`stage-2-finish.ts`). Not confirmed in a run.
+- **Candidate IDs in Stages 4 and 5.** Stages 2 and 3 check that a new
+  candidate ID starts with the ID of its attempt. Stages 4 and 5 do not, and
+  their collision check reads only the selected history. A Stage 4 or 5 draft
+  can thus give a new candidate the ID of a candidate of an earlier attempt
+  that is not selected. A subject with that ID then names two candidates.
 - **The new design drift** listed under "Design-document drift to fix".

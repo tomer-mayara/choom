@@ -6,7 +6,9 @@ import { isDeepStrictEqual } from 'node:util';
 import { draftUpdate } from './draft-update.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, object, savedDocument, text } from './record-checks.ts';
-import { checkSymbolResultGap } from './result-gaps.ts';
+import { RunSummary } from './run-summary.ts';
+import { SavedAttemptFiles } from './saved-attempt-files.ts';
+import { StageThreeGaps } from './stage-3-gaps.ts';
 import { checkReview, utf8 } from './stage-3-review.ts';
 
 // The Stage 3 finalizer. It checks the saved attempt, its receipts, the earlier
@@ -31,6 +33,9 @@ interface SavedAttempt {
   saved(name: string): unknown;
   attemptDigests(fileNames: string[]): Record<string, string>;
   receipt(phase: string, action: string, outputs: string[]): void;
+  // Checks the receipt of each failed request, then refuses each attempt file that no
+  // checked receipt names and that is not the command log. Call it after the other receipt checks.
+  refuseUnsaved(): void;
 }
 interface Inputs {
   snapshotRef: string;
@@ -56,7 +61,7 @@ const draftNames = ['run', 'discovery', 'baseline'];
 // The documents that Stage 3 start saved; the attempt holds no producer code.
 const toolFiles = ['step-3-cookbook.md'];
 const checkpoints = draftNames.map(name => name + '.before.yaml');
-const collectFiles = ['loading-search.json', 'symbol-mentions.json', 'source-excerpts.json',
+const collectFiles = ['loading-search.json', 'symbol-mentions.json', 'source-excerpts.json', StageThreeGaps.collectFile,
   'review-prompt.md', 'artifact-map.json'];
 const reviewFiles = ['entry-analysis.yaml', 'llm/analysis-prompt.md', 'llm/analysis-response.md',
   'llm/analysis-call.yaml', 'llm/review-scope.json'];
@@ -209,16 +214,41 @@ function savedAttempt({ id, work, attempt, analysisRef, yaml }: Settings, run: F
     assert(buffers.has(ref), 'Missing saved attempt file: ' + name);
     return [name, hash(buffers.get(ref) as Buffer)];
   }));
-  function receipt(phase: string, action: string, outputs: string[]): void {
+  return { artifacts, buffers, names, attemptRef, verify, document, registered, saved, attemptDigests,
+    ...receiptChecks(id, names, saved, attemptDigests) };
+}
+
+// The receipt checks of the attempt. Each checked receipt adds itself and the files
+// that it names to the saved files. finish registers every attempt file, so
+// refuseUnsaved refuses every other file.
+function receiptChecks(id: string, names: string[], saved: (name: string) => unknown,
+  attemptDigests: (fileNames: string[]) => Record<string, string>): Pick<SavedAttempt, 'receipt' | 'refuseUnsaved'> {
+  const savedFiles = new SavedAttemptFiles().add(['commands.md']);
+  // The receipt has the outcome, and names exactly the outputs and the three logs, with their digests.
+  function checkedReceipt(phase: string, action: string, outputs: string[], outcome: { status: string; exitCode: number }): void {
     const prefix = 'operator-' + phase;
     const value = saved(prefix + '.json') as Fields | null | undefined;
+    const logs = ['.started.json', '.stdout.txt', '.stderr.txt'].map(suffix => prefix + suffix);
     assert(value?.formatVersion === 1 && value.attemptId === id && value.phase === phase && value.action === action &&
-      value.status === 'completed' && value.exitCode === 0 &&
-      isDeepStrictEqual(value.digests, attemptDigests(outputs)) && isDeepStrictEqual(value.logDigests,
-        attemptDigests(['.started.json', '.stdout.txt', '.stderr.txt'].map(suffix => prefix + suffix))),
+      value.status === outcome.status && value.exitCode === outcome.exitCode &&
+      isDeepStrictEqual(value.digests, attemptDigests(outputs)) && isDeepStrictEqual(value.logDigests, attemptDigests(logs)),
     'The ' + phase + ' receipt is incomplete, failed, or changed. Use a new attempt.');
+    savedFiles.addReceipt(prefix + '.json', [...outputs, ...logs]);
   }
-  return { artifacts, buffers, names, attemptRef, verify, document, registered, saved, attemptDigests, receipt };
+  return {
+    receipt: (phase, action, outputs) => checkedReceipt(phase, action, outputs, { status: 'completed', exitCode: 0 }),
+    // A numbered request that failed saved no record. The cookbook says to keep its
+    // receipt and to request again in the same attempt.
+    refuseUnsaved() {
+      for (const name of names) {
+        const [, phase, action] = /^operator-((excerpt|text-search|exports)-[0-9]+)\.json$/.exec(name) ?? [];
+        if (!phase || !action || names.includes(phase + '.json')) continue;
+        const digests = (saved(name) as Fields | null | undefined)?.digests;
+        checkedReceipt(phase, action, object(digests) ? Object.keys(digests) : [], { status: 'failed', exitCode: 1 });
+      }
+      savedFiles.refuseOthers(names);
+    },
+  };
 }
 
 // The inventory, the selected entry analysis, the handoff and the proposed artifact map.
@@ -323,13 +353,11 @@ function finalChecks({ config, drafts, attempt, inputs, loading, currentExcerpts
   for (const [ref, entry] of Object.entries(attempt.artifacts)) attempt.verify(ref, entry);
 }
 
-function publishedDrafts({ config, drafts, attempt, run, discovery, analysis }: Finalization): Drafts {
+function publishedDrafts({ config, drafts, attempt, run, discovery, analysis, inputs }: Finalization): Drafts {
   const { yaml, analysisRef } = config;
-  const nextRun = { ...run, artifacts: attempt.artifacts, progress: { ...(run.progress as Fields), inspectionPriorities: 'complete' },
-    coverage: { ...(run.coverage as Fields),
-      inspected: 'Source reviews remain in the saved entry analyses. Stage 3 adds ' +
-        analysisRef + '#/reviewedFiles. Tool query scope does not establish LLM inspection.' },
-  };
+  const progress = { ...(run.progress as Fields), inspectionPriorities: 'complete' };
+  const nextRun = { ...run, artifacts: attempt.artifacts, progress, coverage: new RunSummary({
+    inventory: inputs.inventory, reviewRef: analysisRef, issuesRef: analysisRef, issues: analysis }).coverage() };
   const nextDiscovery = { ...discovery, entryAnalysisRef: analysisRef, questions: analysis.questions, gaps: analysis.gaps };
   return { run: Buffer.from(yaml.stringify(nextRun)), discovery: Buffer.from(yaml.stringify(nextDiscovery)),
     baseline: drafts.before.baseline as Buffer };
@@ -367,9 +395,11 @@ function finish(): void {
     const phase = name.slice(0, -'.json'.length);
     attempt.receipt(phase, 'text-search', [phase + '.stdout.jsonl', phase + '.stderr.txt', name]);
   }
-  // Each exports record must be as the exports action saved it.
-  for (const name of attempt.names.filter(name => /^exports-[0-9]+\.json$/.test(name)))
-    attempt.receipt(name.slice(0, -'.json'.length), 'exports', [name]);
+  // Each exports record and its required gaps must be as the exports action saved them.
+  for (const name of attempt.names.filter(name => /^exports-[0-9]+\.json$/.test(name))) {
+    const phase = name.slice(0, -'.json'.length);
+    attempt.receipt(phase, 'exports', [name, StageThreeGaps.exportsFile(phase)]);
+  }
   assert(attempt.buffers.has(attempt.attemptRef('commands.md')), 'Missing command log.');
   const inputs = selectedInputs(config, records, attempt);
   const loading = checkQueries(attempt, inputs);
@@ -378,9 +408,8 @@ function finish(): void {
   const { analysis, currentExcerpts } = checkReview({ ...records, ...inputs, id: config.id, workspaces,
     names: attempt.names, artifacts: attempt.artifacts, buffers: attempt.buffers, document: attempt.document,
     saved: attempt.saved, receipt: attempt.receipt, checkedSourceBytes });
-  // Symbol mentions that are unavailable or skipped need a gap that cites their record.
-  checkSymbolResultGap(analysis.gaps, attempt.attemptRef('symbol-mentions.json'),
-    (attempt.saved('symbol-mentions.json') as Fields | null | undefined)?.status);
+  // The finalizer registers every attempt file, so each one must be a file that a producer action saved.
+  attempt.refuseUnsaved();
   const state: Finalization = { ...records, config, drafts, attempt, inputs, loading, analysis, currentExcerpts,
     checkedSourceBytes };
   finalChecks(state);

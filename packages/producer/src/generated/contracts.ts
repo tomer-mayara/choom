@@ -61,6 +61,11 @@ export interface RegistrationClue {
   sourceRef: string;
 }
 
+export interface RequiredGaps {
+  formatVersion: 1;
+  gaps: Array<ChoomBaselineModel.DiscoveryGap>;
+}
+
 export interface ResourceAccessRule {
   id: behaviorEntryRuleId;
   version: behaviorEntryRuleVersion;
@@ -84,9 +89,56 @@ export interface ReviewedRoleUse {
   evidenceRefs: Array<string>;
 }
 
+export interface RunArtifact {
+  path: string;
+  sha256: string;
+}
+
+export interface RunCoverage {
+  inventoried: string;
+  inspected: string;
+  recorded: string;
+}
+
+export interface RunManifest {
+  formatVersion: 1;
+  id: string;
+  mode: "A";
+  status: "in-progress" | "completed";
+  projectKey: ChoomBaselineModel.baselineText;
+  referenceBaseline: FrozenBaselineReference | null;
+  progress: RunProgress;
+  snapshot: RunSnapshot;
+  coverage: RunCoverage;
+  artifacts: Record<string, RunArtifact>;
+  baselineRef?: ChoomBaselineModel.baselineId;
+  discoveryRef?: string;
+  completedAt?: string;
+}
+
+export interface RunProgress {
+  inventory: "complete";
+  entryAnalysis?: "complete";
+  inspectionPriorities?: "pending" | "complete";
+  componentRecovery?: "complete";
+  remainingCode?: "complete";
+  baselineRecovery: "pending" | "complete";
+}
+
 export interface RunProject {
   projectKey: ChoomBaselineModel.baselineText;
   referenceBaseline: FrozenBaselineReference | null;
+}
+
+export interface RunSnapshot {
+  id: string;
+  root: "snapshot";
+  inventoryRef: string;
+  exclusions: "exclusions.txt";
+  captureMethod: string;
+  captureLimit: string;
+  sourcePath: string;
+  capturedAt: string;
 }
 
 export interface UnitUseReview {

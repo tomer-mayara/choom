@@ -183,7 +183,13 @@ guidance. A reference or shared artifact alone does not establish an exclusive
 owner. Request the source ranges you need. The worker classifies the files
 and writes the analysis.
 Each step of an inspected path cites the reviewed source range that it rests
-on; a collected excerpt that you did not review does not count.
+on; a collected excerpt that you did not review does not count. Cite a reviewed
+range by the ID of its reviewedFiles item, not by a JSON Pointer to its fields.
+Do not cite an excerpt that you did not review. A behavior entry and a
+resource access observation cite the reviewed range that contains their site in
+the same way. Name in componentIds only components that own code that a
+reviewed range of the steps covers. In a divided file, the range must include a
+line of a part that the component owns.
 
 Prepare a complete proposed baseline and mapping, the entry-analysis update,
 and discovery records. Keep continuing component IDs. Keep all inferred intent
@@ -314,12 +320,15 @@ Each question or gap has exactly its fields, 1 to 100 subjectRefs and at least
 one evidenceRef. A text or reason has at most 16 KiB of UTF-8, and an ID, a kind
 or a reference at most 4 KiB. Use at most 5,000 questions and gaps together.
 For a deferral of many files, name a folder or a component in subjectRefs.
-Each subjectRef names a file or folder of the snapshot (a folder with or without
-a final /), the snapshot ID, a question or gap, an entry candidate, or a baseline
-item ID or a field of it, such as billing.purpose. Name a symbol or a missing
-input in the text or reason. The publisher refuses any other subject, also in an
-earlier question or gap, so keep the ID of a component that a question or gap
-names.
+Each subjectRef names a file of the snapshot, a folder of the snapshot written as
+<folder>/** (such as src/billing/**), the snapshot ID, a question or gap, an entry
+candidate, or a baseline item ID or a field of it, such as billing.purpose. Name
+a symbol or a missing input in the text or reason. The publisher refuses any
+other subject, also in an earlier question or gap, so keep the ID of a component
+that a question or gap names. The publisher also refuses a draft in which a
+selected tool result has no gap that cites it, such as a skipped Knip run. The
+required gaps of the earlier stages cite these results, so keep them unchanged
+([tool results](record-format.md#tool-results-of-the-selected-history)).
 
 Rewrite current overview text, mapping/resource limits and counts to describe
 this packet. Do not append a current count while leaving an obsolete count or
@@ -430,13 +439,13 @@ node "$CHOOM_TOOLS/packages/producer/src/cli.ts" stage-4-5-publish verify 5
 ```
 
 `check` is read-only. It is safe to correct the separate packet and repeat that
-check. `finish` copies and registers the review, updates the working drafts,
-marks `remainingCode: complete`, and makes the run summaries `coverage.inspected`
-and `coverage.unresolved` current for the new records. `verify` checks the
-published state. All three refuse a file in the attempt that no producer action
-saved. Do not rerun `finish` after success. Publication failure leaves evidence
-for investigation; after resolving the cause, use a fresh attempt rather than
-editing that evidence.
+check. `finish` copies and registers the review, updates the working drafts and
+marks `remainingCode: complete`. It also writes the
+[run summary](record-format.md#run-summary) for the new records. `verify` checks
+the published state, the summary too. All three refuse a file in the attempt that
+no producer action saved. Do not rerun `finish` after success. Publication
+failure leaves evidence for investigation; after resolving the cause, use a fresh
+attempt rather than editing that evidence.
 
 Apply the [review before publication](start-here.md#review-before-publication)
 guidance to the complete packet before `finish`. Check that:
@@ -452,13 +461,18 @@ guidance to the complete packet before `finish`. Check that:
   level.
 - Evidence references, source hashes and numbered ranges resolve. Only ranges
   actually read by the LLM appear as new inspections. Each step of an inspected
-  path cites a reviewed source range of the selected `reviewedFiles` chain.
+  path cites a reviewed source range of the selected `reviewedFiles` chain by
+  its ID, and each component of the path owns code that one of these ranges
+  covers; in a divided file, a range covers a part when the part has text on
+  one of its lines. A behavior entry and a resource access observation cite the
+  reviewed range of their site by its ID.
 - Continuing component IDs remain stable. Changed intent stays proposed and
   has evidence; dependency observations are not promoted to access permission.
 - Entry history, prior questions, gaps and deferrals remain traceable. Resolution
   notes identify the earlier records. New deferrals state their scope and basis.
-  Every subject names a file or folder of the snapshot, the snapshot ID, a
-  question or gap, an entry candidate or a baseline item, as
+  Every subject names a file of the snapshot, a folder of the snapshot written
+  as `<folder>/**`, the snapshot ID, a question or gap, an entry candidate or a
+  baseline item, as
   [record formats](record-format.md#ids-and-evidence) gives. The publisher
   refuses any other subject, also in an earlier record.
 - Changed entries or settings have the required new analysis. Unaffected graph
@@ -468,9 +482,10 @@ guidance to the complete packet before `finish`. Check that:
   observation counts from their selected records. Replace stale prose rather
   than appending a conflicting update. Questions and gaps include history and
   linked notes; their totals are not unresolved-defect counts.
-- Review the manifest summaries after `finish` as well as the packet files: the
-  publisher makes them current. For helper-owned stale prose, use the correction
-  guidance rather than editing the manifest. Keep `baselineRef` unset until Stage 6.
+- Review the run summary after `finish` as well as the packet files. The
+  publisher writes it from the selected records, and `verify` refuses a
+  `run.yaml` with another summary. Do not edit the manifest. Keep `baselineRef`
+  unset until Stage 6.
 - The full update is validated before any draft is replaced. Register immutable
   attempt evidence by digest; do not register a mutable draft as evidence.
 

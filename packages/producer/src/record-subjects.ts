@@ -1,34 +1,55 @@
-import { assert, type Fields } from './record-checks.ts';
-import { isToolGap } from './stage-1-gaps.ts';
+import type { SubjectItems } from '@choom/baseline-model/subject-items';
+import type { Fields } from './record-checks.ts';
 
 // The subjects of the questions and gaps of a discovery. The shared record checks of
 // Stages 4 to 6 check that each subject reference names something that the run
-// holds, so that no question or gap is about nothing. Later stages keep each
-// question and gap unchanged, so a draft that renames or removes what a subject
-// names is refused while the reviewer can still keep the old ID.
-export interface SubjectInputs {
-  // The working or fixed discovery with its questions and gaps.
-  discovery: Fields;
-  snapshotRef: string;
-  // The paths of the files of the snapshot inventory.
-  paths: Iterable<unknown>;
-  // The IDs of the entry candidates of the selected entry analysis and of the earlier
-  // entry analyses that it names. Stage 3 can retire a candidate with a note that names it.
-  candidateIds: ReadonlySet<unknown>;
-  baseline: BaselineItems;
+// holds, so that no question or gap is about nothing. Stages 1 to 3 check the
+// records that they add in the same way, before later stages keep them unchanged.
+
+// The baseline items that a subject can name: SubjectItems of @choom/baseline-model.
+export type ItemNames = Pick<SubjectItems, 'namedItem'>;
+// A question or gap of a discovery, or another record with subjects, such as an
+// inspection priority.
+export interface SubjectRecord {
+  readonly id: unknown;
+  readonly subjectRefs: readonly string[];
+  readonly [field: string]: unknown;
 }
-// The four collections of baseline items, with the ID of each item.
-export interface BaselineItems {
-  readonly components: readonly { readonly id: unknown }[];
-  readonly interfaces: readonly { readonly id: unknown }[];
-  readonly resources: readonly { readonly id: unknown }[];
-  readonly rules: readonly { readonly id: unknown }[];
+// What the subjects of the questions and gaps of a run can name.
+export interface SubjectRun {
+  // The paths of the files of the snapshot inventory.
+  readonly paths: Iterable<unknown>;
+  readonly snapshotRef: string;
+  // The discovery, or other records, with the questions and gaps. The lists keep their history.
+  readonly issues: Fields;
+  // The IDs of the entry candidates that a subject can name (entryCandidates). Stage 1 has none.
+  readonly candidateIds: Iterable<unknown>;
+  readonly items: ItemNames;
+}
+// The records that a run registers: the artifact ID of each, and a reader of its saved
+// document. The shared record checks of Stages 4 and 5 also get the attempt files that
+// the publication registers.
+export interface RegisteredRecords {
+  readonly refs: Iterable<string>;
+  document(ref: string): unknown;
 }
 
-const issueKinds = [['questions', 'Question'], ['gaps', 'Gap']] as const;
+const issueLists = [['questions', 'question'], ['gaps', 'gap']] as const;
+const subjectForms = 'A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, ' +
+  'a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.';
+// The baseline items of Stages 1 to 3: none. Each of these stages checks that the baseline is still empty.
+const noItems: ItemNames = { namedItem: () => undefined };
+// The artifact ID of the entry analysis that Stages 2 to 5 register: the attempt ID and
+// -entry-analysis, such as s2-001-entry-analysis.
+const entryAnalysisRef = /^s[2-5]-[a-z0-9-]+-entry-analysis$/;
+const candidateIdsOf = (record: Fields): unknown[] =>
+  Array.isArray(record.candidates) ? (record.candidates as (Fields | null)[]).map(candidate => candidate?.id) : [];
+
+const issueIdsOf = (issues: Fields): Set<unknown> =>
+  new Set(issueLists.flatMap(([kind]) => (issues[kind] as SubjectRecord[]).map(issue => issue.id)));
 
 // The folders that hold at least one of the files, without a final /.
-function foldersOf(files: Set<unknown>): Set<string> {
+function foldersOf(files: Iterable<unknown>): Set<string> {
   const folders = new Set<string>();
   for (const path of files) {
     if (typeof path !== 'string') continue;
@@ -37,31 +58,104 @@ function foldersOf(files: Set<unknown>): Set<string> {
   return folders;
 }
 
-// A subject names one of these: a file of the snapshot inventory; a folder that holds
-// at least one such file, written with or without a final /; the snapshot ID; the ID
-// of a question or gap of the discovery; the ID of an entry candidate; or a baseline
-// item. A subject names an item, as the viewer places it, when it equals the item ID
-// or starts with the ID and a dot, such as billing.purpose. An item ID has no dot.
-// A gap that Stage 1 finish copied from a tool record keeps the subjects of the tool,
-// which can name a missing input or a path outside the snapshot; it is not checked.
-export function checkSubjects({ discovery, snapshotRef, paths, candidateIds, baseline }: SubjectInputs): void {
-  const files = new Set<unknown>(paths);
-  const folders = foldersOf(files);
-  const issueIds = new Set(issueKinds.flatMap(([kind]) => (discovery[kind] as Fields[]).map(issue => issue.id)));
-  const itemIds = new Set([...baseline.components, ...baseline.interfaces, ...baseline.resources, ...baseline.rules]
-    .map(item => item.id));
-  const names = (subject: string): boolean => {
-    const dot = subject.indexOf('.');
-    return files.has(subject) || folders.has(subject.endsWith('/') ? subject.slice(0, -1) : subject) ||
-      subject === snapshotRef || issueIds.has(subject) || candidateIds.has(subject) ||
-      itemIds.has(dot < 0 ? subject : subject.slice(0, dot));
-  };
-  for (const [kind, label] of issueKinds) {
-    for (const issue of discovery[kind] as Fields[]) {
-      if (kind === 'gaps' && isToolGap(issue)) continue;
-      for (const subject of issue.subjectRefs as string[])
-        assert(names(subject), `${label} ${String(issue.id)} names the subject ${subject}, which is not a file or folder of ` +
-          'the snapshot, the snapshot ID, a question or gap, an entry candidate or a baseline item.');
+// The subject check of the questions and gaps of a run. A subject names one of these:
+// a file of the snapshot inventory; a folder that holds at least one such file,
+// written as the membership selector <folder>/**, such as src/billing/**; the
+// snapshot ID; the ID of a question or gap; the ID of an entry candidate of a
+// registered entry analysis or of the record that the stage checks (entryCandidates); or a
+// baseline item, as the viewer places a record (SubjectItems), such as
+// billing.purpose. Later stages keep each question and gap unchanged, so a draft
+// that renames or removes what a subject names is refused while the reviewer can
+// still keep the old ID.
+export class SubjectChecker {
+  private readonly files: ReadonlySet<unknown>;
+  private readonly folders: ReadonlySet<string>;
+  private readonly snapshotRef: string;
+  private readonly issues: Fields;
+  private readonly issueIds: ReadonlySet<unknown>;
+  private readonly candidateIds: ReadonlySet<unknown>;
+  private readonly items: ItemNames;
+
+  constructor({ paths, snapshotRef, issues, candidateIds, items }: SubjectRun) {
+    this.files = new Set(paths);
+    this.folders = foldersOf(this.files);
+    this.snapshotRef = snapshotRef;
+    this.issues = issues;
+    this.issueIds = issueIdsOf(issues);
+    this.candidateIds = new Set(candidateIds);
+    this.items = items;
+  }
+
+  // The subject check of Stages 1 to 3 (DB2). These stages run before Stage 4 recovers
+  // the baseline items, so a subject can name no baseline item yet.
+  static beforeBaseline(run: Omit<SubjectRun, 'items'>): SubjectChecker {
+    return new SubjectChecker({ ...run, items: noItems });
+  }
+
+  // The check of Stages 2 and 3 for the questions and gaps of an entry plan or entry
+  // analysis (`record`). A subject can name an entry candidate of the record or of an
+  // entry analysis that the run registers (entryCandidates).
+  static forEntryRecord(paths: Iterable<unknown>, snapshotRef: string, record: Fields, registered: RegisteredRecords): SubjectChecker {
+    return SubjectChecker.beforeBaseline({ paths, snapshotRef, issues: record,
+      candidateIds: SubjectChecker.entryCandidates(registered, record) });
+  }
+
+  // The IDs of the entry candidates that a subject can name: those of each entry analysis
+  // that the run registers, and those of `record`, the record that the stage checks, such
+  // as a Stage 2 plan or the entry analysis under check. A registered entry analysis has
+  // the artifact ID <attempt>-entry-analysis and the kind entry-analysis, so a registered
+  // plan does not count. The run keeps the records of each earlier attempt registered, and
+  // a candidate ID starts with the ID of its attempt. So after a fresh Stage 2 attempt, a
+  // kept question or gap still names a saved candidate, also one that Stage 3 retired.
+  static entryCandidates({ refs, document }: RegisteredRecords, record: Fields): Set<unknown> {
+    const analyses = [...refs].filter(ref => entryAnalysisRef.test(ref)).map(document)
+      .filter((value): value is Fields => (value as Fields | null | undefined)?.kind === 'entry-analysis');
+    return new Set([...analyses, record].flatMap(candidateIdsOf));
+  }
+
+  // Each subject of the question or gap that names nothing of the run, in the order of
+  // the record. The rule is the same for each question and gap, also for a gap that a
+  // stage gives from a tool record: such a gap names a missing input in its reason.
+  refused(record: SubjectRecord): string[] {
+    return record.subjectRefs.filter(subject => !this.names(subject));
+  }
+
+  // Refuses the first question or gap with a subject that names nothing.
+  check(): void {
+    for (const [kind, label] of issueLists) this.checkRecords(this.issues[kind] as SubjectRecord[], label);
+  }
+
+  // Refuses the first question or gap that the stage adds. A record is added when its
+  // ID is not in `earlier`, the questions and gaps before the stage. Stages 1 to 3
+  // check only the records that they add.
+  checkAdded(earlier: Fields): void {
+    const earlierIds = issueIdsOf(earlier);
+    for (const [kind, label] of issueLists)
+      this.checkRecords((this.issues[kind] as SubjectRecord[]).filter(issue => !earlierIds.has(issue.id)), label);
+  }
+
+  // Refuses the first of the records with a subject that names nothing. The message
+  // names the subject, the kind of the record (`label`, such as question) and its ID.
+  // For a folder written without /**, it gives the folder selector to write.
+  checkRecords(records: readonly SubjectRecord[], label: string): void {
+    for (const record of records) {
+      const [subject] = this.refused(record);
+      if (subject === undefined) continue;
+      const selector = this.folderSelector(subject);
+      throw new Error(`The subject ${subject} of the ${label} ${String(record.id)} ` + (selector === undefined
+        ? `names nothing. ${subjectForms}` : `names a folder without /**. Write the folder as ${selector}.`));
     }
+  }
+
+  private names(subject: string): boolean {
+    return this.files.has(subject) || (subject.endsWith('/**') && this.folders.has(subject.slice(0, -3))) ||
+      subject === this.snapshotRef || this.issueIds.has(subject) || this.candidateIds.has(subject) ||
+      this.items.namedItem(subject) !== undefined;
+  }
+
+  // The folder selector for a subject that names a folder of the snapshot without /**, with or without a final /.
+  private folderSelector(subject: string): string | undefined {
+    const folder = subject.endsWith('/') ? subject.slice(0, -1) : subject;
+    return this.folders.has(folder) ? folder + '/**' : undefined;
   }
 }

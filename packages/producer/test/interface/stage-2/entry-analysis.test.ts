@@ -157,19 +157,23 @@ describe("a Stage 2 attempt with an approved tool image", () => {
       expect(receipt.dockerEndpoint).toMatchObject({ selector: "current-context", context: "default",
         endpoint: "unix:///var/run/docker.sock" });
 
-      // Finish adds the analysis to the drafts and registers every attempt file.
+      // Both Knip modes completed, so run saved no required gap. Finish adds the analysis to
+      // the drafts and registers every attempt file.
+      expect(savedJson(attempt, "required-gaps.json")).toEqual({ formatVersion: 1, gaps: [] });
       expect(parse(readFileSync(join(work, "discovery.yaml"), "utf8"))).toEqual({ formatVersion: 1,
-        kind: "architecture-discovery", runRef: "run-check", questions: [priorQuestion],
-        gaps: [{ id: "s2-check-gap-001", kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
-          evidenceRefs: ["s2-check-knip-runs", "s2-check-preflight"] }], entryAnalysisRef: "s2-check-entry-analysis" });
+        kind: "architecture-discovery", runRef: "run-check", questions: [priorQuestion], gaps: [],
+        entryAnalysisRef: "s2-check-entry-analysis" });
       const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as SavedRun;
       expect(run.progress).toEqual({ inventory: "complete", baselineRecovery: "pending", entryAnalysis: "complete",
         inspectionPriorities: "pending" });
-      expect(run.coverage.inspected).toBe("LLM source inspections are listed in the saved reviews and entry analyses. " +
-        "This attempt uses s2-check-entry-analysis#/reviewedFiles. Tool query scopes and limits are in s2-check-knip-runs; " +
-        "tool reads do not establish LLM inspection.");
+      // DB4: finish writes the summary of the run in place of the summary of Stage 1.
+      expect(run.coverage).toEqual({ inventoried: "2 regular files in the selected capture scope.",
+        inspected: "s2-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+          "reviews keep their own ranges. Tool reads are not LLM inspection.",
+        recorded: "s2-check-entry-analysis records 1 question and 0 gaps, with history and linked notes." });
       const core: Record<string, string> = { "entry-plan.json": "entry-plan", "entry-analysis.yaml": "entry-analysis",
-        "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight" };
+        "knip-runs.json": "knip-runs", "knip-profile.json": "knip-profile", "preflight.json": "preflight",
+        "required-gaps.json": "required-gaps" };
       const expected = Object.fromEntries(files(attempt.folder).map((name) => [`${id}-${core[name] ?? "file@" + encodeURIComponent(name)}`,
         { path: `evidence/${id}/${name}`, sha256: sha256(saved(name)) }]));
       expect(Object.fromEntries(Object.entries(run.artifacts).filter(([key]) => key.startsWith(id)))).toEqual(expected);
@@ -177,8 +181,9 @@ describe("a Stage 2 attempt with an approved tool image", () => {
     });
   }, 60_000);
 
-  // knip-runs.json records the SHA-256 of each raw output that the run saved, so
-  // finish refuses a raw report that changed after the run.
+  // knip-runs.json records the SHA-256 of each raw output that the run saved, and the
+  // run receipt names each file that the Knip run wrote. So finish refuses a raw report
+  // that changed after the run: the check of the run receipt finds it first.
   test("finish refuses a raw Knip report that changed after the run", () => {
     withScratch((scratch) => {
       const work = join(scratch, "run");
@@ -192,8 +197,9 @@ describe("a Stage 2 attempt with an approved tool image", () => {
       appendFileSync(join(attempt.folder, "knip-normal.stdout.txt"), "\n");
       const before = ["run.yaml", "discovery.yaml"].map((name) => readFileSync(join(work, name), "utf8"));
       const finish = finishAttempt(attempt, scratch).finish;
-      expect({ status: finish?.status, stdout: finish?.stdout, stderr: finish?.stderr }).toEqual({ status: 1, stdout: "",
-        stderr: "Recorded Knip output changed: knip-normal.stdout.txt. Use a new attempt.\n" });
+      expect({ status: finish?.status, stdout: finish?.stdout,
+        refused: finish?.stderr.includes("Error: Saved phase input or output changed: knip-normal.stdout.txt\n") })
+        .toEqual({ status: 1, stdout: "", refused: true });
       expect(["run.yaml", "discovery.yaml"].map((name) => readFileSync(join(work, name), "utf8"))).toEqual(before);
     });
   }, 60_000);

@@ -10,6 +10,7 @@ import { After, Given, Then, When, type World } from "@cucumber/cucumber";
 import { parse } from "yaml";
 import { publishStageFour, stageFourBaselineId, stageFourPublication, type StageFourPublication }
   from "../../packages/producer/test/fixtures/stage-4-publication/fixture.ts";
+import { publishStageFive, type StageFivePublication } from "../../packages/producer/test/fixtures/stage-5-publication/fixture.ts";
 import type { CommandResult } from "../../packages/producer/test/support/commands.ts";
 import { type StageSixFixture, stageSixFixture } from "../../packages/producer/test/support/stage-6-run.ts";
 import { copyToolCheckout } from "../../packages/producer/test/support/tool-checkout.ts";
@@ -46,10 +47,12 @@ interface RecoveryWorld extends World {
   stageOneRun?: StageOneRun;
   stageOneCommand?: SpawnSyncReturns<string>;
   stageFourRun?: StageFourPublication;
+  // A Stage 5 draft is in the run of its published Stage 4 draft, so stageFourRun names that run too.
+  stageFiveRun?: StageFivePublication;
   publishCommand?: CommandResult;
 }
 
-const tools = realpathSync(fileURLToPath(new URL("../../", import.meta.url)));
+const tools =realpathSync(fileURLToPath(new URL("../../", import.meta.url)));
 const producerCli = join(tools, "packages/producer/src/cli.ts");
 const attempt = "s6-acceptance";
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
@@ -262,6 +265,13 @@ When("the operator publishes the Stage 4 draft", function (this: RecoveryWorld) 
   const run = currentStageFourRun(this);
   this.savedFilesBefore = savedFiles(run.work);
   this.publishCommand = publishStageFour(run, "finish");
+});
+
+When("the operator publishes the Stage 5 draft", function (this: RecoveryWorld) {
+  const run = this.stageFiveRun;
+  assert.ok(run, "Prepare a Stage 5 draft first.");
+  this.savedFilesBefore = savedFiles(run.work);
+  this.publishCommand = publishStageFive(run, "finish");
 });
 
 Then("the draft is refused", function (this: RecoveryWorld) {

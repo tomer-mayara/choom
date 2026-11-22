@@ -5,6 +5,7 @@ import type { Baseline, BaselineDecisions, BaselineDocumentation, BaselineInterf
   from '@choom/baseline-model/contracts';
 import { baselineStatements, documentationStatements, type DocumentationStatement, itemStatementFields, type StatementState }
   from '@choom/baseline-model/item-statements';
+import { SubjectItems } from '@choom/baseline-model/subject-items';
 import { assert, type Fields, object, oneOf } from './record-checks.ts';
 import type { MappedOwners } from './record-code-mapping.ts';
 import { type SourceRecords, validateSourceLocation } from './record-sources.ts';
@@ -216,11 +217,13 @@ export function checkBaselineDocument(value: unknown, made?: VersionDecisions): 
 }
 
 // The run checks of the baseline items: model IDs, resolved evidence, and a
-// question or gap for each unknown value.
+// question or gap for each unknown value. A question or gap names an item by the
+// rule of the viewer (SubjectItems).
 export function validateBaseline({ baseline, discovery, claim, evidence }: BaselineInputs): BaselineMembers {
-  const issues = [...(discovery.questions as Fields[]), ...(discovery.gaps as Fields[])];
-  const unknown = (id: unknown): boolean => issues
-    .some(issue => (issue.subjectRefs as string[]).some(ref => ref === id || ref.startsWith(id + '.')));
+  const subjects = new SubjectItems(baseline);
+  const named = new Set([...(discovery.questions as Fields[]), ...(discovery.gaps as Fields[])]
+    .flatMap(issue => (issue.subjectRefs as string[]).map(ref => subjects.namedItem(ref))));
+  const unknown = (id: unknown): boolean => named.has(id as string);
   const members = new Map<unknown, Fields>();
   for (const key of collectionKeys) {
     for (const item of items(baseline, key)) {

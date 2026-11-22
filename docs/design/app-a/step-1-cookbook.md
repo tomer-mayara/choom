@@ -282,10 +282,12 @@ Each question or gap has 1 to 100 subjectRefs and at least one evidenceRef. A te
 or reason has at most 16 KiB of UTF-8, and an ID, a kind or a reference at most
 4 KiB. Use at most 5,000 questions and gaps together. Later stages keep each
 question and gap unchanged, and the viewer cannot open a record over these limits.
-Each subjectRef names a file or folder of the snapshot (a folder with or without
-a final /), the snapshot ID, or another question or gap. A missing input is not a
+Each subjectRef names a file of the snapshot, a folder of the snapshot written as
+<folder>/** (such as src/billing/**), the snapshot ID, or another question or
+gap. A missing input is not a
 snapshot file: name the file that refers to it, or the snapshot ID, and give the
-missing path in the reason. Stages 4 to 6 refuse any other subject.
+missing path in the reason. Stage 1 finish refuses any other subject, and so do
+Stages 4 to 6.
 
 Only supplied excerpts you actually inspected go in reviewedFiles. Copy each
 excerpt's exact source ID, snapshot ID, path, digest and saved range; never invent
@@ -368,12 +370,23 @@ evidence. `finish` refuses a review question or gap with one of these IDs, and a
 Git identity record that is not valid. It also refuses a question or gap with the
 baseline ID (`CHOOM_BASELINE_ID`): Stages 4 to 6 reserve that ID for the fixed
 baseline, and later stages keep each question and gap unchanged.
+For the same reason it refuses a question or gap when one of its subjects names
+nothing of the run, as Stages 4 to 6 do. At Stage 1 a subject names a file of the
+snapshot, a folder of the snapshot written as `<folder>/**`, or the snapshot ID.
+It can also name a question or gap of the review, or a gap that `finish` adds. No
+entry candidate or baseline item exists yet. The message names the subject and
+the record, such as `The subject src/no-such-file.ts of the gap s1-gap-002 names
+nothing.` Then it gives the forms of a subject
+([record format](record-format.md#ids-and-evidence)).
 It registers all evidence, including the
 producer code record, the Git identity record as `git-identity-001` and the Git
 calls, and `inventory.mjs` with computed SHA-256 digests, then writes
 `run.yaml` last. No manual digest entry or analysis-record editing is needed.
 It saves `evidence/stage1-discovery.yaml` as `discovery-001`; mutable root drafts
-are never registered as immutable evidence.
+are never registered as immutable evidence. `run.yaml` has the
+[run summary](record-format.md#run-summary). It gives the file count and names
+`review-001` for the reviewed source ranges. It counts the questions and gaps of
+`discovery-001`. `progress` has the state of each stage.
 
 `verify` is read-only. Expected: `stage1-inputs-verified`, with the run/snapshot IDs,
 artifact count and inventory count. It also derives the gaps again from the saved

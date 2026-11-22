@@ -195,14 +195,15 @@ afterAll(() => rmSync(fixture.root, { recursive: true, force: true }));
 
 describe("Stage 5 start", () => {
   test("checks the published Stage 4 run and saves the checkpoints, the documents, the scope and the handoff", () => {
-    // The registered artifacts include the Stage 1 review, and the rule lists and the candidates of the Stage 4 attempt.
+    // The registered artifacts include the Stage 1 review, and the rule lists, the candidates and their required gaps of
+    // the Stage 4 attempt.
     expect(results.start).toEqual({ status: 0, stderr: "",
-      stdout: `Saved ${id} for ${snapshotRef}. Verified 55 registered artifacts and 37 indexed file digests.\n` });
+      stdout: `Saved ${id} for ${snapshotRef}. Verified 56 registered artifacts and 37 indexed file digests.\n` });
     const handoff = saved("handoff.json");
     expect(handoff).toMatchObject({ ...header, work: fixture.work, tools: toolsRoot, inventoryRef: "inventory-001",
       mappingRef, graphRef, resourceAccessRef: "s4-check-file@resource-access.json", sourceSitesRef,
       entryAnalysisRef: "s4-check-entry-analysis", entryAnalysisHistory: ["s4-check-entry-analysis", "s3-check-entry-analysis"],
-      planRef: "s2-check-entry-plan", knipRunsRef: "s2-check-knip-runs", indexedRegularFiles: 37, registeredArtifacts: 55,
+      planRef: "s2-check-entry-plan", knipRunsRef: "s2-check-knip-runs", indexedRegularFiles: 37, registeredArtifacts: 56,
       toolInputDigests: Object.fromEntries(["step-5-cookbook.md", "record-format.md"].map((name) =>
         [name, sha256(readFileSync(join(attempt, name)))])),
       scopeSha256: sha256(readFileSync(join(attempt, "scope.json"))) });

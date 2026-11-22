@@ -5196,6 +5196,251 @@
             ],
             "additionalProperties": false
         },
+        "RequiredGaps": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RequiredGaps.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 1
+                },
+                "gaps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "DiscoveryGap.json"
+                    }
+                }
+            },
+            "required": [
+                "formatVersion",
+                "gaps"
+            ],
+            "additionalProperties": false
+        },
+        "RunManifest": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RunManifest.json",
+            "type": "object",
+            "properties": {
+                "formatVersion": {
+                    "type": "number",
+                    "const": 1
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string",
+                    "const": "A"
+                },
+                "status": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "in-progress"
+                        },
+                        {
+                            "type": "string",
+                            "const": "completed"
+                        }
+                    ]
+                },
+                "projectKey": {
+                    "$ref": "baselineText.json"
+                },
+                "referenceBaseline": {
+                    "anyOf": [
+                        {
+                            "$ref": "FrozenBaselineReference.json"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "progress": {
+                    "$ref": "RunProgress.json"
+                },
+                "snapshot": {
+                    "$ref": "RunSnapshot.json"
+                },
+                "coverage": {
+                    "$ref": "RunCoverage.json"
+                },
+                "artifacts": {
+                    "$ref": "#/$defs/RecordRunArtifact"
+                },
+                "baselineRef": {
+                    "$ref": "baselineId.json"
+                },
+                "discoveryRef": {
+                    "type": "string"
+                },
+                "completedAt": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "formatVersion",
+                "id",
+                "mode",
+                "status",
+                "projectKey",
+                "referenceBaseline",
+                "progress",
+                "snapshot",
+                "coverage",
+                "artifacts"
+            ],
+            "additionalProperties": false,
+            "$defs": {
+                "RecordRunArtifact": {
+                    "type": "object",
+                    "properties": {},
+                    "unevaluatedProperties": {
+                        "$ref": "RunArtifact.json"
+                    }
+                }
+            }
+        },
+        "RunProgress": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RunProgress.json",
+            "type": "object",
+            "properties": {
+                "inventory": {
+                    "type": "string",
+                    "const": "complete"
+                },
+                "entryAnalysis": {
+                    "type": "string",
+                    "const": "complete"
+                },
+                "inspectionPriorities": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "pending"
+                        },
+                        {
+                            "type": "string",
+                            "const": "complete"
+                        }
+                    ]
+                },
+                "componentRecovery": {
+                    "type": "string",
+                    "const": "complete"
+                },
+                "remainingCode": {
+                    "type": "string",
+                    "const": "complete"
+                },
+                "baselineRecovery": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "const": "pending"
+                        },
+                        {
+                            "type": "string",
+                            "const": "complete"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "inventory",
+                "baselineRecovery"
+            ],
+            "additionalProperties": false
+        },
+        "RunSnapshot": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RunSnapshot.json",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "root": {
+                    "type": "string",
+                    "const": "snapshot"
+                },
+                "inventoryRef": {
+                    "type": "string"
+                },
+                "exclusions": {
+                    "type": "string",
+                    "const": "exclusions.txt"
+                },
+                "captureMethod": {
+                    "type": "string"
+                },
+                "captureLimit": {
+                    "type": "string"
+                },
+                "sourcePath": {
+                    "type": "string"
+                },
+                "capturedAt": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "root",
+                "inventoryRef",
+                "exclusions",
+                "captureMethod",
+                "captureLimit",
+                "sourcePath",
+                "capturedAt"
+            ],
+            "additionalProperties": false
+        },
+        "RunCoverage": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RunCoverage.json",
+            "type": "object",
+            "properties": {
+                "inventoried": {
+                    "type": "string"
+                },
+                "inspected": {
+                    "type": "string"
+                },
+                "recorded": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "inventoried",
+                "inspected",
+                "recorded"
+            ],
+            "additionalProperties": false
+        },
+        "RunArtifact": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "RunArtifact.json",
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                }
+            },
+            "required": [
+                "path",
+                "sha256"
+            ],
+            "additionalProperties": false
+        },
         "BehaviorEntryCallRule": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "BehaviorEntryCallRule.json",

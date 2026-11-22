@@ -2,10 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { parse } from "yaml";
+import contracts from "../../../../../cookbook/interfaces/generated/contracts.schema.json";
 import { producerSource, withScratch } from "../../support/commands.ts";
 import { changeBaselineModelCode, changedCodeMessage, folderState } from "../../support/producer-record.ts";
-import { type Excerpt, reviewPacket, stageOne, stageOneRun, type StageOneRun, writeReview } from "../../support/stage-1-run.ts";
+import { capturedStageOneRun, type Excerpt, reviewPacket, stageOne, stageOneRun, type StageOneRun, writeReview }
+  from "../../support/stage-1-run.ts";
 import { copyToolCheckout } from "../../support/tool-checkout.ts";
 import { pathWithDoubles } from "../../support/tool-doubles.ts";
 
@@ -28,6 +32,7 @@ const firstProbeSettings: SettingsRecord = {
 };
 // The settings action runs the collector in the tool checkout.
 const collector = join(producerSource, "stage-1-settings.ts");
+const runManifestContract = addFormats(new Ajv2020({ schemas: [contracts], ownProperties: true })).compile({ $ref: "RunManifest.json" });
 
 function readJson<T>(work: string, path: string): T {
   return JSON.parse(readFileSync(join(work, path), "utf8")) as T;
@@ -105,6 +110,21 @@ describe("Stage 1 capture, settings and save", () => {
       expect(collectorPath(run.work)).toBe(collector);
     });
   });
+
+  // DB4: the review has 1 question and 1 gap, and finish adds the gap of the missing Git
+  // evidence. The run manifest conforms to its contract (producer-run-records.tsp).
+  test("finish writes the summary of the run, and the run manifest has the fields of its contract", () => {
+    withScratch((scratch) => {
+      const { run, excerpt } = capturedStageOneRun(scratch);
+      expectSuccess(stageOne(run, "finish", writeReview(run, reviewPacket(excerpt))));
+      const saved = parse(readFileSync(join(run.work, "run.yaml"), "utf8")) as { coverage: unknown };
+      expect(saved.coverage).toEqual({ inventoried: "10 regular files in the selected capture scope.",
+        inspected: "review-001#/reviewedFiles lists the source ranges that the selected review read. Earlier reviews keep " +
+          "their own ranges. Tool reads are not LLM inspection.",
+        recorded: "discovery-001 records 1 question and 2 gaps, with history and linked notes." });
+      expect(runManifestContract(saved)).toBe(true);
+    });
+  }, 60_000);
 });
 
 describe("Stage 1 after the producer code changed", () => {

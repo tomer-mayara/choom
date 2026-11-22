@@ -3,10 +3,12 @@ import { createHash } from "node:crypto";
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
-import { makeScratch, removeScratch } from "../../support/commands.ts";
+import { type CommandResult, makeScratch, removeScratch } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
-import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, priorQuestion, runAttempt, savedJson,
-  stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
+import { analysisPacket, candidate, entryAnalysis, entryPlan, finishAttempt, planPacket, priorQuestion, repeatAttempt, requiredGaps,
+  runAttempt, savedJson, stageOneRun, stageTwo, stageTwoAttempt, type JsonRecord, type StageTwoAttempt } from "../../support/stage-2-attempt.ts";
+import { stagedRun } from "../../support/staged-run.ts";
+import { subjectForms } from "../../support/subject-forms.ts";
 
 // Finish checks the complete attempt before it changes either draft. The
 // prepared attempt has no package manifest, so preflight skips Knip. Each case
@@ -21,8 +23,21 @@ const question = (questionId: string): JsonRecord => ({ id: questionId, subjectR
   evidenceRefs: ["inventory-001"] });
 // The analysis with a second gap that cites the evidence reference. The first gap
 // records that Knip did not run.
-const gapEvidence = (ref: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis, gaps: [...analysis.gaps as JsonRecord[],
-  { id: `${id}-gap-002`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.", evidenceRefs: [ref] }] });
+const gapEvidence = (ref: string, gapId = `${id}-gap-002`) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
+  gaps: [...analysis.gaps as JsonRecord[], { id: gapId, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
+    evidenceRefs: [ref] }] });
+// DB5: run saved the gaps that the Knip outcomes require in required-gaps.json. The
+// prepared attempt has no package manifest, so preflight marks the profile unsupported
+// and both Knip modes are skipped: gap 001 cites the preflight, and gaps 002 and 003
+// cite the runs. The analysis must copy each one exactly.
+const copyAdvice = `Copy each gap of ${id}-required-gaps exactly.`;
+const withoutGap = (gapId: string) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
+  gaps: (analysis.gaps as JsonRecord[]).filter((gap) => gap.id !== gapId) });
+// GB-01b: the analysis with a new question that names the subjects, and with the changed fields.
+const withQuestion = (subjectRefs: string[], change: JsonRecord = {}) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
+  questions: [...analysis.questions as JsonRecord[], { ...question(`${id}-question-001`), subjectRefs }], ...change });
+const changedGap = (change: JsonRecord) => (analysis: JsonRecord): JsonRecord => ({ ...analysis,
+  gaps: (analysis.gaps as JsonRecord[]).map((gap) => gap.id === `${id}-knip-gap-002` ? { ...gap, ...change } : gap) });
 
 const cases: FinishCase[] = [
   { name: "a candidate claims support from the skipped production scan",
@@ -64,6 +79,28 @@ const cases: FinishCase[] = [
   { name: "a new record uses an artifact ID",
     change: (analysis) => ({ ...analysis, questions: [priorQuestion, question(`${id}-knip-runs`)] }),
     message: `Colliding final-analysis ID: ${id}-knip-runs` },
+  { name: "the required gap of the unsupported preflight is left out", change: withoutGap(`${id}-knip-gap-001`),
+    message: `The entry analysis leaves out the required gap ${id}-knip-gap-001. ${copyAdvice}` },
+  { name: "the required gap of a skipped Knip run is left out", change: withoutGap(`${id}-knip-gap-002`),
+    message: `The entry analysis leaves out the required gap ${id}-knip-gap-002. ${copyAdvice}` },
+  { name: "a required gap has another reason", change: changedGap({ reason: "Knip did not run." }),
+    message: `The entry analysis changes the required gap ${id}-knip-gap-002. ${copyAdvice}` },
+  { name: "a required gap has other subjects", change: changedGap({ subjectRefs: ["app.ts"] }),
+    message: `The entry analysis changes the required gap ${id}-knip-gap-002. ${copyAdvice}` },
+  // DB5: no ID form is reserved. The ID of a required gap names that gap: the copy check
+  // refuses other content with that ID, and the unique ID check refuses a second gap with it.
+  { name: "the gap with the ID of a required gap has other content",
+    change: changedGap({ kind: "deferral", subjectRefs: ["app.ts"], reason: "Not reviewed.", evidenceRefs: ["inventory-001"] }),
+    message: `The entry analysis changes the required gap ${id}-knip-gap-002. ${copyAdvice}` },
+  { name: "another gap has the ID of a required gap", change: gapEvidence(`${id}-knip-runs#/runs/0`, `${id}-knip-gap-002`),
+    message: "Invalid or duplicate analysis.gaps record" },
+  // GB-01b: each subject of a record that finish adds names something that the run holds.
+  { name: "a new question names a file that is not in the snapshot", change: withQuestion(["app.ts", "src/no-such-file.ts"]),
+    message: `The subject src/no-such-file.ts of the question ${id}-question-001 names nothing. ${subjectForms}` },
+  // Later stages accept the candidates of the selected entry analyses as subjects. The plan is not an entry analysis.
+  { name: "a new question names a candidate of the plan that the analysis leaves out",
+    change: withQuestion([`${id}-candidate-001`], { candidates: [] }),
+    message: `The subject ${id}-candidate-001 of the question ${id}-question-001 names nothing. ${subjectForms}` },
 ];
 
 let scratch = "";
@@ -95,26 +132,80 @@ function drafts(prepared: StageTwoAttempt): string[] {
 }
 
 describe("Stage 2 finish checks", () => {
-  test("publishes an analysis that cites a saved excerpt", () => {
+  test("publishes an analysis that cites a saved excerpt and copies each required gap", () => {
     const prepared = restoredAttempt();
-    const results = finishAttempt(prepared, scratch, entryAnalysis(id, { reviewedFiles: [source] }));
+    const results = finishAttempt(prepared, scratch, entryAnalysis(prepared, { reviewedFiles: [source] }));
     expect(results.finish?.status).toBe(0);
     const discovery = parse(readFileSync(join(prepared.work, "discovery.yaml"), "utf8")) as JsonRecord;
     expect(discovery.entryAnalysisRef).toBe(`${id}-entry-analysis`);
+    expect((discovery.gaps as JsonRecord[]).map((gap) => gap.id)).toEqual([`${id}-knip-gap-001`, `${id}-knip-gap-002`,
+      `${id}-knip-gap-003`]);
+    expect(discovery.gaps).toEqual(requiredGaps(prepared));
+  });
+
+  // DB5: no ID form is reserved. A question and a gap that the analysis adds can have an
+  // ID of the form <attempt>-knip-gap-NNN when no required gap has that ID.
+  test("publishes a new question and a new gap whose IDs have the form of a required gap", () => {
+    const prepared = restoredAttempt();
+    const analysis = gapEvidence(`${id}-knip-runs#/runs/0`, `${id}-knip-gap-005`)(entryAnalysis(prepared));
+    const results = finishAttempt(prepared, scratch, { ...analysis, questions: [priorQuestion, question(`${id}-knip-gap-004`)] });
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   });
 
   // Any saved file can be cited whole, with an empty JSON Pointer. Stage 3 reads the gap again.
   test("publishes a gap that cites a whole saved text file", () => {
     const prepared = restoredAttempt();
-    const results = finishAttempt(prepared, scratch, gapEvidence(`${id}-file@operator-start.stdout.txt#`)(entryAnalysis(id)));
+    const results = finishAttempt(prepared, scratch, gapEvidence(`${id}-file@operator-start.stdout.txt#`)(entryAnalysis(prepared)));
     expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
   });
+
+  // GB-01b: before Stage 4 adds baseline items, a subject of a record that finish adds
+  // names a file of the snapshot, the snapshot ID, a question or gap, or a candidate of the analysis.
+  test("publishes a new question that names a candidate, a question, a required gap, a file and the snapshot ID", () => {
+    const prepared = restoredAttempt();
+    const results = finishAttempt(prepared, scratch, withQuestion([`${id}-candidate-001`, priorQuestion.id, `${id}-knip-gap-001`,
+      "app.ts", "snapshot-check"])(entryAnalysis(prepared)));
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+  });
+
+  // Plan and finish check only the records that the attempt adds. The attempt keeps each
+  // earlier record as it is, such as a question of an earlier attempt about a candidate
+  // that only the entry analysis of that attempt holds.
+  test("publishes an attempt that keeps an earlier question about a candidate of an earlier attempt", () => {
+    const folder = join(scratch, "earlier-attempt");
+    const work = join(folder, "run");
+    const earlier = { ...question("s2-check-question-001"), subjectRefs: ["s2-check-candidate-001"] };
+    stagedRun(work, 2, { snapshot: [app], questions: [priorQuestion, earlier] });
+    const later = stageTwoAttempt(work, "s2-later");
+    const questions = [priorQuestion, earlier];
+    for (const [action, result] of Object.entries(runAttempt(later, folder, entryPlan(later.id, { questions }))))
+      expect({ action, status: result.status }).toEqual({ action, status: 0 });
+    const results = finishAttempt(later, folder, entryAnalysis(later, { questions }));
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+  }, 30_000);
+
+  // DB1: a new record can name an entry candidate of an entry analysis that the run
+  // registers. After an earlier attempt, a fresh attempt adds a question about the
+  // candidate of the earlier attempt, which plan and finish both check.
+  test("publishes a fresh attempt whose new question names a candidate of an earlier attempt", () => {
+    const folder = join(scratch, "fresh-attempt");
+    const work = join(folder, "run");
+    stageOneRun(work, [app]);
+    const earlier = stageTwoAttempt(work, "s2-first");
+    const failures = (results: Record<string, CommandResult>) => Object.entries(results)
+      .filter(([, result]) => result.status !== 0).map(([action, result]) => ({ action, stderr: result.stderr }));
+    expect(failures({ ...runAttempt(earlier, folder, entryPlan(earlier.id)), ...finishAttempt(earlier, folder) })).toEqual([]);
+    const fresh = { ...question(`${id}-question-001`), subjectRefs: ["s2-first-candidate-001"] };
+    expect(failures(repeatAttempt(stageTwoAttempt(work, id), folder, [fresh]))).toEqual([]);
+    const discovery = parse(readFileSync(join(work, "discovery.yaml"), "utf8")) as { questions: JsonRecord[] };
+    expect(discovery.questions).toContainEqual(fresh);
+  }, 60_000);
 
   // run.yaml registers the files of a published attempt as evidence. Each later action
   // refuses the attempt before it saves a receipt or adds to the command log.
   test("refuses each action on the published attempt and changes no file of the run", () => {
     const prepared = restoredAttempt();
-    expect(finishAttempt(prepared, scratch, entryAnalysis(id, { reviewedFiles: [source] })).finish?.status).toBe(0);
+    expect(finishAttempt(prepared, scratch, entryAnalysis(prepared, { reviewedFiles: [source] })).finish?.status).toBe(0);
     const before = folderState(prepared.work);
     const review = join(scratch, `${id}-review`);
     const actions: [string, string[]][] = [["excerpt", ["app.ts", "1", "1", "Check the entry module."]], ["plan", [review]],
@@ -128,36 +219,30 @@ describe("Stage 2 finish checks", () => {
     expect(folderState(prepared.work)).toEqual(before);
   });
 
-  // P4: an analysis that did not run needs a gap that cites its record. The prepared
-  // attempt has no package manifest, so preflight marks the profile unsupported and
-  // both Knip modes are skipped.
-  test.each([
-    ["the unsupported preflight", [`${id}-knip-runs`],
-      `The Knip preflight ${id}-preflight marks the profile unsupported. Record a gap that cites ${id}-preflight.`],
-    ["the skipped Knip runs", [`${id}-preflight#/status`],
-      `The normal Knip run in ${id}-knip-runs has the status skipped. Record a gap that cites ${id}-knip-runs.`],
-  ])("refuses an analysis without a gap that cites %s, and leaves the drafts unchanged", (_name, evidenceRefs, message) => {
+  // Finish gives the required gaps again from the saved preflight and Knip receipts. Here
+  // required-gaps.json leaves out the gap of the preflight, the run receipt names its new
+  // digest, and the analysis copies the changed record.
+  test("refuses required gaps that differ from the gaps of the Knip receipts, and leaves the drafts unchanged", () => {
     const prepared = restoredAttempt();
     const before = drafts(prepared);
-    const gaps = [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.", evidenceRefs }];
-    const results = finishAttempt(prepared, scratch, entryAnalysis(id, { gaps }));
+    const record = savedJson(prepared, "required-gaps.json");
+    const text = JSON.stringify({ ...record, gaps: (record.gaps as JsonRecord[]).slice(1) }, null, 2) + "\n";
+    writeFileSync(join(prepared.folder, "required-gaps.json"), text);
+    const receipt = savedJson(prepared, "operator-run.json");
+    writeFileSync(join(prepared.folder, "operator-run.json"), JSON.stringify({ ...receipt,
+      digests: { ...receipt.digests as JsonRecord, "required-gaps.json": createHash("sha256").update(text).digest("hex") } }));
+    const results = finishAttempt(prepared, scratch);
     expect(results["save-review"]?.status).toBe(0);
-    expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
-      .toEqual({ status: 1, stdout: "", stderr: message + "\n" });
+    expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr }).toEqual({ status: 1,
+      stdout: "", stderr: `The required gaps in ${id}-required-gaps differ from the gaps that the Knip receipts and the preflight ` +
+        "give. Use a new attempt.\n" });
     expect(drafts(prepared)).toEqual(before);
-  });
-
-  test("publishes an analysis whose gap cites a run of the Knip runs record with a JSON Pointer", () => {
-    const prepared = restoredAttempt();
-    const gaps = [{ id: `${id}-gap-001`, kind: "tool-outcome", subjectRefs: ["app.ts"], reason: "Knip did not run.",
-      evidenceRefs: [`${id}-preflight`, `${id}-knip-runs#/runs/0`] }];
-    expect(finishAttempt(prepared, scratch, entryAnalysis(id, { gaps })).finish?.status).toBe(0);
   });
 
   test.each(cases)("refuses an analysis in which $name and leaves the drafts unchanged", ({ change, message }) => {
     const prepared = restoredAttempt();
     const before = drafts(prepared);
-    const results = finishAttempt(prepared, scratch, change(entryAnalysis(id)));
+    const results = finishAttempt(prepared, scratch, change(entryAnalysis(prepared)));
     expect(results["save-review"]?.status).toBe(0);
     expect({ status: results.finish?.status, stdout: results.finish?.stdout, stderr: results.finish?.stderr })
       .toEqual({ status: 1, stdout: "", stderr: message + "\n" });
@@ -173,7 +258,7 @@ describe("Stage 2 finish checks", () => {
       (text: string) => text.replace("hiddenReasoning: not-saved\n", ""), "Record hiddenReasoning: not-saved in llm/analysis-call.yaml."],
   ])("save-review refuses a packet in which %s and saves no packet file", (_name, file, change, message) => {
     const prepared = restoredAttempt();
-    const review = analysisPacket(join(scratch, `${id}-review`), id, entryAnalysis(id));
+    const review = analysisPacket(join(scratch, `${id}-review`), id, entryAnalysis(prepared));
     writeFileSync(join(review, file), change(readFileSync(join(review, file), "utf8")));
     const result = stageTwo(prepared, "save-review", [review]);
     expect({ status: result.status, error: savedJson(prepared, "operator-save-review.json").error })
@@ -233,9 +318,43 @@ describe("Stage 2 finish checks", () => {
     expect(drafts(attempt)).toEqual(before);
   });
 
+  // Finish registers every attempt file. So each one must be a file that a phase saved:
+  // a phase receipt, a file that the receipt names, the command log or the saved finish
+  // command. Finish refuses any other file and names it.
+  test("refuses an attempt file that no phase saved, names it, and leaves the drafts unchanged", () => {
+    const prepared = restoredAttempt();
+    const before = drafts(prepared);
+    // The plan packet of the attempt is in the llm folder.
+    writeFileSync(join(prepared.folder, "llm/notes.md"), "# Notes\n");
+    const results = finishAttempt(prepared, scratch);
+    expect(results["save-review"]?.status).toBe(0);
+    expect({ status: results.finish?.status, refused: results.finish?.stderr.includes("Error: Unexpected attempt file that no " +
+      "producer action saved: llm/notes.md. Do not write into the attempt; use a fresh attempt.\n") }).toEqual({ status: 1, refused: true });
+    expect(drafts(prepared)).toEqual(before);
+  });
+
+  // After a plan from start, the plan action fails, because the plan is saved. Its
+  // receipt and logs are files that a phase saved, so finish registers them.
+  test("publishes an attempt whose plan action failed after a plan from start, and registers the failed receipt", () => {
+    const folder = join(scratch, "failed-plan");
+    const work = join(folder, "run");
+    stageOneRun(work, [app]);
+    const attempt = stageTwoAttempt(work, id);
+    const plan = join(folder, "entry-plan.json");
+    writeFileSync(plan, JSON.stringify(entryPlan(id), null, 2) + "\n");
+    expect(stageTwo(attempt, "start", [plan]).status).toBe(0);
+    expect(stageTwo(attempt, "plan", [planPacket(join(folder, "plan"), id, entryPlan(id))]).status).toBe(1);
+    for (const action of ["prepare", "toolchain", "run"])
+      expect({ action, status: stageTwo(attempt, action).status }).toEqual({ action, status: 0 });
+    const results = finishAttempt(attempt, folder);
+    expect({ status: results.finish?.status, stderr: results.finish?.stderr }).toEqual({ status: 0, stderr: "" });
+    const run = parse(readFileSync(join(work, "run.yaml"), "utf8")) as { artifacts: Record<string, unknown> };
+    expect(Object.keys(run.artifacts)).toContain(`${id}-file@operator-plan.json`);
+  });
+
   test("refuses to finish before the analysis packet is saved", () => {
     const prepared = restoredAttempt();
-    analysisPacket(join(scratch, `${id}-review`), id, entryAnalysis(id));
+    analysisPacket(join(scratch, `${id}-review`), id, entryAnalysis(prepared));
     const finish = stageTwo(prepared, "finish");
     expect(finish.status).toBe(1);
     expect(finish.stderr).toContain(`ENOENT: no such file or directory, lstat '${join(prepared.folder, "operator-save-review.json")}'`);

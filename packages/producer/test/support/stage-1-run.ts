@@ -96,7 +96,9 @@ export function capturedStageOneRun(scratch: string, target = settingsTarget): {
 export interface ReviewPacket { review: Fields; scope: Fields; call: Fields; prompt: string; response?: string }
 
 // A complete Stage 1 review packet that cites one saved excerpt. A test can
-// change any part before it writes the packet.
+// change any part before it writes the packet. Finish refuses a subject that names
+// nothing, so the question names the file of the excerpt, which each target has, and
+// the gap of a missing input names the snapshot ID.
 export function reviewPacket(excerpt: Excerpt): ReviewPacket {
   const source = { id: excerpt.id, snapshotRef: excerpt.snapshotRef, path: excerpt.path, sha256: excerpt.sha256,
     lines: excerpt.lines };
@@ -107,10 +109,10 @@ export function reviewPacket(excerpt: Excerpt): ReviewPacket {
           limits: ["Only file purpose was inspected."] } }],
       workspaceDeclarations: [{ path: "package.json", patterns: ["packages/*"], membershipStatus: "unverified",
         evidenceRefs: [excerpt.id] }],
-      questions: [{ id: "s1-question-001", subjectRefs: ["app.ts"], text: "Which command starts the application?",
+      questions: [{ id: "s1-question-001", subjectRefs: [excerpt.path], text: "Which command starts the application?",
         evidenceRefs: ["inventory-001#/files/0"] }],
-      gaps: [{ id: "s1-gap-001", kind: "missing-input", subjectRefs: ["tsconfig.missing.json"],
-        reason: "The base configuration is not in the snapshot.", evidenceRefs: ["settings-001#/configs"] }],
+      gaps: [{ id: "s1-gap-001", kind: "missing-input", subjectRefs: [excerpt.snapshotRef],
+        reason: "The base configuration tsconfig.absent.json is not in the snapshot.", evidenceRefs: ["settings-001#/configs"] }],
       llmReview: "recorded" },
     scope: { formatVersion: 1, runRef: "run-check", snapshotRef: stageOneSnapshotRef,
       suppliedArtifactRefs: ["inventory-001", "settings-001", "exclusions-001", "scope-notes-001", "extra-configs-001",

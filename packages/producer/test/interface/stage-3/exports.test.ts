@@ -57,8 +57,10 @@ describe("Stage 3 exports", () => {
     const result = exportsOf("src/invoice.ts");
     const folder = join(scratch, "configured/evidence/s3-exports");
     const name = join(folder, "exports-001.json");
+    const gapsName = join(folder, "exports-001.required-gaps.json");
     expect(result).toEqual({ status: 0, stderr: "", stdout: `Saved s3-exports-file@exports-001.json at ${name} ` +
-      `(SHA-256 ${sha256(readFileSync(name))}). Listed 2 exports of src/invoice.ts and 4 gaps.\n` });
+      `(SHA-256 ${sha256(readFileSync(name))}). Listed 2 exports of src/invoice.ts and 4 gaps. Saved the required gaps as ` +
+      `s3-exports-file@exports-001.required-gaps.json at ${gapsName}; the entry analysis copies each one exactly.\n` });
     const gap = (input: string, missing: string, subjectRefs: string[], reason: string): Json =>
       ({ kind: "missing-compiler-input", input, missing, subjectRefs, reason });
     expect(saved("configured", "exports-001.json")).toEqual({
@@ -74,11 +76,11 @@ describe("Stage 3 exports", () => {
         { name: "createInvoice", kind: "function", typeOnly: false, range: [position(4, 1), position(6, 2)] },
       ],
       gaps: [
-        gap("files", "types/global.d.ts", ["tsconfig.json", "types/global.d.ts"], "tsconfig.json (settings-001#/configs/0) " +
+        gap("files", "types/global.d.ts", ["tsconfig.json"], "tsconfig.json (settings-001#/configs/0) " +
           "names types/global.d.ts in its files list, but the snapshot does not hold that file. The project opened without it."),
         gap("types", "node", ["tsconfig.json"], "tsconfig.json (settings-001#/configs/0) names the type package node in its " +
           "types list, but the snapshot holds no declaration file for it. The project opened without it."),
-        gap("reference-path", "src/env.d.ts", ["src/invoice.ts", "src/env.d.ts"], "src/invoice.ts names src/env.d.ts in a " +
+        gap("reference-path", "src/env.d.ts", ["src/invoice.ts"], "src/invoice.ts names src/env.d.ts in a " +
           "reference path directive, but the snapshot does not hold that file."),
         gap("reference-types", "vite/client", ["src/invoice.ts"], "src/invoice.ts names the type package vite/client in a " +
           "reference types directive, but the snapshot holds no declaration file for it."),
@@ -87,8 +89,15 @@ describe("Stage 3 exports", () => {
         "/repo/src/node_modules"].map((path) => ({ operation: "directory-exists", path })),
       notes: exportsNotes,
     });
+    // Each gap of the record is a required gap with its kind, subjects and reason (DB5). Its
+    // subject is the snapshot file that names the missing input (DB1).
+    const record = saved("configured", "exports-001.json");
+    expect(saved("configured", "exports-001.required-gaps.json")).toEqual({ formatVersion: 1,
+      gaps: (record.gaps as Json[]).map(({ kind, subjectRefs, reason }, index) => ({ id: `s3-exports-exports-001-gap-00${index + 1}`,
+        kind, subjectRefs, reason, evidenceRefs: [`s3-exports-file@exports-001.json#/gaps/${index}`] })) });
     expect(saved("configured", "operator-exports-001.json")).toMatchObject({ action: "exports", phase: "exports-001",
-      status: "completed", exitCode: 0, digests: { "exports-001.json": sha256(readFileSync(name)) } });
+      status: "completed", exitCode: 0, digests: { "exports-001.json": sha256(readFileSync(name)),
+        "exports-001.required-gaps.json": sha256(readFileSync(gapsName)) } });
   });
 
   test.each([

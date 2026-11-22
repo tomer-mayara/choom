@@ -3,12 +3,15 @@ import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { createHash, randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { isAbsolute, join, resolve, sep } from 'node:path';
+import type { RequiredGaps } from './generated/contracts.ts';
+import { ToolGaps } from './tool-gaps.ts';
 
 // The Stage 2 run action runs this module in the tool checkout. It runs Knip on the inventory-only input in normal and production
 // mode, each in a container with no network, and saves raw output and receipts.
 // A missing image, an unsupported profile or a failed check gives skipped runs.
 // Each command result names its saved stdout and stderr files with their SHA-256, so
-// finish refuses an output that changed after the run.
+// finish refuses an output that changed after the run. Last, it saves the gaps that
+// the unsupported preflight and the skipped or failed runs require in required-gaps.json.
 interface CommandResult {
   command: string; args: string[]; startedAt: string; finishedAt: string | null; exitCode: number | null;
   signal: string | null; timedOut: boolean; errors: string[]; stdout: string; stderr: string;
@@ -292,5 +295,10 @@ for (const mode of ['normal', 'production']) {
   cleanupUnconfirmed = !cleanupConfirmed;
   receipt.runs.push(run);
 }
-await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
+const receiptText = `${JSON.stringify(receipt, null, 2)}\n`;
+await writeFile(receiptPath, receiptText, { flag: 'wx' });
+// The review copies each required gap exactly, and finish gives the gaps again from the saved receipts.
+const required: RequiredGaps = { formatVersion: 1,
+  gaps: new ToolGaps(`${id}-`).fromKnipRuns(JSON.parse(receiptText), `${id}-knip-runs`, preflight) };
+await writeFile(join(attempt, 'required-gaps.json'), `${JSON.stringify(required, null, 2)}\n`, { flag: 'wx' });
 console.log((receipt.runs as { mode: string; status: string }[]).map(run => `${run.mode}: ${run.status}`).join('\n'));

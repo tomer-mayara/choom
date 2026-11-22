@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse } from "yaml";
+import { parse, stringify } from "yaml";
+import type { RunCoverage } from "../../../src/generated/contracts.ts";
 import { type ExtraFile, type FixtureBaseline, inspectStageFour, publishStageFour, stageFourBaselineId, stageFourPublication,
   type StageFourPublication } from "../../fixtures/stage-4-publication/fixture.ts";
+import { publishStageFive, stageFivePublication } from "../../fixtures/stage-5-publication/fixture.ts";
 import { toolsRoot } from "../../support/commands.ts";
 import { folderState } from "../../support/producer-record.ts";
 
@@ -37,7 +39,7 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
   test("checks the packet, publishes it, and verifies the published run", () => {
     withPublication((fixture) => {
       expect(result(publishStageFour(fixture, "check")))
-        .toMatchObject({ status: "stage4-review-verified", components: 2, mappedFiles: 2, gaps: 1, writes: [] });
+        .toMatchObject({ status: "stage4-review-verified", components: 2, mappedFiles: 2, gaps: 2, writes: [] });
       expect(result(publishStageFour(fixture, "finish"))).toMatchObject({ status: "stage4-published",
         writes: expect.arrayContaining(["publication.json", "baseline.yaml", "discovery.yaml", "run.yaml"]) as unknown });
       const run = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { progress: Record<string, string> };
@@ -48,21 +50,28 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
     });
   }, 60_000);
 
-  // P3: the publisher makes the run summaries current for the published drafts, with
-  // the counts of the validated records, and keeps the capture summary of Stage 1.
-  test("makes the run summaries current, and verify checks them", () => {
+  // P3 (DB4): the publisher writes the summary of the run for the published drafts in
+  // place of the summary of Stage 3. verify makes the summary again from the saved
+  // records, and refuses a run.yaml whose summary differs, such as one with another
+  // count of the questions. The unchanged manifest, written again, is accepted.
+  test("writes the summary of the run, and verify refuses a summary that differs", () => {
     withPublication((fixture) => {
-      const before = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: Record<string, string> };
       expect(publishStageFour(fixture, "finish").status).toBe(0);
-      const run = parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: unknown };
-      expect(run.coverage).toEqual({ inventoried: before.coverage.inventoried,
-        inspected: "See s4-check-entry-analysis#/reviewedFiles and its predecessor analyses for reviewed source ranges. " +
-          "See s4-check-file@code-mapping.json for file review scope and s4-check-file@discovery.proposed.yaml#/inspectedPaths " +
-          "for inspected behavior paths (0).",
-        unresolved: "The baseline draft records proposed intent; Stage 6 has not saved the fixed baseline. " +
-          "See s4-check-file@discovery.proposed.yaml for the recorded questions (0) and recorded gaps (1), which keep their " +
-          "history, and s4-check-file@code-mapping.json for files with unknown owners (0)." });
+      const runPath = join(fixture.work, "run.yaml");
+      const manifest = parse(readFileSync(runPath, "utf8")) as { coverage: RunCoverage };
+      expect(manifest.coverage).toEqual({
+        inventoried: "2 regular files in the selected capture scope.",
+        inspected: "s4-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+          "reviews keep their own ranges. s4-check-file@code-mapping.json maps each code unit to its owner and says whether " +
+          "a review read it. Tool reads are not LLM inspection.",
+        recorded: "s4-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes." });
       expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
+      writeFileSync(runPath, stringify(manifest));
+      expect(result(publishStageFour(fixture, "verify"))).toMatchObject({ status: "stage4-publication-verified" });
+      const recorded = manifest.coverage.recorded.replace("records 0 questions", "records 1 question");
+      expect(recorded).not.toBe(manifest.coverage.recorded);
+      writeFileSync(runPath, stringify({ ...manifest, coverage: { ...manifest.coverage, recorded } }));
+      expect(publishStageFour(fixture, "verify")).toEqual({ status: 1, stdout: "", stderr: "Working draft changed: run.yaml\n" });
     });
   }, 60_000);
 
@@ -80,6 +89,25 @@ describe("the Stage 4/5 publisher with a reviewed Stage 4 packet", () => {
       const http = baseline.components.find((component) => component.id === "http");
       if (http) http.id = baseline.id;
     });
+  }, 60_000);
+});
+
+// The same publisher in Stage 5, on the run of the published Stage 4 packet.
+describe("the Stage 4/5 publisher with a reviewed Stage 5 packet", () => {
+  test("writes the summary of the run for the Stage 5 records, and verify accepts it", () => {
+    const fixture = stageFivePublication([]);
+    try {
+      expect(publishStageFive(fixture, "finish").status).toBe(0);
+      expect((parse(readFileSync(join(fixture.work, "run.yaml"), "utf8")) as { coverage: unknown }).coverage).toEqual({
+        inventoried: "2 regular files in the selected capture scope.",
+        inspected: "s5-check-entry-analysis#/reviewedFiles lists the source ranges that the selected review read. Earlier " +
+          "reviews keep their own ranges. s5-check-file@code-mapping.json maps each code unit to its owner and says whether " +
+          "a review read it. Tool reads are not LLM inspection.",
+        recorded: "s5-check-file@discovery.proposed.yaml records 0 questions and 2 gaps, with history and linked notes." });
+      expect(result(publishStageFive(fixture, "verify"))).toMatchObject({ status: "stage5-publication-verified" });
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
   }, 60_000);
 });
 
@@ -112,8 +140,9 @@ describe("the Stage 4/5 publisher with a question about a component", () => {
       const http = baseline.components.find((component) => component.id === "http");
       if (http) http.id = "web";
     }, (fixture) => {
-      refusedInCheck(fixture, "Question s4-check-question-001 names the subject http.purpose, which is not a file or folder of " +
-        "the snapshot, the snapshot ID, a question or gap, an entry candidate or a baseline item.");
+      refusedInCheck(fixture, "The subject http.purpose of the question s4-check-question-001 names nothing. A subject names a " +
+        "file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, a question or gap, an entry " +
+        "candidate, or a baseline item ID or a field of it, such as billing.purpose.");
     });
   }, 60_000);
 });

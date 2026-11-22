@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { helperCall } from "../../src/cli.ts";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
 
-// Stage 6 on the Stage 6 producer fixture (fixtures/entry-points/producer.mjs): a
+// Stage 6 on the Stage 6 producer fixture (fixtures/entry-points/producer.ts): a
 // run after Stage 5 with a reviewed readiness packet in a separate folder. The
 // actions run through the producer command line, as an operator runs them, so
 // these helpers do not name the file of the Stage 6 helper.
@@ -18,12 +18,12 @@ export interface StageSixFixture<Baseline = BaselineId> {
   baseline: Baseline;
 }
 interface BaselineId { id: string }
-// The fixture is JavaScript. Each caller states the baseline fields that it uses.
+// The fixture does not type the fields of its baseline. Each caller states the baseline fields that it uses.
 interface FixtureModule<Baseline> { producerFixture(change?: (baseline: Baseline) => void): StageSixFixture<Baseline> }
 // The receipts of a Stage 6 action record the helper process that ran it.
 export interface CommandRecord { args: string[]; cwd: string; environment: Record<string, string> }
 
-const fixtureModule = new URL("../fixtures/entry-points/producer.mjs", import.meta.url);
+const fixtureModule = new URL("../fixtures/entry-points/producer.ts", import.meta.url);
 
 // A new copy of the fixture in a scratch folder. `change` edits the proposed
 // baseline before the fixture saves the drafts.

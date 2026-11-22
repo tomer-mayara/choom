@@ -138,13 +138,15 @@ scope: excerpt and that a result is omitted when the evidence supports none.
 Check that earlier questions, gaps and resolutions remain understandable.
 A historical gap can remain unchanged when a linked later note explains what
 was resolved. The shared record checks refuse a question or gap whose subject
-names nothing of the run: each subject names a file or folder of the snapshot,
-the snapshot ID, a question or gap, an entry candidate or a baseline item, as
+names nothing of the run: each subject names a file of the snapshot, a folder of
+the snapshot written as `<folder>/**`, the snapshot ID, a question or gap, an
+entry candidate or a baseline item, as
 the [record contract](record-format.md#ids-and-evidence) gives. A gap that
-Stage 1 copied from a tool record keeps its subjects. The checks also refuse a
-selected entry analysis whose Knip profile preflight marked unsupported, or
-whose Knip mode failed or was skipped, when no gap cites that record
-([discovery](record-format.md#discovery)). Current overview and mapping/resource limits must describe the
+Stage 1 copied from a tool record, and a required gap of a Stage 3 exports
+record, keep their subjects. The checks also refuse a
+selected tool result that no gap cites, such as a skipped Knip run or a partial
+candidate record
+([tool results](record-format.md#tool-results-of-the-selected-history)). Current overview and mapping/resource limits must describe the
 current records: check counts, owners, inspection scope and statements that a
 finished stage is still pending. Question and gap totals are record counts, not
 defect counts. Do not treat source inspection as execution or proposed intent
@@ -201,10 +203,12 @@ is bound to the reviewed bytes; changing a draft requires a new review.
 `suppliedArtifactRefs` and `limits`. Describe reuse of saved reviews in `limits`.
 This save-only profile adds no new source inspection records.
 
-The manifest's coverage prose describes the published Stage 5 drafts, not the
-fixed records. Use the selected records for readiness; do not edit the manifest
-to refresh it. The finalizer updates that prose from the selected facts. Check
-the new summaries after publication, as described below.
+Before Stage 6, the [run summary](record-format.md#run-summary) in `run.yaml`
+is current for the published Stage 5 drafts. It names the selected Stage 5
+records and counts their questions and gaps. Use the selected records for
+readiness. Do not edit the manifest: the readiness record binds its digest.
+`finish` writes the summary of the fixed records in its place. Check it after
+publication, as described below.
 
 ## 2. Prepare the saved result
 
@@ -306,13 +310,13 @@ The root baseline still matches the fixed baseline. The helper registers the
 fixed records and Stage 6 evidence, sets `baselineRef` and `discoveryRef` on
 the run, and publishes the completed manifest last. It marks
 `baselineRecovery: complete` and records completion time.
-It also refreshes `coverage.inspected` and `coverage.unresolved` from the
-validated selected records. Those summaries point to source-review ranges,
-inspected paths, the proposed baseline, questions, gaps and unknown owners.
-Capture coverage remains separate. Summary counts do not imply full inspection
-or turn historical gaps into current defects: the question and gap lists keep
-their history and linked notes, so the summary calls their lengths the counts of
-recorded questions and recorded gaps.
+It also writes the [run summary](record-format.md#run-summary) of the fixed
+records in place of the Stage 5 summary. The summary gives the file count of the
+inventory and names the selected Stage 5 entry analysis and code mapping. It
+counts the questions and gaps of the fixed discovery result. Summary counts do
+not imply full inspection or turn historical gaps into current defects. The
+question and gap lists keep their history and linked notes, so the summary gives
+record counts.
 
 The selected stage 5 facts remain valid. In particular, membership references
 can still point to the registered stage 5 proposal because its baseline bytes
@@ -346,9 +350,10 @@ discovery result. The discovery result must name the ID of the baseline and the
 SHA-256 of the saved baseline file. A changed baseline file or a discovery result
 with another digest is refused. Do not edit either file to force a pass. Report
 the actual unknown-owner count and source inspection limits from this run.
-Read the generated coverage summaries as well as the structured progress fields.
-They must refer to the completed result and its selected facts, without a stale
-claim that baseline recovery is pending.
+Read the run summary as well as the structured progress fields. The summary names
+the fixed discovery result and the selected facts. The progress fields have the
+state of each stage. `verify` makes the summary again from the saved records and
+refuses a `run.yaml` with another summary.
 
 In a v6 `handoff.json`, `boundarySummary.caller` names another component with
 a reviewed production call to the selected operation. Report self-use and caller
@@ -425,7 +430,7 @@ not change. The new version has no discovery result until a new run maps it.
 | --- | --- | --- |
 | Before stage 6 | Reviewed stage 5 proposal. | Working discovery is version 1 and omits `baselineRef` and `baselineDigest`. |
 | After `start` | Same proposal; fixed output is prepared. | Checkpoints, review and validation are saved. Working drafts are unchanged. |
-| After `finish` | Fixed version saved by digest. Statements remain proposed. | Run-root and fixed discovery have identical version 2 bytes with the baseline ID and SHA-256. The manifest selects both fixed records, marks recovery complete and refreshes current coverage summaries. |
+| After `finish` | Fixed version saved by digest. Statements remain proposed. | Run-root and fixed discovery have identical version 2 bytes with the baseline ID and SHA-256. The manifest selects both fixed records, marks recovery complete and has the summary of the fixed records. |
 | After `verify` | Unchanged. | Read-only verification reports the saved result and its limits. |
 | After `baseline decide` | Unchanged. Statements stay proposed. | `decisions/<id>.yaml` holds the decision file. The discovery and the manifest do not change. |
 | After `baseline next` | Unchanged. A new folder holds the next version, with the decided statements accepted, and its version record. | The discovery, the manifest and the decision record do not change. The new version has no discovery result. |

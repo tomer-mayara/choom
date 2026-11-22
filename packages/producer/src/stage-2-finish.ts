@@ -6,9 +6,11 @@ import { isDeepStrictEqual } from 'node:util';
 import { draftUpdate } from './draft-update.ts';
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { evidenceBase, type EvidenceTarget, type PointerMessages, resolveEvidence, savedDocument } from './record-checks.ts';
-import { checkKnipResultGaps } from './result-gaps.ts';
+import { SubjectChecker } from './record-subjects.ts';
+import { RunSummary } from './run-summary.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
 import { snapshotInventory } from './snapshot-inventory.ts';
+import { ToolGaps } from './tool-gaps.ts';
 
 // The Stage 2 finish action runs this module in the tool checkout, after the
 // driver checked the producer code record of the run. It checks every attempt
@@ -96,6 +98,7 @@ const requiredFiles = new Map([
   ['knip-runs.json', 'knip-runs'],
   ['knip-profile.json', 'knip-profile'],
   ['preflight.json', 'preflight'],
+  ['required-gaps.json', 'required-gaps'],
 ]);
 
 // Every attempt file, by the artifact ID that it gets.
@@ -344,6 +347,18 @@ function checkAnalysis(finish: Finish, plan: Fields, requireClaims: boolean): Fi
   return analysis;
 }
 
+// The gaps that the Knip outcomes require (DB5): run saved them in required-gaps.json.
+// They must be the gaps that ToolGaps gives from the saved preflight and Knip receipts,
+// and the analysis must copy each one exactly.
+function checkRequiredGaps(finish: Finish, analysis: Fields): void {
+  const core = (name: string): string => `${finish.id}-${name}`;
+  const required = new ToolGaps(`${finish.id}-`).fromKnipRuns(document(finish, core('knip-runs')), core('knip-runs'),
+    document(finish, core('preflight')));
+  assert(isDeepStrictEqual(document(finish, core('required-gaps')), { formatVersion: 1, gaps: required }),
+    `The required gaps in ${core('required-gaps')} differ from the gaps that the Knip receipts and the preflight give. Use a new attempt.`);
+  ToolGaps.checkCopied(required, analysis.gaps as unknown[], core('required-gaps'));
+}
+
 // The inventory of the saved snapshot, made with the checkout code, must still be
 // the registered inventory. The saved inventory.mjs stays a registered record;
 // finish does not run it.
@@ -386,9 +401,11 @@ function finishAttempt(): void {
   const plan = checkPlan(finish, discovery);
   checkReceipts(finish, run);
   const analysis = checkAnalysis(finish, plan, typeof run.projectKey === 'string');
-  // An unsupported Knip profile and a Knip mode that failed or was skipped need a gap that cites their record.
-  checkKnipResultGaps({ gaps: analysis.gaps, preflightRef: `${id}-preflight`, preflight: document(finish, `${id}-preflight`),
-    runsRef: `${id}-knip-runs`, runs: document(finish, `${id}-knip-runs`) });
+  checkRequiredGaps(finish, analysis);
+  // Each subject of a record that finish adds names a snapshot file or folder, the snapshot ID, a question or gap, or an
+  // entry candidate of the analysis or of an entry analysis that the run registers. A candidate of the plan does not count.
+  SubjectChecker.forEntryRecord(finish.files.keys(), finish.inventory.snapshotId, analysis,
+    { refs: Object.keys(run.artifacts as Fields), document: ref => document(finish, ref) }).checkAdded(discovery);
   checkInventory(finish, run);
   for (const name of drafts)
     assert((before[name] as Buffer).equals(read(safeFile(work, `${name}.yaml`))), `${name}.yaml changed during finalization.`);
@@ -399,15 +416,13 @@ function finishAttempt(): void {
 // Replaces discovery.yaml and then run.yaml, the publication marker, as one update.
 // When a step fails before run.yaml is replaced, the update gives discovery.yaml its
 // bytes from before and removes its temporary files.
-function publish({ id, work, artifacts }: Finish, { before, run, discovery, analysis, stringify }:
+function publish({ id, work, artifacts, inventory }: Finish, { before, run, discovery, analysis, stringify }:
   { before: Record<string, Buffer>; run: Fields; discovery: Fields; analysis: Fields; stringify: (value: unknown) => string }): void {
   const core = (name: string): string => `${id}-${name}`;
   const nextDiscovery = { ...discovery, entryAnalysisRef: core('entry-analysis'), questions: analysis.questions, gaps: analysis.gaps };
-  const nextRun = { ...run, artifacts, progress: { ...(run.progress as Fields), entryAnalysis: 'complete', inspectionPriorities: 'pending' },
-    coverage: { ...(run.coverage as Fields),
-      inspected: `LLM source inspections are listed in the saved reviews and entry analyses. This attempt uses ${core('entry-analysis')}#/reviewedFiles. Tool query scopes and limits are in ${core('knip-runs')}; tool reads do not establish LLM inspection.`
-    }
-  };
+  const progress = { ...(run.progress as Fields), entryAnalysis: 'complete', inspectionPriorities: 'pending' };
+  const nextRun = { ...run, artifacts, progress, coverage: new RunSummary({ inventory,
+    reviewRef: core('entry-analysis'), issuesRef: core('entry-analysis'), issues: analysis }).coverage() };
   const update = draftUpdate({ work, prefix: `.${id}-publication-`, read: name => read(safeFile(work, name)),
     before: new Map(drafts.map(name => [`${name}.yaml`, before[name] as Buffer])),
     advice: 'Keep this attempt unchanged; use a new attempt ID after you resolve the cause.' });

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import * as yaml from "yaml";
-import { readBaselineYaml, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
+import { fixedDiscovery, readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords }
+  from "../../../src/stage-6-records.ts";
+import { ToolGaps } from "../../../src/tool-gaps.ts";
 import { candidatesRef, type Component, digest, type Documentation, evidenceRefs, files, location, type MappingUnit, proposal,
   recordInputs, type Records, runRef, selected, snapshotRef, type SourceAssessment, type SourceUse, stage, type Statement, statement }
   from "../../support/stage-6-records.ts";
@@ -95,6 +97,20 @@ const profileCases: [string, (records: Records) => void, string][] = [
   }, "The producer writes baseline formatVersion 1, 2, 3, 4, 5 or 6, not 7."],
 ];
 
+// P2: an inspected path from the route http-route, with the evidence references of each
+// step. The path names http, or http and cli; cli owns cli.ts.
+const inspectedPath = (...steps: string[][]) => (records: Records): void => {
+  records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
+    componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
+    steps: steps.map((refs, index) => ({ action: `Step ${index + 1}.`, evidenceRefs: refs })) }];
+};
+const cliAndHttpPath = (...steps: string[][]) => (records: Records): void => {
+  inspectedPath(...steps)(records);
+  records.discovery.inspectedPaths.forEach((path) => { path.componentIds = ["http", "cli"]; });
+};
+const uncoveredCli = new Error("Inspected path path-1 names the component cli, but no reviewed range that its steps cite " +
+  "covers code that cli owns.");
+
 describe("validateDiscoveryRecords", () => {
   test("accepts the reviewed records and counts what they contain", () => {
     expect(validateDiscoveryRecords(recordInputs())).toMatchObject({ mappedFiles: 2, unknownOwners: 0, components: 2,
@@ -105,11 +121,12 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(recordInputs(unownedFirstFile("Owner unknown.")))).toMatchObject({ unknownOwners: 1 });
   });
 
-  // P1: a question or gap subject names something of the run (record-subjects.ts).
-  test("refuses a question or gap subject that names nothing, with the gap ID and the subject", () => {
+  // P1: a question or gap subject names something of the run (SubjectChecker of record-subjects.ts).
+  test("refuses a question or gap subject that names nothing, with the subject and the gap ID", () => {
     expect(() => validateDiscoveryRecords(recordInputs((records) => nameUnknownSubject(records, "no-such-thing"))))
-      .toThrow(new Error("Gap gap-1 names the subject no-such-thing, which is not a file or folder of the snapshot, " +
-        "the snapshot ID, a question or gap, an entry candidate or a baseline item."));
+      .toThrow(new Error("The subject no-such-thing of the gap gap-1 names nothing. A subject names a file of the snapshot, " +
+        "a folder of the snapshot written as <folder>/**, the snapshot ID, a question or gap, an entry candidate, " +
+        "or a baseline item ID or a field of it, such as billing.purpose."));
   });
 
   test("accepts subjects that name a snapshot file, the snapshot ID, an entry candidate, a baseline item or its field, " +
@@ -124,17 +141,22 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 1, questions: 1 });
   });
 
-  // The gaps of a Stage 1 tool record can name missing inputs and paths outside the snapshot.
-  test("keeps the subjects of a gap that Stage 1 finish copied from the settings record", () => {
-    const toolGap = { id: "s1-settings-gap-001", kind: "missing-input", reason: "The base settings are missing.",
-      subjectRefs: ["tsconfig.missing.json", "/shared/global.d.ts"], evidenceRefs: ["settings-001#/gaps/0"] };
+  // DB1: no gap has an exception. A gap that a stage gives from a tool record names only
+  // files of the snapshot or the snapshot ID, and its reason names a missing input. A
+  // gap with the form of such a gap that names a missing input as a subject is refused.
+  test.each([
+    ["Stage 1 finish copied from the settings record", "s1-", "settings", "settings-001", "evidence/settings.json"],
+    ["Stage 3 gave from an exports record", "s3-check-", "exports-001", "s3-check-file@exports-001.json", "evidence/s3-check/exports-001.json"],
+  ])("refuses a subject that names nothing in a gap that %s", (_name, prefix, name, recordRef, path) => {
+    const missing = { kind: "missing-compiler-input", input: "reference-path", missing: "env.d.ts",
+      subjectRefs: ["cli.ts", "env.d.ts"], reason: "cli.ts names env.d.ts in a reference path directive, but the snapshot does not hold that file." };
+    const record = Buffer.from(JSON.stringify({ formatVersion: 1, gaps: [missing] }));
+    const [toolGap] = new ToolGaps(prefix).fromRecord({ name, artifactRef: recordRef, gaps: [missing] });
     const inputs = recordInputs((records) => {
-      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(toolGap));
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(toolGap) as (typeof gaps)[number]);
     });
-    const { id: _id, evidenceRefs: _evidence, ...entry } = toolGap;
-    const settings = Buffer.from(JSON.stringify({ gaps: [entry] }));
-    inputs.artifacts.set("settings-001", { path: "evidence/settings.json", bytes: settings, sha256: digest(settings) });
-    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 2 });
+    inputs.artifacts.set(recordRef, { path, bytes: record, sha256: digest(record) });
+    expect(() => validateDiscoveryRecords(inputs)).toThrow(`The subject env.d.ts of the gap ${toolGap?.id} names nothing.`);
   });
 
   // Stage 3 can retire an earlier entry candidate with a note that names it, so a subject
@@ -159,28 +181,111 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
   });
 
-  // P2: each step of an inspected path cites the source that it rests on, and each
-  // cited source range is inside a reviewed range of the selected history, as the
-  // site of a behavior entry is. A collected excerpt alone is not a reviewed range.
-  const inspectedPath = (...steps: string[][]) => (records: Records): void => {
-    records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
-      componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
-      steps: steps.map((refs, index) => ({ action: `Step ${index + 1}.`, evidenceRefs: refs })) }];
-  };
+  // DB1: after a fresh Stage 2 attempt, run.yaml still registers the entry analysis of the
+  // earlier attempt, but the selected history does not name it. A kept gap can still name
+  // its candidate.
+  test("accepts a subject that names an entry candidate of a registered entry analysis outside the selected history", () => {
+    const inputs = recordInputs((records) => nameUnknownSubject(records, "s2-first-candidate-001"));
+    const bytes = Buffer.from(JSON.stringify({ formatVersion: 1, kind: "entry-analysis", snapshotRef, llmReview: "recorded",
+      reviewedFiles: [], questions: [], gaps: [], candidates: [{ id: "s2-first-candidate-001" }] }));
+    inputs.artifacts.set("s2-first-entry-analysis", { path: "evidence/s2-first/entry-analysis.yaml", bytes, sha256: digest(bytes) });
+    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 1 });
+  });
 
-  test("accepts inspected path steps that cite reviewed source ranges, also with a JSON Pointer or with other records", () => {
-    expect(validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler#/lines", "graph"]))))
+  // P2: a behavior entry cites the reviewed range of its site itself. A reviewed range
+  // takes the ID of the excerpt that the review read, so an excerpt that a request saved
+  // and that no reviewedFiles item names is not a reviewed range, also when it has the
+  // same path and lines.
+  const unreadExcerpt = `${stage}-source-excerpt-001`;
+  function withUnreadExcerpt(inputs: RecordInputs): RecordInputs {
+    const bytes = Buffer.from(JSON.stringify({ id: unreadExcerpt, ...location, totalLines: 1, truncated: false,
+      excerpt: `1: ${(files["http.ts"] ?? "").trimEnd()}` }));
+    inputs.artifacts.set(`${stage}-file@excerpt-001.json`, { path: `evidence/${stage}/excerpt-001.json`, bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("refuses a behavior entry that cites a requested excerpt of its site that no review read", () => {
+    const inputs = withUnreadExcerpt(recordInputs((records) => {
+      Object.assign(records.entry.behaviorEntries[0] ?? {}, { evidenceRefs: [unreadExcerpt, "launch#/cli"] });
+    }));
+    expect(() => validateDiscoveryRecords(inputs)).toThrow(new Error("Behavior entry http-route does not cite a reviewed range " +
+      "that contains its site. An excerpt that no review read is not a reviewed range."));
+  });
+
+  // A resource access observation of http.ts uses the same check of its site.
+  function withObservation(inputs: RecordInputs, refs: string[]): RecordInputs {
+    const saved = inputs.artifacts.get(selected.resourceAccessRef);
+    const access = JSON.parse(saved?.bytes.toString() ?? "null") as { observations: unknown[] };
+    access.observations = [{ id: "orders-read", componentRef: "http", source: { path: "http.ts", lines: [1, 1] },
+      operation: "read", target: { expression: "orders", resourceRef: null, identity: "symbolic" },
+      context: "The order handler.", evidenceRefs: refs }];
+    const bytes = Buffer.from(JSON.stringify(access));
+    inputs.artifacts.set(selected.resourceAccessRef, { path: saved?.path ?? "", bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("accepts a resource access observation that cites the reviewed range of its site", () => {
+    expect(validateDiscoveryRecords(withObservation(recordInputs(), ["orders-handler"]))).toMatchObject({ observations: 1 });
+  });
+
+  test("refuses a resource access observation that cites a requested excerpt of its site that no review read", () => {
+    expect(() => validateDiscoveryRecords(withObservation(withUnreadExcerpt(recordInputs()), [unreadExcerpt])))
+      .toThrow(new Error("Resource access observation orders-read does not cite a reviewed range that contains its site. " +
+        "An excerpt that no review read is not a reviewed range."));
+  });
+
+  // P2: each step of an inspected path cites a reviewed range of the selected history
+  // itself, as a site does. Each other saved source range that a step cites is a
+  // reviewed range too. A step can also cite other records, such as a graph record.
+  test("accepts inspected path steps that cite reviewed ranges, also beside a JSON Pointer into one or other records", () => {
+    expect(validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler#"],
+      ["orders-handler", "orders-handler#/lines", "graph"])))).toMatchObject({ inspectedPaths: 1 });
+  });
+
+  test.each<[string, string[][], number]>([
+    ["only a requested excerpt with the lines of a reviewed range", [["orders-handler"], [unreadExcerpt]], 2],
+    ["a reviewed range only with a JSON Pointer to its lines", [["orders-handler"], ["orders-handler#/lines", "graph"]], 2],
+    ["no source range", [["launch#/cli"]], 1],
+  ])("refuses an inspected path step that cites %s", (_name, steps, step) => {
+    expect(() => validateDiscoveryRecords(withUnreadExcerpt(recordInputs(inspectedPath(...steps))))).toThrow(new Error(
+      `Inspected path path-1 step ${step} does not cite a reviewed range. An excerpt that no review read is not a reviewed range.`));
+  });
+
+  test("refuses an inspected path step that cites a collected but unreviewed excerpt beside a reviewed range", () => {
+    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler", "unread-cli"]))))
+      .toThrow(new Error("Inspected path path-1 step 2 cites unread-cli, a saved source range that is not a reviewed range " +
+        "of the selected history."));
+  });
+
+  // Each component of an inspected path owns, in the selected code mapping, a file or a
+  // part that a reviewed range cited by the steps covers.
+  const startLocation = { snapshotRef, path: "cli.ts", sha256: digest(files["cli.ts"] ?? ""), lines: [1, 1] };
+  // The review also read line 1 of cli.ts: the reviewed range cli-start of a requested excerpt.
+  function withReviewedStart(change: (records: Records) => void): RecordInputs {
+    const inputs = recordInputs((records) => {
+      (records.entry.reviewedFiles as unknown[]).push({ id: "cli-start", ...startLocation });
+      records.mapping.units.forEach((unit) => { if (unit.path === "cli.ts") unit.inspection = "reviewed"; });
+      change(records);
+    });
+    const bytes = Buffer.from(JSON.stringify({ id: "cli-start", ...startLocation, totalLines: 1, truncated: false,
+      excerpt: `1: ${(files["cli.ts"] ?? "").trimEnd()}` }));
+    inputs.artifacts.set(`${stage}-file@excerpt-002.json`, { path: `evidence/${stage}/excerpt-002.json`, bytes, sha256: digest(bytes) });
+    return inputs;
+  }
+
+  test("accepts an inspected path whose steps cite a reviewed range of code of each of its components", () => {
+    expect(validateDiscoveryRecords(withReviewedStart(cliAndHttpPath(["orders-handler"], ["cli-start", "graph"]))))
       .toMatchObject({ inspectedPaths: 1 });
   });
 
-  test("refuses an inspected path step that cites a collected but unreviewed excerpt", () => {
-    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler", "unread-cli"]))))
-      .toThrow(new Error("Inspected path step is outside the selected source review history: path-1 step 2: unread-cli"));
-  });
-
-  test("refuses an inspected path step that cites no source range", () => {
-    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["launch#/cli"]))))
-      .toThrow(new Error("Missing cited reviewed source for inspected path step: path-1 step 1"));
+  test.each<[string, (records: Records) => void]>([
+    ["no step cites a reviewed range of its code", cliAndHttpPath(["orders-handler"], ["orders-handler", "graph"])],
+    ["only the path itself cites a reviewed range of its code", (records) => {
+      cliAndHttpPath(["orders-handler"])(records);
+      records.discovery.inspectedPaths.forEach((path) => { path.evidenceRefs.push("cli-start"); });
+    }],
+  ])("refuses an inspected path that names a component when %s", (_name, change) => {
+    expect(() => validateDiscoveryRecords(withReviewedStart(change))).toThrow(uncoveredCli);
   });
 
   test.each(refusedCases)("refuses %s", (_name, change, message) => {
@@ -204,39 +309,6 @@ describe("validateDiscoveryRecords", () => {
     };
     expect(() => validateDiscoveryRecords({ ...recordInputs(change), reservedIds: [receipt] }))
       .toThrow(`The ID ${receipt} is reserved for a record that this publication saves. Use a different model ID.`);
-  });
-});
-
-// P4: an analysis that did not run needs a gap that cites its record. The shared record
-// checks see the Knip preflight and runs of the selected entry analysis, so Stages 4 to 6
-// refuse a run whose Knip result did not run and no gap cites it.
-describe("validateDiscoveryRecords with a Knip result that did not run", () => {
-  const unsupported = (records: Records): void => { records.knip.preflight.status = "unsupported"; };
-  const runs = (...statuses: string[]) => (records: Records): void => {
-    records.knip.runs = statuses.map((status, index) => ({ mode: index === 0 ? "normal" : "production", status }));
-  };
-  const withGap = (...evidence: string[]) => (records: Records): void => {
-    for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push({ id: "gap-knip", kind: "tool-outcome",
-      reason: "Knip did not run.", subjectRefs: [snapshotRef], evidenceRefs: [...evidence] });
-  };
-  const all = (...changes: ((records: Records) => void)[]) => (records: Records): void => changes.forEach((change) => change(records));
-
-  test.each<[string, (records: Records) => void, string]>([
-    ["an unsupported Knip profile", unsupported,
-      "The Knip preflight knip-preflight marks the profile unsupported. Record a gap that cites knip-preflight."],
-    ["a skipped Knip mode", runs("completed", "skipped"),
-      "The production Knip run in knip-runs has the status skipped. Record a gap that cites knip-runs."],
-    ["a failed Knip mode", runs("failed", "completed"),
-      "The normal Knip run in knip-runs has the status failed. Record a gap that cites knip-runs."],
-    ["an unsupported profile whose gap cites only the Knip runs", all(unsupported, runs("skipped", "skipped"), withGap("knip-runs")),
-      "The Knip preflight knip-preflight marks the profile unsupported. Record a gap that cites knip-preflight."],
-  ])("refuses %s without a gap that cites its record", (_name, change, message) => {
-    expect(() => validateDiscoveryRecords(recordInputs(change))).toThrow(new Error(message));
-  });
-
-  test("accepts results that did not run when a gap cites each record, also with a JSON Pointer", () => {
-    const change = all(unsupported, runs("failed", "skipped"), withGap("knip-preflight#/status", "knip-runs#/runs/0"));
-    expect(validateDiscoveryRecords(recordInputs(change))).toMatchObject({ gaps: 2 });
   });
 });
 
@@ -313,6 +385,17 @@ describe("validateRecords with a Stage 6 readiness packet", () => {
     const { hiddenReasoning: _saved, ...withoutField } = call;
     expect(() => validateRecords({ ...recordInputs(), packet: packet({ call: withoutField }), draftDigests }))
       .toThrow("Record hiddenReasoning: not-saved in llm/analysis-call.yaml.");
+  });
+
+  // Stage 6 checks the inspected paths as Stages 4 and 5 do: before it saves the fixed
+  // records, and again when verify checks the saved fixed records.
+  test("refuses an inspected path whose steps cite no reviewed range of one of its components, also in the fixed records", () => {
+    const uncovered = cliAndHttpPath(["orders-handler"]);
+    expect(() => validateRecords({ ...recordInputs(uncovered), packet: packet(), draftDigests })).toThrow(uncoveredCli);
+    const inputs = recordInputs(uncovered);
+    const baselineFile = Buffer.from(JSON.stringify(inputs.baseline));
+    const discovery = fixedDiscovery(inputs.discovery as Record<string, unknown>, "base-1", baselineFile);
+    expect(() => validateDiscoveryRecords({ ...inputs, discovery, baselineFile })).toThrow(uncoveredCli);
   });
 });
 

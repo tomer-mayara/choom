@@ -366,7 +366,7 @@ graph roots and prior records. Compare fixed fields separately from explanations
 that can change. Allow supported updates to current prose and added evidence
 references only where the record contract permits them.
 After publication, require the saved packet copies to match the approved bytes.
-Check the selected records, receipts, digests and manifest summaries. Use the
+Check the selected records, receipts, digests and the run summary. Use the
 stage's verification action where available. Stage 3 provides
 `stage-3-finish verify` for its latest completed state. Leave the finalizer
 copies that older attempts saved unchanged. Semantic review is separate from the
@@ -504,7 +504,9 @@ handoff notes and dated corrections. Keep stage status in `progress.md`.
   rejected packet. A saved packet is not an editable external draft.
 - **Entries or analysis settings need to change before Stage 4 publication:**
   follow the cookbook back to a fresh Stage 2 attempt, then repeat Stage 3 and
-  prepare Stage 4 from the newly selected analysis. Keep earlier attempts.
+  prepare Stage 4 from the newly selected analysis. Keep earlier attempts. The
+  run keeps them registered, so a kept question or gap that names a candidate of
+  an earlier attempt stays valid.
 - **Entries or analysis settings need to change after Stage 4 publication:**
   preserve this run and start a fresh run. The manual helpers cannot rewind an
   already published component model to entry discovery. You can capture the
@@ -566,8 +568,9 @@ The final Stage 6 verification must succeed. Confirm that:
    reason. Proposed membership and exact mapping agree.
 4. Questions, gaps, partial coverage and source inspection limits remain visible.
 5. Inferred architectural statements remain proposed. Saving does not accept them.
-6. Current coverage summaries agree with completion and selected facts. Any
-   retained explanatory defect is identified precisely in readiness or run notes.
+6. The [run summary](record-format.md#run-summary) names the selected records,
+   and `progress` has `complete` for each stage. Any retained explanatory
+   defect is identified precisely in readiness or run notes.
 7. The fixed discovery result has `formatVersion: 2` and names the fixed baseline
    by its ID and the SHA-256 of its file (`baselineDigest`).
    Stage 6 verifies the saved bytes using the viewer's reader.
@@ -628,7 +631,10 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-1-commands.ts`, `stage-2-commands.ts`, `stage-3-commands.ts`, `stage-4-commands.ts`, `stage-5-commands.ts`, `stage-6-commands.ts` | Stage preparation, evidence collection or publication commands |
 | `stage-1-settings.ts` | Stage 1 settings collector; the settings action and the recovery capture run it in the tool checkout. Its in-memory file system of the snapshot is also the file system of the snapshot project |
 | `stage-1-git.ts`, `stage-1-exclusions.ts` | The Git identity record that Stage 1 capture saves, and the reader of the capture exclusion rules that it uses |
-| `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record, and the form by which the shared validation knows such a gap |
+| `stage-1-gaps.ts` | The discovery gaps that Stage 1 finish adds from the settings record and the Git identity record |
+| `tool-gaps.ts` | The gaps that a stage gives from the records of its tools, with IDs from the stage prefix: the Stage 1 tool gaps, the required gaps of the Stage 2 Knip outcomes that `run` saves in `required-gaps.json`, the required gaps of the Stage 3 symbol mentions and exports records, and the required gaps of the Stage 4 candidate records; and the check that a review copies each required gap exactly |
+| `stage-3-gaps.ts` | The required gaps of the Stage 3 tool records: the files that `collect` and each `exports` request save, the finalizer's check that the entry analysis copies each gap exactly, and the required gaps of the tool records of an attempt that a run registered |
+| `candidate-gaps.ts` | The required gaps of the two candidate records of a Stage 4 attempt, which Stage 4 `collect` saves in `required-gaps.json`; the check of the Stage 4/5 publisher that a Stage 4 or Stage 5 entry analysis keeps each one exactly; and the required gaps of one saved candidate record |
 | `parsing-profile.ts` | The named Choom parsing profile for a snapshot without project settings |
 | `stage-2-handoff.ts`, `stage-2-knip-profile.ts`, `stage-2-knip-input.ts`, `stage-2-tool-image.ts`, `stage-2-knip-run.ts`, `stage-2-finish.ts` | Stage 2 steps that the driver runs: draft checkpoints, fixed Knip profile and preflight, inventory-only input, tool image, Knip runs and publication |
 | `stage-2-consolidate-inputs.ts` | Merge earlier per-attempt Knip input folders (`stage-2-consolidate` command) |
@@ -642,8 +648,9 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `snapshot-references.ts` | The references to a symbol of a file of the snapshot project, from the TypeScript type checker: its declarations, and each import, re-export, type use, call and other use with its range and local name; and whether the compiler settings resolve a module name of a searched file |
 | `stage-3-finish.ts`, `stage-3-review.ts` | Validate, save and verify the latest completed Stage 3 state (`stage-3-finish` command), and the checks of its entry analysis and LLM review packet |
 | `draft-update.ts` | The update of the working drafts that Stage 2 finish, the Stage 3 finalizer and the Stage 4/5 publisher share: temporary files first, `run.yaml` last, and a rollback when a step fails before `run.yaml` is replaced |
-| `result-gaps.ts` | The gap that an analysis that did not run needs: Stage 2 finish and the shared validation check the Knip preflight and runs, and the Stage 3 finalizer checks the symbol mentions |
-| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record, the producer code record, the decision record and the next baseline version |
+| `saved-attempt-files.ts` | The rule of the attempt files that Stage 2 finish, the Stage 3 finalizer and the Stage 4/5 publisher share: each attempt file is a phase receipt, a file that a receipt names, or a file that the stage names itself. The publisher refuses any other file and names it |
+| `result-gaps.ts` | The tool results of the selected history whose outcome needs a gap, each with the required gap that its stage gives: the gaps of the Stage 1 settings and Git identity records, the Knip preflight and runs, the Stage 3 symbol mentions and exports records, and the Stage 4 candidate records; and the check of the shared validation that a gap cites each one |
+| [record-format.md](record-format.md) | Exact review packet contract for Stages 4 and 5, the settings record, the Git identity record, the Knip receipts and required gaps, the Stage 3 required gaps, the producer code record, the decision record and the next baseline version |
 | `stage-4-5-publish.ts` | Check, publish and verify the Stage 4 or Stage 5 review |
 | `stage-4-graph-profile.ts` | The graph profile that Stage 4 start saves: compiler contexts, their passes, traversal roots and limits. `compiler-settings.ts` applies the same compiler context rule to one file |
 | `stage-4-module-kinds.ts` | The module kind of the code that runs for each file of a compiler context, from its extension, the compiler `module` setting and the nearest indexed `package.json`. Files that compile to CommonJS get a CommonJS pass |
@@ -668,7 +675,8 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-6-inputs.ts`, `stage-6-files.ts` | The checked inputs of each Stage 6 action: the trusted YAML package and ts-morph, the registered artifacts and the indexed snapshot files; and the file operations of Stage 6: checked reads, the files and folders that an action owns and can remove again, and the publication lock |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, the fixed discovery result with its check against the saved baseline file, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks, with the evidence reference resolver that every stage uses |
-| `record-subjects.ts` | Part of the shared validation: each question and gap subject names a file or folder of the snapshot, the snapshot ID, a question or gap, an entry candidate or a baseline item |
+| `record-subjects.ts` | Part of the shared validation (`SubjectChecker`): each question and gap subject names a file of the snapshot, a folder of the snapshot written as `<folder>/**`, the snapshot ID, a question or gap, an entry candidate of an entry analysis that the run registers or of the record that the stage checks (`entryCandidates`), or a baseline item (`SubjectItems` of `@choom/baseline-model`). Stages 1 to 3 check the records that they add with the same rule and no baseline items (`beforeBaseline`, `forEntryRecord`). The Stage 3 finalizer also checks the inspection priorities |
+| `record-reviewed-source.ts` | Part of the shared validation (`ReviewedSource`): a behavior entry and a resource access observation cite the reviewed range that contains their site, each step of an inspected path cites a reviewed range of the selected history, and each component of the path owns code that a reviewed range cited by the steps covers |
 | `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest and the checked read of a file that symbols divide |
 | `ts-morph-modules.ts` | The ts-morph that divides a file, with the SHA-256 of each of its module files, and the check of these files against the pins of a stage start, which the Stage 4/5 publisher and Stage 6 make before they divide a file |
 | `llm-response.ts` | The check of each saved LLM response and call record: no hidden reasoning, and `hiddenReasoning: not-saved` |

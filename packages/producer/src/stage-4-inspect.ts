@@ -10,6 +10,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type * as TsMorph from 'ts-morph';
 import type * as Yaml from 'yaml';
 import { behaviorEntryRulesFile, readRuleList } from './behavior-entry-rules.ts';
+import { CandidateGaps } from './candidate-gaps.ts';
 import { savedSettings, settingsRef } from './compiler-settings.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
 import { assert, type Fields, hash, list, object, text } from './record-checks.ts';
@@ -28,7 +29,8 @@ import { type SourceFile, sourceSites } from './stage-4-source-sites.ts';
 
 // The Stage 4 source collection helper. collect saves the source sites of the
 // graph profile scope, the behavior entry candidates of the rule list that start
-// saved, the first excerpts, the review prompt and the proposed artifact map;
+// saved, the gaps that the candidate records require, the first excerpts, the review
+// prompt and the proposed artifact map;
 // excerpt saves a requested range of an indexed file; references
 // saves the references to a symbol of a source file of the graph scope. Each action
 // first checks that the attempt is still the one that Stage 4 start, toolchain and
@@ -360,14 +362,17 @@ function collect(current: InspectState): string[] {
     check: path => { utf8(current.source(path), path); } }));
   saveJson('behavior-entry-candidates.json', behaviorEntries(current));
   saveJson('resource-access-candidates.json', resourceAccess(current));
+  // DB5: the gaps that the saved candidate records require. The review copies each one exactly.
+  saveJson(CandidateGaps.file, new CandidateGaps(id).record(name => json(name)));
   saveJson('source-excerpts.json', initialExcerpts(current));
   save('review-prompt.md', reviewPrompt({ runRef: current.handoff.runRef, snapshotRef: current.handoff.snapshotRef,
-    entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt, graph: current.graph }));
+    entryAnalysisRef: current.handoff.entryAnalysisRef, attemptId: id, work, attempt, graph: current.graph,
+    requiredGaps: { ref: artifactId(CandidateGaps.file), gaps: json(CandidateGaps.file).gaps as unknown[] } }));
   saveJson('artifact-map.json', { formatVersion: 1, attemptId: id, snapshotRef: current.handoff.snapshotRef,
     status: 'proposed', artifacts: artifactMap(),
     limits: ['This map is not registered yet. It omits itself, the mutable command log, and later files.'] });
-  return ['source-sites.json', 'behavior-entry-candidates.json', 'resource-access-candidates.json', 'source-excerpts.json',
-    'review-prompt.md', 'artifact-map.json'];
+  return ['source-sites.json', 'behavior-entry-candidates.json', 'resource-access-candidates.json', CandidateGaps.file,
+    'source-excerpts.json', 'review-prompt.md', 'artifact-map.json'];
 }
 
 // The source sites that a completed collect saved, unchanged since then.

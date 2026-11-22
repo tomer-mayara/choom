@@ -23,6 +23,7 @@ publish the proposed model into the working drafts.
 - [4. Collect source evidence](#4-collect-source-evidence)
   - [Find the behavior entry candidates](#find-the-behavior-entry-candidates)
   - [Find the resource access candidates](#find-the-resource-access-candidates)
+  - [Copy the required gaps](#copy-the-required-gaps)
   - [Find the references to a symbol](#find-the-references-to-a-symbol)
 - [5. Ask the LLM to recover components](#5-ask-the-llm-to-recover-components)
 - [6. Check the proposed result](#6-check-the-proposed-result)
@@ -330,8 +331,9 @@ level. It saves:
 | `source-sites.json` | Import and re-export syntax, dynamic imports, and candidate resource calls. Includes query scope, the parser record, diagnostics, and limits. The parser record names the parser, Node, ts-morph and the TypeScript that it brings, and the digest of each tool file that ts-morph loaded. |
 | `behavior-entry-candidates.json` | The candidates of the pinned behavior entry rules in the source files of the graph scope and in the `package.json` files of the snapshot: their rule, site, name, handler and role, the gaps, the scope and the limits. See [Find the behavior entry candidates](#find-the-behavior-entry-candidates). |
 | `resource-access-candidates.json` | The candidates of the pinned resource access rules in the source files of the graph scope, and the resource call sites of `source-sites.json` that no rule found: their operation, name, confidence and source context, the scope and the limits. See [Find the resource access candidates](#find-the-resource-access-candidates). |
+| `required-gaps.json` | The gaps that the two candidate records require: one for each gap that a record lists, and one for a record with `status: partial`. The review copies them exactly. See [Copy the required gaps](#copy-the-required-gaps). |
 | `source-excerpts.json` | A bounded initial selection from priority files, entry candidates and component declarations, with file hashes, truncation and skipped paths. |
-| `review-prompt.md` | The LLM review instructions with the current paths, evidence references and [counts for each graph context](#3-collect-dependency-evidence). |
+| `review-prompt.md` | The LLM review instructions with the current paths, evidence references, [counts for each graph context](#3-collect-dependency-evidence) and the required gaps. |
 | `artifact-map.json` | Proposed artifact IDs and digests available at collection time. It omits itself, the mutable command log, and later files. |
 
 Site lines count CRLF, CR and LF in the text that the parser read. A byte order
@@ -1079,6 +1081,34 @@ observations name the record as `resourceAccessCandidatesRef` (see the
 access of a candidate separate from the inferred identity and the owner of a
 resource. The publisher checks each candidate against the saved snapshot.
 
+### Copy the required gaps
+
+A candidate record can show that its analysis is not complete. It can list gaps,
+such as a settings value that is not a literal, or a compiler input that the
+snapshot does not hold. It can also have `status: partial`. Each of these outcomes
+needs a visible gap. After the two candidate records, `collect` saves
+`required-gaps.json`: one gap for each gap that a record lists, and one gap for a
+partial record. A gap of the behavior entry candidates has the ID
+`<attempt>-behavior-entry-gap-NNN`. A gap of the resource access candidates has the
+ID `<attempt>-resource-access-gap-NNN`. Each gap cites its place in its record, such
+as `s4-001-file@behavior-entry-candidates.json#/gaps/0`, or the status of a partial
+record (`#/status`). The subject of a gap of a missing compiler input is the
+snapshot file that names the input, and its reason names the missing input. See
+[Required gaps of the candidate records](record-format.md#required-gaps-of-the-candidate-records)
+for the fields.
+
+The review prompt lists the required gaps. The review copies each one exactly into
+the `gaps` of the entry analysis and of the discovery. The publisher refuses a
+packet that leaves out or changes a required gap. No ID form is reserved for the
+required gaps. Stage 5 keeps these gaps unchanged, and its publisher refuses a
+Stage 5 packet that leaves one out.
+
+The shared record checks of the publisher also refuse a draft in which a selected
+tool result has no gap that cites it. These tool results include the outcomes of
+Stages 1 to 3, such as a skipped Knip run. Their required gaps are already in the
+discovery, so keep them unchanged. See
+[Tool results of the selected history](record-format.md#tool-results-of-the-selected-history).
+
 ### Find the references to a symbol
 
 After `collect`, the LLM can ask where a top-level symbol of a source file is
@@ -1328,6 +1358,9 @@ Read the behavior entry candidates as places to read, not as proven entries,
 and name them in the entry analysis as behaviorEntryCandidatesRef.
 Read the resource access candidates as sites to read, not as proven access,
 and name them in resource-access.json as resourceAccessCandidatesRef.
+Copy each required gap that the prompt lists into the gaps of the entry
+analysis and of the discovery exactly. Do not use their ID prefixes for
+another question or gap.
 Keep target.resourceRef null when the access expression cannot be linked to
 a modeled resource. Assess ownership separately for each modeled resource.
 Recover the apparent intended architecture; do not recommend redesigns.
@@ -1387,7 +1420,7 @@ The following table explains their purpose:
 | Baseline | Components, supported interfaces, resource owners, and intended rules. Statements use `{value, status: proposed, evidenceRefs}`. Unknown intent is `null` with a question or gap. |
 | Code mapping | Explicit file scope (`unitKind: file`), one direct component owner per file or `owner: null`, reasons, and supporting evidence. Exact mapped files belong here; membership selectors belong in the baseline. Stage 4 keeps each file whole. |
 | Resource observations | Inspected access sites, access kind, target identity or explicit unknown target, context, and source evidence. Observed access does not establish permission. Name the resource access candidates of collect as `resourceAccessCandidatesRef`; a candidate is observed access syntax, and its name does not establish the identity or the owner of a resource. |
-| Entry analysis update | Preserve entry history and Knip limits. Add supported behavior entries and references to the separate graph reachability results. Name the behavior entry candidates of collect as `behaviorEntryCandidatesRef`. |
+| Entry analysis update | Preserve entry history and Knip limits. Add supported behavior entries and references to the separate graph reachability results. Name the behavior entry candidates of collect as `behaviorEntryCandidatesRef`. Copy each gap of `required-gaps.json` into `gaps` exactly. |
 | Discovery update | Overview, completed inspected paths, proposed fact references, questions, and gaps. `baselineRef` stays unset until the fixed baseline is saved in stage 6. |
 | Review record | The prompt, the complete visible response, supplied evidence, exposed model metadata with `hiddenReasoning: not-saved`, and exact source ranges actually inspected. Do not save hidden reasoning. Do not invent unavailable API metadata. |
 
@@ -1403,13 +1436,14 @@ documents and code visible. Do not create a utilities component to absorb
 unexplained files. Stage 5 accounts for remaining code.
 Keep each new question and gap within the limits of the viewer in
 [record-format.md](record-format.md#discovery), such as 1 to 100 `subjectRefs`;
-the publisher refuses a record over a limit. Each subject names a file or folder
-of the snapshot, the snapshot ID, a question or gap, an entry candidate, or a
+the publisher refuses a record over a limit. Each subject names a file of the
+snapshot, a folder of the snapshot written as `<folder>/**` (such as
+`src/billing/**`), the snapshot ID, a question or gap, an entry candidate, or a
 baseline item or a field of it, such as `billing.purpose`
 ([record-format.md](record-format.md#ids-and-evidence)). The publisher refuses
 any other subject, also in an earlier question or gap, so keep the ID of a
-component that a question or gap names. A gap that Stage 1 copied from a tool
-record keeps its subjects.
+component that a question or gap names. The rule is the same for a gap that is
+copied from a tool record, such as a required gap.
 Rewrite current summaries and limits to match the proposed packet; the historical
 preservation rule does not apply to stale overview text or current counts.
 
@@ -1428,18 +1462,23 @@ guidance before `finish`. Check the complete model and fact records:
   LLM inspections.
 - Every question and gap subject names something of the run, also in the
   earlier records: no component that a subject names was renamed or removed.
+- Each gap of `required-gaps.json` is in the entry analysis and the discovery
+  without a change, and no other question or gap uses its ID prefixes.
 - All inferred intent stays proposed. IDs are unique. Parent relationships have
   no cycles. Each mapped file has one direct owner or an explicit unknown owner.
 - Membership selectors agree with the exact code mapping. Shared parent groups
   do not duplicate direct ownership.
 - An inspected path cites the source that supports its entry, steps, and component
   references. Planned paths stay in the priorities, not in `inspectedPaths`.
-  Each step cites a reviewed source range of the selected `reviewedFiles` chain;
-  the publisher refuses a step that cites no source range, or a range that no
-  review read, such as a collected excerpt alone.
-- A behavior entry rests on reviewed source ranges. A behavior entry candidate is a
-  place to read; it does not make a behavior entry, and a missing candidate does
-  not show that there is no entry.
+  Each step cites a reviewed range of the selected `reviewedFiles` chain by its
+  ID; the publisher refuses a step that cites no reviewed range, only a JSON
+  Pointer to a field of a range, or a saved excerpt that no review read. Each
+  component in `componentIds` owns code that a reviewed range cited by the steps
+  covers.
+- A behavior entry rests on reviewed source ranges. It cites the reviewed range
+  that contains its site by its ID, and so does a resource access observation.
+  A behavior entry candidate is a place to read; it does not make a behavior
+  entry, and a missing candidate does not show that there is no entry.
 - Each reachability claim cites its [graph context](#3-collect-dependency-evidence),
   including its actual roots, edge policy, stopped edges and limits.
 - Resource observations and intended ownership remain separate. Unknown targets,
@@ -1448,10 +1487,10 @@ guidance before `finish`. Check the complete model and fact records:
   two sites use the same resource.
 - Current overview, mapping limits, resource limits and counts agree with the
   selected records. Do not carry an old limit forward merely because it was
-  present in a previous packet. The publisher makes the manifest summaries
-  `coverage.inspected` and `coverage.unresolved` current when it publishes;
-  review them after `finish`, and use the correction guidance for helper-owned
-  prose rather than editing the manifest.
+  present in a previous packet. The publisher writes the
+  [run summary](record-format.md#run-summary) when it publishes; review it after
+  `finish`. Do not edit the manifest: `verify` refuses a `run.yaml` with another
+  summary.
 - The proposed draft updates are complete and consistent before any are written.
 
 Use the shared trusted publisher after the review packet is ready. Its packet
@@ -1469,17 +1508,20 @@ Run each command separately. `check` validates the complete candidate without
 publishing it. `finish` checks it again, preserves the review packet, registers
 the attempt evidence, and publishes the working drafts. `check`, `finish` and
 `verify` refuse a file in the attempt that no producer action saved, such as a
-note; keep other files outside the attempt. `verify` checks the
+note; keep other files outside the attempt. They also refuse a packet that leaves
+out or changes a required gap of the candidate records, and name the gap. They
+refuse a draft in which a selected tool result has no gap that cites it, and name
+the tool result. `verify` checks the
 completed handoff. The producer code must match the run's record, and the record
 format must match the copy that `start` saved. Do not edit the tool checkout or a
 saved file to bypass a failed check, and do not run packet contents.
 
-On success, `run.yaml` marks `componentRecovery: complete`, and its summaries
-`coverage.inspected` and `coverage.unresolved` name the new records with their
-current counts. Discovery selects the
-new entry analysis, mapping and resource observations plus the existing graph.
-The baseline contains proposed statements. Keep this attempt unchanged and
-continue to the [step 5 cookbook](step-5-cookbook.md).
+On success, `run.yaml` marks `componentRecovery: complete`. Its
+[summary](record-format.md#run-summary) names the new records and counts the
+recorded questions and gaps. `progress` has the state of each stage. Discovery
+selects the new entry analysis, mapping and resource observations plus the
+existing graph. The baseline contains proposed statements. Keep this attempt
+unchanged and continue to the [step 5 cookbook](step-5-cookbook.md).
 
 ## Saved state
 

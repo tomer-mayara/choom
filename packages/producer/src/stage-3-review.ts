@@ -3,7 +3,9 @@ import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts'
 import { checkQuestionsAndGaps } from './questions-and-gaps.ts';
 import { assert, evidenceBase, exact, type Fields, object, type PointerMessages, resolveEvidence, strings, text }
   from './record-checks.ts';
+import { SubjectChecker, type SubjectRecord } from './record-subjects.ts';
 import { CandidateClaims } from './stage-2-candidate-claims.ts';
+import { StageThreeGaps } from './stage-3-gaps.ts';
 import { InspectionClues } from './stage-3-inspection-clues.ts';
 
 // The checks of the Stage 3 entry analysis and its LLM review packet against the
@@ -293,6 +295,16 @@ function checkPriorities(inputs: ReviewInputs, analysis: Fields, sources: Source
   }
 }
 
+// The subjects of the new questions and gaps, and of each inspection priority. A
+// subject names a snapshot file or folder, the snapshot ID, a question or gap, or an
+// entry candidate of this analysis or of an entry analysis that the run registers. A
+// clue keeps its own check (InspectionClues).
+function checkSubjects({ paths, snapshotRef, run, document, discovery }: ReviewInputs, analysis: Fields): void {
+  const subjects = SubjectChecker.forEntryRecord(paths.keys(), snapshotRef, analysis, { refs: Object.keys(run.artifacts as Fields), document });
+  subjects.checkAdded(discovery);
+  subjects.checkRecords(analysis.inspectionPriorities as SubjectRecord[], 'inspection priority');
+}
+
 export function checkReview(inputs: ReviewInputs): Review {
   const analysis = inputs.document(inputs.id + '-entry-analysis');
   checkIdentity(inputs, analysis);
@@ -305,5 +317,10 @@ export function checkReview(inputs: ReviewInputs): Review {
   const addedIssues = checkIssues(inputs, analysis, sources, evidence);
   checkCandidates(inputs, analysis, sources, evidence, addedIssues);
   checkPriorities(inputs, analysis, sources, evidence);
+  // The analysis copies each required gap of the symbol mentions and of the exports
+  // records exactly (DB5). This check is before the subject check, so a required gap
+  // that the review changed gets the message of the copy check.
+  new StageThreeGaps(inputs.id).check(inputs.names, inputs.saved, analysis.gaps as unknown[]);
+  checkSubjects(inputs, analysis);
   return { analysis, currentExcerpts };
 }

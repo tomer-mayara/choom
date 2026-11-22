@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { assert, object } from './record-checks.ts';
 import type { CaptureExclusions } from './stage-1-exclusions.ts';
-import { type DiscoveryGap, gitIdentityTool, toolGaps } from './stage-1-gaps.ts';
+import { gitIdentityTool, stageOneGaps } from './stage-1-gaps.ts';
+import type { DiscoveryGap } from './tool-gaps.ts';
 
 // The Git identity of a Stage 1 snapshot: the commit, the branch and the local
 // changes of the target folder, without history. Stage 1 capture runs Git on
@@ -185,5 +186,5 @@ export function gitIdentityGaps(record: unknown, snapshotRef: string): Discovery
     ((record.status === 'available' && kinds?.length === 0) ||
       (record.status === 'not-available' && kinds?.length === 1 && kinds[0] === 'git-unavailable')),
   `The Git identity record ${gitIdentityPath} is not valid. Start a new run.`);
-  return toolGaps({ ...gitIdentityTool, gaps });
+  return stageOneGaps.fromRecord({ ...gitIdentityTool, gaps });
 }
