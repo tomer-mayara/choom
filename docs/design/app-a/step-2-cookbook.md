@@ -253,8 +253,9 @@ Use exactly these top-level fields:
   at most 4 KiB. Use at most 5,000 questions and gaps together.
 - Each subjectRef names a file of the snapshot, a folder of the snapshot
   written as <folder>/** (such as src/billing/**), the snapshot ID, a question
-  or gap, or an entry candidate of this plan. Name a missing input, a package
-  or a symbol in the text or reason. Stage 2 refuses any other subject in a new
+  or gap, or an entry candidate. The candidate is one of this plan or of an
+  entry analysis that the run registers. Name a missing input, a package or a
+  symbol in the text or reason. Stage 2 refuses any other subject in a new
   question or gap, and so do Stages 4 to 6.
 
 Candidate rules:
@@ -624,10 +625,11 @@ Use exactly these top-level fields:
   at most 4 KiB. Use at most 5,000 questions and gaps together.
   Each subjectRef names a file of the snapshot, a folder of the snapshot
   written as <folder>/** (such as src/billing/**), the snapshot ID, a question
-  or gap, or an entry candidate of this analysis. A candidate of the plan counts
-  only when the analysis keeps it. Name a missing input, a package or a symbol
-  in the text or reason. Finish refuses any other subject in a question or gap
-  that this attempt adds, and so do Stages 4 to 6.
+  or gap, or an entry candidate. The candidate is one of this analysis or of an
+  entry analysis that the run registers. A candidate of the plan counts only
+  when the analysis keeps it. Name a missing input, a package or a symbol in the
+  text or reason. Finish refuses any other subject in a question or gap that
+  this attempt adds, and so do Stages 4 to 6.
 - reachability: {status: not-assessed, reason: a short explanation}
 - llmReview: recorded
 
@@ -716,10 +718,12 @@ refuses such an ID in the plan. It refuses a question or gap that the attempt
 adds when one of its subjects names nothing of the run. The message is the one of
 Stages 4 to 6, such as `The subject src/no-such-file.ts of the gap
 s2-001-gap-001 names nothing.` A subject names a file or folder of the snapshot,
-the snapshot ID, a question or gap of the analysis, or an entry candidate of the
-analysis. A candidate of the plan does not count, because later stages accept
-only the candidates of the selected entry analyses. `plan` checks each new plan
-record in the same way, with the candidates of the plan. Neither checks an
+the snapshot ID, a question or gap of the analysis, or an entry candidate. The
+candidate is one of the analysis or of an entry analysis that the run registers,
+such as the analysis of an earlier attempt. A candidate of the plan does not
+count, because a plan is not an entry analysis. `plan` checks each new plan
+record in the same way, with the candidates of the plan in place of those of the
+analysis. Neither checks an
 earlier record again ([record format](record-format.md#ids-and-evidence)). It sets
 `discovery.yaml.entryAnalysisRef` and adds questions and gaps without changing
 prior records. It writes the [run summary](record-format.md#run-summary) for

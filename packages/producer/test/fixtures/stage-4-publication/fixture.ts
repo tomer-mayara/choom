@@ -58,6 +58,8 @@ export interface StageFourPublication extends StageFourAttempt { review: string 
 // Changes the five records of the packet, by file name, before the fixture writes them.
 type RecordsChange =(records: Record<string, Record<string, unknown>>, prepared: StageFourAttempt) => void;
 interface InventoryFile { path: string; kind: "file"; bytes: number; sha256: string }
+// The questions and gaps of the discovery of the run after Stage 3.
+interface PriorIssues { questions: unknown[]; gaps: unknown[] }
 interface GraphContext {
   id: string;
   sourceFiles: string[];
@@ -92,6 +94,14 @@ const candidates = [
 ];
 const inspectionPriorities = [{ id: "s3-check-read-handler", priority: 1, subjectRefs: ["http.ts"],
   action: "Read the order handler.", reason: "It serves the saved HTTP route.", evidenceRefs: ["launch-settings#/http/0"] }];
+// After a fresh Stage 2 attempt (start-here.md), run.yaml keeps the entry analysis of the
+// earlier attempt registered with its candidate, and the later stages keep its question
+// about that candidate. No selected entry analysis names the earlier one.
+const earlierAnalysis = "s2-first-entry-analysis";
+const earlierCandidate = { id: "s2-first-candidate-001", expression: "choom serve", path: "cli.ts", workspace: ".",
+  roles: ["application"], origin: "script", evidenceRefs: ["launch-settings#/cli"] };
+export const earlierQuestion = { id: "s2-first-question-001", subjectRefs: [earlierCandidate.id],
+  text: "Does the serve command start the service?", evidenceRefs: [`${earlierAnalysis}#/candidates/0`] };
 const knipAssessment = { action: "reuse", reason: "The saved Knip inputs still describe this snapshot.", evidenceRefs };
 
 const sha256 = (bytes: string | Buffer): string => createHash("sha256").update(bytes).digest("hex");
@@ -133,9 +143,12 @@ function settingsRecord(work: string, inventoryFiles: InventoryFile[], settings:
 }
 
 // The drafts and registered records that a run has after Stage 3 finish. The Stage 2
-// preflight record holds the copied Knip plugin patterns of the root workspace.
+// preflight record holds the copied Knip plugin patterns of the root workspace. `entry`
+// gives the entry patterns of the Stage 2 plan. With `earlierAttempt`, the run keeps an
+// earlier Stage 2 attempt and its question earlierQuestion.
 function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureSettings, pluginEntryPatterns: readonly unknown[],
-  project?: ReviewedProject, entry = project?.entryPatterns ?? ["cli.ts"]): { root: string; work: string } {
+  project?: ReviewedProject, { entry = project?.entryPatterns ?? ["cli.ts"], earlierAttempt = false }:
+  { entry?: string[]; earlierAttempt?: boolean } = {}): { root: string; work: string } {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "choom-stage-4-publication-"));
   const work = join(root, "run");
   const artifacts: Record<string, { path: string; sha256: string }> = {};
@@ -181,6 +194,11 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
     workspaceDeclarations: [], questions: [], gaps: [], llmReview: "recorded" }));
   register("launch-settings", "evidence/launch-settings.json",
     jsonText({ cli: "choom serve", http: ["GET /orders"], unresolved: "plugin command" }));
+  const questions = earlierAttempt ? [earlierQuestion] : [];
+  if (earlierAttempt) register(earlierAnalysis, "evidence/s2-first/entry-analysis.yaml", yamlText({ formatVersion: 1,
+    kind: "entry-analysis", snapshotRef, planRef: "s2-first-entry-plan", knipRunsRef: "s2-first-knip-runs",
+    candidates: [earlierCandidate], reviewedFiles: [], questions, gaps: [], llmReview: "recorded",
+    reachability: { status: "not-assessed", reason: "Stage 2 records entry candidates and Knip outcomes only." } }));
   const planSha256 = register(planRef, "evidence/s2-check/entry-plan.json",
     jsonText({ formatVersion: 1, snapshotRef, workspaces: [{ dir: ".", entry }] }));
   const profileSha256 = register("s2-check-knip-profile", "evidence/s2-check/knip-profile.json", jsonText({ formatVersion: 1,
@@ -194,17 +212,17 @@ function writeStageThreeRun(extraFiles: readonly ExtraFile[], settings: FixtureS
     status: "completed", scope: inventoryFiles.filter(({ path }) => sourceExtension.test(path))
       .map(({ path, sha256: digest }) => ({ path, sha256: digest })) }));
   register(stageThreeAnalysis, "evidence/s3-check/entry-analysis.yaml", yamlText({ formatVersion: 1, kind: "entry-analysis",
-    snapshotRef, planRef, knipRunsRef, llmReview: "recorded", reviewedFiles: priorRanges(3), questions: [], gaps: priorGaps, knipAssessment,
+    snapshotRef, planRef, knipRunsRef, llmReview: "recorded", reviewedFiles: priorRanges(3), questions, gaps: priorGaps, knipAssessment,
     candidates: [...candidates, ...project?.fileEntries ?? []], inspectionPriorities: prioritiesOf(project) }));
   // The summary that the Stage 3 finalizer writes. The Stage 4/5 publisher writes a new one.
   const progress = { inventory: "complete", entryAnalysis: "complete", inspectionPriorities: "complete", baselineRecovery: "pending" };
   const coverage = new RunSummary({ inventory: { files: inventoryFiles }, reviewRef: stageThreeAnalysis,
-    issuesRef: stageThreeAnalysis, issues: { questions: [], gaps: priorGaps } }).coverage();
+    issuesRef: stageThreeAnalysis, issues: { questions, gaps: priorGaps } }).coverage();
   write(join(work, "run.yaml"), yamlText({ formatVersion: 1, id: runRef, mode: "A", status: "in-progress", progress,
     ...(project ? { projectKey: project.key, referenceBaseline } : {}),
     snapshot: { id: snapshotRef, root: "snapshot", inventoryRef }, coverage, artifacts }));
   write(join(work, "discovery.yaml"), yamlText({ formatVersion: 1, kind: "architecture-discovery", runRef,
-    entryAnalysisRef: stageThreeAnalysis, questions: [], gaps: priorGaps }));
+    entryAnalysisRef: stageThreeAnalysis, questions, gaps: priorGaps }));
   write(join(work, "baseline.yaml"), yamlText({ formatVersion: 1, id: stageFourBaselineId, parentId: null,
     components: [], interfaces: [], resources: [], rules: [] }));
   return { root, work };
@@ -273,9 +291,9 @@ function proposedBaseline(): FixtureBaseline {
 }
 
 // The five review records. The code mapping follows the exact paths of the final
-// baseline; a file that no membership selects has no owner. The review keeps the gaps
-// of the run after Stage 3 (`priorGaps`).
-function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: string }[] }, priorGaps: unknown[],
+// baseline; a file that no membership selects has no owner. The review keeps the
+// questions and gaps of the run after Stage 3 (`prior`).
+function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: string }[] }, prior: PriorIssues,
   extraFiles: readonly ExtraFile[], project?: ReviewedProject): Record<string, unknown> {
   const proposal = artifactId("baseline.proposed.yaml");
   const graphRef = artifactId("graph-results.json");
@@ -298,9 +316,9 @@ function packetRecords(baseline: FixtureBaseline, graph: { contexts: { id: strin
     "discovery.proposed.yaml": { formatVersion: 1, kind: "architecture-discovery", runRef, entryAnalysisRef: stageFourAnalysis,
       codeMappingRef: artifactId("code-mapping.json"), dependenciesRef: graphRef, resourceAccessRef: artifactId("resource-access.json"),
       overview: { text: "The CLI starts the service, and the HTTP file serves orders.", evidenceRefs: [...evidenceRefs] },
-      inspectedPaths: [], questions: [], gaps: priorGaps },
+      inspectedPaths: [], questions: prior.questions, gaps: prior.gaps },
     "entry-analysis.yaml": { formatVersion: 1, kind: "entry-analysis", snapshotRef, previousEntryAnalysisRef: stageThreeAnalysis,
-      planRef, knipRunsRef, llmReview: "recorded", reviewedFiles, questions: [], gaps: priorGaps, knipAssessment, candidates: [...candidates, ...project?.fileEntries ?? []],
+      planRef, knipRunsRef, llmReview: "recorded", reviewedFiles, questions: prior.questions, gaps: prior.gaps, knipAssessment, candidates: [...candidates, ...project?.fileEntries ?? []],
       inspectionPriorities: prioritiesOf(project), behaviorEntries: [], behaviorEntryCandidatesRef: artifactId("behavior-entry-candidates.json"),
       reachability: { status: "assessed-with-limits",
         method: "context-specific-source-graph-traversal", dependenciesRef: graphRef, reason: "Each context has one saved root.",
@@ -353,7 +371,7 @@ export function stageFourAttempt(extraFiles: readonly ExtraFile[] = [], tools = 
 
 // Run the same graph collector as the container with the checkout's pinned tools.
 export async function stageFourGraphAttempt(files: readonly ExtraFile[], entry: string[]): Promise<StageFourAttempt> {
-  const { root, work } = writeStageThreeRun(files, "collected", [], undefined, entry);
+  const { root, work } = writeStageThreeRun(files, "collected", [], undefined, { entry });
   try {
     const fixture = prepareStageFour(root, work);
     const profile = readFileSync(join(fixture.attempt, "graph-profile.json"), "utf8");
@@ -381,6 +399,15 @@ export function collectedStageFour(extraFiles: readonly ExtraFile[] = [], tools 
   return prepared;
 }
 
+// Prepares a run that keeps an earlier Stage 2 attempt and its question earlierQuestion,
+// and the Stage 4 attempt, and runs the source collection. The review packet is next.
+export function collectedAfterEarlierAttempt(): StageFourAttempt {
+  const { root, work } = writeStageThreeRun([], "profile", [], undefined, { earlierAttempt: true });
+  const prepared = startStageFour(root, work);
+  checked(inspectStageFour(prepared, ["collect"]), "Stage 4 collection");
+  return prepared;
+}
+
 // The review copies each gap that the candidate records of collect require
 // (required-gaps.json) into the gaps of the entry analysis and of the discovery, after
 // the gaps of Stage 3.
@@ -402,8 +429,8 @@ export function writeStageFourPacket(prepared: StageFourAttempt, extraFiles: rea
   const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
   const baseline = proposedBaseline();
   change(baseline);
-  const { gaps: priorGaps } = parse(readFileSync(join(prepared.work, "discovery.yaml"), "utf8")) as { gaps: unknown[] };
-  const records = packetRecords(baseline, graph, priorGaps, extraFiles, project) as Record<string, Record<string, unknown>>;
+  const prior = parse(readFileSync(join(prepared.work, "discovery.yaml"), "utf8")) as PriorIssues;
+  const records = packetRecords(baseline, graph, prior, extraFiles, project) as Record<string, Record<string, unknown>>;
   copyRequiredGaps(records, prepared);
   changeRecords(records, prepared);
   writePacket(review, records);

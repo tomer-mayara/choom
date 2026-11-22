@@ -1,10 +1,12 @@
 @producer
 Feature: Questions and gaps name things that the run saved
   A subject names a snapshot file or folder, the snapshot ID, a question or gap,
-  an entry candidate, or a baseline item. The shared record checks refuse a
-  question or gap whose subject names nothing, also when a later change orphans
-  an earlier subject. Stages 1 to 3 refuse such a question or gap, and such an
-  inspection priority, when they add it.
+  an entry candidate, or a baseline item. An entry candidate is one of an entry
+  analysis that the run registers, also of an earlier attempt, or of the record
+  that the stage checks. The shared record checks refuse a question or gap whose
+  subject names nothing, also when a later change orphans an earlier subject.
+  Stages 1 to 3 refuse such a question or gap, and such an inspection priority,
+  when they add it.
 
   Scenario Outline: A Stage 4 or 5 draft with a gap whose subject names nothing is refused
     Given a <stage> draft with a new gap whose subject is "src/no-such-file.ts"
@@ -38,6 +40,11 @@ Feature: Questions and gaps name things that the run saved
       | the snapshot ID                      |
       | the ID of an earlier gap             |
       | the ID of an entry candidate         |
+
+  Scenario: A question about an entry candidate of an earlier attempt stays valid
+    Given a Stage 4 draft that keeps a question about an entry candidate of an earlier Stage 2 attempt
+    When the operator publishes the Stage 4 draft
+    Then the Stage 4 draft is published
 
   Scenario Outline: An early stage refuses a gap whose subject names nothing
     Given a <stage> review with a new gap whose subject is "src/no-such-file.ts"

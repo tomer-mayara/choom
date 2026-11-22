@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type ItemNames, SubjectChecker, type SubjectRecord } from "../../src/record-subjects.ts";
+import { type ItemNames, type RegisteredRecords, SubjectChecker, type SubjectRecord } from "../../src/record-subjects.ts";
 
 // The shared record checks of Stages 4 to 6 check that each subject of a question or
 // gap names something of the run. SubjectChecker knows what a subject can name. The
@@ -14,6 +14,26 @@ const found = (subjectRefs: string[], id = "gap-1", evidenceRefs = ["e"]): Subje
   ({ id, kind: "deferred", subjectRefs, reason: "Not reviewed.", evidenceRefs });
 const nameNothing = "A subject names a file of the snapshot, a folder of the snapshot written as <folder>/**, the snapshot ID, " +
   "a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.";
+// A mock of the records that a run registers: the saved document of each, by artifact ID.
+// It refuses to read a record that it does not hold, as the readers of the stages do.
+function registry(records: Record<string, unknown>): RegisteredRecords {
+  return { refs: Object.keys(records), document: (ref) => {
+    if (!Object.hasOwn(records, ref)) throw new Error(`Unknown artifact: ${ref}`);
+    return records[ref];
+  } };
+}
+const entryAnalysis = (...candidateIds: string[]) => ({ formatVersion: 1, kind: "entry-analysis",
+  candidates: candidateIds.map((id) => ({ id, expression: "cli.ts", path: "cli.ts" })) });
+// A run after two Stage 2 attempts and Stage 3. The entry analysis of the earlier attempt
+// s2-first stays registered, but no later entry analysis names it, and s2-check has new
+// candidate IDs. The plan of s2-first has a candidate that its entry analysis dropped.
+const repeatedStageTwo = {
+  "s2-first-entry-plan": { formatVersion: 1, candidates: [{ id: "s2-first-candidate-002" }] },
+  "s2-first-entry-analysis": entryAnalysis("s2-first-candidate-001"),
+  "s2-check-entry-analysis": entryAnalysis("s2-check-candidate-001"),
+  "s3-check-entry-analysis": { ...entryAnalysis("s2-check-candidate-001", "s3-check-candidate-001"),
+    previousEntryAnalysisRef: "s2-check-entry-analysis" },
+};
 
 function checker(issues: { questions: SubjectRecord[]; gaps: SubjectRecord[] } =
 { questions: [asked(["billing"])], gaps: [found(["billing"])] }, baselineItems = items): SubjectChecker {
@@ -194,23 +214,61 @@ describe("SubjectChecker before the baseline has items", () => {
     });
 
   // The entry plan or entry analysis of Stage 2 or 3 holds the questions, the gaps and
-  // the entry candidates. At Stage 3 the earlier entry analysis holds the candidates
-  // that a note about a retired candidate names.
-  const entryRecord = (candidateIds: string[]) => ({ questions: [asked(["cli.ts"])], gaps: [found(["q-1"])],
-    candidates: candidateIds.map((id) => ({ id, expression: "cli.ts", path: "cli.ts" })) });
-  const forEntry = (...earlier: string[][]): SubjectChecker => SubjectChecker.forEntryRecord(["cli.ts"], "snapshot-001",
-    entryRecord(["s3-candidate-001"]), earlier.map(entryRecord));
+  // its own entry candidates. A subject can also name a candidate of an entry analysis that
+  // the run registers, such as a candidate that a Stage 3 note retires.
+  const entryRecord = { questions: [asked(["cli.ts"])], gaps: [found(["q-1"])], candidates: [{ id: "s4-check-candidate-001" }] };
+  const forEntry = (): SubjectChecker => SubjectChecker.forEntryRecord(["cli.ts"], "snapshot-001", entryRecord,
+    registry(repeatedStageTwo));
 
   test.each([
-    ["a candidate of the entry record", "s3-candidate-001"],
-    ["a candidate of an earlier entry analysis", "s2-candidate-001"],
+    ["a candidate of the entry record", "s4-check-candidate-001"],
+    ["a candidate of the previous entry analysis", "s3-check-candidate-001"],
+    ["a candidate of an earlier Stage 2 attempt that no later entry analysis names", "s2-first-candidate-001"],
     ["a question of the entry record", "q-1"],
     ["a file of the snapshot", "cli.ts"],
   ])("forEntryRecord refuses no subject that names %s", (_name, subject) => {
-    expect(forEntry(["s2-candidate-001"]).refused(asked([subject]))).toEqual([]);
+    expect(forEntry().refused(asked([subject]))).toEqual([]);
   });
 
-  test("forEntryRecord refuses a subject that names a candidate of no entry record, and a baseline item", () => {
-    expect(forEntry(["s2-candidate-001"]).refused(asked(["s2-candidate-002", "billing"]))).toEqual(["s2-candidate-002", "billing"]);
+  test("forEntryRecord refuses a subject that names a candidate of no entry analysis, and a baseline item", () => {
+    expect(forEntry().refused(asked(["s2-first-candidate-002", "billing"]))).toEqual(["s2-first-candidate-002", "billing"]);
+  });
+});
+
+// DB1: a subject can name an entry candidate of each entry analysis that the run registers,
+// and of the record that the stage checks. Earlier attempts stay registered, and a
+// candidate ID starts with the ID of its attempt, so such a subject names a saved record.
+describe("SubjectChecker.entryCandidates", () => {
+  test("gives the candidates of each registered entry analysis and of the record that the stage checks", () => {
+    expect(SubjectChecker.entryCandidates(registry(repeatedStageTwo), entryAnalysis("s4-check-candidate-001"))).toEqual(
+      new Set(["s2-first-candidate-001", "s2-check-candidate-001", "s3-check-candidate-001", "s4-check-candidate-001"]));
+  });
+
+  test("gives the candidates of the record that the stage checks when the run registers no entry analysis", () => {
+    expect(SubjectChecker.entryCandidates(registry({ "s2-check-entry-plan": entryAnalysis("s2-check-candidate-002") }),
+      { candidates: [{ id: "s2-check-candidate-001" }] })).toEqual(new Set(["s2-check-candidate-001"]));
+  });
+
+  // A registered entry analysis has the artifact ID <attempt>-entry-analysis, with the ID of
+  // a Stage 2 to 5 attempt, and the kind entry-analysis. Only such an ID is read.
+  test.each([
+    ["a Stage 2 plan, which is not an entry analysis", "s2-first-entry-plan", { candidates: [{ id: "c-1" }] }, false],
+    ["a file of an attempt", "s3-check-file@notes-entry-analysis", entryAnalysis("c-1"), false],
+    ["a record whose ID does not start with an attempt ID", "baseline-entry-analysis", entryAnalysis("c-1"), false],
+    ["a record of the ID form with another kind", "s2-other-entry-analysis", { kind: "entry-plan", candidates: [{ id: "c-1" }] }, true],
+  ])("counts no candidate of %s", (_name, ref, record, read) => {
+    const run = registry({ "s2-check-entry-analysis": entryAnalysis("s2-check-candidate-001"), [ref]: record });
+    const reads: string[] = [];
+    const counted = SubjectChecker.entryCandidates({ refs: run.refs, document: (artifactId) => {
+      reads.push(artifactId);
+      return run.document(artifactId);
+    } }, { candidates: [] });
+    expect(counted).toEqual(new Set(["s2-check-candidate-001"]));
+    expect(reads.includes(ref)).toBe(read);
+  });
+
+  test("counts no candidate of a registered entry analysis without a candidate list", () => {
+    expect(SubjectChecker.entryCandidates(registry({ "s2-check-entry-analysis": { kind: "entry-analysis" } }), { candidates: [] }))
+      .toEqual(new Set());
   });
 });

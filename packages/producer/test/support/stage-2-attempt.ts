@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { stringify } from "yaml";
+import { parse, stringify } from "yaml";
 import { type CommandResult, runCli, toolsRoot } from "./commands.ts";
 import { type SnapshotFile, stagedRun, stagedSnapshotRef } from "./staged-run.ts";
 
@@ -130,4 +130,17 @@ export function finishAttempt(attempt: StageTwoAttempt, scratch: string,
   analysis = entryAnalysis(attempt)): Record<string, CommandResult> {
   const review = analysisPacket(join(scratch, `${attempt.id}-review`), attempt.id, analysis);
   return { "save-review": stageTwo(attempt, "save-review", [review]), finish: stageTwo(attempt, "finish") };
+}
+
+// Runs each action of a fresh attempt on a run that an earlier Stage 2 attempt changed, as
+// when the operator goes back to Stage 2 (start-here.md). The plan and the entry analysis
+// keep each question and gap of the run and add `questions`, and the entry analysis also
+// copies the required gaps of the attempt. When an action before save-review fails, the
+// review is not saved. Returns each result by action.
+export function repeatAttempt(attempt: StageTwoAttempt, scratch: string, questions: JsonRecord[] = []): Record<string, CommandResult> {
+  const run = parse(readFileSync(join(attempt.work, "discovery.yaml"), "utf8")) as { questions: JsonRecord[]; gaps: JsonRecord[] };
+  const kept = { questions: [...run.questions, ...questions], gaps: run.gaps };
+  const results = runAttempt(attempt, scratch, entryPlan(attempt.id, kept));
+  if (Object.values(results).some((result) => result.status !== 0)) return results;
+  return { ...results, ...finishAttempt(attempt, scratch, entryAnalysis(attempt, { ...kept, gaps: [...kept.gaps, ...requiredGaps(attempt)] })) };
 }

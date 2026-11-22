@@ -26,11 +26,16 @@ export interface SubjectRun {
   readonly snapshotRef: string;
   // The discovery, or other records, with the questions and gaps. The lists keep their history.
   readonly issues: Fields;
-  // The IDs of the entry candidates of the selected entry analysis and of the earlier
-  // entry analyses that it names. Stage 3 can retire a candidate with a note that names it.
-  // Stage 2 plan gives the candidates of the plan, and Stage 1 none.
+  // The IDs of the entry candidates that a subject can name (entryCandidates). Stage 1 has none.
   readonly candidateIds: Iterable<unknown>;
   readonly items: ItemNames;
+}
+// The records that a run registers: the artifact ID of each, and a reader of its saved
+// document. The shared record checks of Stages 4 and 5 also get the attempt files that
+// the publication registers.
+export interface RegisteredRecords {
+  readonly refs: Iterable<string>;
+  document(ref: string): unknown;
 }
 
 const issueLists = [['questions', 'question'], ['gaps', 'gap']] as const;
@@ -38,6 +43,11 @@ const subjectForms = 'A subject names a file of the snapshot, a folder of the sn
   'a question or gap, an entry candidate, or a baseline item ID or a field of it, such as billing.purpose.';
 // The baseline items of Stages 1 to 3: none. Each of these stages checks that the baseline is still empty.
 const noItems: ItemNames = { namedItem: () => undefined };
+// The artifact ID of the entry analysis that Stages 2 to 5 register: the attempt ID and
+// -entry-analysis, such as s2-001-entry-analysis.
+const entryAnalysisRef = /^s[2-5]-[a-z0-9-]+-entry-analysis$/;
+const candidateIdsOf = (record: Fields): unknown[] =>
+  Array.isArray(record.candidates) ? (record.candidates as (Fields | null)[]).map(candidate => candidate?.id) : [];
 
 const issueIdsOf = (issues: Fields): Set<unknown> =>
   new Set(issueLists.flatMap(([kind]) => (issues[kind] as SubjectRecord[]).map(issue => issue.id)));
@@ -55,7 +65,8 @@ function foldersOf(files: Iterable<unknown>): Set<string> {
 // The subject check of the questions and gaps of a run. A subject names one of these:
 // a file of the snapshot inventory; a folder that holds at least one such file,
 // written as the membership selector <folder>/**, such as src/billing/**; the
-// snapshot ID; the ID of a question or gap; the ID of an entry candidate; or a
+// snapshot ID; the ID of a question or gap; the ID of an entry candidate of a
+// registered entry analysis or of the record that the stage checks (entryCandidates); or a
 // baseline item, as the viewer places a record (SubjectItems), such as
 // billing.purpose. Later stages keep each question and gap unchanged, so a draft
 // that renames or removes what a subject names is refused while the reviewer can
@@ -86,11 +97,24 @@ export class SubjectChecker {
   }
 
   // The check of Stages 2 and 3 for the questions and gaps of an entry plan or entry
-  // analysis (`record`). A subject can also name an entry candidate of the record or
-  // of the `earlier` entry analyses. An example is a candidate that Stage 3 retired.
-  static forEntryRecord(paths: Iterable<unknown>, snapshotRef: string, record: Fields, earlier: readonly Fields[] = []): SubjectChecker {
-    const candidateIds = [record, ...earlier].flatMap(item => (item.candidates as { id: unknown }[]).map(candidate => candidate.id));
-    return SubjectChecker.beforeBaseline({ paths, snapshotRef, issues: record, candidateIds });
+  // analysis (`record`). A subject can name an entry candidate of the record or of an
+  // entry analysis that the run registers (entryCandidates).
+  static forEntryRecord(paths: Iterable<unknown>, snapshotRef: string, record: Fields, registered: RegisteredRecords): SubjectChecker {
+    return SubjectChecker.beforeBaseline({ paths, snapshotRef, issues: record,
+      candidateIds: SubjectChecker.entryCandidates(registered, record) });
+  }
+
+  // The IDs of the entry candidates that a subject can name: those of each entry analysis
+  // that the run registers, and those of `record`, the record that the stage checks, such
+  // as a Stage 2 plan or the entry analysis under check. A registered entry analysis has
+  // the artifact ID <attempt>-entry-analysis and the kind entry-analysis, so a registered
+  // plan does not count. The run keeps the records of each earlier attempt registered, and
+  // a candidate ID starts with the ID of its attempt. So after a fresh Stage 2 attempt, a
+  // kept question or gap still names a saved candidate, also one that Stage 3 retired.
+  static entryCandidates({ refs, document }: RegisteredRecords, record: Fields): Set<unknown> {
+    const analyses = [...refs].filter(ref => entryAnalysisRef.test(ref)).map(document)
+      .filter((value): value is Fields => (value as Fields | null | undefined)?.kind === 'entry-analysis');
+    return new Set([...analyses, record].flatMap(candidateIdsOf));
   }
 
   // Each subject of the question or gap that names nothing of the run, in the order of

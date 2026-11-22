@@ -297,10 +297,10 @@ function checkPriorities(inputs: ReviewInputs, analysis: Fields, sources: Source
 
 // The subjects of the new questions and gaps, and of each inspection priority. A
 // subject names a snapshot file or folder, the snapshot ID, a question or gap, or an
-// entry candidate of this or the previous entry analysis. A clue keeps its own check
-// (InspectionClues).
-function checkSubjects({ paths, snapshotRef, previous, discovery }: ReviewInputs, analysis: Fields): void {
-  const subjects = SubjectChecker.forEntryRecord(paths.keys(), snapshotRef, analysis, [previous]);
+// entry candidate of this analysis or of an entry analysis that the run registers. A
+// clue keeps its own check (InspectionClues).
+function checkSubjects({ paths, snapshotRef, run, document, discovery }: ReviewInputs, analysis: Fields): void {
+  const subjects = SubjectChecker.forEntryRecord(paths.keys(), snapshotRef, analysis, { refs: Object.keys(run.artifacts as Fields), document });
   subjects.checkAdded(discovery);
   subjects.checkRecords(analysis.inspectionPriorities as SubjectRecord[], 'inspection priority');
 }

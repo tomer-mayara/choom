@@ -504,7 +504,9 @@ handoff notes and dated corrections. Keep stage status in `progress.md`.
   rejected packet. A saved packet is not an editable external draft.
 - **Entries or analysis settings need to change before Stage 4 publication:**
   follow the cookbook back to a fresh Stage 2 attempt, then repeat Stage 3 and
-  prepare Stage 4 from the newly selected analysis. Keep earlier attempts.
+  prepare Stage 4 from the newly selected analysis. Keep earlier attempts. The
+  run keeps them registered, so a kept question or gap that names a candidate of
+  an earlier attempt stays valid.
 - **Entries or analysis settings need to change after Stage 4 publication:**
   preserve this run and start a fresh run. The manual helpers cannot rewind an
   already published component model to entry discovery. You can capture the
@@ -673,7 +675,7 @@ helpers and the command line are in [`packages/producer/src/`](../../../packages
 | `stage-6-inputs.ts`, `stage-6-files.ts` | The checked inputs of each Stage 6 action: the trusted YAML package and ts-morph, the registered artifacts and the indexed snapshot files; and the file operations of Stage 6: checked reads, the files and folders that an action owns and can remove again, and the publication lock |
 | `stage-6-records.ts` | Shared validation of the architecture records that Stages 4, 5 and 6 use, the fixed discovery result with its check against the saved baseline file, and the bounded baseline YAML reader |
 | `record-baseline.ts`, `record-sources.ts`, `record-graph.ts`, `record-checks.ts` | Parts of the shared validation: the baseline checks, the saved source ranges, the source graph, and small common checks, with the evidence reference resolver that every stage uses |
-| `record-subjects.ts` | Part of the shared validation (`SubjectChecker`): each question and gap subject names a file of the snapshot, a folder of the snapshot written as `<folder>/**`, the snapshot ID, a question or gap, an entry candidate or a baseline item (`SubjectItems` of `@choom/baseline-model`). Stages 1 to 3 check the records that they add with the same rule and no baseline items (`beforeBaseline`, `forEntryRecord`). The Stage 3 finalizer also checks the inspection priorities |
+| `record-subjects.ts` | Part of the shared validation (`SubjectChecker`): each question and gap subject names a file of the snapshot, a folder of the snapshot written as `<folder>/**`, the snapshot ID, a question or gap, an entry candidate of an entry analysis that the run registers or of the record that the stage checks (`entryCandidates`), or a baseline item (`SubjectItems` of `@choom/baseline-model`). Stages 1 to 3 check the records that they add with the same rule and no baseline items (`beforeBaseline`, `forEntryRecord`). The Stage 3 finalizer also checks the inspection priorities |
 | `record-reviewed-source.ts` | Part of the shared validation (`ReviewedSource`): a behavior entry and a resource access observation cite the reviewed range that contains their site, each step of an inspected path cites a reviewed range of the selected history, and each component of the path owns code that a reviewed range cited by the steps covers |
 | `record-code-mapping.ts`, `code-units.ts` | Part of the shared validation: the selected code mapping, with its file units and the units of each file that symbol selectors divide, checked on the saved snapshot; and the division of one parsed file by named top-level symbols, with the owner of its rest and the checked read of a file that symbols divide |
 | `ts-morph-modules.ts` | The ts-morph that divides a file, with the SHA-256 of each of its module files, and the check of these files against the pins of a stage start, which the Stage 4/5 publisher and Stage 6 make before they divide a file |

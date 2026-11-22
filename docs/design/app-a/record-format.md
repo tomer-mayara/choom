@@ -90,9 +90,8 @@ one of these:
   its ID, not as `**`, `.` or `/`;
 - the snapshot ID;
 - the ID of a question or gap of the discovery;
-- the ID of an entry candidate of the selected entry analysis or of an earlier
-  entry analysis that it names with `previousEntryAnalysisRef`, so that a note
-  can name a candidate that Stage 3 retired;
+- the ID of an entry candidate of an entry analysis that the run registers, or
+  of the record that the stage checks, such as a Stage 2 plan (see below);
 - a baseline item (component, interface, resource or rule), as the viewer places
   a record: the item ID, or the ID followed by a dot and more, such as
   `billing.purpose`.
@@ -111,18 +110,28 @@ Stages 1 to 3 check the subjects of the records that they add, with the same rul
 and the same messages. So a subject that names nothing is refused before later
 stages keep the record unchanged. These checks do not read an earlier record
 again. The baseline is empty until Stage 4, so before Stage 4 a subject can name
-no baseline item. At each check a subject can name a file or folder of the
-snapshot and the snapshot ID. It can also name these records:
+no baseline item.
 
-| Check | Questions and gaps | Entry candidates |
-| --- | --- | --- |
-| Stage 1 `finish` | Those of the review, and the gaps that `finish` adds from the tool records. | None. Stage 2 adds the first candidates. |
-| Stage 2 `plan`, and `start` with a plan | Those of the plan. | Those of the plan. |
-| Stage 2 `finish` | Those of the entry analysis. | Those of the entry analysis. A candidate of the plan does not count, because Stages 4 to 6 accept only the candidates of the selected entry analyses. |
-| Stage 3 finalizer | Those of the entry analysis. | Those of the entry analysis and of the previous entry analysis. So a note can name a candidate that Stage 3 retires. |
+At Stage 1 `finish`, the record that the stage checks is the review with the
+gaps that `finish` adds from the tool records. At Stage 2 `plan`, and at `start`
+with a plan, it is the plan. At Stage 2 `finish`, at the Stage 3 finalizer and in
+the shared record checks, it is the entry analysis. At Stages 1 to 3, a subject
+can name a question or gap of this record. Each of these records keeps every
+earlier question and gap.
+
+All stages have one rule for the entry candidates. A subject can name a
+candidate of each entry analysis that the run registers, and of the record that
+the stage checks. A registered entry analysis has the artifact ID
+`<attempt>-entry-analysis` and the kind `entry-analysis`. A plan is not an entry
+analysis. Thus a candidate of a plan that the entry analysis of the same attempt
+drops does not count at Stage 2 `finish` or later. At Stage 1 no candidate
+exists yet. The run keeps each earlier attempt registered, and a new candidate ID
+starts with the ID of its attempt. Thus a note can name a candidate that Stage 3
+retires. After a fresh Stage 2 attempt, a kept question or gap also still names
+a saved candidate.
 
 The Stage 3 finalizer also checks the subjects of each inspection priority with
-this rule. An example message is `The subject nothing-here of the inspection
+the same rule. An example message is `The subject nothing-here of the inspection
 priority s3-001-priority-001 names nothing.` A priority with a clue must also
 name its source file or the candidate of that file, as the clue check requires.
 
