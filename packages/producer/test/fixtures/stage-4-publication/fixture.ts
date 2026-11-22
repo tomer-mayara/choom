@@ -52,6 +52,8 @@ export interface StageFourAttempt { root: string; work: string; attempt: string;
 // profile, or the record that the Stage 1 collector makes for the snapshot files.
 export type FixtureSettings = "profile" | "collected";
 export interface StageFourPublication extends StageFourAttempt { review: string }
+// Changes the five records of the packet, by file name, before the fixture writes them.
+type RecordsChange =(records: Record<string, Record<string, unknown>>, prepared: StageFourAttempt) => void;
 interface InventoryFile { path: string; kind: "file"; bytes: number; sha256: string }
 interface GraphContext {
   id: string;
@@ -364,16 +366,22 @@ export function inspectStageFour(fixture: StageFourAttempt, args: readonly strin
   return runCli(["stage-4-inspect", ...args], stageEnvironment(fixture.work, fixture.tools), fixture.tools);
 }
 
-// Prepares the run, the Stage 4 attempt and the review folder. `change` edits the
-// proposed baseline and `changeRecords` the five records, by file name, before the
-// fixture writes the packet.
-export function stageFourPublication(change: (baseline: FixtureBaseline) => void = () => {},
-  extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
-  changeRecords: (records: Record<string, Record<string, unknown>>, prepared: StageFourAttempt) => void = () => {},
-  project?: ReviewedProject): StageFourPublication {
+// Prepares the run and the Stage 4 attempt with the extra snapshot files, and runs the
+// source collection. The review packet is next.
+export function collectedStageFour(extraFiles: readonly ExtraFile[] = [], tools = toolsRoot,
+  project?: ReviewedProject): StageFourAttempt {
   const prepared = stageFourAttempt(extraFiles, tools, "profile", [], project);
-  const review = join(prepared.root, "review");
   checked(inspectStageFour(prepared, ["collect"]), "Stage 4 collection");
+  return prepared;
+}
+
+// Writes the review folder of a collected attempt with the same extra snapshot files.
+// `change` edits the proposed baseline and `changeRecords` the five records, by file
+// name, before the fixture writes the packet.
+export function writeStageFourPacket(prepared: StageFourAttempt, extraFiles: readonly ExtraFile[] = [],
+  change: (baseline: FixtureBaseline) => void = () => {}, changeRecords: RecordsChange = () => {},
+  project?: ReviewedProject): StageFourPublication {
+  const review = join(prepared.root, "review");
   const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
   const baseline = proposedBaseline();
   change(baseline);
@@ -381,6 +389,15 @@ export function stageFourPublication(change: (baseline: FixtureBaseline) => void
   changeRecords(records as Record<string, Record<string, unknown>>, prepared);
   writePacket(review, records);
   return { ...prepared, review };
+}
+
+// Prepares the run, the Stage 4 attempt and the review folder. `change` edits the
+// proposed baseline and `changeRecords` the five records, by file name, before the
+// fixture writes the packet.
+export function stageFourPublication(change: (baseline: FixtureBaseline) => void = () => {},
+  extraFiles: readonly ExtraFile[] = [], tools = toolsRoot, changeRecords: RecordsChange = () => {},
+  project?: ReviewedProject): StageFourPublication {
+  return writeStageFourPacket(collectedStageFour(extraFiles, tools, project), extraFiles, change, changeRecords, project);
 }
 
 // Runs one Stage 4/5 publisher action on the fixture, as an operator does.
