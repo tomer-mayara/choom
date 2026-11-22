@@ -238,7 +238,7 @@ function validatePlan(bytes: Buffer, { discovery, artifacts, inventory }: RunSta
   checkPlanRecords(plan, discovery, { ids: new Set(), artifacts, reviewed }, workspaces, paths);
   // The entry analysis must keep the questions and gaps of the plan, so they enter the run here.
   checkQuestionsAndGaps({ questions: plan.questions, gaps: plan.gaps });
-  // Each subject of a new record names a file or folder of the snapshot, the snapshot ID, a question or gap, or a candidate of the plan.
+  // Each subject of a new record names a snapshot file or folder, the snapshot ID, a question or gap, or a plan candidate.
   SubjectChecker.forEntryRecord(paths.keys(), inventory.snapshotId, plan).checkAdded(discovery);
 }
 

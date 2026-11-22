@@ -3,7 +3,8 @@ Feature: Questions and gaps name things that the run saved
   A subject names a snapshot file or folder, the snapshot ID, a question or gap,
   an entry candidate, or a baseline item. The shared record checks refuse a
   question or gap whose subject names nothing, also when a later change orphans
-  an earlier subject.
+  an earlier subject. Stages 1 to 3 refuse such a question or gap, and such an
+  inspection priority, when they add it.
 
   Scenario Outline: A Stage 4 or 5 draft with a gap whose subject names nothing is refused
     Given a <stage> draft with a new gap whose subject is "src/no-such-file.ts"

@@ -403,8 +403,8 @@ function finishAttempt(): void {
   checkReceipts(finish, run);
   const analysis = checkAnalysis(finish, plan, typeof run.projectKey === 'string');
   checkRequiredGaps(finish, analysis);
-  // Each subject of a record that finish adds names a file or folder of the snapshot, the snapshot ID, a question or gap,
-  // or a candidate of the analysis. Later stages accept the candidates of the selected entry analyses, not those of the plan.
+  // Each subject of a record that finish adds names a snapshot file or folder, the snapshot ID, a question or gap, or
+  // a candidate of the analysis. Later stages do not accept a candidate of the plan.
   SubjectChecker.forEntryRecord(finish.files.keys(), finish.inventory.snapshotId, analysis).checkAdded(discovery);
   checkInventory(finish, run);
   for (const name of drafts)

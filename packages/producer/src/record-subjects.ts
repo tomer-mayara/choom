@@ -85,8 +85,8 @@ export class SubjectChecker {
   }
 
   // The check of Stages 2 and 3 for the questions and gaps of an entry plan or entry
-  // analysis (`record`). A subject can name an entry candidate of the record or of the
-  // `earlier` entry analyses that it names, such as a candidate that Stage 3 retired.
+  // analysis (`record`). A subject can also name an entry candidate of the record or
+  // of the `earlier` entry analyses. An example is a candidate that Stage 3 retired.
   static forEntryRecord(paths: Iterable<unknown>, snapshotRef: string, record: Fields, earlier: readonly Fields[] = []): SubjectChecker {
     const candidateIds = [record, ...earlier].flatMap(item => (item.candidates as { id: unknown }[]).map(candidate => candidate.id));
     return SubjectChecker.beforeBaseline({ paths, snapshotRef, issues: record, candidateIds });
@@ -105,9 +105,9 @@ export class SubjectChecker {
     for (const [kind, label] of issueLists) this.checkRecords(this.issues[kind] as SubjectRecord[], label);
   }
 
-  // Refuses the first question or gap that the stage adds, that is, whose ID is not in
-  // `earlier`, the questions and gaps before the stage. Stages 1 to 3 check only the
-  // records that they add.
+  // Refuses the first question or gap that the stage adds. A record is added when its
+  // ID is not in `earlier`, the questions and gaps before the stage. Stages 1 to 3
+  // check only the records that they add.
   checkAdded(earlier: Fields): void {
     const earlierIds = issueIdsOf(earlier);
     for (const [kind, label] of issueLists)
