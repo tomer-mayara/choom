@@ -1,5 +1,6 @@
+import { isDeepStrictEqual as same } from 'node:util';
 import type { RequiredGaps } from './generated/contracts.ts';
-import { assert } from './record-checks.ts';
+import { assert, type Fields, list } from './record-checks.ts';
 import { ToolGaps } from './tool-gaps.ts';
 
 // The required gaps of the candidate records of a Stage 4 attempt (DB5). Stage 4
@@ -10,6 +11,8 @@ import { ToolGaps } from './tool-gaps.ts';
 // s4-001-resource-access-gap-001. An attempt file has the artifact ID
 // <attempt>-file@<file>, as the Stage 4/5 publisher registers it.
 interface CandidateFile { readonly name: string; readonly file: string; readonly label: string }
+// The registered records of a run and the files of an attempt, by artifact ID.
+type Registered = ReadonlyMap<string, { readonly bytes: Buffer }>;
 
 const behaviorEntries: CandidateFile = { name: 'behavior-entry', file: 'behavior-entry-candidates.json',
   label: 'behavior entry candidates' };
@@ -54,5 +57,38 @@ export class CandidateGaps {
   record(read: (file: string) => unknown): RequiredGaps {
     return { formatVersion: 1, gaps: CandidateGaps.records.flatMap(({ name, file, label }) =>
       this.#gaps.fromCandidateRecord({ name, label, artifactRef: this.ref(file), record: read(file) })) };
+  }
+
+  // Refuses saved required gaps that differ from the gaps that the saved candidate
+  // records give, and a review (an entry analysis) that leaves out or changes a
+  // required gap or that gives a question or another gap a reserved ID. `artifacts`
+  // holds the files of the attempt by artifact ID: for Stage 5, the registered files of
+  // the Stage 4 attempt.
+  check(artifacts: Registered, review: Fields): void {
+    const read = (file: string): unknown => {
+      const artifact = artifacts.get(this.ref(file));
+      assert(artifact, 'Missing registered artifact: ' + this.ref(file));
+      return JSON.parse(artifact.bytes.toString('utf8'));
+    };
+    const source = this.ref(CandidateGaps.file);
+    const required = this.record(read).gaps;
+    assert(same(read(CandidateGaps.file), { formatVersion: 1, gaps: required }),
+      `The required gaps in ${source} differ from the gaps that the candidate records give. Use a new attempt.`);
+    const issues = { questions: list(review.questions, 'questions'), gaps: list(review.gaps, 'gaps') };
+    for (const { name } of CandidateGaps.records)
+      this.#gaps.checkCopied(name, required.filter(gap => this.#gaps.reserves(name, gap.id)), issues, source);
+  }
+
+  // True when a discovery gap has the form of a required gap that Stage 4 collect gave
+  // from a gap that a candidate record lists: its only evidence reference is that gap,
+  // <attempt>-file@<record file>#/gaps/N, and its ID is the ID of that gap,
+  // <attempt>-<name>-gap-NNN with NNN = N + 1. Such a gap keeps the subjects of the
+  // record, which can name a missing compiler input outside the snapshot.
+  static isListedGap({ id, evidenceRefs }: { id?: unknown; evidenceRefs?: unknown }): boolean {
+    const [ref, ...others] = Array.isArray(evidenceRefs) ? evidenceRefs as unknown[] : [];
+    const match = /^(s4-[a-z0-9]+(?:-[a-z0-9]+)*)-file@([^#]+)#\/gaps\/(0|[1-9][0-9]*)$/.exec(String(ref));
+    const record = CandidateGaps.records.find(({ file }) => encodeURIComponent(file) === match?.[2]);
+    return others.length === 0 && match !== null && record !== undefined &&
+      id === new ToolGaps(match[1] + '-').id(record.name, Number(match[3]));
   }
 }

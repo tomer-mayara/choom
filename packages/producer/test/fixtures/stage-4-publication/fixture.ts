@@ -14,7 +14,8 @@ import { type CommandResult, removeScratch, runCli, toolsRoot } from "../../supp
 // packet, for the Stage 4/5 publisher. Stage 4 start and source collection use
 // the CLI. Traversal scenarios run the graph collector with the checkout's
 // pinned tools. Other scenarios supply graph edges. The fixture writes the
-// phase receipts that the collector and publisher read.
+// phase receipts that the collector and publisher read. The packet copies each
+// required gap that collect saved, as the review prompt asks.
 // A test can add snapshot files that no component owns, can stop before the source
 // collection, can run the helpers of a copied tool checkout, and can use the
 // settings record that the Stage 1 collector makes for the snapshot.
@@ -375,6 +376,17 @@ export function collectedStageFour(extraFiles: readonly ExtraFile[] = [], tools 
   return prepared;
 }
 
+// The review copies each gap that the candidate records of collect require
+// (required-gaps.json) into the gaps of the entry analysis and of the discovery, after
+// the gaps of Stage 3.
+function copyRequiredGaps(records: Record<string, Record<string, unknown>>, prepared: StageFourAttempt): void {
+  const { gaps: required } = JSON.parse(readFileSync(join(prepared.attempt, "required-gaps.json"), "utf8")) as { gaps: unknown[] };
+  for (const name of ["entry-analysis.yaml", "discovery.proposed.yaml"]) {
+    const record = records[name] as { gaps: unknown[] };
+    record.gaps = [...record.gaps, ...structuredClone(required)];
+  }
+}
+
 // Writes the review folder of a collected attempt with the same extra snapshot files.
 // `change` edits the proposed baseline and `changeRecords` the five records, by file
 // name, before the fixture writes the packet.
@@ -385,8 +397,9 @@ export function writeStageFourPacket(prepared: StageFourAttempt, extraFiles: rea
   const graph = JSON.parse(readFileSync(join(prepared.attempt, "graph-results.json"), "utf8")) as { contexts: { id: string }[] };
   const baseline = proposedBaseline();
   change(baseline);
-  const records = packetRecords(baseline, graph, extraFiles, project);
-  changeRecords(records as Record<string, Record<string, unknown>>, prepared);
+  const records = packetRecords(baseline, graph, extraFiles, project) as Record<string, Record<string, unknown>>;
+  copyRequiredGaps(records, prepared);
+  changeRecords(records, prepared);
   writePacket(review, records);
   return { ...prepared, review };
 }

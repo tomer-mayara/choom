@@ -6,6 +6,7 @@ import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same } from 'node:util';
 import type * as Yaml from 'yaml';
+import { CandidateGaps } from './candidate-gaps.ts';
 import { draftUpdate, type DraftUpdate } from './draft-update.ts';
 import { checkReasoningNotSaved, checkVisibleResponse } from './llm-response.ts';
 import { refuseChangedProducerCode } from './producer-code.ts';
@@ -320,6 +321,8 @@ function candidate(state: State, packet: Packet): Candidate {
     : json((artifacts.get(priorDiscovery.resourceAccessRef as string) as Artifact).bytes).resourceAccessCandidatesRef;
   assert(json(packet.get('resource-access.json')).resourceAccessCandidatesRef === accessRef,
     'The resource observations must name the resource access candidates of Stage 4 collect: ' + accessRef + '.');
+  // DB5: the entry analysis copies each gap that the candidate records of Stage 4 collect require, and Stage 5 keeps them.
+  CandidateGaps.ofCandidates(candidatesRef).check(artifacts, entry);
   const graph = json((artifacts.get(discovery.dependenciesRef as string) as Artifact).bytes);
   const roots = new Set((graph.contexts as Fields[]).flatMap(context => (context.roots as Fields[]).map(root => root.path)));
   for (const added of entry.candidates.slice(previousCandidates.length) as Fields[])

@@ -1,4 +1,5 @@
 import type { SubjectItems } from '@choom/baseline-model/subject-items';
+import { CandidateGaps } from './candidate-gaps.ts';
 import type { Fields } from './record-checks.ts';
 import { isToolGap } from './stage-1-gaps.ts';
 
@@ -72,9 +73,10 @@ export class SubjectChecker {
 
   // Each subject of the question or gap that names nothing of the run, in the order of
   // the record. A gap that Stage 1 finish copied from a tool record keeps the subjects
-  // of the tool, which can name a missing input or a path outside the snapshot.
+  // of the tool, which can name a missing input or a path outside the snapshot. So does
+  // a required gap of a gap that a Stage 4 candidate record lists (CandidateGaps).
   refused(record: SubjectRecord): string[] {
-    if (record.kind !== undefined && isToolGap(record)) return [];
+    if (record.kind !== undefined && (isToolGap(record) || CandidateGaps.isListedGap(record))) return [];
     return record.subjectRefs.filter(subject => !this.names(subject));
   }
 

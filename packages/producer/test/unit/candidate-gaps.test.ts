@@ -123,3 +123,72 @@ describe("CandidateGaps of a Stage 4 attempt", () => {
       `The behavior entry candidates ${String(ref)} are not a record of a Stage 4 attempt.`));
   });
 });
+
+// The publisher reads the registered records by artifact ID, also the attempt files of
+// Stage 4 that Stage 5 keeps. The review must hold each required gap of both records.
+describe("CandidateGaps.check", () => {
+  const attemptGaps = new CandidateGaps("s4-check");
+  const required = attemptGaps.record(readSaved).gaps;
+  const registered = (files: Record<string, unknown>): Map<string, { bytes: Buffer }> => new Map(Object.entries(files)
+    .map(([file, value]) => [attemptGaps.ref(file), { bytes: Buffer.from(JSON.stringify(value)) }]));
+  const artifacts = registered({ ...savedRecords, "required-gaps.json": { formatVersion: 1, gaps: required } });
+  const ownGap = { id: "s4-check-gap-001", kind: "deferred", subjectRefs: ["web/**"], reason: "Not reviewed.", evidenceRefs: ["e"] };
+  const source = "s4-check-file@required-gaps.json";
+
+  test("accepts a review that holds each required gap, in any order, with its own questions and gaps", () => {
+    expect(() => attemptGaps.check(artifacts, { questions: [], gaps: [ownGap, ...[...required].reverse()] })).not.toThrow();
+  });
+
+  test.each([
+    ["the behavior entry candidates", "s4-check-behavior-entry-gap-001"],
+    ["the resource access candidates", "s4-check-resource-access-gap-002"],
+  ])("refuses a review that leaves out a required gap of %s", (_name, leftOut) => {
+    expect(() => attemptGaps.check(artifacts, { questions: [], gaps: required.filter(({ id }) => id !== leftOut) })).toThrow(
+      new Error(`The entry analysis leaves out the required gap ${leftOut}. Copy each gap of ${source} exactly.`));
+  });
+
+  test("refuses a question with an ID that is reserved for the gaps of either record", () => {
+    for (const reserved of ["s4-check-behavior-entry-gap-002", "s4-check-resource-access-gap-003"]) {
+      const question = { id: reserved, subjectRefs: ["web/vite.config.ts"], text: "Which pages exist?", evidenceRefs: ["e"] };
+      expect(() => attemptGaps.check(artifacts, { questions: [question], gaps: required })).toThrow(new Error(
+        `The ID ${reserved} is reserved for the required gaps of ${source}. Use a different ID.`));
+    }
+  });
+
+  test("refuses saved required gaps that differ from the gaps of the candidate records", () => {
+    const changed = registered({ ...savedRecords, "required-gaps.json": { formatVersion: 1, gaps: required.slice(1) } });
+    expect(() => attemptGaps.check(changed, { questions: [], gaps: required })).toThrow(new Error(
+      `The required gaps in ${source} differ from the gaps that the candidate records give. Use a new attempt.`));
+  });
+
+  test.each([
+    ["a record that is not registered", registered(savedRecords), { questions: [], gaps: required },
+      `Missing registered artifact: ${source}`],
+    ["a review without a list of questions", artifacts, { gaps: required }, "Missing questions list."],
+  ])("refuses %s", (_name, files, review, message) => {
+    expect(() => attemptGaps.check(files, review)).toThrow(new Error(message));
+  });
+});
+
+// The shared subject check accepts each subject of a required gap that keeps the subjects of a gap of a candidate record.
+describe("CandidateGaps.isListedGap", () => {
+  test.each([
+    ["the behavior entry candidates", "s4-check-behavior-entry-gap-002", [`${behaviorRef}#/gaps/1`]],
+    ["the resource access candidates of a retried attempt", "s4-retry-2-resource-access-gap-001",
+      ["s4-retry-2-file@resource-access-candidates.json#/gaps/0"]],
+  ])("knows a gap that keeps the subjects of a gap of %s", (_name, id, evidenceRefs) => {
+    expect(CandidateGaps.isListedGap({ id, evidenceRefs })).toBe(true);
+  });
+
+  test.each([
+    ["the gap of a partial record", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/status`]],
+    ["another gap of the record", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/gaps/1`]],
+    ["the gap of the other record", "s4-check-behavior-entry-gap-001", [`${accessRef}#/gaps/0`]],
+    ["a gap of another attempt", "s4-check-behavior-entry-gap-001", ["s4-other-file@behavior-entry-candidates.json#/gaps/0"]],
+    ["a gap with more evidence", "s4-check-behavior-entry-gap-001", [`${behaviorRef}#/gaps/0`, "launch-settings"]],
+    ["a gap of another record of the attempt", "s4-check-references-001-gap-001", ["s4-check-file@references-001.json#/gaps/0"]],
+    ["a gap of a Stage 5 attempt", "s5-check-behavior-entry-gap-001", ["s5-check-file@behavior-entry-candidates.json#/gaps/0"]],
+  ])("does not know %s", (_name, id, evidenceRefs) => {
+    expect(CandidateGaps.isListedGap({ id, evidenceRefs })).toBe(false);
+  });
+});
