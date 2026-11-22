@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as yaml from "yaml";
-import { readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords } from "../../../src/stage-6-records.ts";
+import { fixedDiscovery, readBaselineYaml, type RecordInputs, validateDiscoveryRecords, validateRecords }
+  from "../../../src/stage-6-records.ts";
 import { ToolGaps } from "../../../src/tool-gaps.ts";
 import { candidatesRef, type Component, digest, type Documentation, evidenceRefs, files, location, type MappingUnit, proposal,
   recordInputs, type Records, runRef, selected, snapshotRef, type SourceAssessment, type SourceUse, stage, type Statement, statement }
@@ -95,6 +96,20 @@ const profileCases: [string, (records: Records) => void, string][] = [
     records.baseline.formatVersion = 7;
   }, "The producer writes baseline formatVersion 1, 2, 3, 4, 5 or 6, not 7."],
 ];
+
+// P2: an inspected path from the route http-route, with the evidence references of each
+// step. The path names http, or http and cli; cli owns cli.ts.
+const inspectedPath = (...steps: string[][]) => (records: Records): void => {
+  records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
+    componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
+    steps: steps.map((refs, index) => ({ action: `Step ${index + 1}.`, evidenceRefs: refs })) }];
+};
+const cliAndHttpPath = (...steps: string[][]) => (records: Records): void => {
+  inspectedPath(...steps)(records);
+  records.discovery.inspectedPaths.forEach((path) => { path.componentIds = ["http", "cli"]; });
+};
+const uncoveredCli = new Error("Inspected path path-1 names the component cli, but no reviewed range that its steps cite " +
+  "covers code that cli owns.");
 
 describe("validateDiscoveryRecords", () => {
   test("accepts the reviewed records and counts what they contain", () => {
@@ -206,27 +221,18 @@ describe("validateDiscoveryRecords", () => {
   // P2: each step of an inspected path cites a reviewed range of the selected history
   // itself, as a site does. Each other saved source range that a step cites is a
   // reviewed range too. A step can also cite other records, such as a graph record.
-  const inspectedPath = (...steps: string[][]) => (records: Records): void => {
-    records.discovery.inspectedPaths = [{ id: "path-1", description: "Route path.", entryPointRef: "http-route",
-      componentIds: ["http"], evidenceRefs: ["orders-handler"], limits: ["l"],
-      steps: steps.map((refs, index) => ({ action: `Step ${index + 1}.`, evidenceRefs: refs })) }];
-  };
-  const noReviewedRange = (step: number): Error => new Error(`Inspected path path-1 step ${step} does not cite a reviewed range. ` +
-    "An excerpt that no review read is not a reviewed range.");
-
   test("accepts inspected path steps that cite reviewed ranges, also beside a JSON Pointer into one or other records", () => {
     expect(validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler#"],
       ["orders-handler", "orders-handler#/lines", "graph"])))).toMatchObject({ inspectedPaths: 1 });
   });
 
-  test("refuses an inspected path step that cites only a requested excerpt with the lines of a reviewed range", () => {
-    expect(() => validateDiscoveryRecords(withUnreadExcerpt(recordInputs(inspectedPath(["orders-handler"], [unreadExcerpt])))))
-      .toThrow(noReviewedRange(2));
-  });
-
-  test("refuses an inspected path step that cites a reviewed range only with a JSON Pointer to its lines", () => {
-    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["orders-handler"], ["orders-handler#/lines", "graph"]))))
-      .toThrow(noReviewedRange(2));
+  test.each<[string, string[][], number]>([
+    ["only a requested excerpt with the lines of a reviewed range", [["orders-handler"], [unreadExcerpt]], 2],
+    ["a reviewed range only with a JSON Pointer to its lines", [["orders-handler"], ["orders-handler#/lines", "graph"]], 2],
+    ["no source range", [["launch#/cli"]], 1],
+  ])("refuses an inspected path step that cites %s", (_name, steps, step) => {
+    expect(() => validateDiscoveryRecords(withUnreadExcerpt(recordInputs(inspectedPath(...steps))))).toThrow(new Error(
+      `Inspected path path-1 step ${step} does not cite a reviewed range. An excerpt that no review read is not a reviewed range.`));
   });
 
   test("refuses an inspected path step that cites a collected but unreviewed excerpt beside a reviewed range", () => {
@@ -235,17 +241,9 @@ describe("validateDiscoveryRecords", () => {
         "of the selected history."));
   });
 
-  test("refuses an inspected path step that cites no source range", () => {
-    expect(() => validateDiscoveryRecords(recordInputs(inspectedPath(["launch#/cli"])))).toThrow(noReviewedRange(1));
-  });
-
   // Each component of an inspected path owns, in the selected code mapping, a file or a
-  // part that a reviewed range cited by the steps covers. cli owns cli.ts.
+  // part that a reviewed range cited by the steps covers.
   const startLocation = { snapshotRef, path: "cli.ts", sha256: digest(files["cli.ts"] ?? ""), lines: [1, 1] };
-  const cliAndHttpPath = (...steps: string[][]) => (records: Records): void => {
-    inspectedPath(...steps)(records);
-    records.discovery.inspectedPaths.forEach((path) => { path.componentIds = ["http", "cli"]; });
-  };
   // The review also read line 1 of cli.ts: the reviewed range cli-start of a requested excerpt.
   function withReviewedStart(change: (records: Records) => void): RecordInputs {
     const inputs = recordInputs((records) => {
@@ -271,8 +269,7 @@ describe("validateDiscoveryRecords", () => {
       records.discovery.inspectedPaths.forEach((path) => { path.evidenceRefs.push("cli-start"); });
     }],
   ])("refuses an inspected path that names a component when %s", (_name, change) => {
-    expect(() => validateDiscoveryRecords(withReviewedStart(change))).toThrow(new Error("Inspected path path-1 names the " +
-      "component cli, but no reviewed range that its steps cite covers code that cli owns."));
+    expect(() => validateDiscoveryRecords(withReviewedStart(change))).toThrow(uncoveredCli);
   });
 
   test.each(refusedCases)("refuses %s", (_name, change, message) => {
@@ -417,6 +414,17 @@ describe("validateRecords with a Stage 6 readiness packet", () => {
     const { hiddenReasoning: _saved, ...withoutField } = call;
     expect(() => validateRecords({ ...recordInputs(), packet: packet({ call: withoutField }), draftDigests }))
       .toThrow("Record hiddenReasoning: not-saved in llm/analysis-call.yaml.");
+  });
+
+  // Stage 6 checks the inspected paths as Stages 4 and 5 do: before it saves the fixed
+  // records, and again when verify checks the saved fixed records.
+  test("refuses an inspected path whose steps cite no reviewed range of one of its components, also in the fixed records", () => {
+    const uncovered = cliAndHttpPath(["orders-handler"]);
+    expect(() => validateRecords({ ...recordInputs(uncovered), packet: packet(), draftDigests })).toThrow(uncoveredCli);
+    const inputs = recordInputs(uncovered);
+    const baselineFile = Buffer.from(JSON.stringify(inputs.baseline));
+    const discovery = fixedDiscovery(inputs.discovery as Record<string, unknown>, "base-1", baselineFile);
+    expect(() => validateDiscoveryRecords({ ...inputs, discovery, baselineFile })).toThrow(uncoveredCli);
   });
 });
 
