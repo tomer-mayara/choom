@@ -29,6 +29,17 @@ export class StageThreeGaps {
     return phase + '.required-gaps.json';
   }
 
+  // True when a discovery gap has the form of a required gap of an exports record of a
+  // Stage 3 attempt: the ID <attempt>-exports-NNN-gap-MMM, and one evidence reference to
+  // gap MMM - 1 of <attempt>-file@exports-NNN.json. Such a gap keeps the subjects of its
+  // record, which can name a compiler input that the snapshot does not hold.
+  static isExportsGap({ id, evidenceRefs }: { id?: unknown; evidenceRefs?: unknown }): boolean {
+    const [, attempt = '', phase = '', number = ''] = /^(s3-[a-z0-9-]+)-(exports-[0-9]{3,})-gap-([0-9]{3,})$/.exec(String(id)) ?? [];
+    const index = Number(number) - 1;
+    return index >= 0 && id === new ToolGaps(attempt + '-').id(phase, index) &&
+      same(evidenceRefs, [attempt + '-file@' + phase + '.json#/gaps/' + index]);
+  }
+
   // The required gaps of the symbol mentions that collect saved.
   ofSymbolMentions(mentions: unknown): RequiredGaps {
     return { formatVersion: 1, gaps: this.#gaps.fromSymbolMentions(mentions, this.#ref('symbol-mentions.json')) };

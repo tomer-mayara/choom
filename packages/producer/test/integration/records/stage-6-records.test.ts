@@ -139,6 +139,21 @@ describe("validateDiscoveryRecords", () => {
     expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 2 });
   });
 
+  // DB1, detail b: a required gap of a Stage 3 exports record keeps the subjects of its
+  // record, which can name a compiler input that the snapshot does not hold.
+  test("keeps the subjects of a required gap that Stage 3 gave from an exports record", () => {
+    const missing = { kind: "missing-compiler-input", input: "reference-path", missing: "env.d.ts",
+      subjectRefs: ["cli.ts", "env.d.ts"], reason: "cli.ts names env.d.ts in a reference path directive, but the snapshot does not hold that file." };
+    const exportsRecord = Buffer.from(JSON.stringify({ formatVersion: 1, gaps: [missing] }));
+    const [requiredGap] = new ToolGaps("s3-check-").fromExports("exports-001", { gaps: [missing] }, "s3-check-file@exports-001.json");
+    const inputs = recordInputs((records) => {
+      for (const gaps of [records.discovery.gaps, records.entry.gaps]) gaps.push(structuredClone(requiredGap) as (typeof gaps)[number]);
+    });
+    inputs.artifacts.set("s3-check-file@exports-001.json",
+      { path: "evidence/s3-check/exports-001.json", bytes: exportsRecord, sha256: digest(exportsRecord) });
+    expect(validateDiscoveryRecords(inputs)).toMatchObject({ gaps: 2 });
+  });
+
   // Stage 3 can retire an earlier entry candidate with a note that names it, so a subject
   // can name a candidate of an earlier entry analysis of the selected history.
   test("accepts a subject that names an entry candidate of an earlier entry analysis", () => {

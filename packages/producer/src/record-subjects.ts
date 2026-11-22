@@ -71,8 +71,9 @@ export class SubjectChecker {
   }
 
   // Each subject of the question or gap that names nothing of the run, in the order of
-  // the record. A gap that Stage 1 finish copied from a tool record keeps the subjects
-  // of the tool, which can name a missing input or a path outside the snapshot.
+  // the record. A gap that keeps the subjects of its tool record (isToolGap), such as a
+  // gap that Stage 1 finish copied or a required gap of a Stage 3 exports record, can
+  // name a missing input or a path outside the snapshot.
   refused(record: SubjectRecord): string[] {
     if (record.kind !== undefined && isToolGap(record)) return [];
     return record.subjectRefs.filter(subject => !this.names(subject));
