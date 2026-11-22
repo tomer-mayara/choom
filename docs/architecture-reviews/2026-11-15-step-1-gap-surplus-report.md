@@ -1749,12 +1749,13 @@ from the ticket text.
 | GB-12a, GB-12b | Only the scenarios and the cookbook text, because tomer-mayara/choom#103 has the code. One step definition serves "the operator finishes Stage N" for each feature (`test/steps/producer-stage-finish.steps.ts`). |
 | GB-14 | The probe showed that the Stage 2 and Stage 3 publishers also registered a stray file. They refuse it now (`SavedAttemptFiles`). The Stage 2 receipts record the digest of each file that a saved command wrote. The Stage 6 message does not name the stray file. |
 
-**Check results on the combined change**, after the review fixes (macOS,
-Node 26.13.0, Bun 1.4.4, `TMPDIR` set to its real path):
+**Check results on the combined change**, after the review fixes and the
+changes that follow the owner decisions (macOS, Node 26.13.0, Bun 1.4.4,
+`TMPDIR` set to its real path):
 
 | Check | Result |
 |---|---|
-| `bun run check` | Pass: 1,652 unit tests, 299 DOM tests, 248 integration tests, 177 scenarios and 771 interface tests. Lint, the cookbook check, the contract checks, the dependency rules, Knip and the duplicate check pass. |
+| `bun run check` | Pass: 1,622 unit tests, 299 DOM tests, 249 integration tests, 179 scenarios and 773 interface tests. Lint, the cookbook check, the contract checks, the dependency rules, Knip and the duplicate check pass. |
 | `bun run check-types` | Pass. |
 | `bun run habit-hooks --all` | Pass. |
 | `bun run test:producer:docker` | Pass: 1 test and 2 scenarios. These tests stop at Stage 4 `collect` or at the graph run, so they do not reach the shared record checks of Stages 4 to 6. |
